@@ -29,10 +29,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -60,10 +61,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(413)"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -91,10 +93,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('log')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -122,10 +125,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('allow')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -151,10 +155,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
@@ -178,10 +183,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
@@ -205,10 +211,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('foobar')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -234,10 +241,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true && LogInfo('XX -> %s', evt.Appsec.MatchedRules.GetName())", Apply: []string{"CancelAlert()"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -262,10 +270,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -291,10 +300,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -320,10 +330,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -349,11 +360,12 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				{Filter: "IsInBand == false", Apply: []string{"SendAlert()"}},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -381,10 +393,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			on_match: []appsec.Hook{},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -419,10 +432,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Filter: "1 == 1", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -447,10 +461,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Filter: "1 ==2", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -481,10 +496,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"RemoveInBandRuleByTag('crowdsec-rulez')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -509,10 +525,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"RemoveInBandRuleByID(1516470898)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -537,10 +554,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"RemoveInBandRuleByName('rulez')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -562,10 +580,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
@@ -596,10 +615,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"SetRemediationByTag('crowdsec-rulez', 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -623,10 +643,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"SetRemediationByName('rulez', 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -650,10 +671,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Apply: []string{"SetRemediationByID(1516470898, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -680,10 +702,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar2')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -708,10 +731,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				{Filter: "1==1", Apply: []string{"SetRemediationByName('rulez', 'foobar2')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -743,10 +767,11 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
@@ -768,10 +793,11 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			on_match: []appsec.Hook{{Apply: []string{"SetRemediation('captcha')"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 
@@ -795,10 +821,11 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			on_match: []appsec.Hook{{Apply: []string{"SetReturnCode(418)"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 
@@ -833,10 +860,11 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			on_match: []appsec.Hook{
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('allow')"}},
@@ -859,10 +887,11 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: appsec.AllowRemediation,
 			on_match: []appsec.Hook{
@@ -891,10 +920,11 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: appsec.AllowRemediation,
 			on_match: []appsec.Hook{
@@ -924,10 +954,11 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: appsec.AllowRemediation,
 			on_match: []appsec.Hook{
@@ -957,11 +988,12 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "5.4.3.2",
-				RemoteAddr: "5.4.3.2",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "5.4.3.2",
+				RemoteAddr:  "5.4.3.2",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: appsec.AllowRemediation,
 			on_match: []appsec.Hook{
