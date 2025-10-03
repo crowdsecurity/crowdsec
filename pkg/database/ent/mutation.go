@@ -4417,6 +4417,7 @@ type BouncerMutation struct {
 	last_pull     *time.Time
 	auth_type     *string
 	osname        *string
+	osfamily      *string
 	osversion     *string
 	featureflags  *string
 	auto_created  *bool
@@ -4985,6 +4986,55 @@ func (m *BouncerMutation) ResetOsname() {
 	delete(m.clearedFields, bouncer.FieldOsname)
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (m *BouncerMutation) SetOsfamily(s string) {
+	m.osfamily = &s
+}
+
+// Osfamily returns the value of the "osfamily" field in the mutation.
+func (m *BouncerMutation) Osfamily() (r string, exists bool) {
+	v := m.osfamily
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOsfamily returns the old "osfamily" field's value of the Bouncer entity.
+// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BouncerMutation) OldOsfamily(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOsfamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOsfamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOsfamily: %w", err)
+	}
+	return oldValue.Osfamily, nil
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (m *BouncerMutation) ClearOsfamily() {
+	m.osfamily = nil
+	m.clearedFields[bouncer.FieldOsfamily] = struct{}{}
+}
+
+// OsfamilyCleared returns if the "osfamily" field was cleared in this mutation.
+func (m *BouncerMutation) OsfamilyCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldOsfamily]
+	return ok
+}
+
+// ResetOsfamily resets all changes to the "osfamily" field.
+func (m *BouncerMutation) ResetOsfamily() {
+	m.osfamily = nil
+	delete(m.clearedFields, bouncer.FieldOsfamily)
+}
+
 // SetOsversion sets the "osversion" field.
 func (m *BouncerMutation) SetOsversion(s string) {
 	m.osversion = &s
@@ -5153,7 +5203,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -5186,6 +5236,9 @@ func (m *BouncerMutation) Fields() []string {
 	}
 	if m.osname != nil {
 		fields = append(fields, bouncer.FieldOsname)
+	}
+	if m.osfamily != nil {
+		fields = append(fields, bouncer.FieldOsfamily)
 	}
 	if m.osversion != nil {
 		fields = append(fields, bouncer.FieldOsversion)
@@ -5226,6 +5279,8 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.AuthType()
 	case bouncer.FieldOsname:
 		return m.Osname()
+	case bouncer.FieldOsfamily:
+		return m.Osfamily()
 	case bouncer.FieldOsversion:
 		return m.Osversion()
 	case bouncer.FieldFeatureflags:
@@ -5263,6 +5318,8 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAuthType(ctx)
 	case bouncer.FieldOsname:
 		return m.OldOsname(ctx)
+	case bouncer.FieldOsfamily:
+		return m.OldOsfamily(ctx)
 	case bouncer.FieldOsversion:
 		return m.OldOsversion(ctx)
 	case bouncer.FieldFeatureflags:
@@ -5355,6 +5412,13 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetOsname(v)
 		return nil
+	case bouncer.FieldOsfamily:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOsfamily(v)
+		return nil
 	case bouncer.FieldOsversion:
 		v, ok := value.(string)
 		if !ok {
@@ -5421,6 +5485,9 @@ func (m *BouncerMutation) ClearedFields() []string {
 	if m.FieldCleared(bouncer.FieldOsname) {
 		fields = append(fields, bouncer.FieldOsname)
 	}
+	if m.FieldCleared(bouncer.FieldOsfamily) {
+		fields = append(fields, bouncer.FieldOsfamily)
+	}
 	if m.FieldCleared(bouncer.FieldOsversion) {
 		fields = append(fields, bouncer.FieldOsversion)
 	}
@@ -5455,6 +5522,9 @@ func (m *BouncerMutation) ClearField(name string) error {
 		return nil
 	case bouncer.FieldOsname:
 		m.ClearOsname()
+		return nil
+	case bouncer.FieldOsfamily:
+		m.ClearOsfamily()
 		return nil
 	case bouncer.FieldOsversion:
 		m.ClearOsversion()
@@ -5502,6 +5572,9 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldOsname:
 		m.ResetOsname()
+		return nil
+	case bouncer.FieldOsfamily:
+		m.ResetOsfamily()
 		return nil
 	case bouncer.FieldOsversion:
 		m.ResetOsversion()
@@ -8615,6 +8688,7 @@ type MachineMutation struct {
 	isValidated    *bool
 	auth_type      *string
 	osname         *string
+	osfamily       *string
 	osversion      *string
 	featureflags   *string
 	hubstate       *map[string][]schema.ItemState
@@ -9223,6 +9297,55 @@ func (m *MachineMutation) ResetOsname() {
 	delete(m.clearedFields, machine.FieldOsname)
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (m *MachineMutation) SetOsfamily(s string) {
+	m.osfamily = &s
+}
+
+// Osfamily returns the value of the "osfamily" field in the mutation.
+func (m *MachineMutation) Osfamily() (r string, exists bool) {
+	v := m.osfamily
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOsfamily returns the old "osfamily" field's value of the Machine entity.
+// If the Machine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MachineMutation) OldOsfamily(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOsfamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOsfamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOsfamily: %w", err)
+	}
+	return oldValue.Osfamily, nil
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (m *MachineMutation) ClearOsfamily() {
+	m.osfamily = nil
+	m.clearedFields[machine.FieldOsfamily] = struct{}{}
+}
+
+// OsfamilyCleared returns if the "osfamily" field was cleared in this mutation.
+func (m *MachineMutation) OsfamilyCleared() bool {
+	_, ok := m.clearedFields[machine.FieldOsfamily]
+	return ok
+}
+
+// ResetOsfamily resets all changes to the "osfamily" field.
+func (m *MachineMutation) ResetOsfamily() {
+	m.osfamily = nil
+	delete(m.clearedFields, machine.FieldOsfamily)
+}
+
 // SetOsversion sets the "osversion" field.
 func (m *MachineMutation) SetOsversion(s string) {
 	m.osversion = &s
@@ -9507,7 +9630,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -9543,6 +9666,9 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.osname != nil {
 		fields = append(fields, machine.FieldOsname)
+	}
+	if m.osfamily != nil {
+		fields = append(fields, machine.FieldOsfamily)
 	}
 	if m.osversion != nil {
 		fields = append(fields, machine.FieldOsversion)
@@ -9588,6 +9714,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.AuthType()
 	case machine.FieldOsname:
 		return m.Osname()
+	case machine.FieldOsfamily:
+		return m.Osfamily()
 	case machine.FieldOsversion:
 		return m.Osversion()
 	case machine.FieldFeatureflags:
@@ -9629,6 +9757,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAuthType(ctx)
 	case machine.FieldOsname:
 		return m.OldOsname(ctx)
+	case machine.FieldOsfamily:
+		return m.OldOsfamily(ctx)
 	case machine.FieldOsversion:
 		return m.OldOsversion(ctx)
 	case machine.FieldFeatureflags:
@@ -9730,6 +9860,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetOsname(v)
 		return nil
+	case machine.FieldOsfamily:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOsfamily(v)
+		return nil
 	case machine.FieldOsversion:
 		v, ok := value.(string)
 		if !ok {
@@ -9803,6 +9940,9 @@ func (m *MachineMutation) ClearedFields() []string {
 	if m.FieldCleared(machine.FieldOsname) {
 		fields = append(fields, machine.FieldOsname)
 	}
+	if m.FieldCleared(machine.FieldOsfamily) {
+		fields = append(fields, machine.FieldOsfamily)
+	}
 	if m.FieldCleared(machine.FieldOsversion) {
 		fields = append(fields, machine.FieldOsversion)
 	}
@@ -9843,6 +9983,9 @@ func (m *MachineMutation) ClearField(name string) error {
 		return nil
 	case machine.FieldOsname:
 		m.ClearOsname()
+		return nil
+	case machine.FieldOsfamily:
+		m.ClearOsfamily()
 		return nil
 	case machine.FieldOsversion:
 		m.ClearOsversion()
@@ -9899,6 +10042,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldOsname:
 		m.ResetOsname()
+		return nil
+	case machine.FieldOsfamily:
+		m.ResetOsfamily()
 		return nil
 	case machine.FieldOsversion:
 		m.ResetOsversion()
