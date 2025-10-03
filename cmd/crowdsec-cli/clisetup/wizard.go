@@ -19,8 +19,8 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
