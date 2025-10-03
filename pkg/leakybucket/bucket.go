@@ -163,6 +163,12 @@ func LeakRoutine(leaky *Leaky) error {
 		firstEvent         = true
 	)
 
+	defer func() {
+		if durationTicker != nil {
+			durationTicker.Stop()
+		}
+	}()
+
 	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
 	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
@@ -232,7 +238,6 @@ func LeakRoutine(leaky *Leaky) error {
 				if firstEvent {
 					durationTicker = time.NewTicker(leaky.Duration)
 					durationTickerChan = durationTicker.C
-					defer durationTicker.Stop()
 				} else {
 					durationTicker.Reset(leaky.Duration)
 				}

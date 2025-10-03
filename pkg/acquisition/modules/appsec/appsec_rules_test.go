@@ -30,11 +30,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -62,11 +63,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"tutu"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"tutu"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -88,11 +90,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "allow",
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
@@ -115,11 +118,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "captcha",
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
@@ -142,11 +146,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			UserBlockedHTTPCode: 418,
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
@@ -172,11 +177,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"bla"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"bla"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -200,11 +206,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(418)"}},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"bla"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"bla"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -228,11 +235,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediationByName('rule42', 'captcha')"}},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"bla"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"bla"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
@@ -253,11 +261,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Headers:    http.Header{"Cookie": []string{"foo=toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Headers:     http.Header{"Cookie": []string{"foo=toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -284,11 +293,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Headers:    http.Header{"Cookie": []string{"foo=toto; bar=tutu"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Headers:     http.Header{"Cookie": []string{"foo=toto; bar=tutu"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -315,11 +325,12 @@ func TestAppsecRuleMatches(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Headers:    http.Header{"Cookie": []string{"bar=tutu; tututata=toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Headers:     http.Header{"Cookie": []string{"bar=tutu; tututata=toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -358,6 +369,7 @@ Content-Type: application/octet-stream
 
 toto
 --boundary--`),
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -384,11 +396,12 @@ toto
 				"SecRule REMOTE_ADDR \"@ipMatch 1.2.3.4\" \"id:1,phase:1,log,deny,msg: 'block ip'\"",
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/urllll",
-				Headers:    http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll",
+				Headers:     http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -426,10 +439,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/toto",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/toto",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -450,10 +464,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/TOTO",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/TOTO",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -474,10 +489,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/toto",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/toto",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -499,10 +515,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/?foo=dG90bw",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?foo=dG90bw",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -524,10 +541,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/?foo=dG90bw===",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?foo=dG90bw===",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -549,10 +567,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/?foo=toto",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?foo=toto",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -574,10 +593,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/?foo=%42%42%2F%41",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?foo=%42%42%2F%41",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -599,10 +619,11 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/?foo=%20%20%42%42%2F%41%20%20",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?foo=%20%20%42%42%2F%41%20%20",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -638,10 +659,11 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/foobar?something=toto&foobar=smth",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/foobar?something=toto&foobar=smth",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -666,10 +688,11 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/foobar?something=toto&foobar=smth",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/foobar?something=toto&foobar=smth",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -694,12 +717,13 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Body:       []byte("smth=toto&foobar=other"),
-				Headers:    http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Body:        []byte("smth=toto&foobar=other"),
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -724,12 +748,13 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Body:       []byte("smth=toto&foobar=other"),
-				Headers:    http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Body:        []byte("smth=toto&foobar=other"),
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -754,11 +779,12 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Headers:    http.Header{"foobar": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Headers:     http.Header{"foobar": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -783,11 +809,12 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Headers:    http.Header{"foobar": []string{"toto"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Headers:     http.Header{"foobar": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -807,10 +834,11 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -830,11 +858,12 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Proto:      "HTTP/3.1",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Proto:       "HTTP/3.1",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -854,10 +883,11 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/foobar",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/foobar",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -877,10 +907,11 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/foobar?a=b",
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/foobar?a=b",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -900,12 +931,13 @@ func TestAppsecRuleZones(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				ClientIP:   "1.2.3.4",
-				RemoteAddr: "127.0.0.1",
-				Method:     "GET",
-				URI:        "/",
-				Body:       []byte("foobar=42421"),
-				Headers:    http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/",
+				Body:        []byte("foobar=42421"),
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)

@@ -379,6 +379,25 @@ detect:
           # rpm
           - /var/log/mysql/mysqld.log
 
+  # Audit daemon
+  #
+  # This should be the same for deb and rpm.
+  # Does not go through syslog.
+  auditd:
+    when:
+      - Systemd.UnitInstalled("auditd.service") or len(Path.Glob("/var/log/audit/*.log")) > 0
+    hub_spec:
+      collections:
+        - crowdsecurity/auditd
+    acquisition_spec:
+      filename: auditd.yaml
+      datasource:
+        source: file
+        labels:
+          type: auditd
+        filenames:
+          - /var/log/audit/*.log
+
   # There is no standard systemd unit for telnetd, so
   # we rely on file detection only.
   telnet:

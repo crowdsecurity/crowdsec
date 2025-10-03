@@ -306,8 +306,8 @@ func detectStaticField(grokStatics []parser.Static) []string {
 func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	ret := make([]string, 0)
 
-	if node.Grok.RunTimeRegexp != nil {
-		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
+	if node.RuntimeGrok.RunTimeRegexp != nil {
+		for _, capturedField := range node.RuntimeGrok.RunTimeRegexp.Names() {
 			fieldName := "evt.Parsed." + capturedField
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
@@ -353,8 +353,8 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	ret := make([]string, 0)
 
 	for _, subnode := range node.LeavesNodes {
-		if subnode.Grok.RunTimeRegexp != nil {
-			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
+		if subnode.RuntimeGrok.RunTimeRegexp != nil {
+			for _, capturedField := range subnode.RuntimeGrok.RunTimeRegexp.Names() {
 				fieldName := "evt.Parsed." + capturedField
 				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)

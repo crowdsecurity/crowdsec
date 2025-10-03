@@ -45,6 +45,7 @@ func (Machine) Fields() []ent.Field {
 			Default(false),
 		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
 		field.String("osname").Optional(),
+		field.String("osfamily").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
 		field.JSON("hubstate", map[string][]ItemState{}).Optional(),

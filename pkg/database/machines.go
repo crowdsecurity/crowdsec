@@ -51,6 +51,7 @@ func (c *Client) MachineUpdateBaseMetrics(ctx context.Context, machineID string,
 		Where(machine.MachineIdEQ(machineID)).
 		SetNillableVersion(baseMetrics.Version).
 		SetOsname(*os.Name).
+		SetOsfamily(os.Family).
 		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetHubstate(hubState).

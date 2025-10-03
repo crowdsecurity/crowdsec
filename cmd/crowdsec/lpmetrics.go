@@ -48,6 +48,7 @@ type MetricsProvider struct {
 
 type staticMetrics struct {
 	osName         string
+	osFamily       string
 	osVersion      string
 	startupTS      int64
 	featureFlags   []string
@@ -71,9 +72,11 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 			if item.State.IsLocal() {
 				status = "custom"
 			}
+
 			if item.State.Tainted {
 				status = "tainted"
 			}
+
 			ret[itemType] = append(ret[itemType], models.HubItem{
 				Name:    item.Name,
 				Status:  status,
@@ -93,10 +96,11 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		datasourceMap[ds.GetName()] += 1
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
 		osName:         osName,
+		osFamily:       osFamily,
 		osVersion:      osVersion,
 		startupTS:      time.Now().UTC().Unix(),
 		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
@@ -106,14 +110,23 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 	}
 }
 
-func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
-	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
+func NewMetricsProvider(
+	apic *apiclient.ApiClient,
+	interval time.Duration,
+	logger *logrus.Entry,
+	consoleOptions []string,
+	datasources []acquisition.DataSource,
+	hub *cwhub.Hub,
 ) *MetricsProvider {
+	static := newStaticMetrics(consoleOptions, datasources, hub)
+	
+	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
+
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,
 		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		static:   static,
 	}
 }
 
@@ -123,6 +136,7 @@ func getLabelValue(labels []*io_prometheus_client.LabelPair, key string) string 
 			return label.GetValue()
 		}
 	}
+
 	return ""
 }
 
@@ -135,9 +149,11 @@ func getDeltaKey(metricName string, labels []*io_prometheus_client.LabelPair) st
 	slices.SortFunc(sortedLabels, func(a, b *io_prometheus_client.LabelPair) int {
 		return strings.Compare(a.GetName(), b.GetName())
 	})
+
 	for _, label := range sortedLabels {
 		parts = append(parts, label.GetName()+label.GetValue())
 	}
+
 	return strings.Join(parts, "")
 }
 
@@ -147,10 +163,12 @@ func shouldIgnoreMetric(exclude map[string]*regexp.Regexp, promLabels []*io_prom
 		if labelValue == "" {
 			continue
 		}
+
 		if regex.MatchString(labelValue) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -167,6 +185,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 		if !slices.Contains(metricsName, metricFamily.GetName()) {
 			continue
 		}
+
 		for _, metric := range metricFamily.GetMetric() {
 			promLabels := metric.GetLabel()
 
@@ -191,6 +210,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 					value = 0
 				}
 			}
+
 			metricsLastValues[deltaKey] = currentValue
 
 			if value == 0 {
@@ -312,12 +332,12 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
 
-	/* Acquisition metrics */
-	/*{"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/* Parser metrics */
-	/*{"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/*{"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/*{"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	// Acquisition metrics
+	// {"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	//  Parser metrics
+	// {"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	// {"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	// {"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
 
 	acquisitionMetrics := m.getAcquisitionMetrics()
 	if len(acquisitionMetrics) > 0 {

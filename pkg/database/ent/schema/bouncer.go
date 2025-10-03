@@ -31,6 +31,7 @@ func (Bouncer) Fields() []ent.Field {
 		field.Time("last_pull").Nillable().Optional().StructTag(`json:"last_pull"`),
 		field.String("auth_type").StructTag(`json:"auth_type"`).Default(types.ApiKeyAuthType),
 		field.String("osname").Optional(),
+		field.String("osfamily").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
 		// Old auto-created TLS bouncers will have a wrong value for this field

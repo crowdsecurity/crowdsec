@@ -30,6 +30,7 @@ func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName strin
 		Where(bouncer.NameEQ(bouncerName)).
 		SetNillableVersion(baseMetrics.Version).
 		SetOsname(*os.Name).
+		SetOsfamily(os.Family).
 		SetOsversion(*os.Version).
 		SetFeatureflags(features).
 		SetType(bouncerType).

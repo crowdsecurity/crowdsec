@@ -84,6 +84,8 @@ linters:
     - varnamelen            # checks that the length of a variable's name matches its scope
     - prealloc
     - noinlineerr
+    - iotamixing
+    - godoclint
 
   settings:
 
@@ -155,7 +157,6 @@ linters:
         - sloppyReassign
         - appendCombine
         - commentFormatting
-        - deferInLoop             #
         - whyNoLint
         - equalFold               #
         - unnecessaryBlock        #
@@ -218,8 +219,6 @@ linters:
           arguments:
             # lower this after refactoring
             - 39
-        - name: defer
-          disabled: true
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -227,6 +226,8 @@ linters:
         - name: enforce-switch-style
           disabled: true
         - name: error-naming
+          disabled: true
+        - name: exported
           disabled: true
         - name: flag-parameter
           disabled: true
@@ -236,15 +237,19 @@ linters:
         - name: function-length
           arguments:
             # lower this after refactoring
-            - 87
-            - 198
+            - 86
+            - 174
         - name: get-return
           disabled: true
-        - name: increment-decrement
+        - name: identical-ifelseif-branches
+          disabled: true
+        - name: identical-switch-branches
           disabled: true
         - name: import-alias-naming
           disabled: true
         - name: import-shadowing
+          disabled: true
+        - name: increment-decrement
           disabled: true
         - name: line-length-limit
           arguments:
@@ -260,6 +265,8 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        - name: package-directory-mismatch
+          disabled: true
         - name: redundant-import-alias
           disabled: true
         - name: redundant-test-main-exit
@@ -267,8 +274,6 @@ linters:
         - name: var-naming
           disabled: true
         - name: unchecked-type-assertion
-          disabled: true
-        - name: exported
           disabled: true
         - name: unexported-naming
           disabled: true
@@ -284,11 +289,15 @@ linters:
           disabled: true
         - name: unnecessary-stmt
           disabled: true
+        - name: unsecure-url-scheme
+          disabled: true
         - name: unused-parameter
           disabled: true
         - name: unused-receiver
           disabled: true
         - name: use-any
+          disabled: true
+        - name: use-waitgroup-go
           disabled: true
         - name: useless-break
           disabled: true

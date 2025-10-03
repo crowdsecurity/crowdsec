@@ -167,6 +167,11 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 			})
 		}
 
+		meta = append(meta, &models.MetaItems0{
+			Key:   "target_fqdn",
+			Value: request.Host,
+		})
+
 		event.Meta = meta
 		event.Timestamp = &now
 		alert.Events = append(alert.Events, &event)

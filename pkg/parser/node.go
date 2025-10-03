@@ -57,9 +57,10 @@ type Node struct {
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
 	// Holds a grok pattern
-	Grok GrokPattern `yaml:"grok,omitempty"`
+	Grok        GrokPattern        `yaml:"grok,omitempty"`
+	RuntimeGrok RuntimeGrokPattern `yaml:"-"`
 	// Statics can be present in any type of node and is executed last
-	Statics []Static `yaml:"statics,omitempty"`
+	Statics        []Static        `yaml:"statics,omitempty"`
 	RuntimeStatics []RuntimeStatic `yaml:"-"`
 	// Stash allows to capture data from the log line and store it in an accessible cache
 	Stash []DataCapture `yaml:"stash,omitempty"`
@@ -83,7 +84,7 @@ func (n *Node) validate(ectx EnricherCtx) error {
 		return fmt.Errorf("non-empty filter %q was not compiled", n.Filter)
 	}
 
-	if n.Grok.RunTimeRegexp != nil || n.Grok.TargetField != "" {
+	if n.RuntimeGrok.RunTimeRegexp != nil || n.Grok.TargetField != "" {
 		if n.Grok.TargetField == "" && n.Grok.ExpValue == "" {
 			return errors.New("grok requires 'expression' or 'apply_on'")
 		}
@@ -202,12 +203,12 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 	clog := n.Logger
 	gstr := ""
 
-	if n.Grok.RunTimeRegexp == nil {
-		clog.Tracef("! No grok pattern: %p", n.Grok.RunTimeRegexp)
+	if n.RuntimeGrok.RunTimeRegexp == nil {
+		clog.Tracef("! No grok pattern: %p", n.RuntimeGrok.RunTimeRegexp)
 		return true, false, nil
 	}
 
-	clog.Tracef("Processing grok pattern: %s: %p", n.Grok.RegexpName, n.Grok.RunTimeRegexp)
+	clog.Tracef("Processing grok pattern: %s: %p", n.Grok.RegexpName, n.RuntimeGrok.RunTimeRegexp)
 	// for unparsed, parsed etc. set sensible defaults to reduce user hassle
 	if n.Grok.TargetField != "" {
 		// it's a hack to avoid using real reflect
@@ -219,8 +220,8 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 			clog.Debugf("(%s) target field %q doesn't exist in %v", n.rn, n.Grok.TargetField, p.Parsed)
 			return false, false, nil
 		}
-	} else if n.Grok.RunTimeValue != nil {
-		output, err := exprhelpers.Run(n.Grok.RunTimeValue, cachedExprEnv, clog, n.Debug)
+	} else if n.RuntimeGrok.RunTimeValue != nil {
+		output, err := exprhelpers.Run(n.RuntimeGrok.RunTimeValue, cachedExprEnv, clog, n.Debug)
 		if err != nil {
 			clog.Warningf("failed to run RunTimeValue: %v", err)
 			return false, false, nil
@@ -245,7 +246,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		groklabel = n.Grok.RegexpName
 	}
 
-	grok := n.Grok.RunTimeRegexp.Parse(gstr)
+	grok := n.RuntimeGrok.RunTimeRegexp.Parse(gstr)
 
 	if len(grok) == 0 {
 		// grok failed, node failed
@@ -263,7 +264,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 		p.Parsed[k] = v
 	}
 	// if the grok succeed, process associated statics
-	err := n.ProcessStatics(n.Grok.RuntimeStatics, p)
+	err := n.RuntimeGrok.ProcessStatics(p, n.EnrichFunctions, clog, n.Debug)
 	if err != nil {
 		clog.Errorf("(%s) Failed to process statics: %v", n.rn, err)
 		return false, false, err
@@ -340,6 +341,7 @@ func (n *Node) processLeaves(
 		if err != nil {
 			n.Logger.Tracef("\tNode (%s) failed: %v", child.rn, err)
 			n.Logger.Debugf("Event leaving node: ko")
+
 			return false, err
 		}
 
@@ -395,7 +397,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	// Process the stash (data collection) if: a grok was present and succeeded, or if there is no grok
-	if nodeHasOKGrok || n.Grok.RunTimeRegexp == nil {
+	if nodeHasOKGrok || n.RuntimeGrok.RunTimeRegexp == nil {
 		if err := n.processStash(p, cachedExprEnv, clog); err != nil {
 			return false, err
 		}
@@ -435,7 +437,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if len(n.Statics) > 0 && (isWhitelisted || !n.ContainsWLs()) {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
-		err := n.ProcessStatics(n.RuntimeStatics, p)
+		err := n.ProcessStatics(p)
 		if err != nil {
 			clog.Errorf("Failed to process statics: %v", err)
 			return false, err
@@ -523,61 +525,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 	}
 
-	/* load grok by name or compile in-place */
-	if n.Grok.RegexpName != "" {
-		n.Logger.Tracef("+ Regexp Compilation %q", n.Grok.RegexpName)
-
-		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
-		if err != nil {
-			return fmt.Errorf("unable to find grok %q: %v", n.Grok.RegexpName, err)
-		}
-
-		if n.Grok.RunTimeRegexp == nil {
-			return fmt.Errorf("empty grok %q", n.Grok.RegexpName)
-		}
-
-		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.String())
-
-		valid = true
-	} else if n.Grok.RegexpValue != "" {
-		if strings.HasSuffix(n.Grok.RegexpValue, "\n") {
-			n.Logger.Debugf("Beware, pattern ends with \\n: %q", n.Grok.RegexpValue)
-		}
-
-		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
-		if err != nil {
-			return fmt.Errorf("failed to compile grok %q: %v", n.Grok.RegexpValue, err)
-		}
-
-		if n.Grok.RunTimeRegexp == nil {
-			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
-			return fmt.Errorf("grok compilation failure: %s", n.Grok.RegexpValue)
-		}
-
-		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.String())
-
-		valid = true
-	}
-
-	// if grok source is an expression
-	if n.Grok.ExpValue != "" {
-		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
-		if err != nil {
-			return fmt.Errorf("while compiling grok's expression: %w", err)
-		}
-	}
-
-	/* load grok statics */
-	// compile expr statics if present
-	for _, static := range n.Grok.Statics {
-		compiled, err := static.Compile()
+	if n.Grok.RegexpName != "" || n.Grok.RegexpValue != "" || n.Grok.ExpValue != "" {
+		rg, err := n.Grok.Compile(pctx, n.Logger)
 		if err != nil {
 			return err
 		}
 
-		n.Grok.RuntimeStatics = append(n.Grok.RuntimeStatics, *compiled)
-
+		n.RuntimeGrok = *rg
 		valid = true
 	}
 

@@ -51,8 +51,8 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
-install -m 644 -D debian/crowdsec-hupupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
-install -m 644 -D debian/crowdsec-hupupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer
+install -m 644 -D debian/crowdsec-hubupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
+install -m 644 -D debian/crowdsec-hubupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
 install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 600 -D config/detect.yaml %{buildroot}/var/lib/%{name}/data/

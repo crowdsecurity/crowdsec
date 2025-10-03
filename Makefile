@@ -77,6 +77,16 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X 'github.com/crowdsecurity/go-cs-lib/version.System=docker'
 endif
 
+# If CROWDSEC_API_DEV_ENV is set to a truthy value, connect to dev.crowdsec.net
+ifeq ($(call bool,$(CROWDSEC_API_DEV_ENV)),1)
+LD_OPTS_VARS += \
+ -X '$(GO_MODULE_NAME)/pkg/csconfig.PAPIBaseURl=https://papi.dev.crowdsec.net/' \
+ -X '$(GO_MODULE_NAME)/cmd/crowdsec-cli/clicapi.CAPIBaseURL=https://api.dev.crowdsec.net/'
+$(info envvar CROWDSEC_API_DEV_ENV=$(CROWDSEC_API_DEV_ENV): If you are not working on CAPI/PAPI, this is probably a mistake.)
+$(info Note that the DEV environment is slow, unreliable and may fail at any time.)
+$(info )
+endif
+
 #expr_debug tag is required to enable the debug mode in expr
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
 

@@ -3,6 +3,7 @@
 package appsecacquisition
 
 import (
+	"net/http"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -30,9 +31,10 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/?foo=a/../b/c",
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/?foo=a/../b/c",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
@@ -54,9 +56,10 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/?foo=a/../b/c/////././././",
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/?foo=a/../b/c/////././././",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)

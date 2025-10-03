@@ -38,7 +38,6 @@ type APIServer struct {
 	UnixSocket     string
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
-	logFile        string
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
@@ -46,7 +45,6 @@ type APIServer struct {
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-	consoleConfig  *csconfig.ConsoleConfig
 }
 
 func isBrokenConnection(maybeError any) bool {
@@ -86,7 +84,7 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover()
+	err := recover() //nolint:revive
 	if err == nil {
 		return
 	}
@@ -204,7 +202,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	}
 
 	// The logger that will be used by handlers
-	clog, logFile, err := newGinLogger(config)
+	clog, _, err := newGinLogger(config)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +284,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		URL:            config.ListenURI,
 		UnixSocket:     config.ListenSocket,
 		TLS:            config.TLS,
-		logFile:        logFile,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -294,7 +291,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		apic:           apiClient,
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
-		consoleConfig:  config.ConsoleConfig,
 	}, nil
 }
 
