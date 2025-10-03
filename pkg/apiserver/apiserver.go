@@ -45,7 +45,6 @@ type APIServer struct {
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-	consoleConfig  *csconfig.ConsoleConfig
 }
 
 func isBrokenConnection(maybeError any) bool {
@@ -292,7 +291,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		apic:           apiClient,
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
-		consoleConfig:  config.ConsoleConfig,
 	}, nil
 }
 
