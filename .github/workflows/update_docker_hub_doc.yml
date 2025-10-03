@@ -19,7 +19,7 @@ jobs:
 
       -
         name: Update docker hub README
-        uses: peter-evans/dockerhub-description@432a30c9e07499fd01da9f8a49f0faf9e0ca5b77
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa
         if: ${{ github.repository_owner == 'crowdsecurity' }}
         with:
           username: ${{ secrets.DOCKER_USERNAME }}

@@ -9,14 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type cliDashboard struct {
-	cfg configGetter
-}
+type cliDashboard struct {}
 
 func NewCLIDashboard(cfg configGetter) *cliDashboard {
-	return &cliDashboard{
-		cfg: cfg,
-	}
+	return &cliDashboard{}
 }
 
 var ErrDashboardDeprecated = errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
