@@ -591,6 +591,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 					},
 				})
 				require.NoError(t, err)
+
+				// prevent flaky test due to slow CI
+				end := time.Now().UTC().Add(5 * time.Second)
+				cw.Config.EndTime = &end
 			},
 			expectedResMessages: []string{"test_message_2"},
 		},

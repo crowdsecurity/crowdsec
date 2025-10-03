@@ -28,7 +28,7 @@ import (
 // NewHCLogAdapter takes an instance of a Logrus logger and returns an hclog
 // logger in the form of an HCLogAdapter.
 func NewHCLogAdapter(l *logrus.Logger, name string) hclog.Logger {
-	return &HCLogAdapter{l, name, nil}
+	return &HCLogAdapter{l, name}
 }
 
 // HCLogAdapter implements the hclog interface.  Plugins use hclog to send
@@ -38,7 +38,7 @@ type HCLogAdapter struct {
 	log  *logrus.Logger
 	name string
 
-	impliedArgs []interface{}
+	// impliedArgs []interface{}
 }
 
 func (h HCLogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
