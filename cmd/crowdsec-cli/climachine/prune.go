@@ -11,8 +11,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/ask"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
 
