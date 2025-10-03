@@ -80,7 +80,10 @@ func (k *KinesisSource) newClient(ctx context.Context) error {
 		region = "us-east-1"
 	}
 	loadOpts = append(loadOpts, config.WithRegion(region))
-	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+
+	if c := defaultCreds(); c != nil {
+		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
+	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
