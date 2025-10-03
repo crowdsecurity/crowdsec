@@ -318,7 +318,7 @@ type MockCat struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func (f *MockCat) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockCat) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
@@ -353,7 +353,7 @@ type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func (f *MockTail) Configure(_ []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockTail) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
 	}
@@ -570,9 +570,12 @@ func (*TailModeNoTailer) CanRun() error     { return nil }
 func TestStartAcquisition_MissingTailer(t *testing.T) {
 	ctx := t.Context()
 	out := make(chan types.Event)
-	var tb tomb.Tomb
 	errCh := make(chan error, 1)
+
+	var tb tomb.Tomb
+
 	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
+
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but StreamingAcquisition is not supported")
 }
 
@@ -590,8 +593,11 @@ func (*CatModeNoFetcher) CanRun() error   { return nil }
 func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	ctx := t.Context()
 	out := make(chan types.Event)
-	var tb tomb.Tomb
 	errCh := make(chan error, 1)
+
+	var tb tomb.Tomb
+
 	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }
