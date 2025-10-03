@@ -135,6 +135,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 			d := downloader.
 				New().
 				WithHTTPClient(cwhub.HubClient).
+				WithMakeDirs(true).
 				ToFile(destPath).
 				CompareContent().
 				BeforeRequest(func(req *http.Request) {
