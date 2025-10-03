@@ -120,7 +120,7 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 }
 
 // setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
+func setupLogger(source, name string, level log.Level) (*log.Entry, error) {
 	clog := log.New()
 	if err := types.ConfigureLogger(clog, level); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
@@ -177,7 +177,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
-	subLogger, err := setupLogger(dsn, "", nil)
+	subLogger, err := setupLogger(dsn, "", 0)
 	if err != nil {
 		return nil, err
 	}

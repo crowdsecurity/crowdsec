@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	Caches      []gcache.Cache
+	Caches      = []gcache.Cache{}
 	CacheNames  []string
-	CacheConfig []CacheCfg
+	CacheConfig = []CacheCfg{}
 )
 
 // UpdateCacheMetrics is called directly by the prom handler
@@ -33,7 +33,7 @@ type CacheCfg struct {
 	Size     int
 	TTL      time.Duration
 	Strategy string
-	LogLevel *log.Level
+	LogLevel log.Level
 	Logger   *log.Entry
 }
 
@@ -44,9 +44,8 @@ func CacheInit(cfg CacheCfg) error {
 		}
 	}
 	// get a default logger
-	if cfg.LogLevel == nil {
-		cfg.LogLevel = new(log.Level)
-		*cfg.LogLevel = log.InfoLevel
+	if cfg.LogLevel == log.PanicLevel {
+		cfg.LogLevel = log.InfoLevel
 	}
 
 	clog := log.New()
