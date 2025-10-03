@@ -76,7 +76,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	return nil
 }
 
-func ConfigureLogger(clog *log.Logger, level *log.Level) error {
+func ConfigureLogger(clog *log.Logger, level log.Level) error {
 	/*Configure logs*/
 	if LogOutput != nil {
 		clog.SetOutput(LogOutput)
@@ -88,8 +88,8 @@ func ConfigureLogger(clog *log.Logger, level *log.Level) error {
 
 	clog.SetLevel(logLevel)
 
-	if level != nil && !logLevelViaFlag {
-		clog.SetLevel(*level)
+	if level != log.PanicLevel && !logLevelViaFlag {
+		clog.SetLevel(level)
 	}
 
 	return nil

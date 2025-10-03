@@ -93,7 +93,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 
 	client = ent.NewClient(ent.Driver(drv), entOpt)
 
-	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {
+	if config.LogLevel >= log.DebugLevel {
 		clog.Debugf("Enabling request debug")
 
 		client = client.Debug()

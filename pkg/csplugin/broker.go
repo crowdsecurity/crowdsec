@@ -21,7 +21,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -346,7 +345,7 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 
-	err = types.ConfigureLogger(l, ptr.Of(log.TraceLevel))
+	err = types.ConfigureLogger(l, log.TraceLevel)
 	if err != nil {
 		return nil, err
 	}

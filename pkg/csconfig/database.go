@@ -41,7 +41,7 @@ type DatabaseCfg struct {
 	DbPath           string      `yaml:"db_path"`
 	Type             string      `yaml:"type"`
 	Flush            *FlushDBCfg `yaml:"flush"`
-	LogLevel         *log.Level  `yaml:"log_level"`
+	LogLevel         log.Level   `yaml:"log_level"`
 	MaxOpenConns     int         `yaml:"max_open_conns,omitempty"`
 	UseWal           *bool       `yaml:"use_wal,omitempty"`
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
