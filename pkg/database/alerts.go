@@ -163,9 +163,8 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
 			SetSimulated(*alertItem.Simulated).
-			SetUUID(decisionItem.UUID)
-			// XXX: can we attach the alert here and remove the second call to Batch() ?
-			// SetOwnerID(foundAlert.ID)
+			SetUUID(decisionItem.UUID).
+			SetOwnerID(foundAlert.ID)
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
 	}
@@ -179,17 +178,6 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			return fmt.Errorf("creating alert decisions: %w", err)
 		}
 		decisions = append(decisions, ret...)
-		return nil
-	}); err != nil {
-		return "", err
-	}
-
-	// attach decisions to alert in batches
-
-	if err := slicetools.Batch(ctx, decisions, c.decisionBulkSize, func(ctx context.Context, d []*ent.Decision) error {
-		if err := c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(d...).Exec(ctx); err != nil {
-			return fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
-		}
 		return nil
 	}); err != nil {
 		return "", err
