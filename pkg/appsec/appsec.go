@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -603,7 +604,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, re
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
 	if state == nil || state.InBandTx.Tx == nil {
-		return fmt.Errorf("inband transaction not initialized")
+		return errors.New("inband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing inband rule %d", id)
@@ -612,7 +613,7 @@ func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, id int) error {
 	if state == nil || state.OutOfBandTx.Tx == nil {
-		return fmt.Errorf("outofband transaction not initialized")
+		return errors.New("outofband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing outband rule %d", id)
@@ -621,7 +622,7 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, i
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, tag string) error {
 	if state == nil || state.InBandTx.Tx == nil {
-		return fmt.Errorf("inband transaction not initialized")
+		return errors.New("inband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
@@ -630,7 +631,7 @@ func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, t
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, tag string) error {
 	if state == nil || state.OutOfBandTx.Tx == nil {
-		return fmt.Errorf("outofband transaction not initialized")
+		return errors.New("outofband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
@@ -651,7 +652,7 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(state *AppsecRequestState,
 
 func (w *AppsecRuntimeConfig) CancelEvent(state *AppsecRequestState) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 	w.Logger.Debugf("canceling event")
 	state.Response.SendEvent = false
@@ -699,7 +700,7 @@ func (w *AppsecRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 
 func (w *AppsecRuntimeConfig) SendEvent(state *AppsecRequestState) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 	w.Logger.Debugf("sending event")
 	state.Response.SendEvent = true
@@ -708,7 +709,7 @@ func (w *AppsecRuntimeConfig) SendEvent(state *AppsecRequestState) error {
 
 func (w *AppsecRuntimeConfig) SendAlert(state *AppsecRequestState) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 	w.Logger.Debugf("sending alert")
 	state.Response.SendAlert = true
@@ -717,7 +718,7 @@ func (w *AppsecRuntimeConfig) SendAlert(state *AppsecRequestState) error {
 
 func (w *AppsecRuntimeConfig) CancelAlert(state *AppsecRequestState) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 	w.Logger.Debugf("canceling alert")
 	state.Response.SendAlert = false
@@ -754,7 +755,7 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 
 func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 
 	w.Logger.Debugf("setting action to %s", action)
@@ -764,7 +765,7 @@ func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string
 
 func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 	w.Logger.Debugf("setting http code to %d", code)
 	state.Response.UserHTTPResponseCode = code
