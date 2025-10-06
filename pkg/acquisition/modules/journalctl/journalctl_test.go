@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -233,16 +234,18 @@ journalctl_filter:
 		}
 
 		actualLines := 0
+		var wg sync.WaitGroup
 
 		if ts.expectedLines != 0 {
+			wg.Add(1)
 			go func() {
-			READLOOP:
+				defer wg.Done()
 				for {
 					select {
 					case <-out:
 						actualLines++
 					case <-time.After(1 * time.Second):
-						break READLOOP
+						return
 					}
 				}
 			}()
@@ -256,7 +259,7 @@ journalctl_filter:
 		}
 
 		if ts.expectedLines != 0 {
-			time.Sleep(1 * time.Second)
+			wg.Wait()
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
 
