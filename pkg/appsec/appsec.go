@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
@@ -84,10 +86,21 @@ type AppsecTempResponse struct {
 	SendAlert               bool   // do we send an alert on rule match
 }
 
+type AppsecDropInfo struct {
+	Reason       string
+	Interruption *corazatypes.Interruption
+}
+
 type AppsecRequestState struct {
 	OutOfBandTx ExtendedTransaction
 	InBandTx    ExtendedTransaction
 	Response    AppsecTempResponse
+
+	InBandDrop    *AppsecDropInfo
+	OutOfBandDrop *AppsecDropInfo
+
+	PendingAction   *string
+	PendingHTTPCode *int
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -102,6 +115,31 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
 	s.Response.SendEvent = true
 	s.Response.SendAlert = true
+	s.PendingAction = nil
+	s.PendingHTTPCode = nil
+}
+
+func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
+	switch {
+	case request != nil && request.IsInBand:
+		return s.InBandDrop
+	case request != nil && request.IsOutBand:
+		return s.OutOfBandDrop
+	default:
+		return nil
+	}
+}
+
+func (s *AppsecRequestState) ApplyPendingResponse() {
+	if s.PendingAction != nil {
+		s.Response.Action = *s.PendingAction
+		s.PendingAction = nil
+	}
+
+	if s.PendingHTTPCode != nil {
+		s.Response.UserHTTPResponseCode = *s.PendingHTTPCode
+		s.PendingHTTPCode = nil
+	}
 }
 
 type AppsecSubEngineOpts struct {
@@ -168,6 +206,57 @@ func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
 
 func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 	state.ResetResponse(w.Config)
+}
+
+func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	if state == nil {
+		return fmt.Errorf("request state not initialized")
+	}
+
+	if request == nil {
+		return fmt.Errorf("parsed request not provided")
+	}
+
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "request dropped by drop helper"
+	}
+
+	interrupt := &corazatypes.Interruption{
+		RuleID: 0,
+		Action: "deny",
+		Status: w.Config.UserBlockedHTTPCode,
+		Data:   reason,
+		Tags:   []string{"crowdsec:drop-request"},
+	}
+
+	switch {
+	case request.IsInBand:
+		if state.InBandTx.Tx == nil {
+			return fmt.Errorf("inband transaction not initialized")
+		}
+		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:inband")
+		state.InBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+		state.Response.InBandInterrupt = true
+		state.Response.Action = w.DefaultRemediation
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+		state.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
+		state.InBandTx.Interrupt(interrupt)
+		w.Logger.Debugf("drop request helper triggered for inband phase: %s", reason)
+	case request.IsOutBand:
+		if state.OutOfBandTx.Tx == nil {
+			return fmt.Errorf("outofband transaction not initialized")
+		}
+		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:outofband")
+		state.OutOfBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+		state.Response.OutOfBandInterrupt = true
+		state.OutOfBandTx.Interrupt(interrupt)
+		w.Logger.Debugf("drop request helper triggered for out-of-band phase: %s", reason)
+	default:
+		return fmt.Errorf("unable to determine request band for drop helper")
+	}
+
+	return nil
 }
 
 func (wc *AppsecConfig) SetUpLogger() {

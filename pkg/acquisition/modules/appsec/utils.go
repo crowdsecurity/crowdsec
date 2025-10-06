@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/corazawaf/coraza/v3/collection"
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/corazawaf/coraza/v3/types/variables"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
@@ -201,6 +202,9 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	sev := inEvt.Appsec.GetHighestSeverity().String()
 
 	sevRules := inEvt.Appsec.BySeverity(sev)
+	if len(sevRules) == 0 {
+		sevRules = inEvt.Appsec.MatchedRules
+	}
 
 	for _, rule := range sevRules {
 		name, ok := rule["name"].(string)
@@ -215,18 +219,22 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 	}
 
 	// This is a modsec rule match
-	if scenarioName == "" {
+	if scenarioName == "" && len(sevRules) > 0 {
 		// If from CRS (TX scores are set), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
 		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
 			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
 		} else {
-			scenarioName, ok = sevRules[0]["msg"].(string)
-			//Not sure if this can happen
-			//Default to native_rule:XXX if msg is empty
-			if scenarioName == "" || !ok {
-				scenarioName = inEvt.Appsec.GetName()
+			if msg, msgOk := sevRules[0]["msg"].(string); msgOk {
+				scenarioName = msg
 			}
+		}
+	}
+
+	if scenarioName == "" {
+		scenarioName = inEvt.Appsec.GetName()
+		if scenarioName == "" {
+			scenarioName = "crowdsec.appsec-event"
 		}
 	}
 
@@ -332,13 +340,18 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 	}
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest) error {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest, state *appsec.AppsecRequestState) error {
 	if evt == nil {
 		// an error was already emitted, let's not spam the logs
 		return nil
 	}
 
-	if !req.Tx.IsInterrupted() {
+	var dropInfo *appsec.AppsecDropInfo
+	if state != nil {
+		dropInfo = state.DropInfo(req)
+	}
+
+	if !req.Tx.IsInterrupted() && dropInfo == nil {
 		// if the phase didn't generate an interruption, we don't have anything to add to the event
 		return nil
 	}
@@ -361,6 +374,11 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	} else {
 		evt.Parsed["outofband_interrupted"] = "true"
 		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
+	}
+
+	if dropInfo != nil && dropInfo.Reason != "" {
+		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
+		evt.Parsed["appsec_drop_reason"] = dropInfo.Reason
 	}
 
 	if evt.Appsec.Vars == nil {
@@ -484,6 +502,67 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		}
 
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
+	}
+
+	if dropInfo != nil {
+		kind := "outofband"
+		if req.IsInBand {
+			evt.Appsec.HasInBandMatches = true
+			kind = "inband"
+		} else {
+			evt.Appsec.HasOutBandMatches = true
+		}
+
+		if evt.Appsec.MatchedRules == nil {
+			evt.Appsec.MatchedRules = types.MatchedRules{}
+		}
+
+		tags := dropInfo.Interruption.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+
+		uri := evt.Parsed["target_uri"]
+		if uri == "" && req != nil {
+			uri = req.URI
+		}
+
+		method := evt.Parsed["method"]
+		if method == "" && req != nil {
+			method = req.Method
+		}
+
+		severity := corazatypes.RuleSeverityNotice
+
+		ruleName := "crowdsec.drop-request"
+		if dropInfo.Reason != "" {
+			ruleName = dropInfo.Reason
+		}
+
+		syntheticRule := map[string]any{
+			"id":            dropInfo.Interruption.RuleID,
+			"uri":           uri,
+			"rule_type":     kind,
+			"kind":          kind,
+			"method":        method,
+			"disruptive":    true,
+			"tags":          tags,
+			"file":          "crowdsec:drop_request",
+			"file_line":     0,
+			"revision":      "",
+			"secmark":       "",
+			"accuracy":      0,
+			"msg":           dropInfo.Reason,
+			"severity":      severity.String(),
+			"severity_int":  severity.Int(),
+			"name":          ruleName,
+			"hash":          "",
+			"version":       "",
+			"matched_zones": []string{"PRE_EVAL"},
+			"logdata":       dropInfo.Reason,
+		}
+
+		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
 	}
 
 	return nil

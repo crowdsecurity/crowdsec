@@ -95,3 +95,13 @@ func (t *ExtendedTransaction) ID() string {
 func (t *ExtendedTransaction) Close() error {
 	return t.Tx.Close()
 }
+
+func (t *ExtendedTransaction) Interrupt(interruption *types.Interruption) {
+	if t == nil || t.Tx == nil || interruption == nil {
+		return
+	}
+
+	if setter, ok := t.Tx.(interface{ Interrupt(*types.Interruption) }); ok {
+		setter.Interrupt(interruption)
+	}
+}
