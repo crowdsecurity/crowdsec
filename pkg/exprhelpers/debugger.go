@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/file"
@@ -12,6 +13,9 @@ import (
 )
 
 type ExprRuntimeDebug struct {
+	// broad lock to prevent read/write races between RunWithDebug() and ipDebug().
+	mu sync.Mutex
+
 	Logger  *log.Entry
 	Lines   []string
 	Outputs []OpOutput
@@ -114,7 +118,7 @@ func (o *OpOutput) String() string {
 	return ret + ""
 }
 
-func (ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
+func (*ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
 	locations := program.Locations()
 	src := string(program.Source())
 
@@ -363,7 +367,10 @@ func opContains(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.P
 	return &out
 }
 
-func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
+func (erp *ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
+	erp.mu.Lock()
+	defer erp.mu.Unlock()
+
 	IdxOut := len(outputs)
 	prevIdxOut := 0
 	currentDepth := 0
@@ -421,7 +428,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	return outputs, nil
 }
 
-func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
+func (erp *ExprRuntimeDebug) ipSeek(ip int) []string {
 	for i := range len(erp.Lines) {
 		parts := strings.Fields(erp.Lines[i])
 		if len(parts) == 0 {
@@ -468,6 +475,8 @@ func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, 
 	erp := ExprRuntimeDebug{
 		Logger: logger,
 	}
+	erp.mu.Lock()
+	defer erp.mu.Unlock()
 	vm := vm.Debug()
 	opcodes := program.Disassemble()
 	lines := strings.Split(opcodes, "\n")
