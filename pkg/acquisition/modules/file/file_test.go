@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -401,22 +402,21 @@ force_inotify: true`, testPattern),
 			}
 
 			actualLines := 0
+			var wg sync.WaitGroup
 
 			if tc.expectedLines != 0 {
-				var stopReading bool
-				defer func() { stopReading = true }()
+				wg.Add(1)
 
 				go func() {
+					defer wg.Done()
 					for {
 						select {
 						case <-out:
 							actualLines++
-						default:
-							if stopReading {
-								return
-							}
-							// Small sleep to prevent tight loop
-							time.Sleep(100 * time.Millisecond)
+						case <-tomb.Dying():
+							return
+						case <-time.After(100 * time.Millisecond):
+							// avoid tight loop
 						}
 					}
 				}()
@@ -462,6 +462,11 @@ force_inotify: true`, testPattern),
 				time.Sleep(2 * time.Second)
 
 				os.Remove(streamLogFile)
+
+				// stop acquisition and wait for tailer
+				tomb.Kill(nil)
+				wg.Wait()
+
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
@@ -477,8 +482,6 @@ force_inotify: true`, testPattern),
 			if tc.teardown != nil {
 				tc.teardown()
 			}
-
-			tomb.Kill(nil)
 		})
 	}
 }
