@@ -52,7 +52,6 @@ type staticMetrics struct {
 	osVersion      string
 	startupTS      int64
 	featureFlags   []string
-	consoleOptions []string
 	datasourceMap  map[string]int64
 	hubState       models.HubItems
 }
@@ -104,7 +103,6 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 		osVersion:      osVersion,
 		startupTS:      time.Now().UTC().Unix(),
 		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		consoleOptions: consoleOptions,
 		datasourceMap:  datasourceMap,
 		hubState:       getHubState(hub),
 	}
