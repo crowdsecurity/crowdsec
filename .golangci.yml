@@ -174,7 +174,7 @@ linters:
       field-writes-are-uses: false
       # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
       # Default: false
-      post-statements-are-reads: true
+      post-statements-are-reads: false
       # Mark all exported identifiers as used.
       # Default: true
       # exported-is-used: false

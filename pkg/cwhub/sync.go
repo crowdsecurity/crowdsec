@@ -258,12 +258,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 }
 
 func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget string) (*Item, error) {
-	// look for the matching index entry
-	tot := 0
-	for range h.GetItemMap(spec.ftype) {
-		tot++
-	}
-
 	for _, item := range h.GetItemMap(spec.ftype) {
 		if item.Stage != spec.stage {
 			continue
