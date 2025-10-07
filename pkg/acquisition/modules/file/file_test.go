@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -356,7 +357,7 @@ force_inotify: true`, testPattern),
 				tc.afterConfigure()
 			}
 
-			actualLines := 0
+			var actualLines atomic.Int64
 			var wg sync.WaitGroup
 
 			if tc.expectedLines != 0 {
@@ -367,11 +368,9 @@ force_inotify: true`, testPattern),
 					for {
 						select {
 						case <-out:
-							actualLines++
+							actualLines.Add(1)
 						case <-tomb.Dying():
 							return
-						case <-time.After(100 * time.Millisecond):
-							// avoid tight loop
 						}
 					}
 				}()
@@ -402,16 +401,14 @@ force_inotify: true`, testPattern),
 
 				fd.Close()
 
-				// sleep to ensure the tail events are processed
-				time.Sleep(2 * time.Second)
+				require.Eventually(t, func() bool {
+					return actualLines.Load() == int64(tc.expectedLines)
+				}, 5*time.Second, 100*time.Millisecond)
 
 				os.Remove(streamLogFile)
 
-				// stop acquisition and wait for tailer
 				tomb.Kill(nil)
 				wg.Wait()
-
-				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
 			if tc.expectedOutput != "" {
@@ -488,9 +485,12 @@ mode: tail
 	require.NoError(t, err)
 
 	// Wait for polling to detect the file
-	time.Sleep(4 * time.Second)
 
-	require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
+	require.Eventually(t, func() bool {
+		return f.IsTailing(testFile)
+	}, 5*time.Second, 100*time.Millisecond, "File should be tailed after polling")
+
+	// could be require.Never, but detection has triggered already - no need to slow down the test
 	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
 
 	// Cleanup
@@ -529,21 +529,19 @@ mode: tail
 	require.NoError(t, err)
 
 	// Wait for initial tail setup
-	time.Sleep(100 * time.Millisecond)
+	require.Eventually(t, func() bool {
+		return f.IsTailing(testFile)
+	}, 3*time.Second, 100*time.Millisecond, "File should be initially tailed")
 
 	// Simulate tailer death by removing it from the map
 	f.RemoveTail(testFile)
-	isTailed := f.IsTailing(testFile)
-	require.False(t, isTailed, "File should be removed from the map")
+	require.False(t, f.IsTailing(testFile), "File should be removed from the map")
 
-	// Wait for polling to resurrect the file
-	time.Sleep(2 * time.Second)
+	// Wait for polling to resurrect the tail
+	require.Eventually(t, func() bool {
+		return f.IsTailing(testFile)
+	}, 5*time.Second, 100*time.Millisecond, "File should be resurrected via polling")
 
-	// Verify file is being tailed again
-	isTailed = f.IsTailing(testFile)
-	require.True(t, isTailed, "File should be resurrected via polling")
-
-	// Cleanup
 	tomb.Kill(nil)
 	require.NoError(t, tomb.Wait())
 }
