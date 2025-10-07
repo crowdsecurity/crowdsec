@@ -388,20 +388,9 @@ force_inotify: true`, testPattern),
 				require.NoError(t, err, "could not create test file")
 
 				// wait for the file to be tailed
-				waitingForTail := true
-				for waitingForTail {
-					select {
-					case <-time.After(2 * time.Second):
-						t.Fatal("Timeout waiting for file to be tailed")
-					default:
-						if !f.IsTailing(streamLogFile) {
-							time.Sleep(50 * time.Millisecond)
-							continue
-						}
-
-						waitingForTail = false
-					}
-				}
+				require.Eventually(t, func() bool {
+					return f.IsTailing(streamLogFile)
+				}, 5*time.Second, 50 * time.Millisecond, "Timeout waiting for %q to be tailed", streamLogFile)
 
 				for i := range 5 {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
