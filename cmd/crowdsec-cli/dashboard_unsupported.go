@@ -10,13 +10,10 @@ import (
 )
 
 type cliDashboard struct{
-	cfg configGetter
 }
 
-func NewCLIDashboard(cfg configGetter) *cliDashboard {
-	return &cliDashboard{
-		cfg: cfg,
-	}
+func NewCLIDashboard(_ configGetter) *cliDashboard {
+	return &cliDashboard{}
 }
 
 func (cli cliDashboard) NewCommand() *cobra.Command {

@@ -21,9 +21,14 @@ import (
 
 var (
 	advapi32 = syscall.NewLazyDLL("advapi32.dll")
-
 	procGetAce = advapi32.NewProc("GetAce")
 )
+
+var _ = func() any {
+	var pb PluginBroker
+	_ = pb.pluginProcConfig // reference to silence unused linter
+	return nil
+}()
 
 type AclSizeInformation struct {
 	AceCount      uint32
