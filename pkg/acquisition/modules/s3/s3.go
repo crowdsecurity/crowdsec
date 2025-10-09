@@ -201,7 +201,7 @@ func (s *S3Source) readManager() {
 
 func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
-	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
+	logger.Debugf("Getting bucket content")
 
 	bucketObjects := make([]s3types.Object, 0)
 
@@ -765,21 +765,11 @@ func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Even
 
 	if s.Config.PollingMethod == PollMethodSQS {
 		t.Go(func() error {
-			err := s.sqsPoll()
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return s.sqsPoll()
 		})
 	} else {
 		t.Go(func() error {
-			err := s.listPoll()
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return s.listPoll()
 		})
 	}
 
