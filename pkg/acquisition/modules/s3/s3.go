@@ -172,7 +172,10 @@ func (s *S3Source) newSQSClient() error {
 	}
 
 	loadOpts = append(loadOpts, config.WithRegion(region))
-	loadOpts = append(loadOpts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+
+	if c := defaultCreds(); c != nil {
+		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
+	}
 
 	cfg, err := config.LoadDefaultConfig(s.ctx, loadOpts...)
 	if err != nil {
