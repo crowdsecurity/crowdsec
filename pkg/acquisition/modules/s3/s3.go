@@ -385,6 +385,9 @@ func (s *S3Source) sqsPoll() error {
 				WaitTimeSeconds:     20, // Probably no need to make it configurable ?
 			})
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
 				logger.Errorf("Error while polling SQS: %s", err)
 				continue
 			}
