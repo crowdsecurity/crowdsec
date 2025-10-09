@@ -143,7 +143,9 @@ func (s *S3Source) newS3Client() error {
 
 	var clientOpts []func(*s3.Options)
 	if s.Config.AwsEndpoint != "" {
-		clientOpts = append(clientOpts, func(o *s3.Options) { o.BaseEndpoint = aws.String(s.Config.AwsEndpoint) })
+		clientOpts = append(clientOpts, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(s.Config.AwsEndpoint)
+		})
 	}
 
 	s.s3Client = s3.NewFromConfig(cfg, clientOpts...)
@@ -354,16 +356,19 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 			s.Config.SQSFormat = SQSFormatEventBridge
 			return bucket, key, nil
 		}
+
 		bucket, key, err = extractBucketAndPrefixFromS3Notif(message)
 		if err == nil {
 			s.Config.SQSFormat = SQSFormatS3Notification
 			return bucket, key, nil
 		}
+
 		bucket, key, err = extractBucketAndPrefixFromSNSNotif(message)
 		if err == nil {
 			s.Config.SQSFormat = SQSFormatSNS
 			return bucket, key, nil
 		}
+
 		return "", "", errors.New("SQS message format not supported")
 	}
 }
@@ -379,6 +384,7 @@ func (s *S3Source) sqsPoll() error {
 			return nil
 		default:
 			logger.Trace("Polling SQS queue")
+
 			out, err := s.sqsClient.ReceiveMessage(s.ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: 10,
@@ -388,12 +394,15 @@ func (s *S3Source) sqsPoll() error {
 				logger.Errorf("Error while polling SQS: %s", err)
 				continue
 			}
+
 			logger.Tracef("SQS output: %v", out)
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
+
 			for _, message := range out.Messages {
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 					metrics.S3DataSourceSQSMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				}
+
 				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
@@ -406,10 +415,14 @@ func (s *S3Source) sqsPoll() error {
 					if err != nil {
 						logger.Errorf("Error while deleting SQS message: %s", err)
 					}
+
 					continue
 				}
+
 				logger.Debugf("Received SQS message for object %s/%s", bucket, key)
+
 				s.readerChan <- S3Object{Key: key, Bucket: bucket}
+
 				_, err = s.sqsClient.DeleteMessage(s.ctx,
 					&sqs.DeleteMessageInput{
 						QueueUrl:      aws.String(s.Config.SQSName),
@@ -418,6 +431,7 @@ func (s *S3Source) sqsPoll() error {
 				if err != nil {
 					logger.Errorf("Error while deleting SQS message: %s", err)
 				}
+
 				logger.Debugf("Deleted SQS message for object %s/%s", bucket, key)
 			}
 		}
@@ -446,10 +460,12 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	if strings.HasSuffix(key, ".gz") {
 		// This *might* be a gzipped file, but sometimes the SDK will decompress the data for us (it's not clear when it happens, only had the issue with cloudtrail logs)
 		header := make([]byte, 2)
+
 		_, err := output.Body.Read(header)
 		if err != nil {
 			return fmt.Errorf("failed to read header of object %s/%s: %w", bucket, key, err)
 		}
+
 		if header[0] == 0x1f && header[1] == 0x8b {
 			gz, err := gzip.NewReader(io.MultiReader(bytes.NewReader(header), output.Body))
 			if err != nil {
@@ -462,11 +478,14 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	} else {
 		scanner = bufio.NewScanner(output.Body)
 	}
+
 	if s.Config.MaxBufferSize > 0 {
 		s.logger.Infof("Setting max buffer size to %d", s.Config.MaxBufferSize)
+
 		buf := make([]byte, 0, bufio.MaxScanTokenSize)
 		scanner.Buffer(buf, s.Config.MaxBufferSize)
 	}
+
 	for scanner.Scan() {
 		select {
 		case <-s.t.Dying():
@@ -475,32 +494,40 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		default:
 			text := scanner.Text()
 			logger.Tracef("Read line %s", text)
+
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
+
 			l := types.Line{}
 			l.Raw = text
 			l.Labels = s.Config.Labels
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
+
 			switch s.metricsLevel {
 			case metrics.AcquisitionMetricsLevelFull:
 				l.Src = bucket + "/" + key
 			case metrics.AcquisitionMetricsLevelAggregated, metrics.AcquisitionMetricsLevelNone: // Even if metrics are disabled, we want to source in the event
 				l.Src = bucket
 			}
+
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
+
 			s.out <- evt
 		}
 	}
+
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
 	}
+
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.S3DataSourceObjectsRead.WithLabelValues(bucket).Inc()
 	}
+
 	return nil
 }
 
@@ -518,13 +545,16 @@ func (*S3Source) GetAggregMetrics() []prometheus.Collector {
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	s.Config = S3Configuration{}
+
 	err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict())
 	if err != nil {
 		return fmt.Errorf("cannot parse S3Acquisition configuration: %s", yaml.FormatError(err, false, false))
 	}
+
 	if s.Config.Mode == "" {
 		s.Config.Mode = configuration.TAIL_MODE
 	}
+
 	if s.Config.PollingMethod == "" {
 		s.Config.PollingMethod = PollMethodList
 	}
@@ -610,8 +640,10 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		"bucket": s.Config.BucketName,
 		"prefix": s.Config.Prefix,
 	})
+
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
+
 	if args[0] == "" {
 		return errors.New("empty s3:// DSN")
 	}
@@ -621,25 +653,30 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		if err != nil {
 			return fmt.Errorf("could not parse s3 args: %w", err)
 		}
+
 		for key, value := range params {
 			switch key {
 			case "log_level":
 				if len(value) != 1 {
 					return errors.New("expected zero or one value for 'log_level'")
 				}
+
 				lvl, err := log.ParseLevel(value[0])
 				if err != nil {
 					return fmt.Errorf("unknown level %s: %w", value[0], err)
 				}
+
 				s.logger.Logger.SetLevel(lvl)
 			case "max_buffer_size":
 				if len(value) != 1 {
 					return errors.New("expected zero or one value for 'max_buffer_size'")
 				}
+
 				maxBufferSize, err := strconv.Atoi(value[0])
 				if err != nil {
 					return fmt.Errorf("invalid value for 'max_buffer_size': %w", err)
 				}
+
 				s.logger.Debugf("Setting max buffer size to %d", maxBufferSize)
 				s.Config.MaxBufferSize = maxBufferSize
 			default:
@@ -692,6 +729,7 @@ func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event,
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.Config.UseTimeMachine = true
 	s.t = t
+
 	if s.Config.Key != "" {
 		err := s.readFile(s.Config.BucketName, s.Config.Key)
 		if err != nil {
@@ -703,6 +741,7 @@ func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event,
 		if err != nil {
 			return err
 		}
+
 		for _, object := range objects {
 			err := s.readFile(s.Config.BucketName, *object.Key)
 			if err != nil {
@@ -710,7 +749,9 @@ func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event,
 			}
 		}
 	}
+
 	t.Kill(nil)
+
 	return nil
 }
 
@@ -724,12 +765,14 @@ func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Even
 		s.readManager()
 		return nil
 	})
+
 	if s.Config.PollingMethod == PollMethodSQS {
 		t.Go(func() error {
 			err := s.sqsPoll()
 			if err != nil {
 				return err
 			}
+
 			return nil
 		})
 	} else {
@@ -738,9 +781,11 @@ func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Even
 			if err != nil {
 				return err
 			}
+
 			return nil
 		})
 	}
+
 	return nil
 }
 
