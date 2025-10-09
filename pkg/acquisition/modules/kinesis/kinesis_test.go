@@ -44,6 +44,7 @@ func GenSubObject(t *testing.T, i int) []byte {
 	require.NoError(t, err)
 
 	var b bytes.Buffer
+
 	gz := gzip.NewWriter(&b)
 	_, err = gz.Write(body)
 	require.NoError(t, err)

@@ -75,10 +75,12 @@ func (k *KinesisSource) newClient(ctx context.Context) error {
 	if k.Config.AwsProfile != nil && *k.Config.AwsProfile != "" {
 		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*k.Config.AwsProfile))
 	}
+
 	region := k.Config.AwsRegion
 	if region == "" {
 		region = "us-east-1"
 	}
+
 	loadOpts = append(loadOpts, config.WithRegion(region))
 
 	if c := defaultCreds(); c != nil {
@@ -97,8 +99,8 @@ func (k *KinesisSource) newClient(ctx context.Context) error {
 		})
 	}
 
-
 	k.kClient = kinesis.NewFromConfig(cfg, clientOpts...)
+
 	return nil
 }
 
@@ -335,6 +337,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan 
 
 			evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
+
 			out <- evt
 		}
 	}
@@ -431,6 +434,7 @@ func (k *KinesisSource) EnhancedRead(ctx context.Context, out chan types.Event, 
 		if err != nil {
 			return fmt.Errorf("cannot subscribe to shards: %w", err)
 		}
+
 		select {
 		case <-t.Dying():
 			k.logger.Infof("Kinesis source is dying")
@@ -538,6 +542,7 @@ func (k *KinesisSource) ReadFromStream(ctx context.Context, out chan types.Event
 				return k.ReadFromShard(ctx, out, shardID)
 			})
 		}
+
 		select {
 		case <-t.Dying():
 			k.logger.Info("kinesis source is dying")
