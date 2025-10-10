@@ -635,6 +635,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel 
 	if err != nil {
 		return err
 	}
+
 	s.s3Client = client
 
 	if s.Config.PollingMethod == PollMethodSQS {
@@ -642,6 +643,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel 
 		if err != nil {
 			return err
 		}
+
 		s.sqsClient = sqsClient
 	}
 
@@ -729,6 +731,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	if err != nil {
 		return err
 	}
+
 	s.s3Client = client
 
 	return nil

@@ -270,7 +270,9 @@ func TestDSNAcquis(t *testing.T) {
 			logger := log.NewEntry(log.New())
 			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger, "")
 			require.NoError(t, err)
+
 			f.s3Client = mockS3Client{}
+
 			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
 			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
 

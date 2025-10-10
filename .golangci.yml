@@ -197,9 +197,12 @@ linters:
       block-size: 6
 
     nolintlint:
-      require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
-      allow-unused: false         # report any unused nolint directives
+      # don't require an explanation for nolint directives
+      require-explanation: false
+      # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true
+      # report any unused nolint directives
+      allow-unused: false
 
     revive:
       severity: error
@@ -443,12 +446,6 @@ linters:
         path: pkg/types/utils.go
         text: 'argument-limit: .*'
 
-      # need some cleanup first: to create db in memory and share the client, not the config
-      - linters:
-          - usetesting
-        path: (.+)_test.go
-        text: context.Background.*
-
       - linters:
           - usetesting
         path: pkg/apiserver/(.+)_test.go
@@ -481,14 +478,15 @@ linters:
 
       - linters:
           - noctx
+        path: pkg/parser/enrich_dns.go
         text: "net.LookupAddr must not be called"
 
       - linters:
           - noctx
+        path: pkg/exprhelpers/helpers.go
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/metabase
       - third_party$
       - builtin$
       - examples$
