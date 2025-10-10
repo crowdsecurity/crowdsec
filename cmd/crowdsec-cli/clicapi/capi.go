@@ -22,8 +22,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+var CAPIBaseURL = "https://api.crowdsec.net/"
 
 type configGetter = func() *csconfig.Config
 
@@ -65,9 +66,9 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 
 	password := strfmt.Password(pstr)
 
-	apiurl, err := url.Parse(types.CAPIBaseURL)
+	apiurl, err := url.Parse(CAPIBaseURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse api url %s: %w", types.CAPIBaseURL, err)
+		return fmt.Errorf("unable to parse api url %s: %w", CAPIBaseURL, err)
 	}
 
 	_, err = apiclient.RegisterClient(ctx, &apiclient.Config{
@@ -77,7 +78,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		VersionPrefix: "v3",
 	}, nil)
 	if err != nil {
-		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
+		return fmt.Errorf("api client register ('%s'): %w", CAPIBaseURL, err)
 	}
 
 	log.Infof("Successfully registered to Central API (CAPI)")
@@ -96,7 +97,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    capiUser,
 		Password: password.String(),
-		URL:      types.CAPIBaseURL,
+		URL:      CAPIBaseURL,
 	}
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)

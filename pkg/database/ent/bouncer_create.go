@@ -152,6 +152,20 @@ func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
 	return bc
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (bc *BouncerCreate) SetOsfamily(s string) *BouncerCreate {
+	bc.mutation.SetOsfamily(s)
+	return bc
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsfamily(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsfamily(*s)
+	}
+	return bc
+}
+
 // SetOsversion sets the "osversion" field.
 func (bc *BouncerCreate) SetOsversion(s string) *BouncerCreate {
 	bc.mutation.SetOsversion(s)
@@ -344,6 +358,10 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := bc.mutation.Osname(); ok {
 		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
 		_node.Osname = value
+	}
+	if value, ok := bc.mutation.Osfamily(); ok {
+		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
+		_node.Osfamily = value
 	}
 	if value, ok := bc.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
@@ -544,6 +562,24 @@ func (u *BouncerUpsert) UpdateOsname() *BouncerUpsert {
 // ClearOsname clears the value of the "osname" field.
 func (u *BouncerUpsert) ClearOsname() *BouncerUpsert {
 	u.SetNull(bouncer.FieldOsname)
+	return u
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsert) SetOsfamily(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldOsfamily, v)
+	return u
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateOsfamily() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldOsfamily)
+	return u
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsert) ClearOsfamily() *BouncerUpsert {
+	u.SetNull(bouncer.FieldOsfamily)
 	return u
 }
 
@@ -792,6 +828,27 @@ func (u *BouncerUpsertOne) UpdateOsname() *BouncerUpsertOne {
 func (u *BouncerUpsertOne) ClearOsname() *BouncerUpsertOne {
 	return u.Update(func(s *BouncerUpsert) {
 		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsertOne) SetOsfamily(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateOsfamily() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsertOne) ClearOsfamily() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsfamily()
 	})
 }
 
@@ -1212,6 +1269,27 @@ func (u *BouncerUpsertBulk) UpdateOsname() *BouncerUpsertBulk {
 func (u *BouncerUpsertBulk) ClearOsname() *BouncerUpsertBulk {
 	return u.Update(func(s *BouncerUpsert) {
 		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsertBulk) SetOsfamily(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateOsfamily() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsertBulk) ClearOsfamily() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsfamily()
 	})
 }
 
