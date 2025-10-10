@@ -38,7 +38,6 @@ type APIServer struct {
 	UnixSocket     string
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
-	logFile        string
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
@@ -46,7 +45,6 @@ type APIServer struct {
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-	consoleConfig  *csconfig.ConsoleConfig
 }
 
 func isBrokenConnection(maybeError any) bool {
@@ -86,7 +84,7 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover()
+	err := recover() //nolint:revive
 	if err == nil {
 		return
 	}
@@ -204,7 +202,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	}
 
 	// The logger that will be used by handlers
-	clog, logFile, err := newGinLogger(config)
+	clog, _, err := newGinLogger(config)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +248,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	controller.DecisionDeleteChan = nil
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
-		log.Printf("Loading CAPI manager")
+		log.Info("Loading CAPI manager")
 
 		apiClient, err = NewAPIC(ctx, config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
@@ -286,7 +284,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		URL:            config.ListenURI,
 		UnixSocket:     config.ListenSocket,
 		TLS:            config.TLS,
-		logFile:        logFile,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -294,7 +291,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		apic:           apiClient,
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
-		consoleConfig:  config.ConsoleConfig,
 	}, nil
 }
 
@@ -367,7 +363,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	})
 }
 
-func (s *APIServer) Run(apiReady chan bool) error {
+func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 
 	tlsCfg, err := s.TLS.GetTLSConfig()
@@ -386,14 +382,12 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	s.httpServer.Protocols.SetUnencryptedHTTP2(true)
 	s.httpServer.Protocols.SetHTTP2(true)
 
-	ctx := context.TODO()
-
 	if s.apic != nil {
 		s.initAPIC(ctx)
 	}
 
 	s.httpServerTomb.Go(func() error {
-		return s.listenAndServeLAPI(apiReady)
+		return s.listenAndServeLAPI(ctx, apiReady)
 	})
 
 	if err := s.httpServerTomb.Wait(); err != nil {
@@ -406,8 +400,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // listenAndServeLAPI starts the http server and blocks until it's closed
 // it also updates the URL field with the actual address the server is listening on
 // it's meant to be run in a separate goroutine
-func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
+func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) error {
 	serverError := make(chan error, 2)
+
+	listenConfig := &net.ListenConfig{}
 
 	startServer := func(listener net.Listener, canTLS bool) {
 		var err error
@@ -442,7 +438,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			return
 		}
 
-		listener, err := net.Listen("tcp", url)
+		listener, err := listenConfig.Listen(ctx, "tcp", url)
 		if err != nil {
 			serverError <- fmt.Errorf("listening on %s: %w", url, err)
 			return
@@ -464,7 +460,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			}
 		}
 
-		listener, err := net.Listen("unix", socket)
+		listener, err := listenConfig.Listen(ctx, "unix", socket)
 		if err != nil {
 			serverError <- csnet.WrapSockErr(err, socket)
 			return
@@ -482,7 +478,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 	case <-s.httpServerTomb.Dying():
 		log.Info("Shutting down API server")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -517,11 +513,11 @@ func (s *APIServer) Close() {
 	}
 }
 
-func (s *APIServer) Shutdown() error {
+func (s *APIServer) Shutdown(ctx context.Context) error {
 	s.Close()
 
 	if s.httpServer != nil {
-		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
+		if err := s.httpServer.Shutdown(ctx); err != nil {
 			return err
 		}
 	}

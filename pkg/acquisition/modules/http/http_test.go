@@ -200,18 +200,6 @@ path: 15
 	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
 }
 
-func TestConfigureByDSN(t *testing.T) {
-	h := HTTPSource{}
-	err := h.ConfigureByDSN("http://localhost:8080/test", map[string]string{}, log.WithFields(log.Fields{
-		"type": "http",
-	}), "test")
-	cstest.AssertErrorMessage(
-		t,
-		err,
-		"http datasource does not support command-line acquisition",
-	)
-}
-
 func TestGetMode(t *testing.T) {
 	h := HTTPSource{}
 	h.Config.Mode = "test"
@@ -516,10 +504,11 @@ headers:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
+	dialer := &net.Dialer{}
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketFile)
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "unix", socketFile)
 			},
 		},
 	}
@@ -595,6 +584,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 			return
 		}
 	}
+
 	errChan <- nil
 }
 
@@ -909,7 +899,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 	}
 
 	if !isExist && expected > 0 {
-		t.Fatalf("expected metric cs_httpsource_hits_total not found")
+		t.Fatal("expected metric cs_httpsource_hits_total not found")
 	}
 
 	for _, metric := range metrics {

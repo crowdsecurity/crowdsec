@@ -19,7 +19,6 @@ linters:
 
     # Disabled atm
 
-    - intrange              # intrange is a linter to find places where for loops could make use of an integer range.
     - funcorder
     - exhaustive
 
@@ -85,6 +84,8 @@ linters:
     - varnamelen            # checks that the length of a variable's name matches its scope
     - prealloc
     - noinlineerr
+    - iotamixing
+    - godoclint
 
   settings:
 
@@ -120,12 +121,6 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - io.Copy                           # TODO
-        - (net/http.ResponseWriter).Write   # TODO
-        - (*os/exec.Cmd).Start
-        - (*os/exec.Cmd).Wait
-        - (*os.Process).Kill
-        - (*text/template.Template).ExecuteTemplate
         - syscall.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
@@ -162,7 +157,6 @@ linters:
         - sloppyReassign
         - appendCombine
         - commentFormatting
-        - deferInLoop             #
         - whyNoLint
         - equalFold               #
         - unnecessaryBlock        #
@@ -177,7 +171,7 @@ linters:
 
     gomoddirectives:
       replace-allow-list:
-        - golang.org/x/time/rate
+        - golang.org/x/time
         - github.com/corazawaf/coraza/v3
 
     govet:
@@ -186,7 +180,7 @@ linters:
       enable-all: true
 
     interfacebloat:
-      max: 12
+      max: 7
 
     maintidx:
       # raise this after refactoring
@@ -204,7 +198,7 @@ linters:
 
     nolintlint:
       require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: false     # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
       allow-unused: false         # report any unused nolint directives
 
     revive:
@@ -225,8 +219,6 @@ linters:
           arguments:
             # lower this after refactoring
             - 39
-        - name: defer
-          disabled: true
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -234,6 +226,8 @@ linters:
         - name: enforce-switch-style
           disabled: true
         - name: error-naming
+          disabled: true
+        - name: exported
           disabled: true
         - name: flag-parameter
           disabled: true
@@ -243,15 +237,19 @@ linters:
         - name: function-length
           arguments:
             # lower this after refactoring
-            - 87
-            - 198
+            - 86
+            - 174
         - name: get-return
           disabled: true
-        - name: increment-decrement
+        - name: identical-ifelseif-branches
+          disabled: true
+        - name: identical-switch-branches
           disabled: true
         - name: import-alias-naming
           disabled: true
         - name: import-shadowing
+          disabled: true
+        - name: increment-decrement
           disabled: true
         - name: line-length-limit
           arguments:
@@ -267,6 +265,8 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        - name: package-directory-mismatch
+          disabled: true
         - name: redundant-import-alias
           disabled: true
         - name: redundant-test-main-exit
@@ -274,8 +274,6 @@ linters:
         - name: var-naming
           disabled: true
         - name: unchecked-type-assertion
-          disabled: true
-        - name: exported
           disabled: true
         - name: unexported-naming
           disabled: true
@@ -291,11 +289,15 @@ linters:
           disabled: true
         - name: unnecessary-stmt
           disabled: true
+        - name: unsecure-url-scheme
+          disabled: true
         - name: unused-parameter
           disabled: true
         - name: unused-receiver
           disabled: true
         - name: use-any
+          disabled: true
+        - name: use-waitgroup-go
           disabled: true
         - name: useless-break
           disabled: true
@@ -462,11 +464,12 @@ linters:
         path: cmd/notification-file/main.go
         text: found a struct that contains a context.Context field
 
-      # migrate over time
-
       - linters:
-          - noctx
-        text: "net.Listen must not be called"
+          - containedctx
+        path: pkg/acquisition/modules/s3/s3.go
+        text: found a struct that contains a context.Context field
+
+      # migrate over time
 
       - linters:
           - noctx
@@ -474,14 +477,9 @@ linters:
 
       - linters:
           - noctx
-        text: "net.Dial must not be called"
-
-      - linters:
-          - noctx
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/time/rate
       - pkg/metabase
       - third_party$
       - builtin$

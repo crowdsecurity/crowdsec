@@ -22,7 +22,7 @@ func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc() error {
+func StartRunSvc(ctx context.Context) error {
 	var (
 		cConfig *csconfig.Config
 		err     error
@@ -54,8 +54,6 @@ func StartRunSvc() error {
 
 		var err error
 
-		ctx := context.TODO()
-
 		if cConfig.DbConfig != nil {
 			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
 			if err != nil {
@@ -73,5 +71,5 @@ func StartRunSvc() error {
 		}()
 	}
 
-	return Serve(cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady)
 }

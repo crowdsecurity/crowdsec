@@ -99,7 +99,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stdoutscanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stdout scanner")
 	}
 
@@ -107,7 +107,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 	if stderrScanner == nil {
 		cancel()
-		cmd.Wait()
+		_ = cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
 
@@ -125,7 +125,10 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() // avoid zombie process
+			// avoid zombie process
+			if waitErr := cmd.Wait(); waitErr != nil {
+				j.logger.Debugf("journalctl exited after cancel: %v", waitErr)
+			}
 
 			return nil
 		case stdoutLine := <-stdoutChan:

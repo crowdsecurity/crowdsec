@@ -101,8 +101,11 @@ func getTLSClient(c *PluginConfig) error {
 	if c.UnixSocket != "" {
 		logger.Info(fmt.Sprintf("Using socket '%s'", c.UnixSocket))
 
-		transport.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", strings.TrimSuffix(c.UnixSocket, "/"))
+		dialer := &net.Dialer{}
+		socketPath := strings.TrimSuffix(c.UnixSocket, "/")
+
+		transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", socketPath)
 		}
 	}
 
@@ -162,7 +165,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	return &protobufs.Empty{}, nil
 }
 
-func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *HTTPPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 
 	err := yaml.Unmarshal(config.Config, &d)
