@@ -38,8 +38,10 @@ func (nc *NucleiConfig) RunNucleiTemplate(ctx context.Context, testName string, 
 
 	log.Debugf("Running Nuclei command: '%s'", cmd.String())
 
-	var out bytes.Buffer
-	var outErr bytes.Buffer
+	var (
+		out bytes.Buffer
+		outErr bytes.Buffer
+	)
 
 	cmd.Stdout = &out
 	cmd.Stderr = &outErr
