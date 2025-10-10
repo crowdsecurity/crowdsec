@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -43,7 +44,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	patternDir := cfg.ConfigPaths.PatternDir
 
-	var eg errgroup.Group
+	eg, gctx := errgroup.WithContext(ctx)
 
 	if isAppsecTest {
 		log.Info("Appsec tests can not run in parallel: setting max_jobs=1")
@@ -55,11 +56,18 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 
 	for _, test := range hubPtr.Tests {
 		if cfg.Cscli.Output == "human" {
-			fmt.Printf("Running test '%s'\n", test.Name)
+			fmt.Fprintf(os.Stdout, "Running test '%s'\n", test.Name)
 		}
 
 		eg.Go(func() error {
-			return test.Run(ctx, patternDir)
+			// don't run if another goroutine failed
+			select {
+			case <-gctx.Done():
+				return gctx.Err()
+			default:
+			}
+
+			return test.Run(gctx, patternDir)
 		})
 	}
 
@@ -71,18 +79,18 @@ func printParserFailures(test *hubtest.HubTestItem) {
 		return
 	}
 
-	fmt.Println()
+	fmt.Fprintln(os.Stdout)
 	log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
 
 	for _, fail := range test.ParserAssert.Fails {
-		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
-		fmt.Printf("        Actual expression values:\n")
+		fmt.Fprintf(os.Stdout, "(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
+		fmt.Fprint(os.Stdout, "        Actual expression values:\n")
 
 		for key, value := range fail.Debug {
-			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
+			fmt.Fprintf(os.Stdout, "            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 }
 
@@ -91,18 +99,18 @@ func printScenarioFailures(test *hubtest.HubTestItem) {
 		return
 	}
 
-	fmt.Println()
+	fmt.Fprintln(os.Stdout)
 	log.Errorf("Scenario test '%s' failed (%d errors)\n", test.Name, len(test.ScenarioAssert.Fails))
 
 	for _, fail := range test.ScenarioAssert.Fails {
-		fmt.Printf("(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
-		fmt.Printf("        Actual expression values:\n")
+		fmt.Fprintf(os.Stdout, "(L.%d)  %s  => %s\n", fail.Line, emoji.RedCircle, fail.Expression)
+		fmt.Fprint(os.Stdout, "        Actual expression values:\n")
 
 		for key, value := range fail.Debug {
-			fmt.Printf("            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
+			fmt.Fprintf(os.Stdout, "            %s = '%s'\n", key, strings.TrimSuffix(value, "\n"))
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 }
 
@@ -124,7 +132,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
-				fmt.Printf("Running all tests (max_jobs: %d)\n", maxJobs)
+				fmt.Fprintf(os.Stdout, "Running all tests (max_jobs: %d)\n", maxJobs)
 			}
 
 			return cli.run(cmd.Context(), all, nucleiTargetHost, appSecHost, args, maxJobs)
@@ -134,25 +142,30 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 
 			success := true
 			testMap := make(map[string]*hubtest.HubTestItem)
+
 			for _, test := range hubPtr.Tests {
 				if test.AutoGen && !isAppsecTest {
 					if test.ParserAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
-						fmt.Println()
-						fmt.Println(test.ParserAssert.AutoGenAssertData)
+						fmt.Fprintln(os.Stdout)
+						fmt.Fprintln(os.Stdout, test.ParserAssert.AutoGenAssertData)
 					}
+
 					if test.ScenarioAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ScenarioAssert.File)
-						fmt.Println()
-						fmt.Println(test.ScenarioAssert.AutoGenAssertData)
+						fmt.Fprintln(os.Stdout)
+						fmt.Fprintln(os.Stdout, test.ScenarioAssert.AutoGenAssertData)
 					}
+
 					if !noClean {
 						test.Clean()
 					}
 
 					return fmt.Errorf("please fill your assert file(s) for test '%s', exiting", test.Name)
 				}
+
 				testMap[test.Name] = test
+
 				if test.Success {
 					if !noClean {
 						test.Clean()
@@ -160,9 +173,11 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 				} else {
 					success = false
 					cleanTestEnv := false
+
 					if cfg.Cscli.Output == "human" {
 						printParserFailures(test)
 						printScenarioFailures(test)
+
 						if !forceClean && !noClean {
 							prompt := &survey.Confirm{
 								Message: fmt.Sprintf("Do you want to remove runtime and result folder for '%s'?", test.Name),
@@ -187,6 +202,7 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
 				jsonResult["fail"] = make([]string, 0)
+
 				for testName, test := range testMap {
 					if test.Success {
 						jsonResult["success"] = append(jsonResult["success"], testName)
@@ -194,11 +210,13 @@ func (cli *cliHubTest) newRunCmd() *cobra.Command {
 						jsonResult["fail"] = append(jsonResult["fail"], testName)
 					}
 				}
+
 				jsonStr, err := json.Marshal(jsonResult)
 				if err != nil {
 					return fmt.Errorf("unable to json test result: %w", err)
 				}
-				fmt.Println(string(jsonStr))
+
+				fmt.Fprintln(os.Stdout, string(jsonStr))
 			default:
 				return errors.New("only human/json output modes are supported")
 			}
