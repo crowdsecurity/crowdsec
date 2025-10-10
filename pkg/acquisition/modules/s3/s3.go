@@ -268,9 +268,16 @@ func (s *S3Source) listPoll() error {
 
 				logger.Debugf("Found new object %s", *bucketObjects[i].Key)
 
-				s.readerChan <- S3Object{
+				obj := S3Object{
 					Bucket: s.Config.BucketName,
 					Key:    *bucketObjects[i].Key,
+				}
+
+				select {
+				case s.readerChan <- obj:
+				case <-s.t.Dying():
+					logger.Debug("tomb is dying, dropping object send")
+					return nil
 				}
 			}
 
@@ -418,7 +425,13 @@ func (s *S3Source) sqsPoll() error {
 
 				logger.Debugf("Received SQS message for object %s/%s", bucket, key)
 
-				s.readerChan <- S3Object{Key: key, Bucket: bucket}
+				// don't block if readManager has quit
+				select {
+				case s.readerChan <- S3Object{Key: key, Bucket: bucket}:
+				case <-s.t.Dying():
+					logger.Debug("tomb is dying, dropping object send")
+					return nil
+				}
 
 				_, err = s.sqsClient.DeleteMessage(s.ctx,
 					&sqs.DeleteMessageInput{
@@ -513,7 +526,13 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
 			evt.Line = l
 
-			s.out <- evt
+			// don't block in shutdown
+			select {
+			case s.out <-evt:
+			case <-s.t.Dying():
+				s.logger.Infof("tomb is dying, dropping event for %s/%s", bucket, key)
+				return nil
+			}
 		}
 	}
 
