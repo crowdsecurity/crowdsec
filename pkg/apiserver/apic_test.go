@@ -1215,18 +1215,23 @@ func TestAPICPull(t *testing.T) {
 			)))
 			tc.setUp()
 
-			var buf bytes.Buffer
+			var (
+				buf bytes.Buffer
+				wg sync.WaitGroup
+			)
+
+			wg.Add(1)
 
 			go func() {
+				defer wg.Done()
 				logrus.SetOutput(&buf)
 
-				if err := api.Pull(ctx); err != nil {
-					panic(err)
-				}
+				err := api.Pull(ctx)
+				require.NoError(t, err)
 			}()
 
-			// Slightly long because the CI runner for windows are slow, and this can lead to random failure
-			time.Sleep(time.Millisecond * 500)
+			wg.Wait()
+
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), tc.logContains)
 			assertTotalDecisionCount(t, ctx, api.dbClient, tc.expectedDecisionCount)
