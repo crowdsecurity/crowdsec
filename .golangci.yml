@@ -311,6 +311,11 @@ linters:
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
 
+    usetesting:
+      os-temp-dir: false
+      context-background: true
+      context-todo: true
+
   exclusions:
     presets:
       - comments
