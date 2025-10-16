@@ -400,11 +400,12 @@ func (n *Node) process(p *pipeline.Event, ctx UnixParserCtx, expressionEnv map[s
 	return nodeState, nil
 }
 
+var dumpr = spew.ConfigState{MaxDepth: 1, DisablePointerAddresses: true}
+
 func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	var err error
 
 	valid := false
-	dumpr := spew.ConfigState{MaxDepth: 1, DisablePointerAddresses: true}
 
 	n.rn = seed.Generate()
 
@@ -428,7 +429,9 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* display info about top-level nodes, they should be the only one with explicit stage name ?*/
 	n.Logger = n.Logger.WithFields(log.Fields{"stage": n.Stage, "name": n.Name})
 
-	n.Logger.Tracef("Compiling: %s", dumpr.Sdump(n))
+	if n.Logger.Logger.IsLevelEnabled(log.TraceLevel) {
+		n.Logger.Tracef("Compiling: %s", dumpr.Sdump(n))
+	}
 
 	// compile filter if present
 	if n.Filter != "" {
