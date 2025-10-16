@@ -61,7 +61,7 @@ func (w *WinEventLogSource) CanRun() error {
 	return errors.New("windows event log acquisition is only supported on Windows")
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return nil
 }
 

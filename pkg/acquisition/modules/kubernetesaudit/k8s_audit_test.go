@@ -256,7 +256,6 @@ webhook_path: /k8s-audit`, port)
 			require.NoError(t, err)
 
 			err = f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
-
 			require.NoError(t, err)
 
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))

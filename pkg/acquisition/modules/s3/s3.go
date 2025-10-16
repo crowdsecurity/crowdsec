@@ -606,7 +606,7 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *S3Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (s *S3Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err

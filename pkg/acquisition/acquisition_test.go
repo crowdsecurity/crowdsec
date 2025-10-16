@@ -37,7 +37,7 @@ func (f *MockSource) UnmarshalConfig(cfg []byte) error {
 	return nil
 }
 
-func (f *MockSource) Configure(ctx context.Context, cfg []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockSource) Configure(_ context.Context, cfg []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
@@ -514,7 +514,7 @@ func (f *MockSourceByDSN) GetMode() string { return f.Mode }
 func (*MockSourceByDSN) CanRun() error     { return nil }
 func (f *MockSourceByDSN) Dump() any       { return f }
 func (*MockSourceByDSN) GetName() string   { return "mockdsn" }
-func (*MockSourceByDSN) ConfigureByDSN(ctx context.Context, dsn string, _ map[string]string, _ *log.Entry, _ string) error {
+func (*MockSourceByDSN) ConfigureByDSN(_ context.Context, dsn string, _ map[string]string, _ *log.Entry, _ string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return errors.New("unexpected value")

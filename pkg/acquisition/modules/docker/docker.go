@@ -253,7 +253,7 @@ func (d *DockerSource) Configure(ctx context.Context, yamlConfig []byte, logger 
 	return nil
 }
 
-func (d *DockerSource) ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
 	parsedURL, err := url.Parse(dsn)
