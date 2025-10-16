@@ -7,7 +7,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 func appsecMetricsTable(out io.Writer, wantColor string, itemName string, metrics map[string]int) {

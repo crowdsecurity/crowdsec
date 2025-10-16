@@ -9,7 +9,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statStash map[string]struct {
