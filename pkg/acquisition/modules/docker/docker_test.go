@@ -196,7 +196,6 @@ func TestConfigureDSN(t *testing.T) {
 
 type mockDockerCli struct {
 	client.Client
-	isSwarmManager bool
 	services       []dockerTypesSwarm.Service
 }
 
@@ -345,8 +344,7 @@ service_name_regexp:
 				return
 			}
 
-			mockClient := &mockDockerCli{isSwarmManager: ts.isSwarmManager}
-			dockerSource.Client = mockClient
+			dockerSource.Client = &mockDockerCli{}
 
 			// Manually set swarm manager flag for testing since Info() mock is simplified
 			dockerSource.isSwarmManager = ts.isSwarmManager
@@ -491,8 +489,7 @@ use_service_labels: true`,
 			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
-			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
-			f.Client = mockClient
+			f.Client = &mockDockerCli{}
 
 			// Manually set swarm manager flag for testing
 			f.isSwarmManager = test.isSwarmManager
@@ -560,10 +557,9 @@ service_name:
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "docker")
-			f := DockerSource{}
-
-			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
-			f.Client = mockClient
+			f := DockerSource{
+				Client: &mockDockerCli{},
+			}
 
 			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)

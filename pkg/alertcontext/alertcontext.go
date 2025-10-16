@@ -25,7 +25,6 @@ type Context struct {
 	ContextToSend         map[string][]string
 	ContextValueLen       int
 	ContextToSendCompiled map[string][]*vm.Program
-	Log                   *log.Logger
 }
 
 func ValidateContextExpr(key string, expressions []string) error {
@@ -44,25 +43,19 @@ func ValidateContextExpr(key string, expressions []string) error {
 }
 
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
-	clog := log.New()
-	if err := types.ConfigureLogger(clog, nil); err != nil {
-		return fmt.Errorf("couldn't create logger for alert context: %w", err)
-	}
-
 	if valueLength == 0 {
-		clog.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
+		log.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
 		valueLength = MaxContextValueLen
 	}
 
 	if valueLength > MaxContextValueLen {
-		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
+		log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
 		valueLength = MaxContextValueLen
 	}
 
 	alertContext = Context{
 		ContextToSend:         contextToSend,
 		ContextValueLen:       valueLength,
-		Log:                   clog,
 		ContextToSendCompiled: make(map[string][]*vm.Program),
 	}
 
