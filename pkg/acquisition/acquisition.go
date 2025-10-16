@@ -55,7 +55,7 @@ type DataSource interface {
 
 	// configuration
 	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
 }
 
 type Fetcher interface {
@@ -78,7 +78,7 @@ type MetricsProvider interface {
 
 type DSNConfigurer interface {
 	// Configure the datasource
-	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
+	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
 var (
@@ -143,7 +143,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
+func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -159,14 +159,14 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlCon
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
 	/* configure the actual datasource */
-	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
+	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
 	}
 
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
@@ -198,7 +198,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
 	}
 
-	if err = dsnConf.ConfigureByDSN(dsn, labels, subLogger, uniqueID); err != nil {
+	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 
@@ -256,7 +256,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -340,7 +340,7 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 		uniqueID := uuid.NewString()
 		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(sub, yamlDoc, metricsLevel)
+		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -367,13 +367,13 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 }
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var allSources []DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(acquisFile, metricsLevel)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel)
 		if err != nil {
 			return nil, err
 		}

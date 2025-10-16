@@ -20,6 +20,8 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
+	ctx := t.Context()
+
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
 
@@ -64,12 +66,14 @@ event_ids: true`,
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		f := WinEventLogSource{}
-		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
 }
 
 func TestQueryBuilder(t *testing.T) {
+	ctx := t.Context()
+
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
 
@@ -123,7 +127,7 @@ event_level: bla`,
 		t.Run(test.config, func(t *testing.T) {
 			f := WinEventLogSource{}
 
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 			if test.expectedErr != "" {
 				return
@@ -198,7 +202,7 @@ event_ids:
 		c := make(chan types.Event)
 		f := WinEventLogSource{}
 
-		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		err = f.StreamingAcquisition(ctx, c, to)
@@ -289,7 +293,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			c := make(chan types.Event)
 			f := WinEventLogSource{}
 
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
 			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
 				return
