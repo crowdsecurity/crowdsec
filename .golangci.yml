@@ -190,7 +190,7 @@ linters:
 
     nestif:
       # lower this after refactoring
-      min-complexity: 16
+      min-complexity: 15
 
     nlreturn:
       block-size: 6
@@ -260,7 +260,7 @@ linters:
         - name: max-control-nesting
           arguments:
             # lower this after refactoring
-            - 7
+            - 5
         - name: max-public-structs
           disabled: true
         - name: nested-structs
