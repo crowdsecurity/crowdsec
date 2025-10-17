@@ -64,6 +64,8 @@ if [ "$1" = configure ]; then
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
+    systemctl enable --now crowdsec-hubupdate.timer >/dev/null 2>&1 || true
+
     LAPI=true
     API=$(cscli config show --key "Config.API.Server")
     if [ "$API" = "nil" ] ; then
