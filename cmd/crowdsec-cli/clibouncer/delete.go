@@ -14,7 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func (cli *cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
+func (*cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
 	bouncerPrefix := strings.Split(bouncerName, "@")[0]
 	for _, bouncer := range bouncers {
 		if strings.HasPrefix(bouncer.Name, bouncerPrefix) && !bouncer.AutoCreated {

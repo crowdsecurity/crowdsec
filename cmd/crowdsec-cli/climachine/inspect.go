@@ -116,7 +116,7 @@ func (cli *cliMachines) inspectMetrics(out io.Writer, metrics []*ent.Metric) {
 }
 
 // processAcquisitionMetrics aggregates acquisition metrics data from raw metrics
-func (cli *cliMachines) processAcquisitionMetrics(metrics []*ent.Metric) []acquisitionMetric {
+func (*cliMachines) processAcquisitionMetrics(metrics []*ent.Metric) []acquisitionMetric {
 	aggregatedMetrics := make(map[string]map[string]int)
 
 	for _, metric := range metrics {
@@ -221,7 +221,7 @@ func (cli *cliMachines) inspectAcquisitionMetrics(out io.Writer, metrics []*ent.
 }
 
 // processParserMetrics aggregates parser metrics data from raw metrics
-func (cli *cliMachines) processParserMetrics(metrics []*ent.Metric) []parserMetric {
+func (*cliMachines) processParserMetrics(metrics []*ent.Metric) []parserMetric {
 	type parserInfo struct {
 		stage   string
 		name    string

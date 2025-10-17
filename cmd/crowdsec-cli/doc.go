@@ -45,7 +45,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func (cli cliDoc) filePrepender(filename string) string {
+func (cliDoc) filePrepender(filename string) string {
 	const header = `---
 id: %s
 title: %s
@@ -58,6 +58,6 @@ title: %s
 	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
-func (cli cliDoc) linkHandler(name string) string {
+func (cliDoc) linkHandler(name string) string {
 	return fmt.Sprintf("/cscli/%s", name)
 }

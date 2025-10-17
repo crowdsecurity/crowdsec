@@ -67,7 +67,7 @@ func newCliRoot() *cliRoot {
 
 // cfg() is a helper function to get the configuration loaded from config.yaml,
 // we pass it to subcommands because the file is not read until the Execute() call
-func (cli *cliRoot) cfg() *csconfig.Config {
+func (*cliRoot) cfg() *csconfig.Config {
 	return csConfig
 }
 
@@ -182,7 +182,7 @@ func (cli *cliRoot) initialize() error {
 	return nil
 }
 
-func (cli *cliRoot) colorize(cmd *cobra.Command) {
+func (*cliRoot) colorize(cmd *cobra.Command) {
 	cc.Init(&cc.Config{
 		RootCmd:         cmd,
 		Headings:        cc.Yellow,

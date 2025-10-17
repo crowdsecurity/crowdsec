@@ -12,7 +12,7 @@ import (
 
 type statWhitelist map[string]map[string]map[string]int
 
-func (s statWhitelist) Description() (string, string) {
+func (statWhitelist) Description() (string, string) {
 	return "Whitelist Metrics",
 		`Tracks the number of events processed and possibly whitelisted by each parser whitelist.`
 }

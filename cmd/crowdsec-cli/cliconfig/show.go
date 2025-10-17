@@ -60,7 +60,7 @@ func (cli *cliConfig) showKey(key string) error {
 	return nil
 }
 
-func (cli *cliConfig) template() string {
+func (*cliConfig) template() string {
 	return `Global:
 
 {{- if .ConfigPaths }}

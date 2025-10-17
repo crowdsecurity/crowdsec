@@ -71,7 +71,7 @@ func (c *PurgeCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *PurgeCommand) OperationType() string {
+func (*PurgeCommand) OperationType() string {
 	return "purge (delete source)"
 }
 

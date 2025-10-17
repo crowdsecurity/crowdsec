@@ -59,7 +59,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
+func (*cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os"})

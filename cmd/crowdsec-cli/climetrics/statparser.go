@@ -12,7 +12,7 @@ import (
 
 type statParser map[string]map[string]int
 
-func (s statParser) Description() (string, string) {
+func (statParser) Description() (string, string) {
 	return "Parser Metrics",
 		`Tracks the number of events processed by each parser and indicates success of failure. ` +
 			`Zero parsed lines means the parser(s) failed. ` +

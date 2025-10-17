@@ -76,7 +76,7 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 	}
 }
 
-func (cli *cliSetup) newDetectCmd() *cobra.Command {
+func (*cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
 
 	var (

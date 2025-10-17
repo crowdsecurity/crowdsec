@@ -41,7 +41,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
+func (*cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 	csvwriter := csv.NewWriter(out)
 
 	if err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"}); err != nil {
