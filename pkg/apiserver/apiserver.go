@@ -262,7 +262,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		if apiClient.apiClient.IsEnrolled() {
 			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, config.PapiLogLevel)
 			if err != nil {
 				return nil, err
 			}

@@ -29,7 +29,7 @@ var (
 
 var ctiClient *cticlient.CrowdsecCTIClient
 
-func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.Level) error {
+func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel log.Level) error {
 	if key == nil || *key == "" {
 		log.Warningf("CTI API key not set or empty, CTI will not be available")
 		return cticlient.ErrDisabled

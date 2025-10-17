@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
@@ -176,7 +175,7 @@ func (cli *cliRoot) initialize() error {
 	}
 
 	if csConfig.DbConfig != nil {
-		csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
+		csConfig.DbConfig.LogLevel = cli.wantedLogLevel()
 	}
 
 	return nil
