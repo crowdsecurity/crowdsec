@@ -130,7 +130,6 @@ linters:
         - (github.com/bluele/gcache.Cache).Set
         - (github.com/gin-gonic/gin.ResponseWriter).WriteString
         - (*github.com/segmentio/kafka-go.Reader).SetOffsetAt
-        - (*gopkg.in/tomb.v2.Tomb).Wait
 
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterArgs
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterBody
