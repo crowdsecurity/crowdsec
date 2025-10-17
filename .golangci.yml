@@ -307,11 +307,11 @@ linters:
     staticcheck:
       checks:
         - all
-        - -ST1003
-        - -ST1005
-        - -ST1012
-        - -QF1003
-        - -QF1012
+        - -ST1003  # should not use underscores in Go names
+        - -ST1005  # error strings should not be capitalized
+        - -ST1012  # error var ... should have name of the form ...
+        - -QF1003  # could use tagged switch on ...
+        - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
 
   exclusions:
     presets:
