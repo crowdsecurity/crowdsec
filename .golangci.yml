@@ -256,7 +256,7 @@ linters:
         - name: line-length-limit
           arguments:
             # lower this after refactoring
-            - 221
+            - 216
         - name: max-control-nesting
           arguments:
             # lower this after refactoring
