@@ -137,7 +137,7 @@ func shouldOverwrite(path string, newContent []byte) (bool, error) {
 // It includes an header with the appropriate checksum.
 // In dry-run, prints the content to stdout instead of writing to disk.
 // In interactive mode, it prompts the user before overwriting an existing file unless it's pristine.
-func (cli *cliSetup) processAcquisitionSpec(spec setup.AcquisitionSpec, toDir string, interactive, dryRun bool) error {
+func (*cliSetup) processAcquisitionSpec(spec setup.AcquisitionSpec, toDir string, interactive, dryRun bool) error {
 	if spec.Datasource == nil {
 		return nil
 	}

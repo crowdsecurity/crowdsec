@@ -11,7 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) newInfoCmd() *cobra.Command {
+func (*cliHubTest) newInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",

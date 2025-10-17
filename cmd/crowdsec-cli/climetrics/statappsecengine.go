@@ -12,7 +12,7 @@ import (
 
 type statAppsecEngine map[string]map[string]int
 
-func (s statAppsecEngine) Description() (string, string) {
+func (statAppsecEngine) Description() (string, string) {
 	return "Appsec Metrics",
 		`Measures the number of parsed and blocked requests by the AppSec Component.`
 }

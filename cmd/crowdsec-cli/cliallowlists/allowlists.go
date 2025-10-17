@@ -115,7 +115,7 @@ func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
+func (*cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "created_at", "updated_at", "console_managed", "size"})
@@ -140,7 +140,7 @@ func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlist
 	return nil
 }
 
-func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAllowlistResponse) error {
+func (*cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAllowlistResponse) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "value", "comment", "expiration", "created_at", "console_managed"})
@@ -280,7 +280,7 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) create(ctx context.Context, db *database.Client, name string, description string) error {
+func (*cliAllowLists) create(ctx context.Context, db *database.Client, name string, description string) error {
 	_, err := db.CreateAllowList(ctx, name, description, "", false)
 	if err != nil {
 		return err
@@ -377,7 +377,7 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name string) error {
+func (*cliAllowLists) delete(ctx context.Context, db *database.Client, name string) error {
 	list, err := db.GetAllowList(ctx, name, false)
 	if err != nil {
 		return err
@@ -453,7 +453,7 @@ func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
+func (*cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err
@@ -605,7 +605,7 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
+func (*cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err

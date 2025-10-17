@@ -14,7 +14,7 @@ import (
 
 type statLapi map[string]map[string]int
 
-func (s statLapi) Description() (string, string) {
+func (statLapi) Description() (string, string) {
 	return "Local API Metrics",
 		`Monitors the requests made to local API routes.`
 }

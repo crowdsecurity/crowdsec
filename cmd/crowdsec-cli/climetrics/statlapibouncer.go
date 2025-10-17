@@ -11,7 +11,7 @@ import (
 
 type statLapiBouncer map[string]map[string]map[string]int
 
-func (s statLapiBouncer) Description() (string, string) {
+func (statLapiBouncer) Description() (string, string) {
 	return "Local API Bouncers Metrics",
 		`Tracks total hits to remediation component related API routes.`
 }

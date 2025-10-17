@@ -12,7 +12,7 @@ import (
 
 type statAcquis map[string]map[string]int
 
-func (s statAcquis) Description() (string, string) {
+func (statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
 		`Measures the lines read, parsed, and unparsed per datasource. ` +
 			`Zero read lines indicate a misconfigured or inactive datasource. ` +

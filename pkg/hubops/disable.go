@@ -101,7 +101,7 @@ func (c *DisableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *DisableCommand) OperationType() string {
+func (*DisableCommand) OperationType() string {
 	return "disable"
 }
 

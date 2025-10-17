@@ -8,7 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
-func (cli *cliHubTest) newEvalCmd() *cobra.Command {
+func (*cliHubTest) newEvalCmd() *cobra.Command {
 	var evalExpression string
 
 	cmd := &cobra.Command{
