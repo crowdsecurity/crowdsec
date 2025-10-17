@@ -24,6 +24,12 @@ teardown() {
 
 # Tests for LAPI configuration and startup
 
+@test "lapi health check" {
+    rune -0 ./instance-crowdsec start
+    rune -0 curl "$(config_get '.api.server.listen_uri')"/health
+    assert_json '{"status":"up"}'
+}
+
 @test "lapi (.api.server.enable=false)" {
     rune -0 config_set '.api.server.enable=false'
     rune -1 "$CROWDSEC" -no-cs
