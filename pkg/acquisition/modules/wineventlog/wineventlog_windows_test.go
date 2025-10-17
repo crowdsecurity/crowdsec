@@ -235,7 +235,7 @@ event_ids:
 			assert.Equal(t, test.expectedLines, linesRead)
 		}
 		to.Kill(nil)
-		to.Wait()
+		_ = to.Wait()
 	}
 }
 

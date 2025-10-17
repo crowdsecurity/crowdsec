@@ -143,7 +143,7 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	apic.Shutdown()
 	papi.Shutdown()
-	t.Wait()
+	_ = t.Wait()
 	time.Sleep(5 * time.Second) // FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
 	return nil

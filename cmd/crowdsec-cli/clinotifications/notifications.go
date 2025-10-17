@@ -365,7 +365,9 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the generic alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
+		"JSON string used to override alert fields in the generic alert " +
+		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }
@@ -483,7 +485,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
+		"JSON string used to override alert fields in the reinjected alert " +
+		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }
