@@ -39,6 +39,8 @@ type Bouncer struct {
 	AuthType string `json:"auth_type"`
 	// Osname holds the value of the "osname" field.
 	Osname string `json:"osname,omitempty"`
+	// Osfamily holds the value of the "osfamily" field.
+	Osfamily string `json:"osfamily,omitempty"`
 	// Osversion holds the value of the "osversion" field.
 	Osversion string `json:"osversion,omitempty"`
 	// Featureflags holds the value of the "featureflags" field.
@@ -57,7 +59,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
-		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsfamily, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
@@ -149,6 +151,12 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.Osname = value.String
 			}
+		case bouncer.FieldOsfamily:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field osfamily", values[i])
+			} else if value.Valid {
+				b.Osfamily = value.String
+			}
 		case bouncer.FieldOsversion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osversion", values[i])
@@ -236,6 +244,9 @@ func (b *Bouncer) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("osname=")
 	builder.WriteString(b.Osname)
+	builder.WriteString(", ")
+	builder.WriteString("osfamily=")
+	builder.WriteString(b.Osfamily)
 	builder.WriteString(", ")
 	builder.WriteString("osversion=")
 	builder.WriteString(b.Osversion)

@@ -91,6 +91,8 @@ linters:
     - varnamelen            # checks that the length of a variable's name matches its scope
     - prealloc
     - noinlineerr
+    - iotamixing
+    - godoclint
 
   settings:
 
@@ -162,7 +164,6 @@ linters:
         - sloppyReassign
         - appendCombine
         - commentFormatting
-        - deferInLoop             #
         - whyNoLint
         - equalFold               #
         - unnecessaryBlock        #
@@ -203,9 +204,12 @@ linters:
       block-size: 6
 
     nolintlint:
-      require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
-      allow-unused: false         # report any unused nolint directives
+      # don't require an explanation for nolint directives
+      require-explanation: false
+      # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true
+      # report any unused nolint directives
+      allow-unused: false
 
     revive:
       severity: error
@@ -225,8 +229,6 @@ linters:
           arguments:
             # lower this after refactoring
             - 39
-        - name: defer
-          disabled: true
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -234,6 +236,8 @@ linters:
         - name: enforce-switch-style
           disabled: true
         - name: error-naming
+          disabled: true
+        - name: exported
           disabled: true
         - name: flag-parameter
           disabled: true
@@ -247,11 +251,15 @@ linters:
             - 174
         - name: get-return
           disabled: true
-        - name: increment-decrement
+        - name: identical-ifelseif-branches
+          disabled: true
+        - name: identical-switch-branches
           disabled: true
         - name: import-alias-naming
           disabled: true
         - name: import-shadowing
+          disabled: true
+        - name: increment-decrement
           disabled: true
         - name: line-length-limit
           arguments:
@@ -267,6 +275,8 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        - name: package-directory-mismatch
+          disabled: true
         - name: redundant-import-alias
           disabled: true
         - name: redundant-test-main-exit
@@ -274,8 +284,6 @@ linters:
         - name: var-naming
           disabled: true
         - name: unchecked-type-assertion
-          disabled: true
-        - name: exported
           disabled: true
         - name: unexported-naming
           disabled: true
@@ -291,11 +299,15 @@ linters:
           disabled: true
         - name: unnecessary-stmt
           disabled: true
+        - name: unsecure-url-scheme
+          disabled: true
         - name: unused-parameter
           disabled: true
         - name: unused-receiver
           disabled: true
         - name: use-any
+          disabled: true
+        - name: use-waitgroup-go
           disabled: true
         - name: useless-break
           disabled: true
@@ -441,12 +453,6 @@ linters:
         path: pkg/types/utils.go
         text: 'argument-limit: .*'
 
-      # need some cleanup first: to create db in memory and share the client, not the config
-      - linters:
-          - usetesting
-        path: (.+)_test.go
-        text: context.Background.*
-
       - linters:
           - usetesting
         path: pkg/apiserver/(.+)_test.go
@@ -467,18 +473,27 @@ linters:
         path: pkg/acquisition/modules/s3/s3.go
         text: found a struct that contains a context.Context field
 
+      - linters:
+          - contextcheck
+        text: Function `Configure->newS3Client` should pass the context parameter
+
+      - linters:
+          - contextcheck
+        text: Function `ConfigureByDSN->newS3Client` should pass the context parameter
+
       # migrate over time
 
       - linters:
           - noctx
+        path: pkg/parser/enrich_dns.go
         text: "net.LookupAddr must not be called"
 
       - linters:
           - noctx
+        path: pkg/exprhelpers/helpers.go
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/metabase
       - third_party$
       - builtin$
       - examples$

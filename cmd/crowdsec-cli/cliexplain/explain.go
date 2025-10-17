@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
@@ -46,7 +46,6 @@ func getLineCountForFile(pth string) (int, error) {
 type configGetter func() *csconfig.Config
 
 type cliExplain struct {
-	cfg            configGetter
 	configFilePath string
 	flags          struct {
 		logFile               string
@@ -64,7 +63,6 @@ type cliExplain struct {
 
 func New(cfg configGetter, configFilePath string) *cliExplain {
 	return &cliExplain{
-		cfg:            cfg,
 		configFilePath: configFilePath,
 	}
 }
