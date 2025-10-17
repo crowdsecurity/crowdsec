@@ -22,6 +22,8 @@ import (
 func TestBadConfiguration(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -51,7 +53,7 @@ journalctl_filter:
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
 			f := JournalCtlSource{}
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -59,6 +61,8 @@ journalctl_filter:
 
 func TestConfigureDSN(t *testing.T) {
 	cstest.SkipOnWindows(t)
+
+	ctx := t.Context()
 
 	tests := []struct {
 		dsn         string
@@ -98,7 +102,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, test := range tests {
 		f := JournalCtlSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+		err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -157,7 +161,7 @@ journalctl_filter:
 		out := make(chan types.Event, 100)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -227,7 +231,7 @@ journalctl_filter:
 		out := make(chan types.Event)
 		j := JournalCtlSource{}
 
-		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}

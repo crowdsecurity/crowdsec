@@ -104,7 +104,7 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (l *VLSource) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = VLConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -131,7 +131,7 @@ func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metr
 	return nil
 }
 
-func (l *VLSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (l *VLSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	l.logger = logger
 	l.Config = VLConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE

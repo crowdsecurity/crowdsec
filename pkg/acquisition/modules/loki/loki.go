@@ -114,7 +114,7 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (l *LokiSource) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = LokiConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -141,7 +141,7 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry, metricsLevel me
 	return nil
 }
 
-func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (l *LokiSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	l.logger = logger
 	l.Config = LokiConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE

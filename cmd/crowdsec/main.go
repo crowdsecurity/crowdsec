@@ -109,19 +109,19 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
+func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
 	var err error
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
 			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFiles(cConfig.Crowdsec, cConfig.Prometheus)
+		dataSources, err = acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
 		if err != nil {
 			return nil, err
 		}

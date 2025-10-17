@@ -118,7 +118,7 @@ const (
 	SQSFormatSNS            = "sns"
 )
 
-func (s *S3Source) newS3Client() (*s3.Client, error) {
+func (s *S3Source) newS3Client(ctx context.Context) (*s3.Client, error) {
 	var loadOpts []func(*config.LoadOptions) error
 	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
 		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
@@ -135,7 +135,7 @@ func (s *S3Source) newS3Client() (*s3.Client, error) {
 		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), loadOpts...)
+	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load aws config: %w", err)
 	}
@@ -150,7 +150,7 @@ func (s *S3Source) newS3Client() (*s3.Client, error) {
 	return s3.NewFromConfig(cfg, clientOpts...), nil
 }
 
-func (s *S3Source) newSQSClient() (*sqs.Client, error) {
+func (s *S3Source) newSQSClient(ctx context.Context) (*sqs.Client, error) {
 	var loadOpts []func(*config.LoadOptions) error
 	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
 		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
@@ -167,7 +167,7 @@ func (s *S3Source) newSQSClient() (*sqs.Client, error) {
 		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), loadOpts...)
+	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load aws config: %w", err)
 	}
@@ -606,7 +606,7 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (s *S3Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -631,7 +631,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel 
 		s.logger.Warning("Polling method is set to list. This is not recommended as it will not scale well. Consider using SQS instead.")
 	}
 
-	client, err := s.newS3Client()
+	client, err := s.newS3Client(ctx)
 	if err != nil {
 		return err
 	}
@@ -639,7 +639,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel 
 	s.s3Client = client
 
 	if s.Config.PollingMethod == PollMethodSQS {
-		sqsClient, err := s.newSQSClient()
+		sqsClient, err := s.newSQSClient(ctx)
 		if err != nil {
 			return err
 		}
@@ -650,7 +650,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel 
 	return nil
 }
 
-func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (s *S3Source) ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "s3://") {
 		return fmt.Errorf("invalid DSN %s for S3 source, must start with s3://", dsn)
 	}
@@ -727,7 +727,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		return fmt.Errorf("invalid DSN %s for S3 source", dsn)
 	}
 
-	client, err := s.newS3Client()
+	client, err := s.newS3Client(ctx)
 	if err != nil {
 		return err
 	}

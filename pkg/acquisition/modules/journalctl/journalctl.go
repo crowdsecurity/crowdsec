@@ -208,7 +208,7 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (j *JournalCtlSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	j.logger = logger
 	j.metricsLevel = metricsLevel
 
@@ -220,7 +220,7 @@ func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry, metri
 	return nil
 }
 
-func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (j *JournalCtlSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	j.logger = logger
 	j.config = JournalCtlConfiguration{}
 	j.config.Mode = configuration.CAT_MODE

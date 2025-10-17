@@ -100,6 +100,8 @@ func TestMain(m *testing.M) {
 
 func TestBadConfiguration(t *testing.T) {
 	cstest.SkipOnWindows(t)
+	
+	ctx := t.Context()
 
 	tests := []struct {
 		config      string
@@ -142,7 +144,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			f := KinesisSource{}
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
@@ -170,7 +172,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -215,7 +217,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -264,7 +266,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}

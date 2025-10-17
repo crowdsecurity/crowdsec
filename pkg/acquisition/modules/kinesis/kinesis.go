@@ -147,7 +147,7 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (k *KinesisSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	k.logger = logger
 	k.metricsLevel = metricsLevel
 
@@ -156,7 +156,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsL
 		return err
 	}
 
-	err = k.newClient(context.TODO())
+	err = k.newClient(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot create kinesis client: %w", err)
 	}

@@ -201,7 +201,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (d *DockerSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	d.logger = logger
 	d.metricsLevel = metricsLevel
 
@@ -229,7 +229,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 		return err
 	}
 
-	info, err := d.Client.Info(context.Background())
+	info, err := d.Client.Info(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get docker info: %w", err)
 	}
@@ -253,7 +253,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
 	parsedURL, err := url.Parse(dsn)
