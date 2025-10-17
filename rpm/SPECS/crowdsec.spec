@@ -50,6 +50,7 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
+install -m 755 -D debian/hubupdate.sh %{buildroot}%{_libdir}/%{name}/
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D debian/crowdsec-hubupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
 install -m 644 -D debian/crowdsec-hubupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer

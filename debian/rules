@@ -52,8 +52,15 @@ override_dh_auto_install:
 	cp config/console.yaml debian/crowdsec/etc/crowdsec/console.yaml
 	cp -a config/patterns debian/crowdsec/etc/crowdsec
 	cp config/detect.yaml debian/crowdsec/var/lib/crowdsec/data/detect.yaml
+	cp debian/hubupdate.sh debian/crowdsec/usr/lib/crowdsec/hubupdate.sh
 
 override_dh_fixperms:
 	dh_fixperms
 	chmod 600 debian/crowdsec/etc/crowdsec/notifications/*
 	chmod 600 debian/crowdsec/etc/crowdsec/config.yaml
+	chmod 755 debian/crowdsec/usr/lib/crowdsec/hubupdate.sh
+
+override_dh_installsystemd:
+	install -D -m 644 debian/crowdsec-hubupdate.service debian/crowdsec/usr/lib/systemd/system/crowdsec-hubupdate.service
+	install -D -m 644 debian/crowdsec-hubupdate.timer debian/crowdsec/usr/lib/systemd/system/crowdsec-hubupdate.timer
+	dh_installsystemd
