@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,7 +19,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
-	"maps"
 )
 
 type VLClient struct {
@@ -294,65 +294,95 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 	}
 }
 
+func (lc *VLClient) doTail(ctx context.Context, uri string, c chan *Log) error {
+	// These control how the timing of requests when the active connection is lost
+	minBackoff := 100 * time.Millisecond
+	maxBackoff := 10 * time.Second
+	backoffInterval := minBackoff
+	vlURL, _ := url.Parse(uri)
+	lastDatapoint := time.Now().Add(-1 * lc.config.Since)
+
+	firstHandled := false
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-lc.t.Dying():
+			return lc.t.Err()
+		default:
+			if firstHandled {
+				lc.Logger.Debugf("sleeping for %s before retry", backoffInterval)
+				time.Sleep(backoffInterval)
+			}
+		}
+		firstHandled = true
+
+		// callback to increase backoff interval on error
+		backoffError := func() {
+			backoffInterval *= 2
+			if backoffInterval > maxBackoff {
+				backoffInterval = maxBackoff
+			}
+		}
+
+		q := vlURL.Query()
+		offset := time.Until(lastDatapoint).Abs()
+		if offset > time.Millisecond {
+			// do not use offset less than a millisecond, as VL does not support it
+			q.Set("start_offset", offset.String())
+		}
+		vlURL.RawQuery = q.Encode()
+
+		resp, err := lc.Get(ctx, vlURL.String())
+		if err != nil {
+			lc.Logger.Warnf("error tailing logs: %s", err)
+			backoffError()
+			continue
+		}
+
+		// Verify the HTTP response code
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			lc.Logger.Warnf("bad HTTP response code for tail request: %d, expected: %d; response: %s;", resp.StatusCode, http.StatusOK, body)
+			backoffError()
+			continue
+		}
+
+		// Read all the responses
+		n, largestTime, err := lc.readResponse(ctx, resp, c)
+		if err != nil {
+			lc.Logger.Warnf("error while reading tail response: %s", err)
+			backoffError()
+		} else if n > 0 {
+			// as long as we get results, reset the backoff interval
+			backoffInterval = minBackoff
+			// update the queryStart time if the latest result was later
+			if largestTime.After(lastDatapoint) {
+				lastDatapoint = largestTime
+			}
+		}
+	}
+}
+
 // Tail live-tailing for logs
 // See: https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 	t := time.Now().Add(-1 * lc.config.Since)
 	u := lc.getURLFor("select/logsql/tail", map[string]string{
-		"limit": strconv.Itoa(lc.config.Limit),
-		"start": t.Format(time.RFC3339Nano),
 		"query": lc.config.Query,
 	})
 
+	c := make(chan *Log)
+
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, t)
+
 	lc.Logger.Infof("Connecting to %s", u)
-
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	for {
-		resp, err = lc.Get(ctx, u)
-		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
-
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil, nil
-			}
-
-			if ok := lc.shouldRetry(); !ok {
-				return nil, fmt.Errorf("error tailing logs: %w", err)
-			}
-
-			continue
-		}
-
-		break
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		lc.Logger.Warnf("bad HTTP response code for tail request: %d", resp.StatusCode)
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if ok := lc.shouldRetry(); !ok {
-			return nil, fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
-		}
-	}
-
-	responseChan := make(chan *Log)
-
 	lc.t.Go(func() error {
-		_, _, err = lc.readResponse(ctx, resp, responseChan)
-		if err != nil {
-			return fmt.Errorf("error while reading tail response: %w", err)
-		}
-
-		return nil
+		return lc.doTail(ctx, u, c)
 	})
 
-	return responseChan, nil
+	return c, nil
 }
 
 // QueryRange queries the logs
