@@ -284,6 +284,10 @@ func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *datab
 }
 
 func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
 	log.Info("Collecting LAPI status")
 
 	out := new(bytes.Buffer)
@@ -302,6 +306,10 @@ func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 }
 
 func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub, db *database.Client) error {
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
 	log.Info("Collecting CAPI status")
 
 	out := new(bytes.Buffer)
@@ -502,7 +510,7 @@ func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile 
 	cli.writeToZip(zw, filename, mtime, fin)
 }
 
-func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
+func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) error {
 	var skipCAPI, skipLAPI, skipAgent bool
 
 	collector := &StringHook{
@@ -603,8 +611,12 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 			log.Warnf("could not collect pprof heap data: %s", err)
 		}
 
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
-			log.Warnf("could not collect pprof cpu data: %s", err)
+		if !fast {
+			log.Info("The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
+
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
+				log.Warnf("could not collect pprof cpu data: %s", err)
+			}
 		}
 
 		cli.dumpProfiles(zipWriter)
@@ -651,7 +663,10 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 }
 
 func (cli *cliSupport) NewDumpCmd() *cobra.Command {
-	var outFile string
+	var (
+		outFile string
+		fast bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "dump",
@@ -677,11 +692,12 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if output != "human" {
 				return fmt.Errorf("output format %s not supported for this command", output)
 			}
-			return cli.dump(cmd.Context(), outFile)
+			return cli.dump(cmd.Context(), outFile, fast)
 		},
 	}
 
 	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+	cmd.Flags().BoolVar(&fast, "fast", false, "Skip slow operations, like cpu profiling")
 
 	return cmd
 }
