@@ -84,6 +84,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_bindir}/cscli
+%{_libdir}/%{name}/hubupdate.sh
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
