@@ -10,7 +10,7 @@ trigger:
 pr: none
 
 pool:
-  vmImage: windows-latest
+  vmImage: windows-2022
 
 stages:
   - stage: Build
