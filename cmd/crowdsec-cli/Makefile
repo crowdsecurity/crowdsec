@@ -13,7 +13,7 @@ BINARY_NAME = cscli$(EXT)
 all: clean build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
+	$(GOBUILD) -x $(LD_OPTS) -o $(BINARY_NAME)
 
 clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)

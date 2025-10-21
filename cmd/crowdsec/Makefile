@@ -15,7 +15,7 @@ CROWDSEC_BIN = crowdsec$(EXT)
 all: clean test build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN)
+	$(GOBUILD) -x $(LD_OPTS) -o $(CROWDSEC_BIN)
 
 test:
 	$(GOTEST) $(LD_OPTS) -v ./...
