@@ -21,15 +21,15 @@ func (w *WinEventLogSource) GetUuid() string {
 	return ""
 }
 
-func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
+func (w *WinEventLogSource) UnmarshalConfig(_ []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (w *WinEventLogSource) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 
-func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (w *WinEventLogSource) ConfigureByDSN(_ context.Context, _ string, _ map[string]string, _ *log.Entry, _ string) error {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (w *WinEventLogSource) CanRun() error {
 	return errors.New("windows event log acquisition is only supported on Windows")
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return nil
 }
 

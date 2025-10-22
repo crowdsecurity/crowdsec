@@ -92,7 +92,7 @@ webhook_path: /k8s-audit`,
 
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err = f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 			err = f.StreamingAcquisition(ctx, out, tb)
@@ -255,8 +255,7 @@ webhook_path: /k8s-audit`, port)
 			err := f.UnmarshalConfig([]byte(config))
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
-
+			err = f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))

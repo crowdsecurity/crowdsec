@@ -154,7 +154,7 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (h *HTTPSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	h.logger = logger
 	h.metricsLevel = metricsLevel
 

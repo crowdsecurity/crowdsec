@@ -200,7 +200,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
-func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (w *AppsecSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
