@@ -37,7 +37,7 @@ func (f *MockSource) UnmarshalConfig(cfg []byte) error {
 	return nil
 }
 
-func (f *MockSource) Configure(cfg []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockSource) Configure(_ context.Context, cfg []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
@@ -78,6 +78,8 @@ func appendMockSource() {
 }
 
 func TestDataSourceConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	appendMockSource()
 
 	tests := []struct {
@@ -179,7 +181,7 @@ filename: foo.log
 			common := configuration.DataSourceCommonCfg{}
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
-			ds, err := DataSourceConfigure(common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone)
+			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -213,6 +215,8 @@ filename: foo.log
 func TestLoadAcquisitionFromFiles(t *testing.T) {
 	appendMockSource()
 	t.Setenv("TEST_ENV", "test_value2")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		TestName      string
@@ -288,7 +292,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFiles(&tc.Config, nil)
+			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -318,7 +322,7 @@ type MockCat struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func (f *MockCat) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockCat) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
@@ -353,7 +357,7 @@ type MockTail struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func (f *MockTail) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (f *MockTail) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
 	}
@@ -503,14 +507,14 @@ type MockSourceByDSN struct {
 }
 
 func (*MockSourceByDSN) UnmarshalConfig(_ []byte) error { return nil }
-func (*MockSourceByDSN) Configure(_ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (*MockSourceByDSN) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 func (f *MockSourceByDSN) GetMode() string { return f.Mode }
 func (*MockSourceByDSN) CanRun() error     { return nil }
 func (f *MockSourceByDSN) Dump() any       { return f }
 func (*MockSourceByDSN) GetName() string   { return "mockdsn" }
-func (*MockSourceByDSN) ConfigureByDSN(dsn string, _ map[string]string, _ *log.Entry, _ string) error {
+func (*MockSourceByDSN) ConfigureByDSN(_ context.Context, dsn string, _ map[string]string, _ *log.Entry, _ string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return errors.New("unexpected value")
@@ -521,6 +525,8 @@ func (*MockSourceByDSN) ConfigureByDSN(dsn string, _ map[string]string, _ *log.E
 func (*MockSourceByDSN) GetUuid() string { return "" }
 
 func TestConfigureByDSN(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		dsn            string
 		ExpectedError  string
@@ -548,7 +554,7 @@ func TestConfigureByDSN(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			srcs, err := LoadAcquisitionFromDSN(tc.dsn, map[string]string{"type": "test_label"}, "")
+			srcs, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "")
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			assert.Len(t, srcs, tc.ExpectedResLen)
@@ -559,8 +565,8 @@ func TestConfigureByDSN(t *testing.T) {
 
 // TailModeNoTailer configures itself in "tail" mode but does not implement the Tailer methods.
 type TailModeNoTailer struct {}
-func (*TailModeNoTailer) UnmarshalConfig([]byte) error { return nil }
-func (*TailModeNoTailer) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (*TailModeNoTailer) UnmarshalConfig(_ []byte) error { return nil }
+func (*TailModeNoTailer) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error { return nil }
 func (*TailModeNoTailer) GetMode() string   { return configuration.TAIL_MODE }
 func (*TailModeNoTailer) GetName() string   { return "tail_no_tailer" }
 func (*TailModeNoTailer) GetUuid() string   { return "" }
@@ -582,8 +588,8 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 // CatModeNoTailer configures itself in "cat" mode but does not implement the Fetcher methods.
 type CatModeNoFetcher struct {}
-func (*CatModeNoFetcher) UnmarshalConfig([]byte) error { return nil }
-func (*CatModeNoFetcher) Configure([]byte, *log.Entry, metrics.AcquisitionMetricsLevel) error { return nil }
+func (*CatModeNoFetcher) UnmarshalConfig(_ []byte) error { return nil }
+func (*CatModeNoFetcher) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error { return nil }
 func (*CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
 func (*CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
 func (*CatModeNoFetcher) GetUuid() string { return "" }

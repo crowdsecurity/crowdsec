@@ -97,7 +97,7 @@ type cliSupport struct {
 }
 
 func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
-	log.Info("Collecting prometheus metrics")
+	fmt.Fprintln(os.Stdout, "Collecting prometheus metrics")
 
 	cfg := cli.cfg()
 
@@ -141,13 +141,13 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw 
 }
 
 func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
-	log.Info("Collecting version")
+	fmt.Fprintln(os.Stdout, "Collecting version")
 
 	cli.writeToZip(zw, SUPPORT_VERSION_PATH, time.Now(), strings.NewReader(cwversion.FullString()))
 }
 
 func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
-	log.Info("Collecting feature flags")
+	fmt.Fprintln(os.Stdout, "Collecting feature flags")
 
 	w := new(bytes.Buffer)
 	for _, k := range fflag.Crowdsec.GetEnabledFeatures() {
@@ -158,7 +158,7 @@ func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
 }
 
 func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
-	log.Info("Collecting system info (gopsutil + runtime)")
+	fmt.Fprintln(os.Stdout, "Collecting system info (gopsutil + runtime)")
 
 	type snapshot struct {
 		Timestamp  time.Time `yaml:"timestamp"`
@@ -221,7 +221,7 @@ func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
-	log.Infof("Collecting hub")
+	fmt.Fprintln(os.Stdout, "Collecting hub")
 
 	if hub == nil {
 		return errors.New("no hub connection")
@@ -242,7 +242,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 }
 
 func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting bouncers")
+	fmt.Fprintln(os.Stdout, "Collecting bouncers")
 
 	if db == nil {
 		return errors.New("no database connection")
@@ -263,7 +263,7 @@ func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *dat
 }
 
 func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting agents")
+	fmt.Fprintln(os.Stdout, "Collecting agents")
 
 	if db == nil {
 		return errors.New("no database connection")
@@ -284,7 +284,11 @@ func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *datab
 }
 
 func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
-	log.Info("Collecting LAPI status")
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
+	fmt.Fprintln(os.Stdout, "Collecting LAPI status")
 
 	out := new(bytes.Buffer)
 	cl := clilapi.New(cli.cfg)
@@ -302,7 +306,11 @@ func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 }
 
 func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub, db *database.Client) error {
-	log.Info("Collecting CAPI status")
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
+	fmt.Fprintln(os.Stdout, "Collecting CAPI status")
 
 	out := new(bytes.Buffer)
 	cc := clicapi.New(cli.cfg)
@@ -320,7 +328,7 @@ func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 }
 
 func (cli *cliSupport) dumpPAPIStatus(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting PAPI status")
+	fmt.Fprintln(os.Stdout, "Collecting PAPI status")
 
 	out := new(bytes.Buffer)
 	cp := clipapi.New(cli.cfg)
@@ -338,7 +346,7 @@ func (cli *cliSupport) dumpPAPIStatus(ctx context.Context, zw *zip.Writer, db *d
 }
 
 func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
-	log.Info("Collecting crowdsec config")
+	fmt.Fprintln(os.Stdout, "Collecting crowdsec config")
 
 	cfg := cli.cfg()
 
@@ -357,7 +365,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheusCfg csconfig.PrometheusCfg, endpoint string) error {
-	log.Infof("Collecting pprof/%s data", endpoint)
+	fmt.Fprintf(os.Stdout, "Collecting pprof/%s data\n", endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
@@ -394,14 +402,14 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 }
 
 func (cli *cliSupport) dumpProfiles(zw *zip.Writer) {
-	log.Info("Collecting crowdsec profile")
+	fmt.Fprintln(os.Stdout, "Collecting crowdsec profile")
 
 	cfg := cli.cfg()
 	cli.writeFileToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, cfg.API.Server.ProfilesPath)
 }
 
 func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) {
-	log.Info("Collecting acquisition config")
+	fmt.Fprintln(os.Stdout, "Collecting acquisition config")
 
 	cfg := cli.cfg()
 
@@ -412,7 +420,7 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) {
 }
 
 func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
-	log.Info("Collecting CrowdSec logs")
+	fmt.Fprintln(os.Stdout, "Collecting CrowdSec logs")
 
 	cfg := cli.cfg()
 
@@ -431,7 +439,7 @@ func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
-	log.Info("Collecting crash dumps")
+	fmt.Fprintln(os.Stdout, "Collecting crash dumps")
 
 	traceFiles, err := trace.List()
 	if err != nil {
@@ -502,7 +510,7 @@ func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile 
 	cli.writeToZip(zw, filename, mtime, fin)
 }
 
-func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
+func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) error {
 	var skipCAPI, skipLAPI, skipAgent bool
 
 	collector := &StringHook{
@@ -603,8 +611,12 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 			log.Warnf("could not collect pprof heap data: %s", err)
 		}
 
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
-			log.Warnf("could not collect pprof cpu data: %s", err)
+		if !fast {
+			fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
+
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
+				log.Warnf("could not collect pprof cpu data: %s", err)
+			}
 		}
 
 		cli.dumpProfiles(zipWriter)
@@ -645,13 +657,16 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		return fmt.Errorf("could not write zip file to %s: %w", outFile, err)
 	}
 
-	log.Infof("Written zip file to %s", outFile)
+	fmt.Fprintf(os.Stdout, "Written zip file to %s\n", outFile)
 
 	return nil
 }
 
 func (cli *cliSupport) NewDumpCmd() *cobra.Command {
-	var outFile string
+	var (
+		outFile string
+		fast bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "dump",
@@ -677,11 +692,12 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if output != "human" {
 				return fmt.Errorf("output format %s not supported for this command", output)
 			}
-			return cli.dump(cmd.Context(), outFile)
+			return cli.dump(cmd.Context(), outFile, fast)
 		},
 	}
 
 	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+	cmd.Flags().BoolVar(&fast, "fast", false, "Skip slow operations, like cpu profiling")
 
 	return cmd
 }

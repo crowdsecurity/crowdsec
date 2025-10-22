@@ -142,7 +142,7 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (cw *CloudwatchSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := cw.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
@@ -187,7 +187,7 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry, metr
 		os.Setenv("AWS_REGION", cw.Config.AwsRegion)
 	}
 
-	if err := cw.newClient(context.TODO()); err != nil {
+	if err := cw.newClient(ctx); err != nil {
 		return err
 	}
 
@@ -537,7 +537,7 @@ func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTai
 	}
 }
 
-func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (cw *CloudwatchSource) ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	cw.logger = logger
 
 	dsn = strings.TrimPrefix(dsn, cw.GetName()+"://")
@@ -623,7 +623,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	cw.logger.Tracef("stream=%s", *cw.Config.StreamName)
 	cw.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
 
-	if err := cw.newClient(context.TODO()); err != nil {
+	if err := cw.newClient(ctx); err != nil {
 		return err
 	}
 

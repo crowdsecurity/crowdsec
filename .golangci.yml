@@ -465,14 +465,6 @@ linters:
         path: pkg/acquisition/modules/s3/s3.go
         text: found a struct that contains a context.Context field
 
-      - linters:
-          - contextcheck
-        text: Function `Configure->newS3Client` should pass the context parameter
-
-      - linters:
-          - contextcheck
-        text: Function `ConfigureByDSN->newS3Client` should pass the context parameter
-
       # migrate over time
 
       - linters:
