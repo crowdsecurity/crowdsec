@@ -191,7 +191,6 @@ fi
 echo "You can always run the configuration again interactively by using 'cscli setup'"
 
 %systemd_post %{name}.service
-%systemd_post %{name}-hubupdate.timer
 
 if [ $1 == 1 ]; then
     LAPI=true
@@ -216,6 +215,9 @@ if [ $1 == 1 ]; then
         echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
     fi
 fi
+
+%systemd_post %{name}-hubupdate.timer
+systemctl enable --now %{name}-hubupdate.timer
 
 %preun
 
