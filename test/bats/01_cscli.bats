@@ -232,7 +232,13 @@ teardown() {
 }
 
 @test "cscli support dump (smoke test)" {
-    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
+    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip --fast
+    assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
+}
+
+@test "cscli support dump (should work with no hub index)" {
+    rune -0 rm "$(config_get '.config_paths.hub_dir')/.index.json"
+    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip --fast
     assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
 }
 
