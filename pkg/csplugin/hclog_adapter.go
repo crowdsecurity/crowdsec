@@ -228,6 +228,11 @@ func safeString(str fmt.Stringer) (s string) {
 		}
 	}()
 
-	s = str.String()
+	if str == nil {
+		// typed nil, happy nilaway
+		s = "NULL"
+	} else {
+		s = str.String()
+	}
 	return //nolint:revive // bare return for the defer
 }

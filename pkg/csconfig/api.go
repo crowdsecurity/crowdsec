@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -67,7 +68,7 @@ type CTICfg struct {
 	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
 	CacheSize    *int           `yaml:"cache_size,omitempty"`
 	Enabled      *bool          `yaml:"enabled,omitempty"`
-	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
+	LogLevel     log.Level      `yaml:"log_level,omitempty"`
 }
 
 func (a *CTICfg) Load() error {
@@ -232,7 +233,7 @@ type LocalApiServerCfg struct {
 	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
 	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
 	Profiles                      []*ProfileCfg            `yaml:"-"`
-	LogLevel                      *log.Level               `yaml:"log_level"`
+	LogLevel                      log.Level                `yaml:"log_level"`
 	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
 	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
 	CompressLogs                  *bool                    `yaml:"-"`
@@ -241,7 +242,7 @@ type LocalApiServerCfg struct {
 	LogMaxFiles                   int                      `yaml:"-"`
 	LogFormat                     string                   `yaml:"-"`
 	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
-	PapiLogLevel                  *log.Level               `yaml:"papi_log_level"`
+	PapiLogLevel                  log.Level                `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
@@ -337,18 +338,12 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	// inherit log level from common, then api->server
-	var logLevel log.Level
-	if c.API.Server.LogLevel != nil {
-		logLevel = *c.API.Server.LogLevel
-	} else if c.Common.LogLevel != nil {
-		logLevel = *c.Common.LogLevel
-	} else {
-		logLevel = log.InfoLevel
-	}
+	// inherit log level from api->server, common, and default to info
+	// 0 = panicLevel, not useful / not allowed
+	logLevel := cmp.Or(c.API.Server.LogLevel, c.Common.LogLevel, log.InfoLevel)
 
-	if c.API.Server.PapiLogLevel == nil {
-		c.API.Server.PapiLogLevel = &logLevel
+	if c.API.Server.PapiLogLevel == log.PanicLevel {
+		c.API.Server.PapiLogLevel = logLevel
 	}
 
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {

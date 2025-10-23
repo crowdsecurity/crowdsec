@@ -114,7 +114,7 @@ func smokeHandler(req *http.Request) *http.Response {
 func TestNilClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
-	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {
+	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, 0); !errors.Is(err, cticlient.ErrDisabled) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 
@@ -126,7 +126,7 @@ func TestNilClient(t *testing.T) {
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
-	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
+	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, 0); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
@@ -153,7 +153,7 @@ func TestInvalidAuth(t *testing.T) {
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
-	err := InitCrowdsecCTI(nil, nil, nil, nil)
+	err := InitCrowdsecCTI(nil, nil, nil, 0)
 	require.ErrorIs(t, err, cticlient.ErrDisabled)
 	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
@@ -170,7 +170,7 @@ func TestCache(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 
 	cacheDuration := 1 * time.Second
-	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
+	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, 0); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	// Replace the client created by InitCrowdsecCTI with one that uses a custom transport
