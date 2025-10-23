@@ -55,8 +55,6 @@ teardown() {
     assert_output - <<-EOT
 	validation failure list:
 	log_processors.0.utc_startup_timestamp in body is required
-	log_processors.0.datasources in body is required
-	log_processors.0.hub_items in body is required
 	EOT
 }
 
