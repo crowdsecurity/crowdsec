@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/grokky"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -413,7 +412,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	that will be used only for processing this node ;) */
 	if n.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, ptr.Of(log.DebugLevel)); err != nil {
+		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 

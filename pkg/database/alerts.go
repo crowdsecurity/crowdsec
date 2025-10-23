@@ -60,6 +60,11 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			return "", fmt.Errorf("unable to create alert: %w", err)
 		}
 
+		// happy nilaway
+		if len(alertIDs) == 0 {
+			return "", fmt.Errorf("unable to create alert: no IDs returned for alert %s", alertItem.UUID)
+		}
+
 		return alertIDs[0], nil
 	}
 

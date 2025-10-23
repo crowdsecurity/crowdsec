@@ -196,7 +196,7 @@ func (l *VLSource) ConfigureByDSN(_ context.Context, dsn string, labels map[stri
 		if err != nil {
 			return fmt.Errorf("invalid log_level in dsn: %w", err)
 		}
-		l.Config.LogLevel = &level
+		l.Config.LogLevel = level
 		l.logger.Logger.SetLevel(level)
 	}
 

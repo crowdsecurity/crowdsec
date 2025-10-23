@@ -88,7 +88,7 @@ func (s *Stash) Compile(logger *log.Entry) (*RuntimeStash, error) {
 		TTL:      rs.TTLVal,
 		Name:     s.Name,
 		Strategy: s.Strategy,
-		LogLevel: &logLvl,
+		LogLevel: logLvl,
 	}); err != nil {
 		return nil, fmt.Errorf("while initializing cache: %w", err)
 	}
