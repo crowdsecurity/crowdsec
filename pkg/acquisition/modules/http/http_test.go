@@ -34,6 +34,8 @@ const (
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -179,7 +181,7 @@ custom_status_code: 999`,
 
 	for _, test := range tests {
 		h := HTTPSource{}
-		err := h.Configure([]byte(test.config), subLogger, 0)
+		err := h.Configure(ctx, []byte(test.config), subLogger, 0)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -216,7 +218,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
-	err := h.Configure(config, subLogger, metricLevel)
+	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}

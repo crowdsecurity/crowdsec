@@ -17,7 +17,7 @@ func NewCLIDashboard(cfg configGetter) *cliDashboard {
 
 var ErrDashboardDeprecated = errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
 
-func (cli *cliDashboard) NewCommand() *cobra.Command {
+func (*cliDashboard) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "dashboard [command]",
 		Hidden:            true,

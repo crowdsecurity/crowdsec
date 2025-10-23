@@ -130,7 +130,6 @@ linters:
         - (github.com/bluele/gcache.Cache).Set
         - (github.com/gin-gonic/gin.ResponseWriter).WriteString
         - (*github.com/segmentio/kafka-go.Reader).SetOffsetAt
-        - (*gopkg.in/tomb.v2.Tomb).Wait
 
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterArgs
         - (*github.com/crowdsecurity/crowdsec/pkg/appsec.ReqDumpFilter).FilterBody
@@ -191,15 +190,18 @@ linters:
 
     nestif:
       # lower this after refactoring
-      min-complexity: 16
+      min-complexity: 15
 
     nlreturn:
       block-size: 6
 
     nolintlint:
-      require-explanation: false  # don't require an explanation for nolint directives
-      require-specific: true     # don't require nolint directives to be specific about which linter is being skipped
-      allow-unused: false         # report any unused nolint directives
+      # don't require an explanation for nolint directives
+      require-explanation: false
+      # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true
+      # report any unused nolint directives
+      allow-unused: false
 
     revive:
       severity: error
@@ -254,11 +256,11 @@ linters:
         - name: line-length-limit
           arguments:
             # lower this after refactoring
-            - 221
+            - 216
         - name: max-control-nesting
           arguments:
             # lower this after refactoring
-            - 7
+            - 5
         - name: max-public-structs
           disabled: true
         - name: nested-structs
@@ -305,11 +307,11 @@ linters:
     staticcheck:
       checks:
         - all
-        - -ST1003
-        - -ST1005
-        - -ST1012
-        - -QF1003
-        - -QF1012
+        - -ST1003  # should not use underscores in Go names
+        - -ST1005  # error strings should not be capitalized
+        - -ST1012  # error var ... should have name of the form ...
+        - -QF1003  # could use tagged switch on ...
+        - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
 
   exclusions:
     presets:
@@ -443,12 +445,6 @@ linters:
         path: pkg/types/utils.go
         text: 'argument-limit: .*'
 
-      # need some cleanup first: to create db in memory and share the client, not the config
-      - linters:
-          - usetesting
-        path: (.+)_test.go
-        text: context.Background.*
-
       - linters:
           - usetesting
         path: pkg/apiserver/(.+)_test.go
@@ -473,14 +469,15 @@ linters:
 
       - linters:
           - noctx
+        path: pkg/parser/enrich_dns.go
         text: "net.LookupAddr must not be called"
 
       - linters:
           - noctx
+        path: pkg/exprhelpers/helpers.go
         text: "net.LookupHost must not be called"
 
     paths:
-      - pkg/metabase
       - third_party$
       - builtin$
       - examples$

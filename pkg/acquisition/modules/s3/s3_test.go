@@ -26,6 +26,8 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name        string
 		config      string
@@ -80,13 +82,15 @@ sqs_name: foobar
 		t.Run(test.name, func(t *testing.T) {
 			f := S3Source{}
 
-			err := f.Configure([]byte(test.config), nil, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), nil, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
 
 func TestGoodConfiguration(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		name   string
 		config string
@@ -121,7 +125,7 @@ polling_method: list
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
 
-			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 		})
 	}
@@ -268,9 +272,11 @@ func TestDSNAcquis(t *testing.T) {
 			linesRead := 0
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			f.s3Client = mockS3Client{}
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger, "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"foo": "bar"}, logger, "")
 			require.NoError(t, err)
+
+			f.s3Client = mockS3Client{}
+
 			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
 			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
 
@@ -338,12 +344,10 @@ prefix: foo/
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
 
-			f.s3Client = mockS3Client{}
+			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
 
-			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			f.s3Client = mockS3Client{}
 
 			if f.Config.PollingMethod != PollMethodList {
 				t.Fatalf("expected list polling, got %s", f.Config.PollingMethod)
@@ -423,9 +427,10 @@ sqs_name: test
 			linesRead := 0
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			f.s3Client = mockS3Client{}
-			err := f.Configure([]byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
+
+			f.s3Client = mockS3Client{}
 
 			if f.Config.PollingMethod != PollMethodSQS {
 				t.Fatalf("expected sqs polling, got %s", f.Config.PollingMethod)

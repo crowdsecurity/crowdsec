@@ -39,48 +39,50 @@ func overflowEventSources(evt types.Event, leaky *Leaky) (map[string]models.Sour
 		}
 
 		/*The bucket requires a decision on scope Range */
-		if leaky.scopeType.Scope == types.Range {
-			/*the original bucket was target IPs, check that we do have range*/
-			if *v.Scope == types.Ip {
-				src := models.Source{}
-				src.AsName = v.AsName
-				src.AsNumber = v.AsNumber
-				src.Cn = v.Cn
-				src.Latitude = v.Latitude
-				src.Longitude = v.Longitude
-				src.Range = v.Range
-				src.Value = new(string)
-				src.Scope = new(string)
-				*src.Scope = leaky.scopeType.Scope
-				*src.Value = ""
-
-				if v.Range != "" {
-					*src.Value = v.Range
-				}
-
-				if leaky.scopeType.RunTimeFilter != nil {
-					retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
-					if err != nil {
-						return srcs, fmt.Errorf("while running scope filter: %w", err)
-					}
-
-					value, ok := retValue.(string)
-					if !ok {
-						value = ""
-					}
-
-					src.Value = &value
-				}
-
-				if *src.Value != "" {
-					srcs[*src.Value] = src
-				} else {
-					log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
-				}
-			} else {
+		if leaky.scopeType.Scope != types.Range {
 				log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
 					leaky.Name, *v.Scope, *v.Value)
+			continue
+		}
+
+		/*the original bucket was target IPs, check that we do have range*/
+		if *v.Scope == types.Ip {
+			src := models.Source{}
+			src.AsName = v.AsName
+			src.AsNumber = v.AsNumber
+			src.Cn = v.Cn
+			src.Latitude = v.Latitude
+			src.Longitude = v.Longitude
+			src.Range = v.Range
+			src.Value = new(string)
+			src.Scope = new(string)
+			*src.Scope = leaky.scopeType.Scope
+			*src.Value = ""
+
+			if v.Range != "" {
+				*src.Value = v.Range
 			}
+
+			if leaky.scopeType.RunTimeFilter != nil {
+				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+				if err != nil {
+					return srcs, fmt.Errorf("while running scope filter: %w", err)
+				}
+
+				value, ok := retValue.(string)
+				if !ok {
+					value = ""
+				}
+
+				src.Value = &value
+			}
+
+			if *src.Value == "" {
+				log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
+				continue
+			}
+
+			srcs[*src.Value] = src
 		}
 	}
 

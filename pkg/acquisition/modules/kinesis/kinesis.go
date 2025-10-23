@@ -147,7 +147,7 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (k *KinesisSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	k.logger = logger
 	k.metricsLevel = metricsLevel
 
@@ -156,7 +156,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry, metricsL
 		return err
 	}
 
-	err = k.newClient(context.TODO())
+	err = k.newClient(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot create kinesis client: %w", err)
 	}
@@ -484,7 +484,6 @@ func (k *KinesisSource) ReadFromShard(ctx context.Context, out chan types.Event,
 		select {
 		case <-ticker.C:
 			records, err := k.kClient.GetRecords(ctx, &kinesis.GetRecordsInput{ShardIterator: it})
-			it = records.NextShardIterator
 
 			var throughputErr *kinTypes.ProvisionedThroughputExceededException
 			if errors.As(err, &throughputErr) {
@@ -504,9 +503,10 @@ func (k *KinesisSource) ReadFromShard(ctx context.Context, out chan types.Event,
 				return fmt.Errorf("cannot get records: %w", err)
 			}
 
+			it = records.NextShardIterator
+
 			k.ParseAndPushRecords(records.Records, out, logger, shardID)
 
-			it = records.NextShardIterator
 			if it == nil {
 				logger.Warnf("Shard has been closed")
 				return nil

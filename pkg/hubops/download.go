@@ -203,7 +203,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *DownloadCommand) OperationType() string {
+func (*DownloadCommand) OperationType() string {
 	return "download"
 }
 

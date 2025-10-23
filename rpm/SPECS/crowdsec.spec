@@ -50,6 +50,7 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
+install -m 755 -D debian/hubupdate.sh %{buildroot}%{_libdir}/%{name}/
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D debian/crowdsec-hubupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
 install -m 644 -D debian/crowdsec-hubupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer
@@ -83,6 +84,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_bindir}/cscli
+%{_libdir}/%{name}/hubupdate.sh
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
@@ -189,7 +191,6 @@ fi
 echo "You can always run the configuration again interactively by using 'cscli setup'"
 
 %systemd_post %{name}.service
-%systemd_post %{name}-hubupdate.timer
 
 if [ $1 == 1 ]; then
     LAPI=true
@@ -214,6 +215,9 @@ if [ $1 == 1 ]; then
         echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
     fi
 fi
+
+%systemd_post %{name}-hubupdate.timer
+systemctl enable --now %{name}-hubupdate.timer
 
 %preun
 
