@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# run this before October 13th, 2525.
+# run this before June 24th, 2525.
 # https://www.youtube.com/watch?v=LE1drY3A418
 
 openssl req -x509 -newkey rsa:2048 -nodes \
