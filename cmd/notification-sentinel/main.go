@@ -57,24 +57,24 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 }
 
 func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
-	cfg := s.PluginConfigByName[notification.Name]
+	cfg := s.PluginConfigByName[notification.GetName()]
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger.Info("received notification for sentinel config", "name", notification.Name)
+	logger.Info("received notification for sentinel config", "name", notification.GetName())
 
-	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", s.PluginConfigByName[notification.Name].CustomerID)
-	body := strings.NewReader(notification.Text)
+	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", s.PluginConfigByName[notification.GetName()].CustomerID)
+	body := strings.NewReader(notification.GetText())
 
 	//Cannot use time.RFC1123 as azure wants GMT, not UTC
 	now := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 
-	authorization, err := s.getAuthorizationHeader(now, len(notification.Text), notification.Name)
+	authorization, err := s.getAuthorizationHeader(now, len(notification.GetText()), notification.GetName())
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -86,7 +86,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Log-Type", s.PluginConfigByName[notification.Name].LogType)
+	req.Header.Set("Log-Type", s.PluginConfigByName[notification.GetName()].LogType)
 	req.Header.Set("Authorization", authorization)
 	req.Header.Set("X-Ms-Date", now)
 
@@ -108,7 +108,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 
 func (s *SentinelPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d
 	return &protobufs.Empty{}, err
 }

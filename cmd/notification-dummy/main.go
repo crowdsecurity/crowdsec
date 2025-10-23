@@ -32,18 +32,18 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
 
-	cfg := s.PluginConfigByName[notification.Name]
+	cfg := s.PluginConfigByName[notification.GetName()]
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("received signal for %s config", notification.Name))
-	logger.Debug(notification.Text)
+	logger.Info(fmt.Sprintf("received signal for %s config", notification.GetName()))
+	logger.Debug(notification.GetText())
 
 	if cfg.OutputFile != nil && *cfg.OutputFile != "" {
 		f, err := os.OpenFile(*cfg.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
@@ -51,7 +51,7 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 			logger.Error(fmt.Sprintf("Cannot open notification file: %s", err))
 		}
 
-		if _, err := f.WriteString(notification.Text + "\n"); err != nil {
+		if _, err := f.WriteString(notification.GetText() + "\n"); err != nil {
 			f.Close()
 			logger.Error(fmt.Sprintf("Cannot write notification to file: %s", err))
 		}
@@ -62,14 +62,14 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		}
 	}
 
-	fmt.Println(notification.Text)
+	fmt.Println(notification.GetText())
 
 	return &protobufs.Empty{}, nil
 }
 
 func (s *DummyPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d
 
 	return &protobufs.Empty{}, err

@@ -39,7 +39,6 @@ linters:
     - gosec                 # (gas): Inspects source code for security problems
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
-    - protogetter           # Reports direct reads from proto message fields when getters should be used
     - tagalign              # check that struct tags are well aligned
     - thelper               # thelper detects tests helpers which is not start with t.Helper() method.
     - wrapcheck             # Checks that errors returned from external packages are wrapped

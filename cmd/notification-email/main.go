@@ -71,7 +71,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		HeloHost:       "localhost",
 	}
 
-	if err := yaml.Unmarshal(config.Config, &d); err != nil {
+	if err := yaml.Unmarshal(config.GetConfig(), &d); err != nil {
 		return nil, err
 	}
 
@@ -94,11 +94,11 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 }
 
 func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	if _, ok := n.ConfigByName[notification.GetName()]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
 
-	cfg := n.ConfigByName[notification.Name]
+	cfg := n.ConfigByName[notification.GetName()]
 
 	logger := baseLogger.Named(cfg.Name)
 
@@ -150,7 +150,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	email.SetFrom(fmt.Sprintf("%s <%s>", cfg.SenderName, cfg.SenderEmail)).
 		AddTo(cfg.ReceiverEmails...).
 		SetSubject(cfg.EmailSubject)
-	email.SetBody(mail.TextHTML, notification.Text)
+	email.SetBody(mail.TextHTML, notification.GetText())
 
 	err = email.Send(smtpClient)
 	if err != nil {

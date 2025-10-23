@@ -204,17 +204,17 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 }
 
 func (s *FilePlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
-	cfg := s.PluginConfigByName[notification.Name]
+	cfg := s.PluginConfigByName[notification.GetName()]
 
-	return &protobufs.Empty{}, WriteToFileWithCtx(ctx, cfg, notification.Text)
+	return &protobufs.Empty{}, WriteToFileWithCtx(ctx, cfg, notification.GetText())
 }
 
 func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	if err != nil {
 		logger.Error("Failed to parse config", "error", err)
 		return &protobufs.Empty{}, err
