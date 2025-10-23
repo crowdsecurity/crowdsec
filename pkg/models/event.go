@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -53,11 +54,15 @@ func (m *Event) validateMeta(formats strfmt.Registry) error {
 	}
 
 	if err := m.Meta.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("meta")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("meta")
 		}
+
 		return err
 	}
 
@@ -90,11 +95,15 @@ func (m *Event) ContextValidate(ctx context.Context, formats strfmt.Registry) er
 func (m *Event) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.Meta.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("meta")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("meta")
 		}
+
 		return err
 	}
 
