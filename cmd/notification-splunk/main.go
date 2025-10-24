@@ -94,7 +94,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	return &protobufs.Empty{}, nil
 }
 
-func (s *Splunk) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *Splunk) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d

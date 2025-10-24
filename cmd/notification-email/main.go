@@ -60,7 +60,7 @@ type EmailPlugin struct {
 	ConfigByName map[string]PluginConfig
 }
 
-func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (n *EmailPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{
 		SMTPPort:       25,
 		SenderName:     "Crowdsec",
@@ -93,7 +93,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	return &protobufs.Empty{}, nil
 }
 
-func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
+func (n *EmailPlugin) Notify(_ context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	if _, ok := n.ConfigByName[notification.GetName()]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}

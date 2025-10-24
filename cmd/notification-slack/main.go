@@ -63,7 +63,7 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 	return &protobufs.Empty{}, err
 }
 
-func (n *Notify) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (n *Notify) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 
 	if err := yaml.Unmarshal(config.GetConfig(), &d); err != nil {

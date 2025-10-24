@@ -31,7 +31,7 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
+func (s *DummyPlugin) Notify(_ context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
@@ -62,12 +62,12 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		}
 	}
 
-	fmt.Println(notification.GetText())
+	fmt.Fprintln(os.Stdout, notification.GetText())
 
 	return &protobufs.Empty{}, nil
 }
 
-func (s *DummyPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *DummyPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d
