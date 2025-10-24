@@ -134,7 +134,30 @@ func (r *ReqDumpFilter) FilterBody(out *ParsedRequest) error {
 	if r.BodyDrop {
 		return nil
 	}
-	out.Body = r.req.Body
+	// If already buffered, reuse it
+	if len(r.req.Body) > 0 {
+		out.Body = r.req.Body
+		return nil
+	}
+
+	// Lazily read from the original HTTP request body if available
+	if r.req.HTTPRequest != nil && r.req.HTTPRequest.Body != nil {
+		b, err := io.ReadAll(r.req.HTTPRequest.Body)
+		// Always close after attempt
+		_ = r.req.HTTPRequest.Body.Close()
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return fmt.Errorf("reading request body for dump: %w", err)
+		}
+
+		// Cache for future use and reset reader for subsequent consumers
+		r.req.Body = b
+		r.req.HTTPRequest.Body = io.NopCloser(bytes.NewReader(r.req.Body))
+		out.Body = r.req.Body
+		return nil
+	}
+
+	// No body available
+	out.Body = nil
 	return nil
 }
 
@@ -286,19 +309,11 @@ func (r *ReqDumpFilter) ToJSON() error {
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
+// If readBody is false, the body will not be read into memory and ParsedRequest.Body will be nil.
 func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
-	contentLength := max(r.ContentLength, 0)
-	body := make([]byte, contentLength)
-	if r.Body != nil {
-		_, err = io.ReadFull(r.Body, body)
-		if err != nil {
-			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
-		}
-		// reset the original body back as it's been read, i'm not sure its needed?
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
-
-	}
+	var body []byte
+	// Body is not read here; it will be streamed by the runner if needed.
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
@@ -353,7 +368,8 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 	delete(r.Header, HTTPVersionHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
-	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
+	// Keep the original body reader so the runner can stream it when needed.
+	originalHTTPRequest.Body = r.Body
 	originalHTTPRequest.RemoteAddr = clientIP
 	originalHTTPRequest.RequestURI = clientURI
 	originalHTTPRequest.Method = clientMethod
