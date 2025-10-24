@@ -68,7 +68,7 @@ func (cli *cliLapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
-	fmt.Fprintf(out, "You can successfully interact with Local API (LAPI)\n")
+	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
 
 	return nil
 }

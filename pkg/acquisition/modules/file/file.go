@@ -261,7 +261,7 @@ func (f *FileSource) GetMode() string {
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (f *FileSource) SupportedModes() []string {
+func (*FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
@@ -291,19 +291,19 @@ func (f *FileSource) OneShotAcquisition(_ context.Context, out chan types.Event,
 	return nil
 }
 
-func (f *FileSource) GetMetrics() []prometheus.Collector {
+func (*FileSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
+func (*FileSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetName() string {
+func (*FileSource) GetName() string {
 	return "file"
 }
 
-func (f *FileSource) CanRun() error {
+func (*FileSource) CanRun() error {
 	return nil
 }
 

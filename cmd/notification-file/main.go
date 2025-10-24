@@ -34,6 +34,7 @@ func (w *FileWriteCtx) Write(p []byte) (n int, err error) {
 	if err := w.Ctx.Err(); err != nil {
 		return 0, err
 	}
+
 	return w.Writer.Write(p)
 }
 
@@ -89,10 +90,12 @@ func (r *LogRotate) rotateLogs(cfg PluginConfig) error {
 func (r *LogRotate) rotateLogFile(logPath string, maxBackups int) error {
 	// Rename the current log file
 	backupPath := logPath + "." + time.Now().Format("20060102-150405")
+
 	err := os.Rename(logPath, backupPath)
 	if err != nil {
 		return err
 	}
+
 	glob := logPath + ".*"
 	if r.Compress {
 		glob = logPath + ".*.gz"
@@ -169,24 +172,30 @@ func compressFile(src string) error {
 func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error {
 	FileWriteMutex.Lock()
 	defer FileWriteMutex.Unlock()
+
 	originalFileInfo, err := FileWriter.Stat()
 	if err != nil {
 		logger.Error("Failed to get file info", "error", err)
 	}
+
 	currentFileInfo, _ := os.Stat(cfg.LogPath)
 	if !os.SameFile(originalFileInfo, currentFileInfo) {
 		// The file has been rotated outside our control
 		logger.Info("Log file has been rotated or missing attempting to reopen it")
 		FileWriter.Close()
+
 		FileWriter, err = os.OpenFile(cfg.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			return err
 		}
+
 		FileInfo, err := FileWriter.Stat()
 		if err != nil {
 			return err
 		}
+
 		FileSize = FileInfo.Size()
+
 		logger.Info("Log file has been reopened successfully")
 	}
 	n, err := io.WriteString(&FileWriteCtx{Ctx: ctx, Writer: FileWriter}, log)
@@ -204,35 +213,42 @@ func WriteToFileWithCtx(ctx context.Context, cfg PluginConfig, log string) error
 }
 
 func (s *FilePlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
 	}
-	cfg := s.PluginConfigByName[notification.Name]
 
-	return &protobufs.Empty{}, WriteToFileWithCtx(ctx, cfg, notification.Text)
+	cfg := s.PluginConfigByName[notification.GetName()]
+
+	return &protobufs.Empty{}, WriteToFileWithCtx(ctx, cfg, notification.GetText())
 }
 
-func (s *FilePlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *FilePlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	if err != nil {
 		logger.Error("Failed to parse config", "error", err)
 		return &protobufs.Empty{}, err
 	}
+
 	FileWriteMutex = &sync.Mutex{}
+
 	FileWriter, err = os.OpenFile(d.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		logger.Error("Failed to open log file", "error", err)
 		return &protobufs.Empty{}, err
 	}
+
 	FileInfo, err := FileWriter.Stat()
 	if err != nil {
 		logger.Error("Failed to get file info", "error", err)
 		return &protobufs.Empty{}, err
 	}
+
 	FileSize = FileInfo.Size()
 	s.PluginConfigByName[d.Name] = d
 	logger.SetLevel(hclog.LevelFromString(d.LogLevel))
+
 	return &protobufs.Empty{}, err
 }
 

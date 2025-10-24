@@ -39,7 +39,6 @@ linters:
     - gosec                 # (gas): Inspects source code for security problems
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
-    - protogetter           # Reports direct reads from proto message fields when getters should be used
     - tagalign              # check that struct tags are well aligned
     - thelper               # thelper detects tests helpers which is not start with t.Helper() method.
     - wrapcheck             # Checks that errors returned from external packages are wrapped
@@ -168,6 +167,29 @@ linters:
         ifElseChain:
           minThreshold: 4
 
+    unused:
+      # Mark all struct fields that have been written to as used.
+      # Default: true
+      field-writes-are-uses: false
+      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
+      # Default: false
+      post-statements-are-reads: false
+      # Mark all exported identifiers as used.
+      # Default: true
+      # exported-is-used: false
+      # Mark all exported fields as used.
+      # default: true
+      exported-fields-are-used: false
+      # Mark all function parameters as used.
+      # default: true
+      parameters-are-used: true
+      # Mark all local variables as used.
+      # default: true
+      local-variables-are-used: false
+      # Mark all identifiers inside generated files as used.
+      # Default: true
+      generated-is-used: false
+
     gomoddirectives:
       replace-allow-list:
         - golang.org/x/time
@@ -183,7 +205,7 @@ linters:
 
     maintidx:
       # raise this after refactoring
-      under: 18
+      under: 20
 
     misspell:
       locale: US
@@ -220,7 +242,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 39
+            - 37
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -287,15 +309,11 @@ linters:
             - fmt.Printf
             - fmt.Println
           disabled: true
-        - name: unnecessary-format
-          disabled: true
         - name: unnecessary-stmt
           disabled: true
         - name: unsecure-url-scheme
           disabled: true
         - name: unused-parameter
-          disabled: true
-        - name: unused-receiver
           disabled: true
         - name: use-any
           disabled: true
@@ -312,6 +330,11 @@ linters:
         - -ST1012  # error var ... should have name of the form ...
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
+
+    usetesting:
+      os-temp-dir: false
+      context-background: true
+      context-todo: true
 
   exclusions:
     presets:

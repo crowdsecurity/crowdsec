@@ -47,13 +47,13 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 	}
 }
 
-func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (*Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
 		return alert, queue
 	}
 }
 
-func (u *Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+func (*Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {
 		return &msg
 	}
@@ -71,7 +71,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		uniqExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 
 // getElement computes a string from an event and a filter
 func getElement(msg types.Event, cFilter *vm.Program) (string, error) {
-	el, err := expr.Run(cFilter, map[string]interface{}{"evt": &msg})
+	el, err := expr.Run(cFilter, map[string]any{"evt": &msg})
 	if err != nil {
 		return "", err
 	}

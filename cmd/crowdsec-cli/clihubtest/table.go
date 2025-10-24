@@ -58,13 +58,10 @@ func hubTestCoverageTable(out io.Writer, wantColor string, headers []string, cov
 	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 	t.SetAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
-	parserTested := 0
-
 	for _, test := range coverage {
 		status := emoji.RedCircle
 		if test.TestsCount > 0 {
 			status = emoji.GreenCircle
-			parserTested++
 		}
 
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))

@@ -156,7 +156,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
-		fmt.Fprintf(os.Stdout, "\n - Context  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Context  :")
 		sort.Slice(alert.Meta, func(i, j int) bool {
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
@@ -183,7 +183,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	if withDetail {
-		fmt.Fprintf(os.Stdout, "\n - Events  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Events  :")
 
 		for _, event := range alert.Events {
 			alertEventTable(color.Output, cfg.Cscli.Color, event)

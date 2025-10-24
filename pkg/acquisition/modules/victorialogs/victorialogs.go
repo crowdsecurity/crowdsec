@@ -51,11 +51,11 @@ type VLSource struct {
 	logger *log.Entry
 }
 
-func (l *VLSource) GetMetrics() []prometheus.Collector {
+func (*VLSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
-func (l *VLSource) GetAggregMetrics() []prometheus.Collector {
+func (*VLSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
@@ -226,7 +226,7 @@ func (l *VLSource) GetMode() string {
 	return l.Config.Mode
 }
 
-func (l *VLSource) GetName() string {
+func (*VLSource) GetName() string {
 	return "victorialogs"
 }
 
@@ -349,7 +349,7 @@ func (l *VLSource) getResponseChan(ctx context.Context, infinite bool) (chan *vl
 	return respChan, err
 }
 
-func (l *VLSource) CanRun() error {
+func (*VLSource) CanRun() error {
 	return nil
 }
 
@@ -357,11 +357,11 @@ func (l *VLSource) GetUuid() string {
 	return l.Config.UniqueId
 }
 
-func (l *VLSource) Dump() interface{} {
+func (l *VLSource) Dump() any {
 	return l
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (l *VLSource) SupportedModes() []string {
+func (*VLSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
