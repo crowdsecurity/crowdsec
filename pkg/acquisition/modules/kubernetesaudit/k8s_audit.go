@@ -43,11 +43,11 @@ func (ka *KubernetesAuditSource) GetUuid() string {
 	return ka.config.UniqueId
 }
 
-func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
-func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
@@ -118,7 +118,7 @@ func (ka *KubernetesAuditSource) GetMode() string {
 	return ka.config.Mode
 }
 
-func (ka *KubernetesAuditSource) GetName() string {
+func (*KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
@@ -149,11 +149,11 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 	return nil
 }
 
-func (ka *KubernetesAuditSource) CanRun() error {
+func (*KubernetesAuditSource) CanRun() error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Dump() interface{} {
+func (ka *KubernetesAuditSource) Dump() any {
 	return ka
 }
 

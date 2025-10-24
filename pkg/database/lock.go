@@ -59,7 +59,7 @@ func (c *Client) ReleaseLockWithTimeout(ctx context.Context, name string, timeou
 	return nil
 }
 
-func (c *Client) IsLocked(err error) bool {
+func (*Client) IsLocked(err error) bool {
 	return ent.IsConstraintError(err)
 }
 

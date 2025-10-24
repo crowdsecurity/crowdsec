@@ -39,7 +39,7 @@ const (
 )
 
 func (h *Hook) Build(hookStage int) error {
-	ctx := map[string]interface{}{}
+	ctx := map[string]any{}
 
 	switch hookStage {
 	case hookOnLoad:
@@ -261,7 +261,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) GetDataDir() string {
+func (*AppsecConfig) GetDataDir() string {
 	return hub.GetDataDir()
 }
 

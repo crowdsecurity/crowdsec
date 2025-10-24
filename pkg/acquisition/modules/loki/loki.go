@@ -61,11 +61,11 @@ type LokiSource struct {
 	lokiWebsocket string
 }
 
-func (l *LokiSource) GetMetrics() []prometheus.Collector {
+func (*LokiSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.LokiDataSourceLinesRead}
 }
 
-func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
+func (*LokiSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.LokiDataSourceLinesRead}
 }
 
@@ -259,7 +259,7 @@ func (l *LokiSource) GetMode() string {
 	return l.Config.Mode
 }
 
-func (l *LokiSource) GetName() string {
+func (*LokiSource) GetName() string {
 	return "loki"
 }
 
@@ -353,7 +353,7 @@ func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Ev
 	return nil
 }
 
-func (l *LokiSource) CanRun() error {
+func (*LokiSource) CanRun() error {
 	return nil
 }
 
@@ -361,11 +361,11 @@ func (l *LokiSource) GetUuid() string {
 	return l.Config.UniqueId
 }
 
-func (l *LokiSource) Dump() interface{} {
+func (l *LokiSource) Dump() any {
 	return l
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (l *LokiSource) SupportedModes() []string {
+func (*LokiSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }

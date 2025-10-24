@@ -16,7 +16,7 @@ func NewCLIDashboard(_ configGetter) *cliDashboard {
 	return &cliDashboard{}
 }
 
-func (cli cliDashboard) NewCommand() *cobra.Command {
+func (cliDashboard) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "dashboard",
 		DisableAutoGenTag: true,
