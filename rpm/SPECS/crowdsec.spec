@@ -50,7 +50,7 @@ mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
-install -m 755 -D debian/hubupdate.sh %{buildroot}%{_libdir}/%{name}/
+install -m 755 -D debian/hubupdate.sh %{buildroot}%{_libexecdir}/%{name}/
 install -m 644 -D debian/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D debian/crowdsec-hubupdate.service %{buildroot}%{_unitdir}/%{name}-hubupdate.service
 install -m 644 -D debian/crowdsec-hubupdate.timer %{buildroot}%{_unitdir}/%{name}-hubupdate.timer
@@ -62,6 +62,8 @@ install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/context.yaml %{buildroot}%{_sysconfdir}/crowdsec/console/
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
+
+# plugins could go to _libexecdir but we'll leave them in _libdir because it's referenced in config.yaml
 
 install -m 551 cmd/notification-slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 cmd/notification-http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
@@ -84,7 +86,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_bindir}/cscli
-%{_libdir}/%{name}/hubupdate.sh
+%{_libexecdir}/%{name}/hubupdate.sh
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
