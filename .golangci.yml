@@ -183,7 +183,7 @@ linters:
 
     maintidx:
       # raise this after refactoring
-      under: 18
+      under: 20
 
     misspell:
       locale: US
