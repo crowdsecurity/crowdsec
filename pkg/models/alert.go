@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -184,11 +185,15 @@ func (m *Alert) validateDecisions(formats strfmt.Registry) error {
 
 		if m.Decisions[i] != nil {
 			if err := m.Decisions[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("decisions" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -211,11 +216,15 @@ func (m *Alert) validateEvents(formats strfmt.Registry) error {
 
 		if m.Events[i] != nil {
 			if err := m.Events[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("events" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("events" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -258,11 +267,15 @@ func (m *Alert) validateMeta(formats strfmt.Registry) error {
 	}
 
 	if err := m.Meta.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("meta")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("meta")
 		}
+
 		return err
 	}
 
@@ -313,11 +326,15 @@ func (m *Alert) validateSource(formats strfmt.Registry) error {
 
 	if m.Source != nil {
 		if err := m.Source.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("source")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("source")
 			}
+
 			return err
 		}
 	}
@@ -387,7 +404,7 @@ func (m *Alert) ContextValidate(ctx context.Context, formats strfmt.Registry) er
 
 func (m *Alert) contextValidateCreatedAt(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "created_at", "body", string(m.CreatedAt)); err != nil {
+	if err := validate.ReadOnly(ctx, "created_at", "body", m.CreatedAt); err != nil {
 		return err
 	}
 
@@ -405,11 +422,15 @@ func (m *Alert) contextValidateDecisions(ctx context.Context, formats strfmt.Reg
 			}
 
 			if err := m.Decisions[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("decisions" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -430,11 +451,15 @@ func (m *Alert) contextValidateEvents(ctx context.Context, formats strfmt.Regist
 			}
 
 			if err := m.Events[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("events" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("events" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -446,7 +471,7 @@ func (m *Alert) contextValidateEvents(ctx context.Context, formats strfmt.Regist
 
 func (m *Alert) contextValidateID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "id", "body", int64(m.ID)); err != nil {
+	if err := validate.ReadOnly(ctx, "id", "body", m.ID); err != nil {
 		return err
 	}
 
@@ -455,7 +480,7 @@ func (m *Alert) contextValidateID(ctx context.Context, formats strfmt.Registry) 
 
 func (m *Alert) contextValidateMachineID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "machine_id", "body", string(m.MachineID)); err != nil {
+	if err := validate.ReadOnly(ctx, "machine_id", "body", m.MachineID); err != nil {
 		return err
 	}
 
@@ -465,11 +490,15 @@ func (m *Alert) contextValidateMachineID(ctx context.Context, formats strfmt.Reg
 func (m *Alert) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.Meta.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("meta")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("meta")
 		}
+
 		return err
 	}
 
@@ -481,11 +510,15 @@ func (m *Alert) contextValidateSource(ctx context.Context, formats strfmt.Regist
 	if m.Source != nil {
 
 		if err := m.Source.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("source")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("source")
 			}
+
 			return err
 		}
 	}
@@ -495,7 +528,7 @@ func (m *Alert) contextValidateSource(ctx context.Context, formats strfmt.Regist
 
 func (m *Alert) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+	if err := validate.ReadOnly(ctx, "uuid", "body", m.UUID); err != nil {
 		return err
 	}
 
