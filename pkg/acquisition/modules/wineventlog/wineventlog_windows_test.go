@@ -224,7 +224,7 @@ event_ids:
 				if test.expectedLines == nil {
 					break READLOOP
 				}
-				t.Fatalf("timeout")
+				t.Fatal("timeout")
 			case e := <-c:
 				line, _ := exprhelpers.XMLGetNodeValue(e.Line.Raw, "/Event/EventData[1]/Data")
 				linesRead = append(linesRead, line.(string))

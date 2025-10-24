@@ -381,7 +381,7 @@ func (w *WinEventLogSource) GetMode() string {
 	return w.config.Mode
 }
 
-func (w *WinEventLogSource) SupportedModes() []string {
+func (*WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
@@ -437,19 +437,19 @@ OUTER_LOOP:
 	return nil
 }
 
-func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
-func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
-func (w *WinEventLogSource) GetName() string {
+func (*WinEventLogSource) GetName() string {
 	return "wineventlog"
 }
 
-func (w *WinEventLogSource) CanRun() error {
+func (*WinEventLogSource) CanRun() error {
 	if runtime.GOOS != "windows" {
 		return errors.New("windows event log acquisition is only supported on Windows")
 	}

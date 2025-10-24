@@ -201,7 +201,7 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 	}, nil
 }
 
-func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
+func (*PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
 	cmd := exec.CommandContext(ctx, binaryPath)
 	cmd.SysProcAttr, err = getProcessAtr()
