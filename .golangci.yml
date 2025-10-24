@@ -206,7 +206,7 @@ linters:
 
     maintidx:
       # raise this after refactoring
-      under: 18
+      under: 20
 
     misspell:
       locale: US
@@ -243,7 +243,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 39
+            - 37
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -310,15 +310,11 @@ linters:
             - fmt.Printf
             - fmt.Println
           disabled: true
-        - name: unnecessary-format
-          disabled: true
         - name: unnecessary-stmt
           disabled: true
         - name: unsecure-url-scheme
           disabled: true
         - name: unused-parameter
-          disabled: true
-        - name: unused-receiver
           disabled: true
         - name: use-any
           disabled: true
@@ -335,6 +331,11 @@ linters:
         - -ST1012  # error var ... should have name of the form ...
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
+
+    usetesting:
+      os-temp-dir: false
+      context-background: true
+      context-todo: true
 
   exclusions:
     presets:

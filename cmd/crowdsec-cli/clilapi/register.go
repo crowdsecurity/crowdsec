@@ -52,7 +52,7 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 		return fmt.Errorf("api client register: %w", err)
 	}
 
-	log.Printf("Successfully registered to Local API (LAPI)")
+	log.Info("Successfully registered to Local API (LAPI)")
 
 	var dumpFile string
 

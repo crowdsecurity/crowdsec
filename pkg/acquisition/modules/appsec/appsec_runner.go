@@ -35,7 +35,7 @@ type AppsecRunner struct {
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
 
-func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+func (*AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 	discarded := 0
@@ -265,7 +265,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 		}
 
 		for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-			if slices.Contains[[]string, string](in.Tags, tag) {
+			if slices.Contains(in.Tags, tag) {
 				r.AppsecRuntime.Response.Action = remediation
 			}
 		}

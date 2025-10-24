@@ -44,7 +44,7 @@ func (s *SyslogSource) GetUuid() string {
 	return s.config.UniqueId
 }
 
-func (s *SyslogSource) GetName() string {
+func (*SyslogSource) GetName() string {
 	return "syslog"
 }
 
@@ -52,19 +52,19 @@ func (s *SyslogSource) GetMode() string {
 	return s.config.Mode
 }
 
-func (s *SyslogSource) Dump() interface{} {
+func (s *SyslogSource) Dump() any {
 	return s
 }
 
-func (s *SyslogSource) CanRun() error {
+func (*SyslogSource) CanRun() error {
 	return nil
 }
 
-func (s *SyslogSource) GetMetrics() []prometheus.Collector {
+func (*SyslogSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
-func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
+func (*SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 

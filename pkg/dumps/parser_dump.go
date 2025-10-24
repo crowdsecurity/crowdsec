@@ -317,7 +317,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 
 		// now print bucket info
 		if len(t.state[tstamp]["buckets"]) > 0 {
-			fmt.Printf("\t├ Scenarios\n")
+			fmt.Print("\t├ Scenarios\n")
 		}
 
 		bnames := make([]string, 0, len(t.state[tstamp]["buckets"]))

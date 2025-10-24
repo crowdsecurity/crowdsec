@@ -12,7 +12,7 @@ type Trigger struct {
 	DumbProcessor
 }
 
-func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
+func (*Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	// Pour makes the bucket overflow all the time
 	// TriggerPour unconditionally overflows
 	return func(msg types.Event, l *Leaky) *types.Event {

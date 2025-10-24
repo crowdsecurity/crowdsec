@@ -33,10 +33,10 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
-	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password   string `yaml:"password,omitempty" json:"-"`
+	PapiURL    string `json:"papi_url,omitempty"     yaml:"papi_url,omitempty"`
+	URL        string `json:"url,omitempty"          yaml:"url,omitempty"`
+	Login      string `json:"login,omitempty"        yaml:"login,omitempty"`
+	Password   string `json:"-"                      yaml:"password,omitempty"`
 	CACertPath string `yaml:"ca_cert_path,omitempty"`
 	KeyPath    string `yaml:"key_path,omitempty"`
 	CertPath   string `yaml:"cert_path,omitempty"`
@@ -47,7 +47,7 @@ type CapiPullConfig struct {
 	Blocklists *bool `yaml:"blocklists,omitempty"`
 }
 
-/*global api config (for lapi->capi)*/
+// global api config (for lapi->capi)
 type OnlineApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -55,7 +55,7 @@ type OnlineApiClientCfg struct {
 	Sharing             *bool              `yaml:"sharing,omitempty"`
 }
 
-/*local api config (for crowdsec/cscli->lapi)*/
+// local api config (for crowdsec/cscli->lapi)
 type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -219,7 +219,7 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-/*local api service configuration*/
+// local api service configuration
 type LocalApiServerCfg struct {
 	Enable                        *bool                    `yaml:"enable"`
 	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
