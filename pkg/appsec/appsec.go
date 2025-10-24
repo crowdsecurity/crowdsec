@@ -39,7 +39,7 @@ const (
 )
 
 func (h *Hook) Build(hookStage int) error {
-	ctx := map[string]interface{}{}
+	ctx := map[string]any{}
 
 	switch hookStage {
 	case hookOnLoad:

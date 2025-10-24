@@ -65,6 +65,6 @@ func (*WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.E
 	return nil
 }
 
-func (w *WinEventLogSource) Dump() interface{} {
+func (w *WinEventLogSource) Dump() any {
 	return w
 }

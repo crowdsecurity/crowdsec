@@ -265,7 +265,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 		}
 
 		for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-			if slices.Contains[[]string, string](in.Tags, tag) {
+			if slices.Contains(in.Tags, tag) {
 				r.AppsecRuntime.Response.Action = remediation
 			}
 		}

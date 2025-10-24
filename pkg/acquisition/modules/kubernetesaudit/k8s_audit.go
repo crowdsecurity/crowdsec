@@ -153,7 +153,7 @@ func (*KubernetesAuditSource) CanRun() error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Dump() interface{} {
+func (ka *KubernetesAuditSource) Dump() any {
 	return ka
 }
 

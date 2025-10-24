@@ -47,7 +47,7 @@ type CapiPullConfig struct {
 	Blocklists *bool `yaml:"blocklists,omitempty"`
 }
 
-/*global api config (for lapi->capi)*/
+// global api config (for lapi->capi)
 type OnlineApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -55,7 +55,7 @@ type OnlineApiClientCfg struct {
 	Sharing             *bool              `yaml:"sharing,omitempty"`
 }
 
-/*local api config (for crowdsec/cscli->lapi)*/
+// local api config (for crowdsec/cscli->lapi)
 type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -219,7 +219,7 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-/*local api service configuration*/
+// local api service configuration
 type LocalApiServerCfg struct {
 	Enable                        *bool                    `yaml:"enable"`
 	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080

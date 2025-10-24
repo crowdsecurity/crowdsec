@@ -357,7 +357,7 @@ func (l *VLSource) GetUuid() string {
 	return l.Config.UniqueId
 }
 
-func (l *VLSource) Dump() interface{} {
+func (l *VLSource) Dump() any {
 	return l
 }
 

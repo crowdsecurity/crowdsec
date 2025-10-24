@@ -52,7 +52,7 @@ func (s *SyslogSource) GetMode() string {
 	return s.config.Mode
 }
 
-func (s *SyslogSource) Dump() interface{} {
+func (s *SyslogSource) Dump() any {
 	return s
 }
 

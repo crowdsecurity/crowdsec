@@ -184,7 +184,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 
 // MarshalYAML is used to prepare the output for "cscli ... inspect -o raw".
 // It must not use a pointer receiver.
-func (i Item) MarshalYAML() (interface{}, error) {
+func (i Item) MarshalYAML() (any, error) {
 	type Alias Item
 
 	return &struct {

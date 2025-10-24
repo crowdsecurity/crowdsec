@@ -13,7 +13,7 @@ import (
 
 func expectBucketCount(buckets *Buckets, expected int) error {
 	count := 0
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
+	buckets.Bucket_map.Range(func(rkey, rvalue any) bool {
 		count++
 		return true
 	})
