@@ -287,8 +287,6 @@ linters:
             - fmt.Printf
             - fmt.Println
           disabled: true
-        - name: unnecessary-format
-          disabled: true
         - name: unnecessary-stmt
           disabled: true
         - name: unsecure-url-scheme

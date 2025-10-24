@@ -279,7 +279,7 @@ POLL_AGAIN:
 					// match stuff
 				} else {
 					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
-						log.Printf("Here ?")
+						log.Info("Here ?")
 						continue
 					}
 
