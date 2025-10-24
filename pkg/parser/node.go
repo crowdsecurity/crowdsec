@@ -17,6 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/namegenerator"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -404,7 +405,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	valid := false
 	dumpr := spew.ConfigState{MaxDepth: 1, DisablePointerAddresses: true}
 
-	n.rn = seed.Generate()
+	n.rn = namegenerator.GetRandomName()
 
 	n.EnrichFunctions = ectx
 	log.Tracef("compile, node is %s", n.Stage)
