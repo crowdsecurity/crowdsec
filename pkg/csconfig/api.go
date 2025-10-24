@@ -33,10 +33,10 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
-	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password   string `yaml:"password,omitempty" json:"-"`
+	PapiURL    string `json:"papi_url,omitempty"     yaml:"papi_url,omitempty"`
+	URL        string `json:"url,omitempty"          yaml:"url,omitempty"`
+	Login      string `json:"login,omitempty"        yaml:"login,omitempty"`
+	Password   string `json:"-"                      yaml:"password,omitempty"`
 	CACertPath string `yaml:"ca_cert_path,omitempty"`
 	KeyPath    string `yaml:"key_path,omitempty"`
 	CertPath   string `yaml:"cert_path,omitempty"`
