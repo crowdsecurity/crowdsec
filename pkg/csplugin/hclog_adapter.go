@@ -98,7 +98,7 @@ func (h HCLogAdapter) IsError() bool {
 	return h.log.GetLevel() >= logrus.ErrorLevel
 }
 
-func (h HCLogAdapter) ImpliedArgs() []interface{} {
+func (HCLogAdapter) ImpliedArgs() []interface{} {
 	// Not supported.
 	return nil
 }
@@ -134,7 +134,7 @@ func (h HCLogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Log
 	return log.New(h.StandardWriter(opts), "", 0)
 }
 
-func (h HCLogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (HCLogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
 	return os.Stderr
 }
 

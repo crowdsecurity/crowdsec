@@ -35,7 +35,7 @@ type AppsecRunner struct {
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
 
-func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+func (*AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 	discarded := 0

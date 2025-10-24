@@ -293,8 +293,6 @@ linters:
           disabled: true
         - name: unused-parameter
           disabled: true
-        - name: unused-receiver
-          disabled: true
         - name: use-any
           disabled: true
         - name: use-waitgroup-go

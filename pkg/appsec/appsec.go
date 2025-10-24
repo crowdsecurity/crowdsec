@@ -261,7 +261,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) GetDataDir() string {
+func (*AppsecConfig) GetDataDir() string {
 	return hub.GetDataDir()
 }
 

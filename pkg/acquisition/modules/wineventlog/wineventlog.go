@@ -17,51 +17,51 @@ import (
 
 type WinEventLogSource struct{}
 
-func (w *WinEventLogSource) GetUuid() string {
+func (*WinEventLogSource) GetUuid() string {
 	return ""
 }
 
-func (w *WinEventLogSource) UnmarshalConfig(_ []byte) error {
+func (*WinEventLogSource) UnmarshalConfig(_ []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (*WinEventLogSource) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
 
-func (w *WinEventLogSource) ConfigureByDSN(_ context.Context, _ string, _ map[string]string, _ *log.Entry, _ string) error {
+func (*WinEventLogSource) ConfigureByDSN(_ context.Context, _ string, _ map[string]string, _ *log.Entry, _ string) error {
 	return nil
 }
 
-func (w *WinEventLogSource) GetMode() string {
+func (*WinEventLogSource) GetMode() string {
 	return ""
 }
 
-func (w *WinEventLogSource) SupportedModes() []string {
+func (*WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+func (*WinEventLogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return nil
 }
 
-func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (w *WinEventLogSource) GetName() string {
+func (*WinEventLogSource) GetName() string {
 	return "wineventlog"
 }
 
-func (w *WinEventLogSource) CanRun() error {
+func (*WinEventLogSource) CanRun() error {
 	return errors.New("windows event log acquisition is only supported on Windows")
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+func (*WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
 	return nil
 }
 
