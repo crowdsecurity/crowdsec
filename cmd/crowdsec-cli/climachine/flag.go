@@ -24,6 +24,6 @@ func (p *MachinePassword) Set(v string) error {
 	return nil
 }
 
-func (p *MachinePassword) Type() string {
+func (*MachinePassword) Type() string {
 	return "string"
 }

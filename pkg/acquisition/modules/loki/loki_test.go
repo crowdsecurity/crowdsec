@@ -27,6 +27,8 @@ import (
 func TestConfiguration(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
 
+	ctx := t.Context()
+
 	tests := []struct {
 		config       string
 		expectedErr  string
@@ -148,7 +150,7 @@ no_ready_check: 37
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := lokiSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -177,6 +179,8 @@ no_ready_check: 37
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name         string
@@ -249,7 +253,7 @@ func TestConfigureDSN(t *testing.T) {
 			t.Logf("Test : %s", test.name)
 
 			lokiSource := &loki.LokiSource{}
-			err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			err := lokiSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			noDuration, _ := time.ParseDuration("0s")
@@ -372,7 +376,7 @@ since: 1h
 			subLogger := logger.WithField("type", "loki")
 			lokiSource := loki.LokiSource{}
 
-			if err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
+			if err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
@@ -459,7 +463,7 @@ query: >
 			lokiTomb := tomb.Tomb{}
 			lokiSource := loki.LokiSource{}
 
-			err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -535,7 +539,7 @@ query: >
 	title := time.Now().String()
 	lokiSource := loki.LokiSource{}
 
-	err := lokiSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	err := lokiSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

@@ -23,8 +23,11 @@ import (
 )
 
 const (
-	SyncInterval = time.Second * 10
-	PapiPullKey  = "papi:last_pull"
+	PAPIVersion        = "v1"
+	PAPIPollURL        = "/decisions/stream/poll"
+	PAPIPermissionsURL = "/permissions"
+	SyncInterval       = time.Second * 10
+	PapiPullKey        = "papi:last_pull"
 )
 
 var operationMap = map[string]func(*Message, *Papi, bool) error{
@@ -85,15 +88,15 @@ type PapiPermCheckSuccess struct {
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
 	logger := log.New()
-	if err := types.ConfigureLogger(logger, &logLevel); err != nil {
+	if err := types.ConfigureLogger(logger, logLevel); err != nil {
 		return &Papi{}, fmt.Errorf("creating papi logger: %w", err)
 	}
 
-	papiUrl := *apic.apiClient.PapiURL
-	papiUrl.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
+	papiURL := *apic.apiClient.PapiURL
+	papiURL.Path = fmt.Sprintf("%s%s", PAPIVersion, PAPIPollURL)
 
 	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
-		Url:        papiUrl,
+		Url:        papiURL,
 		Logger:     logger,
 		HttpClient: apic.apiClient.GetClient(),
 	})
@@ -159,9 +162,9 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
-	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
+	papiCheckURL := fmt.Sprintf("%s%s%s", p.URL, PAPIVersion, PAPIPermissionsURL)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckURL, http.NoBody)
 	if err != nil {
 		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -230,9 +233,10 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 	return nil
 }
 
-// PullPAPI is the long polling client for real-time decisions from PAPI
+// Pull is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/PullPAPI")
+
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
@@ -322,7 +326,6 @@ func (p *Papi) Pull(ctx context.Context) error {
 			cancel()
 		}
 	}
-
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {

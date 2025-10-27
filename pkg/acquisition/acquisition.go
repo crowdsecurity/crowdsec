@@ -46,22 +46,43 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                                                                 // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                                                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error      // Configure the datasource
+	// identity, lifecycle
 	GetMode() string                                                                                    // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                                                                    // Get the name of the module
-	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error          // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error        // Start live acquisition (eg, tail a file)
-	CanRun() error                                                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	GetUuid() string                                                                                    // Get the unique identifier of the datasource
 	Dump() any
+	CanRun() error                                                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+
+	// configuration
+	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+}
+
+type Fetcher interface {
+	// Start one shot acquisition(eg, cat a file)
+	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+}
+
+type Tailer interface {
+	// Start live acquisition (eg, tail a file)
+	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+}
+
+type MetricsProvider interface {
+	// Returns pointers to metrics that are managed by the module
+	GetMetrics() []prometheus.Collector
+
+	// Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	GetAggregMetrics() []prometheus.Collector
+}
+
+type DSNConfigurer interface {
+	// Configure the datasource
+	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
 var (
-	// We declare everything here so we can tell if they are unsupported, or excluded from the build
+	// We register the datasources at init time so we can tell if they are unsupported, or excluded from the build
 	AcquisitionSources = map[string]func() DataSource{}
 	transformRuntimes  = map[string]*vm.Program{}
 )
@@ -99,7 +120,7 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 }
 
 // setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
+func setupLogger(source, name string, level log.Level) (*log.Entry, error) {
 	clog := log.New()
 	if err := types.ConfigureLogger(clog, level); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
@@ -122,7 +143,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
+func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -138,14 +159,14 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlCon
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
 	/* configure the actual datasource */
-	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
+	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
 	}
 
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
@@ -156,7 +177,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
-	subLogger, err := setupLogger(dsn, "", nil)
+	subLogger, err := setupLogger(dsn, "", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +193,12 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		transformRuntimes[uniqueID] = vm
 	}
 
-	err = dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueID)
-	if err != nil {
+	dsnConf, ok := dataSrc.(DSNConfigurer)
+	if !ok {
+		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
+	}
+
+	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 
@@ -231,7 +256,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -315,7 +340,7 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 		uniqueID := uuid.NewString()
 		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(sub, yamlDoc, metricsLevel)
+		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -342,13 +367,13 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 }
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var allSources []DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(acquisFile, metricsLevel)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -360,13 +385,19 @@ func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfi
 }
 
 func GetMetrics(sources []DataSource, aggregated bool) error {
-	var metrics []prometheus.Collector
-
 	for i := range sources {
+		mp, ok := sources[i].(MetricsProvider)
+		if !ok {
+			// the source does not expose metrics
+			continue
+		}
+
+		var metrics []prometheus.Collector
+
 		if aggregated {
-			metrics = sources[i].GetMetrics()
+			metrics = mp.GetMetrics()
 		} else {
-			metrics = sources[i].GetAggregMetrics()
+			metrics = mp.GetAggregMetrics()
 		}
 
 		for _, metric := range metrics {
@@ -488,9 +519,17 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 			}
 
 			if subsrc.GetMode() == configuration.TAIL_MODE {
-				err = subsrc.StreamingAcquisition(ctx, outChan, acquisTomb)
+				if s, ok := subsrc.(Tailer); ok {
+					err = s.StreamingAcquisition(ctx, outChan, acquisTomb)
+				} else {
+					err = fmt.Errorf("%s: tail mode is set but StreamingAcquisition is not supported", subsrc.GetName())
+				}
 			} else {
-				err = subsrc.OneShotAcquisition(ctx, outChan, acquisTomb)
+				if s, ok := subsrc.(Fetcher); ok {
+					err = s.OneShotAcquisition(ctx, outChan, acquisTomb)
+				} else {
+					err = fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", subsrc.GetName())
+				}
 			}
 
 			if err != nil {
@@ -502,7 +541,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 		})
 	}
 
-	/*return only when acquisition is over (cat) or never (tail)*/
+	// return only when acquisition is over (cat) or never (tail)
 	err := acquisTomb.Wait()
 
 	return err

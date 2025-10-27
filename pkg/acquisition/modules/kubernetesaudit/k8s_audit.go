@@ -43,11 +43,11 @@ func (ka *KubernetesAuditSource) GetUuid() string {
 	return ka.config.UniqueId
 }
 
-func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
-func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
@@ -84,7 +84,7 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (ka *KubernetesAuditSource) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	ka.logger = logger
 	ka.metricsLevel = metricsLevel
 
@@ -114,20 +114,12 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, met
 	return nil
 }
 
-func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("k8s-audit datasource does not support command-line acquisition")
-}
-
 func (ka *KubernetesAuditSource) GetMode() string {
 	return ka.config.Mode
 }
 
-func (ka *KubernetesAuditSource) GetName() string {
+func (*KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
-}
-
-func (ka *KubernetesAuditSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("k8s-audit datasource does not support one-shot acquisition")
 }
 
 func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
@@ -157,11 +149,11 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 	return nil
 }
 
-func (ka *KubernetesAuditSource) CanRun() error {
+func (*KubernetesAuditSource) CanRun() error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Dump() interface{} {
+func (ka *KubernetesAuditSource) Dump() any {
 	return ka
 }
 

@@ -5,10 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
-func (cli *cliHubTest) newEvalCmd() *cobra.Command {
+func (*cliHubTest) newEvalCmd() *cobra.Command {
 	var evalExpression string
 
 	cmd := &cobra.Command{

@@ -23,9 +23,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -156,7 +156,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
-		fmt.Fprintf(os.Stdout, "\n - Context  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Context  :")
 		sort.Slice(alert.Meta, func(i, j int) bool {
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
@@ -183,7 +183,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	if withDetail {
-		fmt.Fprintf(os.Stdout, "\n - Events  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Events  :")
 
 		for _, event := range alert.Events {
 			alertEventTable(color.Output, cfg.Cscli.Color, event)
@@ -215,15 +215,12 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			cli.client = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return nil
 		},

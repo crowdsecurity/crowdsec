@@ -21,7 +21,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -37,7 +36,7 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-// The broker is responsible for running the plugins and dispatching events
+// PluginBroker is responsible for running the plugins and dispatching events
 // It receives all the events from the main process and stacks them up
 // It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
@@ -46,7 +45,6 @@ type PluginBroker struct {
 	profileConfigs                  []*csconfig.ProfileCfg
 	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
-	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
 	notificationPluginByName        map[string]protobufs.NotifierServer
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
@@ -95,10 +93,8 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 
 type PluginConfigList []PluginConfig
 
-
 func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan models.ProfileAlert)
-	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
 	pb.pluginConfigByName = make(map[string]PluginConfig)
@@ -300,7 +296,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 			continue
 		}
 
-		pluginClient, err := pb.loadNotificationPlugin(pSubtype, binaryPath)
+		pluginClient, err := pb.loadNotificationPlugin(ctx, pSubtype, binaryPath)
 		if err != nil {
 			return err
 		}
@@ -331,7 +327,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 	return pb.verifyPluginBinaryWithProfile()
 }
 
-func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
+func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string, binaryPath string) (protobufs.NotifierServer, error) {
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
@@ -339,7 +335,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 
 	log.Debugf("Executing plugin %s", binaryPath)
 
-	cmd, err := pb.CreateCmd(binaryPath)
+	cmd, err := pb.CreateCmd(ctx, binaryPath)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +343,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 
-	err = types.ConfigureLogger(l, ptr.Of(log.TraceLevel))
+	err = types.ConfigureLogger(l, log.TraceLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -378,12 +374,22 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 }
 
 func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message string) error {
-	timeout := pb.pluginConfigByName[pluginName].TimeOut
+	// config guard
+	pc, ok := pb.pluginConfigByName[pluginName]
+	if !ok {
+		return fmt.Errorf("plugin %q: config not found", pluginName)
+	}
+
+	timeout := pc.TimeOut
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
 
-	plugin := pb.notificationPluginByName[pluginName]
+	// plugin guard
+	plugin, ok := pb.notificationPluginByName[pluginName]
+	if !ok || plugin == nil {
+		return fmt.Errorf("plugin %q: notifier not registered", pluginName)
+	}
 
 	_, err := plugin.Notify(
 		ctxTimeout,

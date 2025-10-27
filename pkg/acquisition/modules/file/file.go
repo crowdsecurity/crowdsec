@@ -101,7 +101,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (f *FileSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	f.metricsLevel = metricsLevel
 
@@ -177,7 +177,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 	return nil
 }
 
-func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (f *FileSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "file://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
@@ -261,12 +261,12 @@ func (f *FileSource) GetMode() string {
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (f *FileSource) SupportedModes() []string {
+func (*FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) OneShotAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 
 	for _, file := range f.files {
@@ -291,23 +291,23 @@ func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 	return nil
 }
 
-func (f *FileSource) GetMetrics() []prometheus.Collector {
+func (*FileSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
+func (*FileSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetName() string {
+func (*FileSource) GetName() string {
 	return "file"
 }
 
-func (f *FileSource) CanRun() error {
+func (*FileSource) CanRun() error {
 	return nil
 }
 
-func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("Starting live acquisition")
 	t.Go(func() error {
 		return f.monitorNewFiles(out, t)
@@ -388,6 +388,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	var ticker *time.Ticker
 	if f.config.DiscoveryPollEnable {
 		interval := cmp.Or(f.config.DiscoveryPollInterval, defaultPollInterval)
+		logger.Infof("File discovery polling enabled with interval: %s", interval)
 		ticker = time.NewTicker(interval)
 		tickerChan = ticker.C
 		defer ticker.Stop()
@@ -501,6 +502,8 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 	if seekEnd {
 		seekInfo.Whence = io.SeekEnd
 	}
+
+	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
 	tail, err := tail.TailFile(file, tail.Config{
 		ReOpen:   true,

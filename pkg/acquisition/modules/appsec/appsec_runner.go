@@ -35,7 +35,7 @@ type AppsecRunner struct {
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
 
-func (r *AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
+func (*AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 	discarded := 0
@@ -265,7 +265,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 		}
 
 		for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-			if slices.Contains[[]string, string](in.Tags, tag) {
+			if slices.Contains(in.Tags, tag) {
 				r.AppsecRuntime.Response.Action = remediation
 			}
 		}
@@ -320,11 +320,10 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
 		}
-		// Should the match trigger an event ?
-		if r.AppsecRuntime.Response.SendEvent {
-			r.outChan <- evt
-		}
 
+		// The alert needs to be sent first:
+		// The event and the alert share the same internal map (parsed, meta, ...)
+		// The event can be modified by the parsers, which might cause a concurrent map read/write
 		// Should the match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
@@ -335,6 +334,11 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 			if appsecOvlfw != nil {
 				r.outChan <- *appsecOvlfw
 			}
+		}
+
+		// Should the match trigger an event ?
+		if r.AppsecRuntime.Response.SendEvent {
+			r.outChan <- evt
 		}
 	}
 }

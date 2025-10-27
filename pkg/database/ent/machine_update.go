@@ -192,6 +192,26 @@ func (mu *MachineUpdate) ClearOsname() *MachineUpdate {
 	return mu
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (mu *MachineUpdate) SetOsfamily(s string) *MachineUpdate {
+	mu.mutation.SetOsfamily(s)
+	return mu
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableOsfamily(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetOsfamily(*s)
+	}
+	return mu
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (mu *MachineUpdate) ClearOsfamily() *MachineUpdate {
+	mu.mutation.ClearOsfamily()
+	return mu
+}
+
 // SetOsversion sets the "osversion" field.
 func (mu *MachineUpdate) SetOsversion(s string) *MachineUpdate {
 	mu.mutation.SetOsversion(s)
@@ -399,6 +419,12 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.OsnameCleared() {
 		_spec.ClearField(machine.FieldOsname, field.TypeString)
+	}
+	if value, ok := mu.mutation.Osfamily(); ok {
+		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
+	}
+	if mu.mutation.OsfamilyCleared() {
+		_spec.ClearField(machine.FieldOsfamily, field.TypeString)
 	}
 	if value, ok := mu.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
@@ -651,6 +677,26 @@ func (muo *MachineUpdateOne) ClearOsname() *MachineUpdateOne {
 	return muo
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (muo *MachineUpdateOne) SetOsfamily(s string) *MachineUpdateOne {
+	muo.mutation.SetOsfamily(s)
+	return muo
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableOsfamily(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetOsfamily(*s)
+	}
+	return muo
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (muo *MachineUpdateOne) ClearOsfamily() *MachineUpdateOne {
+	muo.mutation.ClearOsfamily()
+	return muo
+}
+
 // SetOsversion sets the "osversion" field.
 func (muo *MachineUpdateOne) SetOsversion(s string) *MachineUpdateOne {
 	muo.mutation.SetOsversion(s)
@@ -888,6 +934,12 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if muo.mutation.OsnameCleared() {
 		_spec.ClearField(machine.FieldOsname, field.TypeString)
+	}
+	if value, ok := muo.mutation.Osfamily(); ok {
+		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
+	}
+	if muo.mutation.OsfamilyCleared() {
+		_spec.ClearField(machine.FieldOsfamily, field.TypeString)
 	}
 	if value, ok := muo.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)

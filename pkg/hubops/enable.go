@@ -98,7 +98,7 @@ func (c *EnableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *EnableCommand) OperationType() string {
+func (*EnableCommand) OperationType() string {
 	return "enable"
 }
 

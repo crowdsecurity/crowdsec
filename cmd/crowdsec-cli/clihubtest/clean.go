@@ -9,7 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) newCleanCmd() *cobra.Command {
+func (*cliHubTest) newCleanCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{

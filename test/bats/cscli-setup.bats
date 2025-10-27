@@ -9,8 +9,8 @@ setup_file() {
     # remove trailing slash if any (like in default config.yaml from package)
     HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
-    CONFIG_DIR=$(config_get '.config_paths.config_dir')
-    DETECT_YAML="$CONFIG_DIR/detect.yaml"
+    DATA_DIR=$(config_get '.config_paths.data_dir')
+    DETECT_YAML="$DATA_DIR/detect.yaml"
     export DETECT_YAML
     # shellcheck disable=SC2154
     TESTDATA="$BATS_TEST_DIRNAME/testdata/cscli-setup"
@@ -24,7 +24,6 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
-    load "../lib/bats-mock/load.bash"
     ./instance-data load
 }
 
@@ -130,45 +129,8 @@ teardown() {
 @test "cscli setup detect (systemctl)" {
     # Detect a service through the presence of a systemd unit.
 
-    # transparently mock systemctl. It's easier if you can tell the application
-    # under test which executable to call (in which case just call $mock) but
-    # here we do the symlink and $PATH dance as an example
-    mocked_command="systemctl"
-
-    # mock setup
-    mock="$(mock_create)"
-    mock_path="${mock%/*}"
-    mock_file="${mock##*/}"
-    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
-
-    #shellcheck disable=SC2030
-    PATH="$mock_path:$PATH"
-
-    mock_set_output "$mock" \
-'UNIT FILE                               STATE   VENDOR PRESET
-snap-bare-5.mount                       enabled enabled
-snap-core-13308.mount                   enabled enabled
-snap-firefox-1635.mount                 enabled enabled
-snap-fx-158.mount                       enabled enabled
-snap-gimp-393.mount                     enabled enabled
-snap-gtk\x2dcommon\x2dthemes-1535.mount enabled enabled
-snap-kubectl-2537.mount                 enabled enabled
-snap-rustup-1027.mount                  enabled enabled
-cups.path                               enabled enabled
-console-setup.service                   enabled enabled
-dmesg.service                           enabled enabled
-getty@.service                          enabled enabled
-grub-initrd-fallback.service            enabled enabled
-irqbalance.service                      enabled enabled
-keyboard-setup.service                  enabled enabled
-mock-apache2.service                    enabled enabled
-networkd-dispatcher.service             enabled enabled
-ua-timer.timer                          enabled enabled
-update-notifier-download.timer          enabled enabled
-update-notifier-motd.timer              enabled enabled
-
-20 unit files listed.'
-    mock_set_status "$mock" 1 2
+    # shellcheck disable=SC2030
+    PATH="$TESTDATA:$PATH"
 
     rune -0 cscli setup detect --detect-config - <<-EOT
 	detect:
@@ -186,40 +148,14 @@ update-notifier-motd.timer              enabled enabled
 
     rune -0 jq -c '.setup' <(output)
 
-    # the command was called exactly once
-    [[ $(mock_get_call_num "$mock") -eq 1 ]]
-
-    # the command was called with the expected parameters
-    [[ $(mock_get_call_args "$mock" 1) == "list-unit-files --type=service" ]]
-
-    rune -1 systemctl
-
-    # mock teardown
-    unlink "$mock_path/$mocked_command"
-    PATH="${PATH/${mock_path}:/}"
+    PATH="${PATH/${TESTDATA}:/}"
 }
 
-# XXX this is the same boilerplate as the previous test, can be simplified
 @test "cscli setup detect (skip systemd)" {
     # Skip detection of services through systemd units.
 
-    # transparently mock systemctl. It's easier if you can tell the application
-    # under test which executable to call (in which case just call $mock) but
-    # here we do the symlink and $PATH dance as an example
-    mocked_command="systemctl"
-
-    # mock setup
-    mock="$(mock_create)"
-    mock_path="${mock%/*}"
-    mock_file="${mock##*/}"
-    ln -sf "$mock_path/$mock_file" "$mock_path/$mocked_command"
-
     #shellcheck disable=SC2031
-    PATH="$mock_path:$PATH"
-
-    # we don't really care about the output, it's not used anyway
-    mock_set_output "$mock" ""
-    mock_set_status "$mock" 1 2
+    PATH="$BATS_TEST_TMPDIR:$PATH"
 
     rune -0 cscli setup detect --skip-systemd --detect-config - <<-EOT
 	detect:
@@ -238,14 +174,7 @@ update-notifier-motd.timer              enabled enabled
     # setup must not be 'null', but an empty list
     assert_json '{setup:[]}'
 
-    # the command was never called
-    [[ $(mock_get_call_num "$mock") -eq 0 ]]
-
-    rune -0 systemctl
-
-    # mock teardown
-    unlink "$mock_path/$mocked_command"
-    PATH="${PATH/${mock_path}:/}"
+    PATH="${PATH/${BATS_TEST_TMPDIR}:/}"
 }
 
 @test "cscli setup detect --force" {
@@ -516,7 +445,7 @@ update-notifier-motd.timer              enabled enabled
 	          type: something
 	EOT
 
-    assert_stderr --partial "Error: cscli setup detect: parsing <stdin>: invalid acquisition spec for foobar: source is empty"
+    assert_stderr --partial "Error: cscli setup detect: parsing <stdin>: invalid acquisition spec for foobar: source field is required"
 
     # more datasource-specific tests are in detect_test.go
 }
@@ -588,6 +517,7 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
+	        source: file
 	        filenames:
 	          - /var/log/apache2/*.log
 	EOT
@@ -623,6 +553,51 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 }
 
+@test "cscli setup install-acquisition (missing or bad filename)" {
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): a filename for the datasource configuration is required"
+
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: 
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): a filename for the datasource configuration is required"
+
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+	setup:
+	  - acquisition_spec:
+	      filename: apache2/apache2.yaml
+	      datasource:
+	        source: file
+	        labels:
+	          type: syslog
+	        filenames:
+	          - /var/log/apache2/*.log
+	          - /var/log/*http*/*.log
+	          - /var/log/httpd/*.log
+	EOT
+
+    assert_stderr --partial "Error: cscli setup install-acquisition: invalid acquisition spec (0): acquisition filename must not contain slashes (/) or backslashes (\\)"
+}
+
 @test "cscli setup install-acquisition (multiple services)" {
     rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
@@ -630,6 +605,7 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: apache.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: syslog
 	        filenames:
@@ -640,6 +616,7 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: foo.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: foobar
 	        filenames:
@@ -648,6 +625,7 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: bar.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: barbaz
 	        filenames:
@@ -662,6 +640,7 @@ update-notifier-motd.timer              enabled enabled
 	  - /var/log/httpd/*.log
 	labels:
 	  type: syslog
+	source: file
 	EOT
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.foo.yaml"
@@ -670,6 +649,7 @@ update-notifier-motd.timer              enabled enabled
 	  - /var/log/foobar/*.log
 	labels:
 	  type: foobar
+	source: file
 	EOT
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.bar.yaml"
@@ -678,13 +658,14 @@ update-notifier-motd.timer              enabled enabled
 	  - /path/to/barbaz.log
 	labels:
 	  type: barbaz
+	source: file
 	EOT
 }
 
 @test "cscli setup install-acquisition (incorrect)" {
-    # the datasource is copied as-is, even if incorrect.
+    # the datasource is validated according to its type.
 
-    rune -0 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
+    rune -1 cscli setup install-acquisition --acquis-dir "$BATS_TEST_TMPDIR" - <<-EOT
 	setup:
 	  - detected_service: apache2
 	    hub_spec:
@@ -699,15 +680,7 @@ update-notifier-motd.timer              enabled enabled
 	        somethingdifferent: xyz
 	EOT
 
-    # keys are sorted.
-
-    rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.apache.yaml"
-    assert_output - <<-EOT
-	labels:
-	  type: apache2
-	somethingdifferent: xyz
-	source: docker
-	EOT
+    assert_stderr --partial 'Error: cscli setup install-acquisition: invalid acquisition spec (0): while parsing DockerAcquisition configuration: [3:1] unknown field "somethingdifferent"'
 }
 
 @test "cscli setup install-acquisition (key order)" {
@@ -723,23 +696,23 @@ update-notifier-motd.timer              enabled enabled
 	        source: docker
 	        labels:
 	          type: docker
-	        z: 1
-	        m: 2
-	        d: 3
-	        a: 4
+	        follow_stderr: true
+	        use_container_labels: true
+	        follow_stdout: true
+	        check_interval: "2 minutes"
 	EOT
 
     # keys are sorted.
 
     rune -0 yq '. head_comment=""' < "$BATS_TEST_TMPDIR/setup.docker.yaml"
     assert_output - <<-EOT
-	a: 4
-	d: 3
+	check_interval: 2 minutes
+	follow_stderr: true
+	follow_stdout: true
 	labels:
 	  type: docker
-	m: 2
 	source: docker
-	z: 1
+	use_container_labels: true
 	EOT
 }
 
@@ -754,6 +727,7 @@ update-notifier-motd.timer              enabled enabled
 	    acquisition_spec:
 	      filename: something.yaml
 	      datasource:
+	        source: file
 	        labels:
 	          type: syslog
 	        filenames:
@@ -863,6 +837,16 @@ update-notifier-motd.timer              enabled enabled
     assert_output "true"
     rune -0 cat "$BATS_TEST_TMPDIR/setup.smb.yaml"
     assert_output --partial "/path/to/smb.log"
+}
+
+@test "cscli setup unattended (disabled via envvar)" {
+    CROWDSEC_SETUP_UNATTENDED_DISABLE=x rune -0 cscli setup unattended
+    assert_output --partial "Unattended setup is disabled (CROWDSEC_SETUP_UNATTENDED_DISABLE is set)."
+    refute_stderr
+
+    CROWDSEC_SETUP_UNATTENDED_DISABLE= rune -0 cscli setup unattended
+    refute_output --partial "Unattended setup is disabled"
+    refute_stderr
 }
 
 @test "cscli setup unattended (default acquis-dir)" {

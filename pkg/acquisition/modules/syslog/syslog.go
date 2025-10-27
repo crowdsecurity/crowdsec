@@ -3,7 +3,6 @@ package syslogacquisition
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -45,7 +44,7 @@ func (s *SyslogSource) GetUuid() string {
 	return s.config.UniqueId
 }
 
-func (s *SyslogSource) GetName() string {
+func (*SyslogSource) GetName() string {
 	return "syslog"
 }
 
@@ -53,28 +52,20 @@ func (s *SyslogSource) GetMode() string {
 	return s.config.Mode
 }
 
-func (s *SyslogSource) Dump() interface{} {
+func (s *SyslogSource) Dump() any {
 	return s
 }
 
-func (s *SyslogSource) CanRun() error {
+func (*SyslogSource) CanRun() error {
 	return nil
 }
 
-func (s *SyslogSource) GetMetrics() []prometheus.Collector {
+func (*SyslogSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
-func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
+func (*SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
-}
-
-func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return errors.New("syslog datasource does not support one shot acquisition")
-}
-
-func (s *SyslogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
-	return errors.New("syslog datasource does not support one shot acquisition")
 }
 
 func validatePort(port int) bool {
@@ -113,7 +104,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (s *SyslogSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
 	s.metricsLevel = metricsLevel
@@ -125,7 +116,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (s *SyslogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
 	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)

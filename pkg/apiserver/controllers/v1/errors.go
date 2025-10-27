@@ -10,7 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-func (c *Controller) HandleDBErrors(gctx *gin.Context, err error) {
+func (*Controller) HandleDBErrors(gctx *gin.Context, err error) {
 	switch {
 	case errors.Is(err, database.ItemNotFound):
 		gctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})

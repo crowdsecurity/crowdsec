@@ -1,6 +1,7 @@
 package syslogacquisition
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -19,6 +20,8 @@ import (
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -57,14 +60,15 @@ listen_addr: 10.0.0`,
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			s := SyslogSource{}
-			err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := s.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
 
-func writeToSyslog(logs []string) {
-	conn, err := net.Dial("udp", "127.0.0.1:4242")
+func writeToSyslog(ctx context.Context, logs []string) {
+	dialer := &net.Dialer{}
+	conn, err := dialer.DialContext(ctx, "udp", "127.0.0.1:4242")
 	if err != nil {
 		fmt.Printf("could not establish connection to syslog server : %s", err)
 		return
@@ -161,7 +165,7 @@ disable_rfc_parser: true`,
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
-			err := s.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
@@ -178,7 +182,9 @@ disable_rfc_parser: true`,
 			}
 
 			actualLines := 0
-			go writeToSyslog(ts.logs)
+
+			go writeToSyslog(ctx, ts.logs)
+
 		READLOOP:
 			for {
 				select {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -39,7 +40,7 @@ var (
 	pluginTomb    tomb.Tomb
 	lpMetricsTomb tomb.Tomb
 
-	flags *Flags
+	flags Flags
 
 	// the state of acquisition
 	dataSources []acquisition.DataSource
@@ -108,19 +109,19 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
+func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
 	var err error
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
 			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFiles(cConfig.Crowdsec, cConfig.Prometheus)
+		dataSources, err = acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +140,7 @@ var (
 	labels     = make(labelsMap)
 )
 
-func (l *labelsMap) String() string {
+func (*labelsMap) String() string {
 	return "labels"
 }
 
@@ -186,14 +187,14 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
+func newLogLevel(curLevel log.Level, f *Flags) (log.Level, bool) {
 	// mother of all defaults
 	ret := log.InfoLevel
 	logLevelViaFlag := true
 
 	// keep if already set
-	if curLevelPtr != nil {
-		ret = *curLevelPtr
+	if curLevel != log.PanicLevel {
+		ret = curLevel
 	}
 
 	// override from flags
@@ -215,12 +216,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) (*log.Level, bool) {
 		logLevelViaFlag = false
 	}
 
-	if curLevelPtr != nil && ret == *curLevelPtr {
-		// avoid returning a new ptr to the same value
-		return curLevelPtr, logLevelViaFlag
-	}
-
-	return &ret, logLevelViaFlag
+	return ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -236,7 +232,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	var logLevelViaFlag bool
 
-	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, flags)
+	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, &flags)
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
@@ -252,7 +248,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogDir, cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
 		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
@@ -344,7 +340,6 @@ func main() {
 	log.Debugf("os.Args: %v", os.Args)
 
 	// Handle command line arguments
-	flags = &Flags{}
 	flags.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -376,7 +371,9 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	err := StartRunSvc()
+	ctx := context.Background()
+
+	err := StartRunSvc(ctx)
 	if err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call

@@ -16,6 +16,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -27,6 +28,8 @@ import (
 
 func TestConfiguration(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		config       string
@@ -113,7 +116,7 @@ query: >
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			vlSource := victorialogs.VLSource{}
-			err := vlSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := vlSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -134,6 +137,8 @@ query: >
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name         string
@@ -196,7 +201,7 @@ func TestConfigureDSN(t *testing.T) {
 		t.Logf("Test : %s", test.name)
 
 		vlSource := &victorialogs.VLSource{}
-		err := vlSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+		err := vlSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 
 		noDuration, _ := time.ParseDuration("0s")
@@ -212,10 +217,10 @@ func TestConfigureDSN(t *testing.T) {
 		}
 
 		if test.scheme != "" {
-			url, _ := url.Parse(vlSource.Config.URL)
-			if test.scheme != url.Scheme {
-				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
-			}
+			url, err := url.Parse(vlSource.Config.URL)
+			require.NoError(t, err)
+			require.NotNil(t, url)
+			require.Equal(t, test.scheme, url.Scheme)
 		}
 
 		if test.waitForReady != 0 {
@@ -294,7 +299,7 @@ since: 1h
 		subLogger := logger.WithField("type", "victorialogs")
 		vlSource := victorialogs.VLSource{}
 
-		err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -380,7 +385,7 @@ query: >
 			vlTomb := tomb.Tomb{}
 			vlSource := victorialogs.VLSource{}
 
-			err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -454,7 +459,7 @@ query: >
 	title := time.Now().String()
 	vlSource := victorialogs.VLSource{}
 
-	err := vlSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	err := vlSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}

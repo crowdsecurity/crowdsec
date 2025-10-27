@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/idgen"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
 
@@ -52,7 +52,7 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 		return fmt.Errorf("api client register: %w", err)
 	}
 
-	log.Printf("Successfully registered to Local API (LAPI)")
+	log.Info("Successfully registered to Local API (LAPI)")
 
 	var dumpFile string
 

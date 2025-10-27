@@ -22,7 +22,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -64,7 +63,6 @@ type BucketFactory struct {
 	duration            time.Duration          // internal representation of `Duration`
 	ret                 chan types.Event       // the bucket-specific output chan for overflows
 	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	output              bool                   // ??
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
@@ -233,7 +231,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig *csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -290,9 +288,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.BucketName = seed.Generate()
 		bucketFactory.ret = response
 
-		if simulationConfig != nil {
-			bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
-		}
+		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
 
 		bucketFactory.ScenarioVersion = item.State.LocalVersion
 		bucketFactory.hash = item.State.LocalHash
@@ -344,7 +340,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, ptr.Of(log.DebugLevel)); err != nil {
+		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
@@ -486,7 +482,6 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		}
 	}
 
-	bucketFactory.output = false
 	if err := ValidateFactory(bucketFactory); err != nil {
 		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}

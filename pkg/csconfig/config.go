@@ -45,7 +45,6 @@ type Config struct {
 	Hub          *LocalHubCfg        `yaml:"-"`
 }
 
-// NewConfig
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
 	patcher := csyaml.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(quiet)
@@ -99,9 +98,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		return nil, "", err
 	}
 
-	if err = cfg.loadCSCLI(); err != nil {
-		return nil, "", err
-	}
+	cfg.loadCSCLI()
 
 	globalConfig = cfg
 
@@ -113,10 +110,9 @@ func GetConfig() Config {
 }
 
 func NewDefaultConfig() *Config {
-	logLevel := log.InfoLevel
 	commonCfg := CommonCfg{
 		LogMedia: "stdout",
-		LogLevel: &logLevel,
+		LogLevel: log.InfoLevel,
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
