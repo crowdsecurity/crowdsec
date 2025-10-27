@@ -1,4 +1,4 @@
-package types
+package flow
 
 import (
 	log "github.com/sirupsen/logrus"

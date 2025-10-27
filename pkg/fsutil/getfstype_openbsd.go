@@ -1,6 +1,6 @@
 //go:build openbsd
 
-package types
+package fsutil
 
 import (
     "fmt"

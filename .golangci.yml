@@ -465,7 +465,7 @@ linters:
 
       - linters:
           - revive
-        path: pkg/types/utils.go
+        path: pkg/logging/configure.go
         text: 'argument-limit: .*'
 
       - linters:
