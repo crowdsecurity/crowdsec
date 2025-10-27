@@ -1050,14 +1050,14 @@ func ParseKVLax(params ...any) (any, error) {
 }
 
 // parseValueLax handles quoted and unquoted values for lax parsing.
-// - If it begins with a quote, it removes the surrounding quotes
-//   if the closing one is present and unescapes \" and \\.
-// - For unquoted values, returns the entire trimmed value as-is
+//   - If it begins with a quote, it removes the surrounding quotes
+//     if the closing one is present and unescapes \" and \\.
+//   - For unquoted values, returns the entire trimmed value as-is
 func parseValueLax(s string) string {
 	if s == "" {
 		return ""
 	}
-	
+
 	if s[0] == '"' {
 		if len(s) >= 2 && s[len(s)-1] == '"' {
 			body := s[1 : len(s)-1]
