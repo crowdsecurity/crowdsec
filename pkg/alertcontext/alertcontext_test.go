@@ -225,7 +225,7 @@ func TestValidateContextExpr(t *testing.T) {
 			exprs: []string{
 				"evt.invalid.source_ip",
 			},
-			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type flow.Event has no field invalid"),
+			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type pipeline.Event has no field invalid"),
 		},
 	}
 	for _, test := range tests {

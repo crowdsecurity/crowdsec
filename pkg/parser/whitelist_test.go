@@ -57,7 +57,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"evt.THISPROPERTYSHOULDERROR == true",
 				},
 			},
-			expectedErr: "flow.Event has no field",
+			expectedErr: "pipeline.Event has no field",
 		},
 	}
 
