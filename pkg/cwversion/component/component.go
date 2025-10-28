@@ -24,6 +24,9 @@ var Built = map[string]bool{
 	"datasource_http":         false,
 	"cscli_setup":             false,
 	"mlsupport":               false,
+	"db_mysql":                false,
+	"db_postgres":             false,
+	"db_sqlite":               false,
 }
 
 func Register(name string) {

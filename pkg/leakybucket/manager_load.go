@@ -51,7 +51,7 @@ type BucketFactory struct {
 	BayesianPrior       float32                `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
-	ScopeType           types.ScopeType        `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
+	ScopeType           ScopeType              `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName          string                 `yaml:"-"`
 	Filename            string                 `yaml:"-"`
 	RunTimeFilter       *vm.Program            `json:"-"`

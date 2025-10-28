@@ -130,11 +130,10 @@ func (d *DatabaseCfg) ConnectionString() (string, error) {
 
 	switch d.Type {
 	case "sqlite":
-		var sqliteConnectionStringParameters string
+		// this should make both sqlite3 and modernc/sqlite happy.
+		sqliteConnectionStringParameters := "_busy_timeout=100000&_fk=1&_pragma=foreign_keys(1)"
 		if d.UseWal != nil && *d.UseWal {
-			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
-		} else {
-			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+			sqliteConnectionStringParameters += "&_journal_mode=WAL"
 		}
 
 		connString = fmt.Sprintf("file:%s?%s", d.DbPath, sqliteConnectionStringParameters)

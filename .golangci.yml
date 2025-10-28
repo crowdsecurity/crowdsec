@@ -1,5 +1,12 @@
 version: "2"
 
+# To lint the windows sources on a linux host, you need to cross-build and
+# disable the C-based sqlite driver:
+#
+# GOOS=windows golangci-lint run --build-tags=windows,sqlite_modernc
+#
+# In the CI, the linters are run on both linux and windows hosts.
+
 run:
   build-tags:
     - expr_debug
@@ -465,7 +472,7 @@ linters:
 
       - linters:
           - revive
-        path: pkg/types/utils.go
+        path: pkg/logging/configure.go
         text: 'argument-limit: .*'
 
       - linters:
