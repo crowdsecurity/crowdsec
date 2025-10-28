@@ -1,8 +1,6 @@
 package types
 
 import (
-	"time"
-
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -34,7 +32,3 @@ var (
 	NewQueue = pipeline.NewQueue
 	SetDefaultLoggerConfig = logging.SetDefaultLoggerConfig
 )
-
-func UtcNow() time.Time {
-	return time.Now().UTC()
-}
