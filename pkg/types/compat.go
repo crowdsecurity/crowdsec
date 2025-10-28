@@ -3,7 +3,6 @@ package types
 import (
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -22,7 +21,6 @@ type (
 	Line = pipeline.Line
 	AppsecEvent = pipeline.AppsecEvent
 	MatchedRule = pipeline.MatchedRule
-	DataSource = enrichment.DataProvider
 	Queue = pipeline.Queue
 	RuntimeAlert = pipeline.RuntimeAlert
 	MatchedRules = pipeline.MatchedRules

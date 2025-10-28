@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/grokky"
 
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -63,8 +64,8 @@ type Node struct {
 	Stashes []Stash `yaml:"stash,omitempty"`
 	RuntimeStashes []RuntimeStash `yaml:"-"`
 	// Whitelists
-	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
-	Data      []*types.DataSource `yaml:"data,omitempty"`
+	Whitelist Whitelist                  `yaml:"whitelist,omitempty"`
+	Data      []*enrichment.DataProvider `yaml:"data,omitempty"`
 }
 
 func (n *Node) validate(ectx EnricherCtx) error {
