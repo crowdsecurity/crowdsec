@@ -10,30 +10,30 @@ import (
 )
 
 const (
-	APPSEC = flow.APPSEC
-	LIVE = flow.LIVE
-	LOG = flow.LOG
-	OVFLW = flow.OVFLW
-	TIMEMACHINE = flow.TIMEMACHINE
+	APPSEC = pipeline.APPSEC
+	LIVE = pipeline.LIVE
+	LOG = pipeline.LOG
+	OVFLW = pipeline.OVFLW
+	TIMEMACHINE = pipeline.TIMEMACHINE
 )
 
 type (
-	Event = flow.Event
-	Line = flow.Line
-	AppsecEvent = flow.AppsecEvent
-	MatchedRule = flow.MatchedRule
+	Event = pipeline.Event
+	Line = pipeline.Line
+	AppsecEvent = pipeline.AppsecEvent
+	MatchedRule = pipeline.MatchedRule
 	DataSource = enrichment.DataProvider
-	Queue = flow.Queue
-	RuntimeAlert = flow.RuntimeAlert
-	MatchedRules = flow.MatchedRules
+	Queue = pipeline.Queue
+	RuntimeAlert = pipeline.RuntimeAlert
+	MatchedRules = pipeline.MatchedRules
 )
 
 var (
 	IsNetworkFS = fsutil.IsNetworkFS
-	MakeEvent = flow.MakeEvent
+	MakeEvent = pipeline.MakeEvent
 	ConfigureLogger = logging.ConfigureLogger
-	NewMatchedRule = flow.NewMatchedRule
-	NewQueue = flow.NewQueue
+	NewMatchedRule = pipeline.NewMatchedRule
+	NewQueue = pipeline.NewQueue
 	SetDefaultLoggerConfig = logging.SetDefaultLoggerConfig
 )
 

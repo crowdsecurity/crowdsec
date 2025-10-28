@@ -1,4 +1,4 @@
-package flow
+package pipeline
 
 import (
 	"net/netip"
