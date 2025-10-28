@@ -17,9 +17,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/longpollclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -88,7 +88,7 @@ type PapiPermCheckSuccess struct {
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
 	logger := log.New()
-	if err := types.ConfigureLogger(logger, logLevel); err != nil {
+	if err := logging.ConfigureLogger(logger, logLevel); err != nil {
 		return &Papi{}, fmt.Errorf("creating papi logger: %w", err)
 	}
 

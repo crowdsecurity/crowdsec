@@ -28,7 +28,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 const keyLength = 32
@@ -119,7 +119,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
 	}
 

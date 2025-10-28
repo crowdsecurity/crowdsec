@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -25,8 +24,6 @@ type (
 
 var (
 	MakeEvent = pipeline.MakeEvent
-	ConfigureLogger = logging.ConfigureLogger
 	NewMatchedRule = pipeline.NewMatchedRule
 	NewQueue = pipeline.NewQueue
-	SetDefaultLoggerConfig = logging.SetDefaultLoggerConfig
 )

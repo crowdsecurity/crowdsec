@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -122,7 +123,7 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 // setupLogger creates a logger for the datasource to use at runtime.
 func setupLogger(source, name string, level log.Level) (*log.Entry, error) {
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, level); err != nil {
+	if err := logging.ConfigureLogger(clog, level); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 

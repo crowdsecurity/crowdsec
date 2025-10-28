@@ -16,7 +16,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type Client struct {
@@ -52,7 +52,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, fmt.Errorf("while configuring db logger: %w", err)
 	}
 

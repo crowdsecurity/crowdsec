@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 var (
@@ -48,7 +48,7 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel log.Le
 	}
 
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, logLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, logLevel); err != nil {
 		return fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 

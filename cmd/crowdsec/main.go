@@ -25,6 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -247,7 +248,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+	if err := logging.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
 		cConfig.Common.LogDir, cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
