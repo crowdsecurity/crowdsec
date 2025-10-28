@@ -20,7 +20,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -56,7 +58,7 @@ type BucketFactory struct {
 	Filename            string                 `yaml:"-"`
 	RunTimeFilter       *vm.Program            `json:"-"`
 	RunTimeGroupBy      *vm.Program            `json:"-"`
-	Data                []*types.DataSource    `yaml:"data,omitempty"`
+	Data                []*enrichment.DataProvider    `yaml:"data,omitempty"`
 	DataDir             string                 `yaml:"-"`
 	CancelOnFilter      string                 `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	leakspeed           time.Duration          // internal representation of `Leakspeed`
@@ -340,7 +342,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
+		if err = logging.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 

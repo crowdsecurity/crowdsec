@@ -24,9 +24,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var pluginMutex sync.Mutex
@@ -343,7 +343,7 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 
-	err = types.ConfigureLogger(l, log.TraceLevel)
+	err = logging.ConfigureLogger(l, log.TraceLevel)
 	if err != nil {
 		return nil, err
 	}

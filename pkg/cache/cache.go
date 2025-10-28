@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
@@ -50,7 +50,7 @@ func CacheInit(cfg CacheCfg) error {
 
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog, cfg.LogLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, cfg.LogLevel); err != nil {
 		return fmt.Errorf("while creating cache logger: %w", err)
 	}
 

@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -473,7 +474,7 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 	if f.config.PollWithoutInotify != nil {
 		pollFile = *f.config.PollWithoutInotify
 	} else {
-		networkFS, fsType, err := types.IsNetworkFS(file)
+		networkFS, fsType, err := fsutil.IsNetworkFS(file)
 		if err != nil {
 			logger.Warningf("Could not get fs type for %s : %s", file, err)
 		}

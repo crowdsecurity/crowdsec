@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -391,7 +392,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = log.DebugLevel
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
+	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -444,7 +445,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = log.ErrorLevel
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
+	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)

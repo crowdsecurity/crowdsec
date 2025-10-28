@@ -15,7 +15,9 @@ import (
 
 	"github.com/crowdsecurity/grokky"
 
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -63,8 +65,8 @@ type Node struct {
 	Stashes []Stash `yaml:"stash,omitempty"`
 	RuntimeStashes []RuntimeStash `yaml:"-"`
 	// Whitelists
-	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
-	Data      []*types.DataSource `yaml:"data,omitempty"`
+	Whitelist Whitelist                  `yaml:"whitelist,omitempty"`
+	Data      []*enrichment.DataProvider `yaml:"data,omitempty"`
 }
 
 func (n *Node) validate(ectx EnricherCtx) error {
@@ -412,7 +414,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	that will be used only for processing this node ;) */
 	if n.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
+		if err = logging.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
