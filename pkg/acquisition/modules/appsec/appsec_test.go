@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type appsecRuleTest struct {
@@ -38,7 +38,7 @@ type appsecRuleTest struct {
 	DefaultPassAction      string
 	input_request          appsec.ParsedRequest
 	afterload_asserts      func(runner AppsecRunner)
-	output_asserts         func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int)
+	output_asserts         func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int)
 }
 
 func setupLapi() (*http.ServeMux, string, func()) {
@@ -70,7 +70,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	outofbandRules := []string{}
 	nativeOutofbandRules := []string{}
 	InChan := make(chan appsec.ParsedRequest)
-	OutChan := make(chan types.Event)
+	OutChan := make(chan pipeline.Event)
 
 	logger := log.WithField("test", test.name)
 
@@ -181,7 +181,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	input := test.input_request
 	input.ResponseChannel = make(chan appsec.AppsecTempResponse)
-	OutputEvents := make([]types.Event, 0)
+	OutputEvents := make([]pipeline.Event, 0)
 	OutputResponses := make([]appsec.AppsecTempResponse, 0)
 	go func() {
 		for {

@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -264,7 +264,7 @@ func (*LokiSource) GetName() string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.logger.Debug("Loki one shot acquisition")
 	l.Client.SetTomb(t)
 
@@ -300,8 +300,8 @@ func (l *LokiSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 	}
 }
 
-func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]string, out chan types.Event) {
-	ll := types.Line{}
+func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]string, out chan pipeline.Event) {
+	ll := pipeline.Line{}
 	ll.Raw = entry.Line
 	ll.Time = entry.Timestamp
 	ll.Src = l.Config.URL
@@ -312,12 +312,12 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "acquis_type": ll.Labels["type"]}).Inc()
 	}
-	evt := types.MakeEvent(l.Config.UseTimeMachine, types.LOG, true)
+	evt := pipeline.MakeEvent(l.Config.UseTimeMachine, pipeline.LOG, true)
 	evt.Line = ll
 	out <- evt
 }
 
-func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *LokiSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.Client.SetTomb(t)
 
 	if !l.Config.NoReadyCheck {

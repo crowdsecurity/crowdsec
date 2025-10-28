@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -83,7 +83,7 @@ webhook_path: /k8s-audit`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 
 			f := KubernetesAuditSource{}
@@ -229,7 +229,7 @@ func TestHandler(t *testing.T) {
 
 	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 			eventCount := 0
 

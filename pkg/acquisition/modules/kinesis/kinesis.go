@@ -26,7 +26,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type KinesisConfiguration struct {
@@ -289,7 +289,7 @@ func (k *KinesisSource) RegisterConsumer(ctx context.Context) (*kinesis.Register
 	return streamConsumer, nil
 }
 
-func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan types.Event, logger *log.Entry, shardID string) {
+func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan pipeline.Event, logger *log.Entry, shardID string) {
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
 			if k.metricsLevel != metrics.AcquisitionMetricsLevelNone {
@@ -323,7 +323,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan 
 		for _, event := range data {
 			logger.Tracef("got record %s", event.Message)
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = event.Message
 			l.Labels = k.Config.Labels
 			l.Time = time.Now().UTC()
@@ -335,7 +335,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan 
 				l.Src = k.Config.StreamName
 			}
 
-			evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(k.Config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 
 			out <- evt
@@ -343,7 +343,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []kinTypes.Record, out chan 
 	}
 }
 
-func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardID string, streamName string) error {
+func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan pipeline.Event, shardID string, streamName string) error {
 	logger := k.logger.WithField("shard_id", shardID)
 	// ghetto sync, kinesis allows to subscribe to a closed shard, which will make the goroutine exit immediately
 	// and we won't be able to start a new one if this is the first one started by the tomb
@@ -376,7 +376,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 	}
 }
 
-func (k *KinesisSource) SubscribeToShards(ctx context.Context, arn arn.ARN, streamConsumer *kinesis.RegisterStreamConsumerOutput, out chan types.Event) error {
+func (k *KinesisSource) SubscribeToShards(ctx context.Context, arn arn.ARN, streamConsumer *kinesis.RegisterStreamConsumerOutput, out chan pipeline.Event) error {
 	shards, err := k.kClient.ListShards(ctx, &kinesis.ListShardsInput{
 			StreamName: aws.String(arn.Resource[7:]),
 		})
@@ -404,7 +404,7 @@ func (k *KinesisSource) SubscribeToShards(ctx context.Context, arn arn.ARN, stre
 	return nil
 }
 
-func (k *KinesisSource) EnhancedRead(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) EnhancedRead(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	parsedARN, err := arn.Parse(k.Config.StreamARN)
 	if err != nil {
 		return fmt.Errorf("cannot parse stream ARN: %w", err)
@@ -461,7 +461,7 @@ func (k *KinesisSource) EnhancedRead(ctx context.Context, out chan types.Event, 
 	}
 }
 
-func (k *KinesisSource) ReadFromShard(ctx context.Context, out chan types.Event, shardID string) error {
+func (k *KinesisSource) ReadFromShard(ctx context.Context, out chan pipeline.Event, shardID string) error {
 	logger := k.logger.WithField("shard", shardID)
 	logger.Debugf("Starting to read shard")
 
@@ -520,7 +520,7 @@ func (k *KinesisSource) ReadFromShard(ctx context.Context, out chan types.Event,
 	}
 }
 
-func (k *KinesisSource) ReadFromStream(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) ReadFromStream(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	k.logger = k.logger.WithField("stream", k.Config.StreamName)
 	k.logger.Info("starting kinesis acquisition from shards")
 
@@ -564,7 +564,7 @@ func (k *KinesisSource) ReadFromStream(ctx context.Context, out chan types.Event
 	}
 }
 
-func (k *KinesisSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KinesisSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 

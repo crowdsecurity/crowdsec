@@ -23,7 +23,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfiguration(t *testing.T) {
@@ -309,7 +309,7 @@ since: 1h
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		read := 0
 
 		go func() {
@@ -381,7 +381,7 @@ query: >
 				"name": ts.name,
 			})
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			vlTomb := tomb.Tomb{}
 			vlSource := victorialogs.VLSource{}
 
@@ -464,7 +464,7 @@ query: >
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	out := make(chan types.Event, 10)
+	out := make(chan pipeline.Event, 10)
 
 	vlTomb := &tomb.Tomb{}
 

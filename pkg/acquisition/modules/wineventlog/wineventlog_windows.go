@@ -24,7 +24,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type WinEventLogConfiguration struct {
@@ -161,7 +161,7 @@ func (w *WinEventLogSource) buildXpathQuery() (string, error) {
 	return string(xpathQuery), nil
 }
 
-func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 	subscription, err := winlog.Subscribe(w.evtConfig)
 	if err != nil {
 		w.logger.Errorf("Failed to subscribe to event log: %s", err)
@@ -197,7 +197,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "acquis_type": w.config.Labels["type"]}).Inc()
 					}
-					l := types.Line{}
+					l := pipeline.Line{}
 					l.Raw = event
 					l.Module = w.GetName()
 					l.Labels = w.config.Labels
@@ -205,9 +205,9 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Src = w.name
 					l.Process = true
 					if !w.config.UseTimeMachine {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE, Unmarshaled: make(map[string]interface{})}
+						out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.LIVE, Unmarshaled: make(map[string]interface{})}
 					} else {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
+						out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]interface{})}
 					}
 				}
 			}
@@ -385,7 +385,7 @@ func (*WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	handle, err := wevtapi.EvtQuery(localMachine, w.evtConfig.ChannelPath, w.evtConfig.Query, w.evtConfig.Flags)
 	if err != nil {
 		return fmt.Errorf("EvtQuery failed: %v", err)
@@ -420,14 +420,14 @@ OUTER_LOOP:
 				if w.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": w.name, "datasource_type": "wineventlog", "acquis_type": w.config.Labels["type"]}).Inc()
 				}
-				l := types.Line{}
+				l := pipeline.Line{}
 				l.Raw = evt
 				l.Module = w.GetName()
 				l.Labels = w.config.Labels
 				l.Time = time.Now()
 				l.Src = w.name
 				l.Process = true
-				csevt := types.MakeEvent(w.config.UseTimeMachine, types.LOG, true)
+				csevt := pipeline.MakeEvent(w.config.UseTimeMachine, pipeline.LOG, true)
 				csevt.Line = l
 				out <- csevt
 			}
@@ -456,7 +456,7 @@ func (*WinEventLogSource) CanRun() error {
 	return nil
 }
 
-func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (w *WinEventLogSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/wineventlog/streaming")
 		return w.getEvents(out, t)

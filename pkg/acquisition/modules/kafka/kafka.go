@@ -21,7 +21,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const dataSourceName = "kafka"
@@ -142,7 +142,7 @@ func (k *KafkaSource) Dump() any {
 	return k
 }
 
-func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) error {
+func (k *KafkaSource) ReadMessage(ctx context.Context, out chan pipeline.Event) error {
 	if k.Config.GroupID == "" {
 		err := k.Reader.SetOffset(kafka.LastOffset)
 		if err != nil {
@@ -165,7 +165,7 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 		}
 
 		k.logger.Tracef("got message: %s", string(m.Value))
-		l := types.Line{
+		l := pipeline.Line{
 			Raw:     string(m.Value),
 			Labels:  k.Config.Labels,
 			Time:    m.Time.UTC(),
@@ -179,13 +179,13 @@ func (k *KafkaSource) ReadMessage(ctx context.Context, out chan types.Event) err
 			metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": k.Config.Topic, "datasource_type": "kafka", "acquis_type": l.Labels["type"]}).Inc()
 		}
 
-		evt := types.MakeEvent(k.Config.UseTimeMachine, types.LOG, true)
+		evt := pipeline.MakeEvent(k.Config.UseTimeMachine, pipeline.LOG, true)
 		evt.Line = l
 		out <- evt
 	}
 }
 
-func (k *KafkaSource) RunReader(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) RunReader(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	k.logger.Debugf("starting %s datasource reader goroutine with configuration %+v", dataSourceName, k.Config)
 	t.Go(func() error {
 		return k.ReadMessage(ctx, out)
@@ -200,7 +200,7 @@ func (k *KafkaSource) RunReader(ctx context.Context, out chan types.Event, t *to
 	return nil
 }
 
-func (k *KafkaSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (k *KafkaSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	k.logger.Infof("start reader on brokers '%+v' with topic '%s'", k.Config.Brokers, k.Config.Topic)
 
 	t.Go(func() error {

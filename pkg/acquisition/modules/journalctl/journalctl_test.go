@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -159,7 +159,7 @@ journalctl_filter:
 		}
 
 		tomb := tomb.Tomb{}
-		out := make(chan types.Event, 100)
+		out := make(chan pipeline.Event, 100)
 		j := JournalCtlSource{}
 
 		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -229,7 +229,7 @@ journalctl_filter:
 		}
 
 		tomb := tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		j := JournalCtlSource{}
 
 		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)

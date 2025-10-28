@@ -16,7 +16,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -199,7 +199,7 @@ event_ids:
 
 	for _, test := range tests {
 		to := &tomb.Tomb{}
-		c := make(chan types.Event)
+		c := make(chan pipeline.Event)
 		f := WinEventLogSource{}
 
 		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -290,7 +290,7 @@ func TestOneShotAcquisition(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			lineCount := 0
 			to := &tomb.Tomb{}
-			c := make(chan types.Event)
+			c := make(chan pipeline.Event)
 			f := WinEventLogSource{}
 
 			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
