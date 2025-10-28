@@ -19,12 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-// those constants are now defined in types/constants
-// const (
-// 	LIVE = iota
-// 	TIMEMACHINE
-// )
-
 // Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
@@ -65,7 +59,7 @@ type Leaky struct {
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
-	scopeType           types.ScopeType
+	scopeType           ScopeType
 	hash                string
 	scenarioVersion     string
 	tomb                *tomb.Tomb

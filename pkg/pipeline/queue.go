@@ -1,4 +1,4 @@
-package types
+package pipeline
 
 import (
 	log "github.com/sirupsen/logrus"

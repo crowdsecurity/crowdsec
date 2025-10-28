@@ -1,4 +1,4 @@
-package types
+package fsutil
 
 import (
 	"path/filepath"

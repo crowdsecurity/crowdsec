@@ -1,6 +1,6 @@
 //go:build !windows && !freebsd && !openbsd
 
-package types
+package fsutil
 
 import (
 	"fmt"
