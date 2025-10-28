@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 )
 
 const (
@@ -85,7 +85,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 	if !inCli && c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
-			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			isNetwork, fsType, err := fsutil.IsNetworkFS(dbDir)
 			switch {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)
@@ -102,7 +102,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 			}
 		} else if *c.DbConfig.UseWal {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
-			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			isNetwork, fsType, err := fsutil.IsNetworkFS(dbDir)
 			switch {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)

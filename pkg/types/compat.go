@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -25,7 +24,6 @@ type (
 )
 
 var (
-	IsNetworkFS = fsutil.IsNetworkFS
 	MakeEvent = pipeline.MakeEvent
 	ConfigureLogger = logging.ConfigureLogger
 	NewMatchedRule = pipeline.NewMatchedRule
