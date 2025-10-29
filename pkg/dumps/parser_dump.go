@@ -17,12 +17,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type ParserResult struct {
 	Idx     int
-	Evt     types.Event
+	Evt     pipeline.Event
 	Success bool
 }
 
@@ -201,7 +201,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 		sort.Strings(skeys)
 
 		// iterate stage
-		var prevItem types.Event
+		var prevItem pipeline.Event
 
 		for _, stage := range skeys {
 			parsers := t.state[tstamp][stage]

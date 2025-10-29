@@ -27,7 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
@@ -49,9 +49,9 @@ var (
 	holders []leakybucket.BucketFactory
 	buckets *leakybucket.Buckets
 
-	inputLineChan   chan types.Event
-	inputEventChan  chan types.Event
-	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
+	inputLineChan   chan pipeline.Event
+	inputEventChan  chan pipeline.Event
+	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
 	// settings
 	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
