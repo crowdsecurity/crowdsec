@@ -37,9 +37,7 @@ type allowlistUnsubscribe struct {
 	Id   string `json:"id"`
 }
 
-func DecisionCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func DecisionCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "delete":
 		data, err := json.Marshal(message.Data)
@@ -91,9 +89,7 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 	return nil
 }
 
-func AlertCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "add":
 		data, err := json.Marshal(message.Data)
@@ -166,9 +162,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 	return nil
 }
 
-func ManagementCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func ManagementCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	if sync {
 		p.Logger.Infof("Ignoring management command from PAPI in sync mode")
 		return nil
@@ -217,8 +211,6 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
-
-		ctx := context.TODO()
 
 		if forcePullMsg.Blocklist == nil && forcePullMsg.Allowlist == nil {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling community, 3rd-party blocklists and allowlists")
