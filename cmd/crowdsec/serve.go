@@ -21,7 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
@@ -205,7 +205,7 @@ func shutdown(_ os.Signal, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func drainChan(c chan types.Event) {
+func drainChan(c chan pipeline.Event) {
 	time.Sleep(500 * time.Millisecond)
 	// delay to avoid draining chan before the acquisition/parser
 	// get a chance to push its event

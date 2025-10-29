@@ -13,7 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Hook struct {
@@ -49,7 +49,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookPostEval:
 		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, types.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -445,7 +445,7 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt pipeline.Event) error {
 	has_match := false
 
 	for _, rule := range w.CompiledOnMatch {

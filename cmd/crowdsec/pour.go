@@ -10,10 +10,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func maybeGC(parsed types.Event, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
+func maybeGC(parsed pipeline.Event, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
 	log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
 	// when in forensics mode, garbage collect buckets
 	if cConfig.Crowdsec.BucketsGCEnabled {
@@ -34,7 +34,7 @@ func maybeGC(parsed types.Event, buckets *leaky.Buckets, cConfig *csconfig.Confi
 	return nil
 }
 
-func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
+func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
 	count := 0
 
 	for {
