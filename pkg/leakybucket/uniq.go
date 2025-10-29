@@ -7,7 +7,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 // Uniq creates three new functions that share the same initialisation and the same scope.
@@ -27,8 +27,8 @@ type Uniq struct {
 	CacheMutex       sync.Mutex
 }
 
-func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
+func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 		element, err := getElement(msg, u.DistinctCompiled)
 		if err != nil {
 			leaky.logger.Errorf("Uniq filter exec failed : %v", err)
@@ -47,14 +47,14 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 	}
 }
 
-func (*Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (*Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		return alert, queue
 	}
 }
 
-func (*Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
+func (*Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 		return &msg
 	}
 }
@@ -71,7 +71,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		uniqExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 }
 
 // getElement computes a string from an event and a filter
-func getElement(msg types.Event, cFilter *vm.Program) (string, error) {
+func getElement(msg pipeline.Event, cFilter *vm.Program) (string, error) {
 	el, err := expr.Run(cFilter, map[string]any{"evt": &msg})
 	if err != nil {
 		return "", err

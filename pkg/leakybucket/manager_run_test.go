@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func expectBucketCount(buckets *Buckets, expected int) error {
@@ -80,7 +80,7 @@ func TestGCandDump(t *testing.T) {
 
 	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestShutdownBuckets(t *testing.T) {
 
 	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {

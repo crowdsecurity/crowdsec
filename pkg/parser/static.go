@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Static struct {
@@ -57,7 +57,7 @@ func (s *Static) Compile() (*RuntimeStatic, error) {
 
 	if s.ExpValue != "" {
 		prog, err := expr.Compile(s.ExpValue,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("compiling static expression %q: %w", s.ExpValue, err)
 		}
