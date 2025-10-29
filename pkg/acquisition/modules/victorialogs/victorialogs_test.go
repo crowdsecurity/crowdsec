@@ -3,6 +3,7 @@ package victorialogs_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -465,6 +466,11 @@ query: >
 	}
 
 	out := make(chan types.Event, 10)
+	go func() {
+		for {
+			<-out
+		}
+	}()
 
 	vlTomb := &tomb.Tomb{}
 
@@ -483,7 +489,7 @@ query: >
 	vlTomb.Kill(nil)
 
 	err = vlTomb.Wait()
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 }
