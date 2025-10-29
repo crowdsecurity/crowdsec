@@ -14,6 +14,8 @@ import (
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl"
+	"github.com/segmentio/kafka-go/sasl/plain"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -34,6 +36,7 @@ type KafkaConfiguration struct {
 	Timeout                           string                  `yaml:"timeout"`
 	TLS                               *TLSConfig              `yaml:"tls"`
 	BatchConfiguration                KafkaBatchConfiguration `yaml:"batch"`
+	SASL                              *SASLConfig             `yaml:"sasl"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -50,6 +53,13 @@ type KafkaBatchConfiguration struct {
 	BatchMaxWait   time.Duration `yaml:"max_wait"`
 	BatchQueueSize int           `yaml:"queue_size"`
 	CommitInterval time.Duration `yaml:"commit_interval"`
+}
+
+type SASLConfig struct {
+	Mechanism string `yaml:"mechanism"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	UseSSL    bool   `yaml:"use_ssl"`
 }
 
 type KafkaSource struct {
@@ -243,6 +253,20 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 	return &tlsConfig, err
 }
 
+func (kc *KafkaConfiguration) NewSASLConfig() (sasl.Mechanism, error) {
+	if kc.SASL == nil {
+		return nil, errors.New("SASL not configured")
+	}
+	if kc.SASL.Mechanism == "PLAIN" {
+		mechanism := plain.Mechanism{
+			Username: kc.SASL.Username,
+			Password: kc.SASL.Password,
+		}
+		return mechanism, nil
+	}
+	return nil, fmt.Errorf("unsupported sasl mechanism: %s", kc.SASL.Mechanism)
+}
+
 func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 	dialer := &kafka.Dialer{}
 	var timeoutDuration time.Duration
@@ -267,6 +291,21 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 		dialer.TLS = tlsConfig
 	}
 
+	if kc.SASL != nil {
+
+		if kc.SASL.UseSSL && kc.TLS == nil {
+			// If SASL requires SSL but no SSL config has been set up above,
+			// we create a default one by passing an empty TLS Config to the dialer.
+			tlsConfig := tls.Config{}
+			dialer.TLS = &tlsConfig
+		}
+
+		saslMechanism, err := kc.NewSASLConfig()
+		if err != nil {
+			return dialer, err
+		}
+		dialer.SASLMechanism = saslMechanism
+	}
 	return dialer, nil
 }
 

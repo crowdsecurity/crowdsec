@@ -70,6 +70,32 @@ partition: 1
 group_id: crowdsec`,
 			expectedErr: "cannote create kafka reader: cannot specify both group_id and partition",
 		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+sasl:
+  use_ssl: true
+  mechanism: PLAIN
+  username: $ConnectionString
+  password: foo`,
+			expectedErr: "",
+		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+sasl:
+  use_ssl: true
+  mechanism: SCRAM
+  username: theUserName
+  password: 0123456789abcdef`,
+			expectedErr: "cannot create kafka dialer: unsupported sasl mechanism: SCRAM",
+		},
 	}
 
 	subLogger := log.WithField("type", "kafka")
