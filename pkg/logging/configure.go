@@ -1,9 +1,8 @@
-package types
+package logging
 
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -76,7 +75,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	return nil
 }
 
-func ConfigureLogger(clog *log.Logger, level *log.Level) error {
+func ConfigureLogger(clog *log.Logger, level log.Level) error {
 	/*Configure logs*/
 	if LogOutput != nil {
 		clog.SetOutput(LogOutput)
@@ -88,24 +87,9 @@ func ConfigureLogger(clog *log.Logger, level *log.Level) error {
 
 	clog.SetLevel(logLevel)
 
-	if level != nil && !logLevelViaFlag {
-		clog.SetLevel(*level)
+	if level != log.PanicLevel && !logLevelViaFlag {
+		clog.SetLevel(level)
 	}
 
 	return nil
-}
-
-func UtcNow() time.Time {
-	return time.Now().UTC()
-}
-
-func IsNetworkFS(path string) (bool, string, error) {
-	fsType, err := GetFSType(path)
-	if err != nil {
-		return false, "", err
-	}
-
-	fsType = strings.ToLower(fsType)
-
-	return fsType == "nfs" || fsType == "cifs" || fsType == "smb" || fsType == "smb2", fsType, nil
 }

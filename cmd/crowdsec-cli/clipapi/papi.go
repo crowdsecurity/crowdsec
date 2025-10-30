@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -143,7 +143,7 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	apic.Shutdown()
 	papi.Shutdown()
-	t.Wait()
+	_ = t.Wait()
 	time.Sleep(5 * time.Second) // FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
 	return nil

@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,7 @@ func GenSubObject(t *testing.T, i int) []byte {
 	require.NoError(t, err)
 
 	var b bytes.Buffer
+
 	gz := gzip.NewWriter(&b)
 	_, err = gz.Write(body)
 	require.NoError(t, err)
@@ -53,8 +55,14 @@ func GenSubObject(t *testing.T, i int) []byte {
 }
 
 func WriteToStream(t *testing.T, endpoint string, streamName string, count int, shards int, sub bool) {
-	sess := session.Must(session.NewSession())
-	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
+	ctx := t.Context()
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"), config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	require.NoError(t, err)
+
+	kinesisClient := kinesis.NewFromConfig(cfg, func(o *kinesis.Options) {
+		o.BaseEndpoint = aws.String(endpoint)
+	})
 
 	for i := range count {
 		partition := "partition"
@@ -70,7 +78,7 @@ func WriteToStream(t *testing.T, endpoint string, streamName string, count int, 
 			data = []byte(strconv.Itoa(i))
 		}
 
-		_, err := kinesisClient.PutRecord(&kinesis.PutRecordInput{
+		_, err := kinesisClient.PutRecord(ctx, &kinesis.PutRecordInput{
 			Data:         data,
 			PartitionKey: aws.String(partition),
 			StreamName:   aws.String(streamName),
@@ -92,6 +100,8 @@ func TestMain(m *testing.M) {
 
 func TestBadConfiguration(t *testing.T) {
 	cstest.SkipOnWindows(t)
+	
+	ctx := t.Context()
 
 	tests := []struct {
 		config      string
@@ -134,7 +144,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			f := KinesisSource{}
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
@@ -162,7 +172,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -207,7 +217,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -256,7 +266,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}

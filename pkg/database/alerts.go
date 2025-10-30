@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -58,6 +57,11 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 		alertIDs, err := c.CreateAlert(ctx, machineID, []*models.Alert{alertItem})
 		if err != nil {
 			return "", fmt.Errorf("unable to create alert: %w", err)
+		}
+
+		// happy nilaway
+		if len(alertIDs) == 0 {
+			return "", fmt.Errorf("unable to create alert: no IDs returned for alert %s", alertItem.UUID)
 		}
 
 		return alertIDs[0], nil
@@ -570,14 +574,7 @@ func retryOnBusy(fn func() error) error {
 			return nil
 		}
 
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy {
-			// sqlite3.Error{
-			//   Code:         5,
-			//   ExtendedCode: 5,
-			//   SystemErrno:  0,
-			//   err:          "database is locked",
-			// }
+		if IsSqliteBusyError(err) {
 			log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
 			time.Sleep(1 * time.Second)
 

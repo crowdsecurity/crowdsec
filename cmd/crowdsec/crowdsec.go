@@ -19,7 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 // initCrowdsec prepares the log processor service
@@ -60,7 +60,7 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 		}
 	}
 
-	datasources, err := LoadAcquisition(cConfig)
+	datasources, err := LoadAcquisition(ctx, cConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("while loading acquisition config: %w", err)
 	}
@@ -172,8 +172,8 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 
 // runCrowdsec starts the log processor service
 func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
-	inputEventChan = make(chan types.Event)
-	inputLineChan = make(chan types.Event)
+	inputEventChan = make(chan pipeline.Event)
+	inputLineChan = make(chan pipeline.Event)
 
 	startParserRoutines(cConfig, parsers)
 

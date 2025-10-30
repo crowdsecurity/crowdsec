@@ -7,11 +7,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) newInfoCmd() *cobra.Command {
+func (*cliHubTest) newInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",

@@ -1,10 +1,10 @@
-package types
+package enrichment
 
 import (
 	"time"
 )
 
-type DataSource struct {
+type DataProvider struct {
 	SourceURL string `yaml:"source_url"`
 	DestPath  string `yaml:"dest_file"`
 	Type      string `yaml:"type"`

@@ -6,12 +6,12 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statLapiMachine map[string]map[string]map[string]int
 
-func (s statLapiMachine) Description() (string, string) {
+func (statLapiMachine) Description() (string, string) {
 	return "Local API Machines Metrics",
 		`Tracks the number of calls to the local API from each registered machine.`
 }

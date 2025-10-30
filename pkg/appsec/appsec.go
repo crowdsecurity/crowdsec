@@ -13,7 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Hook struct {
@@ -46,7 +46,7 @@ const (
 )
 
 func (h *Hook) Build(hookStage int) error {
-	ctx := map[string]interface{}{}
+	ctx := map[string]any{}
 
 	switch hookStage {
 	case hookOnLoad:
@@ -56,7 +56,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookPostEval:
 		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, types.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -283,7 +283,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) GetDataDir() string {
+func (*AppsecConfig) GetDataDir() string {
 	return hub.GetDataDir()
 }
 
@@ -467,7 +467,7 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt types.Event) error {
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
 	has_match := false
 
 	for _, rule := range w.CompiledOnMatch {

@@ -21,13 +21,12 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var pluginMutex sync.Mutex
@@ -46,7 +45,6 @@ type PluginBroker struct {
 	profileConfigs                  []*csconfig.ProfileCfg
 	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
-	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
 	notificationPluginByName        map[string]protobufs.NotifierServer
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
@@ -97,7 +95,6 @@ type PluginConfigList []PluginConfig
 
 func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan models.ProfileAlert)
-	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
 	pb.pluginConfigByName = make(map[string]PluginConfig)
@@ -346,7 +343,7 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 
-	err = types.ConfigureLogger(l, ptr.Of(log.TraceLevel))
+	err = logging.ConfigureLogger(l, log.TraceLevel)
 	if err != nil {
 		return nil, err
 	}

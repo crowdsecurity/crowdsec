@@ -13,7 +13,6 @@ import (
 )
 
 type AppsecCollection struct {
-	collectionName string
 	Rules          []string
 	NativeRules    []string
 }
@@ -70,9 +69,7 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			continue
 		}
 
-		appsecCol := AppsecCollection{
-			collectionName: appsecRule.Name,
-		}
+		appsecCol := AppsecCollection{}
 
 		if appsecRule.SecLangFilesRules != nil {
 			for _, rulesFile := range appsecRule.SecLangFilesRules {

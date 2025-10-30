@@ -286,7 +286,7 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (w *WinEventLogSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	w.logger = logger
 	w.metricsLevel = metricsLevel
 
@@ -303,7 +303,7 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry, metr
 	return nil
 }
 
-func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (w *WinEventLogSource) ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "wineventlog://") {
 		return fmt.Errorf("invalid DSN %s for wineventlog source, must start with wineventlog://", dsn)
 	}
@@ -381,7 +381,7 @@ func (w *WinEventLogSource) GetMode() string {
 	return w.config.Mode
 }
 
-func (w *WinEventLogSource) SupportedModes() []string {
+func (*WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
@@ -437,19 +437,19 @@ OUTER_LOOP:
 	return nil
 }
 
-func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
-func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
+func (*WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.WineventlogDataSourceLinesRead}
 }
 
-func (w *WinEventLogSource) GetName() string {
+func (*WinEventLogSource) GetName() string {
 	return "wineventlog"
 }
 
-func (w *WinEventLogSource) CanRun() error {
+func (*WinEventLogSource) CanRun() error {
 	if runtime.GOOS != "windows" {
 		return errors.New("windows event log acquisition is only supported on Windows")
 	}

@@ -4,14 +4,5 @@ Description=CrowdSec Hub update
 [Service]
 Type=oneshot
 Environment=LC_ALL=C LANG=C PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/bin/sh -ceu '
-  test -x /usr/bin/cscli || exit 0
-
-  /usr/bin/cscli --error hub update >/dev/null
-
-  upgraded="$(/usr/bin/cscli --error hub upgrade)"
-  if [ -n "$upgraded" ]; then
-    systemctl reload crowdsec.service
-  fi
-'
+ExecStart=/usr/libexec/crowdsec/hubupdate.sh
 

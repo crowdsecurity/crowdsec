@@ -8,7 +8,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
@@ -33,7 +33,7 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	} else {
 		conditionalExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
@@ -47,8 +47,8 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	return err
 }
 
-func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, l *Leaky) *types.Event {
+func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, l *Leaky) *pipeline.Event {
 		var condition, ok bool
 
 		if c.ConditionalFilterRuntime != nil {
