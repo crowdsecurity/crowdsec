@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const dataSourceName = "http"
@@ -154,7 +154,7 @@ func (hc *HttpConfiguration) Validate() error {
 	return nil
 }
 
-func (h *HTTPSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (h *HTTPSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	h.logger = logger
 	h.metricsLevel = metricsLevel
 
@@ -254,7 +254,7 @@ func authorizeRequest(r *http.Request, hc *HttpConfiguration) error {
 	return nil
 }
 
-func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan types.Event) error {
+func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *HttpConfiguration, out chan pipeline.Event) error {
 	if hc.MaxBodySize != nil && r.ContentLength > *hc.MaxBodySize {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return fmt.Errorf("body size exceeds max body size: %d > %d", r.ContentLength, *hc.MaxBodySize)
@@ -304,7 +304,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			return fmt.Errorf("failed to decode: %w", err)
 		}
 
-		line := types.Line{
+		line := pipeline.Line{
 			Raw:     string(message),
 			Src:     srcHost,
 			Time:    time.Now().UTC(),
@@ -317,7 +317,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 			line.Src = hc.Path
 		}
 
-		evt := types.MakeEvent(h.Config.UseTimeMachine, types.LOG, true)
+		evt := pipeline.MakeEvent(h.Config.UseTimeMachine, pipeline.LOG, true)
 		evt.Line = line
 
 		switch h.metricsLevel {
@@ -337,7 +337,7 @@ func (h *HTTPSource) processRequest(w http.ResponseWriter, r *http.Request, hc *
 	return nil
 }
 
-func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(h.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &h.Config); err != nil {
@@ -485,7 +485,7 @@ func (h *HTTPSource) RunServer(ctx context.Context, out chan types.Event, t *tom
 	return nil
 }
 
-func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (h *HTTPSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	h.logger.Debugf("start http server on %s", h.Config.ListenAddr)
 
 	t.Go(func() error {

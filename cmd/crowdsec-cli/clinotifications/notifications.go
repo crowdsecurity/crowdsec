@@ -24,8 +24,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
@@ -365,7 +365,9 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the generic alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
+		"JSON string used to override alert fields in the generic alert " +
+		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }
@@ -483,7 +485,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
+		"JSON string used to override alert fields in the reinjected alert " +
+		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }

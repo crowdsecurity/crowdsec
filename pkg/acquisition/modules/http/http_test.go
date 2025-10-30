@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -34,6 +34,8 @@ const (
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -179,7 +181,7 @@ custom_status_code: 999`,
 
 	for _, test := range tests {
 		h := HTTPSource{}
-		err := h.Configure([]byte(test.config), subLogger, 0)
+		err := h.Configure(ctx, []byte(test.config), subLogger, 0)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -211,16 +213,16 @@ func TestGetName(t *testing.T) {
 	assert.Equal(t, "http", h.GetName())
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
-	err := h.Configure(config, subLogger, metricLevel)
+	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)
 	require.NoError(t, err)
 
@@ -550,8 +552,8 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertEvents(out chan types.Event, expected []string, errChan chan error) {
-	readLines := []types.Event{}
+func assertEvents(out chan pipeline.Event, expected []string, errChan chan error) {
+	readLines := []pipeline.Event{}
 
 	for range expected {
 		select {

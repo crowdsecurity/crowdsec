@@ -15,7 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Hook struct {
@@ -40,8 +40,15 @@ const (
 	AllowRemediation   = "allow"
 )
 
+type phase int
+
+const (
+	PhaseInBand phase = iota
+	PhaseOutOfBand
+)
+
 func (h *Hook) Build(hookStage int) error {
-	ctx := map[string]interface{}{}
+	ctx := map[string]any{}
 
 	switch hookStage {
 	case hookOnLoad:
@@ -51,7 +58,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookPostEval:
 		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, types.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -92,9 +99,9 @@ type AppsecDropInfo struct {
 }
 
 type AppsecRequestState struct {
-	OutOfBandTx ExtendedTransaction
-	InBandTx    ExtendedTransaction
-	Response    AppsecTempResponse
+	Tx           ExtendedTransaction
+	CurrentPhase phase
+	Response     AppsecTempResponse
 
 	InBandDrop    *AppsecDropInfo
 	OutOfBandDrop *AppsecDropInfo
@@ -232,7 +239,7 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 
 	switch {
 	case request.IsInBand:
-		if state.InBandTx.Tx == nil {
+		if state.Tx.Tx == nil {
 			return fmt.Errorf("inband transaction not initialized")
 		}
 		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:inband")
@@ -241,16 +248,16 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 		state.Response.Action = w.DefaultRemediation
 		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
 		state.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
-		state.InBandTx.Interrupt(interrupt)
+		state.Tx.Interrupt(interrupt)
 		w.Logger.Debugf("drop request helper triggered for inband phase: %s", reason)
 	case request.IsOutBand:
-		if state.OutOfBandTx.Tx == nil {
+		if state.Tx.Tx == nil {
 			return fmt.Errorf("outofband transaction not initialized")
 		}
 		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:outofband")
 		state.OutOfBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
 		state.Response.OutOfBandInterrupt = true
-		state.OutOfBandTx.Interrupt(interrupt)
+		state.Tx.Interrupt(interrupt)
 		w.Logger.Debugf("drop request helper triggered for out-of-band phase: %s", reason)
 	default:
 		return fmt.Errorf("unable to determine request band for drop helper")
@@ -365,7 +372,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) GetDataDir() string {
+func (*AppsecConfig) GetDataDir() string {
 	return hub.GetDataDir()
 }
 
@@ -549,7 +556,7 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt types.Event) error {
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
 	has_match := false
 
 	for _, rule := range w.CompiledOnMatch {
@@ -691,39 +698,39 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, re
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
-	if state == nil || state.InBandTx.Tx == nil {
+	if state == nil {
 		return fmt.Errorf("inband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing inband rule %d", id)
-	return state.InBandTx.RemoveRuleByIDWithError(id)
+	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, id int) error {
-	if state == nil || state.OutOfBandTx.Tx == nil {
+	if state == nil {
 		return fmt.Errorf("outofband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing outband rule %d", id)
-	return state.OutOfBandTx.RemoveRuleByIDWithError(id)
+	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, tag string) error {
-	if state == nil || state.InBandTx.Tx == nil {
+	if state == nil {
 		return fmt.Errorf("inband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
-	return state.InBandTx.RemoveRuleByTagWithError(tag)
+	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, tag string) error {
-	if state == nil || state.OutOfBandTx.Tx == nil {
+	if state == nil {
 		return fmt.Errorf("outofband transaction not initialized")
 	}
 
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
-	return state.OutOfBandTx.RemoveRuleByTagWithError(tag)
+	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(state *AppsecRequestState, name string) error {

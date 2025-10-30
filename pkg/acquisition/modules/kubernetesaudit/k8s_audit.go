@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type KubernetesAuditConfiguration struct {
@@ -35,7 +35,7 @@ type KubernetesAuditSource struct {
 	logger       *log.Entry
 	mux          *http.ServeMux
 	server       *http.Server
-	outChan      chan types.Event
+	outChan      chan pipeline.Event
 	addr         string
 }
 
@@ -43,11 +43,11 @@ func (ka *KubernetesAuditSource) GetUuid() string {
 	return ka.config.UniqueId
 }
 
-func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
-func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
+func (*KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.K8SAuditDataSourceEventCount, metrics.K8SAuditDataSourceRequestCount}
 }
 
@@ -84,7 +84,7 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (ka *KubernetesAuditSource) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	ka.logger = logger
 	ka.metricsLevel = metricsLevel
 
@@ -118,11 +118,11 @@ func (ka *KubernetesAuditSource) GetMode() string {
 	return ka.config.Mode
 }
 
-func (ka *KubernetesAuditSource) GetName() string {
+func (*KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
-func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	ka.outChan = out
 
 	t.Go(func() error {
@@ -149,11 +149,11 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out c
 	return nil
 }
 
-func (ka *KubernetesAuditSource) CanRun() error {
+func (*KubernetesAuditSource) CanRun() error {
 	return nil
 }
 
-func (ka *KubernetesAuditSource) Dump() interface{} {
+func (ka *KubernetesAuditSource) Dump() any {
 	return ka
 }
 
@@ -203,7 +203,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		}
 
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))
-		l := types.Line{
+		l := pipeline.Line{
 			Raw:     string(bytesEvent),
 			Labels:  ka.config.Labels,
 			Time:    auditEvents.Items[idx].StageTimestamp.Time,
@@ -211,7 +211,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Process: true,
 			Module:  ka.GetName(),
 		}
-		evt := types.MakeEvent(ka.config.UseTimeMachine, types.LOG, true)
+		evt := pipeline.MakeEvent(ka.config.UseTimeMachine, pipeline.LOG, true)
 		evt.Line = l
 		ka.outChan <- evt
 	}

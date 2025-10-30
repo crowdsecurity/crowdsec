@@ -9,14 +9,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
-	Caches      []gcache.Cache
+	Caches      = []gcache.Cache{}
 	CacheNames  []string
-	CacheConfig []CacheCfg
+	CacheConfig = []CacheCfg{}
 )
 
 // UpdateCacheMetrics is called directly by the prom handler
@@ -33,7 +33,7 @@ type CacheCfg struct {
 	Size     int
 	TTL      time.Duration
 	Strategy string
-	LogLevel *log.Level
+	LogLevel log.Level
 	Logger   *log.Entry
 }
 
@@ -44,14 +44,13 @@ func CacheInit(cfg CacheCfg) error {
 		}
 	}
 	// get a default logger
-	if cfg.LogLevel == nil {
-		cfg.LogLevel = new(log.Level)
-		*cfg.LogLevel = log.InfoLevel
+	if cfg.LogLevel == log.PanicLevel {
+		cfg.LogLevel = log.InfoLevel
 	}
 
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog, cfg.LogLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, cfg.LogLevel); err != nil {
 		return fmt.Errorf("while creating cache logger: %w", err)
 	}
 

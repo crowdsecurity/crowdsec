@@ -10,7 +10,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Whitelist struct {
@@ -39,7 +39,7 @@ func (n *Node) ContainsIPLists() bool {
 	return len(n.Whitelist.B_Ips) > 0 || len(n.Whitelist.B_Cidrs) > 0
 }
 
-func (n *Node) CheckIPsWL(p *types.Event) bool {
+func (n *Node) CheckIPsWL(p *pipeline.Event) bool {
 	srcs := p.ParseIPSources()
 	isWhitelisted := false
 	if !n.ContainsIPLists() {
@@ -73,7 +73,7 @@ func (n *Node) CheckIPsWL(p *types.Event) bool {
 	return isWhitelisted
 }
 
-func (n *Node) CheckExprWL(cachedExprEnv map[string]any, p *types.Event) (bool, error) {
+func (n *Node) CheckExprWL(cachedExprEnv map[string]any, p *pipeline.Event) (bool, error) {
 	isWhitelisted := false
 
 	if !n.ContainsExprLists() {
@@ -132,7 +132,7 @@ func (n *Node) CompileWLs() (bool, error) {
 	for _, filter := range n.Whitelist.Exprs {
 		var err error
 		expression := &ExprWhitelist{}
-		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return false, fmt.Errorf("unable to compile whitelist expression '%s' : %v", filter, err)
 		}
@@ -142,7 +142,7 @@ func (n *Node) CompileWLs() (bool, error) {
 	return n.ContainsWLs(), nil
 }
 
-func (n *Node) bumpWhitelistMetric(counter *prometheus.CounterVec, p *types.Event) {
+func (n *Node) bumpWhitelistMetric(counter *prometheus.CounterVec, p *pipeline.Event) {
 	// better safe than sorry
 	acquisType := p.Line.Labels["type"]
 	if acquisType == "" {

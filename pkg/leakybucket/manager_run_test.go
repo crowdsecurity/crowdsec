@@ -8,12 +8,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func expectBucketCount(buckets *Buckets, expected int) error {
 	count := 0
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
+	buckets.Bucket_map.Range(func(rkey, rvalue any) bool {
 		count++
 		return true
 	})
@@ -78,16 +78,16 @@ func TestGCandDump(t *testing.T) {
 		}
 	}
 
-	log.Printf("Pouring to bucket")
+	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
-		t.Fatalf("while pouring item : %s", err)
+		t.Fatalf("while pouring item: %s", err)
 	}
 	if !ok {
-		t.Fatalf("didn't pour item")
+		t.Fatal("didn't pour item")
 	}
 
 	time.Sleep(2 * time.Second)
@@ -95,7 +95,7 @@ func TestGCandDump(t *testing.T) {
 	if err := expectBucketCount(buckets, 3); err != nil {
 		t.Fatal(err)
 	}
-	log.Printf("Bucket GC")
+	log.Info("Bucket GC")
 
 	//call garbage collector
 	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
@@ -148,16 +148,16 @@ func TestShutdownBuckets(t *testing.T) {
 		}
 	}
 
-	log.Printf("Pouring to bucket")
+	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	//pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
 	}
 	if !ok {
-		t.Fatalf("didn't pour item")
+		t.Fatal("didn't pour item")
 	}
 
 	time.Sleep(1 * time.Second)

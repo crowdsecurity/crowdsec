@@ -29,7 +29,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type DockerConfiguration struct {
@@ -201,7 +201,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (d *DockerSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	d.logger = logger
 	d.metricsLevel = metricsLevel
 
@@ -229,7 +229,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 		return err
 	}
 
-	info, err := d.Client.Info(context.Background())
+	info, err := d.Client.Info(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get docker info: %w", err)
 	}
@@ -253,7 +253,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
 	parsedURL, err := url.Parse(dsn)
@@ -371,7 +371,7 @@ func (*DockerSource) SupportedModes() []string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 
 	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
@@ -419,7 +419,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 						continue
 					}
 
-					l := types.Line{}
+					l := pipeline.Line{}
 					l.Raw = line
 					l.Labels = d.Config.Labels
 					l.Time = time.Now().UTC()
@@ -431,10 +431,10 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan types.Ev
 						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
 					}
 
-					evt := types.MakeEvent(true, types.LOG, true)
+					evt := pipeline.MakeEvent(true, pipeline.LOG, true)
 					evt.Line = l
 					evt.Process = true
-					evt.Type = types.LOG
+					evt.Type = pipeline.LOG
 
 					out <- evt
 
@@ -918,7 +918,7 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 	}
 }
 
-func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	d.t = t
 	containerChan := make(chan *ContainerConfig)
 	containerDeleteChan := make(chan *ContainerConfig)
@@ -1008,7 +1008,7 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 	return true
 }
 
-func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
+func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
 	container.logger.Info("start monitoring")
 
 	// we'll use just the interval generator, won't call backoff.Retry()
@@ -1055,7 +1055,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 	}
 }
 
-func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan types.Event, bo backoff.BackOff) error {
+func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *container.logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
@@ -1092,14 +1092,14 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 				continue
 			}
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = line
 			l.Labels = container.Labels
 			l.Time = time.Now().UTC()
 			l.Src = container.Name
 			l.Process = true
 			l.Module = d.GetName()
-			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(d.Config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
@@ -1120,7 +1120,7 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 	}
 }
 
-func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
+func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
 	service.logger.Info("start monitoring")
 
 	// we'll use just the interval generator, won't call backoff.Retry()
@@ -1168,7 +1168,7 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 	}
 }
 
-func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan types.Event, bo backoff.BackOff) error {
+func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
 	// For services, we need to get the service logs using the service logs API
 	// Docker service logs aggregates logs from all running tasks of the service
 	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, *service.logOptions)
@@ -1201,14 +1201,14 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 				continue
 			}
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = line
 			l.Labels = service.Labels
 			l.Time = time.Now().UTC()
 			l.Src = service.Name
 			l.Process = true
 			l.Module = d.GetName()
-			evt := types.MakeEvent(d.Config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(d.Config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
@@ -1228,7 +1228,7 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 	}
 }
 
-func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
 	d.logger.Info("Container Manager started")
 
 	for {
@@ -1268,7 +1268,7 @@ func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerC
 	}
 }
 
-func (d *DockerSource) ServiceManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) ServiceManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
 	d.logger.Info("Service Manager started")
 
 	for {

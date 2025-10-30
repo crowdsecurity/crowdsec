@@ -20,7 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type SyslogConfiguration struct {
@@ -44,7 +44,7 @@ func (s *SyslogSource) GetUuid() string {
 	return s.config.UniqueId
 }
 
-func (s *SyslogSource) GetName() string {
+func (*SyslogSource) GetName() string {
 	return "syslog"
 }
 
@@ -52,19 +52,19 @@ func (s *SyslogSource) GetMode() string {
 	return s.config.Mode
 }
 
-func (s *SyslogSource) Dump() interface{} {
+func (s *SyslogSource) Dump() any {
 	return s
 }
 
-func (s *SyslogSource) CanRun() error {
+func (*SyslogSource) CanRun() error {
 	return nil
 }
 
-func (s *SyslogSource) GetMetrics() []prometheus.Collector {
+func (*SyslogSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
-func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
+func (*SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.SyslogDataSourceLinesReceived, metrics.SyslogDataSourceLinesParsed}
 }
 
@@ -104,7 +104,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (s *SyslogSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.logger = logger
 	s.logger.Infof("Starting syslog datasource configuration")
 	s.metricsLevel = metricsLevel
@@ -116,7 +116,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLe
 	return nil
 }
 
-func (s *SyslogSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *SyslogSource) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
 	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)
@@ -222,7 +222,7 @@ func (s *SyslogSource) parseLine(syslogLine syslogserver.SyslogMessage) string {
 	return strings.TrimSuffix(line, "\n")
 }
 
-func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
+func (s *SyslogSource) handleSyslogMsg(out chan pipeline.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
 	killed := false
 	for {
 		select {
@@ -243,14 +243,14 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 
 			var ts time.Time
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = line
 			l.Module = s.GetName()
 			l.Labels = s.config.Labels
 			l.Time = ts
 			l.Src = syslogLine.Client
 			l.Process = true
-			evt := types.MakeEvent(s.config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 			out <- evt
 		}

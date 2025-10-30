@@ -11,7 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestAppsecOnMatchHooks(t *testing.T) {
@@ -35,10 +35,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
@@ -67,10 +67,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 413, responses[0].UserHTTPResponseCode)
@@ -99,10 +99,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, "log", responses[0].Action)
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
@@ -131,10 +131,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 			},
@@ -161,7 +161,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
 				//note: SetAction normalizes deny, ban and block to ban
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
@@ -189,7 +189,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
 				//note: SetAction normalizes deny, ban and block to ban
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
@@ -217,10 +217,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
 			},
@@ -247,9 +247,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.LOG, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[0].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
@@ -276,9 +276,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
@@ -306,9 +306,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
@@ -336,9 +336,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 			},
@@ -367,14 +367,14 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
 				require.Equal(t, http.StatusOK, statusCode)
 				// We have both an event an overflow
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Nil(t, events[1].Overflow.Alert)
 				require.NotNil(t, events[0].Overflow.Alert)
 			},
@@ -399,9 +399,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.LOG, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[0].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 			},
@@ -438,7 +438,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)
@@ -467,11 +467,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -502,7 +502,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)
@@ -531,7 +531,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)
@@ -560,7 +560,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)
@@ -586,9 +586,9 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 1)
-				require.Equal(t, types.LOG, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[0].Type)
 				require.True(t, events[0].Appsec.HasOutBandMatches)
 				require.False(t, events[0].Appsec.HasInBandMatches)
 				require.Len(t, events[0].Appsec.MatchedRules, 1)
@@ -621,7 +621,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
@@ -649,7 +649,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
@@ -668,11 +668,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 3)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, types.LOG, events[2].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[2].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.True(t, events[2].Appsec.HasOutBandMatches)
 				require.Len(t, responses, 1)
@@ -699,7 +699,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
@@ -719,11 +719,11 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 3)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, types.LOG, events[2].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[2].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.True(t, events[2].Appsec.HasOutBandMatches)
 				require.Len(t, responses, 1)
@@ -756,7 +756,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
@@ -787,7 +787,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar2", responses[0].Action)
@@ -816,7 +816,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
@@ -852,7 +852,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -880,7 +880,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 			},
 			on_match: []appsec.Hook{{Apply: []string{"SetRemediation('captcha')"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
@@ -908,7 +908,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 			},
 			on_match: []appsec.Hook{{Apply: []string{"SetReturnCode(418)"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -948,7 +948,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			on_match: []appsec.Hook{
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('allow')"}},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
 			},
@@ -976,7 +976,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			on_match: []appsec.Hook{
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
 				spew.Dump(appsecResponse)
 
@@ -1010,7 +1010,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
 				spew.Dump(appsecResponse)
 
@@ -1044,7 +1044,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
 				spew.Dump(appsecResponse)
 
@@ -1079,7 +1079,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "continue"},
 				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('ban')"}},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
 				spew.Dump(appsecResponse)
 

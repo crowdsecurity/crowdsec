@@ -15,10 +15,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -74,7 +76,7 @@ group_id: crowdsec`,
 
 	for _, test := range tests {
 		k := KafkaSource{}
-		err := k.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := k.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -164,7 +166,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 
-			err := k.Configure([]byte(`
+			err := k.Configure(ctx, []byte(`
 source: kafka
 brokers:
   - localhost:9092
@@ -174,7 +176,7 @@ topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 			}
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -235,7 +237,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 
-			err := k.Configure([]byte(`
+			err := k.Configure(ctx, []byte(`
 source: kafka
 brokers:
   - localhost:9093
@@ -251,7 +253,7 @@ tls:
 			}
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 

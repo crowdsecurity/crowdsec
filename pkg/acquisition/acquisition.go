@@ -27,8 +27,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type DataSourceUnavailableError struct {
@@ -55,17 +56,17 @@ type DataSource interface {
 
 	// configuration
 	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
 }
 
 type Fetcher interface {
 	// Start one shot acquisition(eg, cat a file)
-	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+	OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type Tailer interface {
 	// Start live acquisition (eg, tail a file)
-	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type MetricsProvider interface {
@@ -78,7 +79,7 @@ type MetricsProvider interface {
 
 type DSNConfigurer interface {
 	// Configure the datasource
-	ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
+	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
 var (
@@ -120,9 +121,9 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 }
 
 // setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
+func setupLogger(source, name string, level log.Level) (*log.Entry, error) {
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, level); err != nil {
+	if err := logging.ConfigureLogger(clog, level); err != nil {
 		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 
@@ -143,7 +144,7 @@ func setupLogger(source, name string, level *log.Level) (*log.Entry, error) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
+func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -159,14 +160,14 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg, yamlCon
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
 	/* configure the actual datasource */
-	if err := dataSrc.Configure(yamlConfig, subLogger, metricsLevel); err != nil {
+	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
 	}
 
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
@@ -177,7 +178,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
-	subLogger, err := setupLogger(dsn, "", nil)
+	subLogger, err := setupLogger(dsn, "", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +186,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -198,7 +199,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
 	}
 
-	if err = dsnConf.ConfigureByDSN(dsn, labels, subLogger, uniqueID); err != nil {
+	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 
@@ -256,7 +257,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -340,7 +341,7 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 		uniqueID := uuid.NewString()
 		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(sub, yamlDoc, metricsLevel)
+		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -352,7 +353,7 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 		}
 
 		if sub.TransformExpr != "" {
-			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 			if err != nil {
 				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 			}
@@ -367,13 +368,13 @@ func sourcesFromFile(acquisFile string, metricsLevel metrics.AcquisitionMetricsL
 }
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFiles(config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
 	var allSources []DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(acquisFile, metricsLevel)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -416,8 +417,8 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 // There's no need for an actual deep copy
 // The event is almost empty, we are mostly interested in allocating new maps for Parsed/Meta/...
-func copyEvent(evt types.Event, line string) types.Event {
-	evtCopy := types.MakeEvent(evt.ExpectMode == types.TIMEMACHINE, evt.Type, evt.Process)
+func copyEvent(evt pipeline.Event, line string) pipeline.Event {
+	evtCopy := pipeline.MakeEvent(evt.ExpectMode == pipeline.TIMEMACHINE, evt.Type, evt.Process)
 	evtCopy.Line = evt.Line
 	evtCopy.Line.Raw = line
 	evtCopy.Line.Labels = make(map[string]string)
@@ -427,7 +428,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 	return evtCopy
 }
 
-func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
+func transform(transformChan chan pipeline.Event, output chan pipeline.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
 
 	logger.Info("transformer started")
@@ -483,7 +484,7 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 	}
 }
 
-func StartAcquisition(ctx context.Context, sources []DataSource, output chan types.Event, acquisTomb *tomb.Tomb) error {
+func StartAcquisition(ctx context.Context, sources []DataSource, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
 		return nil
@@ -505,7 +506,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
-				transformChan := make(chan types.Event)
+				transformChan := make(chan pipeline.Event)
 				outChan = transformChan
 				transformLogger := log.WithFields(log.Fields{
 					"component":  "transform",

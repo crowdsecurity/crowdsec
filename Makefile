@@ -15,6 +15,27 @@ include mk/gmsl
 # (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
+#expr_debug tag is required to enable the debug mode in expr
+GO_TAGS := netgo,osusergo,expr_debug
+
+# By default, build with sqlite3.
+BUILD_SQLITE ?= mattn
+SQLITE_MSG = Using mattn/go-sqlite3
+
+# Optionally, use a pure Go implementation of sqlite.
+ifeq ($(BUILD_SQLITE),modernc)
+SQLITE_MSG = Using modernc/sqlite
+GO_TAGS := $(GO_TAGS),sqlite_modernc
+$(info NOTE: The 'modernc' backend for SQLite is slower than the default, has not been extensively tested, and is not meant for production use.)
+else
+ifeq ($(BUILD_SQLITE),mattn)
+SQLITE_MSG = Using mattn/go-sqlite3
+GO_TAGS := $(GO_TAGS),sqlite_omit_load_extension
+else
+$(error BUILD_SQLITE must be 'mattn' or 'modernc')
+endif
+endif
+
 # To build static binaries, run "make BUILD_STATIC=1".
 # On some platforms, this requires additional packages
 # (e.g. glibc-static and libstdc++-static on fedora, centos.. which are on the powertools/crb repository).
@@ -87,9 +108,6 @@ $(info Note that the DEV environment is slow, unreliable and may fail at any tim
 $(info )
 endif
 
-#expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := netgo,osusergo,sqlite_omit_load_extension,expr_debug
-
 # Allow building on ubuntu 24.10, see https://github.com/golang/go/issues/70023
 export CGO_LDFLAGS_ALLOW=-Wl,--(push|pop)-state.*
 
@@ -152,15 +170,21 @@ COMPONENTS := \
 	datasource_s3 \
 	datasource_syslog \
 	datasource_wineventlog \
-	cscli_setup
+	cscli_setup \
+	db_mysql \
+	db_postgres \
+	db_sqlite
 
 comma := ,
 space := $(empty) $(empty)
 
 # Predefined profiles
 
-# keep only datasource-file
-EXCLUDE_MINIMAL := $(subst $(space),$(comma),$(filter-out datasource_file,,$(COMPONENTS)))
+# What we want to KEEP in the minimal build,
+# which should always include at least one data source and a sql driver.
+INCLUDE_MINIMAL := db_sqlite datasource_file
+
+EXCLUDE_MINIMAL := $(filter-out $(INCLUDE_MINIMAL),$(strip $(COMPONENTS)))
 
 # example
 # EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
@@ -230,6 +254,7 @@ ifneq (,$(RE2_FAIL))
 endif
 
 	$(info $(RE2_MSG))
+	$(info $(SQLITE_MSG))
 
 ifeq ($(call bool,$(DEBUG)),1)
 	$(info Building with debug symbols and disabled optimizations)
@@ -331,8 +356,9 @@ else
 endif
 
 .PHONY: lint
-lint: check_golangci-lint  ## Run go linters
-	@golangci-lint run
+lint: check_golangci-lint  ## Run go linters for both linux and windows files.
+	GOOS=windows golangci-lint run --build-tags=windows,sqlite_modernc
+	GOOS=linux   golangci-lint run
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \

@@ -1,9 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type GrokPattern struct {
@@ -70,7 +70,7 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 	// if grok source is an expression
 	if g.ExpValue != "" {
 		rg.RunTimeValue, err = expr.Compile(g.ExpValue,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling grok's expression: %w", err)
 		}
@@ -90,14 +90,14 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 	return rg, nil
 }
 
-type DataCapture struct {
-	Name            string        `yaml:"name,omitempty"`
-	Key             string        `yaml:"key,omitempty"`
-	KeyExpression   *vm.Program   `yaml:"-"`
-	Value           string        `yaml:"value,omitempty"`
-	ValueExpression *vm.Program   `yaml:"-"`
-	TTL             string        `yaml:"ttl,omitempty"`
-	TTLVal          time.Duration `yaml:"-"`
-	MaxMapSize      int           `yaml:"size,omitempty"`
-	Strategy        string        `yaml:"strategy,omitempty"`
+func (g *GrokPattern) Validate() error {
+	if g.TargetField == "" && g.ExpValue == "" {
+		return errors.New("grok requires 'expression' or 'apply_on'")
+	}
+
+	if g.RegexpName == "" && g.RegexpValue == "" {
+		return errors.New("grok needs 'pattern' or 'name'")
+	}
+
+	return nil
 }

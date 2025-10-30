@@ -1,7 +1,7 @@
 package appsec
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
@@ -53,7 +53,7 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 	}
 }
 
-func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt types.Event) map[string]interface{} {
+func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":            evt,
 		"req":            request.HTTPRequest,

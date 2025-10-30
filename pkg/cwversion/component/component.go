@@ -21,8 +21,11 @@ var Built = map[string]bool{
 	"datasource_syslog":       false,
 	"datasource_wineventlog":  false,
 	"datasource_victorialogs": false,
-  "datasource_http":        false,
+	"datasource_http":         false,
 	"cscli_setup":             false,
+	"db_mysql":                false,
+	"db_postgres":             false,
+	"db_sqlite":               false,
 }
 
 func Register(name string) {

@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -83,7 +83,7 @@ webhook_path: /k8s-audit`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 
 			f := KubernetesAuditSource{}
@@ -92,7 +92,7 @@ webhook_path: /k8s-audit`,
 
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err = f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 			err = f.StreamingAcquisition(ctx, out, tb)
@@ -229,7 +229,7 @@ func TestHandler(t *testing.T) {
 
 	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 			eventCount := 0
 
@@ -255,8 +255,7 @@ webhook_path: /k8s-audit`, port)
 			err := f.UnmarshalConfig([]byte(config))
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
-
+			err = f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))

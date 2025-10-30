@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -58,17 +58,17 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 		showAppsecCov = true
 	}
 
-	parserCoverage, parserCoveragePercent, err := getCoverage(showParserCov, HubTest.GetParsersCoverage, cfg.Hub.HubDir)
+	parserCoverage, parserCoveragePercent, err := getCoverage(showParserCov, HubTest.GetParsersCoverage, HubTest.HubPath)
 	if err != nil {
 		return err
 	}
 
-	scenarioCoverage, scenarioCoveragePercent, err := getCoverage(showScenarioCov, HubTest.GetScenariosCoverage, cfg.Hub.HubDir)
+	scenarioCoverage, scenarioCoveragePercent, err := getCoverage(showScenarioCov, HubTest.GetScenariosCoverage, HubTest.HubPath)
 	if err != nil {
 		return err
 	}
 
-	appsecRuleCoverage, appsecRuleCoveragePercent, err := getCoverage(showAppsecCov, HubTest.GetAppsecCoverage, cfg.Hub.HubDir)
+	appsecRuleCoverage, appsecRuleCoveragePercent, err := getCoverage(showAppsecCov, HubTest.GetAppsecCoverage, HubTest.HubPath)
 	if err != nil {
 		return err
 	}

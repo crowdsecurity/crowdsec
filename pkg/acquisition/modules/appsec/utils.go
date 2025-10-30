@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -101,14 +102,14 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	return msg
 }
 
-func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
+func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeline.Event, error) {
 	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
 	}
 
-	evt := types.Event{}
-	evt.Type = types.APPSEC
+	evt := pipeline.Event{}
+	evt.Type = pipeline.APPSEC
 	evt.Process = true
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
@@ -282,8 +283,8 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 	return true
 }
 
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
-	evt := types.MakeEvent(false, types.LOG, true)
+func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
+	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
 	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
@@ -291,7 +292,7 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		"target_host":         r.Host,
 		"target_uri":          r.URI,
 		"method":              r.Method,
-		"req_uuid":            r.Tx.ID(),
+		"req_uuid":            txUuid,
 		"source":              "crowdsec-appsec",
 		"remediation_cmpt_ip": r.RemoteAddrNormalized,
 		// TBD:
@@ -299,7 +300,7 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		// user_agent
 
 	}
-	evt.Line = types.Line{
+	evt.Line = pipeline.Line{
 		Time: time.Now(),
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
@@ -308,12 +309,12 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		Src:     "appsec",
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
-	evt.Appsec = types.AppsecEvent{}
+	evt.Appsec = pipeline.AppsecEvent{}
 
 	return evt, nil
 }
 
-func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
+func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 	req := evt.Parsed["target_uri"]
 	if len(req) > 12 {
 		req = req[:10] + ".."
@@ -340,10 +341,9 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 	}
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest, state *appsec.AppsecRequestState) error {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
 	if evt == nil {
-		// an error was already emitted, let's not spam the logs
-		return nil
+		return
 	}
 
 	var dropInfo *appsec.AppsecDropInfo
@@ -351,9 +351,9 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		dropInfo = state.DropInfo(req)
 	}
 
-	if !req.Tx.IsInterrupted() && dropInfo == nil {
+	if !state.Tx.IsInterrupted() && dropInfo == nil {
 		// if the phase didn't generate an interruption, we don't have anything to add to the event
-		return nil
+		return
 	}
 	// if one interruption was generated, event is good for processing :)
 	evt.Process = true
@@ -366,14 +366,14 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Parsed = map[string]string{}
 	}
 
-	if req.IsInBand {
+	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
-		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
+		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
 		evt.Parsed["inband_interrupted"] = "true"
-		evt.Parsed["inband_action"] = req.Tx.Interruption().Action
+		evt.Parsed["inband_action"] = state.Tx.Interruption().Action
 	} else {
 		evt.Parsed["outofband_interrupted"] = "true"
-		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
+		evt.Parsed["outofband_action"] = state.Tx.Interruption().Action
 	}
 
 	if dropInfo != nil && dropInfo.Reason != "" {
@@ -385,7 +385,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Appsec.Vars = map[string]string{}
 	}
 
-	txCollection := req.Tx.Variables().TX()
+	txCollection := state.Tx.Variables().TX()
 
 	txMatchedData := txCollection.FindAll()
 
@@ -396,7 +396,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	}
 
 	if len(r.AppsecRuntime.CompiledVariablesTracking) > 0 {
-		req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+		state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 			for _, variable := range col.FindAll() {
 				r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
 				key := variable.Variable().Name()
@@ -423,14 +423,14 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		})
 	}
 
-	for _, rule := range req.Tx.MatchedRules() {
+	for _, rule := range state.Tx.MatchedRules() {
 		// Drop the rule if it has no message (it's likely a CRS setup rule)
 		if rule.Message() == "" {
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
 		kind := "outofband"
-		if req.IsInBand {
+		if state.CurrentPhase == appsec.PhaseInBand {
 			kind = "inband"
 			evt.Appsec.HasInBandMatches = true
 		} else {
@@ -514,7 +514,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		}
 
 		if evt.Appsec.MatchedRules == nil {
-			evt.Appsec.MatchedRules = types.MatchedRules{}
+			evt.Appsec.MatchedRules = pipeline.MatchedRules{}
 		}
 
 		tags := dropInfo.Interruption.Tags
@@ -564,6 +564,4 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
 	}
-
-	return nil
 }

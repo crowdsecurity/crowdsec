@@ -27,8 +27,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const defaultPollInterval = 30 * time.Second
@@ -101,7 +102,7 @@ func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (f *FileSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	f.logger = logger
 	f.metricsLevel = metricsLevel
 
@@ -177,7 +178,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry, metricsLeve
 	return nil
 }
 
-func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (f *FileSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "file://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
@@ -261,12 +262,12 @@ func (f *FileSource) GetMode() string {
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (f *FileSource) SupportedModes() []string {
+func (*FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) OneShotAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 
 	for _, file := range f.files {
@@ -291,23 +292,23 @@ func (f *FileSource) OneShotAcquisition(ctx context.Context, out chan types.Even
 	return nil
 }
 
-func (f *FileSource) GetMetrics() []prometheus.Collector {
+func (*FileSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
+func (*FileSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.FileDatasourceLinesRead}
 }
 
-func (f *FileSource) GetName() string {
+func (*FileSource) GetName() string {
 	return "file"
 }
 
-func (f *FileSource) CanRun() error {
+func (*FileSource) CanRun() error {
 	return nil
 }
 
-func (f *FileSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	f.logger.Debug("Starting live acquisition")
 	t.Go(func() error {
 		return f.monitorNewFiles(out, t)
@@ -338,7 +339,7 @@ func (f *FileSource) Dump() any {
 //   - t: A tomb.Tomb for graceful shutdown handling
 //
 // Returns an error if any validation fails or if tailing setup fails
-func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out chan pipeline.Event, t *tomb.Tomb) error {
 	// Check if it's a directory
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -380,7 +381,7 @@ func (f *FileSource) checkAndTailFile(filename string, logger *log.Entry, out ch
 	return nil
 }
 
-func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 	logger := f.logger.WithField("goroutine", "inotify")
 
 	// Setup polling if enabled
@@ -434,7 +435,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd bool, t *tomb.Tomb) error {
+func (f *FileSource) setupTailForFile(file string, out chan pipeline.Event, seekEnd bool, t *tomb.Tomb) error {
 	logger := f.logger.WithField("file", file)
 
 	if f.isExcluded(file) {
@@ -473,7 +474,7 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 	if f.config.PollWithoutInotify != nil {
 		pollFile = *f.config.PollWithoutInotify
 	} else {
-		networkFS, fsType, err := types.IsNetworkFS(file)
+		networkFS, fsType, err := fsutil.IsNetworkFS(file)
 		if err != nil {
 			logger.Warningf("Could not get fs type for %s : %s", file, err)
 		}
@@ -528,7 +529,7 @@ func (f *FileSource) setupTailForFile(file string, out chan types.Event, seekEnd
 	return nil
 }
 
-func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
+func (f *FileSource) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail) error {
 	logger := f.logger.WithField("tail", tail.Filename)
 	logger.Debug("-> start tailing")
 
@@ -584,7 +585,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				src = filepath.Base(tail.Filename)
 			}
 
-			l := types.Line{
+			l := pipeline.Line{
 				Raw:     trimLine(line.Text),
 				Labels:  f.config.Labels,
 				Time:    line.Time,
@@ -595,14 +596,14 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			evt := types.MakeEvent(f.config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(f.config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 			out <- evt
 		}
 	}
 }
 
-func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb) error {
 	var scanner *bufio.Scanner
 
 	logger := f.logger.WithField("oneshot", filename)
@@ -644,7 +645,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 				continue
 			}
 
-			l := types.Line{
+			l := pipeline.Line{
 				Raw:     scanner.Text(),
 				Time:    time.Now().UTC(),
 				Src:     filename,
@@ -656,7 +657,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "acquis_type": l.Labels["type"]}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE, Unmarshaled: make(map[string]any)}
+			out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)}
 		}
 	}
 

@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const testContainerName = "docker_test"
@@ -33,6 +33,8 @@ const testServiceName = "test_service"
 
 func TestConfigure(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		config      string
@@ -130,7 +132,7 @@ service_id_regexp:
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
 			f := DockerSource{}
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -138,6 +140,8 @@ service_id_regexp:
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	var dockerHost string
 
@@ -188,7 +192,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := DockerSource{}
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
@@ -196,7 +200,6 @@ func TestConfigureDSN(t *testing.T) {
 
 type mockDockerCli struct {
 	client.Client
-	isSwarmManager bool
 	services       []dockerTypesSwarm.Service
 }
 
@@ -335,18 +338,16 @@ service_name_regexp:
 			subLogger := log.WithField("type", "docker")
 
 			dockerTomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			dockerSource := DockerSource{}
-			//nolint:contextcheck
-			err := dockerSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := dockerSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 			if ts.expectedErr != "" {
 				return
 			}
 
-			mockClient := &mockDockerCli{isSwarmManager: ts.isSwarmManager}
-			dockerSource.Client = mockClient
+			dockerSource.Client = &mockDockerCli{}
 
 			// Manually set swarm manager flag for testing since Info() mock is simplified
 			dockerSource.isSwarmManager = ts.isSwarmManager
@@ -380,6 +381,8 @@ service_name_regexp:
 
 func TestServiceEvaluation(t *testing.T) {
 	log.Infof("Test 'TestServiceEvaluation'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name           string
@@ -488,16 +491,15 @@ use_service_labels: true`,
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := DockerSource{}
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
-			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
-			f.Client = mockClient
+			f.Client = &mockDockerCli{}
 
 			// Manually set swarm manager flag for testing
 			f.isSwarmManager = test.isSwarmManager
 
-			result := f.EvalService(context.Background(), test.service)
+			result := f.EvalService(ctx, test.service)
 			if test.expectedMatch {
 				assert.NotNil(t, result, "Expected service to match but got nil")
 
@@ -514,6 +516,8 @@ use_service_labels: true`,
 
 func TestSwarmManagerDetection(t *testing.T) {
 	log.Infof("Test 'TestSwarmManagerDetection'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name           string
@@ -560,12 +564,11 @@ service_name:
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "docker")
-			f := DockerSource{}
+			f := DockerSource{
+				Client: &mockDockerCli{},
+			}
 
-			mockClient := &mockDockerCli{isSwarmManager: test.isSwarmManager}
-			f.Client = mockClient
-
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			// For this test, we manually set the expected behavior since Info() is simplified
@@ -695,11 +698,11 @@ func TestOneShot(t *testing.T) {
 			labels := make(map[string]string)
 			labels["type"] = ts.logType
 
-			err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, "")
+			err := dockerClient.ConfigureByDSN(ctx, ts.dsn, labels, subLogger, "")
 			require.NoError(t, err)
 
 			dockerClient.Client = &mockDockerCli{}
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 
 			tomb := tomb.Tomb{}
 

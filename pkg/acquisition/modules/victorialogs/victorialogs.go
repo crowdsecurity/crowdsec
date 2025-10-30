@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -51,11 +51,11 @@ type VLSource struct {
 	logger *log.Entry
 }
 
-func (l *VLSource) GetMetrics() []prometheus.Collector {
+func (*VLSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
-func (l *VLSource) GetAggregMetrics() []prometheus.Collector {
+func (*VLSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{metrics.VictorialogsDataSourceLinesRead}
 }
 
@@ -104,7 +104,7 @@ func (l *VLSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+func (l *VLSource) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	l.Config = VLConfiguration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
@@ -131,7 +131,7 @@ func (l *VLSource) Configure(config []byte, logger *log.Entry, metricsLevel metr
 	return nil
 }
 
-func (l *VLSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+func (l *VLSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	l.logger = logger
 	l.Config = VLConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE
@@ -196,7 +196,7 @@ func (l *VLSource) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		if err != nil {
 			return fmt.Errorf("invalid log_level in dsn: %w", err)
 		}
-		l.Config.LogLevel = &level
+		l.Config.LogLevel = level
 		l.logger.Logger.SetLevel(level)
 	}
 
@@ -226,12 +226,12 @@ func (l *VLSource) GetMode() string {
 	return l.Config.Mode
 }
 
-func (l *VLSource) GetName() string {
+func (*VLSource) GetName() string {
 	return "victorialogs"
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.logger.Debug("VictoriaLogs one shot acquisition")
 	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
@@ -264,8 +264,8 @@ func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan types.Event,
 	}
 }
 
-func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, out chan types.Event) {
-	ll := types.Line{}
+func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, out chan pipeline.Event) {
+	ll := pipeline.Line{}
 	ll.Raw = entry.Message
 	ll.Time = entry.Time
 	ll.Src = l.Config.URL
@@ -276,19 +276,19 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "acquis_type": l.Config.Labels["type"]}).Inc()
 	}
-	expectMode := types.LIVE
+	expectMode := pipeline.LIVE
 	if l.Config.UseTimeMachine {
-		expectMode = types.TIMEMACHINE
+		expectMode = pipeline.TIMEMACHINE
 	}
-	out <- types.Event{
+	out <- pipeline.Event{
 		Line:       ll,
 		Process:    true,
-		Type:       types.LOG,
+		Type:       pipeline.LOG,
 		ExpectMode: expectMode,
 	}
 }
 
-func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 	defer cancel()
@@ -349,7 +349,7 @@ func (l *VLSource) getResponseChan(ctx context.Context, infinite bool) (chan *vl
 	return respChan, err
 }
 
-func (l *VLSource) CanRun() error {
+func (*VLSource) CanRun() error {
 	return nil
 }
 
@@ -357,11 +357,11 @@ func (l *VLSource) GetUuid() string {
 	return l.Config.UniqueId
 }
 
-func (l *VLSource) Dump() interface{} {
+func (l *VLSource) Dump() any {
 	return l
 }
 
 // SupportedModes returns the supported modes by the acquisition module
-func (l *VLSource) SupportedModes() []string {
+func (*VLSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }

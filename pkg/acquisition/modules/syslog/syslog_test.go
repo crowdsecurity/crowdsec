@@ -16,10 +16,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -58,7 +60,7 @@ listen_addr: 10.0.0`,
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			s := SyslogSource{}
-			err := s.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := s.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
 	}
@@ -163,12 +165,12 @@ disable_rfc_parser: true`,
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
 			s := SyslogSource{}
-			err := s.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = s.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 			if ts.expectedErr != "" {

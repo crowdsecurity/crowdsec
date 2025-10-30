@@ -24,12 +24,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type TestFile struct {
-	Lines   []types.Event `yaml:"lines,omitempty"`
-	Results []types.Event `yaml:"results,omitempty"`
+	Lines   []pipeline.Event `yaml:"lines,omitempty"`
+	Results []pipeline.Event `yaml:"results,omitempty"`
 }
 
 func TestBucket(t *testing.T) {
@@ -174,8 +174,8 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 	return nil
 }
 
-func testFile(t *testing.T, file string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
-	var results []types.Event
+func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, buckets *Buckets) bool {
+	var results []pipeline.Event
 
 	/* now we can load the test files */
 	// process the yaml
@@ -211,7 +211,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 			latest_ts = ts
 		}
 
-		in.ExpectMode = types.TIMEMACHINE
+		in.ExpectMode = pipeline.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
 		ok, err := PourItemToHolders(in, holders, buckets)
@@ -279,7 +279,7 @@ POLL_AGAIN:
 					// match stuff
 				} else {
 					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
-						log.Printf("Here ?")
+						log.Info("Here ?")
 						continue
 					}
 
