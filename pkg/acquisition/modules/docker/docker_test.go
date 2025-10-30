@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const testContainerName = "docker_test"
@@ -338,7 +338,7 @@ service_name_regexp:
 			subLogger := log.WithField("type", "docker")
 
 			dockerTomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			dockerSource := DockerSource{}
 			err := dockerSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
@@ -702,7 +702,7 @@ func TestOneShot(t *testing.T) {
 			require.NoError(t, err)
 
 			dockerClient.Client = &mockDockerCli{}
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 
 			tomb := tomb.Tomb{}
 

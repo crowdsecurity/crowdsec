@@ -12,7 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type WinEventLogSource struct{}
@@ -41,7 +41,7 @@ func (*WinEventLogSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (*WinEventLogSource) OneShotAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+func (*WinEventLogSource) OneShotAcquisition(_ context.Context, _ chan pipeline.Event, _ *tomb.Tomb) error {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (*WinEventLogSource) CanRun() error {
 	return errors.New("windows event log acquisition is only supported on Windows")
 }
 
-func (*WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan types.Event, _ *tomb.Tomb) error {
+func (*WinEventLogSource) StreamingAcquisition(_ context.Context, _ chan pipeline.Event, _ *tomb.Tomb) error {
 	return nil
 }
 

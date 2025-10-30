@@ -19,7 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type MockSource struct {
@@ -337,9 +337,9 @@ func (f *MockCat) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics
 func (*MockCat) UnmarshalConfig(_ []byte) error { return nil }
 func (*MockCat) GetName() string                { return "mock_cat" }
 func (*MockCat) GetMode() string                { return "cat" }
-func (*MockCat) OneShotAcquisition(_ context.Context, out chan types.Event, _ *tomb.Tomb) error {
+func (*MockCat) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
 	for range 10 {
-		evt := types.Event{}
+		evt := pipeline.Event{}
 		evt.Line.Src = "test"
 		out <- evt
 	}
@@ -373,9 +373,9 @@ func (*MockTail) UnmarshalConfig(_ []byte) error { return nil }
 func (*MockTail) GetName() string                { return "mock_tail" }
 func (*MockTail) GetMode() string                { return "tail" }
 
-func (*MockTail) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (*MockTail) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	for range 10 {
-		evt := types.Event{}
+		evt := pipeline.Event{}
 		evt.Line.Src = "test"
 		out <- evt
 	}
@@ -395,7 +395,7 @@ func TestStartAcquisitionCat(t *testing.T) {
 	sources := []DataSource{
 		&MockCat{},
 	}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
@@ -424,7 +424,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 	sources := []DataSource{
 		&MockTail{},
 	}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
@@ -456,9 +456,9 @@ type MockTailError struct {
 	MockTail
 }
 
-func (*MockTailError) StreamingAcquisition(_ context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (*MockTailError) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	for range 10 {
-		evt := types.Event{}
+		evt := pipeline.Event{}
 		evt.Line.Src = "test"
 		out <- evt
 	}
@@ -473,7 +473,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	sources := []DataSource{
 		&MockTailError{},
 	}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
@@ -575,7 +575,7 @@ func (*TailModeNoTailer) CanRun() error     { return nil }
 
 func TestStartAcquisition_MissingTailer(t *testing.T) {
 	ctx := t.Context()
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	errCh := make(chan error, 1)
 
 	var tb tomb.Tomb
@@ -598,7 +598,7 @@ func (*CatModeNoFetcher) CanRun() error   { return nil }
 
 func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	ctx := t.Context()
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	errCh := make(chan error, 1)
 
 	var tb tomb.Tomb

@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type KubernetesAuditConfiguration struct {
@@ -35,7 +35,7 @@ type KubernetesAuditSource struct {
 	logger       *log.Entry
 	mux          *http.ServeMux
 	server       *http.Server
-	outChan      chan types.Event
+	outChan      chan pipeline.Event
 	addr         string
 }
 
@@ -122,7 +122,7 @@ func (*KubernetesAuditSource) GetName() string {
 	return "k8s-audit"
 }
 
-func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (ka *KubernetesAuditSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	ka.outChan = out
 
 	t.Go(func() error {
@@ -203,7 +203,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		}
 
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))
-		l := types.Line{
+		l := pipeline.Line{
 			Raw:     string(bytesEvent),
 			Labels:  ka.config.Labels,
 			Time:    auditEvents.Items[idx].StageTimestamp.Time,
@@ -211,7 +211,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Process: true,
 			Module:  ka.GetName(),
 		}
-		evt := types.MakeEvent(ka.config.UseTimeMachine, types.LOG, true)
+		evt := pipeline.MakeEvent(ka.config.UseTimeMachine, pipeline.LOG, true)
 		evt.Line = l
 		ka.outChan <- evt
 	}

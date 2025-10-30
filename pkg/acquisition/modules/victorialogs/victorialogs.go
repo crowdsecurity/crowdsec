@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -231,7 +231,7 @@ func (*VLSource) GetName() string {
 }
 
 // OneShotAcquisition reads a set of file and returns when done
-func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.logger.Debug("VictoriaLogs one shot acquisition")
 	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
@@ -264,8 +264,8 @@ func (l *VLSource) OneShotAcquisition(ctx context.Context, out chan types.Event,
 	}
 }
 
-func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, out chan types.Event) {
-	ll := types.Line{}
+func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, out chan pipeline.Event) {
+	ll := pipeline.Line{}
 	ll.Raw = entry.Message
 	ll.Time = entry.Time
 	ll.Src = l.Config.URL
@@ -276,19 +276,19 @@ func (l *VLSource) readOneEntry(entry *vlclient.Log, labels map[string]string, o
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.VictorialogsDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "victorialogs", "acquis_type": l.Config.Labels["type"]}).Inc()
 	}
-	expectMode := types.LIVE
+	expectMode := pipeline.LIVE
 	if l.Config.UseTimeMachine {
-		expectMode = types.TIMEMACHINE
+		expectMode = pipeline.TIMEMACHINE
 	}
-	out <- types.Event{
+	out <- pipeline.Event{
 		Line:       ll,
 		Process:    true,
-		Type:       types.LOG,
+		Type:       pipeline.LOG,
 		ExpectMode: expectMode,
 	}
 }
 
-func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (l *VLSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 	defer cancel()

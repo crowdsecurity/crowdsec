@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfigure(t *testing.T) {
@@ -170,7 +170,7 @@ disable_rfc_parser: true`,
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = s.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 			if ts.expectedErr != "" {

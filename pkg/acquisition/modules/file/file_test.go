@@ -18,7 +18,7 @@ import (
 
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -222,7 +222,7 @@ filename: %s`, deletedFile),
 			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 			f := fileacquisition.FileSource{}
 
 			if tc.setup != nil {
@@ -389,7 +389,7 @@ force_inotify: true`, testPattern),
 			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 
 			f := fileacquisition.FileSource{}
 
@@ -579,7 +579,7 @@ mode: tail
 	require.NoError(t, err)
 
 	// Create channel for events
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	// Start acquisition
@@ -630,7 +630,7 @@ mode: tail
 	err = f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	err = f.StreamingAcquisition(ctx, eventChan, &tomb)

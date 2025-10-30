@@ -30,7 +30,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -429,7 +429,7 @@ func (w *AppsecSource) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 	return nil
 }
 
-func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
