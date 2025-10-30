@@ -29,7 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type DataSourceUnavailableError struct {
@@ -61,12 +61,12 @@ type DataSource interface {
 
 type Fetcher interface {
 	// Start one shot acquisition(eg, cat a file)
-	OneShotAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+	OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type Tailer interface {
 	// Start live acquisition (eg, tail a file)
-	StreamingAcquisition(ctx context.Context, out chan types.Event, acquisTomb *tomb.Tomb) error
+	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type MetricsProvider interface {
@@ -186,7 +186,7 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -353,7 +353,7 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 		}
 
 		if sub.TransformExpr != "" {
-			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 			if err != nil {
 				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 			}
@@ -417,8 +417,8 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 // There's no need for an actual deep copy
 // The event is almost empty, we are mostly interested in allocating new maps for Parsed/Meta/...
-func copyEvent(evt types.Event, line string) types.Event {
-	evtCopy := types.MakeEvent(evt.ExpectMode == types.TIMEMACHINE, evt.Type, evt.Process)
+func copyEvent(evt pipeline.Event, line string) pipeline.Event {
+	evtCopy := pipeline.MakeEvent(evt.ExpectMode == pipeline.TIMEMACHINE, evt.Type, evt.Process)
 	evtCopy.Line = evt.Line
 	evtCopy.Line.Raw = line
 	evtCopy.Line.Labels = make(map[string]string)
@@ -428,7 +428,7 @@ func copyEvent(evt types.Event, line string) types.Event {
 	return evtCopy
 }
 
-func transform(transformChan chan types.Event, output chan types.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
+func transform(transformChan chan pipeline.Event, output chan pipeline.Event, acquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer trace.CatchPanic("crowdsec/acquis")
 
 	logger.Info("transformer started")
@@ -484,7 +484,7 @@ func transform(transformChan chan types.Event, output chan types.Event, acquisTo
 	}
 }
 
-func StartAcquisition(ctx context.Context, sources []DataSource, output chan types.Event, acquisTomb *tomb.Tomb) error {
+func StartAcquisition(ctx context.Context, sources []DataSource, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
 		return nil
@@ -506,7 +506,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan typ
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
-				transformChan := make(chan types.Event)
+				transformChan := make(chan pipeline.Event)
 				outChan = transformChan
 				transformLogger := log.WithFields(log.Fields{
 					"component":  "transform",

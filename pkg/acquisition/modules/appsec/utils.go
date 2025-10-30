@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -100,14 +101,14 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	return msg
 }
 
-func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
+func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeline.Event, error) {
 	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
 	}
 
-	evt := types.Event{}
-	evt.Type = types.APPSEC
+	evt := pipeline.Event{}
+	evt.Type = pipeline.APPSEC
 	evt.Process = true
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
@@ -274,8 +275,8 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 	return true
 }
 
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (types.Event, error) {
-	evt := types.MakeEvent(false, types.LOG, true)
+func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
+	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
 	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
@@ -291,7 +292,7 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 		// user_agent
 
 	}
-	evt.Line = types.Line{
+	evt.Line = pipeline.Line{
 		Time: time.Now(),
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
@@ -300,12 +301,12 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 		Src:     "appsec",
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
-	evt.Appsec = types.AppsecEvent{}
+	evt.Appsec = pipeline.AppsecEvent{}
 
 	return evt, nil
 }
 
-func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
+func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 	req := evt.Parsed["target_uri"]
 	if len(req) > 12 {
 		req = req[:10] + ".."
@@ -332,7 +333,7 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 	}
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
 	if evt == nil {
 		return
 	}

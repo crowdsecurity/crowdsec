@@ -19,12 +19,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 // that's the runtime structure of the Application security engine as seen from the acquis
 type AppsecRunner struct {
-	outChan                chan types.Event
+	outChan                chan pipeline.Event
 	inChan                 chan appsec.ParsedRequest
 	UUID                   string
 	AppsecRuntime          *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.

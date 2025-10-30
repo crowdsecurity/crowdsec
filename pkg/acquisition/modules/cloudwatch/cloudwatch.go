@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var streamIndexMutex = sync.Mutex{}
@@ -254,7 +254,7 @@ func (cw *CloudwatchSource) newClient(ctx context.Context) error {
 	return nil
 }
 
-func (cw *CloudwatchSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (cw *CloudwatchSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	cw.t = t
 	monitChan := make(chan LogStreamTailConfig)
 
@@ -333,9 +333,9 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 
 					var expectMode int
 					if !cw.Config.UseTimeMachine {
-						expectMode = types.LIVE
+						expectMode = pipeline.LIVE
 					} else {
-						expectMode = types.TIMEMACHINE
+						expectMode = pipeline.TIMEMACHINE
 					}
 
 					monitorStream := LogStreamTailConfig{
@@ -356,7 +356,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(ctx context.Context, out cha
 }
 
 // LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
-func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStreamTailConfig, outChan chan pipeline.Event) error {
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
 
 	pollDeadStreamInterval := time.NewTicker(def_PollDeadStreamInterval)
@@ -456,7 +456,7 @@ func (cw *CloudwatchSource) LogStreamManager(ctx context.Context, in chan LogStr
 	}
 }
 
-func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) TailLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan pipeline.Event) error {
 	var startFrom *string
 
 	lastReadMessage := time.Now().UTC()
@@ -642,7 +642,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(ctx context.Context, dsn string, labe
 	return nil
 }
 
-func (cw *CloudwatchSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (cw *CloudwatchSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	// StreamName string, Start time.Time, End time.Time
 	config := LogStreamTailConfig{
 		GroupName:              cw.Config.GroupName,
@@ -655,13 +655,13 @@ func (cw *CloudwatchSource) OneShotAcquisition(ctx context.Context, out chan typ
 			"stream": *cw.Config.StreamName,
 		}),
 		Labels:     cw.Config.Labels,
-		ExpectMode: types.TIMEMACHINE,
+		ExpectMode: pipeline.TIMEMACHINE,
 	}
 
 	return cw.CatLogStream(ctx, &config, out)
 }
 
-func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan types.Event) error {
+func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTailConfig, outChan chan pipeline.Event) error {
 	var startFrom *string
 
 	head := true
@@ -731,9 +731,9 @@ func (cw *CloudwatchSource) CatLogStream(ctx context.Context, cfg *LogStreamTail
 	return nil
 }
 
-func cwLogToEvent(log cwTypes.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
-	l := types.Line{}
-	evt := types.MakeEvent(cfg.ExpectMode == types.TIMEMACHINE, types.LOG, true)
+func cwLogToEvent(log cwTypes.OutputLogEvent, cfg *LogStreamTailConfig) (pipeline.Event, error) {
+	l := pipeline.Line{}
+	evt := pipeline.MakeEvent(cfg.ExpectMode == pipeline.TIMEMACHINE, pipeline.LOG, true)
 	if log.Message == nil {
 		return evt, errors.New("nil message")
 	}

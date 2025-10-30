@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfigure(t *testing.T) {
@@ -176,7 +176,7 @@ topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 			}
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -253,7 +253,7 @@ tls:
 			}
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 

@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 /*
@@ -342,7 +342,7 @@ stream_name: test_stream`,
 				tc.setup(s.T(), &cw)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tmb := tomb.Tomb{}
 
 			dbgLogger.Infof("running StreamingAcquisition")
@@ -456,7 +456,7 @@ stream_name: test_stream`,
 				return
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tmb := tomb.Tomb{}
 
 			switch cw.GetMode() {
@@ -625,7 +625,7 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				tc.setup(s.T(), &cw)
 			}
 
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 			tmb := tomb.Tomb{}
 
 			dbgLogger.Infof("running OneShotAcquisition")

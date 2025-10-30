@@ -29,7 +29,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type S3API interface {
@@ -65,7 +65,7 @@ type S3Source struct {
 	sqsClient    SQSAPI
 	readerChan   chan S3Object
 	t            *tomb.Tomb
-	out          chan types.Event
+	out          chan pipeline.Event
 	ctx          context.Context
 	cancel       context.CancelFunc
 }
@@ -509,7 +509,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = text
 			l.Labels = s.Config.Labels
 			l.Time = time.Now().UTC()
@@ -523,7 +523,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 				l.Src = bucket
 			}
 
-			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(s.Config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 
 			// don't block in shutdown
@@ -745,7 +745,7 @@ func (*S3Source) GetName() string {
 	return "s3"
 }
 
-func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
 	s.ctx, s.cancel = context.WithCancel(ctx)
@@ -777,7 +777,7 @@ func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event,
 	return nil
 }
 
-func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	s.t = t
 	s.out = out
 	s.readerChan = make(chan S3Object, 100) // FIXME: does this needs to be buffered?

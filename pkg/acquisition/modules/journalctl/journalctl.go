@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type JournalCtlConfiguration struct {
@@ -63,7 +63,7 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	return nil
 }
 
-func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
@@ -132,7 +132,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 
 			return nil
 		case stdoutLine := <-stdoutChan:
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = stdoutLine
 			logger.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
@@ -145,7 +145,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan types.Eve
 				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
 			}
 
-			evt := types.MakeEvent(j.config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(j.config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 			out <- evt
 		case stderrLine := <-stderrChan:
@@ -277,7 +277,7 @@ func (*JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
-func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
 
 	err := j.runJournalCtl(ctx, out, t)
@@ -286,7 +286,7 @@ func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan type
 	return err
 }
 
-func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
 		return j.runJournalCtl(ctx, out, t)
