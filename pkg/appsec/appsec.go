@@ -217,14 +217,6 @@ func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 }
 
 func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *ParsedRequest, reason string) error {
-	if state == nil {
-		return errors.New("request state not initialized")
-	}
-
-	if request == nil {
-		return errors.New("parsed request not provided")
-	}
-
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		reason = "request dropped by drop helper"
@@ -253,7 +245,7 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 		w.Logger.Debugf("drop request helper triggered for inband phase: %s", reason)
 	case request.IsOutBand:
 		if state.Tx.Tx == nil {
-			return fmt.Errorf("outofband transaction not initialized")
+			return errors.New("outofband transaction not initialized")
 		}
 		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:outofband")
 		state.OutOfBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
@@ -261,7 +253,7 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 		state.Tx.Interrupt(interrupt)
 		w.Logger.Debugf("drop request helper triggered for out-of-band phase: %s", reason)
 	default:
-		return fmt.Errorf("unable to determine request band for drop helper")
+		return errors.New("unable to determine request band for drop helper")
 	}
 
 	return nil
