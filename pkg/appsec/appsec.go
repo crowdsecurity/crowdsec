@@ -38,6 +38,13 @@ const (
 	AllowRemediation   = "allow"
 )
 
+type phase int
+
+const (
+	PhaseInBand phase = iota
+	PhaseOutOfBand
+)
+
 func (h *Hook) Build(hookStage int) error {
 	ctx := map[string]any{}
 
@@ -45,11 +52,11 @@ func (h *Hook) Build(hookStage int) error {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, pipeline.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -84,6 +91,26 @@ type AppsecTempResponse struct {
 	SendAlert               bool   // do we send an alert on rule match
 }
 
+type AppsecRequestState struct {
+	Tx           ExtendedTransaction
+	Response     AppsecTempResponse
+	CurrentPhase phase
+}
+
+func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
+	if cfg == nil {
+		s.Response = AppsecTempResponse{}
+		return
+	}
+
+	s.Response = AppsecTempResponse{}
+	s.Response.Action = cfg.DefaultPassAction
+	s.Response.BouncerHTTPResponseCode = cfg.BouncerPassedHTTPCode
+	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
+	s.Response.SendEvent = true
+	s.Response.SendAlert = true
+}
+
 type AppsecSubEngineOpts struct {
 	DisableBodyInspection    bool `yaml:"disable_body_inspection"`
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
@@ -106,12 +133,6 @@ type AppsecRuntimeConfig struct {
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
 	// CorazaLogger              debuglog.Logger
-
-	// those are ephemeral, created/destroyed with every req
-	OutOfBandTx ExtendedTransaction // is it a good idea ?
-	InBandTx    ExtendedTransaction // is it a good idea ?
-	Response    AppsecTempResponse
-	// should we store matched rules here ?
 
 	Logger *log.Entry
 
@@ -146,13 +167,14 @@ type AppsecConfig struct {
 	Logger   *log.Entry `yaml:"-"`
 }
 
-func (w *AppsecRuntimeConfig) ClearResponse() {
-	w.Response = AppsecTempResponse{}
-	w.Response.Action = w.Config.DefaultPassAction
-	w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
-	w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
-	w.Response.SendEvent = true
-	w.Response.SendAlert = true
+func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
+	state := AppsecRequestState{}
+	state.ResetResponse(w.Config)
+	return state
+}
+
+func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
+	state.ResetResponse(w.Config)
 }
 
 func (wc *AppsecConfig) SetUpLogger() {
@@ -445,12 +467,12 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt pipeline.Event) error {
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
 	has_match := false
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec on_match filter %s : %w", rule.Filter, err)
 			}
@@ -470,7 +492,7 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt pi
 		}
 
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec on_match expr: %s", err)
 				continue
@@ -492,12 +514,12 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt pi
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
 	has_match := false
 
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
 			}
@@ -517,7 +539,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
 				continue
@@ -539,12 +561,12 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
 	has_match := false
 
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
 			}
@@ -564,7 +586,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", err)
 				continue
@@ -586,41 +608,67 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule %d when not in inband phase", id)
+		return nil
+	}
 	w.Logger.Debugf("removing inband rule %d", id)
-	return w.InBandTx.RemoveRuleByIDWithError(id)
+	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
-func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, id int) error {
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule %d when not in outband phase", id)
+		return nil
+	}
 	w.Logger.Debugf("removing outband rule %d", id)
-	return w.OutOfBandTx.RemoveRuleByIDWithError(id)
+	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
-func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, tag string) error {
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule with tag %s when not in inband phase", tag)
+		return nil
+	}
+
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
-	return w.InBandTx.RemoveRuleByTagWithError(tag)
+	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, tag string) error {
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule with tag %s when not in outband phase", tag)
+		return nil
+	}
+
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
-	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
+	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(state *AppsecRequestState, name string) error {
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule with name %s when not in inband phase", name)
+		return nil
+	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing inband rule %s", tag)
-	return w.InBandTx.RemoveRuleByTagWithError(tag)
+	return w.RemoveInbandRuleByTag(state, tag)
 }
 
-func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(state *AppsecRequestState, name string) error {
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule with name %s when not in outband phase", name)
+		return nil
+	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing outband rule %s", tag)
-	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
+	return w.RemoveOutbandRuleByTag(state, tag)
 }
 
-func (w *AppsecRuntimeConfig) CancelEvent() error {
+func (w *AppsecRuntimeConfig) CancelEvent(state *AppsecRequestState) error {
 	w.Logger.Debugf("canceling event")
-	w.Response.SendEvent = false
+	state.Response.SendEvent = false
 
 	return nil
 }
@@ -663,21 +711,21 @@ func (w *AppsecRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) SendEvent() error {
+func (w *AppsecRuntimeConfig) SendEvent(state *AppsecRequestState) error {
 	w.Logger.Debugf("sending event")
-	w.Response.SendEvent = true
+	state.Response.SendEvent = true
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) SendAlert() error {
+func (w *AppsecRuntimeConfig) SendAlert(state *AppsecRequestState) error {
 	w.Logger.Debugf("sending alert")
-	w.Response.SendAlert = true
+	state.Response.SendAlert = true
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) CancelAlert() error {
+func (w *AppsecRuntimeConfig) CancelAlert(state *AppsecRequestState) error {
 	w.Logger.Debugf("canceling alert")
-	w.Response.SendAlert = false
+	state.Response.SendAlert = false
 	return nil
 }
 
@@ -709,16 +757,15 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) SetAction(action string) error {
-	// log.Infof("setting to %s", action)
+func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string) error {
 	w.Logger.Debugf("setting action to %s", action)
-	w.Response.Action = action
+	state.Response.Action = action
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
+func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
-	w.Response.UserHTTPResponseCode = code
+	state.Response.UserHTTPResponseCode = code
 	return nil
 }
 
