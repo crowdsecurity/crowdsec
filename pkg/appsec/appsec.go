@@ -698,8 +698,9 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, re
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
-	if state == nil {
-		return fmt.Errorf("inband transaction not initialized")
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule %d when not in inband phase", id)
+		return nil
 	}
 
 	w.Logger.Debugf("removing inband rule %d", id)
@@ -707,8 +708,9 @@ func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, id int) error {
-	if state == nil {
-		return fmt.Errorf("outofband transaction not initialized")
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule %d when not in outband phase", id)
+		return nil
 	}
 
 	w.Logger.Debugf("removing outband rule %d", id)
@@ -716,8 +718,9 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, i
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, tag string) error {
-	if state == nil {
-		return fmt.Errorf("inband transaction not initialized")
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule with tag %s when not in inband phase", tag)
+		return nil
 	}
 
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
@@ -725,8 +728,9 @@ func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, t
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, tag string) error {
-	if state == nil {
-		return fmt.Errorf("outofband transaction not initialized")
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule with tag %s when not in outband phase", tag)
+		return nil
 	}
 
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
@@ -734,21 +738,26 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, 
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(state *AppsecRequestState, name string) error {
+	if state.CurrentPhase != PhaseInBand {
+		w.Logger.Warnf("cannot remove inband rule with name %s when not in inband phase", name)
+		return nil
+	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing inband rule %s", tag)
 	return w.RemoveInbandRuleByTag(state, tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(state *AppsecRequestState, name string) error {
+	if state.CurrentPhase != PhaseOutOfBand {
+		w.Logger.Warnf("cannot remove outband rule with name %s when not in outband phase", name)
+		return nil
+	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing outband rule %s", tag)
 	return w.RemoveOutbandRuleByTag(state, tag)
 }
 
 func (w *AppsecRuntimeConfig) CancelEvent(state *AppsecRequestState) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
 	w.Logger.Debugf("canceling event")
 	state.Response.SendEvent = false
 
@@ -794,27 +803,18 @@ func (w *AppsecRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 }
 
 func (w *AppsecRuntimeConfig) SendEvent(state *AppsecRequestState) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
 	w.Logger.Debugf("sending event")
 	state.Response.SendEvent = true
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SendAlert(state *AppsecRequestState) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
 	w.Logger.Debugf("sending alert")
 	state.Response.SendAlert = true
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) CancelAlert(state *AppsecRequestState) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
 	w.Logger.Debugf("canceling alert")
 	state.Response.SendAlert = false
 	return nil
@@ -849,19 +849,12 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 }
 
 func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
-
 	w.Logger.Debugf("setting action to %s", action)
 	state.Response.Action = action
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) error {
-	if state == nil {
-		return fmt.Errorf("request state not initialized")
-	}
 	w.Logger.Debugf("setting http code to %d", code)
 	state.Response.UserHTTPResponseCode = code
 	return nil
