@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -217,11 +218,11 @@ func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 
 func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *ParsedRequest, reason string) error {
 	if state == nil {
-		return fmt.Errorf("request state not initialized")
+		return errors.New("request state not initialized")
 	}
 
 	if request == nil {
-		return fmt.Errorf("parsed request not provided")
+		return errors.New("parsed request not provided")
 	}
 
 	reason = strings.TrimSpace(reason)
@@ -240,7 +241,7 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 	switch {
 	case request.IsInBand:
 		if state.Tx.Tx == nil {
-			return fmt.Errorf("inband transaction not initialized")
+			return errors.New("inband transaction not initialized")
 		}
 		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:inband")
 		state.InBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
