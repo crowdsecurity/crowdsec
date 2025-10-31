@@ -341,6 +341,91 @@ func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 	}
 }
 
+type ruleData struct {
+	ID           int
+	Name         string
+	Hash         string
+	Version      string
+	Message      string
+	URI          string
+	Method       string
+	Disruptive   bool
+	Tags         []string
+	File         string
+	FileLine     int
+	Revision     string
+	SecMark      string
+	Accuracy     int
+	Severity     string
+	SeverityInt  int
+	MatchedZones []string
+	LogData      string
+	IsInternal   bool
+}
+
+func determineRuleKind(isInBand bool, evt *pipeline.Event) string {
+	if isInBand {
+		evt.Appsec.HasInBandMatches = true
+		return "inband"
+	}
+	evt.Appsec.HasOutBandMatches = true
+	return "outofband"
+}
+
+func extractMatchedZones(matchDatas []corazatypes.MatchData, logger *log.Entry, ruleID int) (matchedZones []string, matchedCollections []string, isInternal bool) {
+	matchedZones = make([]string, 0)
+	matchedCollections = make([]string, 0)
+
+	for _, matchData := range matchDatas {
+		zone := matchData.Variable().Name()
+		matchedCollections = append(matchedCollections, zone)
+		varName := matchData.Key()
+		if varName != "" {
+			zone += "." + varName
+		}
+		matchedZones = append(matchedZones, zone)
+	}
+
+	if containsAll(excludedMatchCollections, matchedCollections) {
+		isInternal = true
+		if logger != nil {
+			logger.Debugf("ignoring rule %d match on zone %+v", ruleID, matchedZones)
+		}
+	}
+
+	return matchedZones, matchedCollections, isInternal
+}
+
+func buildRuleMap(data ruleData, kind string) map[string]any {
+	ruleMap := map[string]any{
+		"id":            data.ID,
+		"uri":           data.URI,
+		"rule_type":     kind,
+		"method":        data.Method,
+		"disruptive":    data.Disruptive,
+		"tags":          data.Tags,
+		"file":          data.File,
+		"file_line":     data.FileLine,
+		"revision":      data.Revision,
+		"secmark":       data.SecMark,
+		"accuracy":      data.Accuracy,
+		"msg":           data.Message,
+		"severity":      data.Severity,
+		"severity_int":  data.SeverityInt,
+		"name":          data.Name,
+		"hash":          data.Hash,
+		"version":       data.Version,
+		"matched_zones": data.MatchedZones,
+		"logdata":       data.LogData,
+	}
+
+	if data.IsInternal {
+		ruleMap["internal"] = true
+	}
+
+	return ruleMap
+}
+
 func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
 	if evt == nil {
 		return
@@ -429,13 +514,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
-		kind := "outofband"
-		if state.CurrentPhase == appsec.PhaseInBand {
-			kind = "inband"
-			evt.Appsec.HasInBandMatches = true
-		} else {
-			evt.Appsec.HasOutBandMatches = true
-		}
+
+		kind := determineRuleKind(state.CurrentPhase == appsec.PhaseInBand, evt)
 
 		var name string
 		version := ""
@@ -456,62 +536,35 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 
 		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
-		matchedZones := make([]string, 0)
-		matchedCollections := make([]string, 0)
+		matchedZones, _, isInternal := extractMatchedZones(rule.MatchedDatas(), r.logger, rule.Rule().ID())
 
-		// Get matched zones
-		internalRule := false
-		for _, matchData := range rule.MatchedDatas() {
-			zone := matchData.Variable().Name()
-			matchedCollections = append(matchedCollections, zone)
-			varName := matchData.Key()
-			if varName != "" {
-				zone += "." + varName
-			}
-			matchedZones = append(matchedZones, zone)
+		data := ruleData{
+			ID:           rule.Rule().ID(),
+			Name:         name,
+			Hash:         hash,
+			Version:      version,
+			Message:      rule.Message(),
+			URI:          evt.Parsed["target_uri"],
+			Method:       evt.Parsed["method"],
+			Disruptive:   rule.Disruptive(),
+			Tags:         rule.Rule().Tags(),
+			File:         rule.Rule().File(),
+			FileLine:     rule.Rule().Line(),
+			Revision:     rule.Rule().Revision(),
+			SecMark:      rule.Rule().SecMark(),
+			Accuracy:     rule.Rule().Accuracy(),
+			Severity:     rule.Rule().Severity().String(),
+			SeverityInt:  rule.Rule().Severity().Int(),
+			MatchedZones: matchedZones,
+			LogData:      rule.Data(),
+			IsInternal:   isInternal,
 		}
 
-		if containsAll(excludedMatchCollections, matchedCollections) {
-			internalRule = true
-			r.logger.Debugf("ignoring rule %d match on zone %+v", rule.Rule().ID(), matchedZones)
-		}
-
-		corazaRule := map[string]any{
-			"id":            rule.Rule().ID(),
-			"uri":           evt.Parsed["target_uri"],
-			"rule_type":     kind,
-			"method":        evt.Parsed["method"],
-			"disruptive":    rule.Disruptive(),
-			"tags":          rule.Rule().Tags(),
-			"file":          rule.Rule().File(),
-			"file_line":     rule.Rule().Line(),
-			"revision":      rule.Rule().Revision(),
-			"secmark":       rule.Rule().SecMark(),
-			"accuracy":      rule.Rule().Accuracy(),
-			"msg":           rule.Message(),
-			"severity":      rule.Rule().Severity().String(),
-			"severity_int":  rule.Rule().Severity().Int(),
-			"name":          name,
-			"hash":          hash,
-			"version":       version,
-			"matched_zones": matchedZones,
-			"logdata":       rule.Data(),
-		}
-		if internalRule {
-			corazaRule["internal"] = true
-		}
-
-		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
+		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, buildRuleMap(data, kind))
 	}
 
 	if dropInfo != nil {
-		kind := "outofband"
-		if req.IsInBand {
-			evt.Appsec.HasInBandMatches = true
-			kind = "inband"
-		} else {
-			evt.Appsec.HasOutBandMatches = true
-		}
+		kind := determineRuleKind(req.IsInBand, evt)
 
 		if evt.Appsec.MatchedRules == nil {
 			evt.Appsec.MatchedRules = pipeline.MatchedRules{}
@@ -539,28 +592,29 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 			ruleName = dropInfo.Reason
 		}
 
-		syntheticRule := map[string]any{
-			"id":            dropInfo.Interruption.RuleID,
-			"uri":           uri,
-			"rule_type":     kind,
-			"kind":          kind,
-			"method":        method,
-			"disruptive":    true,
-			"tags":          tags,
-			"file":          "crowdsec:drop_request",
-			"file_line":     0,
-			"revision":      "",
-			"secmark":       "",
-			"accuracy":      0,
-			"msg":           dropInfo.Reason,
-			"severity":      severity.String(),
-			"severity_int":  severity.Int(),
-			"name":          ruleName,
-			"hash":          "",
-			"version":       "",
-			"matched_zones": []string{"PRE_EVAL"},
-			"logdata":       dropInfo.Reason,
+		data := ruleData{
+			ID:           dropInfo.Interruption.RuleID,
+			Name:         ruleName,
+			Hash:         "",
+			Version:      "",
+			Message:      dropInfo.Reason,
+			URI:          uri,
+			Method:       method,
+			Disruptive:   true,
+			Tags:         tags,
+			File:         "crowdsec:drop_request",
+			FileLine:     0,
+			Revision:     "",
+			SecMark:      "",
+			Accuracy:     0,
+			Severity:     severity.String(),
+			SeverityInt:  severity.Int(),
+			MatchedZones: []string{"PRE_EVAL"},
+			LogData:      dropInfo.Reason,
+			IsInternal:   false,
 		}
+
+		syntheticRule := buildRuleMap(data, kind)
 
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
 	}
