@@ -17,15 +17,6 @@ import (
 	"syscall"
 )
 
-func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
-		},
-	}
-}
-
 func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
 	cmd := exec.CommandContext(ctx, binaryPath)
