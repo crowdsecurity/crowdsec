@@ -589,7 +589,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 	}
 
 	for i := range sources {
-		subsrc := sources[i] // ensure its a copy
+		subsrc := sources[i] // ensure it's a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		acquisTomb.Go(func() error {
@@ -616,7 +616,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 			}
 
 			if err := acquireSource(ctx, subsrc, subsrc.GetName(), output, acquisTomb); err != nil {
-				// if one of the acqusition returns an error, we kill the others to properly shutdown
+				// if one of the acquisitions returns an error, we kill the others to properly shutdown
 				acquisTomb.Kill(err)
 			}
 
