@@ -9,13 +9,12 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"golang.org/x/sync/errgroup"
 
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -63,20 +62,19 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	return nil
 }
 
-func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		cancel()
 		return fmt.Errorf("could not get journalctl stdout: %w", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		cancel()
 		return fmt.Errorf("could not get journalctl stderr: %w", err)
 	}
 
@@ -90,7 +88,6 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 
 	err = cmd.Start()
 	if err != nil {
-		cancel()
 		logger.Errorf("could not start journalctl command : %s", err)
 		return err
 	}
@@ -98,7 +95,6 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 	stdoutscanner := bufio.NewScanner(stdout)
 
 	if stdoutscanner == nil {
-		cancel()
 		_ = cmd.Wait()
 		return errors.New("failed to create stdout scanner")
 	}
@@ -106,31 +102,30 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 	stderrScanner := bufio.NewScanner(stderr)
 
 	if stderrScanner == nil {
-		cancel()
 		_ = cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
 
-	t.Go(func() error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
 
-	t.Go(func() error {
+	g.Go(func() error {
 		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
 	})
 
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			logger.Infof("journalctl datasource %s stopping", j.src)
-			cancel()
 			// avoid zombie process
 			if waitErr := cmd.Wait(); waitErr != nil {
 				j.logger.Debugf("journalctl exited after cancel: %v", waitErr)
 			}
-
-			return nil
+			return g.Wait()
 		case stdoutLine := <-stdoutChan:
 			l := pipeline.Line{}
 			l.Raw = stdoutLine
@@ -150,17 +145,14 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
-			err := fmt.Errorf("journalctl error : %s", stderrLine)
-			t.Kill(err)
-		case errScanner, ok := <-errChan:
-			if !ok {
-				logger.Debugf("errChan is closed, quitting")
-				t.Kill(nil)
+			return fmt.Errorf("journalctl error : %s", stderrLine)
+		case scanErr, ok := <-errChan:
+			if ok && scanErr != nil {
+				return scanErr
 			}
 
-			if errScanner != nil {
-				t.Kill(errScanner)
-			}
+			logger.Debugf("errChan is closed, quitting")
+			return nil
 		}
 	}
 }
@@ -277,22 +269,34 @@ func (*JournalCtlSource) GetName() string {
 	return "journalctl"
 }
 
-func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
+func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	err := j.runJournalCtl(ctx, out, t)
+	if acquisTomb != nil {
+		go func() {
+			<-acquisTomb.Dying()
+			cancel()
+		}()
+	}
+
+	err := j.runJournalCtl(ctx, out)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
-
 	return err
 }
 
-func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
-		return j.runJournalCtl(ctx, out, t)
-	})
+func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	return nil
+	if acquisTomb != nil {
+		go func() {
+			<-acquisTomb.Dying()
+			cancel()
+		}()
+	}
+
+	return j.runJournalCtl(ctx, out)
 }
 
 func (*JournalCtlSource) CanRun() error {
