@@ -72,17 +72,21 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 		return err
 	}
 
+	defer func() {
+		if err := cmd.Wait(); err != nil {
+			logger.Debugf("journalctl exited after cancel: %v", err)
+		}
+	}()
+
 	stdoutscanner := bufio.NewScanner(stdout)
 
 	if stdoutscanner == nil {
-		_ = cmd.Wait()
 		return errors.New("failed to create stdout scanner")
 	}
 
 	stderrScanner := bufio.NewScanner(stderr)
 
 	if stderrScanner == nil {
-		_ = cmd.Wait()
 		return errors.New("failed to create stderr scanner")
 	}
 
@@ -120,10 +124,6 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 		select {
 		case <-ctx.Done():
 			logger.Infof("journalctl datasource %s stopping", j.src)
-			// avoid zombie process
-			if waitErr := cmd.Wait(); waitErr != nil {
-				j.logger.Debugf("journalctl exited after cancel: %v", waitErr)
-			}
 			return g.Wait()
 		case stdoutLine := <-stdoutChan:
 			l := pipeline.Line{}
@@ -150,12 +150,10 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 			return fmt.Errorf("journalctl error : %s", stderrLine)
 		case scanErr, ok := <-errChan:
 			if ok && scanErr != nil {
-				_ = cmd.Wait()
 				return g.Wait()
 			}
 
 			logger.Debugf("errChan is closed, quitting")
-			_ = cmd.Wait()
 			return g.Wait()
 		}
 	}
