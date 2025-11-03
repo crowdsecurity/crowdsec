@@ -109,12 +109,31 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return readLine(stdoutscanner, stdoutChan, errChan)
+		for stdoutscanner.Scan() {
+			txt := stdoutscanner.Text()
+			stdoutChan <- txt
+		}
+
+		if stdoutscanner.Err() != nil {
+			errChan <- stdoutscanner.Err()
+			close(errChan)
+			// the error is already consumed by runJournalCtl
+			return nil //nolint:nilerr
+		}
+
+		close(errChan)
+
+		return nil
 	})
 
 	g.Go(func() error {
 		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
-		return readLine(stderrScanner, stderrChan, nil)
+		for stderrScanner.Scan() {
+			txt := stderrScanner.Text()
+			stderrChan <- txt
+		}
+
+		return nil
 	})
 
 	for {
