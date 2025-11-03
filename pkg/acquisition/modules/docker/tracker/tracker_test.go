@@ -18,6 +18,7 @@ func TestTrackerBasic(t *testing.T) {
 	tr.Set("a", foo)
 	got, ok := tr.Get("a")
 	assert.True(t, ok)
+	assert.Equal(t, foo.value, got.value)
 	assert.Equal(t, foo, got)
 	assert.Equal(t, 1, tr.Len())
 
@@ -46,11 +47,12 @@ func TestTrackerPointerType(t *testing.T) {
 	tr.Set("a", ptr)
 	got, ok := tr.Get("a")
 	assert.True(t, ok)
+	assert.Equal(t, ptr.value, got.value)
 	assert.Same(t, ptr, got)
 }
 
 func TestTrackerConcurrentAccess(t *testing.T) {
-	type dummy struct{ id int }
+	type dummy struct{}
 
 	tr := NewTracker[dummy]()
 	wg := sync.WaitGroup{}
@@ -62,7 +64,7 @@ func TestTrackerConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			tr.Set(fmt.Sprintf("key-%04d", i), dummy{id: i})
+			tr.Set(fmt.Sprintf("key-%04d", i), dummy{})
 		}(i)
 	}
 
