@@ -145,14 +145,19 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)
+			if j.config.Mode == configuration.CAT_MODE {
+				continue
+			}
 			return fmt.Errorf("journalctl error : %s", stderrLine)
 		case scanErr, ok := <-errChan:
 			if ok && scanErr != nil {
-				return scanErr
+				_ = cmd.Wait()
+				return g.Wait()
 			}
 
 			logger.Debugf("errChan is closed, quitting")
-			return nil
+			_ = cmd.Wait()
+			return g.Wait()
 		}
 	}
 }
@@ -287,16 +292,18 @@ func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipe
 
 func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
-	if acquisTomb != nil {
-		go func() {
-			<-acquisTomb.Dying()
-			cancel()
-		}()
-	}
+	go func() {
+		<-acquisTomb.Dying()
+		cancel()
+	}()
 
-	return j.runJournalCtl(ctx, out)
+	acquisTomb.Go(func() error {
+		defer cancel()
+		return j.runJournalCtl(ctx, out)
+	})
+
+	return nil
 }
 
 func (*JournalCtlSource) CanRun() error {
