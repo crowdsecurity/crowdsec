@@ -353,10 +353,12 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 		return nil
 	})
 
-	s.apic.metricsTomb.Go(func() error {
-		s.apic.SendUsageMetrics(ctx)
-		return nil
-	})
+	if !s.cfg.DisableUsageMetricsExport {
+		s.apic.metricsTomb.Go(func() error {
+			s.apic.SendUsageMetrics(ctx)
+			return nil
+		})
+	}
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {

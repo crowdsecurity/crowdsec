@@ -247,6 +247,7 @@ type LocalApiServerCfg struct {
 	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
+	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
 }
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
