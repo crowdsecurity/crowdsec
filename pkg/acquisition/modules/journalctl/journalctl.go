@@ -42,26 +42,6 @@ var (
 	journalctlArgstreaming = []string{"--follow", "-n", "0"}
 )
 
-func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error {
-	for scanner.Scan() {
-		txt := scanner.Text()
-		out <- txt
-	}
-
-	if errChan != nil && scanner.Err() != nil {
-		errChan <- scanner.Err()
-		close(errChan)
-		// the error is already consumed by runJournalCtl
-		return nil //nolint:nilerr
-	}
-
-	if errChan != nil {
-		close(errChan)
-	}
-
-	return nil
-}
-
 func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
