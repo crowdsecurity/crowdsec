@@ -85,6 +85,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	stdoutChan := make(chan string)
 	errChan := make(chan error, 1)
 
+	// put in config
 	logger := s.logger.WithField("src", s.src)
 
 	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
@@ -110,6 +111,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 		defer close(stdoutChan)
 
 		// XXX: lines can be >64k. should we buffer?
+		// check context with for - select
 		for stdoutScanner.Scan() {
 			stdoutChan <- stdoutScanner.Text()
 		}
@@ -171,12 +173,8 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 			}
 
 			logger.Warnf("Got stderr message: %s", stderrLine)
-
-			if s.config.Mode == configuration.CAT_MODE {
-				continue
-			}
-			// XXX: handle this error
-			return fmt.Errorf("journalctl error: %s", stderrLine)
+			// XXX: we may want to detect some special case here and treat it as an error
+			continue
 		case scanErr := <-errChan:
 			return scanErr
 		}

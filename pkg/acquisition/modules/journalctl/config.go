@@ -43,6 +43,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
+// XXX: rename to Init or something
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.logger = logger
 	s.metricsLevel = metricsLevel
