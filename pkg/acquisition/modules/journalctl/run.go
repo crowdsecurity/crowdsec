@@ -32,6 +32,7 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 
 	err := s.runJournalCtl(ctx, out)
 	s.logger.Debug("Oneshot journalctl acquisition is done")
+
 	return err
 }
 
@@ -106,28 +107,26 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+		defer close(stdoutChan)
+
+		// XXX: lines can be >64k. should we buffer?
 		for stdoutScanner.Scan() {
-			txt := stdoutScanner.Text()
-			stdoutChan <- txt
+			stdoutChan <- stdoutScanner.Text()
 		}
 
-		if stdoutScanner.Err() != nil {
-			errChan <- stdoutScanner.Err()
-			close(errChan)
-			// the error is already consumed by runJournalCtl
-			return nil //nolint:nilerr
+		if err := stdoutScanner.Err(); err != nil {
+			errChan <- err
 		}
-
-		close(errChan)
 
 		return nil
 	})
 
 	g.Go(func() error {
 		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		defer close(stderrChan)
+
 		for stderrScanner.Scan() {
-			txt := stderrScanner.Text()
-			stderrChan <- txt
+			stderrChan <- stderrScanner.Text()
 		}
 
 		return nil
@@ -138,8 +137,14 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 		case <-ctx.Done():
 			logger.Info("datasource stopping")
 			return g.Wait()
-		case stdoutLine := <-stdoutChan:
-			l := pipeline.Line{
+		case stdoutLine, ok := <-stdoutChan:
+			if !ok {
+				// channel closed
+				logger.Debug("stdoutChan is closed, quitting")
+				return g.Wait()
+			}
+
+			line := pipeline.Line{
 				Raw: stdoutLine,
 				Src: s.src,
 				Time: time.Now().UTC(),
@@ -147,27 +152,33 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 				Process: true,
 				Module: s.GetName(),
 			}
-			logger.Debugf("getting one line: %s", l.Raw)
+
+			logger.Debugf("getting one line: %s", line.Raw)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
+				// XXX: label map allocation
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": line.Labels["type"]}).Inc()
 			}
 
 			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
-			evt.Line = l
+			evt.Line = line
+
 			out <- evt
-		case stderrLine := <-stderrChan:
+		case stderrLine, ok := <-stderrChan:
+			if !ok {
+				// channel closed
+				continue
+			}
+
 			logger.Warnf("Got stderr message: %s", stderrLine)
+
 			if s.config.Mode == configuration.CAT_MODE {
 				continue
 			}
+			// XXX: handle this error
 			return fmt.Errorf("journalctl error: %s", stderrLine)
-		case scanErr, ok := <-errChan:
-			if ok && scanErr != nil {
-				return g.Wait()
-			}
-			logger.Debugf("errChan is closed, quitting")
-			return g.Wait()
+		case scanErr := <-errChan:
+			return scanErr
 		}
 	}
 }

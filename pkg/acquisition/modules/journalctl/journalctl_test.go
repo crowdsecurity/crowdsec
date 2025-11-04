@@ -31,7 +31,7 @@ func TestBadConfiguration(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd.log`,
-			expectedErr: `cannot parse JournalCtlSource configuration: [1:1] unknown field "foobar"`,
+			expectedErr: `cannot parse journalctl acquisition config: [1:1] unknown field "foobar"`,
 		},
 		{
 			config: `
@@ -91,7 +91,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			dsn:         "journalctl://filters=_UID=1000&log_level=foobar",
-			expectedErr: "unknown level foobar: not a valid logrus Level:",
+			expectedErr: `not a valid logrus Level: "foobar"`,
 		},
 		{
 			dsn:         "journalctl://filters=_UID=1000&log_level=warn&since=yesterday",
@@ -293,5 +293,5 @@ func TestMain(m *testing.M) {
 		os.Setenv("PATH", fullPath+":"+os.Getenv("PATH"))
 	}
 
-	os.Exit(m.Run())
+	m.Run()
 }

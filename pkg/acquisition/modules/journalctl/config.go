@@ -36,6 +36,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("journalctl_filter is required")
 	}
 
+	// XXX: sanitize filters? if they contain "." or spaces
 	s.src = "journalctl-" + strings.Join(config.Filters, ".")
 	s.config = config
 
@@ -88,7 +89,7 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
-				return fmt.Errorf("unknown log level %s: %w", value[0], err)
+				return err
 			}
 
 			s.logger.Logger.SetLevel(lvl)
@@ -96,6 +97,7 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 			if len(value) != 1 {
 				return errors.New("expected exactly one value for 'since'")
 			}
+
 			since = value[0]
 		default:
 			return fmt.Errorf("unsupported key %s in journalctl DSN", key)
