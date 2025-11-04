@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 	"golang.org/x/sync/errgroup"
 
@@ -65,6 +66,21 @@ func (s *Source) getCommandArgs() []string {
 	return append(args, s.config.Filters...)
 }
 
+func shellEscape(s string) string {
+	if !strings.ContainsAny(s, " \t\n\"'\\`$&|;<>(){}[]*?!~") {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
+func joinShellArgs(args []string) string {
+	parts := make([]string, len(args))
+	for i, a := range args {
+		parts[i] = shellEscape(a)
+	}
+	return strings.Join(parts, " ")
+}
+
 func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -88,11 +104,11 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	// put in config
 	logger := s.logger.WithField("src", s.src)
 
-	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
+	logger.Infof("Running: %q", joinShellArgs(cmd.Args))
 
 	err = cmd.Start()
 	if err != nil {
-		logger.Errorf("could not start journalctl command : %s", err)
+		logger.Errorf("Starting journalctl: %s", err)
 		return err
 	}
 

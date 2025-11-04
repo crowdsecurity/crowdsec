@@ -36,14 +36,17 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("journalctl_filter is required")
 	}
 
-	// XXX: sanitize filters? if they contain "." or spaces
-	s.src = "journalctl-" + strings.Join(config.Filters, ".")
 	s.config = config
+	s.setSrc()
 
 	return nil
 }
 
-// XXX: rename to Init or something
+func (s *Source) setSrc() {
+	// XXX: sanitize filters? if they contain "." or spaces
+	s.src = "journalctl-" + strings.Join(s.config.Filters, ".")
+}
+
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.logger = logger
 	s.metricsLevel = metricsLevel
@@ -105,8 +108,6 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		}
 	}
 
-	// XXX: don't set src?
-
 	s.config = Configuration{
 		DataSourceCommonCfg: configuration.DataSourceCommonCfg{
 			Mode:     configuration.CAT_MODE,
@@ -116,6 +117,8 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		Filters: filters,
 		since:   since,
 	}
+
+	s.setSrc()
 
 	return nil
 }

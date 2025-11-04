@@ -121,14 +121,14 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 }
 
 // setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(source, name string, level log.Level) (*log.Entry, error) {
+func setupLogger(typ, name string, level log.Level) (*log.Entry, error) {
 	clog := log.New()
 	if err := logging.ConfigureLogger(clog, level); err != nil {
-		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
+		return nil, fmt.Errorf("configuring datasource logger: %w", err)
 	}
 
 	fields := log.Fields{
-		"type": source,
+		"type": typ,
 	}
 
 	if name != "" {
@@ -167,10 +167,10 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) (DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
-		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
+		return nil, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
 	}
 
 	dataSrc, err := GetDataSourceIface(frags[0])
@@ -178,7 +178,9 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
-	subLogger, err := setupLogger(dsn, "", 0)
+	typ := labels["type"]
+
+	subLogger, err := setupLogger(typ, "", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -200,10 +202,10 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 	}
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
-		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
+		return nil, fmt.Errorf("configuring datasource for %q: %w", dsn, err)
 	}
 
-	return []DataSource{dataSrc}, nil
+	return dataSrc, nil
 }
 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.AcquisitionMetricsLevel {
@@ -349,7 +351,7 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 				continue
 			}
 
-			return nil, fmt.Errorf("while configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
+			return nil, fmt.Errorf("configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
 		}
 
 		if sub.TransformExpr != "" {
