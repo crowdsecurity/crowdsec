@@ -101,20 +101,17 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	stdoutChan := make(chan string)
 	errChan := make(chan error, 1)
 
-	// put in config
-	logger := s.logger.WithField("src", s.src)
-
-	logger.Infof("Running: %q", joinShellArgs(cmd.Args))
+	s.logger.Infof("Running: %q", joinShellArgs(cmd.Args))
 
 	err = cmd.Start()
 	if err != nil {
-		logger.Errorf("Starting journalctl: %s", err)
+		s.logger.Errorf("Starting journalctl: %s", err)
 		return err
 	}
 
 	defer func() {
 		if err := cmd.Wait(); err != nil {
-			logger.Debugf("journalctl exited after cancel: %v", err)
+			s.logger.Debugf("journalctl exited after cancel: %v", err)
 		}
 	}()
 
@@ -153,12 +150,12 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info("datasource stopping")
+			s.logger.Info("datasource stopping")
 			return g.Wait()
 		case stdoutLine, ok := <-stdoutChan:
 			if !ok {
 				// channel closed
-				logger.Debug("stdoutChan is closed, quitting")
+				s.logger.Debug("stdoutChan is closed, quitting")
 				return g.Wait()
 			}
 
@@ -171,7 +168,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 				Module: s.GetName(),
 			}
 
-			logger.Debugf("getting one line: %s", line.Raw)
+			s.logger.Debugf("getting one line: %s", line.Raw)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				// XXX: label map allocation
@@ -188,7 +185,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 				continue
 			}
 
-			logger.Warnf("Got stderr message: %s", stderrLine)
+			s.logger.Warnf("Got stderr message: %s", stderrLine)
 			// XXX: we may want to detect some special case here and treat it as an error
 			continue
 		case scanErr := <-errChan:

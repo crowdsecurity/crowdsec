@@ -37,18 +37,12 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	s.config = config
-	s.setSrc()
+	s.setSrc(s.config.Filters)
 
 	return nil
 }
 
-func (s *Source) setSrc() {
-	// XXX: sanitize filters? if they contain "." or spaces
-	s.src = "journalctl-" + strings.Join(s.config.Filters, ".")
-}
-
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	s.logger = logger
 	s.metricsLevel = metricsLevel
 
 	err := s.UnmarshalConfig(yamlConfig)
@@ -56,15 +50,16 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return err
 	}
 
+	s.setLogger(logger, 0, s.src)
+
 	return nil
 }
 
 func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	s.logger = logger
-
 	var (
-		filters []string
-		since string
+		filters  []string
+		since    string
+		logLevel log.Level
 	)
 
 	// format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
@@ -96,7 +91,7 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 				return err
 			}
 
-			s.logger.Logger.SetLevel(lvl)
+			logLevel = lvl
 		case "since":
 			if len(value) != 1 {
 				return errors.New("expected exactly one value for 'since'")
@@ -118,7 +113,8 @@ func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		since:   since,
 	}
 
-	s.setSrc()
+	s.setSrc(s.config.Filters)
+	s.setLogger(logger, logLevel, s.src)
 
 	return nil
 }

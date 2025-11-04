@@ -2,6 +2,7 @@ package journalctlacquisition
 
 import (
 	"os/exec"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -36,3 +37,16 @@ func (*Source) CanRun() error {
 func (s *Source) Dump() any {
 	return s
 }
+
+func (s *Source) setSrc(filters []string) {
+	// XXX: sanitize filters? if they contain "." or spaces
+	s.src = "journalctl-" + strings.Join(s.config.Filters, ".")
+}
+
+func (s *Source) setLogger(logger *log.Entry, level log.Level, src string) {
+	s.logger = logger.WithField("src", s.src)
+	if level != 0 {
+		s.logger.Logger.SetLevel(level)
+	}
+}
+
