@@ -8,31 +8,31 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
-type JournalCtlSource struct {
+type Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
 	config       Configuration
 	logger       *log.Entry
-	src          string
+	src          string	// specific source name (i.e. journalctl-<filters>)
 }
 
-func (j *JournalCtlSource) GetUuid() string {
-	return j.config.UniqueId
+func (s *Source) GetUuid() string {
+	return s.config.UniqueId
 }
 
-func (j *JournalCtlSource) GetMode() string {
-	return j.config.Mode
+func (s *Source) GetMode() string {
+	return s.config.Mode
 }
 
-func (*JournalCtlSource) GetName() string {
+func (*Source) GetName() string {
 	return "journalctl"
 }
 
-func (*JournalCtlSource) CanRun() error {
+func (*Source) CanRun() error {
 	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }
 
-func (j *JournalCtlSource) Dump() any {
-	return j
+func (s *Source) Dump() any {
+	return s
 }

@@ -18,35 +18,35 @@ type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 
 	Filters []string `yaml:"journalctl_filter"`
-	since   string // set by DSN
+	since   string // set only by DSN
 }
 
-func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
-	j.config = Configuration{}
+func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
+	config := Configuration{}
 
-	err := yaml.UnmarshalWithOptions(yamlConfig, &j.config, yaml.Strict())
+	// defaults
+	config.Mode = configuration.TAIL_MODE
+
+	err := yaml.UnmarshalWithOptions(yamlConfig, &config, yaml.Strict())
 	if err != nil {
 		return fmt.Errorf("cannot parse journalctl acquisition config: %s", yaml.FormatError(err, false, false))
 	}
 
-	if j.config.Mode == "" {
-		j.config.Mode = configuration.TAIL_MODE
-	}
-
-	if len(j.config.Filters) == 0 {
+	if len(config.Filters) == 0 {
 		return errors.New("journalctl_filter is required")
 	}
 
-	j.src = "journalctl-" + strings.Join(j.config.Filters, ".")
+	s.src = "journalctl-" + strings.Join(config.Filters, ".")
+	s.config = config
 
 	return nil
 }
 
-func (j *JournalCtlSource) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	j.logger = logger
-	j.metricsLevel = metricsLevel
+func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+	s.logger = logger
+	s.metricsLevel = metricsLevel
 
-	err := j.UnmarshalConfig(yamlConfig)
+	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
@@ -54,8 +54,8 @@ func (j *JournalCtlSource) Configure(_ context.Context, yamlConfig []byte, logge
 	return nil
 }
 
-func (j *JournalCtlSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	j.logger = logger
+func (s *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+	s.logger = logger
 
 	var (
 		filters []string
@@ -83,18 +83,18 @@ func (j *JournalCtlSource) ConfigureByDSN(_ context.Context, dsn string, labels 
 			filters = append(filters, value...)
 		case "log_level":
 			if len(value) != 1 {
-				return errors.New("expected zero or one value for 'log_level'")
+				return errors.New("expected exactly one value for 'log_level'")
 			}
 
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
-				return fmt.Errorf("unknown level %s: %w", value[0], err)
+				return fmt.Errorf("unknown log level %s: %w", value[0], err)
 			}
 
-			j.logger.Logger.SetLevel(lvl)
+			s.logger.Logger.SetLevel(lvl)
 		case "since":
-			if since != "" {
-				return errors.New("multiple values for 'since'")
+			if len(value) != 1 {
+				return errors.New("expected exactly one value for 'since'")
 			}
 			since = value[0]
 		default:
@@ -102,7 +102,9 @@ func (j *JournalCtlSource) ConfigureByDSN(_ context.Context, dsn string, labels 
 		}
 	}
 
-	j.config = Configuration{
+	// XXX: don't set src?
+
+	s.config = Configuration{
 		DataSourceCommonCfg: configuration.DataSourceCommonCfg{
 			Mode:     configuration.CAT_MODE,
 			Labels:   labels,

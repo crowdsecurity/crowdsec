@@ -53,7 +53,7 @@ journalctl_filter:
 
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
-			f := JournalCtlSource{}
+			f := Source{}
 			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -102,7 +102,7 @@ func TestConfigureDSN(t *testing.T) {
 	subLogger := log.WithField("type", "journalctl")
 
 	for _, test := range tests {
-		f := JournalCtlSource{}
+		f := Source{}
 		err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
@@ -160,7 +160,7 @@ journalctl_filter:
 
 		tomb := tomb.Tomb{}
 		out := make(chan pipeline.Event, 100)
-		j := JournalCtlSource{}
+		j := Source{}
 
 		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
@@ -230,7 +230,7 @@ journalctl_filter:
 
 		tomb := tomb.Tomb{}
 		out := make(chan pipeline.Event)
-		j := JournalCtlSource{}
+		j := Source{}
 
 		err := j.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {

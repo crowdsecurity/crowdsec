@@ -3,7 +3,6 @@ package journalctlacquisition
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -19,7 +18,7 @@ import (
 
 const journalctlCmd = "journalctl"
 
-func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	if acquisTomb != nil {
 		tombCtx, cancel := context.WithCancel(ctx)
 
@@ -31,13 +30,13 @@ func (j *JournalCtlSource) OneShotAcquisition(ctx context.Context, out chan pipe
 		ctx = tombCtx
 	}
 
-	err := j.runJournalCtl(ctx, out)
-	j.logger.Debug("Oneshot journalctl acquisition is done")
+	err := s.runJournalCtl(ctx, out)
+	s.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
 }
 
-func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
-	ctx, cancel := context.WithCancel(ctx)
+func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	tombCtx, cancel := context.WithCancel(ctx)
 
 	go func() {
 		<-acquisTomb.Dying()
@@ -45,31 +44,31 @@ func (j *JournalCtlSource) StreamingAcquisition(ctx context.Context, out chan pi
 	}()
 
 	acquisTomb.Go(func() error {
-		return j.runJournalCtl(ctx, out)
+		return s.runJournalCtl(tombCtx, out)
 	})
 
 	return nil
 }
 
-func (j *JournalCtlSource) getCommandArgs() []string {
+func (s *Source) getCommandArgs() []string {
 	args := []string{}
 
-	if j.config.Mode == configuration.TAIL_MODE {
+	if s.config.Mode == configuration.TAIL_MODE {
 		args = []string{"--follow", "-n", "0"}
 	}
 
-	if j.config.since != "" {
-		args = append(args, "--since", j.config.since)
+	if s.config.since != "" {
+		args = append(args, "--since", s.config.since)
 	}
 
-	return append(args, j.config.Filters...)
+	return append(args, s.config.Filters...)
 }
 
-func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
+func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, journalctlCmd, j.getCommandArgs()...)
+	cmd := exec.CommandContext(ctx, journalctlCmd, s.getCommandArgs()...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -85,7 +84,7 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 	stdoutChan := make(chan string)
 	errChan := make(chan error, 1)
 
-	logger := j.logger.WithField("src", j.src)
+	logger := s.logger.WithField("src", s.src)
 
 	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
 
@@ -101,28 +100,19 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 		}
 	}()
 
-	stdoutscanner := bufio.NewScanner(stdout)
-
-	if stdoutscanner == nil {
-		return errors.New("failed to create stdout scanner")
-	}
-
+	stdoutScanner := bufio.NewScanner(stdout)
 	stderrScanner := bufio.NewScanner(stderr)
-
-	if stderrScanner == nil {
-		return errors.New("failed to create stderr scanner")
-	}
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		for stdoutscanner.Scan() {
-			txt := stdoutscanner.Text()
+		for stdoutScanner.Scan() {
+			txt := stdoutScanner.Text()
 			stdoutChan <- txt
 		}
 
-		if stdoutscanner.Err() != nil {
-			errChan <- stdoutscanner.Err()
+		if stdoutScanner.Err() != nil {
+			errChan <- stdoutScanner.Err()
 			close(errChan)
 			// the error is already consumed by runJournalCtl
 			return nil //nolint:nilerr
@@ -146,36 +136,36 @@ func (j *JournalCtlSource) runJournalCtl(ctx context.Context, out chan pipeline.
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Infof("journalctl datasource %s stopping", j.src)
+			logger.Info("datasource stopping")
 			return g.Wait()
 		case stdoutLine := <-stdoutChan:
-			l := pipeline.Line{}
-			l.Raw = stdoutLine
-			logger.Debugf("getting one line : %s", l.Raw)
-			l.Labels = j.config.Labels
-			l.Time = time.Now().UTC()
-			l.Src = j.src
-			l.Process = true
-			l.Module = j.GetName()
+			l := pipeline.Line{
+				Raw: stdoutLine,
+				Src: s.src,
+				Time: time.Now().UTC(),
+				Labels: s.config.Labels,
+				Process: true,
+				Module: s.GetName(),
+			}
+			logger.Debugf("getting one line: %s", l.Raw)
 
-			if j.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": j.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
+			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": l.Labels["type"]}).Inc()
 			}
 
-			evt := pipeline.MakeEvent(j.config.UseTimeMachine, pipeline.LOG, true)
+			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 			out <- evt
 		case stderrLine := <-stderrChan:
-			logger.Warnf("Got stderr message : %s", stderrLine)
-			if j.config.Mode == configuration.CAT_MODE {
+			logger.Warnf("Got stderr message: %s", stderrLine)
+			if s.config.Mode == configuration.CAT_MODE {
 				continue
 			}
-			return fmt.Errorf("journalctl error : %s", stderrLine)
+			return fmt.Errorf("journalctl error: %s", stderrLine)
 		case scanErr, ok := <-errChan:
 			if ok && scanErr != nil {
 				return g.Wait()
 			}
-
 			logger.Debugf("errChan is closed, quitting")
 			return g.Wait()
 		}

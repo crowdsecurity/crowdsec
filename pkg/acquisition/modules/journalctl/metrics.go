@@ -6,10 +6,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
-func (*JournalCtlSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
+func (*Source) GetMetrics() []prometheus.Collector {
+	return []prometheus.Collector{
+		metrics.JournalCtlDataSourceLinesRead,
+	}
 }
 
-func (*JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.JournalCtlDataSourceLinesRead}
+func (*Source) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{
+		metrics.JournalCtlDataSourceLinesRead,
+	}
 }
