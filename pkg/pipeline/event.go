@@ -18,31 +18,31 @@ const (
 // Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
-	Type            int    `json:"Type,omitempty"             yaml:"Type,omitempty"`       // Can be types.LOG (0) or types.OVFLOW (1)
-	ExpectMode      int    `json:"ExpectMode,omitempty"       yaml:"ExpectMode,omitempty"` // how to buckets should handle event : types.TIMEMACHINE or types.LIVE
-	Whitelisted     bool   `json:"Whitelisted,omitempty"      yaml:"Whitelisted,omitempty"`
-	WhitelistReason string `json:"whitelist_reason,omitempty" yaml:"WhitelistReason,omitempty"`
+	Type            int    `yaml:"Type,omitempty"`       // Can be types.LOG (0) or types.OVFLOW (1)
+	ExpectMode      int    `yaml:"ExpectMode,omitempty"` // how to buckets should handle event : types.TIMEMACHINE or types.LIVE
+	Whitelisted     bool   `yaml:"Whitelisted,omitempty"`
+	WhitelistReason string `yaml:"WhitelistReason,omitempty"`
 	// should add whitelist reason ?
 	/* the current stage of the line being parsed */
-	Stage string `json:"Stage,omitempty" yaml:"Stage,omitempty"`
+	Stage string `yaml:"Stage,omitempty"`
 	/* original line (produced by acquisition) */
-	Line Line `json:"Line,omitempty" yaml:"Line,omitempty"`
+	Line Line `yaml:"Line,omitempty"`
 	/* output of groks */
-	Parsed map[string]string `json:"Parsed,omitempty" yaml:"Parsed,omitempty"`
+	Parsed map[string]string `yaml:"Parsed,omitempty"`
 	/* output of enrichment */
-	Enriched map[string]string `json:"Enriched,omitempty" yaml:"Enriched,omitempty"`
+	Enriched map[string]string `yaml:"Enriched,omitempty"`
 	/* output of Unmarshal */
-	Unmarshaled map[string]any `json:"Unmarshaled,omitempty" yaml:"Unmarshaled,omitempty"`
+	Unmarshaled map[string]any `yaml:"Unmarshaled,omitempty"`
 	/* Overflow */
-	Overflow      RuntimeAlert `json:"Alert,omitempty"         yaml:"Overflow,omitempty"`
-	Time          time.Time    `json:"Time,omitempty"          yaml:"Time,omitempty"` // parsed time `json:"-"` ``
-	StrTime       string       `json:"StrTime,omitempty"       yaml:"StrTime,omitempty"`
-	StrTimeFormat string       `json:"StrTimeFormat,omitempty" yaml:"StrTimeFormat,omitempty"`
-	MarshaledTime string       `json:"MarshaledTime,omitempty" yaml:"MarshaledTime,omitempty"`
-	Process       bool         `json:"Process,omitempty"       yaml:"Process,omitempty"` // can be set to false to avoid processing line
-	Appsec        AppsecEvent  `json:"Appsec,omitempty"        yaml:"Appsec,omitempty"`
+	Overflow      RuntimeAlert `yaml:"Overflow,omitempty"`
+	Time          time.Time    `yaml:"Time,omitempty"` // parsed time
+	StrTime       string       `yaml:"StrTime,omitempty"`
+	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty"`
+	MarshaledTime string       `yaml:"MarshaledTime,omitempty"`
+	Process       bool         `yaml:"Process,omitempty"` // can be set to false to avoid processing line
+	Appsec        AppsecEvent  `yaml:"Appsec,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
-	Meta map[string]string `json:"Meta,omitempty" yaml:"Meta,omitempty"`
+	Meta map[string]string `yaml:"Meta,omitempty"`
 }
 
 func MakeEvent(timeMachine bool, evtType int, process bool) Event {
@@ -141,14 +141,14 @@ func (e *Event) ParseIPSources() []netip.Addr {
 }
 
 type RuntimeAlert struct {
-	Mapkey      string                   `json:"MapKey,omitempty"      yaml:"MapKey,omitempty"`
-	BucketId    string                   `json:"BucketId,omitempty"    yaml:"BucketId,omitempty"`
-	Whitelisted bool                     `json:"Whitelisted,omitempty" yaml:"Whitelisted,omitempty"`
-	Reprocess   bool                     `json:"Reprocess,omitempty"   yaml:"Reprocess,omitempty"`
-	Sources     map[string]models.Source `json:"Sources,omitempty"     yaml:"Sources,omitempty"`
-	Alert       *models.Alert            `json:"Alert,omitempty"       yaml:"Alert,omitempty"` // this one is a pointer to APIAlerts[0] for convenience.
+	Mapkey      string                   `yaml:"MapKey,omitempty"`
+	BucketId    string                   `yaml:"BucketId,omitempty"`
+	Whitelisted bool                     `yaml:"Whitelisted,omitempty"`
+	Reprocess   bool                     `yaml:"Reprocess,omitempty"`
+	Sources     map[string]models.Source `yaml:"Sources,omitempty"`
+	Alert       *models.Alert            `yaml:"Alert,omitempty"` // this one is a pointer to APIAlerts[0] for convenience.
 	// APIAlerts will be populated at the end when there is more than one source
-	APIAlerts []models.Alert `json:"APIAlerts,omitempty" yaml:"APIAlerts,omitempty"`
+	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty"`
 }
 
 func (r RuntimeAlert) GetSources() []string {
