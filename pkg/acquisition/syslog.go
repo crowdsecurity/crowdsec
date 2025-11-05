@@ -8,12 +8,12 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*syslogacquisition.SyslogSource)(nil)
-	_ Tailer          = (*syslogacquisition.SyslogSource)(nil)
-	_ MetricsProvider = (*syslogacquisition.SyslogSource)(nil)
+	_ DataSource      = (*syslogacquisition.Source)(nil)
+	_ Tailer          = (*syslogacquisition.Source)(nil)
+	_ MetricsProvider = (*syslogacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("syslog", func() DataSource { return &syslogacquisition.SyslogSource{} })
+	registerDataSource("syslog", func() DataSource { return &syslogacquisition.Source{} })
 }
