@@ -535,7 +535,7 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 
 func acquireSource(ctx context.Context, source DataSource, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	if source.GetMode() == configuration.CAT_MODE {
-		if s, ok := source.(Fetcher); !ok {
+		if s, ok := source.(Fetcher); ok {
 			return s.OneShotAcquisition(ctx, output, acquisTomb)
 		}
 
