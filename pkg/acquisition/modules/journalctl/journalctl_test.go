@@ -1,11 +1,13 @@
 package journalctlacquisition
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
+	"strconv"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -184,52 +186,54 @@ journalctl_filter:
 			expectedLines:  14,
 		},
 	}
-	for _, ts := range tests {
-		tomb := tomb.Tomb{}
-		out := make(chan pipeline.Event)
-		j := Source{}
+	for idx, ts := range tests {
+		t.Run(strconv.Itoa(idx), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			out := make(chan pipeline.Event)
+			j := Source{}
 
-		logger, _ := logtest.NewNullLogger()
+			logger, _ := logtest.NewNullLogger()
 
-		err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
-		require.NoError(t, err)
+			err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
 
-		actualLines := 0
-		var wg sync.WaitGroup
+			actualLines := 0
+			var wg sync.WaitGroup
 
-		if ts.expectedLines != 0 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for {
-					select {
-					case <-out:
-						actualLines++
-					case <-time.After(1 * time.Second):
-						return
+			if ts.expectedLines != 0 {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for {
+						select {
+						case <-out:
+							actualLines++
+						case <-time.After(1 * time.Second):
+							cancel()
+							return
+						}
 					}
-				}
-			}()
-		}
+				}()
+			}
 
-		err = j.StreamingAcquisition(ctx, out, &tomb)
-		cstest.RequireErrorContains(t, err, ts.expectedErr)
+			err = j.Stream(ctx, out)
+			cstest.RequireErrorContains(t, err, ts.expectedErr)
 
-		if ts.expectedErr != "" {
-			continue
-		}
+			if ts.expectedErr != "" {
+				cancel()
+				return
+			}
 
-		if ts.expectedLines != 0 {
-			wg.Wait()
-			assert.Equal(t, ts.expectedLines, actualLines)
-		}
+			if ts.expectedLines != 0 {
+				wg.Wait()
+				assert.Equal(t, ts.expectedLines, actualLines)
+			}
 
-		tomb.Kill(nil)
-		err = tomb.Wait()
-		require.NoError(t, err)
+			cancel()
 
-		output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
-		assert.Empty(t, output, "zombie journalctl process detected!")
+			output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
+			assert.Empty(t, output, "zombie journalctl process detected!")
+		})
 	}
 }
 

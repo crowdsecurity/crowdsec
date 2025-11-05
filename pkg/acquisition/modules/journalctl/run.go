@@ -36,19 +36,8 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 	return err
 }
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
-	tombCtx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		<-acquisTomb.Dying()
-		cancel()
-	}()
-
-	acquisTomb.Go(func() error {
-		return s.runJournalCtl(tombCtx, out)
-	})
-
-	return nil
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	return s.runJournalCtl(ctx, out)
 }
 
 func (s *Source) getCommandArgs() []string {

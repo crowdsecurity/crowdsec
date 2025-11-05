@@ -8,9 +8,11 @@ import (
 	"io"
 	"maps"
 	"os"
+	"time"
 	"slices"
 	"strings"
 
+	"github.com/cenkalti/backoff/v5"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/goccy/go-yaml"
@@ -67,6 +69,11 @@ type Fetcher interface {
 type Tailer interface {
 	// Start live acquisition (eg, tail a file)
 	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
+}
+
+// RestartableStreamer works Like Tailer but should return any error and leave the retry logic to the caller
+type RestartableStreamer interface {
+	Stream(ctx context.Context, out chan pipeline.Event) error
 }
 
 type MetricsProvider interface {
@@ -486,6 +493,66 @@ func transform(transformChan chan pipeline.Event, output chan pipeline.Event, ac
 	}
 }
 
+
+func runRestartableStream(ctx context.Context, rs RestartableStreamer, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	// wrap tomb logic with context
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-acquisTomb.Dying()
+		cancel()
+	}()
+
+	acquisTomb.Go(func() error {
+		// TODO: check timing and exponential?
+		bo := backoff.NewConstantBackOff(10 * time.Second)
+		bo.Reset()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
+
+			if err := rs.Stream(ctx, output); err != nil {
+				log.Warnf("datasource %q: stream error: %v (retrying)", name, err)
+			}
+
+			d := bo.NextBackOff()
+			log.Infof("datasource %q: restarting stream in %s", name, d)
+
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(d):
+			}
+		}
+	})
+
+	return nil
+}
+
+
+func acquireSource(ctx context.Context, source DataSource, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	if source.GetMode() == configuration.CAT_MODE {
+		if s, ok := source.(Fetcher); !ok {
+			return s.OneShotAcquisition(ctx, output, acquisTomb)
+		}
+
+		return fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", source.GetName())
+	}
+
+	if s, ok := source.(Tailer); ok {
+		return s.StreamingAcquisition(ctx, output, acquisTomb)
+	}
+
+	if s, ok := source.(RestartableStreamer); ok {
+		return runRestartableStream(ctx, s, name, output, acquisTomb)
+	}
+
+	return fmt.Errorf("%s: tail mode is set but the datasource does not support streaming acquisition", source.GetName())
+}
+
 func StartAcquisition(ctx context.Context, sources []DataSource, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
@@ -498,8 +565,6 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 
 		acquisTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/acquis")
-
-			var err error
 
 			outChan := output
 
@@ -521,21 +586,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 				})
 			}
 
-			if subsrc.GetMode() == configuration.TAIL_MODE {
-				if s, ok := subsrc.(Tailer); ok {
-					err = s.StreamingAcquisition(ctx, outChan, acquisTomb)
-				} else {
-					err = fmt.Errorf("%s: tail mode is set but StreamingAcquisition is not supported", subsrc.GetName())
-				}
-			} else {
-				if s, ok := subsrc.(Fetcher); ok {
-					err = s.OneShotAcquisition(ctx, outChan, acquisTomb)
-				} else {
-					err = fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", subsrc.GetName())
-				}
-			}
-
-			if err != nil {
+			if err := acquireSource(ctx, subsrc, subsrc.GetName(), output, acquisTomb); err != nil {
 				// if one of the acqusition returns an error, we kill the others to properly shutdown
 				acquisTomb.Kill(err)
 			}
