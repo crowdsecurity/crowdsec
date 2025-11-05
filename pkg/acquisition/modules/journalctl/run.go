@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 	"golang.org/x/sync/errgroup"
 
@@ -32,7 +31,7 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 	}
 
 	err := s.runJournalCtl(ctx, out)
-	s.logger.Debug("Oneshot journalctl acquisition is done")
+	s.logger.Debug("Oneshot acquisition is done")
 
 	return err
 }
@@ -66,21 +65,6 @@ func (s *Source) getCommandArgs() []string {
 	return append(args, s.config.Filters...)
 }
 
-func shellEscape(s string) string {
-	if !strings.ContainsAny(s, " \t\n\"'\\`$&|;<>(){}[]*?!~") {
-		return s
-	}
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
-}
-
-func joinShellArgs(args []string) string {
-	parts := make([]string, len(args))
-	for i, a := range args {
-		parts[i] = shellEscape(a)
-	}
-	return strings.Join(parts, " ")
-}
-
 func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -101,11 +85,11 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	stdoutChan := make(chan string)
 	errChan := make(chan error, 1)
 
-	s.logger.Infof("Running: %q", joinShellArgs(cmd.Args))
+	s.logger.WithField("command", formatShellCommand(cmd.Args)).Info("Spawning process")
 
 	err = cmd.Start()
 	if err != nil {
-		s.logger.Errorf("Starting journalctl: %s", err)
+		s.logger.Errorf("Error spawning process: %s", err)
 		return err
 	}
 
@@ -123,7 +107,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	g.Go(func() error {
 		defer close(stdoutChan)
 
-		// XXX: lines can be >64k. should we buffer?
+		// NOTE: lines can be >64k. should we have a configurable buffer?
 		// check context with for - select
 		for stdoutScanner.Scan() {
 			stdoutChan <- stdoutScanner.Text()
@@ -150,12 +134,11 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Info("datasource stopping")
+			s.logger.Info("Datasource stopping")
 			return g.Wait()
 		case stdoutLine, ok := <-stdoutChan:
 			if !ok {
-				// channel closed
-				s.logger.Debug("stdoutChan is closed, quitting")
+				s.logger.Debug("stdout channel is closed, stopping datasource")
 				return g.Wait()
 			}
 
@@ -171,7 +154,6 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 			s.logger.Debugf("getting one line: %s", line.Raw)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				// XXX: label map allocation
 				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": line.Labels["type"]}).Inc()
 			}
 
@@ -185,8 +167,9 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 				continue
 			}
 
-			s.logger.Warnf("Got stderr message: %s", stderrLine)
-			// XXX: we may want to detect some special case here and treat it as an error
+			s.logger.Warnf("Got stderr: %s", stderrLine)
+			// NOTE: can journalctl go into a failed state without quitting?
+			// if so, we can detect it here and treat it as an error.
 			continue
 		case scanErr := <-errChan:
 			return scanErr

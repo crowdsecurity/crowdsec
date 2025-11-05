@@ -40,13 +40,12 @@ func (s *Source) Dump() any {
 
 func (s *Source) setSrc(filters []string) {
 	// XXX: sanitize filters? if they contain "." or spaces
-	s.src = "journalctl-" + strings.Join(s.config.Filters, ".")
+	s.src = "journalctl-" + strings.Join(filters, ".")
 }
 
 func (s *Source) setLogger(logger *log.Entry, level log.Level, src string) {
-	s.logger = logger.WithField("src", s.src)
+	s.logger = logger.WithField("src", src)
 	if level != 0 {
 		s.logger.Logger.SetLevel(level)
 	}
 }
-

@@ -45,8 +45,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	s.metricsLevel = metricsLevel
 
-	err := s.UnmarshalConfig(yamlConfig)
-	if err != nil {
+	if err := s.UnmarshalConfig(yamlConfig); err != nil {
 		return err
 	}
 
