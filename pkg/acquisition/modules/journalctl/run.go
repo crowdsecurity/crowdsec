@@ -93,16 +93,11 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 		return err
 	}
 
-	defer func() {
-		if err := cmd.Wait(); err != nil {
-			s.logger.Debugf("journalctl exited after cancel: %v", err)
-		}
-	}()
-
 	stdoutScanner := bufio.NewScanner(stdout)
 	stderrScanner := bufio.NewScanner(stderr)
 
-	g, ctx := errgroup.WithContext(ctx)
+	// don't shadow parent context, we'll monitor later if it's canceled
+	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		defer close(stdoutChan)
@@ -110,7 +105,11 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 		// NOTE: lines can be >64k. should we have a configurable buffer?
 		// check context with for - select
 		for stdoutScanner.Scan() {
-			stdoutChan <- stdoutScanner.Text()
+			select {
+			case <-gctx.Done():
+				return gctx.Err()
+			case stdoutChan <- stdoutScanner.Text():
+			}
 		}
 
 		if err := stdoutScanner.Err(); err != nil {
@@ -125,21 +124,44 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 		defer close(stderrChan)
 
 		for stderrScanner.Scan() {
-			stderrChan <- stderrScanner.Text()
+			select {
+			case <-gctx.Done():
+				return gctx.Err()
+			case stderrChan <- stderrScanner.Text():
+			}
 		}
 
 		return nil
 	})
 
+	cleanup := func() error {
+		// drain scanners
+		_ = g.Wait()
+		// reap journalctl, check status code
+		cmdErr := cmd.Wait()
+
+		// if the parent context was canceled, the journalctl error is likely "signal: killed" and we ignore that
+		if ctx.Err() != nil {
+			return nil //nolint:nilerr
+		}
+
+		if cmdErr != nil {
+			return fmt.Errorf("journalctl exited with error: %w", cmdErr)
+		}
+
+		// clean journalctl exit: should only happen in oneshot
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			s.logger.Info("Datasource stopping")
-			return g.Wait()
+			return cleanup()
 		case stdoutLine, ok := <-stdoutChan:
 			if !ok {
 				s.logger.Debug("stdout channel is closed, stopping datasource")
-				return g.Wait()
+				return cleanup()
 			}
 
 			line := pipeline.Line{
@@ -172,7 +194,8 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 			// if so, we can detect it here and treat it as an error.
 			continue
 		case scanErr := <-errChan:
-			return scanErr
+			s.logger.Warnf("scanner error: %v", scanErr)
+			return cleanup()
 		}
 	}
 }

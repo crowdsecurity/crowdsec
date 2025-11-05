@@ -39,7 +39,7 @@ func (s *Source) Dump() any {
 }
 
 func (s *Source) setSrc(filters []string) {
-	// XXX: sanitize filters? if they contain "." or spaces
+	// NOTE: filters themselves contain "." too, but it's ok
 	s.src = "journalctl-" + strings.Join(filters, ".")
 }
 
