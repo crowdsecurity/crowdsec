@@ -115,7 +115,7 @@ func TestBadConfiguration(t *testing.T) {
 			config: `
 source: kinesis
 max_retries: whatev`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field KinesisConfiguration.MaxRetries of type int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.MaxRetries of type int",
 		},
 		{
 			config: `
