@@ -48,7 +48,7 @@ source: k8s-audit
 listen_addr: 0.0.0.0
 listen_port: true
 `,
-			expectedErr: `[4:14] cannot unmarshal bool into Go struct field KubernetesAuditConfiguration.ListenPort of type int`,
+			expectedErr: `[4:14] cannot unmarshal bool into Go struct field Configuration.ListenPort of type int`,
 		},
 	}
 
