@@ -8,12 +8,12 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*httpacquisition.HTTPSource)(nil)
-	_ Tailer          = (*httpacquisition.HTTPSource)(nil)
-	_ MetricsProvider = (*httpacquisition.HTTPSource)(nil)
+	_ DataSource      = (*httpacquisition.Source)(nil)
+	_ Tailer          = (*httpacquisition.Source)(nil)
+	_ MetricsProvider = (*httpacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("http", func() DataSource { return &httpacquisition.HTTPSource{} })
+	registerDataSource("http", func() DataSource { return &httpacquisition.Source{} })
 }
