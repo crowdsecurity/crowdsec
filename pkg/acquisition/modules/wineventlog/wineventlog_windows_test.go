@@ -65,7 +65,7 @@ event_ids: true`,
 
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
-		f := WinEventLogSource{}
+		f := Source{}
 		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
@@ -125,7 +125,7 @@ event_level: bla`,
 	subLogger := log.WithField("type", "windowseventlog")
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
-			f := WinEventLogSource{}
+			f := Source{}
 
 			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -200,7 +200,7 @@ event_ids:
 	for _, test := range tests {
 		to := &tomb.Tomb{}
 		c := make(chan pipeline.Event)
-		f := WinEventLogSource{}
+		f := Source{}
 
 		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
@@ -291,7 +291,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			lineCount := 0
 			to := &tomb.Tomb{}
 			c := make(chan pipeline.Event)
-			f := WinEventLogSource{}
+			f := Source{}
 
 			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
 			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
