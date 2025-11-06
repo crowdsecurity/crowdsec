@@ -26,9 +26,13 @@ type DecisionsByScenario struct {
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now().UTC()),
-	)
+	// Do not select all fields.
+	// This can get pretty expensive network-wise if there are a lot of decisions and you are using a remote database
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilGT(time.Now().UTC()),
+		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
@@ -52,9 +56,11 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filter map[st
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(time.Now().UTC()),
-	)
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilLT(time.Now().UTC()),
+		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
