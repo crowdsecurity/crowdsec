@@ -54,7 +54,7 @@ listen_port: true
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -86,7 +86,7 @@ webhook_path: /k8s-audit`,
 			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 
@@ -244,7 +244,7 @@ func TestHandler(t *testing.T) {
 				}
 			})
 
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			port := 49234+idx
 			config := fmt.Sprintf(`source: k8s-audit
