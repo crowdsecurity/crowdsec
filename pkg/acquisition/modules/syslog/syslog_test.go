@@ -40,7 +40,7 @@ source: syslog`,
 			config: `
 source: syslog
 listen_port: asd`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field SyslogConfiguration.Port of type int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.Port of type int",
 		},
 		{
 			config: `
