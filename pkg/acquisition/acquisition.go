@@ -505,7 +505,7 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 	acquisTomb.Go(func() error {
 		// TODO: check timing and exponential?
 		bo := backoff.NewConstantBackOff(10 * time.Second)
-		bo.Reset()
+		bo.Reset() // TODO: reset according to run time
 
 		for {
 			select {
@@ -515,7 +515,13 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 			}
 
 			if err := rs.Stream(ctx, output); err != nil {
-				log.Warnf("datasource %q: stream error: %v (retrying)", name, err)
+				log.Errorf("datasource %q: stream error: %v (retrying)", name, err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
 			}
 
 			d := bo.NextBackOff()
