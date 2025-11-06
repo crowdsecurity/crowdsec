@@ -141,7 +141,7 @@ query: >
 source: loki
 no_ready_check: 37
 `,
-			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field LokiConfiguration.NoReadyCheck of type bool",
+			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field Configuration.NoReadyCheck of type bool",
 			testName:    "type mismatch",
 		},
 	}
