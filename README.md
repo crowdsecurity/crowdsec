@@ -69,6 +69,6 @@ CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.
  - [Documentation](https://doc.crowdsec.net): Learn how to exploit your CrowdSec setup to deter more attacks.
  - [Discord](https://discord.gg/crowdsec): A question or a suggestion? This is the place.
  - [Hub](https://hub.crowdsec.net): Improve your stack protection, find the relevant remediation components for your infrastructure.
- - [Public Roadmap](https://roadmap.crowdsec.net/tabs/3-planned): Vote for your favorite features and submit ideas to influence what we build next.
+ - [Public Roadmap](https://roadmap.crowdsec.net/): Vote for your favorite features and submit ideas to influence what we build next.
  - [CrowdSec Academy](https://academy.crowdsec.net/): Learn and grow with our courses.
  - [Corporate Website](https://crowdsec.net): For everything else.
