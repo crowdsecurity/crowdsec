@@ -3,7 +3,6 @@ package victorialogs
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
@@ -35,9 +34,4 @@ func (s *Source) GetUuid() string {
 
 func (s *Source) Dump() any {
 	return s
-}
-
-// SupportedModes returns the supported modes by the acquisition module
-func (*Source) SupportedModes() []string {
-	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
