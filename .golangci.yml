@@ -29,7 +29,7 @@ linters:
     - funcorder
     - exhaustive
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
-    - unparam      # Reports unused function parameters
+#    - unparam      # Reports unused function parameters
     - errchkjson   # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
 
     # we allow named returns (to improve readability, in the function signatures)
@@ -322,7 +322,7 @@ linters:
         - name: unsecure-url-scheme
           disabled: true
         - name: unused-parameter
-          disabled: true
+          disabled: false
         - name: use-any
           disabled: true
         - name: use-waitgroup-go
@@ -487,6 +487,10 @@ linters:
           - containedctx
         path: pkg/acquisition/modules/s3/source.go
         text: found a struct that contains a context.Context field
+
+      - linters:
+          - unused
+        text: 'var _ is unused'
 
       # migrate over time
 
