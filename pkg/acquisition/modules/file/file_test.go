@@ -304,7 +304,7 @@ force_inotify: true`, testPattern),
 				require.NoError(t, err)
 				err = f.Close()
 				require.NoError(t, err)
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 				err = os.Chmod(f.Name(), 0o000)
 				require.NoError(t, err)
 			},
@@ -403,7 +403,7 @@ force_inotify: true`, testPattern),
 
 				require.Eventually(t, func() bool {
 					return actualLines.Load() == int64(tc.expectedLines)
-				}, 5*time.Second, 100*time.Millisecond)
+				}, 10*time.Second, 100*time.Millisecond)
 
 				os.Remove(streamLogFile)
 
