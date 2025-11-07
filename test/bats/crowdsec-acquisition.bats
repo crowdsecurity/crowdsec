@@ -33,7 +33,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field FileConfiguration.Filename of type string"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field FileConfiguration.Filename of type string"
 }
 
 @test "empty acqusition file" {
@@ -113,7 +113,7 @@ teardown() {
 
     rune -1 "$CROWDSEC" -t
 
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
 }
 
 @test "datasource docker (regexp)" {
@@ -126,7 +126,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
 }
 
 @test "test mode does not fail because of appsec and allowlists" {

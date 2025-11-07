@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*journalctlacquisition.JournalCtlSource)(nil)
-	_ DSNConfigurer   = (*journalctlacquisition.JournalCtlSource)(nil)
-	_ Fetcher         = (*journalctlacquisition.JournalCtlSource)(nil)
-	_ Tailer          = (*journalctlacquisition.JournalCtlSource)(nil)
-	_ MetricsProvider = (*journalctlacquisition.JournalCtlSource)(nil)
+	_ DataSource          = (*journalctlacquisition.Source)(nil)
+	_ DSNConfigurer       = (*journalctlacquisition.Source)(nil)
+	_ Fetcher             = (*journalctlacquisition.Source)(nil)
+	_ RestartableStreamer = (*journalctlacquisition.Source)(nil)
+	_ MetricsProvider     = (*journalctlacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("journalctl", func() DataSource { return &journalctlacquisition.JournalCtlSource{} })
+	registerDataSource("journalctl", func() DataSource { return &journalctlacquisition.Source{} })
 }
