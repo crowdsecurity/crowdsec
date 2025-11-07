@@ -68,7 +68,7 @@ query: >
         {server="demo"}
 limit: true
 `,
-			expectedErr: "[7:8] cannot unmarshal bool into Go struct field VLConfiguration.Limit of type int",
+			expectedErr: "[7:8] cannot unmarshal bool into Go struct field Configuration.Limit of type int",
 			testName:    "mismatched type",
 		},
 		{
