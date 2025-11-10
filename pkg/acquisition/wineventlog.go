@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*wineventlogacquisition.WinEventLogSource)(nil)
-	_ DSNConfigurer   = (*wineventlogacquisition.WinEventLogSource)(nil)
-	_ Fetcher         = (*wineventlogacquisition.WinEventLogSource)(nil)
-	_ Tailer          = (*wineventlogacquisition.WinEventLogSource)(nil)
-	_ MetricsProvider = (*wineventlogacquisition.WinEventLogSource)(nil)
+	_ DataSource      = (*wineventlogacquisition.Source)(nil)
+	_ DSNConfigurer   = (*wineventlogacquisition.Source)(nil)
+	_ Fetcher         = (*wineventlogacquisition.Source)(nil)
+	_ Tailer          = (*wineventlogacquisition.Source)(nil)
+	_ MetricsProvider = (*wineventlogacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.WinEventLogSource{} })
+	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.Source{} })
 }
