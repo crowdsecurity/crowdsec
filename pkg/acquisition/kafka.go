@@ -8,12 +8,12 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*kafkaacquisition.KafkaSource)(nil)
-	_ Tailer          = (*kafkaacquisition.KafkaSource)(nil)
-	_ MetricsProvider = (*kafkaacquisition.KafkaSource)(nil)
+	_ DataSource      = (*kafkaacquisition.Source)(nil)
+	_ Tailer          = (*kafkaacquisition.Source)(nil)
+	_ MetricsProvider = (*kafkaacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kafka", func() DataSource { return &kafkaacquisition.KafkaSource{} })
+	registerDataSource("kafka", func() DataSource { return &kafkaacquisition.Source{} })
 }

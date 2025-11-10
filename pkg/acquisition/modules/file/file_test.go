@@ -62,7 +62,7 @@ filenames: ["ase.log"]`,
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -103,7 +103,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 			err := f.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -223,7 +223,7 @@ filename: %s`, deletedFile),
 
 			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event, 100)
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -391,7 +391,7 @@ force_inotify: true`, testPattern),
 			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
 
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -496,7 +496,7 @@ exclude_regexps: ["\\.gz$"]`
 	// logger.SetLevel(ts.logLevel)
 	subLogger := logger.WithField("type", "file")
 
-	f := fileacquisition.FileSource{}
+	f := fileacquisition.Source{}
 	err := f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
@@ -550,7 +550,7 @@ mode: tail
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fileacquisition.FileSource{}
+			f := &fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
@@ -574,7 +574,7 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
+	f := &fileacquisition.Source{}
 	err := f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
@@ -626,7 +626,7 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
+	f := &fileacquisition.Source{}
 	err = f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
