@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*cloudwatchacquisition.CloudwatchSource)(nil)
-	_ DSNConfigurer   = (*cloudwatchacquisition.CloudwatchSource)(nil)
-	_ Fetcher         = (*cloudwatchacquisition.CloudwatchSource)(nil)
-	_ Tailer          = (*cloudwatchacquisition.CloudwatchSource)(nil)
-	_ MetricsProvider = (*cloudwatchacquisition.CloudwatchSource)(nil)
+	_ DataSource      = (*cloudwatchacquisition.Source)(nil)
+	_ DSNConfigurer   = (*cloudwatchacquisition.Source)(nil)
+	_ Fetcher         = (*cloudwatchacquisition.Source)(nil)
+	_ Tailer          = (*cloudwatchacquisition.Source)(nil)
+	_ MetricsProvider = (*cloudwatchacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} })
+	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.Source{} })
 }
