@@ -9,7 +9,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
@@ -67,27 +66,26 @@ listen_addr: 10.0.0`,
 	}
 }
 
-func writeToSyslog(ctx context.Context, logs []string) {
+func writeToSyslog(ctx context.Context, logs []string) error {
 	dialer := &net.Dialer{}
 
 	conn, err := dialer.DialContext(ctx, "udp", "127.0.0.1:4242")
 	if err != nil {
-		fmt.Printf("could not establish connection to syslog server : %s", err)
-		return
+		return fmt.Errorf("dial: %w", err)
 	}
 
 	for _, log := range logs {
 		n, err := fmt.Fprint(conn, log)
 		if err != nil {
-			fmt.Printf("could not write to syslog server : %s", err)
-			return
+			return fmt.Errorf("write: %w", err)
 		}
 
 		if n != len(log) {
-			fmt.Printf("could not write to syslog server : %s", err)
-			return
+			return fmt.Errorf("short write (%d/%d): %w", n, len(log), err)
 		}
 	}
+
+	return nil
 }
 
 func TestStreamingAcquisition(t *testing.T) {
@@ -172,9 +170,7 @@ disable_rfc_parser: true`,
 			s := Source{}
 
 			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			if err != nil {
-				t.Fatalf("could not configure syslog source : %s", err)
-			}
+			require.NoError(t, err)
 
 			out := make(chan pipeline.Event)
 
@@ -196,21 +192,22 @@ disable_rfc_parser: true`,
 
 			actualLines := 0
 
-			// crude hack to wait for Listen()
-			time.Sleep(500 * time.Millisecond)
-			go writeToSyslog(gctx, ts.logs)
+			// wait for server to be ready
+			time.Sleep(500*time.Millisecond)
+			err = writeToSyslog(gctx, ts.logs)
+			require.NoError(t, err)
 
-		READLOOP:
-			for {
-				select {
-				case <-out:
-					actualLines++
-				case <-time.After(2 * time.Second):
-					break READLOOP
+			require.Eventually(t, func() bool {
+				for {
+					select {
+					case <-out:
+						actualLines++
+					default:
+						return actualLines == ts.expectedLines
+					}
 				}
-			}
+			}, 1*time.Second, 100*time.Millisecond)
 
-			assert.Equal(t, ts.expectedLines, actualLines)
 			cancel()
 
 			err = g.Wait()

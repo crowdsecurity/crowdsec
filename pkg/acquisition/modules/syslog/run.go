@@ -69,6 +69,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 					continue
 				}
 
+				// s.logger.WithFields(logrus.Fields{"line": evt.Line.Raw, "client": msg.Client}).Debug("sending line")
 				out <- *evt
 			}
 		}
