@@ -37,24 +37,10 @@ func (e *crzLogEvent) Msg(msg string) {
 		return
 	}
 
-	/*this is a hack. As we want to have per-level rule debug but it's not allowed by coraza/modsec, if a rule ID is flagged to be in debug mode, the
-	.Int("rule_id", <ID>) call will set the log_level of the event to debug. However, given the logger is global to the appsec-runner,
-	we are switching forth and back the log level of the logger*/
-	oldLvl := e.logger.Logger.GetLevel()
-
-	if e.level != oldLvl {
-		e.logger.Logger.SetLevel(e.level)
-	}
-
 	if len(e.fields) == 0 {
 		e.logger.Log(e.level, msg)
 	} else {
 		e.logger.WithFields(e.fields).Log(e.level, msg)
-	}
-
-	if e.level != oldLvl {
-		e.logger.Logger.SetLevel(oldLvl)
-		e.level = oldLvl
 	}
 }
 
@@ -135,7 +121,28 @@ type crzLogger struct {
 }
 
 func NewCrzLogger(logger *log.Entry) *crzLogger {
-	return &crzLogger{logger: logger, logLevel: logger.Logger.GetLevel()}
+	// Create an isolated logger to avoid mutating a shared one at runtime
+	base := logger.Logger
+	cloned := log.New()
+	cloned.SetOutput(base.Out)
+	cloned.SetFormatter(base.Formatter)
+	cloned.SetReportCaller(base.ReportCaller)
+	// Ensure the underlying logger does not drop lower-level records; filtering is handled by crzLogger logic
+	cloned.SetLevel(log.TraceLevel)
+	// Copy hooks if available (best-effort)
+	if base.Hooks != nil {
+		cloned.ReplaceHooks(base.Hooks)
+	}
+
+	// Preserve existing entry fields as default context
+	entry := log.NewEntry(cloned)
+	c := &crzLogger{logger: entry, logLevel: logger.Logger.GetLevel()}
+	if len(logger.Data) > 0 {
+		// store as default fields to be applied to each event
+		c.defaultFields = log.Fields{}
+		maps.Copy(c.defaultFields, logger.Data)
+	}
+	return c
 }
 
 func (c *crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
@@ -157,8 +164,8 @@ func (c *crzLogger) WithOutput(w io.Writer) dbg.Logger {
 }
 
 func (c *crzLogger) WithLevel(lvl dbg.Level) dbg.Logger {
+	// Adjust only the logical threshold; do not mutate the underlying logger level
 	c.logLevel = log.Level(lvl)
-	c.logger.Logger.SetLevel(c.logLevel)
 
 	return c
 }
