@@ -60,6 +60,7 @@ func (l *Source) UnmarshalConfig(yamlConfig []byte) error {
 	if l.Config.Mode == "" {
 		l.Config.Mode = configuration.TAIL_MODE
 	}
+
 	if l.Config.Prefix == "" {
 		l.Config.Prefix = "/"
 	}
@@ -88,8 +89,8 @@ func (l *Source) Configure(_ context.Context, config []byte, logger *log.Entry, 
 	l.Config = Configuration{}
 	l.logger = logger
 	l.metricsLevel = metricsLevel
-	err := l.UnmarshalConfig(config)
-	if err != nil {
+
+	if err := l.UnmarshalConfig(config); err != nil {
 		return err
 	}
 
@@ -108,6 +109,7 @@ func (l *Source) Configure(_ context.Context, config []byte, logger *log.Entry, 
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
 	l.Client.Logger = logger.WithFields(log.Fields{"component": "lokiclient", "source": l.Config.URL})
+
 	return nil
 }
 
@@ -122,21 +124,26 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 	if err != nil {
 		return fmt.Errorf("while parsing dsn '%s': %w", dsn, err)
 	}
+
 	if u.Scheme != "loki" {
 		return fmt.Errorf("invalid DSN %s for loki source, must start with loki://", dsn)
 	}
+
 	if u.Host == "" {
 		return errors.New("empty loki host")
 	}
+
 	scheme := "http"
 
 	params := u.Query()
 	if q := params.Get("ssl"); q != "" {
 		scheme = "https"
 	}
+
 	if q := params.Get("query"); q != "" {
 		l.Config.Query = q
 	}
+
 	if w := params.Get("wait_for_ready"); w != "" {
 		l.Config.WaitForReady, err = time.ParseDuration(w)
 		if err != nil {
@@ -151,6 +158,7 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		if err != nil {
 			return fmt.Errorf("invalid duration: %w", err)
 		}
+
 		if l.Config.DelayFor < 0*time.Second || l.Config.DelayFor > 5*time.Second {
 			return errors.New("delay_for should be a value between 1s and 5s")
 		}
@@ -192,6 +200,7 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		if err != nil {
 			return fmt.Errorf("invalid log_level in dsn: %w", err)
 		}
+
 		l.Config.LogLevel = level
 		l.logger.Logger.SetLevel(level)
 	}
@@ -201,6 +210,7 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		if err != nil {
 			return fmt.Errorf("invalid no_ready_check in dsn: %w", err)
 		}
+
 		l.Config.NoReadyCheck = noReadyCheck
 	}
 

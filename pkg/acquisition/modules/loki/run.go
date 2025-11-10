@@ -25,14 +25,15 @@ func (l *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 	if !l.Config.NoReadyCheck {
 		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 		defer readyCancel()
-		err := l.Client.Ready(readyCtx)
-		if err != nil {
+
+		if err := l.Client.Ready(readyCtx); err != nil {
 			return fmt.Errorf("loki is not ready: %w", err)
 		}
 	}
 
 	lokiCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	c := l.Client.QueryRange(lokiCtx, false)
 
 	for {
@@ -45,6 +46,7 @@ func (l *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 				l.logger.Info("Loki acquisition done, chan closed")
 				return nil
 			}
+
 			for _, stream := range resp.Data.Result {
 				for _, entry := range stream.Entries {
 					l.readOneEntry(entry, l.Config.Labels, out)
@@ -66,8 +68,10 @@ func (l *Source) readOneEntry(entry lokiclient.Entry, labels map[string]string, 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "acquis_type": ll.Labels["type"]}).Inc()
 	}
+
 	evt := pipeline.MakeEvent(l.Config.UseTimeMachine, pipeline.LOG, true)
 	evt.Line = ll
+
 	out <- evt
 }
 
@@ -77,16 +81,20 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	if !l.Config.NoReadyCheck {
 		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 		defer readyCancel()
-		err := l.Client.Ready(readyCtx)
-		if err != nil {
+
+		if err := l.Client.Ready(readyCtx); err != nil {
 			return fmt.Errorf("loki is not ready: %w", err)
 		}
 	}
+
 	ll := l.logger.WithField("websocket_url", l.lokiWebsocket)
+
 	t.Go(func() error {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+
 		respChan := l.Client.QueryRange(ctx, true)
+
 		for {
 			select {
 			case resp, ok := <-respChan:
@@ -94,6 +102,7 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 					ll.Warnf("loki channel closed")
 					return errors.New("loki channel closed")
 				}
+
 				for _, stream := range resp.Data.Result {
 					for _, entry := range stream.Entries {
 						l.readOneEntry(entry, l.Config.Labels, out)
@@ -104,5 +113,6 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 			}
 		}
 	})
+
 	return nil
 }

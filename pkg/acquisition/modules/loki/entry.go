@@ -14,8 +14,8 @@ type Entry struct {
 
 func (e *Entry) UnmarshalJSON(b []byte) error {
 	var values []string
-	err := json.Unmarshal(b, &values)
-	if err != nil {
+
+	if err := json.Unmarshal(b, &values); err != nil {
 		return err
 	}
 
@@ -27,8 +27,10 @@ func (e *Entry) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
 	e.Timestamp = time.Unix(int64(t), 0)
 	e.Line = values[1]
+
 	return nil
 }
 
