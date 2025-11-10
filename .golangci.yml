@@ -485,7 +485,7 @@ linters:
 
       - linters:
           - containedctx
-        path: pkg/acquisition/modules/s3/s3.go
+        path: pkg/acquisition/modules/s3/source.go
         text: found a struct that contains a context.Context field
 
       # migrate over time
