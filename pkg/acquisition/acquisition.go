@@ -166,6 +166,9 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 	if err := dataSrc.CanRun(); err != nil {
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
+
+	subLogger.Info("Configuring datasource")
+
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
@@ -542,13 +545,16 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 func acquireSource(ctx context.Context, source DataSource, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	if source.GetMode() == configuration.CAT_MODE {
 		if s, ok := source.(Fetcher); ok {
+			// s.Logger.Info("Start OneShotAcquisition")
 			return s.OneShotAcquisition(ctx, output, acquisTomb)
+			// s.Logger.Info("Exit OneShotAcquisition")
 		}
 
 		return fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", source.GetName())
 	}
 
 	if s, ok := source.(Tailer); ok {
+		// s.Logger.Info("Streaming Acquisition")
 		return s.StreamingAcquisition(ctx, output, acquisTomb)
 	}
 
