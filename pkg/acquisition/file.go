@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*fileacquisition.FileSource)(nil)
-	_ DSNConfigurer   = (*fileacquisition.FileSource)(nil)
-	_ Fetcher         = (*fileacquisition.FileSource)(nil)
-	_ Tailer          = (*fileacquisition.FileSource)(nil)
-	_ MetricsProvider = (*fileacquisition.FileSource)(nil)
+	_ DataSource      = (*fileacquisition.Source)(nil)
+	_ DSNConfigurer   = (*fileacquisition.Source)(nil)
+	_ Fetcher         = (*fileacquisition.Source)(nil)
+	_ Tailer          = (*fileacquisition.Source)(nil)
+	_ MetricsProvider = (*fileacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("file", func() DataSource { return &fileacquisition.FileSource{} })
+	registerDataSource("file", func() DataSource { return &fileacquisition.Source{} })
 }

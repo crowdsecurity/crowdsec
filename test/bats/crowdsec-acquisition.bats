@@ -33,7 +33,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field FileConfiguration.Filename of type string"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field Configuration.Filename of type string"
 }
 
 @test "empty acqusition file" {
