@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -176,23 +176,29 @@ disable_rfc_parser: true`,
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
 
-			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
-			err = s.StreamingAcquisition(ctx, out, &tomb)
-			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
+			// if an error from Serve() is expected, run it synchronously
 			if ts.expectedErr != "" {
+				err = s.Stream(ctx, out)
+				cstest.RequireErrorContains(t, err, ts.expectedErr)
+
 				return
 			}
 
-			if err != nil && ts.expectedErr == "" {
-				t.Fatalf("unexpected error while starting syslog server: %s", err)
-				return
-			}
+			g, gctx := errgroup.WithContext(ctx)
+
+			gctx, cancel := context.WithCancel(gctx)
+
+			g.Go(func() error {
+				return s.Stream(gctx, out)
+			})
 
 			actualLines := 0
 
-			go writeToSyslog(ctx, ts.logs)
+			// crude hack to wait for Listen()
+			time.Sleep(500 * time.Millisecond)
+			go writeToSyslog(gctx, ts.logs)
 
 		READLOOP:
 			for {
@@ -205,8 +211,9 @@ disable_rfc_parser: true`,
 			}
 
 			assert.Equal(t, ts.expectedLines, actualLines)
-			tomb.Kill(nil)
-			err = tomb.Wait()
+			cancel()
+
+			err = g.Wait()
 			require.NoError(t, err)
 		})
 	}
