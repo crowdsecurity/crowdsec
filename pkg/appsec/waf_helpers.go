@@ -29,9 +29,18 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"RemoveOutBandRuleByID":   func(id int) error { return w.RemoveOutbandRuleByID(state, id) },
 		"RemoveOutBandRuleByTag":  func(tag string) error { return w.RemoveOutbandRuleByTag(state, tag) },
 		"RemoveOutBandRuleByName": func(name string) error { return w.RemoveOutbandRuleByName(state, name) },
+		"DropRequest":             func(reason string) error { return w.DropRequest(state, request, reason) },
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
+		"SetRemediation": func(action string) error {
+			state.PendingAction = &action
+			return nil
+		},
+		"SetReturnCode": func(code int) error {
+			state.PendingHTTPCode = &code
+			return nil
+		},
 	}
 }
 
