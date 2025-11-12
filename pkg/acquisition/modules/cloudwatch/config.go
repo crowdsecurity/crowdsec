@@ -39,51 +39,90 @@ type Configuration struct {
 	AwsRegion                         string        `yaml:"aws_region,omitempty"`
 }
 
+func ConfigurationFromYAML(y []byte) (Configuration, []ValidationWarning, error) {
+	var cfg Configuration
+
+	if err := yaml.UnmarshalWithOptions(y, &cfg, yaml.Strict()); err != nil {
+		return cfg, nil, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
+	}
+
+	cfg.SetDefaults()
+
+	warns, err := cfg.Validate()
+	if err != nil {
+		return cfg, warns, err
+	}
+
+	return cfg, warns, nil
+}
+
+func (c *Configuration) SetDefaults() {
+	if c.Mode == "" {
+		c.Mode = configuration.TAIL_MODE
+	}
+
+	if c.DescribeLogStreamsLimit == nil {
+		c.DescribeLogStreamsLimit = &def_DescribeLogStreamsLimit
+	}
+
+	if c.PollNewStreamInterval == nil {
+		c.PollNewStreamInterval = &def_PollNewStreamInterval
+	}
+
+	if c.MaxStreamAge == nil {
+		c.MaxStreamAge = &def_MaxStreamAge
+	}
+
+	if c.PollStreamInterval == nil {
+		c.PollStreamInterval = &def_PollStreamInterval
+	}
+
+	if c.StreamReadTimeout == nil {
+		c.StreamReadTimeout = &def_StreamReadTimeout
+	}
+
+	if c.GetLogEventsPagesLimit == nil {
+		c.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
+	}
+
+	if c.AwsApiCallTimeout == nil {
+		c.AwsApiCallTimeout = &def_AwsApiCallTimeout
+	}
+
+	if c.AwsConfigDir == nil {
+		c.AwsConfigDir = &def_AwsConfigDir
+	}
+}
+
+
+type ValidationWarning string
+
+func (c *Configuration) Validate() ([]ValidationWarning, error) {
+	var warns []ValidationWarning
+
+	if c.GroupName == "" {
+		return warns, errors.New("group_name is mandatory for CloudwatchSource")
+	}
+
+	if *c.MaxStreamAge > *c.StreamReadTimeout {
+		warns = append(warns, "max_stream_age > stream_read_timeout, stream might keep being opened/closed")
+	}
+
+	return warns, nil
+}
+
+
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	s.Config = Configuration{}
-	if err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict()); err != nil {
-		return fmt.Errorf("cannot parse CloudwatchSource configuration: %s", yaml.FormatError(err, false, false))
+	cfg, warns, err := ConfigurationFromYAML(yamlConfig)
+	if err != nil {
+		return err
 	}
 
-	if s.Config.GroupName == "" {
-		return errors.New("group_name is mandatory for CloudwatchSource")
+	for _, w := range warns {
+		s.logger.Warn(w)
 	}
 
-	if s.Config.Mode == "" {
-		s.Config.Mode = configuration.TAIL_MODE
-	}
-
-	if s.Config.DescribeLogStreamsLimit == nil {
-		s.Config.DescribeLogStreamsLimit = &def_DescribeLogStreamsLimit
-	}
-
-	if s.Config.PollNewStreamInterval == nil {
-		s.Config.PollNewStreamInterval = &def_PollNewStreamInterval
-	}
-
-	if s.Config.MaxStreamAge == nil {
-		s.Config.MaxStreamAge = &def_MaxStreamAge
-	}
-
-	if s.Config.PollStreamInterval == nil {
-		s.Config.PollStreamInterval = &def_PollStreamInterval
-	}
-
-	if s.Config.StreamReadTimeout == nil {
-		s.Config.StreamReadTimeout = &def_StreamReadTimeout
-	}
-
-	if s.Config.GetLogEventsPagesLimit == nil {
-		s.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
-	}
-
-	if s.Config.AwsApiCallTimeout == nil {
-		s.Config.AwsApiCallTimeout = &def_AwsApiCallTimeout
-	}
-
-	if s.Config.AwsConfigDir == nil {
-		s.Config.AwsConfigDir = &def_AwsConfigDir
-	}
+	s.Config = cfg
 
 	return nil
 }
@@ -98,6 +137,8 @@ func (s *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	s.logger = logger.WithField("group", s.Config.GroupName)
 
+	// XXX not really useful logging
+
 	s.logger.Debugf("Starting configuration for Cloudwatch group %s", s.Config.GroupName)
 	s.logger.Tracef("describelogstreams_limit set to %d", *s.Config.DescribeLogStreamsLimit)
 	s.logger.Tracef("poll_new_stream_interval set to %v", *s.Config.PollNewStreamInterval)
@@ -106,13 +147,13 @@ func (s *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	s.logger.Tracef("stream_read_timeout set to %v", *s.Config.StreamReadTimeout)
 	s.logger.Tracef("getlogeventspages_limit set to %v", *s.Config.GetLogEventsPagesLimit)
 	s.logger.Tracef("aws_api_timeout set to %v", *s.Config.AwsApiCallTimeout)
-
-	if *s.Config.MaxStreamAge > *s.Config.StreamReadTimeout {
-		s.logger.Warningf("max_stream_age > stream_read_timeout, stream might keep being opened/closed")
-	}
-
 	s.logger.Tracef("aws_config_dir set to %s", *s.Config.AwsConfigDir)
 
+	return s.setupAWS(ctx)
+}
+
+
+func (s *Source) setupAWS(ctx context.Context) error {
 	if *s.Config.AwsConfigDir != "" {
 		_, err := os.Stat(*s.Config.AwsConfigDir)
 		if err != nil {
