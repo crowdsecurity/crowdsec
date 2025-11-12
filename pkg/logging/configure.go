@@ -67,11 +67,16 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		}
 		log.SetOutput(LogOutput)
 	} else if cfgMode == "syslog" {
-		fmt.Println("syslog")
 		hook, err := lSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
 		if err != nil {
 			return err
 		}
+
+		log.SetFormatter(&log.TextFormatter{
+			DisableTimestamp: true,
+			DisableColors:    true,
+		})
+
 		log.AddHook(hook)
 		log.SetOutput(io.Discard)
 	} else if cfgMode != "stdout" {
