@@ -20,37 +20,62 @@ type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	k8sConfig := Configuration{}
+func ConfigurationFromYAML(y []byte) (Configuration, error) {
+	var cfg Configuration
 
-	err := yaml.UnmarshalWithOptions(yamlConfig, &k8sConfig, yaml.Strict())
-	if err != nil {
-		return fmt.Errorf("cannot parse k8s-audit configuration: %s", yaml.FormatError(err, false, false))
+	if err := yaml.UnmarshalWithOptions(y, &cfg, yaml.Strict()); err != nil {
+		return cfg, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
 	}
 
-	s.config = k8sConfig
+	cfg.SetDefaults()
+	cfg.Normalize()
 
-	if s.config.ListenAddr == "" {
+	err := cfg.Validate()
+	if err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
+}
+
+func (c *Configuration) SetDefaults() {
+	if c.Mode == "" {
+		c.Mode = configuration.TAIL_MODE
+	}
+}
+
+func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
+	cfg, err := ConfigurationFromYAML(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	s.config = cfg
+
+	return nil
+}
+
+func (c *Configuration) Validate() error {
+	if c.ListenAddr == "" {
 		return errors.New("listen_addr cannot be empty")
 	}
 
-	if s.config.ListenPort == 0 {
+	if c.ListenPort == 0 {
 		return errors.New("listen_port cannot be empty")
 	}
 
-	if s.config.WebhookPath == "" {
+	if c.WebhookPath == "" {
 		return errors.New("webhook_path cannot be empty")
 	}
 
-	if s.config.WebhookPath[0] != '/' {
-		s.config.WebhookPath = "/" + s.config.WebhookPath
-	}
-
-	if s.config.Mode == "" {
-		s.config.Mode = configuration.TAIL_MODE
-	}
-
 	return nil
+}
+
+
+func (c *Configuration) Normalize() {
+	if c.WebhookPath != "" && c.WebhookPath[0] != '/' {
+		c.WebhookPath = "/" + c.WebhookPath
+	}
 }
 
 func (s *Source) Configure(_ context.Context, config []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
