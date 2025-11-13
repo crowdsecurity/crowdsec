@@ -15,14 +15,19 @@ import (
 )
 
 const (
-	defMaxSize = 500
+	defMaxSize  = 500
 	defMaxFiles = 3
-	defMaxAge = 28
+	defMaxAge   = 28
 	defCompress = true
 	defLogLevel = log.InfoLevel
 )
 
-func SetupDefaultLogger(cfg csconfig.CommonLogConfig) error {
+
+// SetupStandardLogger configures the global logger according to the
+// provided configuration. It applies the output destination, log format,
+// rotation policy, and log level used by all components that rely on the
+// default logrus instance (`log.StandardLogger()`).
+func SetupStandardLogger(cfg csconfig.CommonLogConfig) error {
 	var logFormatter log.Formatter
 
 	switch cfg.LogFormat {
