@@ -303,6 +303,34 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 // or uptime of the application
 var crowdsecT0 time.Time
 
+func run() error {
+	if flags.CPUProfile != "" {
+		f, err := os.Create(flags.CPUProfile)
+		if err != nil {
+			return fmt.Errorf("could not create CPU profile: %w", err)
+		}
+
+		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
+
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			return fmt.Errorf("could not start CPU profile: %s", err)
+		}
+
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
+	ctx := context.Background()
+
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	if err != nil {
+		return err
+	}
+
+	return StartRunSvc(ctx, cConfig)
+}
+
 func main() {
 	// Add a timestamp to avoid the ugly [0000]
 	// The initial log level is INFO, even if the user provided an -error or -warning flag
@@ -321,8 +349,6 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	log.Debugf("os.Args: %v", os.Args)
-
 	// Handle command line arguments
 	flags.Parse()
 
@@ -338,35 +364,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if flags.CPUProfile != "" {
-		f, err := os.Create(flags.CPUProfile)
-		if err != nil {
-			log.Fatalf("could not create CPU profile: %s", err)
-		}
-
-		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
-
-		if err := pprof.StartCPUProfile(f); err != nil {
-			f.Close()
-			log.Fatalf("could not start CPU profile: %s", err)
-		}
-
-		defer f.Close() // XXX: defer not called for early exit
-		defer pprof.StopCPUProfile()
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
-
-	ctx := context.Background()
-
-	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
-	if err != nil {
-		pprof.StopCPUProfile()
-		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
-	}
-
-	if err = StartRunSvc(ctx, cConfig); err != nil {
-		pprof.StopCPUProfile()
-		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
-	}
-
-	os.Exit(0)
 }
