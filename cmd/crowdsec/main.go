@@ -234,11 +234,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		cConfig.Common.LogMedia = "stdout"
 	}
 
-	if err := logging.SetupDefaultLogger(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
+	if err := logging.SetupDefaultLogger(cConfig.Common.CommonLogConfig); err != nil {
 		return nil, err
 	}
 

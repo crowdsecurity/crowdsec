@@ -180,8 +180,10 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata",
-					LogMedia: "stdout",
+					CommonLogConfig: CommonLogConfig{
+						LogDir:   "./testdata",
+						LogMedia: "stdout",
+					},
 				},
 				DisableAPI: false,
 			},
@@ -242,8 +244,10 @@ func TestLoadAPIServer(t *testing.T) {
 					},
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata/",
-					LogMedia: "stdout",
+					CommonLogConfig: CommonLogConfig{
+						LogDir:   "./testdata/",
+						LogMedia: "stdout",
+					},
 				},
 				DisableAPI: false,
 			},
