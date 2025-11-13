@@ -129,10 +129,7 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 
 // setupLogger creates a logger for the datasource to use at runtime.
 func setupLogger(typ, name string, level log.Level) (*log.Entry, error) {
-	clog := log.New()
-	if err := logging.ConfigureLogger(clog, level); err != nil {
-		return nil, fmt.Errorf("configuring datasource logger: %w", err)
-	}
+	clog := logging.CloneLogger(log.StandardLogger(), level)
 
 	fields := log.Fields{
 		"type": typ,

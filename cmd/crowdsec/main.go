@@ -188,36 +188,23 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevel log.Level, f *Flags) (log.Level, bool) {
-	// mother of all defaults
-	ret := log.InfoLevel
-	logLevelViaFlag := true
-
-	// keep if already set
-	if curLevel != log.PanicLevel {
-		ret = curLevel
-	}
-
-	// override from flags
+func (f *Flags) GetLogLevel() log.Level {
 	switch {
 	case f.LogLevelTrace:
-		ret = log.TraceLevel
+		return log.TraceLevel
 	case f.LogLevelDebug:
-		ret = log.DebugLevel
+		return log.DebugLevel
 	case f.LogLevelInfo:
-		ret = log.InfoLevel
+		return log.InfoLevel
 	case f.LogLevelWarn:
-		ret = log.WarnLevel
+		return log.WarnLevel
 	case f.LogLevelError:
-		ret = log.ErrorLevel
+		return log.ErrorLevel
 	case f.LogLevelFatal:
-		ret = log.FatalLevel
+		return log.FatalLevel
 	default:
-		// We set logLevelViaFlag to false in default cause no flag was provided
-		logLevelViaFlag = false
+		return log.PanicLevel
 	}
-
-	return ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -231,9 +218,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
 
-	var logLevelViaFlag bool
-
-	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, &flags)
+	if flagLevel := flags.GetLogLevel(); flagLevel != 0 {
+		cConfig.Common.LogLevel = flagLevel
+	}
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
@@ -247,12 +234,11 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		cConfig.Common.LogMedia = "stdout"
 	}
 
-	// Configure logging
-	if err := logging.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+	if err := logging.SetupDefaultLogger(cConfig.Common.LogMedia,
 		cConfig.Common.LogDir, cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
+		cConfig.Common.ForceColorLogs); err != nil {
 		return nil, err
 	}
 
@@ -368,14 +354,19 @@ func main() {
 			log.Fatalf("could not start CPU profile: %s", err)
 		}
 
-		defer f.Close()
+		defer f.Close() // XXX: defer not called for early exit
 		defer pprof.StopCPUProfile()
 	}
 
 	ctx := context.Background()
 
-	err := StartRunSvc(ctx)
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
+		pprof.StopCPUProfile()
+		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
+	}
+
+	if err = StartRunSvc(ctx, cConfig); err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
 	}
