@@ -8,10 +8,7 @@ import (
 
 type SyslogFormatter struct{}
 
-func (f *SyslogFormatter) Format(e *logrus.Entry) ([]byte, error) {
-//	level := strings.ToUpper(e.Level.String())
-//	msg := fmt.Sprintf("[%s] %s\n", level, e.Message)
-//	return []byte(msg), nil
+func (*SyslogFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	return []byte(e.Message + "\n"), nil
 }
 

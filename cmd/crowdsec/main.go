@@ -308,8 +308,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
+	// Add a timestamp to avoid the ugly [0000]
 	// The initial log level is INFO, even if the user provided an -error or -warning flag
-	// because we need feature flags before parsing cli flags
+	// because we need feature flags before parsing cli flags.
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
