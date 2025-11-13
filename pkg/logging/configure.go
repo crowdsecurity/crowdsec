@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"log/syslog"
@@ -11,6 +12,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 const (
@@ -18,50 +21,35 @@ const (
 	defMaxFiles = 3
 	defMaxAge = 28
 	defCompress = true
+	defLogLevel = log.InfoLevel
 )
 
-func SetupDefaultLogger(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
+func SetupDefaultLogger(cfg csconfig.CommonLogConfig) error {
 	var logFormatter log.Formatter
 
-	switch format {
+	switch cfg.LogFormat {
 	case "text", "":
 		logFormatter = &log.TextFormatter{
 			TimestampFormat: time.RFC3339,
 			FullTimestamp:   true,
-			ForceColors:     forceColors,
+			ForceColors:     cfg.ForceColorLogs,
 		}
 	case "json":
 		logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
 	default:
-		return fmt.Errorf("unknown log_format '%s'", format)
+		return fmt.Errorf("unknown log_format '%s'", cfg.LogFormat)
 	}
 
-	if cfgMode == "file" {
-		if maxSize == 0 {
-			maxSize = defMaxSize
-		}
-
-		if maxFiles == 0 {
-			maxFiles = defMaxFiles
-		}
-
-		if maxAge == 0 {
-			maxAge = defMaxAge
-		}
-
-		if compress == nil {
-			compress = ptr.Of(defCompress)
-		}
-
+	if cfg.LogMedia == "file" {
 		logOutput := &lumberjack.Logger{
-			Filename:   filepath.Join(cfgFolder, "crowdsec.log"),
-			MaxSize:    maxSize,
-			MaxBackups: maxFiles,
-			MaxAge:     maxAge,
-			Compress:   *compress,
+			Filename:   filepath.Join(cfg.LogDir, "crowdsec.log"),
+			MaxSize:    cmp.Or(cfg.LogMaxSize, defMaxSize),
+			MaxBackups: cmp.Or(cfg.LogMaxFiles, defMaxFiles),
+			MaxAge:     cmp.Or(cfg.LogMaxAge, defMaxAge),
+			Compress:   *cmp.Or(cfg.CompressLogs, ptr.Of(defCompress)),
 		}
 		log.SetOutput(logOutput)
-	} else if cfgMode == "syslog" {
+	} else if cfg.LogMedia == "syslog" {
 		w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
 		if err != nil {
 			return err
@@ -70,15 +58,11 @@ func SetupDefaultLogger(cfgMode string, cfgFolder string, cfgLevel log.Level, ma
 		hook := NewFormatterSyslogHook(w)
 		log.AddHook(hook)
 		log.SetOutput(io.Discard)
-	} else if cfgMode != "stdout" {
-		return fmt.Errorf("log mode '%s' unknown", cfgMode)
+	} else if cfg.LogMedia != "stdout" {
+		return fmt.Errorf("log mode %q unknown", cfg.LogMedia)
 	}
 
-	if cfgLevel == 0 {
-		cfgLevel = log.InfoLevel
-	}
-
-	log.SetLevel(cfgLevel)
+	log.SetLevel(cmp.Or(cfg.LogLevel, defLogLevel))
 	log.SetFormatter(logFormatter)
 
 	return nil

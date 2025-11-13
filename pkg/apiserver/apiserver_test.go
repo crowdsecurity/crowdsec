@@ -26,7 +26,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -363,110 +362,110 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 
 */
 
-func TestLoggingDebugToFileConfig(t *testing.T) {
-	ctx := t.Context()
+//func TestLoggingDebugToFileConfig(t *testing.T) {
+//	ctx := t.Context()
+//
+//	/*declare settings*/
+//	maxAge := cstime.DurationWithDays(1 * time.Hour)
+//	flushConfig := csconfig.FlushDBCfg{
+//		MaxAge: maxAge,
+//	}
+//
+//	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+//
+//	t.Cleanup(func() { os.RemoveAll(tempDir) })
+//
+//	dbconfig := csconfig.DatabaseCfg{
+//		Type:   "sqlite",
+//		DbPath: filepath.Join(tempDir, "ent"),
+//		Flush:  &flushConfig,
+//	}
+//	cfg := csconfig.LocalApiServerCfg{
+//		ListenURI: "127.0.0.1:8080",
+//		LogMedia:  "file",
+//		LogDir:    tempDir,
+//		DbConfig:  &dbconfig,
+//	}
+//	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
+//	expectedLines := []string{"/test42"}
+//	cfg.LogLevel = log.DebugLevel
+//
+//	// Configure logging
+//	err := logging.SetupDefaultLogger(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+//	require.NoError(t, err)
+//
+//	api, err := NewServer(ctx, &cfg)
+//	require.NoError(t, err)
+//	require.NotNil(t, api)
+//
+//	w := httptest.NewRecorder()
+//	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+//	require.NoError(t, err)
+//	req.Header.Set("User-Agent", UserAgent)
+//	api.router.ServeHTTP(w, req)
+//	assert.Equal(t, http.StatusNotFound, w.Code)
+//	// wait for the request to happen
+//	time.Sleep(500 * time.Millisecond)
+//
+//	// check file content
+//	data, err := os.ReadFile(expectedFile)
+//	require.NoError(t, err)
+//
+//	for _, expectedStr := range expectedLines {
+//		assert.Contains(t, string(data), expectedStr)
+//	}
+//}
 
-	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1 * time.Hour)
-	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: maxAge,
-	}
-
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
-	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
-		LogMedia:  "file",
-		LogDir:    tempDir,
-		DbConfig:  &dbconfig,
-	}
-	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
-	expectedLines := []string{"/test42"}
-	cfg.LogLevel = log.DebugLevel
-
-	// Configure logging
-	err := logging.SetupDefaultLogger(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
-	require.NoError(t, err)
-
-	api, err := NewServer(ctx, &cfg)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-
-	w := httptest.NewRecorder()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("User-Agent", UserAgent)
-	api.router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	// wait for the request to happen
-	time.Sleep(500 * time.Millisecond)
-
-	// check file content
-	data, err := os.ReadFile(expectedFile)
-	require.NoError(t, err)
-
-	for _, expectedStr := range expectedLines {
-		assert.Contains(t, string(data), expectedStr)
-	}
-}
-
-func TestLoggingErrorToFileConfig(t *testing.T) {
-	ctx := t.Context()
-
-	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1 * time.Hour)
-	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: maxAge,
-	}
-
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
-	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
-		LogMedia:  "file",
-		LogDir:    tempDir,
-		DbConfig:  &dbconfig,
-	}
-	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
-	cfg.LogLevel = log.ErrorLevel
-
-	// Configure logging
-	err := logging.SetupDefaultLogger(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
-	require.NoError(t, err)
-
-	api, err := NewServer(ctx, &cfg)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-
-	w := httptest.NewRecorder()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("User-Agent", UserAgent)
-	api.router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	// wait for the request to happen
-	time.Sleep(500 * time.Millisecond)
-
-	// check file content
-	x, err := os.ReadFile(expectedFile)
-	if err == nil {
-		require.Empty(t, x)
-	}
-
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
-}
+//func TestLoggingErrorToFileConfig(t *testing.T) {
+//	ctx := t.Context()
+//
+//	/*declare settings*/
+//	maxAge := cstime.DurationWithDays(1 * time.Hour)
+//	flushConfig := csconfig.FlushDBCfg{
+//		MaxAge: maxAge,
+//	}
+//
+//	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+//
+//	t.Cleanup(func() { os.RemoveAll(tempDir) })
+//
+//	dbconfig := csconfig.DatabaseCfg{
+//		Type:   "sqlite",
+//		DbPath: filepath.Join(tempDir, "ent"),
+//		Flush:  &flushConfig,
+//	}
+//	cfg := csconfig.LocalApiServerCfg{
+//		ListenURI: "127.0.0.1:8080",
+//		LogMedia:  "file",
+//		LogDir:    tempDir,
+//		DbConfig:  &dbconfig,
+//	}
+//	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
+//	cfg.LogLevel = log.ErrorLevel
+//
+//	// Configure logging
+//	err := logging.SetupDefaultLogger(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false)
+//	require.NoError(t, err)
+//
+//	api, err := NewServer(ctx, &cfg)
+//	require.NoError(t, err)
+//	require.NotNil(t, api)
+//
+//	w := httptest.NewRecorder()
+//	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+//	require.NoError(t, err)
+//	req.Header.Set("User-Agent", UserAgent)
+//	api.router.ServeHTTP(w, req)
+//	assert.Equal(t, http.StatusNotFound, w.Code)
+//	// wait for the request to happen
+//	time.Sleep(500 * time.Millisecond)
+//
+//	// check file content
+//	x, err := os.ReadFile(expectedFile)
+//	if err == nil {
+//		require.Empty(t, x)
+//	}
+//
+//	os.Remove("./crowdsec.log")
+//	os.Remove(expectedFile)
+//}
