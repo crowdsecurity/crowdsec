@@ -21,14 +21,10 @@ const (
 )
 
 func SetupDefaultLogger(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
-	if format == "" {
-		format = "text"
-	}
-
 	var logFormatter log.Formatter
 
 	switch format {
-	case "text":
+	case "text", "":
 		logFormatter = &log.TextFormatter{
 			TimestampFormat: time.RFC3339,
 			FullTimestamp:   true,
@@ -76,6 +72,10 @@ func SetupDefaultLogger(cfgMode string, cfgFolder string, cfgLevel log.Level, ma
 		log.SetOutput(io.Discard)
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
+	}
+
+	if cfgLevel == 0 {
+		cfgLevel = log.InfoLevel
 	}
 
 	log.SetLevel(cfgLevel)
