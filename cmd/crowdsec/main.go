@@ -234,10 +234,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if flags.haveTimeMachine() {
 		// in time-machine mode, we want to see what's happening
-		if cConfig.Common.LogMedia != "stdout" {
-			log.Debug("forcing log_media='stdout'")
-		}
-
 		cConfig.Common.LogMedia = "stdout"
 	}
 
