@@ -188,6 +188,9 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
+// GetLogLevel returns the log level selected by the --trace, --debug, --info, etc. flags,
+// giving precedence to the most verbose flag if multiple are set. If no flag is specified,
+// it returns PanicLevel, which acts as a zero value and should never override another level.
 func (f *Flags) GetLogLevel() log.Level {
 	switch {
 	case f.LogLevelTrace:
@@ -237,7 +240,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		cConfig.Common.LogMedia = "stdout"
 	}
 
-	if err := logging.SetupDefaultLogger(cConfig.Common.CommonLogConfig); err != nil {
+	if err := logging.SetupStandardLogger(cConfig.Common.CommonLogConfig); err != nil {
 		return nil, err
 	}
 
