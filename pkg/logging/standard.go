@@ -15,13 +15,12 @@ import (
 )
 
 const (
-	defMaxSize  = 500
+	defMaxSize  = 500 // megabytes
 	defMaxFiles = 3
-	defMaxAge   = 28
+	defMaxAge   = 28  // days
 	defCompress = true
 	defLogLevel = log.InfoLevel
 )
-
 
 // SetupStandardLogger configures the global logger according to the
 // provided configuration. It applies the output destination, log format,
