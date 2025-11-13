@@ -3,8 +3,6 @@ package logging
 import (
 	"cmp"
 	"fmt"
-	"io"
-	"log/syslog"
 	"path/filepath"
 	"time"
 
@@ -50,14 +48,9 @@ func SetupDefaultLogger(cfg csconfig.CommonLogConfig) error {
 		}
 		log.SetOutput(logOutput)
 	} else if cfg.LogMedia == "syslog" {
-		w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
-		if err != nil {
+		if err := setupSyslogDefault(); err != nil {
 			return err
 		}
-
-		hook := NewFormatterSyslogHook(w)
-		log.AddHook(hook)
-		log.SetOutput(io.Discard)
 	} else if cfg.LogMedia != "stdout" {
 		return fmt.Errorf("log mode %q unknown", cfg.LogMedia)
 	}

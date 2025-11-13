@@ -1,10 +1,26 @@
+//go:build !windows
+
 package logging
 
 import (
+	"io"
 	"log/syslog"
 
 	"github.com/sirupsen/logrus"
 )
+
+func setupSyslogDefault() error {
+	w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
+	if err != nil {
+		return err
+	}
+
+	hook := NewFormatterSyslogHook(w)
+	logrus.AddHook(hook)
+	logrus.SetOutput(io.Discard)
+
+	return nil
+}
 
 type SyslogFormatter struct{}
 
