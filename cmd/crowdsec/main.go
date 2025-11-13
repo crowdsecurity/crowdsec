@@ -237,6 +237,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.Common.LogMedia != "stdout" {
 			log.Debug("forcing log_media='stdout'")
 		}
+
 		cConfig.Common.LogMedia = "stdout"
 	}
 

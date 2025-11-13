@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -17,7 +16,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -113,48 +111,6 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 	}
 }
 
-// XXX: could be a method of LocalApiServerCfg
-func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
-	clog := logging.CloneLogger(log.StandardLogger(), config.LogLevel)
-
-	if config.LogMedia != "file" {
-		return clog, "", nil
-	}
-
-	// Log rotation
-
-	logFile := filepath.Join(config.LogDir, "crowdsec_api.log")
-	log.Debugf("starting router, logging to %s", logFile)
-
-	logger := &lumberjack.Logger{
-		Filename:   logFile,
-		MaxSize:    500, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28,   // days
-		Compress:   true, // disabled by default
-	}
-
-	if config.LogMaxSize != 0 {
-		logger.MaxSize = config.LogMaxSize
-	}
-
-	if config.LogMaxFiles != 0 {
-		logger.MaxBackups = config.LogMaxFiles
-	}
-
-	if config.LogMaxAge != 0 {
-		logger.MaxAge = config.LogMaxAge
-	}
-
-	if config.CompressLogs != nil {
-		logger.Compress = *config.CompressLogs
-	}
-
-	clog.SetOutput(logger)
-
-	return clog, logFile, nil
-}
-
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
 func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -196,7 +152,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	}
 
 	// The logger that will be used by handlers
-	clog, _, err := newGinLogger(config)
+	clog, err := logging.CreateAccessLogger(config)
 	if err != nil {
 		return nil, err
 	}
