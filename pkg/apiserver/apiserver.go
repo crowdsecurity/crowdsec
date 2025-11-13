@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log/syslog"
 	"net"
 	"net/http"
 	"os"
@@ -18,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
-	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
@@ -117,30 +115,8 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 
 // XXX: could be a method of LocalApiServerCfg
 func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
-	clog := log.New()
+	clog := logging.CloneLogger(log.StandardLogger(), config.LogLevel)
 
-	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
-		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
-	}
-
-	if config.LogMedia == "syslog" {
-		hook, err := lSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
-		if err != nil {
-			return nil, "", fmt.Errorf("while creating syslog hook: %w", err)
-		}
-
-		clog.SetFormatter(&log.TextFormatter{
-			DisableTimestamp: true,
-			DisableColors:    true,
-		})
-
-		clog.AddHook(hook)
-		clog.SetOutput(io.Discard)
-
-		return clog, "", nil
-	}
-
-	// XXX: syslog?
 	if config.LogMedia != "file" {
 		return clog, "", nil
 	}

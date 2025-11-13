@@ -7,22 +7,25 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+
 	log "github.com/sirupsen/logrus"
-	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var (
-	logFormatter    log.Formatter
-	LogOutput       *lumberjack.Logger // io.Writer
-	logLevel        log.Level
-	logLevelViaFlag bool
+const (
+	defMaxSize = 500
+	defMaxFiles = 3
+	defMaxAge = 28
+	defCompress = true
 )
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool, levelViaFlag bool) error {
+func SetupDefaultLogger(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, format string, compress *bool, forceColors bool) error {
 	if format == "" {
 		format = "text"
 	}
+
+	var logFormatter log.Formatter
 
 	switch format {
 	case "text":
@@ -38,74 +41,45 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 
 	if cfgMode == "file" {
-		_maxsize := 500
-		if maxSize != 0 {
-			_maxsize = maxSize
+		if maxSize == 0 {
+			maxSize = defMaxSize
 		}
 
-		_maxfiles := 3
-		if maxFiles != 0 {
-			_maxfiles = maxFiles
+		if maxFiles == 0 {
+			maxFiles = defMaxFiles
 		}
 
-		_maxage := 28
-		if maxAge != 0 {
-			_maxage = maxAge
+		if maxAge == 0 {
+			maxAge = defMaxAge
 		}
 
-		_compress := true
-		if compress != nil {
-			_compress = *compress
+		if compress == nil {
+			compress = ptr.Of(defCompress)
 		}
 
-		LogOutput = &lumberjack.Logger{
+		logOutput := &lumberjack.Logger{
 			Filename:   filepath.Join(cfgFolder, "crowdsec.log"),
-			MaxSize:    _maxsize,
-			MaxBackups: _maxfiles,
-			MaxAge:     _maxage,
-			Compress:   _compress,
+			MaxSize:    maxSize,
+			MaxBackups: maxFiles,
+			MaxAge:     maxAge,
+			Compress:   *compress,
 		}
-		log.SetOutput(LogOutput)
+		log.SetOutput(logOutput)
 	} else if cfgMode == "syslog" {
-		hook, err := lSyslog.NewSyslogHook("", "", syslog.LOG_INFO, "")
+		w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
 		if err != nil {
 			return err
 		}
 
-		log.SetFormatter(&log.TextFormatter{
-			DisableTimestamp: true,
-			DisableColors:    true,
-		})
-
+		hook := NewFormatterSyslogHook(w)
 		log.AddHook(hook)
 		log.SetOutput(io.Discard)
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
 
-	logLevel = cfgLevel
-	logLevelViaFlag = levelViaFlag
-	log.SetLevel(logLevel)
+	log.SetLevel(cfgLevel)
 	log.SetFormatter(logFormatter)
-
-	return nil
-}
-
-func ConfigureLogger(clog *log.Logger, level log.Level) error {
-	/*Configure logs*/
-	if LogOutput != nil {
-		clog.SetOutput(LogOutput)
-	}
-
-	if logFormatter != nil {
-		clog.SetFormatter(logFormatter)
-	}
-
-	clog.SetLevel(logLevel)
-
-	if level != log.PanicLevel && !logLevelViaFlag {
-		clog.SetLevel(level)
-	}
 
 	return nil
 }

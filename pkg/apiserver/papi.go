@@ -87,10 +87,7 @@ type PapiPermCheckSuccess struct {
 }
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
-	logger := log.New()
-	if err := logging.ConfigureLogger(logger, logLevel); err != nil {
-		return &Papi{}, fmt.Errorf("creating papi logger: %w", err)
-	}
+	logger := logging.CloneLogger(log.StandardLogger(), logLevel)
 
 	papiURL := *apic.apiClient.PapiURL
 	papiURL.Path = fmt.Sprintf("%s%s", PAPIVersion, PAPIPollURL)
