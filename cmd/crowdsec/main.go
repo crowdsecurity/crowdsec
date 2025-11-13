@@ -231,6 +231,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if flags.haveTimeMachine() {
 		// in time-machine mode, we want to see what's happening
+		if cConfig.Common.LogMedia != "stdout" {
+			log.Debug("forcing log_media='stdout'")
+		}
 		cConfig.Common.LogMedia = "stdout"
 	}
 
@@ -282,8 +285,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
 		}
-
-		log.Infof("single file mode : log_media=%s", cConfig.Common.LogMedia)
 	}
 
 	if cConfig.Common.PidDir != "" {
