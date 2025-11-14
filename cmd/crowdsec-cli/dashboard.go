@@ -11,7 +11,7 @@ import (
 
 type cliDashboard struct {}
 
-func NewCLIDashboard(cfg configGetter) *cliDashboard {
+func NewCLIDashboard(_ configGetter) *cliDashboard {
 	return &cliDashboard{}
 }
 
@@ -28,7 +28,7 @@ func (*cliDashboard) NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+	cmd.SetHelpFunc(func(_ *cobra.Command, _ []string) {
 		fmt.Println(ErrDashboardDeprecated.Error())
 	})
 

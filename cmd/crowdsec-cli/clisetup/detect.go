@@ -100,7 +100,7 @@ cscli setup detect --ignore whitelists
 `,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
 			detectConfig, rulesFrom, err := f.detectConfig()

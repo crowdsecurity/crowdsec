@@ -172,7 +172,7 @@ func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error 
 			),
 		))
 	} else if value != "true" {
-		log.Errorf("invalid bool '%s' for include_capi", value)
+		log.Errorf("invalid bool %q for include_capi", value)
 	}
 
 	return nil

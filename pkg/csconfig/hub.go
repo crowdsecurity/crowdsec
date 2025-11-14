@@ -8,13 +8,11 @@ type LocalHubCfg struct {
 	InstallDataDir string	// Where to install data
 }
 
-func (c *Config) loadHub() error {
+func (c *Config) loadHub() {
 	c.Hub = &LocalHubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,
 		InstallDir:     c.ConfigPaths.ConfigDir,
 		InstallDataDir: c.ConfigPaths.DataDir,
 	}
-
-	return nil
 }

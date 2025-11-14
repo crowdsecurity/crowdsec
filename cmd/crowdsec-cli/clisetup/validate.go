@@ -25,7 +25,7 @@ generated it through other means.`,
 
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err

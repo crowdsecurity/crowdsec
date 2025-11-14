@@ -28,7 +28,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 		Args:              args.NoArgs,
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, target, cli.filePrepender, cli.linkHandler); err != nil {
 				return fmt.Errorf("failed to generate cscli documentation: %w", err)
 			}
