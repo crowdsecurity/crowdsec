@@ -413,10 +413,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
 	if n.Debug {
-		clog := log.New()
-		if err = logging.ConfigureLogger(clog, log.DebugLevel); err != nil {
-			return fmt.Errorf("while creating bucket-specific logger: %w", err)
-		}
+		clog := logging.CloneLogger(log.StandardLogger(), log.DebugLevel)
 
 		n.Logger = clog.WithField("id", n.rn)
 		n.Logger.Infof("%s has debug enabled", n.Name)

@@ -22,21 +22,12 @@ func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc(ctx context.Context) error {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
-
+func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
-
-	if cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false); err != nil {
-		return err
-	}
 
 	if fflag.PProfBlockProfile.IsEnabled() {
 		runtime.SetBlockProfileRate(1)

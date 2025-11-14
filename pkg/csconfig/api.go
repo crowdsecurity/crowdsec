@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"bytes"
-	"cmp"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -339,12 +338,10 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	// inherit log level from api->server, common, and default to info
-	// 0 = panicLevel, not useful / not allowed
-	logLevel := cmp.Or(c.API.Server.LogLevel, c.Common.LogLevel, log.InfoLevel)
-
-	if c.API.Server.PapiLogLevel == log.PanicLevel {
-		c.API.Server.PapiLogLevel = logLevel
+	// intherit log level from api->server, otherwise zero (panic) is a meaningful value
+	// which means inherit from standard logger (common config or cli flags)
+	if c.API.Server.LogLevel != 0 {
+		c.API.Server.PapiLogLevel = c.API.Server.LogLevel
 	}
 
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
@@ -399,6 +396,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	c.API.Server.LogMaxAge = c.Common.LogMaxAge
 	c.API.Server.LogFormat = c.Common.LogFormat
 	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+	c.API.Server.LogLevel = c.Common.LogLevel
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}

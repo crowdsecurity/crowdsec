@@ -188,36 +188,26 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-func newLogLevel(curLevel log.Level, f *Flags) (log.Level, bool) {
-	// mother of all defaults
-	ret := log.InfoLevel
-	logLevelViaFlag := true
-
-	// keep if already set
-	if curLevel != log.PanicLevel {
-		ret = curLevel
-	}
-
-	// override from flags
+// GetLogLevel returns the log level selected by the --trace, --debug, --info, etc. flags,
+// giving precedence to the most verbose flag if multiple are set. If no flag is specified,
+// it returns PanicLevel, which acts as a zero value and should never override another level.
+func (f *Flags) GetLogLevel() log.Level {
 	switch {
 	case f.LogLevelTrace:
-		ret = log.TraceLevel
+		return log.TraceLevel
 	case f.LogLevelDebug:
-		ret = log.DebugLevel
+		return log.DebugLevel
 	case f.LogLevelInfo:
-		ret = log.InfoLevel
+		return log.InfoLevel
 	case f.LogLevelWarn:
-		ret = log.WarnLevel
+		return log.WarnLevel
 	case f.LogLevelError:
-		ret = log.ErrorLevel
+		return log.ErrorLevel
 	case f.LogLevelFatal:
-		ret = log.FatalLevel
+		return log.FatalLevel
 	default:
-		// We set logLevelViaFlag to false in default cause no flag was provided
-		logLevelViaFlag = false
+		return log.PanicLevel
 	}
-
-	return ret, logLevelViaFlag
 }
 
 // LoadConfig returns a configuration parsed from configuration file
@@ -231,9 +221,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
 
-	var logLevelViaFlag bool
-
-	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, &flags)
+	if flagLevel := flags.GetLogLevel(); flagLevel != 0 {
+		cConfig.Common.LogLevel = flagLevel
+	}
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
@@ -242,17 +232,12 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		dumpStates = true
 	}
 
-	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		// if we're in time-machine mode, we don't want to log to file
+	if flags.haveTimeMachine() {
+		// in time-machine mode, we want to see what's happening
 		cConfig.Common.LogMedia = "stdout"
 	}
 
-	// Configure logging
-	if err := logging.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
+	if err := logging.SetupStandardLogger(cConfig.Common.CommonLogConfig); err != nil {
 		return nil, err
 	}
 
@@ -300,8 +285,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
 		}
-
-		log.Infof("single file mode : log_media=%s", cConfig.Common.LogMedia)
 	}
 
 	if cConfig.Common.PidDir != "" {
@@ -321,9 +304,38 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 // or uptime of the application
 var crowdsecT0 time.Time
 
+func run() error {
+	if flags.CPUProfile != "" {
+		f, err := os.Create(flags.CPUProfile)
+		if err != nil {
+			return fmt.Errorf("could not create CPU profile: %w", err)
+		}
+
+		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
+
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			return fmt.Errorf("could not start CPU profile: %s", err)
+		}
+
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
+	ctx := context.Background()
+
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	if err != nil {
+		return err
+	}
+
+	return StartRunSvc(ctx, cConfig)
+}
+
 func main() {
+	// Add a timestamp to avoid the ugly [0000]
 	// The initial log level is INFO, even if the user provided an -error or -warning flag
-	// because we need feature flags before parsing cli flags
+	// because we need feature flags before parsing cli flags.
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
@@ -337,8 +349,6 @@ func main() {
 	}
 
 	crowdsecT0 = time.Now()
-
-	log.Debugf("os.Args: %v", os.Args)
 
 	// Handle command line arguments
 	flags.Parse()
@@ -355,30 +365,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if flags.CPUProfile != "" {
-		f, err := os.Create(flags.CPUProfile)
-		if err != nil {
-			log.Fatalf("could not create CPU profile: %s", err)
-		}
-
-		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
-
-		if err := pprof.StartCPUProfile(f); err != nil {
-			f.Close()
-			log.Fatalf("could not start CPU profile: %s", err)
-		}
-
-		defer f.Close()
-		defer pprof.StopCPUProfile()
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
-
-	ctx := context.Background()
-
-	err := StartRunSvc(ctx)
-	if err != nil {
-		pprof.StopCPUProfile()
-		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
-	}
-
-	os.Exit(0)
 }
