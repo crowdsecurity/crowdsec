@@ -61,7 +61,14 @@ func (cli *cliLapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 	cred := cfg.API.Client.Credentials
 
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
-	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
+
+	if cred.Login != "" {
+		fmt.Fprintf(out, "Trying to authenticate with username %q on %s\n", cred.Login, cred.URL)
+	}
+
+	if cred.CertPath != "" {
+		fmt.Fprintf(out, "Trying to authenticate with certificate %q on %s\n", cred.CertPath, cred.URL)
+	}
 
 	_, err := queryLAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
