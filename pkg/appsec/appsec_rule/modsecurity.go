@@ -29,7 +29,7 @@ var zonesMap = map[string]string{
 	"PROTOCOL":         "REQUEST_PROTOCOL",
 	"URI":              "REQUEST_FILENAME",
 	"URI_FULL":         "REQUEST_URI",
-	"RAW_BODY":         "REQUEST_BODY",
+	"RAW_BODY":         "RAW_REQUEST_BODY",
 	"FILENAMES":        "FILES",
 }
 
