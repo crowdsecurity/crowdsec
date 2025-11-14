@@ -13,16 +13,14 @@ import (
 	"time"
 
 	backoff "github.com/cenkalti/backoff/v5"
-	dockerTypes "github.com/docker/docker/api/types"
-	dockerContainer "github.com/docker/docker/api/types/container"
-	dockerTypesEvents "github.com/docker/docker/api/types/events"
-	dockerFilter "github.com/docker/docker/api/types/filters"
-	dockerTypesSwarm "github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
+	dockerContainer "github.com/moby/moby/api/types/container"
+	dockerTypesEvents "github.com/moby/moby/api/types/events"
+	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/client"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"github.com/containerd/errdefs"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/dlog"
@@ -63,9 +61,9 @@ type DockerSource struct {
 	compiledServiceName   []*regexp.Regexp
 	compiledServiceID     []*regexp.Regexp
 	logger                *log.Entry
-	Client                client.CommonAPIClient
+	Client                client.APIClient
 	t                     *tomb.Tomb
-	containerLogsOptions  *dockerContainer.LogsOptions
+	containerLogsOptions  *client.ContainerLogsOptions
 	isSwarmManager        bool
 	backoffFactory        BackOffFactory
 }
@@ -77,7 +75,7 @@ type ContainerConfig struct {
 	logger     *log.Entry
 	Labels     map[string]string
 	Tty        bool
-	logOptions *dockerContainer.LogsOptions
+	logOptions *client.ContainerLogsOptions
 }
 
 type BackOffFactory func() backoff.BackOff
@@ -187,7 +185,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
 
-	d.containerLogsOptions = &dockerContainer.LogsOptions{
+	d.containerLogsOptions = &client.ContainerLogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     true,
@@ -224,17 +222,17 @@ func (d *DockerSource) Configure(ctx context.Context, yamlConfig []byte, logger 
 		opts = append(opts, client.WithHost(d.Config.DockerHost))
 	}
 
-	d.Client, err = client.NewClientWithOpts(opts...)
+	d.Client, err = client.New(opts...)
 	if err != nil {
 		return err
 	}
 
-	info, err := d.Client.Info(ctx)
+	info, err := d.Client.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get docker info: %w", err)
 	}
 
-	if info.Swarm.LocalNodeState == dockerTypesSwarm.LocalNodeStateActive && info.Swarm.ControlAvailable {
+	if info.Info.Swarm.LocalNodeState == dockerTypesSwarm.LocalNodeStateActive && info.Info.Swarm.ControlAvailable {
 		hasServiceConfig := d.Config.hasServiceConfig()
 		if hasServiceConfig {
 			d.isSwarmManager = true
@@ -284,7 +282,7 @@ func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[
 		client.WithAPIVersionNegotiation(),
 	}
 
-	d.containerLogsOptions = &dockerContainer.LogsOptions{
+	d.containerLogsOptions = &client.ContainerLogsOptions{
 		ShowStdout: d.Config.FollowStdout,
 		ShowStderr: d.Config.FollowStdErr,
 		Follow:     false,
@@ -351,7 +349,7 @@ func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[
 		}
 	}
 
-	d.Client, err = client.NewClientWithOpts(opts...)
+	d.Client, err = client.New(opts...)
 	if err != nil {
 		return err
 	}
@@ -374,14 +372,14 @@ func (*DockerSource) SupportedModes() []string {
 func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 
-	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
+	runningContainers, err := d.Client.ContainerList(ctx, client.ContainerListOptions{})
 	if err != nil {
 		return err
 	}
 
 	foundOne := false
 
-	for _, container := range runningContainers {
+	for _, container := range runningContainers.Items {
 		if _, ok := d.runningContainerState[container.ID]; ok {
 			d.logger.Debugf("container with id %s is already being read from", container.ID)
 			continue
@@ -477,21 +475,21 @@ func (*DockerSource) CanRun() error {
 }
 
 func (d *DockerSource) getContainerTTY(ctx context.Context, containerID string) bool {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return false
 	}
 
-	return containerDetails.Config.Tty
+	return containerDetails.Container.Config.Tty
 }
 
 func (d *DockerSource) getContainerLabels(ctx context.Context, containerID string) map[string]any {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerID)
+	containerDetails, err := d.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return map[string]any{}
 	}
 
-	return parseLabels(containerDetails.Config.Labels)
+	return parseLabels(containerDetails.Container.Config.Labels)
 }
 
 func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entityID string, entityType string) (map[string]string, error) {
@@ -545,8 +543,8 @@ func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entity
 }
 
 // NewContainerConfig creates per-container log options by copying the base options
-func NewContainerConfig(baseOpts *dockerContainer.LogsOptions, id string, name string, labels map[string]string, tty bool) *ContainerConfig {
-	opts := &dockerContainer.LogsOptions{
+func NewContainerConfig(baseOpts *client.ContainerLogsOptions, id string, name string, labels map[string]string, tty bool) *ContainerConfig {
+	opts := &client.ContainerLogsOptions{
 		ShowStdout: baseOpts.ShowStdout,
 		ShowStderr: baseOpts.ShowStderr,
 		Follow:     baseOpts.Follow,
@@ -563,7 +561,7 @@ func NewContainerConfig(baseOpts *dockerContainer.LogsOptions, id string, name s
 	}
 }
 
-func (d *DockerSource) EvalContainer(ctx context.Context, container dockerTypes.Container) *ContainerConfig {
+func (d *DockerSource) EvalContainer(ctx context.Context, container dockerContainer.Summary) *ContainerConfig {
 	// fixed params
 	newConfig := func(name string, labels map[string]string) *ContainerConfig {
 		return NewContainerConfig(d.containerLogsOptions, container.ID, name, labels, d.getContainerTTY(ctx, container.ID))
@@ -678,7 +676,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 	// Track current running services for garbage collection
 	runningServicesID := make(map[string]bool)
 
-	services, err := d.Client.ServiceList(ctx, dockerTypes.ServiceListOptions{})
+	services, err := d.Client.ServiceList(ctx, client.ServiceListOptions{})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
 			d.logger.Errorf("cannot connect to docker daemon for service monitoring: %v", err)
@@ -703,7 +701,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 		return err
 	}
 
-	for _, service := range services {
+	for _, service := range services.Items {
 		runningServicesID[service.ID] = true
 
 		// Don't need to re-eval an already monitored service
@@ -732,7 +730,7 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 	// to track for garbage collection
 	runningContainersID := make(map[string]bool)
 
-	runningContainers, err := d.Client.ContainerList(ctx, dockerContainer.ListOptions{})
+	runningContainers, err := d.Client.ContainerList(ctx, client.ContainerListOptions{})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
 			for id, container := range d.runningContainerState {
@@ -754,7 +752,7 @@ func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *Cont
 		return err
 	}
 
-	for _, container := range runningContainers {
+	for _, container := range runningContainers.Items {
 		runningContainersID[container.ID] = true
 
 		// don't need to re eval an already monitored container
@@ -784,26 +782,29 @@ type subscription struct {
 }
 
 func (d *DockerSource) trySubscribeEvents(ctx context.Context) (*subscription, error) {
-	f := dockerFilter.NewArgs()
-	f.Add("type", "container")
-
-	if d.isSwarmManager {
-		f.Add("type", "service")
+	filters := client.Filters{
+		"type": {
+			"container": true,
+			"service":   d.isSwarmManager,
+		},
 	}
 
-	options := dockerTypesEvents.ListOptions{Filters: f}
-	ev, errs := d.Client.Events(ctx, options)
+	opts := client.EventsListOptions{
+		Filters: filters,
+	}
+
+	result := d.Client.Events(ctx, opts)
 
 	// Is there an immediate error (proxy/daemon unavailable) ?
 	select {
-	case err := <-errs:
+	case err := <-result.Err:
 		if err != nil {
 			return nil, fmt.Errorf("docker events connection failed: %w", err)
 		}
 	default:
 	}
 
-	return &subscription{events: ev, errs: errs}, nil
+	return &subscription{events: result.Messages, errs: result.Err}, nil
 }
 
 // subscribeEvents will loop until it can successfully call d.Client.Events()
@@ -959,7 +960,7 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 		return false
 	}
 
-	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID)
+	containerInfo, err := d.Client.ContainerInspect(ctx, container.ID, client.ContainerInspectOptions{})
 	if err != nil {
 		if errdefs.IsNotFound(err) {
 			container.logger.Debugf("container no longer exists")
@@ -972,12 +973,12 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 		return true
 	}
 
-	if containerInfo.State == nil {
+	if containerInfo.Container.State == nil {
 		container.logger.Warnf("inspect returned nil state (assuming not running)")
 		return false
 	}
 
-	isRunning := containerInfo.State.Running
+	isRunning := containerInfo.Container.State.Running
 	container.logger.Debugf("running status: %v", isRunning)
 
 	return isRunning
@@ -990,7 +991,7 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 		return false
 	}
 
-	_, _, err := d.Client.ServiceInspectWithRaw(ctx, service.ID, dockerTypes.ServiceInspectOptions{})
+	_, err := d.Client.ServiceInspect(ctx, service.ID, client.ServiceInspectOptions{})
 	if err != nil {
 		if errdefs.IsNotFound(err) {
 			service.logger.Debugf("service no longer exists")
@@ -1171,7 +1172,17 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
 	// For services, we need to get the service logs using the service logs API
 	// Docker service logs aggregates logs from all running tasks of the service
-	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, *service.logOptions)
+	logOptions := client.ServiceLogsOptions{
+		ShowStdout: service.logOptions.ShowStdout,
+		ShowStderr: service.logOptions.ShowStderr,
+		Since:      service.logOptions.Since,
+		Until:      service.logOptions.Until,
+		Timestamps: service.logOptions.Timestamps,
+		Follow:     service.logOptions.Follow,
+		Tail:       service.logOptions.Tail,
+		Details:    service.logOptions.Details,
+	}
+	dockerReader, err := d.Client.ServiceLogs(ctx, service.ID, logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from service %s: %w", service.Name, err)
 	}
