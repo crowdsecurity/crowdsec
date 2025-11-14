@@ -61,7 +61,7 @@ type cliExplain struct {
 	}
 }
 
-func New(cfg configGetter, configFilePath string) *cliExplain {
+func New(_ configGetter, configFilePath string) *cliExplain {
 	return &cliExplain{
 		configFilePath: configFilePath,
 	}
