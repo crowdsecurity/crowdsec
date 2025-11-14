@@ -21,55 +21,71 @@ type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-func validatePort(port int) bool {
-	return port > 0 && port <= 65535
+func ConfigurationFromYAML(y []byte) (Configuration, error) {
+	var cfg Configuration
+
+	if err := yaml.UnmarshalWithOptions(y, &cfg, yaml.Strict()); err != nil {
+		return cfg, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
+	}
+
+	cfg.SetDefaults()
+
+	if err := cfg.Validate(); err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
 }
 
-func validateAddr(addr string) bool {
-	return net.ParseIP(addr) != nil
+func (c *Configuration) SetDefaults() {
+	if c.Mode == "" {
+		c.Mode = configuration.TAIL_MODE
+	}
+
+	if c.Addr == "" {
+		c.Addr = "127.0.0.1" // do we want a usable or secure default ?
+	}
+
+	if c.Port == 0 {
+		c.Port = 514
+	}
+
+	if c.MaxMessageLen == 0 {
+		c.MaxMessageLen = 2048
+	}
 }
 
-func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	s.config = Configuration{}
-	s.config.Mode = configuration.TAIL_MODE
-
-	err := yaml.UnmarshalWithOptions(yamlConfig, &s.config, yaml.Strict())
-	if err != nil {
-		return fmt.Errorf("cannot parse syslog configuration: %s", yaml.FormatError(err, false, false))
+func (c *Configuration) Validate() error {
+	if c.Port <= 0 || c.Port > 65535 {
+		return fmt.Errorf("invalid port %d", c.Port)
 	}
 
-	if s.config.Addr == "" {
-		s.config.Addr = "127.0.0.1" // do we want a usable or secure default ?
-	}
-
-	if s.config.Port == 0 {
-		s.config.Port = 514
-	}
-
-	if s.config.MaxMessageLen == 0 {
-		s.config.MaxMessageLen = 2048
-	}
-
-	if !validatePort(s.config.Port) {
-		return fmt.Errorf("invalid port %d", s.config.Port)
-	}
-
-	if !validateAddr(s.config.Addr) {
-		return fmt.Errorf("invalid listen IP %s", s.config.Addr)
+	if net.ParseIP(c.Addr) == nil {
+		return fmt.Errorf("invalid listen IP %s", c.Addr)
 	}
 
 	return nil
 }
 
-func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	s.logger = logger
-	s.logger.Infof("Starting syslog datasource configuration")
-	s.metricsLevel = metricsLevel
+func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
+	cfg, err := ConfigurationFromYAML(yamlConfig)
+	if err != nil {
+		return err
+	}
 
+	s.config = cfg
+
+	return nil
+}
+
+func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
+
+	s.logger = logger
+	s.metricsLevel = metricsLevel
 
 	return nil
 }
