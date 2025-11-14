@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -33,7 +34,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 				return fmt.Errorf("failed to generate cscli documentation: %w", err)
 			}
 
-			fmt.Println("Documentation generated in", target)
+			fmt.Fprintln(os.Stdout, "Documentation generated in", target)
 
 			return nil
 		},

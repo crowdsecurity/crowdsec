@@ -5,11 +5,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
 
-type cliDashboard struct {}
+type cliDashboard struct{}
 
 func NewCLIDashboard(_ configGetter) *cliDashboard {
 	return &cliDashboard{}
@@ -29,7 +30,7 @@ func (*cliDashboard) NewCommand() *cobra.Command {
 	}
 
 	cmd.SetHelpFunc(func(_ *cobra.Command, _ []string) {
-		fmt.Println(ErrDashboardDeprecated.Error())
+		fmt.Fprintln(os.Stdout, ErrDashboardDeprecated.Error())
 	})
 
 	return cmd
