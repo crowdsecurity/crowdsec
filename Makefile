@@ -1,6 +1,6 @@
 
 ifneq ($(firstword $(sort $(MAKE_VERSION) 4.1)),4.1)
-    $(error Your make is too old ($(MAKE_VERSION)). Please install GNU make ≥ 4.1)
+    $(error Your make is too old ($(MAKE_VERSION)). Please install GNU make >= 4.1)
 endif
 
 include mk/platform.mk
