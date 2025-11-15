@@ -462,6 +462,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "ParseKVLax",
+		function: ParseKVLax,
+		signature: []any{
+			new(func(string, map[string]any, string) error),
+		},
+	},
+	{
 		name:     "Hostname",
 		function: Hostname,
 		signature: []any{
