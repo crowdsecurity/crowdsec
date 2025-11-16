@@ -1,35 +1,37 @@
 package leakybucket
 
-import "github.com/crowdsecurity/crowdsec/pkg/types"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+)
 
 type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
-	OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
-	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue)
+	OnBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
+	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
-	AfterBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
+	AfterBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
 }
 
 type DumbProcessor struct{}
 
-func (d *DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
+func (*DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func (d *DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
+func (*DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 		return &msg
 	}
 }
 
-func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (*DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		return alert, queue
 	}
 }
 
-func (d *DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
+func (*DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 		return &msg
 	}
 }

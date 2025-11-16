@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -48,7 +49,7 @@ var (
 
 func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -64,7 +65,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
-		LogLevel:     ptr.Of(log.DebugLevel),
+		LogLevel:     log.DebugLevel,
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
 		ConsoleConfig: &csconfig.ConsoleConfig{
@@ -98,7 +99,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 
 func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -145,7 +146,7 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 	apiServer, err := NewServer(ctx, config.API.Server)
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	return apiServer, config
@@ -175,7 +176,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 	err = apiServer.InitController()
 	require.NoError(t, err)
 
-	log.Printf("Creating new API server")
+	log.Info("Creating new API server")
 	gin.SetMode(gin.TestMode)
 
 	router, err := apiServer.Router()
@@ -292,7 +293,8 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -338,7 +340,8 @@ func TestUnknownPath(t *testing.T) {
 	router, _ := NewAPITest(t, ctx)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -364,7 +367,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -386,10 +389,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	}
 	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
 	expectedLines := []string{"/test42"}
-	cfg.LogLevel = ptr.Of(log.DebugLevel)
+	cfg.LogLevel = log.DebugLevel
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
+	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -397,7 +400,8 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -417,7 +421,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	ctx := t.Context()
 
 	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1*time.Hour)
+	maxAge := cstime.DurationWithDays(1 * time.Hour)
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: maxAge,
 	}
@@ -438,10 +442,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		DbConfig:  &dbconfig,
 	}
 	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
-	cfg.LogLevel = ptr.Of(log.ErrorLevel)
+	cfg.LogLevel = log.ErrorLevel
 
 	// Configure logging
-	err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
+	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
 	require.NoError(t, err)
 
 	api, err := NewServer(ctx, &cfg)
@@ -449,7 +453,8 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NotNil(t, api)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
+	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type HiddenKey struct {
@@ -30,8 +30,8 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
-func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		var blackholed = false
 		var tmp []HiddenKey
 		// search if we are blackholed and refresh the slice
@@ -54,7 +54,7 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 
 		if blackholed {
 			leaky.logger.Tracef("Event is blackholed (%s)", leaky.First_ts)
-			return types.RuntimeAlert{
+			return pipeline.RuntimeAlert{
 				Mapkey: leaky.Mapkey,
 			}, nil
 		}

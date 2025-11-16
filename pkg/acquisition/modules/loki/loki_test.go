@@ -21,11 +21,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfiguration(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		config       string
@@ -139,7 +141,7 @@ query: >
 source: loki
 no_ready_check: 37
 `,
-			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field LokiConfiguration.NoReadyCheck of type bool",
+			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field Configuration.NoReadyCheck of type bool",
 			testName:    "type mismatch",
 		},
 	}
@@ -147,8 +149,8 @@ no_ready_check: 37
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			lokiSource := loki.Source{}
+			err := lokiSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -177,6 +179,8 @@ no_ready_check: 37
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name         string
@@ -248,8 +252,8 @@ func TestConfigureDSN(t *testing.T) {
 
 			t.Logf("Test : %s", test.name)
 
-			lokiSource := &loki.LokiSource{}
-			err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			lokiSource := &loki.Source{}
+			err := lokiSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			noDuration, _ := time.ParseDuration("0s")
@@ -370,9 +374,9 @@ since: 1h
 		t.Run(ts.config, func(t *testing.T) {
 			logger := log.New()
 			subLogger := logger.WithField("type", "loki")
-			lokiSource := loki.LokiSource{}
+			lokiSource := loki.Source{}
 
-			if err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
+			if err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
@@ -380,7 +384,7 @@ since: 1h
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			read := 0
 
 			go func() {
@@ -455,11 +459,11 @@ query: >
 				"name": ts.name,
 			})
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			lokiTomb := tomb.Tomb{}
-			lokiSource := loki.LokiSource{}
+			lokiSource := loki.Source{}
 
-			err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -533,14 +537,14 @@ query: >
 	logger := log.New()
 	subLogger := logger.WithField("type", "loki")
 	title := time.Now().String()
-	lokiSource := loki.LokiSource{}
+	lokiSource := loki.Source{}
 
-	err := lokiSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	err := lokiSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 
 	lokiTomb := &tomb.Tomb{}
 

@@ -5,20 +5,20 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Trigger struct {
 	DumbProcessor
 }
 
-func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
+func (*Trigger) OnBucketPour(b *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
 	// Pour makes the bucket overflow all the time
 	// TriggerPour unconditionally overflows
-	return func(msg types.Event, l *Leaky) *types.Event {
+	return func(msg pipeline.Event, l *Leaky) *pipeline.Event {
 		now := time.Now().UTC()
 
-		if l.Mode == types.TIMEMACHINE {
+		if l.Mode == pipeline.TIMEMACHINE {
 			var d time.Time
 
 			err := d.UnmarshalText([]byte(msg.MarshaledTime))

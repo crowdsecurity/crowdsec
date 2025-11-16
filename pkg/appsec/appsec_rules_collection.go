@@ -13,7 +13,6 @@ import (
 )
 
 type AppsecCollection struct {
-	collectionName string
 	Rules          []string
 	NativeRules    []string
 }
@@ -70,31 +69,43 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			continue
 		}
 
-		appsecCol := AppsecCollection{
-			collectionName: appsecRule.Name,
-		}
+		appsecCol := AppsecCollection{}
 
 		if appsecRule.SecLangFilesRules != nil {
 			for _, rulesFile := range appsecRule.SecLangFilesRules {
 				logger.Debugf("Adding rules from %s", rulesFile)
-				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
+				globPattern := filepath.Join(hub.GetDataDir(), rulesFile)
 
-				c, err := os.ReadFile(fullPath)
+				matches, err := filepath.Glob(globPattern)
+
 				if err != nil {
-					logger.Errorf("unable to read file %s : %s", rulesFile, err)
+					logger.Errorf("unable to glob %s : %s", rulesFile, err)
 					continue
 				}
 
-				for line := range strings.SplitSeq(string(c), "\n") {
-					if strings.HasPrefix(line, "#") {
+				if len(matches) == 0 {
+					logger.Warnf("no file matched pattern %s", globPattern)
+					continue
+				}
+
+				for _, fullPath := range matches {
+					c, err := os.ReadFile(fullPath)
+					if err != nil {
+						logger.Errorf("unable to read file %s : %s", rulesFile, err)
 						continue
 					}
 
-					if strings.TrimSpace(line) == "" {
-						continue
-					}
+					for line := range strings.SplitSeq(string(c), "\n") {
+						if strings.HasPrefix(line, "#") {
+							continue
+						}
 
-					appsecCol.NativeRules = append(appsecCol.NativeRules, line)
+						if strings.TrimSpace(line) == "" {
+							continue
+						}
+
+						appsecCol.NativeRules = append(appsecCol.NativeRules, line)
+					}
 				}
 			}
 		}

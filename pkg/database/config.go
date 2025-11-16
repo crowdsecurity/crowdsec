@@ -28,17 +28,15 @@ func (c *Client) GetConfigItem(ctx context.Context, key string) (string, error) 
 }
 
 func (c *Client) SetConfigItem(ctx context.Context, key string, value string) error {
-	nbUpdated, err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Save(ctx)
-
-	switch {
-	case ent.IsNotFound(err) || nbUpdated == 0:
-		// not found, create
-		err := c.Ent.ConfigItem.Create().SetName(key).SetValue(value).Exec(ctx)
-		if err != nil {
-			return errors.Wrapf(QueryFail, "insert config item: %s", err)
-		}
-	case err != nil:
-		return errors.Wrapf(QueryFail, "update config item: %s", err)
+	err := c.Ent.ConfigItem.
+		Create().
+		SetName(key).
+		SetValue(value).
+		OnConflictColumns(configitem.FieldName).
+		UpdateNewValues().
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("insert/update config item: %w", err)
 	}
 
 	return nil

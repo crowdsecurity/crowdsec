@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -34,6 +34,8 @@ const (
 )
 
 func TestConfigure(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -178,20 +180,20 @@ custom_status_code: 999`,
 	})
 
 	for _, test := range tests {
-		h := HTTPSource{}
-		err := h.Configure([]byte(test.config), subLogger, 0)
+		h := Source{}
+		err := h.Configure(ctx, []byte(test.config), subLogger, 0)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
 func TestGetUuid(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	h.Config.UniqueId = "test"
 	assert.Equal(t, "test", h.GetUuid())
 }
 
 func TestUnmarshalConfig(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	err := h.UnmarshalConfig([]byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -200,39 +202,27 @@ path: 15
 	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
 }
 
-func TestConfigureByDSN(t *testing.T) {
-	h := HTTPSource{}
-	err := h.ConfigureByDSN("http://localhost:8080/test", map[string]string{}, log.WithFields(log.Fields{
-		"type": "http",
-	}), "test")
-	cstest.AssertErrorMessage(
-		t,
-		err,
-		"http datasource does not support command-line acquisition",
-	)
-}
-
 func TestGetMode(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	h.Config.Mode = "test"
 	assert.Equal(t, "test", h.GetMode())
 }
 
 func TestGetName(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	assert.Equal(t, "http", h.GetName())
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *Source, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
 	})
-	err := h.Configure(config, subLogger, metricLevel)
+	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)
 	require.NoError(t, err)
 
@@ -246,7 +236,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 }
 
 func TestStreamingAcquisitionHTTPMethod(t *testing.T) {
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -295,7 +285,7 @@ basic_auth:
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {
 	ctx := t.Context()
 
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -322,7 +312,7 @@ basic_auth:
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -360,7 +350,7 @@ basic_auth:
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -389,7 +379,7 @@ headers:
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -419,7 +409,7 @@ max_body_size: 5`), 0)
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -457,7 +447,7 @@ headers:
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -502,7 +492,7 @@ func TestAcquistionSocket(t *testing.T) {
 	socketFile := filepath.Join(tempDir, "test.sock")
 
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_socket: `+socketFile+`
@@ -516,10 +506,11 @@ headers:
 	errChan := make(chan error)
 	go assertEvents(out, []string{rawEvt}, errChan)
 
+	dialer := &net.Dialer{}
 	client := &http.Client{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketFile)
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "unix", socketFile)
 			},
 		},
 	}
@@ -561,8 +552,8 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertEvents(out chan types.Event, expected []string, errChan chan error) {
-	readLines := []types.Event{}
+func assertEvents(out chan pipeline.Event, expected []string, errChan chan error) {
+	readLines := []pipeline.Event{}
 
 	for range expected {
 		select {
@@ -595,12 +586,13 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 			return
 		}
 	}
+
 	errChan <- nil
 }
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -638,7 +630,7 @@ timeout: 1s`), 0)
 func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
 	ctx := t.Context()
 
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -668,7 +660,7 @@ tls:
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -726,7 +718,7 @@ tls:
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -786,7 +778,7 @@ tls:
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -841,7 +833,7 @@ headers:
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -909,7 +901,7 @@ func assertMetrics(t *testing.T, reg *prometheus.Registry, metrics []prometheus.
 	}
 
 	if !isExist && expected > 0 {
-		t.Fatalf("expected metric cs_httpsource_hits_total not found")
+		t.Fatal("expected metric cs_httpsource_hits_total not found")
 	}
 
 	for _, metric := range metrics {

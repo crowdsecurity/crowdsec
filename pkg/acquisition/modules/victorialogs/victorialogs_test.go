@@ -16,17 +16,20 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfiguration(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		config       string
@@ -65,7 +68,7 @@ query: >
         {server="demo"}
 limit: true
 `,
-			expectedErr: "[7:8] cannot unmarshal bool into Go struct field VLConfiguration.Limit of type int",
+			expectedErr: "[7:8] cannot unmarshal bool into Go struct field Configuration.Limit of type int",
 			testName:    "mismatched type",
 		},
 		{
@@ -112,8 +115,8 @@ query: >
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			vlSource := victorialogs.VLSource{}
-			err := vlSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			vlSource := victorialogs.Source{}
+			err := vlSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			if test.password != "" {
@@ -134,6 +137,8 @@ query: >
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name         string
@@ -195,8 +200,8 @@ func TestConfigureDSN(t *testing.T) {
 
 		t.Logf("Test : %s", test.name)
 
-		vlSource := &victorialogs.VLSource{}
-		err := vlSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+		vlSource := &victorialogs.Source{}
+		err := vlSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 
 		noDuration, _ := time.ParseDuration("0s")
@@ -212,10 +217,10 @@ func TestConfigureDSN(t *testing.T) {
 		}
 
 		if test.scheme != "" {
-			url, _ := url.Parse(vlSource.Config.URL)
-			if test.scheme != url.Scheme {
-				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
-			}
+			url, err := url.Parse(vlSource.Config.URL)
+			require.NoError(t, err)
+			require.NotNil(t, url)
+			require.Equal(t, test.scheme, url.Scheme)
 		}
 
 		if test.waitForReady != 0 {
@@ -292,9 +297,9 @@ since: 1h
 	for _, ts := range tests {
 		logger := log.New()
 		subLogger := logger.WithField("type", "victorialogs")
-		vlSource := victorialogs.VLSource{}
+		vlSource := victorialogs.Source{}
 
-		err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -304,7 +309,7 @@ since: 1h
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		read := 0
 
 		go func() {
@@ -376,11 +381,11 @@ query: >
 				"name": ts.name,
 			})
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			vlTomb := tomb.Tomb{}
-			vlSource := victorialogs.VLSource{}
+			vlSource := victorialogs.Source{}
 
-			err := vlSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -452,14 +457,14 @@ query: >
 	logger := log.New()
 	subLogger := logger.WithField("type", "victorialogs")
 	title := time.Now().String()
-	vlSource := victorialogs.VLSource{}
+	vlSource := victorialogs.Source{}
 
-	err := vlSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	err := vlSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	out := make(chan types.Event, 10)
+	out := make(chan pipeline.Event, 10)
 
 	vlTomb := &tomb.Tomb{}
 

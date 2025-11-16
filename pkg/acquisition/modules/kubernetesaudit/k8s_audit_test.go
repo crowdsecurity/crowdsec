@@ -1,6 +1,7 @@
 package kubernetesauditacquisition
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -47,13 +48,13 @@ source: k8s-audit
 listen_addr: 0.0.0.0
 listen_port: true
 `,
-			expectedErr: `[4:14] cannot unmarshal bool into Go struct field KubernetesAuditConfiguration.ListenPort of type int`,
+			expectedErr: `[4:14] cannot unmarshal bool into Go struct field Configuration.ListenPort of type int`,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -82,16 +83,16 @@ webhook_path: /k8s-audit`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 
 			require.NoError(t, err)
 
-			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err = f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
 			err = f.StreamingAcquisition(ctx, out, tb)
@@ -109,7 +110,6 @@ func TestHandler(t *testing.T) {
 	ctx := t.Context()
 	tests := []struct {
 		name               string
-		config             string
 		expectedStatusCode int
 		body               string
 		method             string
@@ -117,10 +117,6 @@ func TestHandler(t *testing.T) {
 	}{
 		{
 			name: "valid_json",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			method:             "POST",
 			expectedStatusCode: 200,
 			body: `
@@ -216,10 +212,6 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_json",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			expectedStatusCode: 500,
 			body:               "invalid json",
 			method:             "POST",
@@ -227,10 +219,6 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_method",
-			config: `source: k8s-audit
-listen_addr: 127.0.0.1
-listen_port: 49234
-webhook_path: /k8s-audit`,
 			expectedStatusCode: 405,
 			method:             "GET",
 			eventCount:         0,
@@ -239,9 +227,9 @@ webhook_path: /k8s-audit`,
 
 	subLogger := log.WithField("type", "k8s-audit")
 
-	for _, test := range tests {
+	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 			eventCount := 0
 
@@ -256,11 +244,18 @@ webhook_path: /k8s-audit`,
 				}
 			})
 
-			f := KubernetesAuditSource{}
-			err := f.UnmarshalConfig([]byte(test.config))
-			require.NoError(t, err)
-			err = f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			f := Source{}
 
+			port := 49234+idx
+			config := fmt.Sprintf(`source: k8s-audit
+listen_addr: 127.0.0.1
+listen_port: %d
+webhook_path: /k8s-audit`, port)
+
+			err := f.UnmarshalConfig([]byte(config))
+			require.NoError(t, err)
+
+			err = f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))

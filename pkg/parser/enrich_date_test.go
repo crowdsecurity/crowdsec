@@ -8,33 +8,33 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestDateParse(t *testing.T) {
 	tests := []struct {
 		name        string
-		evt         types.Event
+		evt         pipeline.Event
 		expectedErr string
 		expected    string
 	}{
 		{
 			name: "RFC3339",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime: "2019-10-12T07:20:50.52Z",
 			},
 			expected: "2019-10-12T07:20:50.52Z",
 		},
 		{
 			name: "02/Jan/2006:15:04:05 -0700",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime: "02/Jan/2006:15:04:05 -0700",
 			},
 			expected: "2006-01-02T15:04:05-07:00",
 		},
 		{
 			name: "Dec 17 08:17:43",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime:       "2011 X 17 zz 08X17X43 oneone Dec",
 				StrTimeFormat: "2006 X 2 zz 15X04X05 oneone Jan",
 			},
@@ -42,7 +42,7 @@ func TestDateParse(t *testing.T) {
 		},
 		{
 			name: "ISO 8601, no timezone",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime:       "2024-11-26T20:13:32",
 				StrTimeFormat: "",
 			},
@@ -50,7 +50,7 @@ func TestDateParse(t *testing.T) {
 		},
 		{
 			name: "ISO 8601, no timezone, milliseconds",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime:       "2024-11-26T20:13:32.123",
 				StrTimeFormat: "",
 			},
@@ -58,7 +58,7 @@ func TestDateParse(t *testing.T) {
 		},
 		{
 			name: "ISO 8601, no timezone, microseconds",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime:       "2024-11-26T20:13:32.123456",
 				StrTimeFormat: "",
 			},
@@ -66,7 +66,7 @@ func TestDateParse(t *testing.T) {
 		},
 		{
 			name: "ISO 8601, no timezone, nanoseconds",
-			evt: types.Event{
+			evt: pipeline.Event{
 				StrTime:       "2024-11-26T20:13:32.123456789",
 				StrTimeFormat: "",
 			},

@@ -88,12 +88,13 @@ func LoginToTestAPI(t *testing.T, ctx context.Context, router *gin.Engine, confi
 	ValidateMachine(t, ctx, "test", config.API.Server.DbConfig)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	loginResp := models.WatcherAuthResponse{}
-	err := json.NewDecoder(w.Body).Decode(&loginResp)
+	err = json.NewDecoder(w.Body).Decode(&loginResp)
 	require.NoError(t, err)
 
 	return loginResp
@@ -432,7 +433,8 @@ func TestCreateAlertErrors(t *testing.T) {
 
 	// test invalid bearer
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/alerts", alertContent)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/alerts", alertContent)
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", "ratata"))
 	lapi.router.ServeHTTP(w, req)
@@ -440,7 +442,8 @@ func TestCreateAlertErrors(t *testing.T) {
 
 	// test invalid bearer
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/alerts", alertContent)
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/alerts", alertContent)
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", lapi.loginResp.Token+"s"))
 	lapi.router.ServeHTTP(w, req)
@@ -454,7 +457,8 @@ func TestDeleteAlert(t *testing.T) {
 
 	// Fail Delete Alert
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts", strings.NewReader(""))
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts", strings.NewReader(""))
+	require.NoError(t, err)
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.2:4242"
 	lapi.router.ServeHTTP(w, req)
@@ -463,7 +467,8 @@ func TestDeleteAlert(t *testing.T) {
 
 	// Delete Alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts", strings.NewReader(""))
+	req, err = http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts", strings.NewReader(""))
+	require.NoError(t, err)
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)
@@ -478,7 +483,8 @@ func TestDeleteAlertByID(t *testing.T) {
 
 	// Fail Delete Alert
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	require.NoError(t, err)
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.2:4242"
 	lapi.router.ServeHTTP(w, req)
@@ -487,7 +493,8 @@ func TestDeleteAlertByID(t *testing.T) {
 
 	// Delete Alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	req, err = http.NewRequestWithContext(ctx, http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	require.NoError(t, err)
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)

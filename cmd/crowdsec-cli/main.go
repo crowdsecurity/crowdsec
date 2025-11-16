@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
@@ -67,7 +66,7 @@ func newCliRoot() *cliRoot {
 
 // cfg() is a helper function to get the configuration loaded from config.yaml,
 // we pass it to subcommands because the file is not read until the Execute() call
-func (cli *cliRoot) cfg() *csconfig.Config {
+func (*cliRoot) cfg() *csconfig.Config {
 	return csConfig
 }
 
@@ -176,13 +175,13 @@ func (cli *cliRoot) initialize() error {
 	}
 
 	if csConfig.DbConfig != nil {
-		csConfig.DbConfig.LogLevel = ptr.Of(cli.wantedLogLevel())
+		csConfig.DbConfig.LogLevel = cli.wantedLogLevel()
 	}
 
 	return nil
 }
 
-func (cli *cliRoot) colorize(cmd *cobra.Command) {
+func (*cliRoot) colorize(cmd *cobra.Command) {
 	cc.Init(&cc.Config{
 		RootCmd:         cmd,
 		Headings:        cc.Yellow,

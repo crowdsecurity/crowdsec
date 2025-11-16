@@ -8,10 +8,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
+func runParse(input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
 	for {
 		select {
 		case <-parsersTomb.Dying():
@@ -24,7 +24,7 @@ func runParse(input chan types.Event, output chan types.Event, parserCTX parser.
 			/*Application security engine is going to generate 2 events:
 			- one that is treated as a log and can go to scenarios
 			- another one that will go directly to LAPI*/
-			if event.Type == types.APPSEC {
+			if event.Type == pipeline.APPSEC {
 				outputEventChan <- event
 				continue
 			}

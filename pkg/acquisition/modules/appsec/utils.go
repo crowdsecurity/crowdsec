@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -32,6 +34,18 @@ var excludedMatchCollections = []string{
 	"REQBODY_PROCESSOR", // Matched when enabling the body processor
 	"UNKNOWN",           // Matched by the anomaly score rule
 	"TX",                // Score has been exceeded
+}
+
+var CRSAnomalyScores = []string{
+	"sql_injection_score",
+	"xss_score",
+	"rfi_score",
+	"lfi_score",
+	"rce_score",
+	"php_injection_score",
+	"http_violation_score",
+	"session_fixation_score",
+	"anomaly_score",
 }
 
 func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
@@ -79,22 +93,22 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	case hasOutBandMatches:
 		msg += "out-of-band: "
 	}
-	for _, var_name := range appsec.CRSAnomalyScores {
-		if val, ok := vars[var_name]; ok && val != "0" {
-			msg += fmt.Sprintf("%s: %s, ", strings.Replace(strings.Replace(var_name, "TX.", "", 1), "_score", "", 1), val)
+	for _, var_name := range CRSAnomalyScores {
+		if val, ok := vars["TX."+var_name]; ok && val != "0" {
+			msg += fmt.Sprintf("%s: %s, ", strings.Replace(var_name, "_score", "", 1), val)
 		}
 	}
 	return msg
 }
 
-func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Event, error) {
+func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeline.Event, error) {
 	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
 	}
 
-	evt := types.Event{}
-	evt.Type = types.APPSEC
+	evt := pipeline.Event{}
+	evt.Type = pipeline.APPSEC
 	evt.Process = true
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
@@ -153,6 +167,11 @@ func AppsecEventGeneration(inEvt types.Event, request *http.Request) (*types.Eve
 				Value: logdata,
 			})
 		}
+
+		meta = append(meta, &models.MetaItems0{
+			Key:   "target_fqdn",
+			Value: request.Host,
+		})
 
 		event.Meta = meta
 		event.Timestamp = &now
@@ -256,8 +275,8 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 	return true
 }
 
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.Event, error) {
-	evt := types.MakeEvent(false, types.LOG, true)
+func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
+	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
 	// def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
@@ -265,7 +284,7 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		"target_host":         r.Host,
 		"target_uri":          r.URI,
 		"method":              r.Method,
-		"req_uuid":            r.Tx.ID(),
+		"req_uuid":            txUuid,
 		"source":              "crowdsec-appsec",
 		"remediation_cmpt_ip": r.RemoteAddrNormalized,
 		// TBD:
@@ -273,7 +292,7 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		// user_agent
 
 	}
-	evt.Line = types.Line{
+	evt.Line = pipeline.Line{
 		Time: time.Now(),
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
@@ -282,12 +301,12 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 		Src:     "appsec",
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
-	evt.Appsec = types.AppsecEvent{}
+	evt.Appsec = pipeline.AppsecEvent{}
 
 	return evt, nil
 }
 
-func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
+func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 	req := evt.Parsed["target_uri"]
 	if len(req) > 12 {
 		req = req[:10] + ".."
@@ -314,15 +333,14 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 	}
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest) error {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
 	if evt == nil {
-		// an error was already emitted, let's not spam the logs
-		return nil
+		return
 	}
 
-	if !req.Tx.IsInterrupted() {
+	if !state.Tx.IsInterrupted() {
 		// if the phase didn't generate an interruption, we don't have anything to add to the event
-		return nil
+		return
 	}
 	// if one interruption was generated, event is good for processing :)
 	evt.Process = true
@@ -335,54 +353,66 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Parsed = map[string]string{}
 	}
 
-	if req.IsInBand {
+	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
-		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
+		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
 		evt.Parsed["inband_interrupted"] = "true"
-		evt.Parsed["inband_action"] = req.Tx.Interruption().Action
+		evt.Parsed["inband_action"] = state.Tx.Interruption().Action
 	} else {
 		evt.Parsed["outofband_interrupted"] = "true"
-		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
+		evt.Parsed["outofband_action"] = state.Tx.Interruption().Action
 	}
 
 	if evt.Appsec.Vars == nil {
 		evt.Appsec.Vars = map[string]string{}
 	}
 
-	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
-		for _, variable := range col.FindAll() {
-			r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
-			key := variable.Variable().Name()
-			if variable.Key() != "" {
-				key += "." + variable.Key()
-			}
+	txCollection := state.Tx.Variables().TX()
 
-			if variable.Value() == "" {
-				continue
-			}
+	txMatchedData := txCollection.FindAll()
 
-			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
-				match := collectionToKeep.MatchString(key)
-				if match {
-					evt.Appsec.Vars[key] = variable.Value()
-					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
-				} else {
-					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+	for _, match := range txMatchedData {
+		if slices.Contains(CRSAnomalyScores, match.Key()) {
+			evt.Appsec.Vars["TX."+match.Key()] = match.Value()
+		}
+	}
+
+	if len(r.AppsecRuntime.CompiledVariablesTracking) > 0 {
+		state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+			for _, variable := range col.FindAll() {
+				r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
+				key := variable.Variable().Name()
+				if variable.Key() != "" {
+					key += "." + variable.Key()
+				}
+
+				if variable.Value() == "" {
+					continue
+				}
+
+				for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
+					match := collectionToKeep.MatchString(key)
+					if match {
+						evt.Appsec.Vars[key] = variable.Value()
+						r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+					} else {
+						r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+					}
 				}
 			}
-		}
 
-		return true
-	})
+			return true
+		})
+	}
 
-	for _, rule := range req.Tx.MatchedRules() {
+	for _, rule := range state.Tx.MatchedRules() {
 		// Drop the rule if it has no message (it's likely a CRS setup rule)
 		if rule.Message() == "" {
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
 		kind := "outofband"
-		if req.IsInBand {
+		if state.CurrentPhase == appsec.PhaseInBand {
 			kind = "inband"
 			evt.Appsec.HasInBandMatches = true
 		} else {
@@ -455,6 +485,4 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}
-
-	return nil
 }

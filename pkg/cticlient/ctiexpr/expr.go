@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 var (
@@ -29,7 +29,7 @@ var (
 
 var ctiClient *cticlient.CrowdsecCTIClient
 
-func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.Level) error {
+func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel log.Level) error {
 	if key == nil || *key == "" {
 		log.Warningf("CTI API key not set or empty, CTI will not be available")
 		return cticlient.ErrDisabled
@@ -48,8 +48,8 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel *log.L
 	}
 
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, logLevel); err != nil {
-		return fmt.Errorf("while configuring datasource logger: %w", err)
+	if err := logging.ConfigureLogger(clog, logLevel); err != nil {
+		return fmt.Errorf("while configuring logger: %w", err)
 	}
 
 	subLogger := clog.WithField("type", "crowdsec-cti")

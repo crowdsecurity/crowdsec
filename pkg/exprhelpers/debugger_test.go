@@ -11,7 +11,7 @@ import (
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type ExprDbgTest struct {
@@ -60,8 +60,8 @@ type teststruct struct {
 // You need to add the tag expr_debug when running the tests
 func TestBaseDbg(t *testing.T) {
 	defaultEnv := map[string]interface{}{
-		"queue":        &types.Queue{},
-		"evt":          &types.Event{},
+		"queue":        &pipeline.Queue{},
+		"evt":          &pipeline.Event{},
 		"sample_array": []string{"a", "b", "c", "ZZ"},
 		"base_string":  "hello world",
 		"base_int":     42,

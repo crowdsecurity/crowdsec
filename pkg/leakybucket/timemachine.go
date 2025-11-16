@@ -5,10 +5,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TimeMachinePour(l *Leaky, msg types.Event) {
+func TimeMachinePour(l *Leaky, msg pipeline.Event) {
 	var (
 		d   time.Time
 		err error
@@ -51,6 +51,6 @@ func NewTimeMachine(g BucketFactory) *Leaky {
 	l := NewLeaky(g)
 	g.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
-	l.Mode = types.TIMEMACHINE
+	l.Mode = pipeline.TIMEMACHINE
 	return l
 }

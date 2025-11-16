@@ -8,15 +8,11 @@ import (
 	"os"
 
 	entsql "entgo.io/ent/dialect/sql"
-	// load database backends
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v4/stdlib"
-	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type Client struct {
@@ -52,7 +48,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	}
 	/*The logger that will be used by db operations*/
 	clog := log.New()
-	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
+	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
 		return nil, fmt.Errorf("while configuring db logger: %w", err)
 	}
 
@@ -86,6 +82,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate DB connection string: %w", err)
 	}
+
 	drv, err := getEntDriver(typ, dia, dbConnectionString, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening connection to %s: %w", config.Type, err)
@@ -93,7 +90,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 
 	client = ent.NewClient(ent.Driver(drv), entOpt)
 
-	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {
+	if config.LogLevel >= log.DebugLevel {
 		clog.Debugf("Enabling request debug")
 
 		client = client.Debug()
