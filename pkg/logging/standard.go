@@ -3,64 +3,49 @@ package logging
 import (
 	"cmp"
 	"fmt"
-	"path/filepath"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/sirupsen/logrus"
 )
 
-const (
-	defMaxSize  = 500 // megabytes
-	defMaxFiles = 3
-	defMaxAge   = 28  // days
-	defCompress = true
-	defLogLevel = log.InfoLevel
-)
+const defLogLevel = logrus.InfoLevel
 
 // SetupStandardLogger configures the global logger according to the
 // provided configuration. It applies the output destination, log format,
 // rotation policy, and log level used by all components that rely on the
-// default logrus instance (`log.StandardLogger()`).
-func SetupStandardLogger(cfg csconfig.LogConfig, level log.Level, forceColors bool) error {
-	var logFormatter log.Formatter
+// default logrus instance (`logrus.StandardLogger()`).
+func SetupStandardLogger(cfg LogConfig, level logrus.Level, forceColors bool) error {
+	var logFormatter logrus.Formatter
 
-	switch cfg.LogFormat {
+	switch cfg.GetMedia() {
+	case "file":
+		logrus.SetOutput(cfg.NewRotatingLogger())
+	case "syslog":
+		if err := setupSyslogDefault(); err != nil {
+			return err
+		}
+	case "stdout":
+		// noop
+	default:
+		return fmt.Errorf("unknown log_mode %q", cfg.GetMedia())
+	}
+
+	logrus.SetLevel(cmp.Or(level, defLogLevel))
+
+	switch cfg.GetFormat() {
 	case "text", "":
-		logFormatter = &log.TextFormatter{
+		logFormatter = &logrus.TextFormatter{
 			TimestampFormat: time.RFC3339,
 			FullTimestamp:   true,
 			ForceColors:     forceColors,
 		}
 	case "json":
-		logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
+		logFormatter = &logrus.JSONFormatter{TimestampFormat: time.RFC3339}
 	default:
-		return fmt.Errorf("unknown log_format '%s'", cfg.LogFormat)
+		return fmt.Errorf("unknown log_format %q", cfg.GetFormat())
 	}
 
-	if cfg.LogMedia == "file" {
-		logOutput := &lumberjack.Logger{
-			Filename:   filepath.Join(cfg.LogDir, "crowdsec.log"),
-			MaxSize:    cmp.Or(cfg.LogMaxSize, defMaxSize),
-			MaxBackups: cmp.Or(cfg.LogMaxFiles, defMaxFiles),
-			MaxAge:     cmp.Or(cfg.LogMaxAge, defMaxAge),
-			Compress:   *cmp.Or(cfg.CompressLogs, ptr.Of(defCompress)),
-		}
-		log.SetOutput(logOutput)
-	} else if cfg.LogMedia == "syslog" {
-		if err := setupSyslogDefault(); err != nil {
-			return err
-		}
-	} else if cfg.LogMedia != "stdout" {
-		return fmt.Errorf("log mode %q unknown", cfg.LogMedia)
-	}
-
-	log.SetLevel(cmp.Or(level, defLogLevel))
-	log.SetFormatter(logFormatter)
+	logrus.SetFormatter(logFormatter)
 
 	return nil
 }

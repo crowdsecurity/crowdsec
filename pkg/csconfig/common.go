@@ -4,18 +4,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// LogConfig contains common fields used to create the default logger, or a service logger when the
-// clone/sublogger pattern is not enough, for example access logger to use a different file name.
-type LogConfig struct {
-	LogMedia       string    `yaml:"log_media"`
-	LogDir         string    `yaml:"log_dir,omitempty"` // if LogMedia = file
-	CompressLogs   *bool     `yaml:"compress_logs,omitempty"`
-	LogMaxSize     int       `yaml:"log_max_size,omitempty"`
-	LogFormat      string    `yaml:"log_format,omitempty"`
-	LogMaxAge      int       `yaml:"log_max_age,omitempty"`
-	LogMaxFiles    int       `yaml:"log_max_files,omitempty"`
-}
-
 /*daemonization/service related stuff*/
 type CommonCfg struct {
 	Daemonize      string    // TODO: This is just for backward compat. Remove this later
