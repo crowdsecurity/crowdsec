@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -142,7 +143,8 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(ctx, config.API.Server)
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger)
 	require.NoError(t, err)
 
 	log.Info("Creating new API server")
@@ -169,7 +171,8 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(ctx, config.API.Server)
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger)
 	require.NoError(t, err)
 
 	err = apiServer.InitController()
@@ -317,7 +320,9 @@ func TestWithWrongDBConfig(t *testing.T) {
 	ctx := t.Context()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
-	apiServer, err := NewServer(ctx, config.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger)
 
 	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
 	assert.Nil(t, apiServer)
@@ -328,7 +333,9 @@ func TestWithWrongFlushConfig(t *testing.T) {
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
-	apiServer, err := NewServer(ctx, config.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger)
 
 	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
 	assert.Nil(t, apiServer)

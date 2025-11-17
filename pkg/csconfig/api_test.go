@@ -180,7 +180,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					CommonLogConfig: CommonLogConfig{
+					LogConfig: LogConfig{
 						LogDir:   "./testdata",
 						LogMedia: "stdout",
 					},
@@ -206,8 +206,6 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareContext:          ptr.Of(false),
 					ConsoleManagement:     ptr.Of(false),
 				},
-				LogDir:   "./testdata",
-				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 					Credentials: &ApiCredentialsCfg{
@@ -244,7 +242,7 @@ func TestLoadAPIServer(t *testing.T) {
 					},
 				},
 				Common: &CommonCfg{
-					CommonLogConfig: CommonLogConfig{
+					LogConfig: LogConfig{
 						LogDir:   "./testdata/",
 						LogMedia: "stdout",
 					},

@@ -12,23 +12,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const accessLogFilename = "crowdsec_api.log"
-
 // CreateAccessLogger builds and returns a logger configured for HTTP access
-// logging using the fields from LocalApiServerCfg. These fields are derived
-// from CommonCfg, except for LogLevel which is specific to the API server.
+// logging using the provided log configuration, level and filename (only for media="file").
 //
 // If log_media is "file", the access log is written to a fixed filename
 // "crowdsec_api.log" inside LogDir. For "stdout" or "syslog", the access
 // logger uses the same output destination as the standard logger.
-func CreateAccessLogger(cfg *csconfig.LocalApiServerCfg) (*logrus.Logger, error) {
-	clog := CloneLogger(logrus.StandardLogger(), cfg.LogLevel)
+func CreateAccessLogger(cfg csconfig.LogConfig, level logrus.Level, filename string) *logrus.Logger {
+	clog := CloneLogger(logrus.StandardLogger(), level)
 
 	if cfg.LogMedia != "file" {
-		return clog, nil
+		return clog
 	}
 
-	logFile := filepath.Join(cfg.LogDir, accessLogFilename)
+	logFile := filepath.Join(cfg.LogDir, filename)
 	logrus.Debugf("starting router, logging to %s", logFile)
 
 	logger := &lumberjack.Logger{
@@ -41,5 +38,5 @@ func CreateAccessLogger(cfg *csconfig.LocalApiServerCfg) (*logrus.Logger, error)
 
 	clog.SetOutput(logger)
 
-	return clog, nil
+	return clog
 }

@@ -108,9 +108,9 @@ func GetConfig() Config {
 
 func NewDefaultConfig() *Config {
 	commonCfg := CommonCfg{
-		CommonLogConfig: CommonLogConfig{
+		LogLevel: log.InfoLevel,
+		LogConfig: LogConfig{
 			LogMedia: "stdout",
-			LogLevel: log.InfoLevel,
 		},
 	}
 	prometheus := PrometheusCfg{

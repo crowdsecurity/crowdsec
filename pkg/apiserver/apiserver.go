@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -113,7 +114,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Logger) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
 	dbClient, err := database.NewClient(ctx, config.DbConfig)
@@ -151,14 +152,8 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		router.ForwardedByClientIP = true
 	}
 
-	// The logger that will be used by handlers
-	clog, err := logging.CreateAccessLogger(config)
-	if err != nil {
-		return nil, err
-	}
-
-	gin.DefaultErrorWriter = clog.WriterLevel(log.ErrorLevel)
-	gin.DefaultWriter = clog.Writer()
+	gin.DefaultErrorWriter = accessLogger.WriterLevel(log.ErrorLevel)
+	gin.DefaultWriter = accessLogger.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
@@ -183,7 +178,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		DBClient:                      dbClient,
 		Router:                        router,
 		Profiles:                      config.Profiles,
-		Log:                           clog,
+		Log:                           accessLogger,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
@@ -212,7 +207,9 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		if apiClient.apiClient.IsEnrolled() {
 			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, config.PapiLogLevel)
+			logLevel := cmp.Or(config.PapiLogLevel, config.LogLevel)
+			papiLogger := logging.CloneLogger(log.StandardLogger(), logLevel)
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, papiLogger)
 			if err != nil {
 				return nil, err
 			}

@@ -26,7 +26,7 @@ const (
 // provided configuration. It applies the output destination, log format,
 // rotation policy, and log level used by all components that rely on the
 // default logrus instance (`log.StandardLogger()`).
-func SetupStandardLogger(cfg csconfig.CommonLogConfig) error {
+func SetupStandardLogger(cfg csconfig.LogConfig, level log.Level, forceColors bool) error {
 	var logFormatter log.Formatter
 
 	switch cfg.LogFormat {
@@ -34,7 +34,7 @@ func SetupStandardLogger(cfg csconfig.CommonLogConfig) error {
 		logFormatter = &log.TextFormatter{
 			TimestampFormat: time.RFC3339,
 			FullTimestamp:   true,
-			ForceColors:     cfg.ForceColorLogs,
+			ForceColors:     forceColors,
 		}
 	case "json":
 		logFormatter = &log.JSONFormatter{TimestampFormat: time.RFC3339}
@@ -59,7 +59,7 @@ func SetupStandardLogger(cfg csconfig.CommonLogConfig) error {
 		return fmt.Errorf("log mode %q unknown", cfg.LogMedia)
 	}
 
-	log.SetLevel(cmp.Or(cfg.LogLevel, defLogLevel))
+	log.SetLevel(cmp.Or(level, defLogLevel))
 	log.SetFormatter(logFormatter)
 
 	return nil

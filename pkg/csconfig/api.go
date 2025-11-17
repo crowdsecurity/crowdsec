@@ -225,8 +225,6 @@ type LocalApiServerCfg struct {
 	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
 	TLS                           *TLSCfg                  `yaml:"tls"`
 	DbConfig                      *DatabaseCfg             `yaml:"-"`
-	LogDir                        string                   `yaml:"-"`
-	LogMedia                      string                   `yaml:"-"`
 	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
 	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
 	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
@@ -235,11 +233,6 @@ type LocalApiServerCfg struct {
 	LogLevel                      log.Level                `yaml:"log_level"`
 	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
 	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool                    `yaml:"-"`
-	LogMaxSize                    int                      `yaml:"-"`
-	LogMaxAge                     int                      `yaml:"-"`
-	LogMaxFiles                   int                      `yaml:"-"`
-	LogFormat                     string                   `yaml:"-"`
 	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
 	PapiLogLevel                  log.Level                `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
@@ -338,12 +331,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	// intherit log level from api->server, otherwise zero (panic) is a meaningful value
-	// which means inherit from standard logger (common config or cli flags)
-	if c.API.Server.LogLevel != 0 {
-		c.API.Server.PapiLogLevel = c.API.Server.LogLevel
-	}
-
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return fmt.Errorf("loading online client credentials: %w", err)
@@ -388,15 +375,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
-
-	c.API.Server.LogDir = c.Common.LogDir
-	c.API.Server.LogMedia = c.Common.LogMedia
-	c.API.Server.CompressLogs = c.Common.CompressLogs
-	c.API.Server.LogMaxSize = c.Common.LogMaxSize
-	c.API.Server.LogMaxAge = c.Common.LogMaxAge
-	c.API.Server.LogFormat = c.Common.LogFormat
-	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
-	c.API.Server.LogLevel = c.Common.LogLevel
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
