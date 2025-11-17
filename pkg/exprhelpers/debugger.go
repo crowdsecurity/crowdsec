@@ -180,6 +180,7 @@ var opHandlers = map[string]opHandler{
 func opBegin(out OpOutput, _ *OpOutput, _ int, _ []string, _ *vm.VM, _ *vm.Program) *OpOutput {
 	out.CodeDepth += IndentStep
 	out.BlockStart = true
+
 	return &out
 }
 
@@ -340,9 +341,9 @@ func opIn(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program
 	stack := vm.Stack
 	out.Condition = true
 	out.ConditionIn = true
-	//seems that we tend to receive stack[1] as a map.
-	//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
-	//(because of the random order of the map)
+	// it seems that we tend to receive stack[1] as a map.
+	// it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+	// (because of the random order of the map)
 	out.Args = append(out.Args, autoQuote(stack[0]))
 	out.Args = append(out.Args, autoQuote(stack[1]))
 
@@ -350,13 +351,13 @@ func opIn(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program
 }
 
 func opContains(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.Program) *OpOutput {
-	// kind OpIn , but reverse
+	// kind of OpIn, but reverse
 	stack := vm.Stack
 	out.Condition = true
 	out.ConditionContains = true
-	//seems that we tend to receive stack[1] as a map.
-	//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
-	//(because of the random order of the map)
+	// it seems that we tend to receive stack[1] as a map.
+	// it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+	// (because of the random order of the map)
 	out.Args = append(out.Args, autoQuote(stack[0]))
 	out.Args = append(out.Args, autoQuote(stack[1]))
 

@@ -80,7 +80,7 @@ func CreateInstallLink(i *cwhub.Item) error {
 func (c *EnableCommand) Run(_ context.Context, plan *ActionPlan) error {
 	i := c.Item
 
-	fmt.Println("enabling " + colorizeItemName(i.FQName()))
+	fmt.Fprintln(os.Stdout, "enabling " + colorizeItemName(i.FQName()))
 
 	if !i.State.IsDownloaded() {
 		// XXX: this a warning?

@@ -53,7 +53,7 @@ func (c *PurgeCommand) Prepare(plan *ActionPlan) (bool, error) {
 func (c *PurgeCommand) Run(_ context.Context, _ *ActionPlan) error {
 	i := c.Item
 
-	fmt.Println("purging " + colorizeItemName(i.FQName()))
+	fmt.Fprintln(os.Stdout, "purging " + colorizeItemName(i.FQName()))
 
 	if err := os.Remove(i.State.DownloadPath); err != nil {
 		if os.IsNotExist(err) {

@@ -113,19 +113,24 @@ func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pip
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
-			log.Printf("%s", *event.Overflow.Alert.Message)
+
+			log.Info(*event.Overflow.Alert.Message)
+
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
 			if dumpStates && event.Overflow.Alert != nil {
 				if bucketOverflows == nil {
 					bucketOverflows = make([]pipeline.Event, 0)
 				}
+
 				bucketOverflows = append(bucketOverflows, event)
 			}
+
 			if event.Overflow.Whitelisted {
-				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
+				log.Infof("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
 				select {
