@@ -186,19 +186,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 
 		fmt.Printf("line: %s\n", rawstr)
 
-		skeys := make([]string, 0, len(t.state[tstamp]))
-
-		for k := range t.state[tstamp] {
-			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
-			if k == "buckets" {
-				continue
-			}
-
-			skeys = append(skeys, k)
-		}
-
-		sort.Strings(skeys)
+		skeys := sortedStages(t.state[tstamp])
 
 		// iterate stage
 		var prevItem pipeline.Event
@@ -300,49 +288,72 @@ func (t *tree) displayResults(opts DumpOpts) {
 			}
 		}
 
-		sep := "└"
-
-		if len(t.state[tstamp]["buckets"]) > 0 {
-			sep = "├"
-		}
-
-		// did the event enter the bucket pour phase ?
-		if _, ok := t.state[tstamp]["buckets"]["OK"]; ok {
-			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
-		} else if whitelistReason != "" {
-			fmt.Printf("\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
-		} else {
-			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
-		}
-
-		// now print bucket info
-		if len(t.state[tstamp]["buckets"]) > 0 {
-			fmt.Print("\t├ Scenarios\n")
-		}
-
-		bnames := make([]string, 0, len(t.state[tstamp]["buckets"]))
-
-		for k := range t.state[tstamp]["buckets"] {
-			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
-			if k == "OK" {
-				continue
-			}
-
-			bnames = append(bnames, k)
-		}
-
-		sort.Strings(bnames)
-
-		for idx, bname := range bnames {
-			sep := "├"
-			if idx == len(bnames)-1 {
-				sep = "└"
-			}
-
-			fmt.Printf("\t\t%s %s %s\n", sep, emoji.GreenCircle, bname)
-		}
-
-		fmt.Println()
+		buckets := t.state[tstamp]["buckets"]
+		displayBucketSection(buckets, whitelistReason)
 	}
+}
+
+func sortedStages(state map[string]map[string]ParserResult) []string {
+    ret := make([]string, 0, len(state))
+
+    for k := range state {
+	// there is a trick: to know if an event successfully exit the parsers, we check if it reached the pour() phase
+	// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+        if k == "buckets" {
+            continue
+        }
+
+        ret = append(ret, k)
+    }
+
+    sort.Strings(ret)
+
+    return ret
+}
+
+func displayBucketSection(buckets map[string]ParserResult, whitelistReason string) {
+	sep := "└"
+
+	if len(buckets) > 0 {
+		sep = "├"
+	}
+
+	// did the event enter the bucket pour phase ?
+	if _, ok := buckets["OK"]; ok {
+		fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+	} else if whitelistReason != "" {
+		fmt.Printf("\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
+	} else {
+		fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
+	}
+
+	// now print bucket info
+	if len(buckets) > 0 {
+		fmt.Print("\t├ Scenarios\n")
+	}
+
+	bnames := make([]string, 0, len(buckets))
+
+	for k := range buckets {
+		// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+		// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+		if k == "OK" {
+			continue
+		}
+
+		bnames = append(bnames, k)
+	}
+
+	sort.Strings(bnames)
+
+	for idx, bname := range bnames {
+		sep := "├"
+		if idx == len(bnames)-1 {
+			sep = "└"
+		}
+
+		fmt.Printf("\t\t%s %s %s\n", sep, emoji.GreenCircle, bname)
+	}
+
+	fmt.Println()
 }
