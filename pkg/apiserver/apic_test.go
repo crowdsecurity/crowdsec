@@ -44,7 +44,7 @@ func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return dbClient

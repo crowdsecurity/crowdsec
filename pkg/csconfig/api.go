@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 var PAPIBaseURL = "https://papi.api.crowdsec.net/"
@@ -230,7 +233,7 @@ type LocalApiServerCfg struct {
 	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
 	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
 	Profiles                      []*ProfileCfg            `yaml:"-"`
-	LogLevel                      log.Level                `yaml:"log_level"`
+	LogLevel                      log.Level                `yaml:"log_level"` // 0 == Panic - default to common log level
 	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
 	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
 	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
@@ -240,6 +243,31 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+}
+
+// NewAccessLogger builds and returns a logger configured for HTTP access
+// logging using the provided log configuration.
+// If log_media is "file", the access log is written to the provided filename
+// inside LogDir. For "stdout" or "syslog", the access logger uses the same
+// output destination as the standard logger.
+func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Logger {
+	clog := logging.CloneLogger(log.StandardLogger(), c.LogLevel)
+
+	if cfg.GetMedia() != "file" {
+		return clog
+	}
+
+	logFile := filepath.Join(cfg.GetDir(), filename)
+	log.Debugf("starting router, logging to %s", logFile)
+
+	clog.SetOutput(cfg.NewRotatingLogger())
+
+	return clog
+}
+
+func (c *LocalApiServerCfg) NewPAPILogger() *log.Logger {
+	level := cmp.Or(c.PapiLogLevel, c.LogLevel)
+	return logging.CloneLogger(log.StandardLogger(), level)
 }
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {

@@ -117,7 +117,11 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Logger) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
-	dbClient, err := database.NewClient(ctx, config.DbConfig)
+	if accessLogger == nil {
+		accessLogger = log.StandardLogger()
+	}
+
+	dbClient, err := database.NewClient(ctx, config.DbConfig, config.DbConfig.NewLogger())
 	if err != nil {
 		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}

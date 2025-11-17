@@ -12,7 +12,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type Client struct {
@@ -40,16 +39,14 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	return drv, nil
 }
 
-func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, error) {
+func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.Logger) (*Client, error) {
 	var client *ent.Client
 
 	if config == nil {
 		return nil, errors.New("DB config is empty")
 	}
-	/*The logger that will be used by db operations*/
-	clog := logging.CloneLogger(log.StandardLogger(), config.LogLevel)
 
-	entLogger := clog.WithField("context", "ent")
+	entLogger := logger.WithField("context", "ent")
 	entOpt := ent.Log(entLogger.Debug)
 
 	typ, dia, err := config.ConnectionDialect()
@@ -88,7 +85,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	client = ent.NewClient(ent.Driver(drv), entOpt)
 
 	if config.LogLevel >= log.DebugLevel {
-		clog.Debugf("Enabling request debug")
+		logger.Debugf("Enabling request debug")
 
 		client = client.Debug()
 	}
@@ -99,7 +96,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 
 	return &Client{
 		Ent:              client,
-		Log:              clog,
+		Log:              logger,
 		CanFlush:         true,
 		Type:             config.Type,
 		WalMode:          config.UseWal,

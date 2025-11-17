@@ -188,7 +188,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config *csconfig.DatabaseCfg) {
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	err = dbClient.ValidateMachine(ctx, machineID)
@@ -198,7 +198,7 @@ func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
 	ctx := t.Context()
 
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	machines, err := dbClient.ListMachines(ctx)
@@ -216,7 +216,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 func GetBouncers(t *testing.T, config *csconfig.DatabaseCfg) []*ent.Bouncer {
 	ctx := t.Context()
 
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	bouncers, err := dbClient.ListBouncers(ctx)
@@ -304,7 +304,7 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 }
 
 func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) (string, *database.Client) {
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)

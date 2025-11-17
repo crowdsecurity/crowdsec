@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"time"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 const accessLogFilename = "crowdsec_api.log"
@@ -22,9 +20,7 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 		log.Info("push and pull to Central API disabled")
 	}
 
-	logConfig := cConfig.Common.LogConfig
-	logLevel := cmp.Or(cConfig.API.Server.LogLevel, cConfig.Common.LogLevel)
-	accessLogger := logging.CreateAccessLogger(logConfig, logLevel, accessLogFilename)
+	accessLogger := cConfig.API.Server.NewAccessLogger(cConfig.Common.LogConfig, accessLogFilename)
 
 	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server, accessLogger)
 	if err != nil {

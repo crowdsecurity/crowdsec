@@ -319,7 +319,8 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) 
 	lpMetricsTomb = tomb.Tomb{}
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
-		dbClient, err := database.NewClient(ctx, cConfig.API.Server.DbConfig)
+		dbCfg := cConfig.API.Server.DbConfig
+		dbClient, err := database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 		if err != nil {
 			return fmt.Errorf("failed to get database client: %w", err)
 		}
