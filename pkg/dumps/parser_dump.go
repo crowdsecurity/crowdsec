@@ -184,7 +184,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 			}
 		}
 
-		fmt.Printf("line: %s\n", rawstr)
+		fmt.Fprintf(os.Stdout, "line: %s\n", rawstr)
 
 		skeys := sortedStages(t.state[tstamp])
 
@@ -197,7 +197,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 			sep := "├"
 			presep := "|"
 
-			fmt.Printf("\t%s %s\n", sep, stage)
+			fmt.Fprintf(os.Stdout, "\t%s %s\n", sep, stage)
 
 			for idx, parser := range t.parserOrder[stage] {
 				res := parsers[parser].Success
@@ -277,13 +277,13 @@ func (t *tree) displayResults(opts DumpOpts) {
 				}
 
 				if res {
-					fmt.Printf("\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
+					fmt.Fprintf(os.Stdout, "\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
 
 					if opts.Details {
-						fmt.Print(detailsDisplay)
+						fmt.Fprint(os.Stdout, detailsDisplay)
 					}
 				} else if opts.ShowNotOkParsers {
-					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
+					fmt.Fprintf(os.Stdout, "\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
 				}
 			}
 		}
@@ -320,16 +320,16 @@ func displayBucketSection(buckets map[string]ParserResult, whitelistReason strin
 
 	// did the event enter the bucket pour phase ?
 	if _, ok := buckets["OK"]; ok {
-		fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+		fmt.Fprintf(os.Stdout, "\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
 	} else if whitelistReason != "" {
-		fmt.Printf("\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
+		fmt.Fprintf(os.Stdout, "\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
 	} else {
-		fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
+		fmt.Fprintf(os.Stdout, "\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 	}
 
 	// now print bucket info
 	if len(buckets) > 0 {
-		fmt.Print("\t├ Scenarios\n")
+		fmt.Fprint(os.Stdout, "\t├ Scenarios\n")
 	}
 
 	bnames := make([]string, 0, len(buckets))
@@ -352,8 +352,8 @@ func displayBucketSection(buckets map[string]ParserResult, whitelistReason strin
 			sep = "└"
 		}
 
-		fmt.Printf("\t\t%s %s %s\n", sep, emoji.GreenCircle, bname)
+		fmt.Fprintf(os.Stdout, "\t\t%s %s %s\n", sep, emoji.GreenCircle, bname)
 	}
 
-	fmt.Println()
+	fmt.Fprintln(os.Stdout)
 }
