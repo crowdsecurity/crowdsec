@@ -33,23 +33,26 @@ type CacheCfg struct {
 	TTL      time.Duration
 	Strategy string
 	LogLevel log.Level
-	Logger   *log.Entry
+	Logger   log.FieldLogger
 }
 
-func CacheInit(cfg CacheCfg) error {
+func (cfg CacheCfg) NewLogger() *log.Entry {
+	clog := logging.CloneLogger(log.StandardLogger(), cfg.LogLevel)
+	return clog.WithField("cache", cfg.Name)
+}
+
+func CacheInit(cfg CacheCfg, logger log.FieldLogger) error {
+	if logger == nil {
+		logger = log.StandardLogger()
+	}
+
+	cfg.Logger = logger
+
 	for _, name := range CacheNames {
 		if name == cfg.Name {
 			log.Infof("Cache %s already exists", cfg.Name)
 		}
 	}
-	// get a default logger
-	if cfg.LogLevel == log.PanicLevel {
-		cfg.LogLevel = log.InfoLevel
-	}
-
-	clog := logging.CloneLogger(log.StandardLogger(), cfg.LogLevel)
-
-	cfg.Logger = clog.WithField("cache", cfg.Name)
 
 	tmpCache := gcache.New(cfg.Size)
 
