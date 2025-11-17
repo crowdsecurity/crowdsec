@@ -363,7 +363,7 @@ func opContains(out OpOutput, _ *OpOutput, _ int, _ []string, vm *vm.VM, _ *vm.P
 	return &out
 }
 
-func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
+func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) []OpOutput {
 	IdxOut := len(outputs)
 	prevIdxOut := 0
 	currentDepth := 0
@@ -418,7 +418,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		}
 	}
 
-	return outputs, nil
+	return outputs
 }
 
 func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
@@ -475,8 +475,6 @@ func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, 
 
 	go func() {
 		// We must never return until the execution of the program is done
-		var err error
-
 		erp.Logger.Tracef("[START] ip 0")
 
 		ops := erp.ipSeek(0)
@@ -484,9 +482,7 @@ func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, 
 			log.Warningf("error while debugging expr: failed getting ops for ip 0")
 		}
 
-		if outputs, err = erp.ipDebug(0, vm, program, ops, outputs); err != nil {
-			log.Warningf("error while debugging expr: error while debugging at ip 0")
-		}
+		outputs = erp.ipDebug(0, vm, program, ops, outputs)
 
 		vm.Step()
 
@@ -497,9 +493,7 @@ func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, 
 				break
 			}
 
-			if outputs, err = erp.ipDebug(ip, vm, program, ops, outputs); err != nil {
-				log.Warningf("error while debugging expr: error while debugging at ip %d", ip)
-			}
+			outputs = erp.ipDebug(ip, vm, program, ops, outputs)
 
 			vm.Step()
 		}

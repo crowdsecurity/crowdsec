@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dedupAlerts(alerts []pipeline.RuntimeAlert) ([]*models.Alert, error) {
+func dedupAlerts(alerts []pipeline.RuntimeAlert) []*models.Alert {
 	var dedupCache []*models.Alert
 
 	for idx, alert := range alerts {
@@ -41,16 +41,13 @@ func dedupAlerts(alerts []pipeline.RuntimeAlert) ([]*models.Alert, error) {
 		log.Tracef("went from %d to %d alerts", len(alerts), len(dedupCache))
 	}
 
-	return dedupCache, nil
+	return dedupCache
 }
 
 func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *apiclient.ApiClient) error {
-	alertsToPush, err := dedupAlerts(alerts)
-	if err != nil {
-		return fmt.Errorf("failed to transform alerts for api: %w", err)
-	}
+	alertsToPush := dedupAlerts(alerts)
 
-	_, _, err = client.Alerts.Add(ctx, alertsToPush)
+	_, _, err := client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
 		return fmt.Errorf("failed sending alert to LAPI: %w", err)
 	}

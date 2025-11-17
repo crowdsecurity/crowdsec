@@ -77,7 +77,7 @@ func CreateInstallLink(i *cwhub.Item) error {
 	return nil
 }
 
-func (c *EnableCommand) Run(ctx context.Context, plan *ActionPlan) error {
+func (c *EnableCommand) Run(_ context.Context, plan *ActionPlan) error {
 	i := c.Item
 
 	fmt.Println("enabling " + colorizeItemName(i.FQName()))

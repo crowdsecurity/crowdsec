@@ -85,7 +85,7 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 	return true, nil
 }
 
-func (c *DisableCommand) Run(ctx context.Context, plan *ActionPlan) error {
+func (c *DisableCommand) Run(_ context.Context, plan *ActionPlan) error {
 	i := c.Item
 
 	fmt.Println("disabling " + colorizeItemName(i.FQName()))
