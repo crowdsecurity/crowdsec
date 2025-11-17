@@ -37,7 +37,7 @@ func authorizeRequest(r *http.Request, hc *Configuration) error {
 	}
 
 	if hc.AuthType == "headers" {
-		for key, value := range *hc.Headers {
+		for key, value := range hc.Headers {
 			if r.Header.Get(key) != value {
 				return errors.New("invalid headers")
 			}
@@ -169,7 +169,7 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 		}
 
 		if s.Config.CustomHeaders != nil {
-			for key, value := range *s.Config.CustomHeaders {
+			for key, value := range s.Config.CustomHeaders {
 				w.Header().Set(key, value)
 			}
 		}
