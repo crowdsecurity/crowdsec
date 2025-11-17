@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dedupAlerts(alerts []pipeline.RuntimeAlert) ([]*models.Alert, error) {
+func dedupAlerts(alerts []pipeline.RuntimeAlert) []*models.Alert {
 	var dedupCache []*models.Alert
 
 	for idx, alert := range alerts {
@@ -41,16 +41,13 @@ func dedupAlerts(alerts []pipeline.RuntimeAlert) ([]*models.Alert, error) {
 		log.Tracef("went from %d to %d alerts", len(alerts), len(dedupCache))
 	}
 
-	return dedupCache, nil
+	return dedupCache
 }
 
 func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *apiclient.ApiClient) error {
-	alertsToPush, err := dedupAlerts(alerts)
-	if err != nil {
-		return fmt.Errorf("failed to transform alerts for api: %w", err)
-	}
+	alertsToPush := dedupAlerts(alerts)
 
-	_, _, err = client.Alerts.Add(ctx, alertsToPush)
+	_, _, err := client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
 		return fmt.Errorf("failed sending alert to LAPI: %w", err)
 	}
@@ -116,19 +113,24 @@ func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pip
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
-			log.Printf("%s", *event.Overflow.Alert.Message)
+
+			log.Info(*event.Overflow.Alert.Message)
+
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
 			if dumpStates && event.Overflow.Alert != nil {
 				if bucketOverflows == nil {
 					bucketOverflows = make([]pipeline.Event, 0)
 				}
+
 				bucketOverflows = append(bucketOverflows, event)
 			}
+
 			if event.Overflow.Whitelisted {
-				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
+				log.Infof("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
 				select {
