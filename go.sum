@@ -445,10 +445,10 @@ github.com/mitchellh/reflectwalk v1.0.2 h1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zx
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
 github.com/moby/docker-image-spec v1.3.1 h1:jMKff3w6PgbfSa69GfNg+zN/XLhfXJGnEx3Nl2EsFP0=
 github.com/moby/docker-image-spec v1.3.1/go.mod h1:eKmb5VW8vQEh/BAr2yvVNvuiJuY6UIocYsFu/DxxRpo=
-github.com/moby/moby/api v1.52.1-0.20251110213138-d105562beff4 h1:KP1oBNJfTGx3iVEqEKBkzo/tJV4tZJ3co6ENPw+KtHc=
-github.com/moby/moby/api v1.52.1-0.20251110213138-d105562beff4/go.mod h1:8mb+ReTlisw4pS6BRzCMts5M49W5M7bKt1cJy/YbAqc=
-github.com/moby/moby/client v0.1.1-0.20251110213138-d105562beff4 h1:4R2cjYiG5FgEAQSFdw3dxkSZFCWXnOXbQNepMaSh07k=
-github.com/moby/moby/client v0.1.1-0.20251110213138-d105562beff4/go.mod h1:O+/tw5d4a1Ha/ZA/tPxIZJapJRUS6LNZ1wiVRxYHyUE=
+github.com/moby/moby/api v1.52.1-0.20251116162601-e9ff10bf365a h1:/97LpoYpSfeEBEYLuGUAsVeXRMpCk0DK83syOo9avgs=
+github.com/moby/moby/api v1.52.1-0.20251116162601-e9ff10bf365a/go.mod h1:8mb+ReTlisw4pS6BRzCMts5M49W5M7bKt1cJy/YbAqc=
+github.com/moby/moby/client v0.1.1-0.20251116162601-e9ff10bf365a h1:wWpHaCQpsJj8n2xXGuut03VTjlV3/w3I/IOJVtYomkA=
+github.com/moby/moby/client v0.1.1-0.20251116162601-e9ff10bf365a/go.mod h1:O+/tw5d4a1Ha/ZA/tPxIZJapJRUS6LNZ1wiVRxYHyUE=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=

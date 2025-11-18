@@ -583,7 +583,7 @@ func (*mockDockerCli) ContainerList(_ context.Context, _ client.ContainerListOpt
 	// Always return test container for the mock
 	result := client.ContainerListResult{}
 	result.Items = []dockerContainer.Summary{
-		dockerContainer.Summary{
+		{
 			ID:    "12456",
 			Names: []string{testContainerName},
 		},
