@@ -83,7 +83,7 @@ func TestIndexJSON(t *testing.T) {
 
 	// and by json we mean an object
 	hub, err = testHub(t, "[]")
-	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: json: cannot unmarshal array into Go value of type cwhub.HubItems")
+	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: json: cannot unmarshal array into Go value of type cwhub.HubItems. Run 'sudo cscli hub update' to download the index again")
 	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 }
