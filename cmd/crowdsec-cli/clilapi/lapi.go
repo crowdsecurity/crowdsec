@@ -29,6 +29,7 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 			if err := cli.cfg().LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
+
 			return nil
 		},
 	}
