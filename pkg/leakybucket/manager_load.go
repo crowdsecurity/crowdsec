@@ -20,7 +20,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -56,12 +59,12 @@ type BucketFactory struct {
 	Filename            string                 `yaml:"-"`
 	RunTimeFilter       *vm.Program            `json:"-"`
 	RunTimeGroupBy      *vm.Program            `json:"-"`
-	Data                []*types.DataSource    `yaml:"data,omitempty"`
+	Data                []*enrichment.DataProvider    `yaml:"data,omitempty"`
 	DataDir             string                 `yaml:"-"`
 	CancelOnFilter      string                 `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	leakspeed           time.Duration          // internal representation of `Leakspeed`
 	duration            time.Duration          // internal representation of `Duration`
-	ret                 chan types.Event       // the bucket-specific output chan for overflows
+	ret                 chan pipeline.Event       // the bucket-specific output chan for overflows
 	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	ScenarioVersion     string                 `yaml:"version,omitempty"`
 	hash                string
@@ -221,7 +224,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 		return errors.New("filter is mandatory for non-IP, non-Range scope")
 	}
 
-	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("error compiling the scope filter: %w", err)
 	}
@@ -231,7 +234,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -310,9 +313,9 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 	return factories, nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
-	response := make(chan types.Event, 1)
+	response := make(chan pipeline.Event, 1)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
@@ -340,7 +343,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
+		if err = logging.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
@@ -375,13 +378,13 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		return errors.New("bucket without filter directive")
 	}
 
-	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("invalid filter '%s' in %s: %w", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.GroupBy != "" {
-		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s: %w", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
@@ -409,7 +412,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid distinct '%s' in %s: %w", bucketFactory.Distinct, bucketFactory.Filename, err)
 		}
@@ -419,7 +422,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", bucketFactory.CancelOnFilter, bucketFactory.Filename, err)
 		}
@@ -453,7 +456,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
 		}

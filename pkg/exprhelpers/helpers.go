@@ -35,9 +35,9 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
@@ -137,7 +137,7 @@ func ResetDataFiles() {
 	dataFileRegexCache = make(map[string]gcache.Cache)
 }
 
-func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
+func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
 	// cache is explicitly disabled
 	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
 		return nil

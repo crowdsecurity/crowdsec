@@ -15,9 +15,11 @@ import (
 
 	"github.com/crowdsecurity/grokky"
 
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Node struct {
@@ -63,8 +65,8 @@ type Node struct {
 	Stashes []Stash `yaml:"stash,omitempty"`
 	RuntimeStashes []RuntimeStash `yaml:"-"`
 	// Whitelists
-	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
-	Data      []*types.DataSource `yaml:"data,omitempty"`
+	Whitelist Whitelist                  `yaml:"whitelist,omitempty"`
+	Data      []*enrichment.DataProvider `yaml:"data,omitempty"`
 }
 
 func (n *Node) validate(ectx EnricherCtx) error {
@@ -135,7 +137,7 @@ func (n *Node) processFilter(cachedExprEnv map[string]any) (bool, error) {
 	return true, nil
 }
 
-func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *types.Event) (bool, error) {
+func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *pipeline.Event) (bool, error) {
 	var exprErr error
 
 	isWhitelisted := n.CheckIPsWL(p)
@@ -152,7 +154,7 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *types.Event) (b
 		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
 		// huglily wipe the ban order if the event is whitelisted and it's an overflow
-		if p.Type == types.OVFLW { // don't do this at home kids
+		if p.Type == pipeline.OVFLW { // don't do this at home kids
 			ips := []string{}
 			for k := range p.Overflow.Sources {
 				ips = append(ips, k)
@@ -167,7 +169,7 @@ func (n *Node) processWhitelist(cachedExprEnv map[string]any, p *types.Event) (b
 	return isWhitelisted, nil
 }
 
-func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, bool, error) {
+func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (bool, bool, error) {
 	// Process grok if present, should be exclusive with nodes :)
 	var nodeHasOKGrok bool
 
@@ -244,7 +246,7 @@ func (n *Node) processGrok(p *types.Event, cachedExprEnv map[string]any) (bool, 
 	return true, nodeHasOKGrok, nil
 }
 
-func (n *Node) processStash(_ *types.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
+func (n *Node) processStash(_ *pipeline.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
 	for idx, stash := range n.RuntimeStashes {
 		stash.Apply(idx, cachedExprEnv, n.Logger, n.Debug)
 	}
@@ -253,7 +255,7 @@ func (n *Node) processStash(_ *types.Event, cachedExprEnv map[string]any, logger
 }
 
 func (n *Node) processLeaves(
-	p *types.Event,
+	p *pipeline.Event,
 	ctx UnixParserCtx,
 	cachedExprEnv map[string]any,
 	initialState bool,
@@ -293,7 +295,7 @@ func (n *Node) processLeaves(
 	return nodeState, nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]any) (bool, error) {
+func (n *Node) process(p *pipeline.Event, ctx UnixParserCtx, expressionEnv map[string]any) (bool, error) {
 	clog := n.Logger
 
 	cachedExprEnv := expressionEnv
@@ -412,7 +414,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	that will be used only for processing this node ;) */
 	if n.Debug {
 		clog := log.New()
-		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
+		if err = logging.ConfigureLogger(clog, log.DebugLevel); err != nil {
 			return fmt.Errorf("while creating bucket-specific logger: %w", err)
 		}
 
@@ -430,7 +432,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	// compile filter if present
 	if n.Filter != "" {
-		n.RunTimeFilter, err = expr.Compile(n.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		n.RunTimeFilter, err = expr.Compile(n.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("compilation of %q failed: %v", n.Filter, err)
 		}
@@ -526,7 +528,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return n.validate(ectx)
 }
 
-func (n *Node) bumpNodeMetric(counter *prometheus.CounterVec, p *types.Event) {
+func (n *Node) bumpNodeMetric(counter *prometheus.CounterVec, p *pipeline.Event) {
 	// better safe than sorry
 	acquisType := p.Line.Labels["type"]
 	if acquisType == "" {

@@ -9,71 +9,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3Manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-type S3API interface {
-	s3Manager.ListObjectsV2APIClient
-	s3Manager.DownloadAPIClient
-}
-
-type SQSAPI interface {
-	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
-	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-}
-
-type S3Configuration struct {
-	configuration.DataSourceCommonCfg `yaml:",inline"`
-	AwsProfile                        *string `yaml:"aws_profile"`
-	AwsRegion                         string  `yaml:"aws_region"`
-	AwsEndpoint                       string  `yaml:"aws_endpoint"`
-	BucketName                        string  `yaml:"bucket_name"`
-	Prefix                            string  `yaml:"prefix"`
-	Key                               string  `yaml:"-"` // Only for DSN acquisition
-	PollingMethod                     string  `yaml:"polling_method"`
-	PollingInterval                   int     `yaml:"polling_interval"`
-	SQSName                           string  `yaml:"sqs_name"`
-	SQSFormat                         string  `yaml:"sqs_format"`
-	MaxBufferSize                     int     `yaml:"max_buffer_size"`
-}
-
-type S3Source struct {
-	metricsLevel metrics.AcquisitionMetricsLevel
-	Config       S3Configuration
-	logger       *log.Entry
-	s3Client     S3API
-	sqsClient    SQSAPI
-	readerChan   chan S3Object
-	t            *tomb.Tomb
-	out          chan types.Event
-	ctx          context.Context
-	cancel       context.CancelFunc
-}
-
-type S3Object struct {
-	Key    string
-	Bucket string
-}
 
 // For some reason, the aws sdk doesn't have a struct for this
 // The one aws-lamdbda-go/events is only intended when using S3 Notification without event bridge
@@ -111,76 +62,12 @@ type SNSEvent struct {
 }
 
 const (
-	PollMethodList          = "list"
-	PollMethodSQS           = "sqs"
 	SQSFormatEventBridge    = "eventbridge"
 	SQSFormatS3Notification = "s3notification"
 	SQSFormatSNS            = "sns"
 )
 
-func (s *S3Source) newS3Client(ctx context.Context) (*s3.Client, error) {
-	var loadOpts []func(*config.LoadOptions) error
-	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
-		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
-	}
-
-	region := s.Config.AwsRegion
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	loadOpts = append(loadOpts, config.WithRegion(region))
-
-	if c := defaultCreds(); c != nil {
-		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
-	}
-
-	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load aws config: %w", err)
-	}
-
-	var clientOpts []func(*s3.Options)
-	if s.Config.AwsEndpoint != "" {
-		clientOpts = append(clientOpts, func(o *s3.Options) {
-			o.BaseEndpoint = aws.String(s.Config.AwsEndpoint)
-		})
-	}
-
-	return s3.NewFromConfig(cfg, clientOpts...), nil
-}
-
-func (s *S3Source) newSQSClient(ctx context.Context) (*sqs.Client, error) {
-	var loadOpts []func(*config.LoadOptions) error
-	if s.Config.AwsProfile != nil && *s.Config.AwsProfile != "" {
-		loadOpts = append(loadOpts, config.WithSharedConfigProfile(*s.Config.AwsProfile))
-	}
-
-	region := s.Config.AwsRegion
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	loadOpts = append(loadOpts, config.WithRegion(region))
-
-	if c := defaultCreds(); c != nil {
-		loadOpts = append(loadOpts, config.WithCredentialsProvider(c))
-	}
-
-	cfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load aws config: %w", err)
-	}
-
-	var clientOpts []func(*sqs.Options)
-	if s.Config.AwsEndpoint != "" {
-		clientOpts = append(clientOpts, func(o *sqs.Options) { o.BaseEndpoint = aws.String(s.Config.AwsEndpoint) })
-	}
-
-	return sqs.NewFromConfig(cfg, clientOpts...), nil
-}
-
-func (s *S3Source) readManager() {
+func (s *Source) readManager() {
 	logger := s.logger.WithField("method", "readManager")
 
 	for {
@@ -199,7 +86,7 @@ func (s *S3Source) readManager() {
 	}
 }
 
-func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
+func (s *Source) getBucketContent() ([]s3types.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content")
 
@@ -233,7 +120,7 @@ func (s *S3Source) getBucketContent() ([]s3types.Object, error) {
 	return bucketObjects, nil
 }
 
-func (s *S3Source) listPoll() error {
+func (s *Source) listPoll() error {
 	logger := s.logger.WithField("method", "listPoll")
 	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
 	lastObjectDate := time.Now()
@@ -331,7 +218,7 @@ func extractBucketAndPrefixFromSNSNotif(message *string) (string, string, error)
 	return extractBucketAndPrefixFromS3Notif(&snsBody.Message)
 }
 
-func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
+func (s *Source) extractBucketAndPrefix(message *string) (string, string, error) {
 	switch s.Config.SQSFormat {
 	case SQSFormatEventBridge:
 		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
@@ -374,7 +261,7 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 	}
 }
 
-func (s *S3Source) sqsPoll() error {
+func (s *Source) sqsPoll() error {
 	logger := s.logger.WithField("method", "sqsPoll")
 
 	for {
@@ -448,7 +335,7 @@ func (s *S3Source) sqsPoll() error {
 	}
 }
 
-func (s *S3Source) readFile(bucket string, key string) error {
+func (s *Source) readFile(bucket string, key string) error {
 	// TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 
@@ -509,7 +396,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 
-			l := types.Line{}
+			l := pipeline.Line{}
 			l.Raw = text
 			l.Labels = s.Config.Labels
 			l.Time = time.Now().UTC()
@@ -523,7 +410,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 				l.Src = bucket
 			}
 
-			evt := types.MakeEvent(s.Config.UseTimeMachine, types.LOG, true)
+			evt := pipeline.MakeEvent(s.Config.UseTimeMachine, pipeline.LOG, true)
 			evt.Line = l
 
 			// don't block in shutdown
@@ -547,205 +434,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	return nil
 }
 
-func (s *S3Source) GetUuid() string {
-	return s.Config.UniqueId
-}
-
-func (*S3Source) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
-}
-
-func (*S3Source) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.S3DataSourceLinesRead, metrics.S3DataSourceObjectsRead, metrics.S3DataSourceSQSMessagesReceived}
-}
-
-func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
-	s.Config = S3Configuration{}
-
-	err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict())
-	if err != nil {
-		return fmt.Errorf("cannot parse S3Acquisition configuration: %s", yaml.FormatError(err, false, false))
-	}
-
-	if s.Config.Mode == "" {
-		s.Config.Mode = configuration.TAIL_MODE
-	}
-
-	if s.Config.PollingMethod == "" {
-		s.Config.PollingMethod = PollMethodList
-	}
-
-	if s.Config.PollingInterval == 0 {
-		s.Config.PollingInterval = 60
-	}
-
-	if s.Config.MaxBufferSize == 0 {
-		s.Config.MaxBufferSize = bufio.MaxScanTokenSize
-	}
-
-	if s.Config.PollingMethod != PollMethodList && s.Config.PollingMethod != PollMethodSQS {
-		return fmt.Errorf("invalid polling method %s", s.Config.PollingMethod)
-	}
-
-	if s.Config.BucketName != "" && s.Config.SQSName != "" {
-		return errors.New("bucket_name and sqs_name are mutually exclusive")
-	}
-
-	if s.Config.PollingMethod == PollMethodSQS && s.Config.SQSName == "" {
-		return errors.New("sqs_name is required when using sqs polling method")
-	}
-
-	if s.Config.BucketName == "" && s.Config.PollingMethod == PollMethodList {
-		return errors.New("bucket_name is required")
-	}
-
-	if s.Config.SQSFormat != "" && s.Config.SQSFormat != SQSFormatEventBridge && s.Config.SQSFormat != SQSFormatS3Notification && s.Config.SQSFormat != SQSFormatSNS {
-		return fmt.Errorf("invalid sqs_format %s, must be empty, %s, %s or %s", s.Config.SQSFormat, SQSFormatEventBridge, SQSFormatS3Notification, SQSFormatSNS)
-	}
-
-	return nil
-}
-
-func (s *S3Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
-	err := s.UnmarshalConfig(yamlConfig)
-	if err != nil {
-		return err
-	}
-
-	if s.Config.SQSName != "" {
-		s.logger = logger.WithFields(log.Fields{
-			"queue": s.Config.SQSName,
-		})
-	} else {
-		s.logger = logger.WithFields(log.Fields{
-			"bucket": s.Config.BucketName,
-			"prefix": s.Config.Prefix,
-		})
-	}
-
-	if !s.Config.UseTimeMachine {
-		s.logger.Warning("use_time_machine is not set to true in the datasource configuration. This will likely lead to false positives as S3 logs are not processed in real time.")
-	}
-
-	if s.Config.PollingMethod == PollMethodList {
-		s.logger.Warning("Polling method is set to list. This is not recommended as it will not scale well. Consider using SQS instead.")
-	}
-
-	client, err := s.newS3Client(ctx)
-	if err != nil {
-		return err
-	}
-
-	s.s3Client = client
-
-	if s.Config.PollingMethod == PollMethodSQS {
-		sqsClient, err := s.newSQSClient(ctx)
-		if err != nil {
-			return err
-		}
-
-		s.sqsClient = sqsClient
-	}
-
-	return nil
-}
-
-func (s *S3Source) ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	if !strings.HasPrefix(dsn, "s3://") {
-		return fmt.Errorf("invalid DSN %s for S3 source, must start with s3://", dsn)
-	}
-
-	s.Config = S3Configuration{}
-	s.logger = logger.WithFields(log.Fields{
-		"bucket": s.Config.BucketName,
-		"prefix": s.Config.Prefix,
-	})
-
-	dsn = strings.TrimPrefix(dsn, "s3://")
-	args := strings.Split(dsn, "?")
-
-	if args[0] == "" {
-		return errors.New("empty s3:// DSN")
-	}
-
-	if len(args) == 2 && args[1] != "" {
-		params, err := url.ParseQuery(args[1])
-		if err != nil {
-			return fmt.Errorf("could not parse s3 args: %w", err)
-		}
-
-		for key, value := range params {
-			switch key {
-			case "log_level":
-				if len(value) != 1 {
-					return errors.New("expected zero or one value for 'log_level'")
-				}
-
-				lvl, err := log.ParseLevel(value[0])
-				if err != nil {
-					return fmt.Errorf("unknown level %s: %w", value[0], err)
-				}
-
-				s.logger.Logger.SetLevel(lvl)
-			case "max_buffer_size":
-				if len(value) != 1 {
-					return errors.New("expected zero or one value for 'max_buffer_size'")
-				}
-
-				maxBufferSize, err := strconv.Atoi(value[0])
-				if err != nil {
-					return fmt.Errorf("invalid value for 'max_buffer_size': %w", err)
-				}
-
-				s.logger.Debugf("Setting max buffer size to %d", maxBufferSize)
-				s.Config.MaxBufferSize = maxBufferSize
-			default:
-				return fmt.Errorf("unknown parameter %s", key)
-			}
-		}
-	}
-
-	s.Config.Labels = labels
-	s.Config.Mode = configuration.CAT_MODE
-	s.Config.UniqueId = uuid
-
-	pathParts := strings.Split(args[0], "/")
-	s.logger.Debugf("pathParts: %v", pathParts)
-
-	// FIXME: handle s3://bucket/
-	if len(pathParts) == 1 {
-		s.Config.BucketName = pathParts[0]
-		s.Config.Prefix = ""
-	} else if len(pathParts) > 1 {
-		s.Config.BucketName = pathParts[0]
-		if args[0][len(args[0])-1] == '/' {
-			s.Config.Prefix = strings.Join(pathParts[1:], "/")
-		} else {
-			s.Config.Key = strings.Join(pathParts[1:], "/")
-		}
-	} else {
-		return fmt.Errorf("invalid DSN %s for S3 source", dsn)
-	}
-
-	client, err := s.newS3Client(ctx)
-	if err != nil {
-		return err
-	}
-
-	s.s3Client = client
-
-	return nil
-}
-
-func (s *S3Source) GetMode() string {
-	return s.Config.Mode
-}
-
-func (*S3Source) GetName() string {
-	return "s3"
-}
-
-func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
 	s.ctx, s.cancel = context.WithCancel(ctx)
@@ -777,7 +466,7 @@ func (s *S3Source) OneShotAcquisition(ctx context.Context, out chan types.Event,
 	return nil
 }
 
-func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Event, t *tomb.Tomb) error {
+func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	s.t = t
 	s.out = out
 	s.readerChan = make(chan S3Object, 100) // FIXME: does this needs to be buffered?
@@ -799,12 +488,4 @@ func (s *S3Source) StreamingAcquisition(ctx context.Context, out chan types.Even
 	}
 
 	return nil
-}
-
-func (*S3Source) CanRun() error {
-	return nil
-}
-
-func (s *S3Source) Dump() any {
-	return s
 }

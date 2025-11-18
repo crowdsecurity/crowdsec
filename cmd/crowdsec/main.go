@@ -25,8 +25,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
@@ -48,9 +49,9 @@ var (
 	holders []leakybucket.BucketFactory
 	buckets *leakybucket.Buckets
 
-	inputLineChan   chan types.Event
-	inputEventChan  chan types.Event
-	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
+	inputLineChan   chan pipeline.Event
+	inputEventChan  chan pipeline.Event
+	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
 	// settings
 	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
@@ -110,21 +111,21 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 }
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
-	var err error
-
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		flags.Labels = labels
+		flags.Labels = additionalLabels
 		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
-		if err != nil {
-			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
-		}
-	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
 			return nil, err
 		}
+		dataSources = append(dataSources, ds)
+	} else {
+		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		if err != nil {
+			return nil, err
+		}
+		dataSources = dss
 	}
 
 	if len(dataSources) == 0 {
@@ -135,9 +136,9 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 }
 
 var (
-	dumpFolder string
-	dumpStates bool
-	labels     = make(labelsMap)
+	dumpFolder         string
+	dumpStates         bool
+	additionalLabels = make(labelsMap)
 )
 
 func (*labelsMap) String() string {
@@ -171,7 +172,7 @@ func (f *Flags) Parse() {
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
+	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
@@ -247,7 +248,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+	if err := logging.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
 		cConfig.Common.LogDir, cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,

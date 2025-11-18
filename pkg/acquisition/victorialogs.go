@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*victorialogs.VLSource)(nil)
-	_ DSNConfigurer   = (*victorialogs.VLSource)(nil)
-	_ Fetcher         = (*victorialogs.VLSource)(nil)
-	_ Tailer          = (*victorialogs.VLSource)(nil)
-	_ MetricsProvider = (*victorialogs.VLSource)(nil)
+	_ DataSource      = (*victorialogs.Source)(nil)
+	_ DSNConfigurer   = (*victorialogs.Source)(nil)
+	_ Fetcher         = (*victorialogs.Source)(nil)
+	_ Tailer          = (*victorialogs.Source)(nil)
+	_ MetricsProvider = (*victorialogs.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("victorialogs", func() DataSource { return &victorialogs.VLSource{} })
+	registerDataSource("victorialogs", func() DataSource { return &victorialogs.Source{} })
 }

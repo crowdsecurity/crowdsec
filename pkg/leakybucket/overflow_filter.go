@@ -7,7 +7,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 // Uniq creates three new functions that share the same initialisation and the same scope.
@@ -28,7 +28,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	u := OverflowFilter{}
 	u.Filter = g.OverflowFilter
 
-	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})...)
+	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
@@ -36,8 +36,8 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	return &u, nil
 }
 
-func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(l *Leaky, s types.RuntimeAlert, q *types.Queue) (types.RuntimeAlert, *types.Queue) {
+func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return func(l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		el, err := exprhelpers.Run(u.FilterRuntime, map[string]interface{}{
 			"queue": q, "signal": s, "leaky": l}, l.logger, bucket.Debug)
 		if err != nil {
@@ -52,7 +52,7 @@ func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory) func(*Leaky, ty
 		/*filter returned false, event is blackholded*/
 		if !element {
 			l.logger.Infof("Event is discarded by overflow filter (%s)", u.Filter)
-			return types.RuntimeAlert{
+			return pipeline.RuntimeAlert{
 				Mapkey: l.Mapkey,
 			}, nil
 		}

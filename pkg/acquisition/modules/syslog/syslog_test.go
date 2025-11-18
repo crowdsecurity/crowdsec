@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfigure(t *testing.T) {
@@ -40,7 +40,7 @@ source: syslog`,
 			config: `
 source: syslog
 listen_port: asd`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field SyslogConfiguration.Port of type int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.Port of type int",
 		},
 		{
 			config: `
@@ -57,9 +57,10 @@ listen_addr: 10.0.0`,
 	}
 
 	subLogger := log.WithField("type", "syslog")
+
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
-			s := SyslogSource{}
+			s := Source{}
 			err := s.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
@@ -68,17 +69,20 @@ listen_addr: 10.0.0`,
 
 func writeToSyslog(ctx context.Context, logs []string) {
 	dialer := &net.Dialer{}
+
 	conn, err := dialer.DialContext(ctx, "udp", "127.0.0.1:4242")
 	if err != nil {
 		fmt.Printf("could not establish connection to syslog server : %s", err)
 		return
 	}
+
 	for _, log := range logs {
 		n, err := fmt.Fprint(conn, log)
 		if err != nil {
 			fmt.Printf("could not write to syslog server : %s", err)
 			return
 		}
+
 		if n != len(log) {
 			fmt.Printf("could not write to syslog server : %s", err)
 			return
@@ -88,6 +92,7 @@ func writeToSyslog(ctx context.Context, logs []string) {
 
 func TestStreamingAcquisition(t *testing.T) {
 	ctx := t.Context()
+
 	tests := []struct {
 		name          string
 		config        string
@@ -164,18 +169,22 @@ disable_rfc_parser: true`,
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "syslog")
-			s := SyslogSource{}
+			s := Source{}
+
 			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("could not configure syslog source : %s", err)
 			}
+
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			err = s.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 			if ts.expectedErr != "" {
 				return
 			}
+
 			if err != nil && ts.expectedErr == "" {
 				t.Fatalf("unexpected error while starting syslog server: %s", err)
 				return
@@ -194,6 +203,7 @@ disable_rfc_parser: true`,
 					break READLOOP
 				}
 			}
+
 			assert.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
 			err = tomb.Wait()

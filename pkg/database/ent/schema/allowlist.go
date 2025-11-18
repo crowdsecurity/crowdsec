@@ -5,8 +5,6 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // Alert holds the schema definition for the Alert entity.
@@ -18,11 +16,11 @@ type AllowList struct {
 func (AllowList) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			Immutable(),
 		field.Time("updated_at").
-			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow),
+			Default(UtcNow).
+			UpdateDefault(UtcNow),
 		field.String("name"),
 		field.Bool("from_console"),
 		field.String("description").Optional(),
