@@ -8,9 +8,9 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*syslogacquisition.Source)(nil)
-	_ Tailer          = (*syslogacquisition.Source)(nil)
-	_ MetricsProvider = (*syslogacquisition.Source)(nil)
+	_ DataSource          = (*syslogacquisition.Source)(nil)
+	_ RestartableStreamer = (*syslogacquisition.Source)(nil)
+	_ MetricsProvider     = (*syslogacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
