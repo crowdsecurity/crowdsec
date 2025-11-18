@@ -34,14 +34,14 @@ func parseMetrics(r io.Reader) ([]MetricPoint, error) {
 
 	var out []MetricPoint
 	for name, mf := range mfs {
-		for _, m := range mf.Metric {
+		for _, m := range mf.GetMetric() {
 			point := MetricPoint{
 				Labels: make(map[string]string),
 				Type:   mf.GetType(),
 				Name:   name,
 			}
 
-			for _, lp := range m.Label {
+			for _, lp := range m.GetLabel() {
 				point.Labels[lp.GetName()] = lp.GetValue()
 			}
 
