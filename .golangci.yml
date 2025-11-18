@@ -386,6 +386,41 @@ linters:
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
 
+    usestdlibvars:
+      # Suggest the use of http.MethodXX.
+      # Default: true
+      http-method: true
+      # Suggest the use of http.StatusXX.
+      # Default: true
+      http-status-code: true
+      # Suggest the use of time.Month in time.Date.
+      # Default: false
+      time-date-month: false
+      # Suggest the use of time.Weekday.String().
+      # Default: true
+      time-weekday: false
+      # Suggest the use of time.Month.String().
+      # Default: false
+      time-month: false
+      # Suggest the use of time.Layout.
+      # Default: false
+      time-layout: false
+      # Suggest the use of crypto.Hash.String().
+      # Default: false
+      crypto-hash: true
+      # Suggest the use of rpc.DefaultXXPath.
+      # Default: false
+      default-rpc-path: true
+      # Suggest the use of sql.LevelXX.String().
+      # Default: false
+      sql-isolation-level: true
+      # Suggest the use of tls.SignatureScheme.String().
+      # Default: false
+      tls-signature-scheme: true
+      # Suggest the use of constant.Kind.String().
+      # Default: false
+      constant-kind: true
+
     usetesting:
       os-temp-dir: false
       context-background: true
