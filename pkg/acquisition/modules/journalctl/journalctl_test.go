@@ -33,7 +33,7 @@ func TestBadConfiguration(t *testing.T) {
 	}{
 		{
 			config:      `foobar: asd.log`,
-			expectedErr: `cannot parse journalctl acquisition config: [1:1] unknown field "foobar"`,
+			expectedErr: `cannot parse: [1:1] unknown field "foobar"`,
 		},
 		{
 			config: `
