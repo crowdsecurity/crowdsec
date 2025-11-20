@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -12,16 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// Helper function for checking if a slice contains a value
-func contains(slice []string, value string) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
 
 func TestStatTail_BasicTailing(t *testing.T) {
 	dir := t.TempDir()
@@ -32,17 +23,17 @@ func TestStatTail_BasicTailing(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	// Force initial read
 	st := tailer.(*statTail)
@@ -70,7 +61,7 @@ func TestStatTail_BasicTailing(t *testing.T) {
 	// Wait briefly for goroutine to start
 	time.Sleep(10 * time.Millisecond)
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// Should have read new lines (line4 and line5)
@@ -88,17 +79,17 @@ func TestStatTail_TruncationDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling, use ForceRead() only
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling, use ForceRead() only
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -131,7 +122,7 @@ func TestStatTail_TruncationDetection(t *testing.T) {
 		}
 	}()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// Should have read new1, new2, and new3 after truncation
@@ -149,17 +140,17 @@ func TestStatTail_TruncationToSmallerSize(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -190,7 +181,7 @@ func TestStatTail_TruncationToSmallerSize(t *testing.T) {
 		}
 	}()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// Verify we read the rotated content
@@ -207,17 +198,17 @@ func TestStatTail_SeekStart(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart}, // Start from beginning
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekStart}, // Start from beginning
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -241,7 +232,7 @@ func TestStatTail_SeekStart(t *testing.T) {
 		}
 	}()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// Should have read all lines including line4
@@ -257,17 +248,17 @@ func TestStatTail_FileDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -289,7 +280,7 @@ func TestStatTail_FileDeleted(t *testing.T) {
 
 	// Dying channel should eventually close when tomb is killed
 	// However, it's only closed in Stop(), so we need to stop the tailer
-	tailer.Stop()
+	_ = tailer.Stop()
 
 	// Now dying should be closed
 	select {
@@ -308,17 +299,17 @@ func TestStatTail_ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -329,7 +320,7 @@ func TestStatTail_ErrorHandling(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		err = os.Chmod(testFile, 0o000)
 		require.NoError(t, err)
-		defer os.Chmod(testFile, 0o644) // Restore for cleanup
+		defer func() { _ = os.Chmod(testFile, 0o644) }() // Restore for cleanup
 
 		// Force read to detect permission error
 		st.ForceRead()
@@ -338,7 +329,7 @@ func TestStatTail_ErrorHandling(t *testing.T) {
 		select {
 		case <-tailer.Dying():
 			err := tailer.Err()
-			assert.Error(t, err, "Should have an error")
+			require.Error(t, err, "Should have an error")
 		case <-time.After(1 * time.Second):
 			// On some systems, this might not error immediately
 			t.Log("Permission error not detected immediately (may be system-dependent)")
@@ -355,17 +346,17 @@ func TestStatTail_PollInterval(t *testing.T) {
 
 	pollInterval := 200 * time.Millisecond
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: pollInterval,
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: pollInterval,
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	// Measure time between polls by adding content and measuring when it's read
 	// Don't use ForceRead() here - let the natural polling happen to test the timer
@@ -399,7 +390,7 @@ func TestStatTail_PollInterval(t *testing.T) {
 	assert.Less(t, elapsed, pollInterval+300*time.Millisecond, "Should read within poll interval")
 	// The first read happens immediately on start, so we can't assert on minimum time for this test
 	// Just verify it was read
-	assert.True(t, !lineReadTime.IsZero(), "Line should have been read")
+	assert.False(t, lineReadTime.IsZero(), "Line should have been read")
 }
 
 func TestStatTail_DefaultPollInterval(t *testing.T) {
@@ -410,17 +401,17 @@ func TestStatTail_DefaultPollInterval(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: 0, // Should default to 1s
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: 0, // Should default to 1s
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -445,7 +436,7 @@ func TestStatTail_DefaultPollInterval(t *testing.T) {
 		}
 	}()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	assert.Contains(t, lines, "line2", "Should read with default poll interval")
@@ -459,12 +450,12 @@ func TestStatTail_Stop(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
@@ -472,7 +463,7 @@ func TestStatTail_Stop(t *testing.T) {
 
 	// Stop should not error
 	err = tailer.Stop()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should be dying
 	select {
@@ -495,17 +486,17 @@ func TestStatTail_Filename(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	assert.Equal(t, testFile, tailer.Filename())
 }
@@ -519,17 +510,17 @@ func TestStatTail_TruncationWithSeekEnd(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd}, // Start at end
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd}, // Start at end
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -560,7 +551,7 @@ func TestStatTail_TruncationWithSeekEnd(t *testing.T) {
 		}
 	}()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// With SeekEnd after truncation, we read from beginning of truncated file
@@ -579,17 +570,17 @@ func TestStatTail_TruncationWithSeekStart(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart}, // Start from beginning
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekStart}, // Start from beginning
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -620,7 +611,7 @@ func TestStatTail_TruncationWithSeekStart(t *testing.T) {
 	require.NoError(t, err)
 	st.ForceRead()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	t.Logf("Lines read: %v", lines)
@@ -643,17 +634,17 @@ func TestStatTail_MultipleTruncations(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		TailMode:     "stat",
-		PollInterval: -1, // No automatic polling
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		TailMode:         "stat",
+		StatPollInterval: -1, // No automatic polling
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -694,7 +685,7 @@ func TestStatTail_MultipleTruncations(t *testing.T) {
 	require.NoError(t, err)
 	st.ForceRead()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	t.Logf("Lines read: %v", lines)
@@ -702,7 +693,7 @@ func TestStatTail_MultipleTruncations(t *testing.T) {
 	// Should have handled all truncations
 	assert.Contains(t, lines, "batch2_line1", "Should handle first truncation")
 	// Either batch3_line1 or batch3_line2 (or both) should be read
-	assert.True(t, contains(lines, "batch3_line1") || contains(lines, "batch3_line2"), "Should handle second truncation (read batch3 content)")
+	assert.True(t, slices.Contains(lines, "batch3_line1") || slices.Contains(lines, "batch3_line2"), "Should handle second truncation (read batch3 content)")
 	assert.Contains(t, lines, "batch4_line1", "Should handle third truncation")
 }
 
@@ -725,17 +716,17 @@ func TestStatTail_LargeLines(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         false,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		TailMode:     "stat",
-		PollInterval: -1,
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             false,
+		Location:         &SeekInfo{Offset: 0, Whence: io.SeekStart},
+		TailMode:         "stat",
+		StatPollInterval: -1,
 	}
 
 	tailer, err := newStatTail(testFile, config)
 	require.NoError(t, err)
-	defer tailer.Stop()
+	defer func() { _ = tailer.Stop() }()
 
 	st := tailer.(*statTail)
 
@@ -754,7 +745,7 @@ func TestStatTail_LargeLines(t *testing.T) {
 	// Trigger read - should successfully handle the large line
 	st.ForceRead()
 
-	tailer.Stop()
+	_ = tailer.Stop()
 	<-done
 
 	// Should successfully read both lines (no buffer size limitation with ReadString)

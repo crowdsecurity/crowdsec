@@ -23,7 +23,7 @@ var tailModes = []struct {
 	config string // tail mode configuration snippet to append
 }{
 	{
-		name:   "native",
+		name:   "default",
 		config: "", // Default, no extra config
 	},
 	{
@@ -89,7 +89,7 @@ filenames:
 
 			// Cleanup
 			tomb.Kill(nil)
-			tomb.Wait()
+			_ = tomb.Wait()
 
 			// Should have read at least one new line (timing-dependent on Windows)
 			assert.GreaterOrEqual(t, len(lines), 1, "Should have read at least 1 line")
@@ -167,7 +167,7 @@ filenames:
 
 			// Cleanup
 			tomb.Kill(nil)
-			tomb.Wait()
+			_ = tomb.Wait()
 
 			// Should have detected truncation and read new content
 			hasNew := false
@@ -207,12 +207,12 @@ filenames:
 			expectStatMode: false,
 		},
 		{
-			name: "explicit_native",
+			name: "explicit_default",
 			config: fmt.Sprintf(`
 mode: tail
 filenames:
  - %s
-tail_mode: native
+tail_mode: default
 `, testFile),
 			expectStatMode: false,
 		},
@@ -258,7 +258,7 @@ stat_poll_interval: 100ms
 
 			// Cleanup
 			tomb.Kill(nil)
-			tomb.Wait()
+			_ = tomb.Wait()
 
 			// Both modes should successfully tail the file
 			// The actual implementation difference is tested in tailwrapper tests

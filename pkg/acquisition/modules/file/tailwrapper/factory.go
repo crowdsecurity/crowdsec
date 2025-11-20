@@ -10,15 +10,15 @@ func TailFile(filename string, config Config) (Tailer, error) {
 	// Determine which implementation to use
 	tailMode := config.TailMode
 	if tailMode == "" {
-		tailMode = "native" // default to original behavior
+		tailMode = "default"
 	}
 
 	switch tailMode {
-	case "stat", "stat_poll":
+	case "stat":
 		return newStatTail(filename, config)
-	case "native", "nxadm", "default", "":
+	case "default":
 		return newNxadmTail(filename, config)
 	default:
-		return nil, fmt.Errorf("unknown tail mode: %s (supported: native/nxadm, stat)", tailMode)
+		return nil, fmt.Errorf("unknown tail mode: %s (supported: default, stat)", tailMode)
 	}
 }

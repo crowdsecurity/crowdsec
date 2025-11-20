@@ -14,16 +14,15 @@ import (
 
 // statTail implements Tailer using stat-based polling that doesn't keep file handles open
 type statTail struct {
-	filename    string
-	config      Config
-	lines       chan *Line
-	dying       chan struct{}
-	tomb        *tomb.Tomb
-	mu          sync.Mutex
-	lastOffset  int64
-	lastModTime time.Time
-	lastSize    int64
-	stopped     bool
+	filename   string
+	config     Config
+	lines      chan *Line
+	dying      chan struct{}
+	tomb       *tomb.Tomb
+	mu         sync.Mutex
+	lastOffset int64
+	lastSize   int64
+	stopped    bool
 }
 
 // newStatTail creates a new stat-based tailer
@@ -44,14 +43,13 @@ func newStatTail(filename string, config Config) (Tailer, error) {
 	}
 
 	st := &statTail{
-		filename:    filename,
-		config:      config,
-		lines:       make(chan *Line, 100), // buffered channel
-		dying:       make(chan struct{}),
-		tomb:        &tomb.Tomb{},
-		lastOffset:  initialOffset,
-		lastModTime: fi.ModTime(),
-		lastSize:    0, // Start with 0 so first ForceRead() will process the file
+		filename:   filename,
+		config:     config,
+		lines:      make(chan *Line, 100), // buffered channel
+		dying:      make(chan struct{}),
+		tomb:       &tomb.Tomb{},
+		lastOffset: initialOffset,
+		lastSize:   0, // Start with 0 so first ForceRead() will process the file
 	}
 
 	// Start polling goroutine
@@ -100,7 +98,7 @@ func (s *statTail) Stop() error {
 
 // pollLoop is the main polling loop that checks for file changes
 func (s *statTail) pollLoop() error {
-	pollInterval := s.config.PollInterval
+	pollInterval := s.config.StatPollInterval
 	if pollInterval == 0 {
 		pollInterval = 1 * time.Second // default
 	}
@@ -161,21 +159,11 @@ func (s *statTail) readNewLines() {
 	// Detect truncation: file size decreased compared to last known size
 	// Use lastSize instead of lastOffset because Azure metadata cache can cause
 	// size and offset to differ slightly, making offset-based detection unreliable
-	truncated := false
-	if fi.Size() < s.lastSize {
-		// File was truncated or rotated
-		truncated = true
-	}
+	truncated := fi.Size() < s.lastSize
 
 	if truncated {
-		// Reset position to start or end based on config
-		if s.config.Location != nil && s.config.Location.Whence == io.SeekEnd {
-			// With SeekEnd, we want to read from the beginning of the truncated file
-			// (the file was rotated/truncated, so we should read the new content)
-			s.lastOffset = 0
-		} else {
-			s.lastOffset = 0
-		}
+		// Reset position to start (both SeekEnd and SeekStart read from beginning after truncation)
+		s.lastOffset = 0
 		// Don't update lastSize yet - we'll update it after reading
 		// This ensures we read the truncated content
 	}
@@ -185,7 +173,6 @@ func (s *statTail) readNewLines() {
 	// If truncated, we always want to read (to get the truncated content)
 	if fi.Size() <= s.lastSize && !truncated {
 		// No new content
-		s.lastModTime = fi.ModTime()
 		s.lastSize = fi.Size() // Update lastSize even when no new content
 		return
 	}
@@ -263,6 +250,5 @@ func (s *statTail) readNewLines() {
 
 	// Always update lastSize from stat() result to track file size accurately
 	// This is important for Azure metadata cache where size and offset may differ
-	s.lastModTime = fi.ModTime()
 	s.lastSize = fi.Size()
 }

@@ -270,13 +270,13 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
 	tail, err := tailwrapper.TailFile(file, tailwrapper.Config{
-		ReOpen:       true,
-		Follow:       true,
-		Poll:         pollFile,
-		Location:     seekInfo,
-		Logger:       log.NewEntry(log.StandardLogger()),
-		TailMode:     s.config.TailMode,
-		PollInterval: s.config.StatPollInterval,
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             pollFile,
+		Location:         seekInfo,
+		Logger:           log.NewEntry(log.StandardLogger()),
+		TailMode:         s.config.TailMode,
+		StatPollInterval: s.config.StatPollInterval,
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)

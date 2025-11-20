@@ -28,11 +28,11 @@ type SeekInfo struct {
 
 // Config holds configuration for tailing a file
 type Config struct {
-	ReOpen       bool
-	Follow       bool
-	Poll         bool
-	Location     *SeekInfo
-	Logger       interface{}   // *log.Entry, but we use interface{} to avoid circular deps
-	TailMode     string        // "native" (default) or "stat"
-	PollInterval time.Duration // for stat mode: default 1s, 0 = 1s, -1 = no automatic polling (manual/test mode)
+	ReOpen           bool
+	Follow           bool
+	Poll             bool
+	Location         *SeekInfo
+	Logger           interface{}   // *log.Entry, but we use interface{} to avoid circular deps
+	TailMode         string        // "default" or "stat" (defaults to "default" if empty)
+	StatPollInterval time.Duration // for stat mode: default 1s, 0 = 1s, -1 = no automatic polling (manual/test mode)
 }
