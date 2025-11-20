@@ -72,7 +72,7 @@ func runService(name string) error {
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); ok {   //nolint:errorlint
 			if errno == windows.ERROR_ACCESS_DENIED {
-				log.Warnf("Access denied when installing event source, running as non-admin ?")
+				log.Warn("Access denied when installing event source, running as non-admin?")
 			} else {
 				log.Warnf("Failed to install event log: %s (%d)", err, errno)
 			}
