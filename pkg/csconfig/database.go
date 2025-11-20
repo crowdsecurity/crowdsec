@@ -48,8 +48,8 @@ type DatabaseCfg struct {
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
 }
 
-func (d *DatabaseCfg) NewLogger() *log.Logger {
-	return logging.CloneLogger(log.StandardLogger(), d.LogLevel)
+func (d *DatabaseCfg) NewLogger() *log.Entry {
+	return logging.SubLogger(log.StandardLogger(), "db", d.LogLevel)
 }
 
 type AuthGCCfg struct {

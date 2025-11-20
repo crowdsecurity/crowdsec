@@ -144,7 +144,7 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 	os.Remove("./ent")
 
 	logger, _ := logtest.NewNullLogger()
-	apiServer, err := NewServer(ctx, config.API.Server, logger)
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	log.Info("Creating new API server")
@@ -172,7 +172,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 	os.Remove("./ent")
 
 	logger, _ := logtest.NewNullLogger()
-	apiServer, err := NewServer(ctx, config.API.Server, logger)
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	err = apiServer.InitController()
@@ -322,7 +322,7 @@ func TestWithWrongDBConfig(t *testing.T) {
 	config.API.Server.DbConfig.Type = "test"
 
 	logger, _ := logtest.NewNullLogger()
-	apiServer, err := NewServer(ctx, config.API.Server, logger)
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 
 	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
 	assert.Nil(t, apiServer)
@@ -335,7 +335,7 @@ func TestWithWrongFlushConfig(t *testing.T) {
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
 
 	logger, _ := logtest.NewNullLogger()
-	apiServer, err := NewServer(ctx, config.API.Server, logger)
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 
 	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
 	assert.Nil(t, apiServer)

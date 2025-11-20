@@ -412,15 +412,18 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	log.Tracef("compile, node is %s", n.Stage)
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
-	if n.Debug {
-		clog := logging.CloneLogger(log.StandardLogger(), log.DebugLevel)
 
-		n.Logger = clog.WithField("id", n.rn)
-		n.Logger.Infof("%s has debug enabled", n.Name)
+	var clog *log.Entry
+
+	if n.Debug {
+		clog = logging.SubLogger(log.StandardLogger(), "parser", log.DebugLevel)
+		clog.Infof("%s has debug enabled", n.Name)
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
-		n.Logger = log.WithField("id", n.rn)
+		clog = log.WithField("module", "parser")
 	}
+
+	n.Logger = clog.WithField("id", n.rn)
 
 	/* display info about top-level nodes, they should be the only one with explicit stage name ?*/
 	n.Logger = n.Logger.WithFields(log.Fields{"stage": n.Stage, "name": n.Name})

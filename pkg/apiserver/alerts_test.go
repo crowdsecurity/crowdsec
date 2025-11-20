@@ -512,7 +512,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	cfg.API.Server.ListenURI = "::8080"
 
 	logger, _ := logtest.NewNullLogger()
-	server, err := NewServer(ctx, cfg.API.Server, logger)
+	server, err := NewServer(ctx, cfg.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	err = server.InitController()

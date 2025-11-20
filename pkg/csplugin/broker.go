@@ -341,7 +341,7 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 	}
 
 	pb.pluginMap[name] = &NotifierPlugin{}
-	l := logging.CloneLogger(log.StandardLogger(), log.TraceLevel)
+	l := logging.SubLogger(log.StandardLogger(), "plugin", log.TraceLevel)
 	// We set the highest level to permit plugins to set their own log level
 	// without that, crowdsec log level is controlling plugins level
 	logger := NewHCLogAdapter(l, "")

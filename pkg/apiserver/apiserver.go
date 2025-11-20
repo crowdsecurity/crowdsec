@@ -114,11 +114,11 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Logger) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
 	if accessLogger == nil {
-		accessLogger = log.StandardLogger()
+		accessLogger = log.StandardLogger().WithFields(nil)
 	}
 
 	dbClient, err := database.NewClient(ctx, config.DbConfig, config.DbConfig.NewLogger())
@@ -212,7 +212,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
 			logLevel := cmp.Or(config.PapiLogLevel, config.LogLevel)
-			papiLogger := logging.CloneLogger(log.StandardLogger(), logLevel)
+			papiLogger := logging.SubLogger(log.StandardLogger(), "papi", logLevel)
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, papiLogger)
 			if err != nil {
 				return nil, err

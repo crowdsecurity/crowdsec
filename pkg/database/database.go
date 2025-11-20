@@ -12,11 +12,12 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type Client struct {
 	Ent              *ent.Client
-	Log              *log.Logger
+	Log              logging.ExtLogger
 	CanFlush         bool
 	Type             string
 	WalMode          *bool
@@ -39,7 +40,7 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	return drv, nil
 }
 
-func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.Logger) (*Client, error) {
+func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.Entry) (*Client, error) {
 	var client *ent.Client
 
 	if config == nil {

@@ -250,8 +250,8 @@ type LocalApiServerCfg struct {
 // If log_media is "file", the access log is written to the provided filename
 // inside LogDir. For "stdout" or "syslog", the access logger uses the same
 // output destination as the standard logger.
-func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Logger {
-	clog := logging.CloneLogger(log.StandardLogger(), c.LogLevel)
+func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Entry {
+	clog := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
 
 	if cfg.GetMedia() != "file" {
 		return clog
@@ -260,14 +260,14 @@ func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log
 	logFile := filepath.Join(cfg.GetDir(), filename)
 	log.Debugf("starting router, logging to %s", logFile)
 
-	clog.SetOutput(cfg.NewRotatingLogger())
+	clog.Logger.SetOutput(cfg.NewRotatingLogger())
 
 	return clog
 }
 
-func (c *LocalApiServerCfg) NewPAPILogger() *log.Logger {
+func (c *LocalApiServerCfg) NewPAPILogger() *log.Entry {
 	level := cmp.Or(c.PapiLogLevel, c.LogLevel)
-	return logging.CloneLogger(log.StandardLogger(), level)
+	return logging.SubLogger(log.StandardLogger(), "papi", level)
 }
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {

@@ -342,7 +342,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	var err error
 
 	if bucketFactory.Debug {
-		clog := logging.CloneLogger(log.StandardLogger(), log.DebugLevel)
+		clog := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
 
 		bucketFactory.logger = clog.WithFields(log.Fields{
 			"cfg":  bucketFactory.BucketName,

@@ -47,7 +47,7 @@ func InitCrowdsecCTI(key *string, ttl *time.Duration, size *int, logLevel log.Le
 		*ttl = 5 * time.Minute
 	}
 
-	clog := logging.CloneLogger(log.StandardLogger(), logLevel)
+	clog := logging.SubLogger(log.StandardLogger(), "cti", logLevel)
 
 	subLogger := clog.WithField("type", "crowdsec-cti")
 

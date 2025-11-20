@@ -37,7 +37,7 @@ type CacheCfg struct {
 }
 
 func (cfg CacheCfg) NewLogger() *log.Entry {
-	clog := logging.CloneLogger(log.StandardLogger(), cfg.LogLevel)
+	clog := logging.SubLogger(log.StandardLogger(), "cache", cfg.LogLevel)
 	return clog.WithField("cache", cfg.Name)
 }
 

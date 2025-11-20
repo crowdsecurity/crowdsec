@@ -142,7 +142,7 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
 
-	clog := logging.CloneLogger(log.StandardLogger(), commonConfig.LogLevel)
+	clog := logging.SubLogger(log.StandardLogger(), "acquisition."+commonConfig.Source, commonConfig.LogLevel)
 	subLogger := clog.WithField("type", commonConfig.Source)
 
 	if commonConfig.Name != "" {

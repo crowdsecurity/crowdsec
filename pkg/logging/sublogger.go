@@ -4,11 +4,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// CloneLogger creates a new *logrus.Logger that inherits the formatter,
-// output, and hooks from the given base logger, but can have a different log level.
+// SubLogger creates a logrus.Entry object that inherits the formatter,
+// output, and hooks from the given base logger, but can have a different
+// log level and optional module field.
 //
+// If module == "", no field is added.
 // If level == 0 (panic), the log level is inherited too.
-func CloneLogger(base *logrus.Logger, level logrus.Level) *logrus.Logger {
+func SubLogger(base *logrus.Logger, module string, level logrus.Level) *logrus.Entry {
 	l := logrus.New()
 	l.SetFormatter(base.Formatter)
 	l.SetOutput(base.Out)
@@ -25,5 +27,13 @@ func CloneLogger(base *logrus.Logger, level logrus.Level) *logrus.Logger {
 
 	l.SetLevel(level)
 
-	return l
+	var fields logrus.Fields
+
+	if module != "" {
+		fields = logrus.Fields{
+			"module": module,
+		}
+	}
+
+	return l.WithFields(fields)
 }
