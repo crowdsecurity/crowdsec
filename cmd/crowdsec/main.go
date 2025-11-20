@@ -8,9 +8,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/pprof"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -56,36 +54,6 @@ var (
 	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
 )
-
-type Flags struct {
-	ConfigFile string
-
-	LogLevelTrace bool
-	LogLevelDebug bool
-	LogLevelInfo  bool
-	LogLevelWarn  bool
-	LogLevelError bool
-	LogLevelFatal bool
-
-	PrintVersion   bool
-	SingleFileType string
-	Labels         map[string]string
-	OneShotDSN     string
-	TestMode       bool
-	DisableAgent   bool
-	DisableAPI     bool
-	WinSvc         string
-	DisableCAPI    bool
-	Transform      string
-	OrderEvent     bool
-	CPUProfile     string
-}
-
-func (f *Flags) haveTimeMachine() bool {
-	return f.OneShotDSN != ""
-}
-
-type labelsMap map[string]string
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var err error
@@ -141,75 +109,6 @@ var (
 	additionalLabels = make(labelsMap)
 )
 
-func (*labelsMap) String() string {
-	return "labels"
-}
-
-func (l *labelsMap) Set(label string) error {
-	for pair := range strings.SplitSeq(label, ",") {
-		split := strings.Split(pair, ":")
-		if len(split) != 2 {
-			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
-		}
-
-		(*l)[split[0]] = split[1]
-	}
-
-	return nil
-}
-
-func (f *Flags) Parse() {
-	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
-
-	flag.BoolVar(&f.LogLevelTrace, "trace", false, "set log level to 'trace' (VERY verbose)")
-	flag.BoolVar(&f.LogLevelDebug, "debug", false, "set log level to 'debug'")
-	flag.BoolVar(&f.LogLevelInfo, "info", false, "set log level to 'info'")
-	flag.BoolVar(&f.LogLevelWarn, "warning", false, "set log level to 'warning'")
-	flag.BoolVar(&f.LogLevelError, "error", false, "set log level to 'error'")
-	flag.BoolVar(&f.LogLevelFatal, "fatal", false, "set log level to 'fatal'")
-
-	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
-	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
-	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
-	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
-	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
-	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
-	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
-	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
-	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
-
-	if runtime.GOOS == "windows" {
-		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
-	}
-
-	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
-	flag.Parse()
-}
-
-// GetLogLevel returns the log level selected by the --trace, --debug, --info, etc. flags,
-// giving precedence to the most verbose flag if multiple are set. If no flag is specified,
-// it returns PanicLevel, which acts as a zero value and should never override another level.
-func (f *Flags) GetLogLevel() log.Level {
-	switch {
-	case f.LogLevelTrace:
-		return log.TraceLevel
-	case f.LogLevelDebug:
-		return log.DebugLevel
-	case f.LogLevelInfo:
-		return log.InfoLevel
-	case f.LogLevelWarn:
-		return log.WarnLevel
-	case f.LogLevelError:
-		return log.ErrorLevel
-	case f.LogLevelFatal:
-		return log.FatalLevel
-	default:
-		return log.PanicLevel
-	}
-}
-
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
 	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
@@ -221,8 +120,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
 
-	if flagLevel := flags.GetLogLevel(); flagLevel != 0 {
-		cConfig.Common.LogLevel = flagLevel
+	if flags.LogLevel != 0 {
+		cConfig.Common.LogLevel = flags.LogLevel
 	}
 
 	if dumpFolder != "" {
@@ -351,7 +250,7 @@ func main() {
 	crowdsecT0 = time.Now()
 
 	// Handle command line arguments
-	flags.Parse()
+	flags.parse()
 
 	if len(flag.Args()) > 0 {
 		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
