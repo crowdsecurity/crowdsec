@@ -122,6 +122,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if flags.LogLevel != 0 {
 		cConfig.Common.LogLevel = flags.LogLevel
+		if cConfig.API != nil && cConfig.API.Server != nil {
+			cConfig.API.Server.LogLevel = flags.LogLevel
+		}
 	}
 
 	if dumpFolder != "" {
