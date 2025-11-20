@@ -86,7 +86,8 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config) error {
 		var err error
 
 		if cConfig.DbConfig != nil {
-			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
+			dbCfg := cConfig.DbConfig
+			dbClient, err = database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 
 			if err != nil {
 				return fmt.Errorf("unable to create database client: %w", err)
