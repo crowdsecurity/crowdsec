@@ -43,6 +43,10 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.Entry) (*Client, error) {
 	var client *ent.Client
 
+	if logger == nil {
+		logger = log.StandardLogger().WithFields(nil)
+	}
+
 	if config == nil {
 		return nil, errors.New("DB config is empty")
 	}
