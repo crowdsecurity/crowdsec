@@ -43,7 +43,7 @@ func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *
 		// bucket is now ready
 		select {
 		case <-bucketsTomb.Dying():
-			log.Infof("Bucket routine exiting")
+			log.Info("Bucket routine exiting")
 			return nil
 		case parsed := <-input:
 			startTime := time.Now()

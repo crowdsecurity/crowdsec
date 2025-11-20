@@ -117,7 +117,7 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 }
 
 func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclient.ApiClient) {
-	log.Debugf("Starting HeartBeat service")
+	log.Debug("Starting HeartBeat service")
 	apiClient.HeartBeat.StartHeartBeat(ctx, &outputsTomb)
 }
 
@@ -223,13 +223,13 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 		- acquisTomb is dead, it means that we were in "cat" mode and files are done reading, quit
 		*/
 		waitOnTomb()
-		log.Debugf("Shutting down crowdsec routines")
+		log.Debug("Shutting down crowdsec routines")
 
 		if err := ShutdownCrowdsecRoutines(); err != nil {
 			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 
-		log.Debugf("everything is dead, return crowdsecTomb")
+		log.Debug("everything is dead, return crowdsecTomb")
 
 		if dumpStates {
 			if err := dumpAllStates(); err != nil {
@@ -267,7 +267,7 @@ func waitOnTomb() {
 			return
 
 		case <-crowdsecTomb.Dying():
-			log.Infof("Crowdsec engine shutting down")
+			log.Info("Crowdsec engine shutting down")
 			return
 		}
 	}

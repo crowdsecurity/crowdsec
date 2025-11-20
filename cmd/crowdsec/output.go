@@ -134,12 +134,12 @@ func runOutput(
 			}
 
 			if ov.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
+				log.Debug("Overflow being reprocessed.")
 				select {
 				case input <- event:
-					log.Debugf("reprocessing overflow event")
+					log.Debug("reprocessing overflow event")
 				case <-parsersTomb.Dead():
-					log.Debugf("parsing is dead, skipping")
+					log.Debug("parsing is dead, skipping")
 				}
 			}
 

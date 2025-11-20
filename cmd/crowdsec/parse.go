@@ -52,7 +52,7 @@ func parseEvent(
 
 	metrics.GlobalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module, "acquis_type": event.Line.Labels["type"]}).Inc()
 	if parsed.Whitelisted {
-		log.Debugf("event whitelisted, discard")
+		log.Debug("event whitelisted, discard")
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func runParse(input chan pipeline.Event, output chan pipeline.Event, parserCTX p
 	for {
 		select {
 		case <-parsersTomb.Dying():
-			log.Infof("Killing parser routines")
+			log.Info("Killing parser routines")
 			return nil
 		case event := <-input:
 			parsed := parseEvent(event, parserCTX, nodes)
