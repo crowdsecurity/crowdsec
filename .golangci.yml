@@ -233,6 +233,21 @@ linters:
       # report any unused nolint directives
       allow-unused: false
 
+    recvcheck:
+      # Disables the built-in method exclusions:
+      # - `MarshalText`
+      # - `MarshalJSON`
+      # - `MarshalYAML`
+      # - `MarshalXML`
+      # - `MarshalBinary`
+      # - `GobEncode`
+      disable-builtin: false
+      # User-defined method exclusions.
+      # The format is `struct_name.method_name` (ex: `Foo.MethodName`).
+      # A wildcard `*` can use as a struct name (ex: `*.MethodName`).
+      exclusions:
+        - "HCLogAdapter.SetLevel"
+
     revive:
       severity: error
       enable-all-rules: true
@@ -436,17 +451,6 @@ linters:
           - revive
         path: cmd/crowdsec/flags.go
         text: 'deep-exit: .*'
-
-      - linters:
-          - recvcheck
-        path: pkg/csplugin/hclog_adapter.go
-        text: the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.
-
-      # encoding to json/yaml requires value receivers
-      - linters:
-          - recvcheck
-        path: pkg/cwhub/item.go
-        text: the methods of "Item" use pointer receiver and non-pointer receiver.
 
       - linters:
           - gocritic
