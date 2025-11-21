@@ -1,0 +1,100 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: CrowdSec AppSec datasource configuration
+type: object
+required:
+  - type
+properties:
+  type:
+    const: appsec
+  listen_addr:
+    type: string
+    description: TCP listen address; defaults to 127.0.0.1:7422 when no socket is set.
+    default: 127.0.0.1:7422
+  listen_socket:
+    type: string
+    description: Unix socket path alternative to listen_addr.
+  path:
+    type: string
+    description: HTTP path served by the datasource; value is prefixed with / if missing.
+    default: /
+  routines:
+    type: integer
+    minimum: 1
+    description: Number of concurrent AppSec runners; coerced to at least 1.
+    default: 1
+  cert_file:
+    type: string
+    description: PEM certificate required together with key_file to enable TLS on listen_addr.
+  key_file:
+    type: string
+    description: PEM key required together with cert_file to enable TLS on listen_addr.
+  appsec_config:
+    type: string
+    description: Inline AppSec config blob passed to AppsecConfig.Load().
+  appsec_configs:
+    type: array
+    items:
+      type: string
+    minItems: 1
+    description: List of inline AppSec config blobs (each passed to AppsecConfig.Load()).
+  appsec_config_path:
+    type: string
+    description: Filesystem path loaded via AppsecConfig.LoadByPath().
+  auth_cache_duration:
+    type: string
+    pattern: "^([0-9]+(ns|us|ms|s|m|h))+$"
+    description: Go duration string for API-key cache TTL; defaults to 1m.
+    default: 1m
+  mode:
+    type: string
+    enum: [tail, cat, server]
+    description: Acquisition mode; defaults to tail.
+    default: tail
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Optional key/value labels attached to emitted events.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, info, debug, trace]
+    description: Overrides datasource logger level.
+  source:
+    type: string
+    description: Custom source string stamped on events.
+  name:
+    type: string
+    description: Datasource name; defaults to socket path or listen_addr+path.
+  use_time_machine:
+    type: boolean
+    description: Enable acquisition time-machine mode.
+  unique_id:
+    type: string
+    description: Stable identifier used for deduplication.
+  transform:
+    type: string
+    description: ExprLang transform applied to events.
+allOf:
+  - oneOf:
+      - required: [appsec_config]
+        not:
+          anyOf:
+            - required: [appsec_config_path]
+            - required: [appsec_configs]
+      - required: [appsec_config_path]
+        not:
+          required: [appsec_configs]
+      - required: [appsec_configs]
+        not:
+          anyOf:
+            - required: [appsec_config]
+            - required: [appsec_config_path]
+  - anyOf:
+      - required: [listen_addr]
+      - required: [listen_socket]
+dependentRequired:
+  cert_file:
+    - key_file
+  key_file:
+    - cert_file
+additionalProperties: false
