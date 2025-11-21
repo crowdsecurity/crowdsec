@@ -21,35 +21,57 @@ type Configuration struct {
 	since   string // set only by DSN
 }
 
-func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	config := Configuration{}
+func ConfigurationFromYAML(y []byte) (Configuration, error) {
+	var cfg Configuration
 
-	// defaults
-	config.Mode = configuration.TAIL_MODE
-
-	err := yaml.UnmarshalWithOptions(yamlConfig, &config, yaml.Strict())
-	if err != nil {
-		return fmt.Errorf("cannot parse journalctl acquisition config: %s", yaml.FormatError(err, false, false))
+	if err := yaml.UnmarshalWithOptions(y, &cfg, yaml.Strict()); err != nil {
+		return cfg, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
 	}
 
-	if len(config.Filters) == 0 {
+	cfg.SetDefaults()
+
+	if err := cfg.Validate(); err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
+}
+
+func (c *Configuration) SetDefaults() {
+	if c.Mode == "" {
+		c.Mode = configuration.TAIL_MODE
+	}
+}
+
+func (c *Configuration) Validate() error {
+	if len(c.Filters) == 0 {
 		return errors.New("journalctl_filter is required")
 	}
 
-	s.config = config
+	return nil
+}
+
+func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
+	cfg, err := ConfigurationFromYAML(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	s.config = cfg
+
 	s.setSrc(s.config.Filters)
 
 	return nil
 }
 
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	s.metricsLevel = metricsLevel
-
 	if err := s.UnmarshalConfig(yamlConfig); err != nil {
 		return err
 	}
 
 	s.setLogger(logger, 0, s.src)
+
+	s.metricsLevel = metricsLevel
 
 	return nil
 }

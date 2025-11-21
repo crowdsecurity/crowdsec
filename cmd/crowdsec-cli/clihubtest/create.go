@@ -36,6 +36,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 		RunE: func(_ *cobra.Command, args []string) error {
 			testName := args[0]
 			testPath := filepath.Join(hubPtr.HubTestPath, testName)
+
 			if _, err := os.Stat(testPath); os.IsExist(err) {
 				return fmt.Errorf("test '%s' already exists in '%s', exiting", testName, testPath)
 			}
@@ -53,8 +54,8 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")
-
 			configFileData := &hubtest.HubTestItemConfig{}
+
 			if logType == "appsec" {
 				// create empty nuclei template file
 				nucleiFileName := testName + ".yaml"
@@ -69,12 +70,16 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if ntpl == nil {
 					return errors.New("unable to parse nuclei template")
 				}
+
 				if err := ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName}); err != nil {
 					return fmt.Errorf("executing nuclei template %s: %w", nucleiFile.Name(), err)
 				}
+
 				nucleiFile.Close()
+
 				configFileData.AppsecRules = []string{"./appsec-rules/<author>/your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
+
 				fmt.Fprintln(os.Stdout)
 				fmt.Fprintf(os.Stdout, "  Test name                   :  %s\n", testName)
 				fmt.Fprintf(os.Stdout, "  Test path                   :  %s\n", testPath)
@@ -84,25 +89,32 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				// create empty log file
 				logFileName := testName + ".log"
 				logFilePath := filepath.Join(testPath, logFileName)
+
 				logFile, err := os.Create(logFilePath)
 				if err != nil {
 					return err
 				}
+
 				logFile.Close()
 
 				// create empty parser assertion file
 				parserAssertFilePath := filepath.Join(testPath, hubtest.ParserAssertFileName)
+
 				parserAssertFile, err := os.Create(parserAssertFilePath)
 				if err != nil {
 					return err
 				}
+
 				parserAssertFile.Close()
+
 				// create empty scenario assertion file
 				scenarioAssertFilePath := filepath.Join(testPath, hubtest.ScenarioAssertFileName)
+
 				scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
 				if err != nil {
 					return err
 				}
+
 				scenarioAssertFile.Close()
 
 				parsers = append(parsers, "crowdsecurity/syslog-logs")
@@ -115,6 +127,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if len(postoverflows) == 0 {
 					postoverflows = append(postoverflows, "")
 				}
+
 				configFileData.Parsers = parsers
 				configFileData.Scenarios = scenarios
 				configFileData.PostOverflows = postoverflows
@@ -122,6 +135,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				configFileData.LogType = logType
 				configFileData.IgnoreParsers = ignoreParsers
 				configFileData.Labels = labels
+
 				fmt.Fprintln(os.Stdout)
 				fmt.Fprintf(os.Stdout, "  Test name                   :  %s\n", testName)
 				fmt.Fprintf(os.Stdout, "  Test path                   :  %s\n", testPath)
@@ -135,14 +149,17 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			if err != nil {
 				return fmt.Errorf("open: %w", err)
 			}
+
 			data, err := yaml.Marshal(configFileData)
 			if err != nil {
 				return fmt.Errorf("serialize: %w", err)
 			}
+
 			_, err = fd.Write(data)
 			if err != nil {
 				return fmt.Errorf("write: %w", err)
 			}
+
 			if err := fd.Close(); err != nil {
 				return fmt.Errorf("close: %w", err)
 			}

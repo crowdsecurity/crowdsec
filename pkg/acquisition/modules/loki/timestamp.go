@@ -1,7 +1,6 @@
 package loki
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -21,8 +20,6 @@ func (t *timestamp) UnmarshalYAML(unmarshal func(any) error) error {
 	err = unmarshal(&d)
 	if err == nil {
 		*t = timestamp(time.Now().Add(-d))
-		fmt.Println("t", time.Time(*t).Format(time.RFC3339))
-
 		return nil
 	}
 
