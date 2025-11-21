@@ -103,6 +103,10 @@ linters:
             - pkg: gopkg.in/yaml.v2
               desc: yaml.v2 is deprecated for new code in favor of yaml.v3
 
+    embeddedstructfieldcheck:
+      empty-line: false
+      forbid-mutex: true
+
     errcheck:
       # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
       # Such cases aren't reported by default.
@@ -586,6 +590,10 @@ linters:
           - noctx
         path: pkg/exprhelpers/helpers.go
         text: "net.LookupHost must not be called"
+
+      - linters:
+          - embeddedstructfieldcheck
+        text: "embedded fields should be listed before regular fields"
 
     paths:
       - third_party$
