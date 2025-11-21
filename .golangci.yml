@@ -169,6 +169,17 @@ linters:
         - stringsseq
         - waitgroup
 
+    iface:
+      enable:
+        # Identifies interfaces in the same package that have identical method sets.
+        - identical
+        # Identifies interfaces that are not used anywhere in the same package where the interface is defined.
+        # - unused
+        # Identifies functions that return interfaces, but the actual returned value is always a single concrete implementation.
+        - opaque
+        # Identifies interfaces that are not exported but are used in exported functions or methods.
+        # - unexported
+
     perfsprint:
       # Enable/disable optimization of integer formatting.
       # Default: true
