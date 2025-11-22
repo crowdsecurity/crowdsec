@@ -57,7 +57,12 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 
 	ctx := context.TODO()
 
-	err := WindowsRun(ctx)
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = WindowsRun(ctx, cConfig)
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
 		log.Fatal(err)

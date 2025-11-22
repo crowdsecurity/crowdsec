@@ -62,7 +62,8 @@ func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Clie
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
+	papiLogger := cfg.API.Server.NewPAPILogger()
+	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
@@ -127,7 +128,8 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	t.Go(func() error { return apic.Push(ctx) })
 
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
+	papiLogger := cfg.API.Server.NewPAPILogger()
+	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}

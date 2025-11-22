@@ -127,26 +127,6 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 	AcquisitionSources[dataSourceType] = dsGetter
 }
 
-// setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(typ, name string, level log.Level) (*log.Entry, error) {
-	clog := log.New()
-	if err := logging.ConfigureLogger(clog, level); err != nil {
-		return nil, fmt.Errorf("configuring datasource logger: %w", err)
-	}
-
-	fields := log.Fields{
-		"type": typ,
-	}
-
-	if name != "" {
-		fields["name"] = name
-	}
-
-	subLogger := clog.WithFields(fields)
-
-	return subLogger, nil
-}
-
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
@@ -157,15 +137,18 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 		return nil, err
 	}
 
-	subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
-	if err != nil {
-		return nil, err
-	}
-
 	/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 	if err := dataSrc.CanRun(); err != nil {
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
+
+	clog := logging.SubLogger(log.StandardLogger(), "acquisition."+commonConfig.Source, commonConfig.LogLevel)
+	subLogger := clog.WithField("type", commonConfig.Source)
+
+	if commonConfig.Name != "" {
+		subLogger = subLogger.WithField("name", commonConfig.Name)
+	}
+
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
@@ -185,13 +168,6 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
-	typ := labels["type"]
-
-	subLogger, err := setupLogger(typ, "", 0)
-	if err != nil {
-		return nil, err
-	}
-
 	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
@@ -207,6 +183,8 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 	if !ok {
 		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
 	}
+
+	subLogger := log.StandardLogger().WithField("type", labels["type"])
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("configuring datasource for %q: %w", dsn, err)

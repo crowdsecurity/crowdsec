@@ -21,7 +21,7 @@ func isWindowsService() (bool, error) {
 	return svc.IsWindowsService()
 }
 
-func StartRunSvc(ctx context.Context) error {
+func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
@@ -61,7 +61,7 @@ func StartRunSvc(ctx context.Context) error {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	case "":
-		return WindowsRun(ctx)
+		return WindowsRun(ctx, cConfig)
 	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
@@ -69,17 +69,7 @@ func StartRunSvc(ctx context.Context) error {
 	return nil
 }
 
-func WindowsRun(ctx context.Context) error {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
-
-	cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
-	if err != nil {
-		return err
-	}
-
+func WindowsRun(ctx context.Context, cConfig *csconfig.Config) error {
 	if fflag.PProfBlockProfile.IsEnabled() {
 		runtime.SetBlockProfileRate(1)
 		runtime.SetMutexProfileFraction(1)
@@ -96,7 +86,8 @@ func WindowsRun(ctx context.Context) error {
 		var err error
 
 		if cConfig.DbConfig != nil {
-			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
+			dbCfg := cConfig.DbConfig
+			dbClient, err = database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 
 			if err != nil {
 				return fmt.Errorf("unable to create database client: %w", err)

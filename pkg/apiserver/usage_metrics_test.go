@@ -188,7 +188,7 @@ func TestLPMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig, nil)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
@@ -360,7 +360,7 @@ func TestRCMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig, nil)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}

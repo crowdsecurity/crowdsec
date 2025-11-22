@@ -250,7 +250,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 37
+            - 36
         - name: empty-block
           disabled: true
         - name: empty-lines

@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 const (
@@ -45,6 +46,10 @@ type DatabaseCfg struct {
 	MaxOpenConns     int         `yaml:"max_open_conns,omitempty"`
 	UseWal           *bool       `yaml:"use_wal,omitempty"`
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
+}
+
+func (d *DatabaseCfg) NewLogger() *log.Entry {
+	return logging.SubLogger(log.StandardLogger(), "db", d.LogLevel)
 }
 
 type AuthGCCfg struct {
