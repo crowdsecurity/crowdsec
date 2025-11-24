@@ -49,11 +49,13 @@ func TestRetryWithBackoff_SuccessAfterRetries(t *testing.T) {
 	ctx := t.Context()
 
 	var calls int
-	fn := func(ctx context.Context) error {
+
+	fn := func(_ context.Context) error {
 		calls++
 		if calls < 3 {
 			return errFail
 		}
+
 		return nil
 	}
 
@@ -71,7 +73,7 @@ func TestRetryWithBackoff_ExhaustsRetries(t *testing.T) {
 
 	ctx := t.Context()
 
-	fn := func(ctx context.Context) error {
+	fn := func(_ context.Context) error {
 		return errAlwaysFails
 	}
 
@@ -129,7 +131,7 @@ func TestRetryWithBackoff_MaxElapsedTime(t *testing.T) {
 
 	ctx := t.Context()
 
-	fn := func(ctx context.Context) error {
+	fn := func(_ context.Context) error {
 		return errAlwaysFails
 	}
 
@@ -148,7 +150,7 @@ func TestRetryWithBackoff_SuccessFirstTry(t *testing.T) {
 
 	ctx := t.Context()
 
-	fn := func(ctx context.Context) error {
+	fn := func(_ context.Context) error {
 		return nil
 	}
 
