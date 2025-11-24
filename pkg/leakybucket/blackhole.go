@@ -30,7 +30,7 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
-func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (bl *Blackhole) OnBucketOverflow(_ *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		var blackholed = false
 		var tmp []hiddenKey

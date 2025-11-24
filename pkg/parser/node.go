@@ -246,7 +246,7 @@ func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (boo
 	return true, nodeHasOKGrok, nil
 }
 
-func (n *Node) processStash(_ *pipeline.Event, cachedExprEnv map[string]any, logger *log.Entry) error {
+func (n *Node) processStash(_ *pipeline.Event, cachedExprEnv map[string]any) error {
 	for idx, stash := range n.RuntimeStashes {
 		stash.Apply(idx, cachedExprEnv, n.Logger, n.Debug)
 	}
@@ -327,7 +327,7 @@ func (n *Node) process(p *pipeline.Event, ctx UnixParserCtx, expressionEnv map[s
 
 	// Process the stash (data collection) if: a grok was present and succeeded, or if there is no grok
 	if nodeHasOKGrok || n.RuntimeGrok.RunTimeRegexp == nil {
-		if err := n.processStash(p, cachedExprEnv, clog); err != nil {
+		if err := n.processStash(p, cachedExprEnv); err != nil {
 			return false, err
 		}
 	}
