@@ -228,7 +228,9 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 		log.Debugf("everything is dead, return crowdsecTomb")
 
 		if dumpStates {
-			if err := dumpAllStates(); err != nil {
+			log.Debugf("Dumping parser+bucket states to %s", dumpFolder)
+
+			if err := dumpAllStates(dumpFolder); err != nil {
 				log.Fatal(err)
 			}
 

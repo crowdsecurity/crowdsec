@@ -129,7 +129,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
-		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
 		dumpStates = true
 	}
