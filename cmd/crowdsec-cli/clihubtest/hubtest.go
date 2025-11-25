@@ -9,8 +9,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-type configGetter func() *csconfig.Config
-
 var (
 	HubTest        hubtest.HubTest
 	HubAppsecTests hubtest.HubTest
@@ -19,10 +17,10 @@ var (
 )
 
 type cliHubTest struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHubTest {
+func New(cfg csconfig.Getter) *cliHubTest {
 	return &cliHubTest{
 		cfg: cfg,
 	}
