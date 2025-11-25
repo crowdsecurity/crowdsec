@@ -21,7 +21,7 @@ include mk/gmsl
 BUILD_RE2_WASM ?= 0
 
 #expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := netgo,osusergo,expr_debug
+GO_TAGS := osusergo,expr_debug
 
 # By default, build with sqlite3.
 BUILD_SQLITE ?= mattn
