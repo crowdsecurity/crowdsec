@@ -98,7 +98,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, &bucketsTomb, buckets, flags.OrderEvent)
 	if err != nil {
-		return fmt.Errorf("scenario loading failed: %w", err)
+		return err
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
