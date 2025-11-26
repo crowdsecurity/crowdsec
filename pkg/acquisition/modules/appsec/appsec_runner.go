@@ -14,8 +14,6 @@ import (
 	"github.com/corazawaf/coraza/v3"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 
-	// load body processors via init()
-	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
