@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,7 @@ type SyslogMessage struct {
 }
 
 func (s *SyslogServer) Listen(listenAddr string, port int) error {
-	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", listenAddr, port))
+	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(listenAddr, strconv.Itoa(port)))
 	if err != nil {
 		return fmt.Errorf("could not resolve addr %s: %w", listenAddr, err)
 	}
@@ -44,11 +45,11 @@ func (s *SyslogServer) Serve(ctx context.Context, msgChan chan SyslogMessage) er
 		s.conn.Close()
 	}()
 
+	// RFC3164 says 1024 bytes max
+	// RFC5424 says 480 bytes minimum, and should support up to 2048 bytes
 	buf := make([]byte, s.MaxMessageLen)
 
 	for {
-		// RFC3164 says 1024 bytes max
-		// RFC5424 says 480 bytes minimum, and should support up to 2048 bytes
 		n, addr, err := s.conn.ReadFrom(buf)
 		if err != nil {
 			if ctx.Err() != nil {
