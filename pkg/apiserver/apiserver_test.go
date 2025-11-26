@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -26,7 +27,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -143,7 +143,8 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(ctx, config.API.Server)
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	log.Info("Creating new API server")
@@ -170,7 +171,8 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 
 	os.Remove("./ent")
 
-	apiServer, err := NewServer(ctx, config.API.Server)
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	err = apiServer.InitController()
@@ -186,7 +188,7 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config *csconfig.DatabaseCfg) {
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	err = dbClient.ValidateMachine(ctx, machineID)
@@ -196,7 +198,7 @@ func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config
 func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) string {
 	ctx := t.Context()
 
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	machines, err := dbClient.ListMachines(ctx)
@@ -214,7 +216,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 func GetBouncers(t *testing.T, config *csconfig.DatabaseCfg) []*ent.Bouncer {
 	ctx := t.Context()
 
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	bouncers, err := dbClient.ListBouncers(ctx)
@@ -302,7 +304,7 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 }
 
 func CreateTestBouncer(t *testing.T, ctx context.Context, config *csconfig.DatabaseCfg) (string, *database.Client) {
-	dbClient, err := database.NewClient(ctx, config)
+	dbClient, err := database.NewClient(ctx, config, nil)
 	require.NoError(t, err)
 
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
@@ -318,7 +320,9 @@ func TestWithWrongDBConfig(t *testing.T) {
 	ctx := t.Context()
 	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
-	apiServer, err := NewServer(ctx, config.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 
 	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
 	assert.Nil(t, apiServer)
@@ -329,7 +333,9 @@ func TestWithWrongFlushConfig(t *testing.T) {
 	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
-	apiServer, err := NewServer(ctx, config.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
 
 	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative")
 	assert.Nil(t, apiServer)
@@ -362,111 +368,3 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
 
 */
-
-func TestLoggingDebugToFileConfig(t *testing.T) {
-	ctx := t.Context()
-
-	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1 * time.Hour)
-	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: maxAge,
-	}
-
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
-	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
-		LogMedia:  "file",
-		LogDir:    tempDir,
-		DbConfig:  &dbconfig,
-	}
-	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
-	expectedLines := []string{"/test42"}
-	cfg.LogLevel = log.DebugLevel
-
-	// Configure logging
-	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
-	require.NoError(t, err)
-
-	api, err := NewServer(ctx, &cfg)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-
-	w := httptest.NewRecorder()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("User-Agent", UserAgent)
-	api.router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	// wait for the request to happen
-	time.Sleep(500 * time.Millisecond)
-
-	// check file content
-	data, err := os.ReadFile(expectedFile)
-	require.NoError(t, err)
-
-	for _, expectedStr := range expectedLines {
-		assert.Contains(t, string(data), expectedStr)
-	}
-}
-
-func TestLoggingErrorToFileConfig(t *testing.T) {
-	ctx := t.Context()
-
-	/*declare settings*/
-	maxAge := cstime.DurationWithDays(1 * time.Hour)
-	flushConfig := csconfig.FlushDBCfg{
-		MaxAge: maxAge,
-	}
-
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
-	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
-		LogMedia:  "file",
-		LogDir:    tempDir,
-		DbConfig:  &dbconfig,
-	}
-	expectedFile := filepath.Join(tempDir, "crowdsec_api.log")
-	cfg.LogLevel = log.ErrorLevel
-
-	// Configure logging
-	err := logging.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.LogFormat, cfg.CompressLogs, false, false)
-	require.NoError(t, err)
-
-	api, err := NewServer(ctx, &cfg)
-	require.NoError(t, err)
-	require.NotNil(t, api)
-
-	w := httptest.NewRecorder()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", http.NoBody)
-	require.NoError(t, err)
-	req.Header.Set("User-Agent", UserAgent)
-	api.router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	// wait for the request to happen
-	time.Sleep(500 * time.Millisecond)
-
-	// check file content
-	x, err := os.ReadFile(expectedFile)
-	if err == nil {
-		require.Empty(t, x)
-	}
-
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
-}

@@ -8,11 +8,11 @@ import (
 	"github.com/alexliesenfeld/health"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -23,7 +23,7 @@ type Controller struct {
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
 	PluginChannel                 chan models.ProfileAlert
-	Log                           *log.Logger
+	Log                           logging.ExtLogger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
 	HandlerV1                     *v1.Controller

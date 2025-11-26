@@ -60,7 +60,8 @@ func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Clie
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
+	papiLogger := cfg.API.Server.NewPAPILogger()
+	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
@@ -114,7 +115,7 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client) error {
+func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 	cfg := cli.cfg()
 	t := tomb.Tomb{}
 
@@ -125,7 +126,8 @@ func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client
 
 	t.Go(func() error { return apic.Push(ctx) })
 
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, log.GetLevel())
+	papiLogger := cfg.API.Server.NewPAPILogger()
+	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
@@ -162,7 +164,7 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.sync(ctx, color.Output, db)
+			return cli.sync(ctx, db)
 		},
 	}
 

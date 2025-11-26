@@ -412,7 +412,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 
 			if cfg.API.Server != nil && cfg.API.Server.DbConfig != nil {
-				dbClient, err := database.NewClient(ctx, cfg.API.Server.DbConfig)
+				dbCfg := cfg.API.Server.DbConfig
+				dbClient, err := database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 				if err != nil {
 					log.Errorf("failed to get database client: %s", err)
 				}
