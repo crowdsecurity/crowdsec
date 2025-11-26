@@ -575,7 +575,7 @@ func getMethodWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) strin
 	return method
 }
 
-func (r *AppsecRunner) processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
+func processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
 	kind := determineRuleKind(req.IsInBand, evt)
 
 	if evt.Appsec.MatchedRules == nil {
@@ -648,6 +648,6 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 	r.processMatchedRules(state, evt, req)
 
 	if dropInfo != nil {
-		r.processDropInfo(dropInfo, evt, req)
+		processDropInfo(dropInfo, evt, req)
 	}
 }
