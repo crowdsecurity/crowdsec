@@ -56,14 +56,14 @@ func (l *labelsMap) Set(label string) error {
 func (f *Flags) parse() {
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 
-	var traceFlag, debugFlag, infoFlag, warnFlag, errorFlag, fatalFlag bool
+	var trace, debug, info, warn, erro, fatal bool
 
-	flag.BoolVar(&traceFlag, "trace", false, "set log level to 'trace' (VERY verbose)")
-	flag.BoolVar(&debugFlag, "debug", false, "set log level to 'debug'")
-	flag.BoolVar(&infoFlag, "info", false, "set log level to 'info'")
-	flag.BoolVar(&warnFlag, "warning", false, "set log level to 'warning'")
-	flag.BoolVar(&errorFlag, "error", false, "set log level to 'error'")
-	flag.BoolVar(&fatalFlag, "fatal", false, "set log level to 'fatal'")
+	flag.BoolVar(&trace, "trace", false, "set log level to 'trace' (VERY verbose)")
+	flag.BoolVar(&debug, "debug", false, "set log level to 'debug'")
+	flag.BoolVar(&info, "info", false, "set log level to 'info'")
+	flag.BoolVar(&warn, "warning", false, "set log level to 'warning'")
+	flag.BoolVar(&erro, "error", false, "set log level to 'error'")
+	flag.BoolVar(&fatal, "fatal", false, "set log level to 'fatal'")
 
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
@@ -88,17 +88,17 @@ func (f *Flags) parse() {
 	// giving precedence to the most verbose flag if multiple are set. If no flag is specified,
 	// keep the default PanicLevel, which acts as a zero value and should never override another level.
 	switch {
-	case traceFlag:
+	case trace:
 		f.LogLevel = log.TraceLevel
-	case debugFlag:
+	case debug:
 		f.LogLevel = log.DebugLevel
-	case infoFlag:
+	case info:
 		f.LogLevel = log.InfoLevel
-	case warnFlag:
+	case warn:
 		f.LogLevel = log.WarnLevel
-	case errorFlag:
+	case erro:
 		f.LogLevel = log.ErrorLevel
-	case fatalFlag:
+	case fatal:
 		f.LogLevel = log.FatalLevel
 	}
 }

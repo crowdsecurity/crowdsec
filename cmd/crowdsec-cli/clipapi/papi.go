@@ -115,7 +115,7 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliPapi) sync(ctx context.Context, out io.Writer, db *database.Client) error {
+func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 	cfg := cli.cfg()
 	t := tomb.Tomb{}
 
@@ -164,7 +164,7 @@ func (cli *cliPapi) newSyncCmd() *cobra.Command {
 				return err
 			}
 
-			return cli.sync(ctx, color.Output, db)
+			return cli.sync(ctx, db)
 		},
 	}
 
