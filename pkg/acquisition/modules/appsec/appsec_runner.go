@@ -257,17 +257,16 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 
 	interrupt := state.Tx.Interruption()
 	dropInfo := state.InBandDrop
+
 	if interrupt == nil && dropInfo == nil {
 		return
 	}
-	if interrupt == nil && dropInfo != nil {
-		interrupt = dropInfo.Interruption
-	}
 
-	if dropInfo != nil {
-		r.logger.Debugf("inband drop helper triggered: %s", dropInfo.Reason)
-	} else {
+	if interrupt != nil {
 		r.logger.Debugf("inband rules matched : %d", interrupt.RuleID)
+	} else if dropInfo != nil {
+		r.logger.Debugf("inband drop helper triggered: %s", dropInfo.Reason)
+		interrupt = dropInfo.Interruption
 	}
 
 	state.Response.InBandInterrupt = true
