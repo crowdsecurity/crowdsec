@@ -1,10 +1,11 @@
 package cliitem
 
 import (
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCollection(cfg configGetter) *cliItem {
+func NewCollection(cfg csconfig.Getter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.COLLECTIONS,

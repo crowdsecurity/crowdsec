@@ -12,7 +12,7 @@ import (
 
 type cliDashboard struct{}
 
-func NewCLIDashboard(_ configGetter) *cliDashboard {
+func NewCLIDashboard() *cliDashboard {
 	return &cliDashboard{}
 }
 

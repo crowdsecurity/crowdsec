@@ -44,8 +44,6 @@ var (
 	csConfig       *csconfig.Config
 )
 
-type configGetter func() *csconfig.Config
-
 var mergedConfig string
 
 type logFlags struct {
@@ -278,7 +276,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliconfig.New(cli.cfg).NewCommand(func() string { return mergedConfig }))
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIDashboard().NewCommand())
 	cmd.AddCommand(clidecision.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clialert.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisimulation.New(cli.cfg).NewCommand())
@@ -288,7 +286,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(clilapi.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
 	cmd.AddCommand(cliconsole.New(cli.cfg).NewCommand())
-	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
+	cmd.AddCommand(cliexplain.New(ConfigFilePath).NewCommand())
 	cmd.AddCommand(clihubtest.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clinotifications.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisupport.New(cli.cfg).NewCommand())

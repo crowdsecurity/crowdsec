@@ -7,13 +7,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliSetup struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliSetup {
+func New(cfg csconfig.Getter) *cliSetup {
 	return &cliSetup{
 		cfg: cfg,
 	}
