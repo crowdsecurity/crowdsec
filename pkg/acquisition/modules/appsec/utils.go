@@ -426,31 +426,19 @@ func buildRuleMap(data ruleData, kind string) map[string]any {
 	return ruleMap
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
-	if evt == nil {
-		return
-	}
-
-	var dropInfo *appsec.AppsecDropInfo
-	if state != nil {
-		dropInfo = state.DropInfo(req)
-	}
-
-	if !state.Tx.IsInterrupted() && dropInfo == nil {
-		// if the phase didn't generate an interruption, we don't have anything to add to the event
-		return
-	}
-	// if one interruption was generated, event is good for processing :)
-	evt.Process = true
-
+func initializeEventMaps(evt *pipeline.Event) {
 	if evt.Meta == nil {
 		evt.Meta = map[string]string{}
 	}
-
 	if evt.Parsed == nil {
 		evt.Parsed = map[string]string{}
 	}
+	if evt.Appsec.Vars == nil {
+		evt.Appsec.Vars = map[string]string{}
+	}
+}
 
+func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.AppsecDropInfo) {
 	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
@@ -465,13 +453,10 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
 		evt.Parsed["appsec_drop_reason"] = dropInfo.Reason
 	}
+}
 
-	if evt.Appsec.Vars == nil {
-		evt.Appsec.Vars = map[string]string{}
-	}
-
+func collectTXAnomalyScores(state *appsec.AppsecRequestState, evt *pipeline.Event) {
 	txCollection := state.Tx.Variables().TX()
-
 	txMatchedData := txCollection.FindAll()
 
 	for _, match := range txMatchedData {
@@ -479,35 +464,61 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 			evt.Appsec.Vars["TX."+match.Key()] = match.Value()
 		}
 	}
+}
 
-	if len(r.AppsecRuntime.CompiledVariablesTracking) > 0 {
-		state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
-			for _, variable := range col.FindAll() {
-				r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
-				key := variable.Variable().Name()
-				if variable.Key() != "" {
-					key += "." + variable.Key()
-				}
-
-				if variable.Value() == "" {
-					continue
-				}
-
-				for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
-					match := collectionToKeep.MatchString(key)
-					if match {
-						evt.Appsec.Vars[key] = variable.Value()
-						r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
-					} else {
-						r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
-					}
-				}
-			}
-
-			return true
-		})
+func (r *AppsecRunner) collectTrackedVariables(state *appsec.AppsecRequestState, evt *pipeline.Event) {
+	if len(r.AppsecRuntime.CompiledVariablesTracking) == 0 {
+		return
 	}
 
+	state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+		for _, variable := range col.FindAll() {
+			r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
+			key := variable.Variable().Name()
+			if variable.Key() != "" {
+				key += "." + variable.Key()
+			}
+
+			if variable.Value() == "" {
+				continue
+			}
+
+			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
+				match := collectionToKeep.MatchString(key)
+				if match {
+					evt.Appsec.Vars[key] = variable.Value()
+					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+				} else {
+					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+				}
+			}
+		}
+
+		return true
+	})
+}
+
+func getRuleNameAndMetrics(rule corazatypes.MatchedRule, logger *log.Entry) (name, version, hash, ruleNameProm string) {
+	version = ""
+	hash = ""
+	ruleNameProm = fmt.Sprintf("%d", rule.Rule().ID())
+
+	if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
+		// Only set them for custom rules, not for rules written in seclang
+		name = details.Name
+		version = details.Version
+		hash = details.Hash
+		ruleNameProm = details.Name
+
+		logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
+	} else {
+		name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
+	}
+
+	return name, version, hash, ruleNameProm
+}
+
+func (r *AppsecRunner) processMatchedRules(state *appsec.AppsecRequestState, evt *pipeline.Event, req *appsec.ParsedRequest) {
 	for _, rule := range state.Tx.MatchedRules() {
 		// Drop the rule if it has no message (it's likely a CRS setup rule)
 		if rule.Message() == "" {
@@ -516,23 +527,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		}
 
 		kind := determineRuleKind(state.CurrentPhase == appsec.PhaseInBand, evt)
-
-		var name string
-		version := ""
-		hash := ""
-		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
-
-		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
-			// Only set them for custom rules, not for rules written in seclang
-			name = details.Name
-			version = details.Version
-			hash = details.Hash
-			ruleNameProm = details.Name
-
-			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
-		} else {
-			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
-		}
+		name, version, hash, ruleNameProm := getRuleNameAndMetrics(rule, r.logger)
 
 		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
@@ -562,60 +557,97 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, buildRuleMap(data, kind))
 	}
+}
+
+func getURIWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) string {
+	uri := evt.Parsed["target_uri"]
+	if uri == "" && req != nil {
+		uri = req.URI
+	}
+	return uri
+}
+
+func getMethodWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) string {
+	method := evt.Parsed["method"]
+	if method == "" && req != nil {
+		method = req.Method
+	}
+	return method
+}
+
+func (r *AppsecRunner) processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
+	kind := determineRuleKind(req.IsInBand, evt)
+
+	if evt.Appsec.MatchedRules == nil {
+		evt.Appsec.MatchedRules = pipeline.MatchedRules{}
+	}
+
+	tags := dropInfo.Interruption.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
+	uri := getURIWithFallback(evt, req)
+	method := getMethodWithFallback(evt, req)
+	severity := corazatypes.RuleSeverityNotice
+
+	ruleName := "crowdsec.drop-request"
+	if dropInfo.Reason != "" {
+		ruleName = dropInfo.Reason
+	}
+
+	data := ruleData{
+		ID:           dropInfo.Interruption.RuleID,
+		Name:         ruleName,
+		Hash:         "",
+		Version:      "",
+		Message:      dropInfo.Reason,
+		URI:          uri,
+		Method:       method,
+		Disruptive:   true,
+		Tags:         tags,
+		File:         "crowdsec:drop_request",
+		FileLine:     0,
+		Revision:     "",
+		SecMark:      "",
+		Accuracy:     0,
+		Severity:     severity.String(),
+		SeverityInt:  severity.Int(),
+		MatchedZones: []string{"PRE_EVAL"},
+		LogData:      dropInfo.Reason,
+		IsInternal:   false,
+	}
+
+	syntheticRule := buildRuleMap(data, kind)
+	evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
+}
+
+func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
+	if evt == nil {
+		return
+	}
+
+	var dropInfo *appsec.AppsecDropInfo
+	if state != nil {
+		dropInfo = state.DropInfo(req)
+	}
+
+	if !state.Tx.IsInterrupted() && dropInfo == nil {
+		// if the phase didn't generate an interruption, we don't have anything to add to the event
+		return
+	}
+
+	// if one interruption was generated, event is good for processing :)
+	evt.Process = true
+
+	initializeEventMaps(evt)
+	updateEventPhaseMetadata(evt, state, dropInfo)
+
+	collectTXAnomalyScores(state, evt)
+	r.collectTrackedVariables(state, evt)
+	r.processMatchedRules(state, evt, req)
 
 	if dropInfo != nil {
-		kind := determineRuleKind(req.IsInBand, evt)
-
-		if evt.Appsec.MatchedRules == nil {
-			evt.Appsec.MatchedRules = pipeline.MatchedRules{}
-		}
-
-		tags := dropInfo.Interruption.Tags
-		if tags == nil {
-			tags = []string{}
-		}
-
-		uri := evt.Parsed["target_uri"]
-		if uri == "" && req != nil {
-			uri = req.URI
-		}
-
-		method := evt.Parsed["method"]
-		if method == "" && req != nil {
-			method = req.Method
-		}
-
-		severity := corazatypes.RuleSeverityNotice
-
-		ruleName := "crowdsec.drop-request"
-		if dropInfo.Reason != "" {
-			ruleName = dropInfo.Reason
-		}
-
-		data := ruleData{
-			ID:           dropInfo.Interruption.RuleID,
-			Name:         ruleName,
-			Hash:         "",
-			Version:      "",
-			Message:      dropInfo.Reason,
-			URI:          uri,
-			Method:       method,
-			Disruptive:   true,
-			Tags:         tags,
-			File:         "crowdsec:drop_request",
-			FileLine:     0,
-			Revision:     "",
-			SecMark:      "",
-			Accuracy:     0,
-			Severity:     severity.String(),
-			SeverityInt:  severity.Int(),
-			MatchedZones: []string{"PRE_EVAL"},
-			LogData:      dropInfo.Reason,
-			IsInternal:   false,
-		}
-
-		syntheticRule := buildRuleMap(data, kind)
-
-		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
+		r.processDropInfo(dropInfo, evt, req)
 	}
 }
