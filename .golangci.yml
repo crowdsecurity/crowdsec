@@ -24,10 +24,13 @@ linters:
     - lll       # revive
     - wsl       # wsl_v5
 
-    # Disabled atm
+    # Disabled atm, likely to be enabled later
 
     - funcorder
     - exhaustive
+    - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
+    - unparam      # Reports unused function parameters
+    - errchkjson   # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
 
     # we allow named returns (to improve readability, in the function signatures)
     # but disallow implicit (or "naked") returns, to improve readability in the actual code.
@@ -36,52 +39,24 @@ linters:
     # https://go.dev/wiki/CodeReviewComments#named-result-parameters
     - nonamedreturns
 
-    #
-    # Recommended? (easy)
-    #
-
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
-    - godot                 # Check if comments end in a period
     - gosec                 # (gas): Inspects source code for security problems
     - musttag               # enforce field tags in (un)marshaled structs
     - promlinter            # Check Prometheus metrics naming via promlint
     - tagalign              # check that struct tags are well aligned
-    - thelper               # thelper detects tests helpers which is not start with t.Helper() method.
+    - thelper               # thelper detects tests helpers which do not start with t.Helper() method.
     - wrapcheck             # Checks that errors returned from external packages are wrapped
     - embeddedstructfieldcheck
 
-    #
-    # Recommended? (requires some work)
-    #
-
-    - errname               # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - ireturn               # Accept Interfaces, Return Concrete Types
     - mnd                   # An analyzer to detect magic numbers.
     - nilnil                # Checks that there is no simultaneous return of `nil` error and an invalid value.
-    - unparam               # Reports unused function parameters
-
-    #
-    # Formatting only, useful in IDE but should not be forced on CI?
-    #
-
-    - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
-    - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
-    - wsl_v5                # add or remove empty lines
-
-    #
-    # Well intended, but not ready for this
-    #
     - dupl                  # Tool for code clone detection
     - forcetypeassert       # finds forced type assertions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
     - err113                # Go linter to check the errors handling expressions
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
-
-    #
-    # Too strict / too many false positives (for now?)
-    #
     - exhaustruct           # Checks if all structure fields are initialized
     - forbidigo             # Forbids identifiers
     - gochecknoglobals      # Check that no global variables exist.
@@ -92,6 +67,15 @@ linters:
     - noinlineerr
     - iotamixing
     - godoclint
+
+    #
+    # Formatting only, useful in IDE but should not be forced on CI
+    #
+
+    - godot                 # Check if comments end in a period
+    - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
+    - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
+    - wsl_v5                # add or remove empty lines
 
   settings:
 
@@ -174,6 +158,23 @@ linters:
         ifElseChain:
           minThreshold: 4
 
+    modernize:
+      disable:
+        - any
+        - fmtappendf
+        - forvar
+        - omitzero
+        - slicessort
+        - stringsbuilder
+        - stringsseq
+        - waitgroup
+
+    perfsprint:
+      concat-loop: false
+      hex-format: false
+      integer-format: false
+      string-format: false
+
     unused:
       # Mark all struct fields that have been written to as used.
       # Default: true
@@ -212,7 +213,7 @@ linters:
 
     maintidx:
       # raise this after refactoring
-      under: 20
+      under: 21
 
     misspell:
       locale: US
@@ -241,7 +242,7 @@ linters:
         - name: cognitive-complexity
           arguments:
             # lower this after refactoring
-            - 113
+            - 91
         - name: comment-spacings
           disabled: true
         - name: confusing-results
@@ -356,14 +357,6 @@ linters:
       - linters:
           - govet
         text: 'shadow: declaration of "(err|ctx)" shadows declaration'
-
-      # Will apply, trivial - just beware of merge conflicts
-
-      - linters:
-          - perfsprint
-        text: fmt.Sprintf can be replaced .*
-
-      # Will fix, easy but some thinking required
 
       # https://github.com/timakin/bodyclose
       - linters:
@@ -492,7 +485,7 @@ linters:
 
       - linters:
           - containedctx
-        path: pkg/acquisition/modules/s3/s3.go
+        path: pkg/acquisition/modules/s3/source.go
         text: found a struct that contains a context.Context field
 
       # migrate over time

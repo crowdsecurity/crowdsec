@@ -3,6 +3,7 @@ package clihubtest
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -35,7 +36,7 @@ func hubTestResultTable(out io.Writer, wantColor string, testMap map[string]*hub
 	if showTable {
 		t.Render()
 	} else {
-		fmt.Println("All tests passed, use --report-success for more details.")
+		fmt.Fprintln(os.Stdout, "All tests passed, use --report-success for more details.")
 	}
 }
 

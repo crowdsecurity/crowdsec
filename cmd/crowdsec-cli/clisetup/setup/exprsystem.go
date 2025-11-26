@@ -17,7 +17,7 @@ func NewExprSystem(runningProcesses ProcessMap) *ExprSystem {
 }
 
 // ProcessRunning returns true if there is a running process with the given name.
-func (e *ExprSystem) ProcessRunning(ctx context.Context, processName string) (bool, error) {
+func (e *ExprSystem) ProcessRunning(_ context.Context, processName string) (bool, error) {
 	_, ok := e.runningProcesses[processName]
 
 	return ok, nil

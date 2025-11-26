@@ -48,13 +48,13 @@ source: k8s-audit
 listen_addr: 0.0.0.0
 listen_port: true
 `,
-			expectedErr: `[4:14] cannot unmarshal bool into Go struct field KubernetesAuditConfiguration.ListenPort of type int`,
+			expectedErr: `[4:14] cannot unmarshal bool into Go struct field Configuration.ListenPort of type int`,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -86,7 +86,7 @@ webhook_path: /k8s-audit`,
 			out := make(chan pipeline.Event)
 			tb := &tomb.Tomb{}
 
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			err := f.UnmarshalConfig([]byte(test.config))
 
@@ -244,7 +244,7 @@ func TestHandler(t *testing.T) {
 				}
 			})
 
-			f := KubernetesAuditSource{}
+			f := Source{}
 
 			port := 49234+idx
 			config := fmt.Sprintf(`source: k8s-audit

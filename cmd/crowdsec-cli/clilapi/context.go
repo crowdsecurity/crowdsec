@@ -79,6 +79,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 				keySlice := strings.Split(v, ".")
 				key := keySlice[len(keySlice)-1]
 				value := []string{v}
+
 				if err := cli.addContext(key, value); err != nil {
 					return err
 				}
@@ -105,6 +106,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
+
 			hub, err := require.Hub(cfg, nil)
 			if err != nil {
 				return err
@@ -145,6 +147,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := cli.cfg()
+
 			if !detectAll && len(args) == 0 {
 				_ = cmd.Help()
 				return errors.New("please provide parsers to detect or --all flag")
@@ -168,13 +171,16 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			}
 
 			fieldByParsers := make(map[string][]string)
+
 			for _, node := range csParsers.Nodes {
 				if !detectAll && !slices.Contains(args, node.Name) {
 					continue
 				}
+
 				if !detectAll {
 					args = removeFromSlice(node.Name, args)
 				}
+
 				fieldByParsers[node.Name] = make([]string, 0)
 				fieldByParsers[node.Name] = detectNode(node, *csParsers.Ctx)
 
@@ -195,18 +201,22 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			for k := range fieldByParsers {
 				parsersKey = append(parsersKey, k)
 			}
+
 			sort.Strings(parsersKey)
 
 			for _, k := range parsersKey {
 				if len(fieldByParsers[k]) == 0 {
 					continue
 				}
+
 				fmt.Fprintf(os.Stdout, "%s :\n\n", k)
 				values := fieldByParsers[k]
 				sort.Strings(values)
+
 				for _, value := range values {
 					fmt.Fprintf(os.Stdout, "  - %s\n", value)
 				}
+
 				fmt.Fprintln(os.Stdout)
 			}
 
@@ -254,6 +264,7 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
 				}
 			}
+
 			if cfg.DisableAgent {
 				return errors.New("agent is disabled and lapi context can only be used on the agent")
 			}

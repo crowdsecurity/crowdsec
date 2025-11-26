@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
@@ -43,8 +42,6 @@ func getLineCountForFile(pth string) (int, error) {
 	return lc, nil
 }
 
-type configGetter func() *csconfig.Config
-
 type cliExplain struct {
 	configFilePath string
 	flags          struct {
@@ -61,7 +58,7 @@ type cliExplain struct {
 	}
 }
 
-func New(cfg configGetter, configFilePath string) *cliExplain {
+func New(configFilePath string) *cliExplain {
 	return &cliExplain{
 		configFilePath: configFilePath,
 	}

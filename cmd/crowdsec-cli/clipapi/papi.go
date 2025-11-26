@@ -18,13 +18,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliPapi struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliPapi {
+func New(cfg csconfig.Getter) *cliPapi {
 	return &cliPapi{
 		cfg: cfg,
 	}

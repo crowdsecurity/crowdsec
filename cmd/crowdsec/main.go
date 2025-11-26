@@ -111,21 +111,21 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 }
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
-	var err error
-
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		flags.Labels = labels
+		flags.Labels = additionalLabels
 		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
-		if err != nil {
-			return nil, fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
-		}
-	} else {
-		dataSources, err = acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
 			return nil, err
 		}
+		dataSources = append(dataSources, ds)
+	} else {
+		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		if err != nil {
+			return nil, err
+		}
+		dataSources = dss
 	}
 
 	if len(dataSources) == 0 {
@@ -136,9 +136,9 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 }
 
 var (
-	dumpFolder string
-	dumpStates bool
-	labels     = make(labelsMap)
+	dumpFolder         string
+	dumpStates         bool
+	additionalLabels = make(labelsMap)
 )
 
 func (*labelsMap) String() string {
@@ -172,7 +172,7 @@ func (f *Flags) Parse() {
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
+	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")

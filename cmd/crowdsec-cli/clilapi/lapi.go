@@ -8,13 +8,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliLapi struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliLapi {
+func New(cfg csconfig.Getter) *cliLapi {
 	return &cliLapi{
 		cfg: cfg,
 	}
@@ -29,6 +27,7 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 			if err := cli.cfg().LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
+
 			return nil
 		},
 	}
