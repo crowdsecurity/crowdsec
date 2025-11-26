@@ -32,7 +32,7 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 		if machineID != "" {
 			metrics.LapiMachineHits.With(prometheus.Labels{
 				"machine": machineID,
-				"route":   c.Request.URL.Path,
+				"route":   c.FullPath(),
 				"method":  c.Request.Method,
 			}).Inc()
 		}
@@ -47,7 +47,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 		if bouncer != nil {
 			metrics.LapiBouncerHits.With(prometheus.Labels{
 				"bouncer": bouncer.Name,
-				"route":   c.Request.URL.Path,
+				"route":   c.FullPath(),
 				"method":  c.Request.Method,
 			}).Inc()
 		}
@@ -61,12 +61,12 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		startTime := time.Now()
 
 		metrics.LapiRouteHits.With(prometheus.Labels{
-			"route":  c.Request.URL.Path,
+			"route":  c.FullPath(),
 			"method": c.Request.Method,
 		}).Inc()
 		c.Next()
 
 		elapsed := time.Since(startTime)
-		metrics.LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(elapsed.Seconds())
+		metrics.LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.FullPath()}).Observe(elapsed.Seconds())
 	}
 }

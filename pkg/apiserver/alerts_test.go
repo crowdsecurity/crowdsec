@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -509,7 +510,9 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
 	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}
 	cfg.API.Server.ListenURI = "::8080"
-	server, err := NewServer(ctx, cfg.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	server, err := NewServer(ctx, cfg.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	err = server.InitController()

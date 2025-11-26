@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type LongPollClient struct {
@@ -27,7 +29,7 @@ type LongPollClient struct {
 
 type LongPollClientConfig struct {
 	Url        url.URL
-	Logger     *log.Logger
+	Logger     logging.ExtLogger
 	HttpClient *http.Client
 }
 

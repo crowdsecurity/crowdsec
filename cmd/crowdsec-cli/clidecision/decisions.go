@@ -27,11 +27,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliDecisions struct {
 	client *apiclient.ApiClient
-	cfg    configGetter
+	cfg    csconfig.Getter
 }
 
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
@@ -125,7 +123,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	return nil
 }
 
-func New(cfg configGetter) *cliDecisions {
+func New(cfg csconfig.Getter) *cliDecisions {
 	return &cliDecisions{
 		cfg: cfg,
 	}

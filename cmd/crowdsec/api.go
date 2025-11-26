@@ -13,12 +13,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+const accessLogFilename = "crowdsec_api.log"
+
 func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 		log.Info("push and pull to Central API disabled")
 	}
 
-	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server)
+	accessLogger := cConfig.API.Server.NewAccessLogger(cConfig.Common.LogConfig, accessLogFilename)
+
+	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server, accessLogger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %w", err)
 	}
