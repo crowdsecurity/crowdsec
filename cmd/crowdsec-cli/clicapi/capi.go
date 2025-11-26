@@ -26,13 +26,11 @@ import (
 
 var CAPIBaseURL = "https://api.crowdsec.net/"
 
-type configGetter = func() *csconfig.Config
-
 type cliCapi struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliCapi {
+func New(cfg csconfig.Getter) *cliCapi {
 	return &cliCapi{
 		cfg: cfg,
 	}

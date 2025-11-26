@@ -31,13 +31,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliAllowLists struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliAllowLists {
+func New(cfg csconfig.Getter) *cliAllowLists {
 	return &cliAllowLists{
 		cfg: cfg,
 	}
