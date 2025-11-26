@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*loki.LokiSource)(nil)
-	_ DSNConfigurer   = (*loki.LokiSource)(nil)
-	_ Fetcher         = (*loki.LokiSource)(nil)
-	_ Tailer          = (*loki.LokiSource)(nil)
-	_ MetricsProvider = (*loki.LokiSource)(nil)
+	_ DataSource      = (*loki.Source)(nil)
+	_ DSNConfigurer   = (*loki.Source)(nil)
+	_ Fetcher         = (*loki.Source)(nil)
+	_ Tailer          = (*loki.Source)(nil)
+	_ MetricsProvider = (*loki.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("loki", func() DataSource { return &loki.LokiSource{} })
+	registerDataSource("loki", func() DataSource { return &loki.Source{} })
 }

@@ -280,7 +280,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "while configuring datasource of type file from testdata/bad_filetype.yaml",
+			ExpectedError: "configuring datasource of type file from testdata/bad_filetype.yaml",
 		},
 		{
 			TestName: "from_env",
@@ -399,9 +399,8 @@ func TestStartAcquisitionCat(t *testing.T) {
 	acquisTomb := tomb.Tomb{}
 
 	go func() {
-		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Error("unexpected error")
-		}
+		err := StartAcquisition(ctx, sources, out, &acquisTomb)
+		assert.NoError(t, err)
 	}()
 
 	count := 0
@@ -534,7 +533,7 @@ func TestConfigureByDSN(t *testing.T) {
 	}{
 		{
 			dsn:           "baddsn",
-			ExpectedError: "baddsn isn't valid dsn (no protocol)",
+			ExpectedError: "baddsn is not a valid dsn (no protocol)",
 		},
 		{
 			dsn:           "foobar://toto",
@@ -542,7 +541,6 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 		{
 			dsn:            "mockdsn://test_expect",
-			ExpectedResLen: 1,
 		},
 		{
 			dsn:           "mockdsn://bad",
@@ -554,10 +552,15 @@ func TestConfigureByDSN(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			srcs, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "")
+			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "")
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
-			assert.Len(t, srcs, tc.ExpectedResLen)
+			if tc.ExpectedError != "" {
+				return
+			}
+
+			assert.NotNil(t, source)
+			assert.Equal(t, "mockdsn", source.GetName())
 		})
 	}
 }
@@ -582,7 +585,7 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
 
-	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but StreamingAcquisition is not supported")
+	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
 
 

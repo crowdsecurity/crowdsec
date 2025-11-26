@@ -8,12 +8,12 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*kinesisacquisition.KinesisSource)(nil)
-	_ Tailer          = (*kinesisacquisition.KinesisSource)(nil)
-	_ MetricsProvider = (*kinesisacquisition.KinesisSource)(nil)
+	_ DataSource      = (*kinesisacquisition.Source)(nil)
+	_ Tailer          = (*kinesisacquisition.Source)(nil)
+	_ MetricsProvider = (*kinesisacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.KinesisSource{} })
+	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.Source{} })
 }

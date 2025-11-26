@@ -230,8 +230,8 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
 		UpdateScenario: ret.FetchScenariosListFromDB,
-		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
-			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		TokenSave: func(ctx context.Context, token string) error {
+			return dbClient.SaveAPICToken(ctx, token)
 		},
 	})
 
@@ -246,16 +246,18 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 //
 // If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
-		log.Debug("using valid token from DB")
+	transport := a.apiClient.GetClient().Transport.(*apiclient.JWTTransport)
 
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+	token, err := a.dbClient.LoadAPICToken(ctx, log.StandardLogger())
+	if err == nil {
+		log.Debug("using valid token from DB")
+		transport.Token = token.Raw
+		transport.Expiration = token.ExpiresAt
 
 		return nil
 	}
 
-	log.Debug("No token found, authenticating")
+	log.WithError(err).Debug("No useful token, authenticating")
 
 	scenarios, err := a.FetchScenariosListFromDB(ctx)
 	if err != nil {
@@ -273,13 +275,13 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
 	}
 
-	if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+	if err = transport.Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
 		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
 
-	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+	transport.Token = authResp.Token
 
-	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.

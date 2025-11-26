@@ -26,9 +26,13 @@ type DecisionsByScenario struct {
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now().UTC()),
-	)
+	// Do not select all fields.
+	// This can get pretty expensive network-wise if there are a lot of decisions and you are using a remote database
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilGT(time.Now().UTC()),
+		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
@@ -52,9 +56,11 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, filter map[st
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(time.Now().UTC()),
-	)
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilLT(time.Now().UTC()),
+		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
@@ -298,68 +304,79 @@ func decisionIDs(decisions []*ent.Decision) []int {
 	return ids
 }
 
-// ExpireDecisions sets the expiration of a list of decisions to now()
-// It returns the number of impacted decisions for the CAPI/PAPI
-func (c *Client) ExpireDecisions(ctx context.Context, decisions []*ent.Decision) (int, error) {
-	if len(decisions) <= decisionDeleteBulkSize {
-		ids := decisionIDs(decisions)
+// expireDecisionBatch expires the decisions as a single operation.
+func (c *Client) expireDecisionBatch(ctx context.Context, batch []*ent.Decision, now time.Time) (int, error) {
+	ids := decisionIDs(batch)
 
-		rows, err := c.Ent.Decision.Update().Where(
-			decision.IDIn(ids...),
-		).SetUntil(time.Now().UTC()).Save(ctx)
-		if err != nil {
-			return 0, fmt.Errorf("expire decisions with provided filter: %w", err)
-		}
-
-		return rows, nil
+	rows, err := c.Ent.Decision.
+		Update().
+		Where(decision.IDIn(ids...)).
+		SetUntil(now).
+		Save(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("expire decisions with provided filter: %w", err)
 	}
 
-	// big batch, let's split it and recurse
-
-	total := 0
-
-	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
-		rows, err := c.ExpireDecisions(ctx, chunk)
-		if err != nil {
-			return total, err
-		}
-
-		total += rows
-	}
-
-	return total, nil
+	return rows, nil
 }
 
-// DeleteDecisions removes a list of decisions from the database
-// It returns the number of impacted decisions for the CAPI/PAPI
+// ExpireDecisions sets the expiration of a list of decisions to now(),
+// in multiple operations if len(decisions) > decisionDeleteBulkSize.
+// It returns the number of impacted decisions for the CAPI/PAPI, even in case of error.
+func (c *Client) ExpireDecisions(ctx context.Context, decisions []*ent.Decision) (int, error) {
+	if len(decisions) == 0 {
+		return 0, nil
+	}
+
+	now := time.Now().UTC()
+
+	total := 0
+	err := slicetools.Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
+		rows, err := c.expireDecisionBatch(ctx, batch, now)
+		if err != nil {
+			return err
+		}
+		total += rows
+		return nil
+	})
+
+	return total, err
+}
+
+// deleteDecisionBatch removes the decisions as a single operation.
+func (c *Client) deleteDecisionBatch(ctx context.Context, batch []*ent.Decision) (int, error) {
+	ids := decisionIDs(batch)
+
+	rows, err := c.Ent.Decision.
+		Delete().
+		Where(decision.IDIn(ids...)).
+		Exec(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("hard delete decisions with provided filter: %w", err)
+	}
+
+	return rows, nil
+}
+
+// DeleteDecisions removes a list of decisions from the database,
+// in multiple operations if len(decisions) > decisionDeleteBulkSize.
+// It returns the number of impacted decisions for the CAPI/PAPI, even in case of error.
 func (c *Client) DeleteDecisions(ctx context.Context, decisions []*ent.Decision) (int, error) {
-	if len(decisions) < decisionDeleteBulkSize {
-		ids := decisionIDs(decisions)
-
-		rows, err := c.Ent.Decision.Delete().Where(
-			decision.IDIn(ids...),
-		).Exec(ctx)
-		if err != nil {
-			return 0, fmt.Errorf("hard delete decisions with provided filter: %w", err)
-		}
-
-		return rows, nil
+	if len(decisions) == 0 {
+		return 0, nil
 	}
 
-	// big batch, let's split it and recurse
-
-	tot := 0
-
-	for _, chunk := range slicetools.Chunks(decisions, decisionDeleteBulkSize) {
-		rows, err := c.DeleteDecisions(ctx, chunk)
+	total := 0
+	err := slicetools.Batch(ctx, decisions, decisionDeleteBulkSize, func(ctx context.Context, batch []*ent.Decision) error {
+		rows, err := c.deleteDecisionBatch(ctx, batch)
 		if err != nil {
-			return tot, err
+			return err
 		}
+		total += rows
+		return nil
+	})
 
-		tot += rows
-	}
-
-	return tot, nil
+	return total, err
 }
 
 // ExpireDecisionByID set the expiration of a decision to now()

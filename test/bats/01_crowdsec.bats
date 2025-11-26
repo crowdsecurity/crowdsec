@@ -376,10 +376,10 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "while configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
+    assert_stderr --partial "configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
 }

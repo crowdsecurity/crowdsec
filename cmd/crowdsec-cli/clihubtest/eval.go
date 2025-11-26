@@ -2,6 +2,7 @@ package clihubtest
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -33,7 +34,7 @@ func (*cliHubTest) newEvalCmd() *cobra.Command {
 					return err
 				}
 
-				fmt.Print(output)
+				fmt.Fprint(os.Stdout, output)
 			}
 
 			return nil

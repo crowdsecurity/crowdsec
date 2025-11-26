@@ -11,6 +11,10 @@ type ExtendedTransaction struct {
 	Tx experimental.FullTransaction
 }
 
+type interrupter interface {
+	Interrupt(interruption *types.Interruption)
+}
+
 func NewExtendedTransaction(engine coraza.WAF, uuid string) ExtendedTransaction {
 	inBoundTx := engine.NewTransactionWithID(uuid)
 	expTx := inBoundTx.(experimental.FullTransaction)
@@ -94,4 +98,14 @@ func (t *ExtendedTransaction) ID() string {
 
 func (t *ExtendedTransaction) Close() error {
 	return t.Tx.Close()
+}
+
+func (t *ExtendedTransaction) Interrupt(interruption *types.Interruption) {
+	if t == nil || t.Tx == nil || interruption == nil {
+		return
+	}
+
+	if setter, ok := t.Tx.(interrupter); ok {
+		setter.Interrupt(interruption)
+	}
 }

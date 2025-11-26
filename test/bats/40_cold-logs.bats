@@ -40,13 +40,12 @@ setup() {
 @test "some datasources don't support one-shot / cold logs" {
     rune -1 "$CROWDSEC" -dsn http://blah/blah/and/blah -type syslog -no-api
     refute_output
-    assert_stderr --partial "crowdsec init: while loading acquisition config: failed to configure datasource for http://blah/blah/and/blah: http datasource does not support command-line acquisition"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: http datasource does not support command-line acquisition"
 }
 
 @test "the one-shot mode works" {
     rune -0 "$CROWDSEC" -dsn file://<(fake_log) -type syslog -no-api
     refute_output
-    assert_stderr --partial "single file mode : log_media=stdout"
     assert_stderr --regexp "Adding file .* to filelist"
     assert_stderr --regexp "reading .* at once"
     assert_stderr --partial "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over "
