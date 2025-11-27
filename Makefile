@@ -6,6 +6,8 @@ endif
 include mk/platform.mk
 include mk/gmsl
 
+export GOEXPERIMENT=jsonv2
+
 # By default, this build requires the C++ re2 library to be installed.
 #
 # Debian/Ubuntu: apt install libre2-dev
