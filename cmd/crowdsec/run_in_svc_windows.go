@@ -15,13 +15,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func isWindowsService() (bool, error) {
 	return svc.IsWindowsService()
 }
 
-func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
+func StartRunSvc(ctx context.Context, cConfig *csconfig.Config, logLines chan pipeline.Event) error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
@@ -61,7 +62,7 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	case "":
-		return WindowsRun(ctx, cConfig)
+		return WindowsRun(ctx, cConfig, logLines)
 	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
@@ -69,7 +70,7 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func WindowsRun(ctx context.Context, cConfig *csconfig.Config) error {
+func WindowsRun(ctx context.Context, cConfig *csconfig.Config, logLines chan pipeline.Event) error {
 	if fflag.PProfBlockProfile.IsEnabled() {
 		runtime.SetBlockProfileRate(1)
 		runtime.SetMutexProfileFraction(1)
@@ -96,5 +97,5 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config) error {
 		registerPrometheus(cConfig.Prometheus)
 		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(ctx, cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady, logLines)
 }

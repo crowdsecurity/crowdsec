@@ -68,7 +68,7 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	return csParsers, datasources, nil
 }
 
-func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
+func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers, logLines chan pipeline.Event) {
 	// start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 
@@ -79,7 +79,7 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
-				runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
+				runParse(logLines, inputEventChan, *parsers.Ctx, parsers.Nodes)
 
 				return nil
 			})
@@ -167,11 +167,10 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 }
 
 // runCrowdsec starts the log processor service
-func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
+func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource, logLines chan pipeline.Event) error {
 	inputEventChan = make(chan pipeline.Event)
-	inputLineChan = make(chan pipeline.Event)
 
-	startParserRoutines(cConfig, parsers)
+	startParserRoutines(cConfig, parsers, logLines)
 
 	startBucketRoutines(cConfig)
 
@@ -190,7 +189,7 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, dataSources, inputLineChan, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(ctx, dataSources, logLines, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
@@ -198,7 +197,7 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 }
 
 // serveCrowdsec wraps the log processor service
-func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool) {
+func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool, logLines chan pipeline.Event) {
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
@@ -209,7 +208,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 
 			agentReady <- true
 
-			if err := runCrowdsec(ctx, cConfig, parsers, hub, datasources); err != nil {
+			if err := runCrowdsec(ctx, cConfig, parsers, hub, datasources, logLines); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -221,7 +220,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 		waitOnTomb()
 		log.Debugf("Shutting down crowdsec routines")
 
-		if err := ShutdownCrowdsecRoutines(); err != nil {
+		if err := ShutdownCrowdsecRoutines(logLines); err != nil {
 			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 
