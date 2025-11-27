@@ -32,9 +32,8 @@ CONFIG_FILE=""
 SYSTEMD_UNIT_NAME="${CROWDSEC_SYSTEMD_UNIT:-crowdsec-user.service}"
 SYSTEMD_USER_DIR="${HOME}/.config/systemd/user"
 SYSTEMD_UNIT_PATH=""
-NGINX_LOG_PATH="${CROWDSEC_NGINX_LOG:-/var/log/nginx/access.log}"
-APACHE_LOG_PATH="${CROWDSEC_APACHE_LOG:-/var/log/apache2/access.log}"
-SSH_LOG_PATH="${CROWDSEC_SSH_LOG:-/var/log/auth.log}"
+ACQUISITION_LOGDIR="${CROWDSEC_ACQUISITION_LOGDIR:-}"
+ACQUISITION_LABEL="${CROWDSEC_ACQUISITION_LABEL:-}"
 WRAPPER_CROWDSEC=""
 WRAPPER_CSCLI=""
 PID_FILE=""
@@ -77,21 +76,21 @@ Options:
   --bin-dir <dir>          Directory that will host cscli/crowdsec wrappers (default: $BIN_DIR)
   --collections <list>     Comma-separated collections to install (default: $COLLECTIONS)
                            Use --collections none to skip automatic installs.
-  --nginx-log <path>       Nginx access log path (default: $NGINX_LOG_PATH)
-  --apache-log <path>      Apache HTTP access log path (default: $APACHE_LOG_PATH)
-  --ssh-log <path>         SSH auth log path (default: $SSH_LOG_PATH)
+  --acquisition-logdir <path>
+                           Directory or glob that points to the log files to follow.
+  --acquisition-label <value>
+                           Acquisition label (type) for the provided log files.
   --run-mode <auto|systemd|nohup|none>
                            How to start the service (default: auto)
-  --auto                   Automatically register to the local API and only keep
-                           acquisitions whose log files exist.
+  --auto                   Automatically register to the local API if possible.
   --cleanup                Remove an existing user installation and exit
   -h, --help               Show this help text
 
 Environment overrides exist for every option, e.g. CROWDSEC_INSTALL_VERSION,\
  CROWDSEC_INSTALL_BASE_DIR, CROWDSEC_INSTALL_DIR, CROWDSEC_CONFIG_DIR,\
  CROWDSEC_DATA_DIR, CROWDSEC_LOG_DIR, CROWDSEC_BIN_DIR, CROWDSEC_RUN_MODE,\
- CROWDSEC_COLLECTIONS, CROWDSEC_AUTO, CROWDSEC_CLEANUP, CROWDSEC_NGINX_LOG,\
- CROWDSEC_APACHE_LOG, CROWDSEC_SSH_LOG, and CROWDSEC_SYSTEMD_UNIT.
+ CROWDSEC_COLLECTIONS, CROWDSEC_AUTO, CROWDSEC_CLEANUP,\
+ CROWDSEC_ACQUISITION_LOGDIR, CROWDSEC_ACQUISITION_LABEL, and CROWDSEC_SYSTEMD_UNIT.
 EOF
 }
 
@@ -220,19 +219,14 @@ parse_args() {
             RUN_MODE="$2"
             shift 2
             ;;
-        --nginx-log)
-            [ "$#" -lt 2 ] && fail "--nginx-log expects a path"
-            NGINX_LOG_PATH="$2"
+        --acquisition-logdir)
+            [ "$#" -lt 2 ] && fail "--acquisition-logdir expects a path"
+            ACQUISITION_LOGDIR="$2"
             shift 2
             ;;
-        --apache-log)
-            [ "$#" -lt 2 ] && fail "--apache-log expects a path"
-            APACHE_LOG_PATH="$2"
-            shift 2
-            ;;
-        --ssh-log)
-            [ "$#" -lt 2 ] && fail "--ssh-log expects a path"
-            SSH_LOG_PATH="$2"
+        --acquisition-label)
+            [ "$#" -lt 2 ] && fail "--acquisition-label expects a value"
+            ACQUISITION_LABEL="$2"
             shift 2
             ;;
         --cleanup)
@@ -421,52 +415,23 @@ prometheus:
 EOF
 }
 
-append_acquisition() {
-    path_value=$1
-    label_type=$2
-
-    if [ -z "$path_value" ]; then
-        return
-    fi
-
-    case "$path_value" in
-    none | NONE | off | OFF)
-        return
-        ;;
-    esac
-
-    if [ "$AUTO" = true ] && [ ! -e "$path_value" ]; then
-        warn "Skipping $label_type acquisition because $path_value was not found"
-        return
-    fi
-
-    if [ -s "$ACQUIS_FILE" ]; then
-        printf '---\n' >>"$ACQUIS_FILE"
-    fi
-    cat >>"$ACQUIS_FILE" <<EOF
-filenames:
-  - $path_value
-labels:
-  type: $label_type
-EOF
-}
-
 write_acquisitions() {
-    : >"$ACQUIS_FILE"
-    append_acquisition "$NGINX_LOG_PATH" nginx
-    append_acquisition "$APACHE_LOG_PATH" apache2
-    append_acquisition "$SSH_LOG_PATH" syslog
-
-    if [ ! -s "$ACQUIS_FILE" ]; then
-        cat >"$ACQUIS_FILE" <<'EOF'
-# Populate this file with the log sources CrowdSec should follow.
-# Example:
-# filenames:
-#   - /var/log/myapp.log
-# labels:
-#   type: myapp
-EOF
+    if [ -z "$ACQUISITION_LOGDIR" ]; then
+        fail "--acquisition-logdir is required"
     fi
+    if [ -z "$ACQUISITION_LABEL" ]; then
+        fail "--acquisition-label is required"
+    fi
+    if [ ! -e "$ACQUISITION_LOGDIR" ]; then
+        fail "Acquisition path '$ACQUISITION_LOGDIR' was not found"
+    fi
+
+    cat >"$ACQUIS_FILE" <<EOF
+filenames:
+  - "$ACQUISITION_LOGDIR"
+labels:
+  type: "$ACQUISITION_LABEL"
+EOF
 }
 
 cscli_bootstrap() {
