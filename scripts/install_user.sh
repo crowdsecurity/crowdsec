@@ -23,9 +23,8 @@ LOG_DIR_SET=false
 BIN_DIR="${CROWDSEC_BIN_DIR:-$DEFAULT_BIN_DIR}"
 BIN_DIR_SET=false
 RUN_MODE="${CROWDSEC_RUN_MODE:-auto}"
-FORCE=false
 AUTO=false
-SKIP_CAPI=false
+CLEANUP=false
 COLLECTIONS="${CROWDSEC_COLLECTIONS:-crowdsecurity/linux}"
 TMP_DIR=""
 INSTALL_BIN_DIR=""
@@ -33,7 +32,6 @@ CONFIG_FILE=""
 SYSTEMD_UNIT_NAME="${CROWDSEC_SYSTEMD_UNIT:-crowdsec-user.service}"
 SYSTEMD_USER_DIR="${HOME}/.config/systemd/user"
 SYSTEMD_UNIT_PATH=""
-LOCAL_API_URL="${CROWDSEC_LOCAL_API_URL:-http://127.0.0.1:8080}"
 NGINX_LOG_PATH="${CROWDSEC_NGINX_LOG:-/var/log/nginx/access.log}"
 APACHE_LOG_PATH="${CROWDSEC_APACHE_LOG:-/var/log/apache2/access.log}"
 SSH_LOG_PATH="${CROWDSEC_SSH_LOG:-/var/log/auth.log}"
@@ -86,15 +84,14 @@ Options:
                            How to start the service (default: auto)
   --auto                   Automatically register to the local API and only keep
                            acquisitions whose log files exist.
-  --skip-capi              Do not register the instance to the Central API (prints a reminder only)
-  --force                  Overwrite/backup any existing installation
+  --cleanup                Remove an existing user installation and exit
   -h, --help               Show this help text
 
 Environment overrides exist for every option, e.g. CROWDSEC_INSTALL_VERSION,\
  CROWDSEC_INSTALL_BASE_DIR, CROWDSEC_INSTALL_DIR, CROWDSEC_CONFIG_DIR,\
  CROWDSEC_DATA_DIR, CROWDSEC_LOG_DIR, CROWDSEC_BIN_DIR, CROWDSEC_RUN_MODE,\
- CROWDSEC_COLLECTIONS, CROWDSEC_AUTO, CROWDSEC_FORCE, CROWDSEC_SKIP_CAPI,\
- CROWDSEC_NGINX_LOG, CROWDSEC_APACHE_LOG, CROWDSEC_SSH_LOG, and CROWDSEC_SYSTEMD_UNIT.
+ CROWDSEC_COLLECTIONS, CROWDSEC_AUTO, CROWDSEC_CLEANUP, CROWDSEC_NGINX_LOG,\
+ CROWDSEC_APACHE_LOG, CROWDSEC_SSH_LOG, and CROWDSEC_SYSTEMD_UNIT.
 EOF
 }
 
@@ -144,13 +141,6 @@ is_true() {
 }
 
 apply_env_flags() {
-    if [ -n "${CROWDSEC_FORCE-}" ]; then
-        if is_true "$CROWDSEC_FORCE"; then
-            FORCE=true
-        else
-            FORCE=false
-        fi
-    fi
     if [ -n "${CROWDSEC_AUTO-}" ]; then
         if is_true "$CROWDSEC_AUTO"; then
             AUTO=true
@@ -158,11 +148,11 @@ apply_env_flags() {
             AUTO=false
         fi
     fi
-    if [ -n "${CROWDSEC_SKIP_CAPI-}" ]; then
-        if is_true "$CROWDSEC_SKIP_CAPI"; then
-            SKIP_CAPI=true
+    if [ -n "${CROWDSEC_CLEANUP-}" ]; then
+        if is_true "$CROWDSEC_CLEANUP"; then
+            CLEANUP=true
         else
-            SKIP_CAPI=false
+            CLEANUP=false
         fi
     fi
 }
@@ -170,10 +160,6 @@ apply_env_flags() {
 parse_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
-        --force)
-            FORCE=true
-            shift
-            ;;
         --auto)
             AUTO=true
             shift
@@ -249,8 +235,8 @@ parse_args() {
             SSH_LOG_PATH="$2"
             shift 2
             ;;
-        --skip-capi)
-            SKIP_CAPI=true
+        --cleanup)
+            CLEANUP=true
             shift
             ;;
         -h | --help)
@@ -332,16 +318,14 @@ extract_archive() {
     [ -d "$ARCHIVE_DIR" ] || fail "Extracted directory missing: $ARCHIVE_DIR"
 }
 
+remove_installation_artifacts() {
+    rm -rf "$INSTALL_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
+    rm -f "$WRAPPER_CROWDSEC" "$WRAPPER_CSCLI" "$SYSTEMD_UNIT_PATH" "$PID_FILE"
+}
+
 prepare_install_dirs() {
     if [ -d "$INSTALL_DIR" ] || [ -d "$CONFIG_DIR" ]; then
-        if [ "$FORCE" != true ]; then
-            fail "Existing installation detected. Use --force to overwrite."
-        fi
-    fi
-
-    if [ "$FORCE" = true ]; then
-        rm -rf "$INSTALL_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
-        rm -f "$WRAPPER_CROWDSEC" "$WRAPPER_CSCLI" "$SYSTEMD_UNIT_PATH" "$PID_FILE"
+        fail "Existing installation detected. Run this script with --cleanup first."
     fi
 
     mkdir -p "$INSTALL_DIR" "$INSTALL_BIN_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" "$BIN_DIR" "$SYSTEMD_USER_DIR"
@@ -381,7 +365,6 @@ EOF
 }
 
 render_config() {
-    LOCAL_API_LISTEN=$(printf '%s' "$LOCAL_API_URL" | sed 's|^[a-zA-Z][a-zA-Z0-9+.-]*://||')
     PLUGIN_USER=$(id -un 2>/dev/null || whoami)
     PLUGIN_GROUP=$(id -gn 2>/dev/null || id -un 2>/dev/null || whoami)
 
@@ -422,7 +405,7 @@ api:
     credentials_path: ${CONFIG_DIR}/local_api_credentials.yaml
   server:
     log_level: info
-    listen_uri: ${LOCAL_API_LISTEN}
+    listen_uri: 127.0.0.1:8080
     profiles_path: ${CONFIG_DIR}/profiles.yaml
     console_path: ${CONFIG_DIR}/console.yaml
     online_client:
@@ -573,6 +556,34 @@ start_nohup() {
     info "Started CrowdSec with nohup (PID $(cat "$PID_FILE"))"
 }
 
+stop_systemd_unit_service() {
+    if ! systemd_available; then
+        return
+    fi
+    systemctl --user stop "$SYSTEMD_UNIT_NAME" >/dev/null 2>&1 || :
+    systemctl --user disable "$SYSTEMD_UNIT_NAME" >/dev/null 2>&1 || :
+}
+
+stop_nohup_service() {
+    if [ ! -f "$PID_FILE" ]; then
+        return
+    fi
+    pid_value=$(cat "$PID_FILE" 2>/dev/null || echo "")
+    if [ -n "$pid_value" ]; then
+        if kill -0 "$pid_value" >/dev/null 2>&1; then
+            kill "$pid_value" >/dev/null 2>&1 || :
+        fi
+    fi
+    rm -f "$PID_FILE"
+}
+
+cleanup_installation() {
+    stop_systemd_unit_service
+    stop_nohup_service
+    remove_installation_artifacts
+    info "Removed CrowdSec user installation under $BASE_DIR"
+}
+
 setup_service() {
     case "$RUN_MODE" in
     auto)
@@ -607,6 +618,12 @@ main() {
         warn "This script targets unprivileged installs; running as root is discouraged"
     fi
 
+    if [ "$CLEANUP" = true ]; then
+        cleanup_installation
+        info "Cleanup complete"
+        exit 0
+    fi
+
     case "$RUN_MODE" in
     auto | systemd | nohup | none) ;;
     *) fail "--run-mode must be one of auto, systemd, nohup, none" ;;
@@ -625,11 +642,7 @@ main() {
     setup_service
 
     info "Installation complete"
-    if [ "$SKIP_CAPI" = true ]; then
-        info "Central API enrollment explicitly skipped (--skip-capi)"
-    else
-        info "Enroll to CrowdSec's Console later with: ${WRAPPER_CSCLI} console enroll <ENROLLMENT_KEY>"
-    fi
+    info "Enroll to CrowdSec's Console later with: ${WRAPPER_CSCLI} console enroll <ENROLLMENT_KEY>"
 }
 
 trap cleanup EXIT
