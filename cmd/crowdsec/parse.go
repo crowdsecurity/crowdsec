@@ -59,12 +59,12 @@ func parseEvent(
 	return &parsed
 }
 
-func runParse(input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
+func runParse(input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) {
 	for {
 		select {
 		case <-parsersTomb.Dying():
 			log.Infof("Killing parser routines")
-			return nil
+			return
 		case event := <-input:
 			parsed := parseEvent(event, parserCTX, nodes)
 			if parsed == nil {

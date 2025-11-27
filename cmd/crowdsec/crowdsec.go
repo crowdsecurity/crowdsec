@@ -79,10 +79,7 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 			parsersTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runParse")
 
-				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil {
-					// this error will never happen as parser.Parse is not able to return errors
-					return err
-				}
+				runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
 
 				return nil
 			})
@@ -147,7 +144,6 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 		apiClient,
 		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
-		[]string{},
 		datasources,
 		hub,
 	)
