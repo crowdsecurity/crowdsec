@@ -15,17 +15,13 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
-
-var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 /*
  identify generic component to alter maps, smartfilters ? (static, conditional static etc.)

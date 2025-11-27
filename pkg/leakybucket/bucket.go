@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/namegenerator"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -106,7 +107,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            seed.Generate(),
+		Uuid:            namegenerator.GetRandomName(),
 		Queue:           pipeline.NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *pipeline.Queue, 1),
