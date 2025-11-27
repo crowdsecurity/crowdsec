@@ -462,10 +462,7 @@ func (c *Client) applyAllowlistBatch(ctx context.Context, items []*ent.AllowList
 	totalCount := 0
 
 	for i := 0; i < len(items); i += batchSize {
-		end := i + batchSize
-		if end > len(items) {
-			end = len(items)
-		}
+		end := min(i+batchSize, len(items))
 
 		batch := items[i:end]
 
