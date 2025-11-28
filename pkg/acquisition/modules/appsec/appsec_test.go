@@ -199,7 +199,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		}
 	}()
 
-	runner.handleRequest(&input)
+	runner.handleRequest(t.Context(), &input)
 	time.Sleep(50 * time.Millisecond)
 
 	http_status, appsecResponse := AppsecRuntime.GenerateResponse(OutputResponses[0], logger)

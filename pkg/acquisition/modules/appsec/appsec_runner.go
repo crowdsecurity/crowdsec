@@ -408,7 +408,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	metrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
 
 	if state.Tx.IsInterrupted() || state.InBandDrop != nil {
-		r.handleInBandInterrupt(&state, request)
+		r.handleInBandInterrupt(ctx, &state, request)
 	}
 
 	err = state.Tx.Close()
@@ -433,7 +433,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 		//to measure the time spent in the Application Security Engine for OutOfBand rules
 		startOutOfBandParsing := time.Now()
 
-		err = r.ProcessOutOfBandRules(&state, request)
+		err = r.ProcessOutOfBandRules(ctx, &state, request)
 		if err != nil {
 			logger.Errorf("unable to process OutOfBand rules: %s", err)
 			err = state.Tx.Close()
@@ -447,7 +447,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
 		metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 		if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
-			r.handleOutBandInterrupt(&state, request)
+			r.handleOutBandInterrupt(ctx, &state, request)
 		}
 	}
 	err = state.Tx.Close()
