@@ -47,7 +47,6 @@ var (
 	holders []leakybucket.BucketFactory
 	buckets *leakybucket.Buckets
 
-	inputLineChan   chan pipeline.Event
 	inputEventChan  chan pipeline.Event
 	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
 	// settings
@@ -129,7 +128,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if dumpFolder != "" {
 		parser.ParseDump = true
-		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
 		dumpStates = true
 	}
@@ -231,7 +229,9 @@ func run() error {
 		return err
 	}
 
-	return StartRunSvc(ctx, cConfig)
+	logLines := make(chan pipeline.Event)
+
+	return StartRunSvc(ctx, cConfig, logLines)
 }
 
 func main() {

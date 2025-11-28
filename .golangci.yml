@@ -488,6 +488,10 @@ linters:
         path: pkg/acquisition/modules/s3/source.go
         text: found a struct that contains a context.Context field
 
+      - linters:
+          - unused
+        text: 'var _ is unused'
+
       # migrate over time
 
       - linters:

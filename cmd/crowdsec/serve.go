@@ -24,7 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
+func reloadHandler(ctx context.Context, _ os.Signal, logLines chan pipeline.Event) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -79,7 +79,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, logLines)
 	}
 
 	log.Info("Reload is finished")
@@ -87,7 +87,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	return cConfig, nil
 }
 
-func ShutdownCrowdsecRoutines() error {
+func ShutdownCrowdsecRoutines(logLines chan pipeline.Event) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -95,7 +95,7 @@ func ShutdownCrowdsecRoutines() error {
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
-		drainChan(inputLineChan)
+		drainChan(logLines)
 
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
@@ -222,7 +222,25 @@ func drainChan(c chan pipeline.Event) {
 	}
 }
 
-func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
+func unregisterWatcher(ctx context.Context, cConfig *csconfig.Config) (bool, error) {
+	if cConfig.API == nil || cConfig.API.Client == nil || !cConfig.API.Client.UnregisterOnExit {
+		return false, nil
+	}
+
+	lapiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = lapiClient.Auth.UnregisterWatcher(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func HandleSignals(ctx context.Context, cConfig *csconfig.Config, logLines chan pipeline.Event) error {
 	var (
 		newConfig *csconfig.Config
 		err       error
@@ -246,7 +264,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
-	Loop:
 		for {
 			s := <-signalChan
 			switch s {
@@ -256,14 +273,12 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
-				if newConfig, err = reloadHandler(ctx, s); err != nil {
+				if newConfig, err = reloadHandler(ctx, s, logLines); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig != nil {
@@ -275,8 +290,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				exitChan <- nil
@@ -289,26 +303,17 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 		log.Warning("Crowdsec service shutting down")
 	}
 
-	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
-		log.Warning("Unregistering watcher")
-
-		lapiClient, err := apiclient.GetLAPIClient()
-		if err != nil {
-			return err
+	if ok, werr := unregisterWatcher(ctx, cConfig); werr != nil {
+		log.WithError(werr).Warning("unregistering watcher")
+		if ok {
+			log.Warning("Watcher unregistered")
 		}
-
-		_, err = lapiClient.Auth.UnregisterWatcher(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to unregister watcher: %w", err)
-		}
-
-		log.Warning("Watcher unregistered")
 	}
 
 	return err
 }
 
-func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
+func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, logLines chan pipeline.Event) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -384,7 +389,7 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) 
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, logLines)
 		} else {
 			agentReady <- true
 		}
@@ -407,7 +412,7 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) 
 	if cConfig.Common != nil && !flags.haveTimeMachine() && !isWindowsSvc {
 		_ = csdaemon.Notify(csdaemon.Ready, log.StandardLogger())
 		// wait for signals
-		return HandleSignals(ctx, cConfig)
+		return HandleSignals(ctx, cConfig, logLines)
 	}
 
 	waitChans := make([]<-chan struct{}, 0)
