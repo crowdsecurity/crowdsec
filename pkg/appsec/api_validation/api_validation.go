@@ -23,21 +23,39 @@ var (
 	ErrInvalidSchemaName = errors.New("invalid schema name")
 )
 
-type Foo struct {
+// ValidationError provides detailed information about validation failures
+type ValidationError struct {
+	Reason        string
+	Field         string
+	SchemaPath    string
+	Message       string
+	Value         string
+	Expected      string
+	OriginalError error
+}
+
+func (ve *ValidationError) Error() string {
+	if ve.Field != "" {
+		return fmt.Sprintf("%s: field '%s' %s", ve.Reason, ve.Field, ve.Message)
+	}
+	return fmt.Sprintf("%s: %s", ve.Reason, ve.Message)
+}
+
+type SchemaData struct {
 	Schema *openapi3.T
 	Router routers.Router
 }
 
 type RequestValidator struct {
 	loaders        map[string]*openapi3.Loader
-	openAPISchemas map[string]Foo
+	openAPISchemas map[string]SchemaData
 	logger         *log.Entry
 }
 
 func NewRequestValidator(logger *log.Entry) *RequestValidator {
 	return &RequestValidator{
 		loaders:        make(map[string]*openapi3.Loader),
-		openAPISchemas: make(map[string]Foo),
+		openAPISchemas: make(map[string]SchemaData),
 		logger:         logger,
 	}
 }
@@ -175,7 +193,7 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string) error {
 		return fmt.Errorf("failed to create router for schema ref %s: %w", ref, err)
 	}
 
-	rv.openAPISchemas[ref] = Foo{
+	rv.openAPISchemas[ref] = SchemaData{
 		Schema: doc,
 		Router: router,
 	}
@@ -248,18 +266,169 @@ func (rv *RequestValidator) ValidateRequest(ref string, r *http.Request) error {
 	if err == nil {
 		return nil
 	}
+
 	requestError := &openapi3filter.RequestError{}
 	if errors.As(err, &requestError) {
-		// This is a validation error
-		// We can extract more information from it if needed
-		return err
+		return rv.parseRequestError(requestError)
 	}
+
 	securityRequirementError := &openapi3filter.SecurityRequirementsError{}
 	if errors.As(err, &securityRequirementError) {
-		return err
+		return rv.parseSecurityError(securityRequirementError)
 	}
-	// Some other error
-	rv.logger.Debugf("request validation error: %s (type %T)", err.Error(), err)
 
+	rv.logger.Debugf("request validation error: %s (type %T)", err.Error(), err)
 	return err
+}
+
+// parseRequestError extracts detailed information from openapi3filter.RequestError
+func (rv *RequestValidator) parseRequestError(reqErr *openapi3filter.RequestError) error {
+	ve := &ValidationError{
+		OriginalError: reqErr,
+	}
+
+	switch {
+	case reqErr.Parameter != nil:
+		ve.Reason = "parameter"
+		ve.Field = reqErr.Parameter.Name
+		if reqErr.Input != nil && reqErr.Input.Request != nil {
+			ve.SchemaPath = fmt.Sprintf("/paths%s/parameters/%s", reqErr.Input.Request.URL.Path, reqErr.Parameter.Name)
+		}
+		ve.Message = reqErr.Err.Error()
+		ve.Expected = getSchemaTypeInfo(reqErr.Parameter.Schema)
+
+		if reqErr.Input != nil && reqErr.Input.Request != nil {
+			switch reqErr.Parameter.In {
+			case "query":
+				ve.Value = truncateString(reqErr.Input.Request.URL.Query().Get(reqErr.Parameter.Name), 100)
+			case "header":
+				ve.Value = truncateString(reqErr.Input.Request.Header.Get(reqErr.Parameter.Name), 100)
+			case "path":
+				// Path params are in RequestValidationInput.PathParams
+				if reqErr.Input.PathParams != nil {
+					if val, ok := reqErr.Input.PathParams[reqErr.Parameter.Name]; ok {
+						ve.Value = truncateString(val, 100)
+					}
+				}
+			case "cookie":
+				if cookie, err := reqErr.Input.Request.Cookie(reqErr.Parameter.Name); err == nil {
+					ve.Value = truncateString(cookie.Value, 100)
+				}
+			}
+		}
+
+	case reqErr.RequestBody != nil:
+		ve.Reason = "request_body"
+		if reqErr.Input != nil && reqErr.Input.Request != nil {
+			ve.SchemaPath = fmt.Sprintf("/paths%s/%s/requestBody", reqErr.Input.Request.URL.Path, strings.ToLower(reqErr.Input.Request.Method))
+		}
+		ve.Message = reqErr.Err.Error()
+
+		ve.Field = extractFieldFromSchemaError(reqErr.Err)
+		ve.Expected = "valid request body according to schema"
+		ve.Value = "<request body>"
+
+	default:
+		// Generic request error
+		ve.Reason = "request"
+		ve.Message = reqErr.Err.Error()
+		if reqErr.Input != nil && reqErr.Input.Request != nil {
+			ve.SchemaPath = reqErr.Input.Request.URL.Path
+		}
+	}
+
+	rv.logger.WithFields(log.Fields{
+		"reason":      ve.Reason,
+		"field":       ve.Field,
+		"schema_path": ve.SchemaPath,
+		"message":     ve.Message,
+		"expected":    ve.Expected,
+		"value":       ve.Value,
+	}).Debug("validation error details")
+
+	return ve
+}
+
+func (rv *RequestValidator) parseSecurityError(secErr *openapi3filter.SecurityRequirementsError) error {
+	ve := &ValidationError{
+		Reason:        "security",
+		OriginalError: secErr,
+	}
+
+	if len(secErr.Errors) > 0 {
+		ve.Message = secErr.Errors[0].Error()
+	} else {
+		ve.Message = secErr.Error()
+	}
+
+	for _, err := range secErr.Errors {
+		if strings.Contains(err.Error(), "authorization header") {
+			ve.Field = "Authorization"
+			ve.Expected = "valid authorization header"
+			break
+		} else if strings.Contains(err.Error(), "apiKey") || strings.Contains(err.Error(), "api key") {
+			ve.Field = "API Key"
+			ve.Expected = "valid API key"
+			break
+		}
+	}
+
+	rv.logger.WithFields(log.Fields{
+		"reason":  ve.Reason,
+		"field":   ve.Field,
+		"message": ve.Message,
+	}).Debug("security validation error")
+
+	return ve
+}
+
+func getSchemaTypeInfo(schema *openapi3.SchemaRef) string {
+	if schema == nil || schema.Value == nil {
+		return "unknown"
+	}
+
+	s := schema.Value
+	parts := []string{}
+
+	if s.Type != nil && len(*s.Type) > 0 {
+		parts = append(parts, "type: "+(*s.Type)[0])
+	}
+	if s.Format != "" {
+		parts = append(parts, "format: "+s.Format)
+	}
+	if s.Pattern != "" {
+		parts = append(parts, "pattern: "+s.Pattern)
+	}
+	if s.Min != nil {
+		parts = append(parts, fmt.Sprintf("min: %v", *s.Min))
+	}
+	if s.Max != nil {
+		parts = append(parts, fmt.Sprintf("max: %v", *s.Max))
+	}
+	if len(s.Enum) > 0 {
+		parts = append(parts, fmt.Sprintf("enum: %v", s.Enum))
+	}
+
+	if len(parts) == 0 {
+		return "any"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func extractFieldFromSchemaError(err error) string {
+	var schemaErr *openapi3.SchemaError
+	if errors.As(err, &schemaErr) {
+		pointer := schemaErr.JSONPointer()
+		if len(pointer) > 0 {
+			return pointer[len(pointer)-1]
+		}
+	}
+	return ""
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

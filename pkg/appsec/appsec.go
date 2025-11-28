@@ -902,6 +902,12 @@ func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, schemaPath strin
 func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
 	err := w.RequestValidator.ValidateRequest(ref, r)
 	if err != nil {
+		// Check if we have detailed validation error information
+		if valErr, ok := err.(*apivalidation.ValidationError); ok {
+			return w.DropRequest(state, parsedRequest, fmt.Sprintf("validation failed for %s: %s", valErr.Field, valErr.Message))
+		}
+
+		// Fallback for non-validation errors
 		w.Logger.Errorf("request validation failed: %s", err)
 		return w.DropRequest(state, parsedRequest, fmt.Sprintf("request validation failed: %s", err))
 	}
