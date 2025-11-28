@@ -202,9 +202,7 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string) error {
 	return nil
 }
 
-func (rv *RequestValidator) ValidateRequest(ref string, r *http.Request) error {
-	ctx := context.TODO()
-
+func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *http.Request) error {
 	schemaData, exists := rv.openAPISchemas[ref]
 	if !exists {
 		return fmt.Errorf("%w: no schema loaded for ref %s", ErrInvalidSchemaName, ref)

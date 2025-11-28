@@ -1,6 +1,7 @@
 package appsecacquisition
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"slices"
@@ -130,7 +131,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 	return nil
 }
 
-func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
 
@@ -150,7 +151,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}()
 
 	//pre eval (expr) rules
-	err = r.AppsecRuntime.ProcessPreEvalRules(state, request)
+	err = r.AppsecRuntime.ProcessPreEvalRules(ctx, state, request)
 	if err != nil {
 		r.logger.Errorf("unable to process PreEval rules: %s", err)
 		//FIXME: should we abort here ?
@@ -217,29 +218,28 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	return nil
 }
 
-func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) ProcessInBandRules(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	state.Tx = tx
 	// Even if we have no inband rules, we might have pre-eval rules to process
 	if len(r.AppsecRuntime.InBandRules) == 0 && len(r.AppsecRuntime.CompiledPreEval) == 0 {
 		return nil
 	}
-	err := r.processRequest(state, request)
+	err := r.processRequest(ctx, state, request)
 	return err
 }
 
-func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) ProcessOutOfBandRules(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	state.Tx = tx
 	if len(r.AppsecRuntime.OutOfBandRules) == 0 && len(r.AppsecRuntime.CompiledPreEval) == 0 {
 		return nil
 	}
-	err := r.processRequest(state, request)
+	err := r.processRequest(ctx, state, request)
 	return err
 }
 
-func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
-
+func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
 	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
 		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
 		return
@@ -310,7 +310,7 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 	}
 }
 
-func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
+func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
 
 	if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
 		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, reason)
@@ -375,7 +375,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, 
 	}
 }
 
-func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
+func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) {
 	state := r.AppsecRuntime.NewRequestState()
 	stateLogger := r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
 	r.AppsecRuntime.Logger = stateLogger
@@ -393,7 +393,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	state.CurrentPhase = appsec.PhaseInBand
 
 	//inband appsec rules
-	err := r.ProcessInBandRules(&state, request)
+	err := r.ProcessInBandRules(ctx, &state, request)
 	if err != nil {
 		logger.Errorf("unable to process InBand rules: %s", err)
 		err = state.Tx.Close()
@@ -459,7 +459,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
-func (r *AppsecRunner) Run(t *tomb.Tomb) error {
+func (r *AppsecRunner) Run(ctx context.Context, t *tomb.Tomb) error {
 	r.logger.Infof("Appsec Runner ready to process event")
 	for {
 		select {
@@ -467,7 +467,7 @@ func (r *AppsecRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Appsec Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			r.handleRequest(&request)
+			r.handleRequest(ctx, &request)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -56,7 +57,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPreEvalEnv(context.Background(), &AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookPostEval:
 		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
 	case hookOnMatch:
@@ -601,12 +602,12 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, req
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
 	has_match := false
 
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(ctx, w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
 			}
@@ -626,7 +627,7 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, req
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(ctx, w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
 				continue
@@ -899,8 +900,8 @@ func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, schemaPath strin
 	return w.RequestValidator.LoadSchema(ref, string(schema))
 }
 
-func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
-	err := w.RequestValidator.ValidateRequest(ref, r)
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
+	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
 	if err != nil {
 		// Check if we have detailed validation error information
 		if valErr, ok := err.(*apivalidation.ValidationError); ok {

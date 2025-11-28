@@ -140,7 +140,7 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 			t.Go(func() error {
 				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
-				return runner.Run(t)
+				return runner.Run(ctx, t)
 			})
 		}
 

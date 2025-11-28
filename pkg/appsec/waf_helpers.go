@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -21,7 +22,7 @@ func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	}
 }
 
-func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
@@ -44,7 +45,9 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"ValidateRequestWithSchema": func(ref string, r *http.Request) error { return w.ValidateRequestWithSchema(state, ref, r, request) },
+		"ValidateRequestWithSchema": func(ref string, r *http.Request) error {
+			return w.ValidateRequestWithSchema(ctx, state, ref, r, request)
+		},
 	}
 }
 

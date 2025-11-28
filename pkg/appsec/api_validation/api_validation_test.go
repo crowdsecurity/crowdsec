@@ -153,7 +153,7 @@ func TestValidateRequest(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes))
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -316,7 +316,7 @@ func TestSecurityRequirements(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes))
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -489,7 +489,7 @@ func TestQueryParameterValidation(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes))
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -817,7 +817,7 @@ func TestRequestBodyValidation(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes))
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.expectedErr != "" {
@@ -854,7 +854,7 @@ func TestJWKSValidation(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes))
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
