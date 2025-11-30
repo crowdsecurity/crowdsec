@@ -34,10 +34,12 @@ setup() {
     assert_output --partial "manual"
     assert_output --partial "tainted"
     assert_output --partial "context"
+    assert_output --partial "appsec"
     assert_output --partial "console_management"
     rune -0 cscli console status -o json
     assert_json - <<- EOT
 	{
+	"appsec": false,
 	"console_management": false,
 	"context": false,
 	"custom": true,
@@ -51,6 +53,7 @@ setup() {
 	manual,false
 	custom,true
 	tainted,true
+	appsec,false
 	context,false
 	console_management,false
 	EOT
@@ -70,6 +73,7 @@ setup() {
     assert_stderr --partial "custom already set to true"
     assert_stderr --partial "manual already set to true"
     assert_stderr --partial "tainted already set to true"
+    assert_stderr --partial "appsec set to true"
     assert_stderr --partial "context already set to true"
     assert_stderr --partial "console_management set to true"
     assert_stderr --partial "All features have been enabled successfully"
@@ -91,6 +95,7 @@ setup() {
     assert_stderr --partial "custom already set to false"
     assert_stderr --partial "manual already set to false"
     assert_stderr --partial "tainted already set to false"
+    assert_stderr --partial "appsec already set to false"
     assert_stderr --partial "context already set to false"
     assert_stderr --partial "console_management already set to false"
     assert_stderr --partial "All features have been disabled"

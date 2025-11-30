@@ -325,6 +325,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,
 					csconfig.SEND_CUSTOM_SCENARIOS:  consoleCfg.ShareCustomScenarios,
 					csconfig.SEND_TAINTED_SCENARIOS: consoleCfg.ShareTaintedScenarios,
+					csconfig.SEND_APPSEC_ALERTS:     consoleCfg.ShareAppSecAlerts,
 					csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
 					csconfig.CONSOLE_MANAGEMENT:     consoleCfg.ConsoleManagement,
 				}
@@ -347,6 +348,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					{csconfig.SEND_MANUAL_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareManualDecisions)},
 					{csconfig.SEND_CUSTOM_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareCustomScenarios)},
 					{csconfig.SEND_TAINTED_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareTaintedScenarios)},
+					{csconfig.SEND_APPSEC_ALERTS, strconv.FormatBool(*consoleCfg.ShareAppSecAlerts)},
 					{csconfig.SEND_CONTEXT, strconv.FormatBool(*consoleCfg.ShareContext)},
 					{csconfig.CONSOLE_MANAGEMENT, strconv.FormatBool(*consoleCfg.ConsoleManagement)},
 				}
@@ -457,6 +459,14 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
 				consoleCfg.ShareContext = ptr.Of(wanted)
+			}
+		case csconfig.SEND_APPSEC_ALERTS:
+			// for each flag check if it's already set before setting it
+			if consoleCfg.ShareAppSecAlerts != nil && *consoleCfg.ShareAppSecAlerts == wanted {
+				log.Debugf("%s already set to %t", csconfig.SEND_APPSEC_ALERTS, wanted)
+			} else {
+				log.Infof("%s set to %t", csconfig.SEND_APPSEC_ALERTS, wanted)
+				consoleCfg.ShareAppSecAlerts = ptr.Of(wanted)
 			}
 		default:
 			return fmt.Errorf("unknown flag %s", arg)

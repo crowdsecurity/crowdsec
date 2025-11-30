@@ -33,6 +33,10 @@ func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.
 			if *consoleCfg.ShareTaintedScenarios {
 				activated = emoji.CheckMarkButton
 			}
+		case csconfig.SEND_APPSEC_ALERTS:
+			if *consoleCfg.ShareAppSecAlerts {
+				activated = emoji.CheckMarkButton
+			}
 		case csconfig.SEND_CONTEXT:
 			if *consoleCfg.ShareContext {
 				activated = emoji.CheckMarkButton

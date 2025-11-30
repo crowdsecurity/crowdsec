@@ -1328,12 +1328,107 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedRet:   false,
 			expectedTrust: "manual",
 		},
+		{
+			name: "appsec alert should be shared if config enables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareAppSecAlerts: ptr.Of(true),
+			},
+			shareSignals: true,
+			alert: &models.Alert{
+				Simulated: ptr.Of(false),
+				Message:   ptr.Of("WAF block: anomaly score block: sql_injection: 40 from 1.2.3.4"),
+			},
+			expectedRet:   true,
+			expectedTrust: "",
+		},
+		{
+			name: "appsec alert should not be shared if config disables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareAppSecAlerts: ptr.Of(false),
+			},
+			shareSignals: true,
+			alert: &models.Alert{
+				Simulated: ptr.Of(false),
+				Message:   ptr.Of("WAF out-of-band match: lfi detected from 1.2.3.4"),
+			},
+			expectedRet:   false,
+			expectedTrust: "",
+		},
+		{
+			name: "appsec alert should not be shared if config is nil",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareAppSecAlerts: nil,
+			},
+			shareSignals: true,
+			alert: &models.Alert{
+				Simulated: ptr.Of(false),
+				Message:   ptr.Of("WAF block: xss attempt from 1.2.3.4"),
+			},
+			expectedRet:   false,
+			expectedTrust: "",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ret := shouldShareAlert(tc.alert, tc.consoleConfig, tc.shareSignals)
 			assert.Equal(t, tc.expectedRet, ret)
+		})
+	}
+}
+
+func TestIsAppSecAlert(t *testing.T) {
+	tests := []struct {
+		name     string
+		alert    *models.Alert
+		expected bool
+	}{
+		{
+			name:     "nil alert",
+			alert:    nil,
+			expected: false,
+		},
+		{
+			name:     "alert with nil message",
+			alert:    &models.Alert{Message: nil},
+			expected: false,
+		},
+		{
+			name:     "appsec alert - WAF block",
+			alert:    &models.Alert{Message: ptr.Of("WAF block: anomaly score block: sql_injection: 40 from 1.2.3.4")},
+			expected: true,
+		},
+		{
+			name:     "appsec alert - WAF out-of-band match",
+			alert:    &models.Alert{Message: ptr.Of("WAF out-of-band match: lfi detected from 1.2.3.4")},
+			expected: true,
+		},
+		{
+			name:     "appsec alert - custom rule via WAF block",
+			alert:    &models.Alert{Message: ptr.Of("WAF block: my-custom-appsec-rule from 1.2.3.4")},
+			expected: true,
+		},
+		{
+			name:     "regular alert - ssh bruteforce",
+			alert:    &models.Alert{Message: ptr.Of("Ip 1.2.3.4 performed crowdsecurity/ssh-bf")},
+			expected: false,
+		},
+		{
+			name:     "regular alert - http probing",
+			alert:    &models.Alert{Message: ptr.Of("Ip 1.2.3.4 performed crowdsecurity/http-probing")},
+			expected: false,
+		},
+		{
+			name:     "regular alert - contains WAF but not prefix",
+			alert:    &models.Alert{Message: ptr.Of("Some alert about WAF block somewhere")},
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isAppSecAlert(tc.alert)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }

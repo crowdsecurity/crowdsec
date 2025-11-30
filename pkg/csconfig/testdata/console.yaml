@@ -1,0 +1,6 @@
+share_manual_decisions: false
+share_tainted: true
+share_custom: true
+share_appsec: false
+console_management: false
+share_context: false

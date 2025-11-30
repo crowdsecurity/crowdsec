@@ -14,15 +14,17 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
+	SEND_APPSEC_ALERTS     = "appsec"
 	CONSOLE_MANAGEMENT     = "console_management"
 	SEND_CONTEXT           = "context"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_APPSEC_ALERTS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
 var CONSOLE_CONFIGS_HELP = map[string]string{
 	SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
 	SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",
 	SEND_TAINTED_SCENARIOS: "Forward alerts from tainted scenarios to the console",
+	SEND_APPSEC_ALERTS:     "Forward AppSec WAF alerts to the console",
 	SEND_CONTEXT:           "Forward context with alerts to the console",
 	CONSOLE_MANAGEMENT:     "Receive decisions from console",
 }
@@ -33,6 +35,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
+	ShareAppSecAlerts     *bool `yaml:"share_appsec"`
 	ConsoleManagement     *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
 }
@@ -53,6 +56,10 @@ func (c *ConsoleConfig) EnabledOptions() []string {
 
 	if c.ShareManualDecisions != nil && *c.ShareManualDecisions {
 		ret = append(ret, SEND_MANUAL_SCENARIOS)
+	}
+
+	if c.ShareAppSecAlerts != nil && *c.ShareAppSecAlerts {
+		ret = append(ret, SEND_APPSEC_ALERTS)
 	}
 
 	if c.ConsoleManagement != nil && *c.ConsoleManagement {
@@ -82,6 +89,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = ptr.Of(true)
 		c.ConsoleConfig.ShareTaintedScenarios = ptr.Of(true)
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
+		c.ConsoleConfig.ShareAppSecAlerts = ptr.Of(false)
 		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
 		c.ConsoleConfig.ShareContext = ptr.Of(false)
 
@@ -121,6 +129,11 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if c.ConsoleConfig.ShareContext == nil {
 		log.Debugf("no 'context' found, setting to false")
 		c.ConsoleConfig.ShareContext = ptr.Of(false)
+	}
+
+	if c.ConsoleConfig.ShareAppSecAlerts == nil {
+		log.Debugf("no 'share_appsec' found, setting to false")
+		c.ConsoleConfig.ShareAppSecAlerts = ptr.Of(false)
 	}
 
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)

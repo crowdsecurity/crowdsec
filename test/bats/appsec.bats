@@ -172,3 +172,45 @@ teardown() {
 
     assert_json '{action:"allow",http_status:200}'
 }
+
+@test "appsec alert message format for console sharing" {
+    # This test verifies that AppSec alerts have the expected message format
+    # which is used by isAppSecAlert() to identify alerts for share_appsec
+    config_set '.common.log_media="stdout"'
+
+    rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
+    rune -0 cscli collections install crowdsecurity/appsec-generic-rules
+
+    socket="$BATS_TEST_TMPDIR"/sock
+
+    cat > "$ACQUIS_DIR"/appsec.yaml <<-EOT
+	source: appsec
+	listen_socket: $socket
+	labels:
+	  type: appsec
+	appsec_config: crowdsecurity/appsec-default
+	EOT
+
+    ./instance-crowdsec start
+
+    rune -0 cscli bouncers add appsecbouncer --key appkey
+
+    # Trigger a WAF block by requesting /.env
+    rune -22 curl -sS --fail-with-body --unix-socket "$socket" \
+        -H "x-crowdsec-appsec-api-key: appkey" \
+        -H "x-crowdsec-appsec-ip: 5.6.7.8" \
+        -H 'x-crowdsec-appsec-uri: /.env' \
+        -H 'x-crowdsec-appsec-host: foo.com' \
+        -H 'x-crowdsec-appsec-verb: GET' \
+        'http://fakehost'
+
+    assert_json '{action:"ban",http_status:403}'
+
+    # Give crowdsec a moment to process the alert
+    sleep 1
+
+    # Verify the alert was created with "WAF block:" message prefix
+    rune -0 cscli alerts list -o json
+    rune -0 jq -r '.[0].message' <(output)
+    assert_output --regexp "^WAF block: .*"
+}

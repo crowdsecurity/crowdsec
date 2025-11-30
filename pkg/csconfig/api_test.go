@@ -171,8 +171,9 @@ func TestLoadAPIServer(t *testing.T) {
 						OnlineClient: &OnlineApiClientCfg{
 							CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 						},
-						ProfilesPath: "./testdata/profiles.yaml",
-						PapiLogLevel: logLevel,
+						ProfilesPath:      "./testdata/profiles.yaml",
+						ConsoleConfigPath: "./testdata/console.yaml",
+						PapiLogLevel:      logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
@@ -198,11 +199,12 @@ func TestLoadAPIServer(t *testing.T) {
 					UseWal:           ptr.Of(true), // autodetected
 					DecisionBulkSize: defaultDecisionBulkSize,
 				},
-				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
+				ConsoleConfigPath: "./testdata/console.yaml",
 				ConsoleConfig: &ConsoleConfig{
 					ShareManualDecisions:  ptr.Of(false),
 					ShareTaintedScenarios: ptr.Of(true),
 					ShareCustomScenarios:  ptr.Of(true),
+					ShareAppSecAlerts:     ptr.Of(false),
 					ShareContext:          ptr.Of(false),
 					ConsoleManagement:     ptr.Of(false),
 				},
