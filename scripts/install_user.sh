@@ -3,30 +3,21 @@ set -eu
 
 umask 027
 
-DEFAULT_BASE_DIR="${HOME}/.local/share/crowdsec"
-DEFAULT_CONFIG_DIR="${HOME}/.config/crowdsec"
-DEFAULT_BIN_DIR="${HOME}/.local/bin"
+DEFAULT_ROOT="${HOME}/.crowdsec"
 
 CROWDSEC_VERSION="${CROWDSEC_INSTALL_VERSION:-latest}"
 ARCHIVE_PATH="${CROWDSEC_INSTALL_ARCHIVE:-}"
-BASE_DIR="${CROWDSEC_INSTALL_BASE_DIR:-$DEFAULT_BASE_DIR}"
-BASE_DIR_SET=false
-INSTALL_DIR_DEFAULT="${BASE_DIR}/runtime"
-INSTALL_DIR="${CROWDSEC_INSTALL_DIR:-$INSTALL_DIR_DEFAULT}"
-INSTALL_DIR_SET=false
-CONFIG_DIR="${CROWDSEC_CONFIG_DIR:-$DEFAULT_CONFIG_DIR}"
-CONFIG_DIR_SET=false
-DATA_DIR="${CROWDSEC_DATA_DIR:-${BASE_DIR}/data}"
-DATA_DIR_SET=false
-LOG_DIR="${CROWDSEC_LOG_DIR:-${BASE_DIR}/log}"
-LOG_DIR_SET=false
-BIN_DIR="${CROWDSEC_BIN_DIR:-$DEFAULT_BIN_DIR}"
-BIN_DIR_SET=false
+ROOT_DIR="${CROWDSEC_ROOT_DIR:-$DEFAULT_ROOT}"
 RUN_MODE="${CROWDSEC_RUN_MODE:-auto}"
 AUTO=false
 CLEANUP=false
 COLLECTIONS="${CROWDSEC_COLLECTIONS:-crowdsecurity/linux}"
 TMP_DIR=""
+INSTALL_DIR=""
+CONFIG_DIR=""
+DATA_DIR=""
+LOG_DIR=""
+BIN_DIR=""
 INSTALL_BIN_DIR=""
 CONFIG_FILE=""
 SYSTEMD_UNIT_NAME="${CROWDSEC_SYSTEMD_UNIT:-crowdsec-user.service}"
@@ -42,24 +33,6 @@ CSCLI_BIN=""
 CROWDSEC_BIN=""
 ARCHIVE_DIR=""
 
-if [ -n "${CROWDSEC_INSTALL_BASE_DIR-}" ]; then
-    BASE_DIR_SET=true
-fi
-if [ -n "${CROWDSEC_INSTALL_DIR-}" ]; then
-    INSTALL_DIR_SET=true
-fi
-if [ -n "${CROWDSEC_CONFIG_DIR-}" ]; then
-    CONFIG_DIR_SET=true
-fi
-if [ -n "${CROWDSEC_DATA_DIR-}" ]; then
-    DATA_DIR_SET=true
-fi
-if [ -n "${CROWDSEC_LOG_DIR-}" ]; then
-    LOG_DIR_SET=true
-fi
-if [ -n "${CROWDSEC_BIN_DIR-}" ]; then
-    BIN_DIR_SET=true
-fi
 
 usage() {
     cat <<EOF
@@ -68,12 +41,7 @@ Usage: \\${0##*/} [options]
 Options:
   --version <tag>          CrowdSec release tag (default: latest)
   --archive <path>         Use a pre-downloaded crowdsec-release.tgz archive
-  --base-dir <dir>         Base directory for runtime/data/logs (default: $BASE_DIR)
-  --install-dir <dir>      Directory where binaries are staged (default: $INSTALL_DIR)
-  --config-dir <dir>       Configuration directory (default: $CONFIG_DIR)
-  --data-dir <dir>         Data directory (default: $DATA_DIR)
-  --log-dir <dir>          Log directory (default: $LOG_DIR)
-  --bin-dir <dir>          Directory that will host cscli/crowdsec wrappers (default: $BIN_DIR)
+  --root-dir <dir>         Root directory for runtime/config/data/logs (default: $ROOT_DIR)
   --collections <list>     Comma-separated collections to install (default: $COLLECTIONS)
                            Use --collections none to skip automatic installs.
   --acquisition-logdir <path>
@@ -87,10 +55,9 @@ Options:
   -h, --help               Show this help text
 
 Environment overrides exist for every option, e.g. CROWDSEC_INSTALL_VERSION,\
- CROWDSEC_INSTALL_BASE_DIR, CROWDSEC_INSTALL_DIR, CROWDSEC_CONFIG_DIR,\
- CROWDSEC_DATA_DIR, CROWDSEC_LOG_DIR, CROWDSEC_BIN_DIR, CROWDSEC_RUN_MODE,\
- CROWDSEC_COLLECTIONS, CROWDSEC_AUTO, CROWDSEC_CLEANUP,\
- CROWDSEC_ACQUISITION_LOGDIR, CROWDSEC_ACQUISITION_LABEL, and CROWDSEC_SYSTEMD_UNIT.
+ CROWDSEC_ROOT_DIR, CROWDSEC_RUN_MODE, CROWDSEC_COLLECTIONS, CROWDSEC_AUTO,\
+ CROWDSEC_CLEANUP, CROWDSEC_ACQUISITION_LOGDIR, CROWDSEC_ACQUISITION_LABEL,\
+ and CROWDSEC_SYSTEMD_UNIT.
 EOF
 }
 
@@ -173,40 +140,9 @@ parse_args() {
             ARCHIVE_PATH="$2"
             shift 2
             ;;
-        --base-dir)
-            [ "$#" -lt 2 ] && fail "--base-dir expects a directory"
-            BASE_DIR="$2"
-            BASE_DIR_SET=true
-            shift 2
-            ;;
-        --install-dir)
-            [ "$#" -lt 2 ] && fail "--install-dir expects a directory"
-            INSTALL_DIR="$2"
-            INSTALL_DIR_SET=true
-            shift 2
-            ;;
-        --config-dir)
-            [ "$#" -lt 2 ] && fail "--config-dir expects a directory"
-            CONFIG_DIR="$2"
-            CONFIG_DIR_SET=true
-            shift 2
-            ;;
-        --data-dir)
-            [ "$#" -lt 2 ] && fail "--data-dir expects a directory"
-            DATA_DIR="$2"
-            DATA_DIR_SET=true
-            shift 2
-            ;;
-        --log-dir)
-            [ "$#" -lt 2 ] && fail "--log-dir expects a directory"
-            LOG_DIR="$2"
-            LOG_DIR_SET=true
-            shift 2
-            ;;
-        --bin-dir)
-            [ "$#" -lt 2 ] && fail "--bin-dir expects a directory"
-            BIN_DIR="$2"
-            BIN_DIR_SET=true
+        --root-dir)
+            [ "$#" -lt 2 ] && fail "--root-dir expects a directory"
+            ROOT_DIR="$2"
             shift 2
             ;;
         --collections)
@@ -245,27 +181,24 @@ parse_args() {
 }
 
 adjust_paths() {
-    if [ "$BASE_DIR_SET" = true ]; then
-        if [ "$INSTALL_DIR_SET" != true ]; then
-            INSTALL_DIR="${BASE_DIR}/runtime"
-        fi
-        if [ "$DATA_DIR_SET" != true ]; then
-            DATA_DIR="${BASE_DIR}/data"
-        fi
-        if [ "$LOG_DIR_SET" != true ]; then
-            LOG_DIR="${BASE_DIR}/log"
-        fi
-        if [ "$CONFIG_DIR_SET" != true ]; then
-            CONFIG_DIR="${BASE_DIR}/config"
-        fi
-    fi
+    case "$ROOT_DIR" in
+    */)
+        ROOT_DIR=${ROOT_DIR%/}
+        ;;
+    esac
+
+    INSTALL_DIR="${ROOT_DIR}/runtime"
+    CONFIG_DIR="${ROOT_DIR}/config"
+    DATA_DIR="${ROOT_DIR}/data"
+    LOG_DIR="${ROOT_DIR}/log"
+    BIN_DIR="${ROOT_DIR}/bin"
 
     CONFIG_FILE="${CONFIG_DIR}/config.yaml"
     INSTALL_BIN_DIR="${INSTALL_DIR}/bin"
     ACQUIS_FILE="${CONFIG_DIR}/acquis.yaml"
     WRAPPER_CROWDSEC="${BIN_DIR}/crowdsec"
     WRAPPER_CSCLI="${BIN_DIR}/cscli"
-    PID_FILE="${BASE_DIR}/crowdsec-user.pid"
+    PID_FILE="${ROOT_DIR}/crowdsec-user.pid"
     SYSTEMD_UNIT_PATH="${SYSTEMD_USER_DIR}/${SYSTEMD_UNIT_NAME}"
 }
 
@@ -313,16 +246,16 @@ extract_archive() {
 }
 
 remove_installation_artifacts() {
-    rm -rf "$INSTALL_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
-    rm -f "$WRAPPER_CROWDSEC" "$WRAPPER_CSCLI" "$SYSTEMD_UNIT_PATH" "$PID_FILE"
+    rm -rf "$ROOT_DIR"
+    rm -f "$SYSTEMD_UNIT_PATH"
 }
 
 prepare_install_dirs() {
-    if [ -d "$INSTALL_DIR" ] || [ -d "$CONFIG_DIR" ]; then
-        fail "Existing installation detected. Run this script with --cleanup first."
+    if [ -d "$ROOT_DIR" ] && [ "$(ls -A "$ROOT_DIR" 2>/dev/null)" ]; then
+        fail "Existing installation detected under $ROOT_DIR. Run this script with --cleanup first."
     fi
 
-    mkdir -p "$INSTALL_DIR" "$INSTALL_BIN_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" "$BIN_DIR" "$SYSTEMD_USER_DIR"
+    mkdir -p "$INSTALL_BIN_DIR" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" "$BIN_DIR" "$SYSTEMD_USER_DIR"
 }
 
 copy_release_payload() {
@@ -506,7 +439,27 @@ EOF
     return 0
 }
 
+ensure_linger_enabled() {
+    if ! command -v loginctl >/dev/null 2>&1; then
+        return 0
+    fi
+
+    linger_state=$(loginctl show-user "$(id -un)" -p Linger 2>/dev/null | sed 's/^Linger=//')
+    if [ "$linger_state" = "yes" ]; then
+        return 0
+    fi
+
+    if loginctl enable-linger "$(id -un)" >/dev/null 2>&1; then
+        info "Enabled systemd user lingering for $(id -un)"
+        return 0
+    fi
+
+    warn "Failed to enable systemd user lingering; the service may stop after logout"
+    return 1
+}
+
 start_systemd_unit() {
+    ensure_linger_enabled
     systemctl --user daemon-reload >/dev/null 2>&1 || return 1
     systemctl --user enable --now "$SYSTEMD_UNIT_NAME" >/dev/null 2>&1 || return 1
     info "Started CrowdSec using systemd --user"
@@ -546,7 +499,7 @@ cleanup_installation() {
     stop_systemd_unit_service
     stop_nohup_service
     remove_installation_artifacts
-    info "Removed CrowdSec user installation under $BASE_DIR"
+    info "Removed CrowdSec user installation under $ROOT_DIR"
 }
 
 setup_service() {
