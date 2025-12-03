@@ -8,7 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defLogLevel = logrus.InfoLevel
+const (
+	defLogLevel    = logrus.InfoLevel
+	defLogFilename = "crowdsec.log"
+)
 
 // SetupStandardLogger configures the global logger according to the
 // provided configuration. It applies the output destination, log format,
@@ -19,7 +22,7 @@ func SetupStandardLogger(cfg LogConfig, level logrus.Level, forceColors bool) er
 
 	switch cfg.GetMedia() {
 	case "file":
-		logrus.SetOutput(cfg.NewRotatingLogger())
+		logrus.SetOutput(cfg.NewRotatingLogger(defLogFilename))
 	case "syslog":
 		if err := setupSyslogDefault(); err != nil {
 			return err

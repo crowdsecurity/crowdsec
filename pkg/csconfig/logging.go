@@ -40,9 +40,9 @@ func (c LogConfig) GetDir() string {
 	return c.LogDir
 }
 
-func (c LogConfig) NewRotatingLogger() *lumberjack.Logger {
+func (c LogConfig) NewRotatingLogger(filename string) *lumberjack.Logger {
 	return &lumberjack.Logger{
-		Filename:   filepath.Join(c.LogDir, "crowdsec.log"),
+		Filename:   filepath.Join(c.LogDir, filename),
 		MaxSize:    cmp.Or(c.LogMaxSize, defMaxSize),
 		MaxBackups: cmp.Or(c.LogMaxFiles, defMaxFiles),
 		MaxAge:     cmp.Or(c.LogMaxAge, defMaxAge),
