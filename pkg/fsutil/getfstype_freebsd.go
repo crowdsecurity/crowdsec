@@ -1,6 +1,6 @@
 //go:build freebsd
 
-package types
+package fsutil
 
 import (
     "fmt"
