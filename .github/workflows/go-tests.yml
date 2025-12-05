@@ -199,6 +199,11 @@ jobs:
       run: |
         make build BUILD_PROFILE=minimal
 
+    # check that the freebsd build is not broken
+    - name: "Build target: freebsd"
+      run: |
+        make build BUILD_STATIC=1 BUILD_RE2_WASM=1 BUILD_SQLITE=modernc GOOS=freebsd
+
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
       with:
