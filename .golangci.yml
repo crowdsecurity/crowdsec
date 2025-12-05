@@ -433,6 +433,11 @@ linters:
         text: 'deep-exit: .*'
 
       - linters:
+          - revive
+        path: cmd/crowdsec/flags.go
+        text: 'deep-exit: .*'
+
+      - linters:
           - recvcheck
         path: pkg/csplugin/hclog_adapter.go
         text: the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.
