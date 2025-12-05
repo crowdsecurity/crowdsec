@@ -3,8 +3,8 @@ ifneq ($(firstword $(sort $(MAKE_VERSION) 4.1)),4.1)
     $(error Your make is too old ($(MAKE_VERSION)). Please install GNU make >= 4.1)
 endif
 
-include mk/platform.mk
-include mk/gmsl
+include build/mk/platform.mk
+include build/mk/gmsl/gmsl
 
 # By default, this build requires the C++ re2 library to be installed.
 #
@@ -440,4 +440,4 @@ else
 include test/bats.mk
 endif
 
-include mk/help.mk
+include build/mk/help.mk
