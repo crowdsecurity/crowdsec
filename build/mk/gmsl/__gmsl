@@ -5,7 +5,7 @@
 # A library of functions to be used with GNU Make's $(call) that
 # provides functionality not available in standard GNU Make.
 #
-# Copyright (c) 2005-2022 John Graham-Cumming
+# Copyright (c) 2005-2025 John Graham-Cumming
 #
 # This file is part of GMSL
 #
@@ -42,7 +42,7 @@
 # This is the GNU Make Standard Library version number as a list with
 # three items: major, minor, revision
 
-gmsl_version := 1 2 0
+gmsl_version := 1 2 4
 
 __gmsl_name := GNU Make Standard Library
 
@@ -73,14 +73,6 @@ else
 __gmsl_tr1 :=
 __gmsl_tr2 :=
 __gmsl_tr3 :=
-endif
-
-# See if spaces are valid in variable names (this was the case until
-# GNU Make 3.82)
-ifeq ($(MAKE_VERSION),3.82)
-__gmsl_spaced_vars := $(false)
-else
-__gmsl_spaced_vars := $(true)
 endif
 
 # Figure out whether we have $(eval) or not (GNU Make 3.80 and above)
@@ -236,6 +228,21 @@ chop = $(__gmsl_tr1)$(wordlist 2,$(words $1),x $1)
 map = $(__gmsl_tr2)$(strip $(foreach a,$2,$(call $1,$a)))
 
 # ----------------------------------------------------------------------------
+# Function:  fold
+# Arguments: 1: Name of function to $(call) for each element of list. This
+#               function takes two arguments
+#            2: List to iterate over calling the function in 1
+#            3: The "zero" element to be used when the list end is reached
+# Returns:   The result of calling the function in 1 on each element in
+#            the list with the previous result of calling 1 as the second
+#            argument.
+# ----------------------------------------------------------------------------
+fold = $(__gmsl_tr3)$(strip $(if $2,$(call $1,                               \
+                                         $(call first,$2),                   \
+                                         $(call fold,$1,$(call rest,$2),$3)),\
+				    $3))
+
+# ----------------------------------------------------------------------------
 # Function:  pairmap
 # Arguments: 1: Name of function to $(call) for each pair of elements
 #            2: List to iterate over calling the function in 1
@@ -339,7 +346,6 @@ merge = $(__gmsl_tr2)$(strip $(if $2,                                     \
             $(if $(call seq,1,$(words $2)),                               \
                 $2,$(call first,$2)$1$(call merge,$1,$(call rest,$2)))))
 
-ifdef __gmsl_have_eval
 # ----------------------------------------------------------------------------
 # Function:  tr
 # Arguments: 1: The list of characters to translate from 
@@ -347,13 +353,13 @@ ifdef __gmsl_have_eval
 #            3: The text to translate
 # Returns:   Returns the text after translating characters
 # ----------------------------------------------------------------------------
-tr = $(strip $(__gmsl_tr3)$(call assert_no_dollar,$0,$1$2$3)              \
-     $(eval __gmsl_t := $3)                                               \
-     $(foreach c,                                                         \
-         $(join $(addsuffix :,$1),$2),                                    \
-         $(eval __gmsl_t :=                                               \
-             $(subst $(word 1,$(subst :, ,$c)),$(word 2,$(subst :, ,$c)), \
-                 $(__gmsl_t))))$(__gmsl_t))
+__gmsl_tr_i = $(if $(strip $1),                                       \
+                   $(call __gmsl_tr_i,                                \
+		     $(call rest,$1),                                 \
+		     $(call rest,$2),                                 \
+		     $(subst $(call first,$1),$(call first,$2),$3)),  \
+		   $3)
+tr = $(strip $(__gmsl_tr3)$(call __gmsl_tr_i,$1,$2,$3))
 
 # Common character classes for use with the tr function.  Each of
 # these is actually a variable declaration and must be wrapped with
@@ -369,24 +375,20 @@ tr = $(strip $(__gmsl_tr3)$(call assert_no_dollar,$0,$1$2$3)              \
 # Arguments: 1: Text to upper case
 # Returns:   Returns the text in upper case
 # ----------------------------------------------------------------------------
-uc = $(__gmsl_tr1)$(call assert_no_dollar,$0,$1)$(call tr,$([a-z]),$([A-Z]),$1)
+uc = $(__gmsl_tr1)$(call tr,$([a-z]),$([A-Z]),$1)
 
 # ----------------------------------------------------------------------------
 # Function:  lc
 # Arguments: 1: Text to lower case
 # Returns:   Returns the text in lower case
 # ----------------------------------------------------------------------------
-lc = $(__gmsl_tr1)$(call assert_no_dollar,$0,$1)$(call tr,$([A-Z]),$([a-z]),$1)
+lc = $(__gmsl_tr1)$(call tr,$([A-Z]),$([a-z]),$1)
 
 # ----------------------------------------------------------------------------
 # Function:  strlen
 # Arguments: 1: A string
 # Returns:   Returns the length of the string
 # ----------------------------------------------------------------------------
-
-# This results in __gmsl_tab containing a tab
-
-__gmsl_tab :=	#
 
 __gmsl_characters := A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
 __gmsl_characters += a b c d e f g h i j k l m n o p q r s t u v w x y z
@@ -398,8 +400,10 @@ __gmsl_characters += { } [ ] \ : ; ' " < > , . / ? |
 
 __gmsl_empty :=
 __gmsl_space := $(__gmsl_empty) $(__gmsl_empty)
+__gmsl_tab := $(__gmsl_empty)	$(__gmsl_empty)
 
-strlen = $(__gmsl_tr1)$(call assert_no_dollar,$0,$1)$(strip $(eval __temp := $(subst $(__gmsl_space),x,$1))$(foreach a,$(__gmsl_characters),$(eval __temp := $$(subst $$a,x,$(__temp))))$(eval __temp := $(subst x,x ,$(__temp)))$(words $(__temp)))
+__gmsl_strlen_i = $(if $1,$(call __gmsl_strlen_i,$(call rest,$1),$(subst $(call first,$1),x,$2)),$2)
+strlen = $(__gmsl_tr1)$(words $(subst x,x ,$(call __gmsl_strlen_i,$(__gmsl_characters),$(subst $(__gmsl_tab),x,$(subst $(__gmsl_space),x,$1)))))
 
 # This results in __gmsl_newline containing just a newline
 
@@ -417,9 +421,8 @@ endef
 # Note:      The string in $1 must not contain a §
 # ----------------------------------------------------------------------------
 
-substr = $(if $2,$(__gmsl_tr3)$(call assert_no_dollar,$0,$1$2$3)$(strip $(eval __temp := $$(subst $$(__gmsl_space),§ ,$$1))$(foreach a,$(__gmsl_characters),$(eval __temp := $$(subst $$a,$$a$$(__gmsl_space),$(__temp))))$(eval __temp := $(wordlist $2,$3,$(__temp))))$(subst §,$(__gmsl_space),$(subst $(__gmsl_space),,$(__temp))))
-
-endif # __gmsl_have_eval
+__gmsl_substr_i = $(if $1,$(call __gmsl_substr_i,$(call rest,$1),$(subst $(call first,$1),$(call first,$1) ,$2)),$2)
+substr = $(if $1,$(__gmsl_tr3)$(subst §, ,$(subst $(__gmsl_space),,$(wordlist $2,$3,$(call __gmsl_substr_i,$(__gmsl_characters),$(subst $(__gmsl_space),§ ,$1))))))
 
 # ###########################################################################
 # SET MANIPULATION FUNCTIONS
@@ -938,7 +941,7 @@ gmsl-print-%: ; @echo $* = $($*)
 #            2: The message to print with the assertion
 # Returns:   None
 # ----------------------------------------------------------------------------
-assert = $(if $2,$(if $1,,$(call __gmsl_error,Assertion failure: $2)))
+assert = $(if $1,,$(call __gmsl_error,Assertion failure: $2))
 
 # ----------------------------------------------------------------------------
 # Function:  assert_exists
@@ -950,20 +953,17 @@ assert_exists = $(if $0,$(call assert,$(wildcard $1),file '$1' missing))
 
 # ----------------------------------------------------------------------------
 # Function:  assert_no_dollar
-# Arguments: 1: Name of a function being executd
-#            2: Arguments to check
-# Returns:   None
+# Arguments: 1: Name of a function being executed
+#            2: Arguments to check to see if they contain a dollar sign
+# Returns:  None
 # ----------------------------------------------------------------------------
-assert_no_dollar = $(call __gmsl_tr2)$(call assert,$(call not,$(findstring $(__gmsl_dollar),$2)),$1 called with a dollar sign in argument)
+assert_no_dollar = $(call assert,$(call not,$(findstring $(__gmsl_dollar),$2)),$1 called with a dollar sign in argument)
 
 # ----------------------------------------------------------------------------
 # Function:  assert_no_space
-# Arguments: 1: Name of a function being executd
-#            2: Arguments to check
+# Arguments: 1: Name of a function being executed
+#            2: Arguments to check to see if they contain spaces
 # Returns:   None
 # ----------------------------------------------------------------------------
-ifeq ($(__gmsl_spaced_vars),$(false))
-assert_no_space = $(call assert,$(call not,$(findstring $(__gmsl_aa_magic),$(subst $(__gmsl_space),$(__gmsl_aa_magic),$2))),$1 called with a space in argument)
-else
-assert_no_space =
-endif
+assert_no_space = $(call assert,$(call not,$(word 2,$2)),$1 called with space in argument)
+
