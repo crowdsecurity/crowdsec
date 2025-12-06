@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -61,7 +60,7 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 	if err != nil {
 		return err
 	} else if asndata != nil {
-		record := asndata.(*geoip2.ASN)
+		record := asndata.(*exprhelpers.GeoIPASN)
 		src.AsName = record.AutonomousSystemOrganization
 		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
 	}
@@ -70,7 +69,7 @@ func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
 	if err != nil {
 		return err
 	} else if cityData != nil {
-		record := cityData.(*geoip2.City)
+		record := cityData.(*exprhelpers.GeoIPCity)
 		src.Cn = record.Country.IsoCode
 		src.Latitude = float32(record.Location.Latitude)
 		src.Longitude = float32(record.Location.Longitude)
