@@ -118,6 +118,7 @@ func GeoIPRangeEnrich(params ...any) (any, error) {
 		return nil, err
 	}
 
+	// We need to convert back to net.IPNet for backwards compatibility
 	prefix := geoIPASNRangeReader.Lookup(parsedIP).Prefix().Masked()
 	addr := prefix.Addr()
 	bits, totalBits := prefix.Bits(), addr.BitLen()
