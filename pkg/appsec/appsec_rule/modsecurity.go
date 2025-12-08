@@ -320,7 +320,7 @@ func (m *ModsecurityRule) determineChainPhase(rule *CustomRule) int {
 			maxPhase = andPhase
 		}
 
-		// Recursively check nested chains
+		// Recursively check nested AND chains
 		if len(andRule.And) > 0 {
 			nestedPhase := m.determineChainPhase(&andRule)
 			if nestedPhase > maxPhase {
