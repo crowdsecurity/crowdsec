@@ -275,7 +275,7 @@ func (m *ModsecurityRule) buildRulesWithPhase(rule *CustomRule, appsecRuleName s
 }
 
 // determineOptimalPhase determines the optimal phase for a rule based on its zones
-func (m *ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int) int {
+func (*ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int) int {
 	if forcedPhase > 0 {
 		return forcedPhase
 	}
