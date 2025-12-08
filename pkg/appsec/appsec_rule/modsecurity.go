@@ -52,7 +52,7 @@ var zones = map[string]Zone{
 	"PROTOCOL":         {ModsecName: "REQUEST_PROTOCOL", MinimumPhase: 1},
 	"URI":              {ModsecName: "REQUEST_FILENAME", MinimumPhase: 1},
 	"URI_FULL":         {ModsecName: "REQUEST_URI", MinimumPhase: 1},
-	"RAW_BODY":         {ModsecName: "REQUEST_BODY", MinimumPhase: 2},
+	"RAW_BODY":         {ModsecName: "RAW_REQUEST_BODY", MinimumPhase: 2},
 	"FILENAMES":        {ModsecName: "FILES", MinimumPhase: 2},
 }
 
