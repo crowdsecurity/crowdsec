@@ -213,7 +213,7 @@ linters:
 
     maintidx:
       # raise this after refactoring
-      under: 20
+      under: 21
 
     misspell:
       locale: US
@@ -242,7 +242,7 @@ linters:
         - name: cognitive-complexity
           arguments:
             # lower this after refactoring
-            - 113
+            - 91
         - name: comment-spacings
           disabled: true
         - name: confusing-results
@@ -250,7 +250,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 37
+            - 36
         - name: empty-block
           disabled: true
         - name: empty-lines

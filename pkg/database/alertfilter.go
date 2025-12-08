@@ -26,7 +26,7 @@ func handleSimulatedFilter(filter map[string][]string, predicates *[]predicate.A
 	}
 }
 
-func handleOriginFilter(filter map[string][]string, predicates *[]predicate.Alert) {
+func handleOriginFilter(filter map[string][]string) {
 	if _, ok := filter["origin"]; ok {
 		filter["include_capi"] = []string{"true"}
 	}
@@ -193,7 +193,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	// else, return bans that are *contained* by the given value (value is the outer)
 
 	handleSimulatedFilter(filter, &predicates)
-	handleOriginFilter(filter, &predicates)
+	handleOriginFilter(filter)
 
 	for param, value := range filter {
 		switch param {

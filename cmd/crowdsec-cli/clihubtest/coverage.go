@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -76,11 +77,11 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 	if showOnlyPercent {
 		switch {
 		case showParserCov:
-			fmt.Printf("parsers=%d%%", parserCoveragePercent)
+			fmt.Fprintf(os.Stdout, "parsers=%d%%", parserCoveragePercent)
 		case showScenarioCov:
-			fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
+			fmt.Fprintf(os.Stdout, "scenarios=%d%%", scenarioCoveragePercent)
 		case showAppsecCov:
-			fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
+			fmt.Fprintf(os.Stdout, "appsec_rules=%d%%", appsecRuleCoveragePercent)
 		}
 
 		return nil
@@ -100,18 +101,18 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 			hubTestCoverageTable(color.Output, cfg.Cscli.Color, []string{"Appsec Rule", "Status", "Number of tests"}, parserCoverage)
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 
 		if showParserCov {
-			fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
+			fmt.Fprintf(os.Stdout, "PARSERS    : %d%% of coverage\n", parserCoveragePercent)
 		}
 
 		if showScenarioCov {
-			fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
+			fmt.Fprintf(os.Stdout, "SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 		}
 
 		if showAppsecCov {
-			fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
+			fmt.Fprintf(os.Stdout, "APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
 		}
 	case "json":
 		dump, err := json.MarshalIndent(parserCoverage, "", " ")
@@ -119,21 +120,21 @@ func (cli *cliHubTest) coverage(showScenarioCov bool, showParserCov bool, showAp
 			return err
 		}
 
-		fmt.Printf("%s", dump)
+		fmt.Fprint(os.Stdout, string(dump))
 
 		dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("%s", dump)
+		fmt.Fprint(os.Stdout, string(dump))
 
 		dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("%s", dump)
+		fmt.Fprint(os.Stdout, string(dump))
 	default:
 		return errors.New("only human/json output modes are supported")
 	}

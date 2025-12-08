@@ -8,12 +8,12 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*appsecacquisition.AppsecSource)(nil)
-	_ Tailer          = (*appsecacquisition.AppsecSource)(nil)
-	_ MetricsProvider = (*appsecacquisition.AppsecSource)(nil)
+	_ DataSource      = (*appsecacquisition.Source)(nil)
+	_ Tailer          = (*appsecacquisition.Source)(nil)
+	_ MetricsProvider = (*appsecacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("appsec", func() DataSource { return &appsecacquisition.AppsecSource{} })
+	registerDataSource("appsec", func() DataSource { return &appsecacquisition.Source{} })
 }
