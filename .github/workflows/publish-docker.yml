@@ -33,9 +33,8 @@ on:
 jobs:
   push_to_registry:
     name: Push Docker image to registries
-    runs-on: ubuntu-latest
+    runs-on: crowdsec-large-runner
     steps:
-
       - name: Check out the repo
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
         with:
