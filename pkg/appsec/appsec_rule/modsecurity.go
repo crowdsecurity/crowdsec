@@ -305,29 +305,18 @@ func (*ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int)
 
 // determineChainPhase determines the required phase for a chain of AND rules
 func (m *ModsecurityRule) determineChainPhase(rule *CustomRule) int {
-	maxPhase := 1
-
 	// Check the current rule
-	rulePhase := m.determineOptimalPhase(rule, 0)
-	if rulePhase > maxPhase {
-		maxPhase = rulePhase
-	}
+	maxPhase := m.determineOptimalPhase(rule, 0)
 
 	// Check all AND rules in the chain
 	for _, andRule := range rule.And {
-		andPhase := m.determineOptimalPhase(&andRule, 0)
-		if andPhase > maxPhase {
-			maxPhase = andPhase
-		}
+		maxPhase = max(maxPhase, m.determineOptimalPhase(&andRule, 0))
 
 		// Recursively check nested AND chains
 		if len(andRule.And) > 0 {
-			nestedPhase := m.determineChainPhase(&andRule)
-			if nestedPhase > maxPhase {
-				maxPhase = nestedPhase
-			}
+			maxPhase = max(maxPhase, m.determineChainPhase(&andRule))
 		}
 	}
 
-	return maxPhase
+	return max(maxPhase, 1)
 }

@@ -2,18 +2,73 @@ package appsec_rule
 
 import (
 	"testing"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+type ruleTest struct {
+	name        string
+	rule        CustomRule
+	expected        string
+	expectedErr     error
+}
+
+func runRuleTests(t *testing.T, tests []ruleTest) {
+	t.Helper()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, _, err := tt.rule.Convert(ModsecurityRuleType, tt.name, "test rule")
+			require.ErrorIs(t, err, tt.expectedErr)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestConvert(t *testing.T) {
+	tests := []ruleTest{
+		{
+			name: "Missing zone (nil)",
+			rule: CustomRule{
+				Zones:     nil,
+			},
+			expectedErr: ErrMissingZones,
+		},
+		{
+			name: "Missing zone (empty slice)",
+			rule: CustomRule{
+				Zones:     []string{},
+			},
+			expectedErr: ErrMissingZones,
+		},
+		{
+			name: "Missing match type",
+			rule: CustomRule{
+				Zones:     []string{"ARGS"},
+				Match: Match{Type: "", Value: "value"},
+			},
+			expectedErr: ErrMissingMatchType,
+		},
+		{
+			name: "Missing match value",
+			rule: CustomRule{
+				Zones:     []string{"ARGS"},
+				Match: Match{
+					Type: "type",
+					Value: "",
+				},
+			},
+			expectedErr: ErrMissingMatchValue,
+		},
+	}
+
+	runRuleTests(t, tests)
+}
+
 func TestVPatchRuleString(t *testing.T) {
-	tests := []struct {
-		name        string
-		description string
-		rule        CustomRule
-		expected    string
-	}{
+	tests := []ruleTest{
 		{
 			name:        "Collection count",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"foo"},
@@ -24,7 +79,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Base Rule",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
@@ -36,7 +90,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "One zone, multi var",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
@@ -48,7 +101,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Base Rule #2",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
@@ -58,7 +110,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Base Negative Rule",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
@@ -68,7 +119,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Multiple Zones",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -80,7 +130,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Multiple Zones Multi Var",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -92,7 +141,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Multiple Zones No Vars",
-			description: "test rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -103,7 +151,6 @@ func TestVPatchRuleString(t *testing.T) {
 		},
 		{
 			name:        "Basic AND",
-			description: "test rule",
 
 			rule: CustomRule{
 				And: []CustomRule{
@@ -126,7 +173,6 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:1,deny,log,msg:'test r
 		},
 		{
 			name:        "Basic OR",
-			description: "test rule",
 
 			rule: CustomRule{
 				Or: []CustomRule{
@@ -149,7 +195,6 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:1,deny,log,msg:'test ru
 		},
 		{
 			name:        "OR AND mix",
-			description: "test rule",
 
 			rule: CustomRule{
 				And: []CustomRule{
@@ -181,29 +226,13 @@ SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:1,deny,log,msg:'test r
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual, _, err := tt.rule.Convert(ModsecurityRuleType, tt.name, tt.description)
-			if err != nil {
-				t.Errorf("Error converting rule: %s", err)
-			}
-			if actual != tt.expected {
-				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, actual)
-			}
-		})
-	}
+	runRuleTests(t, tests)
 }
 
 func TestPhaseOptimization(t *testing.T) {
-	tests := []struct {
-		name        string
-		description string
-		rule        CustomRule
-		expected    string
-	}{
+	tests := []ruleTest{
 		{
 			name:        "Phase 1 Rule - Headers",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS"},
 				Variables: []string{"User-Agent"},
@@ -213,7 +242,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 1 Rule - Method",
-			description: "test rule",
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
 				Match: Match{Type: "equals", Value: "POST"},
@@ -222,7 +250,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 1 Rule - URI",
-			description: "test rule",
 			rule: CustomRule{
 				Zones: []string{"URI"},
 				Match: Match{Type: "startsWith", Value: "/admin"},
@@ -231,7 +258,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 1 Rule - GET Args",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"id"},
@@ -241,7 +267,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 2 Rule - Body Args",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"BODY_ARGS"},
 				Variables: []string{"password"},
@@ -252,7 +277,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 2 Rule - Files",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"FILES"},
 				Match:     Match{Type: "gt", Value: "0"},
@@ -262,7 +286,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Phase 2 Rule - Body Type",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS"},
 				Variables: []string{"Content-Type"},
@@ -273,7 +296,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Mixed Zones - Phase 2 Required",
-			description: "test rule",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS", "BODY_ARGS"},
 				Variables: []string{"Content-Type"},
@@ -283,7 +305,6 @@ func TestPhaseOptimization(t *testing.T) {
 		},
 		{
 			name:        "Chained Rules - Phase 1 Compatible",
-			description: "test rule",
 			rule: CustomRule{
 				And: []CustomRule{
 					{
@@ -302,7 +323,6 @@ SecRule REQUEST_METHOD "@streq GET" "id:1698112565,phase:1,deny,log,msg:'test ru
 		},
 		{
 			name:        "Chained Rules - Phase 2 Required",
-			description: "test rule",
 			rule: CustomRule{
 				And: []CustomRule{
 					{
@@ -322,7 +342,6 @@ SecRule ARGS_POST:action "@streq delete" "id:1325966539,phase:2,deny,log,msg:'te
 		},
 		{
 			name:        "OR Rules - Phase 2 First, Phase 1 Second",
-			description: "test rule",
 			rule: CustomRule{
 				Or: []CustomRule{
 					{
@@ -342,7 +361,6 @@ SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:3776099319,phase:
 		},
 		{
 			name:        "AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)",
-			description: "test rule",
 			rule: CustomRule{
 				And: []CustomRule{
 					{
@@ -362,15 +380,5 @@ SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:438006436,phase:2
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual, _, err := tt.rule.Convert(ModsecurityRuleType, tt.name, tt.description)
-			if err != nil {
-				t.Errorf("Error converting rule: %s", err)
-			}
-			if actual != tt.expected {
-				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, actual)
-			}
-		})
-	}
+	runRuleTests(t, tests)
 }
