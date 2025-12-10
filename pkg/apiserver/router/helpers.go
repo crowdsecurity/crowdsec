@@ -109,17 +109,117 @@ func ClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 	return GetClientIP(r)
 }
 
+// isTrustedProxy checks if an IP address is in the trusted proxy list
+func isTrustedProxy(addr netip.Addr, trustedProxies []netip.Prefix) bool {
+	for _, prefix := range trustedProxies {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+// findFirstUntrustedIP iterates backwards through a comma-separated list of IPs
+// and returns the first (rightmost) IP that is not in the trusted proxy list
+// Returns empty string if all IPs are trusted or none are valid
+func findFirstUntrustedIP(ipList string, trustedProxies []netip.Prefix) string {
+	if ipList == "" {
+		return ""
+	}
+
+	ips := strings.Split(ipList, ",")
+	// Iterate backwards (right to left) to find the first untrusted IP
+	// This is the closest untrusted proxy/client to us
+	for i := len(ips) - 1; i >= 0; i-- {
+		ipStr := strings.TrimSpace(ips[i])
+		addr, err := netip.ParseAddr(ipStr)
+		if err != nil {
+			continue
+		}
+
+		// If this IP is not trusted, it's our client IP (or closest untrusted proxy)
+		if !isTrustedProxy(addr, trustedProxies) {
+			return ipStr
+		}
+	}
+
+	return ""
+}
+
+// isRemoteAddrTrusted checks if RemoteAddr is from a trusted proxy
+func isRemoteAddrTrusted(r *http.Request, trustedProxies []netip.Prefix) bool {
+	if r.RemoteAddr == "" || r.RemoteAddr == "@" {
+		// If RemoteAddr is empty, assume we trust the proxy (for tests)
+		return true
+	}
+
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+
+	remoteAddr, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+
+	return isTrustedProxy(remoteAddr, trustedProxies)
+}
+
 // ResolveClientIP resolves the client IP from the request, respecting trusted proxy headers
 // This should be called by middleware to determine the real client IP
 // It checks X-Forwarded-For and X-Real-IP headers based on trusted proxy configuration
-// trustedProxies can be []net.IPNet (for compatibility) or []netip.Prefix (preferred)
-func ResolveClientIP(r *http.Request, trustedProxies any) string {
+func ResolveClientIP(r *http.Request, trustedProxies []netip.Prefix) string {
 	// Handle Unix socket case
 	if r.RemoteAddr == "@" {
 		return "127.0.0.1"
 	}
 
+	// If we have trusted proxies, check forwarded headers first (before RemoteAddr)
+	// This handles cases where RemoteAddr might be empty (e.g., in tests)
+	if len(trustedProxies) > 0 {
+		// Check X-Forwarded-For header
+		// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+		// Format: leftmost is original client, rightmost is most recent proxy
+		// We iterate backwards (right to left) to find the first untrusted IP
+		forwardedFor := r.Header.Get("X-Forwarded-For")
+		if forwardedFor != "" {
+			if ip := findFirstUntrustedIP(forwardedFor, trustedProxies); ip != "" {
+				return ip
+			}
+		}
+
+		// Check X-Real-IP header
+		// X-Real-IP contains the client IP as reported by the proxy
+		// While typically a single IP, it may contain multiple IPs (comma-separated) in some configurations
+		// We iterate backwards (right to left) like X-Forwarded-For to find the first untrusted IP
+		// (The trusted proxy check is about RemoteAddr, not the IP in X-Real-IP)
+		realIPHeader := r.Header.Get("X-Real-IP")
+		if realIPHeader != "" {
+			// Check if RemoteAddr is from a trusted proxy
+			if isRemoteAddrTrusted(r, trustedProxies) {
+				if ip := findFirstUntrustedIP(realIPHeader, trustedProxies); ip != "" {
+					return ip
+				}
+				// If all IPs in X-Real-IP are trusted, take the first one (leftmost)
+				// This handles the case where X-Real-IP contains only trusted proxy IPs
+				realIPs := strings.Split(realIPHeader, ",")
+				if len(realIPs) > 0 {
+					realIP := strings.TrimSpace(realIPs[0])
+					if _, err := netip.ParseAddr(realIP); err == nil {
+						return realIP
+					}
+				}
+			}
+		}
+	}
+
 	// Extract IP from RemoteAddr (format: "IP:port")
+	// Only fall back to RemoteAddr if no forwarded headers were found
+	if r.RemoteAddr == "" {
+		return ""
+	}
+
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		// If RemoteAddr doesn't have a port, use it as-is
@@ -129,75 +229,6 @@ func ResolveClientIP(r *http.Request, trustedProxies any) string {
 	clientAddr, err := netip.ParseAddr(host)
 	if err != nil {
 		return host // Return as-is if parsing fails
-	}
-
-	// Convert trusted proxies to netip.Prefix slice
-	var prefixes []netip.Prefix
-	switch tp := trustedProxies.(type) {
-	case []netip.Prefix:
-		prefixes = tp
-	case []net.IPNet:
-		prefixes = make([]netip.Prefix, 0, len(tp))
-		for _, ipNet := range tp {
-			prefix, err := netip.ParsePrefix(ipNet.String())
-			if err != nil {
-				continue
-			}
-			prefixes = append(prefixes, prefix)
-		}
-	case nil:
-		// No trusted proxies
-	default:
-		// Unknown type, treat as no trusted proxies
-	}
-
-	// If we have trusted proxies and X-Forwarded-For headers, check them
-	if len(prefixes) > 0 {
-		forwardedFor := r.Header.Get("X-Forwarded-For")
-		if forwardedFor != "" {
-			// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-			// We want the leftmost IP that is not in our trusted proxy list
-			ips := strings.Split(forwardedFor, ",")
-			for i := range ips {
-				ips[i] = strings.TrimSpace(ips[i])
-				addr, err := netip.ParseAddr(ips[i])
-				if err != nil {
-					continue
-				}
-
-				// Check if this IP is a trusted proxy
-				isTrusted := false
-				for _, prefix := range prefixes {
-					if prefix.Contains(addr) {
-						isTrusted = true
-						break
-					}
-				}
-
-				// If this IP is not trusted, it's our client IP
-				if !isTrusted {
-					return ips[i]
-				}
-			}
-		}
-
-		// Check X-Real-IP header
-		realIP := r.Header.Get("X-Real-IP")
-		if realIP != "" {
-			addr, err := netip.ParseAddr(realIP)
-			if err == nil {
-				isTrusted := false
-				for _, prefix := range prefixes {
-					if prefix.Contains(addr) {
-						isTrusted = true
-						break
-					}
-				}
-				if !isTrusted {
-					return realIP
-				}
-			}
-		}
 	}
 
 	// Fall back to RemoteAddr
