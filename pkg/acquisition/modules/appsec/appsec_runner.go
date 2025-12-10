@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -196,7 +197,6 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		return nil
 	}
 
-	// Body handling: prefer using an existing buffer, otherwise stream from the reader if accessible
 	if state.Tx.IsRequestBodyAccessible() {
 		if len(request.Body) > 0 {
 			in, _, err = state.Tx.WriteRequestBody(request.Body)
@@ -407,40 +407,40 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	state.CurrentPhase = appsec.PhaseInBand
 
-	// Pre-buffer the body once if either in-band or out-of-band needs it for body inspection.
-	// This ensures we only read the body once and it's available for both phases.
 	needInBandBody := len(r.AppsecRuntime.InBandRules) > 0 && !r.AppsecRuntime.Config.InbandOptions.DisableBodyInspection
 	needOutOfBandBody := len(r.AppsecRuntime.OutOfBandRules) > 0 && !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection
-	needBody := needInBandBody || needOutOfBandBody
+	hasHooks := len(r.AppsecRuntime.CompiledPostEval) > 0 || len(r.AppsecRuntime.CompiledOnMatch) > 0
 
-	if needBody && len(request.Body) == 0 && request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
-		// Determine the memory limit: use the more restrictive (smaller) limit if both phases need it
-		var limit *int
-		if needInBandBody {
-			limit = r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit
+	// Only buffer if out-of-band or hooks need the body. For in-band only, we can stream
+	// directly from HTTPRequest.Body to Coraza without buffering, reducing memory usage.
+	needBuffer := needOutOfBandBody || hasHooks
+
+	if needBuffer && len(request.Body) == 0 && request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
+		var maxLimit *int
+		if needOutOfBandBody && r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
+			maxLimit = r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit
 		}
-		if needOutOfBandBody {
-			outOfBandLimit := r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit
-			if limit == nil {
-				limit = outOfBandLimit
-			} else if outOfBandLimit != nil && *outOfBandLimit < *limit {
-				limit = outOfBandLimit
-			}
+		// If hooks need body but no out-of-band rules, use in-band limit if available
+		if hasHooks && !needOutOfBandBody && needInBandBody && r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit != nil {
+			maxLimit = r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit
 		}
 
 		var reader io.Reader = request.HTTPRequest.Body
-		if limit != nil {
-			reader = io.LimitReader(reader, int64(*limit))
+		if maxLimit != nil {
+			reader = io.LimitReader(reader, int64(*maxLimit))
 		}
 
 		buf, err := io.ReadAll(reader)
 		if err != nil {
-			logger.Errorf("unable to pre-buffer request body: %s", err)
-		} else {
-			request.Body = buf
-			// Reset the body reader in case it is used elsewhere
-			request.HTTPRequest.Body = io.NopCloser(bytes.NewReader(request.Body))
+			logger.Errorf("unable to read request body: %s", err)
+			state.Response.UserHTTPResponseCode = http.StatusInternalServerError
+			state.Response.BouncerHTTPResponseCode = http.StatusInternalServerError
+			request.ResponseChannel <- state.Response
+			return
 		}
+
+		request.Body = buf
+		request.HTTPRequest.Body = io.NopCloser(bytes.NewReader(buf))
 	}
 
 	//inband appsec rules
@@ -477,6 +477,10 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	state.Response.SendAlert = false
 	state.Response.SendEvent = true
 	state.CurrentPhase = appsec.PhaseOutOfBand
+
+	if request.HTTPRequest != nil && len(request.Body) > 0 {
+		request.HTTPRequest.Body = io.NopCloser(bytes.NewReader(request.Body))
+	}
 
 	//FIXME: This is a bit of a hack to avoid confusion with the transaction if we do not have any inband rules.
 	//We should probably have different transaction (or even different request object) for inband and out of band rules
