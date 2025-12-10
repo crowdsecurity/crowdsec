@@ -2,6 +2,7 @@ package appsecacquisition
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -208,7 +209,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 			}
 		} else if request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
 			in, _, err = state.Tx.ReadRequestBodyFrom(request.HTTPRequest.Body)
-			if err != nil && err != io.ErrUnexpectedEOF {
+			if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 				r.logger.Errorf("unable to read request body from reader: %s", err)
 				return err
 			}
@@ -406,15 +407,32 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	state.CurrentPhase = appsec.PhaseInBand
 
-	// If we will need the body later for out-of-band processing with body inspection,
-	// pre-buffer it once here to avoid re-reading later.
+	// Pre-buffer the body once if either in-band or out-of-band needs it for body inspection.
+	// This ensures we only read the body once and it's available for both phases.
+	needInBandBody := len(r.AppsecRuntime.InBandRules) > 0 && !r.AppsecRuntime.Config.InbandOptions.DisableBodyInspection
 	needOutOfBandBody := len(r.AppsecRuntime.OutOfBandRules) > 0 && !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection
-	if needOutOfBandBody && len(request.Body) == 0 && request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
-		// Optional: respect a soft cap using the configured in-memory limit when available
-		var reader io.Reader = request.HTTPRequest.Body
-		if r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
-			reader = io.LimitReader(reader, int64(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit))
+	needBody := needInBandBody || needOutOfBandBody
+
+	if needBody && len(request.Body) == 0 && request.HTTPRequest != nil && request.HTTPRequest.Body != nil {
+		// Determine the memory limit: use the more restrictive (smaller) limit if both phases need it
+		var limit *int
+		if needInBandBody {
+			limit = r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit
 		}
+		if needOutOfBandBody {
+			outOfBandLimit := r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit
+			if limit == nil {
+				limit = outOfBandLimit
+			} else if outOfBandLimit != nil && *outOfBandLimit < *limit {
+				limit = outOfBandLimit
+			}
+		}
+
+		var reader io.Reader = request.HTTPRequest.Body
+		if limit != nil {
+			reader = io.LimitReader(reader, int64(*limit))
+		}
+
 		buf, err := io.ReadAll(reader)
 		if err != nil {
 			logger.Errorf("unable to pre-buffer request body: %s", err)
