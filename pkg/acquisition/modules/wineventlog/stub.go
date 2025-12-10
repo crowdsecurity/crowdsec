@@ -41,7 +41,7 @@ func (*Source) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-func (*Source) OneShotAcquisition(_ context.Context, _ chan pipeline.Event, _ *tomb.Tomb) error {
+func (*Source) OneShot(_ context.Context, _ chan pipeline.Event) error {
 	return nil
 }
 
