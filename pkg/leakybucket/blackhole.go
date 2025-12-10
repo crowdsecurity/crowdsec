@@ -12,25 +12,25 @@ type hiddenKey struct {
 	key        string
 }
 
-type Blackhole struct {
+type blackhole struct {
 	duration   time.Duration
 	hiddenKeys []hiddenKey
 	DumbProcessor
 }
 
-func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
+func NewBlackhole(bucketFactory *BucketFactory) (*blackhole, error) {
 	duration, err := time.ParseDuration(bucketFactory.Blackhole)
 	if err != nil {
 		return nil, fmt.Errorf("blackhole duration not valid '%s'", bucketFactory.Blackhole)
 	}
-	return &Blackhole{
+	return &blackhole{
 		duration:      duration,
 		hiddenKeys:    []hiddenKey{},
 		DumbProcessor: DumbProcessor{},
 	}, nil
 }
 
-func (bl *Blackhole) OnBucketOverflow(_ *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (bl *blackhole) OnBucketOverflow(_ *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		var blackholed = false
 		var tmp []hiddenKey
