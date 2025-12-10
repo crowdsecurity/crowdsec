@@ -171,7 +171,9 @@ func writeStartupDecisions(w http.ResponseWriter, r *http.Request, filters map[s
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					w.Write([]byte(","))
+					if _, err := w.Write([]byte(",")); err != nil {
+						return err
+					}
 				} else {
 					needComma = true
 				}
@@ -231,7 +233,9 @@ func writeDeltaDecisions(w http.ResponseWriter, r *http.Request, filters map[str
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					w.Write([]byte(","))
+					if _, err := w.Write([]byte(",")); err != nil {
+						return err
+					}
 				} else {
 					needComma = true
 				}
@@ -267,7 +271,9 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"new": [`)) // Write initial JSON structure
+	if _, err := w.Write([]byte(`{"new": [`)); err != nil { // Write initial JSON structure
+		return err
+	}
 
 	// if the blocker just started, return all decisions
 	if val, ok := r.URL.Query()["startup"]; ok && val[0] == "true" {
@@ -275,7 +281,7 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 		err := writeStartupDecisions(w, r, filters, c.DBClient.QueryAllDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for startup: %v", err)
-			w.Write([]byte(`], "deleted": []}`))
+			_, _ = w.Write([]byte(`], "deleted": []}`))
 			if hasFlusher {
 				flusher.Flush()
 			}
@@ -283,12 +289,14 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 			return err
 		}
 
-		w.Write([]byte(`], "deleted": [`))
+		if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+			return err
+		}
 		// Expired decisions
 		err = writeStartupDecisions(w, r, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for startup: %v", err)
-			w.Write([]byte(`]}`))
+			_, _ = w.Write([]byte(`]}`))
 			if hasFlusher {
 				flusher.Flush()
 			}
@@ -296,7 +304,9 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 			return err
 		}
 
-		w.Write([]byte(`]}`))
+		if _, err := w.Write([]byte(`]}`)); err != nil {
+			return err
+		}
 		if hasFlusher {
 			flusher.Flush()
 		}
@@ -304,7 +314,7 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 		err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for delta: %v", err)
-			w.Write([]byte(`], "deleted": []}`))
+			_, _ = w.Write([]byte(`], "deleted": []}`))
 			if hasFlusher {
 				flusher.Flush()
 			}
@@ -312,12 +322,14 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 			return err
 		}
 
-		w.Write([]byte(`], "deleted": [`))
+		if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+			return err
+		}
 
 		err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for delta: %v", err)
-			w.Write([]byte("]}"))
+			_, _ = w.Write([]byte("]}"))
 			if hasFlusher {
 				flusher.Flush()
 			}
@@ -325,7 +337,9 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 			return err
 		}
 
-		w.Write([]byte("]}"))
+		if _, err := w.Write([]byte("]}")); err != nil {
+			return err
+		}
 		if hasFlusher {
 			flusher.Flush()
 		}
@@ -439,7 +453,8 @@ func (c *Controller) StreamDecision(w http.ResponseWriter, r *http.Request) {
 
 	if err == nil {
 		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
-		// Do not reuse the context provided by gin because we already have sent the response to the client, so there's a chance for it to already be canceled
+		// Use a background context since we've already sent the response and the request context may be canceled
+		//nolint:contextcheck // We intentionally use context.Background() here since the response is already sent
 		if err := c.DBClient.UpdateBouncerLastPull(context.Background(), streamStartTime, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}

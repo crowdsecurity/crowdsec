@@ -22,9 +22,11 @@ func (c *Controller) shouldAutoRegister(token string, r *http.Request) (bool, er
 	clientIPStr := router.GetClientIP(r)
 	clientIP, err := netip.ParseAddr(clientIPStr)
 
-	// Can probaby happen if using unix socket ?
+	// Can probably happen if using unix socket ?
 	if err != nil {
 		log.Warnf("Failed to parse client IP for watcher self registration: %s", clientIPStr)
+		// Return false, nil to indicate IP is not in range (can't parse = not in range)
+		//nolint:nilerr // Returning false, nil is correct here - can't parse IP means not in range, not an error
 		return false, nil
 	}
 

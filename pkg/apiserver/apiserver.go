@@ -11,7 +11,6 @@ import (
 	"net/netip"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -69,42 +68,6 @@ type APIServer struct {
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-}
-
-func isBrokenConnection(maybeError any) bool {
-	err, ok := maybeError.(error)
-	if !ok {
-		return false
-	}
-
-	var netOpError *net.OpError
-	if errors.As(err, &netOpError) {
-		var syscallError *os.SyscallError
-		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
-				return true
-			}
-		}
-	}
-
-	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
-	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
-	// stolen from http2/server.go in x/net
-	var (
-		errClientDisconnected = errors.New("client disconnected")
-		errClosedBody         = errors.New("body closed by handler")
-		errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
-		errStreamClosed       = errors.New("http2: stream closed")
-	)
-
-	if errors.Is(err, errClientDisconnected) ||
-		errors.Is(err, errClosedBody) ||
-		errors.Is(err, errHandlerComplete) ||
-		errors.Is(err, errStreamClosed) {
-		return true
-	}
-
-	return false
 }
 
 // NewServer creates a LAPI server.

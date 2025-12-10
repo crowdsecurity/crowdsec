@@ -24,7 +24,7 @@ func ChainMiddleware(middlewares ...Middleware) Middleware {
 // AdaptHandlerFunc converts an http.HandlerFunc to an http.Handler
 // This is useful when mixing Handler and HandlerFunc types
 func AdaptHandlerFunc(fn http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(fn)
+	return fn
 }
 
 // MethodNotAllowedHandler returns a handler that responds with 405 Method Not Allowed
@@ -38,6 +38,6 @@ func MethodNotAllowedHandler(allowedMethods ...string) http.Handler {
 // NotFoundHandler returns a handler that responds with 404 Not Found
 func NotFoundHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		JSON(w, http.StatusNotFound, map[string]string{"message": "Page or Method not found"})
+		_ = JSON(w, http.StatusNotFound, map[string]string{"message": "Page or Method not found"})
 	})
 }

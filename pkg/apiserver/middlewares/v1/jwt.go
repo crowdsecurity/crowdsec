@@ -23,7 +23,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const MachineIDKey = "id"
+type machineIDKey struct{}
+
+var MachineIDKey = machineIDKey{}
 
 type authInput struct {
 	machineID      string
@@ -52,7 +54,6 @@ type JWT struct {
 	tlsAuth       *TLSAuth
 	timeout       time.Duration
 	maxRefresh    time.Duration
-	realm         string
 	tokenLookup   []string // e.g., ["header: Authorization", "query: token", "cookie: jwt"]
 	tokenHeadName string   // e.g., "Bearer"
 }
@@ -89,7 +90,6 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		tlsAuth:       &TLSAuth{},
 		timeout:       time.Hour,
 		maxRefresh:    time.Hour,
-		realm:         "Crowdsec API local",
 		tokenLookup:   []string{"header: Authorization", "query: token", "cookie: jwt"},
 		tokenHeadName: "Bearer",
 	}, nil

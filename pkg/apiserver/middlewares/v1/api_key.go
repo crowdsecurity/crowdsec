@@ -239,8 +239,8 @@ func (a *APIKey) MiddlewareFunc() router.Middleware {
 			// Appsec request, return immediately if we found something
 			if r.Method == http.MethodHead {
 				// Store bouncer in context and continue
-				ctx = router.SetContextValue(r, BouncerContextKey, bouncer).Context()
-				next.ServeHTTP(w, r.WithContext(ctx))
+				r = router.SetContextValue(r, BouncerContextKey, bouncer)
+				next.ServeHTTP(w, r)
 				return
 			}
 
@@ -270,8 +270,8 @@ func (a *APIKey) MiddlewareFunc() router.Middleware {
 			}
 
 			// Store bouncer in context
-			ctx = router.SetContextValue(r, BouncerContextKey, bouncer).Context()
-			next.ServeHTTP(w, r.WithContext(ctx))
+			r = router.SetContextValue(r, BouncerContextKey, bouncer)
+			next.ServeHTTP(w, r)
 		})
 	}
 }

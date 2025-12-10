@@ -88,7 +88,7 @@ func JSON(w http.ResponseWriter, code int, v any) error {
 // WriteJSON writes a JSON response without returning an error
 // This is a convenience function that discards encoding errors (which are extremely rare)
 func WriteJSON(w http.ResponseWriter, code int, v any) {
-	_ = JSON(w, code, v) //nolint:errcheck // JSON encoding errors are extremely rare and already logged in JSON()
+	_ = JSON(w, code, v)
 }
 
 // SetContextValue stores a value in the request context with the given key
@@ -252,7 +252,7 @@ func AbortWithJSON(w http.ResponseWriter, code int, v any) {
 func String(w http.ResponseWriter, code int, s string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(code)
-	w.Write([]byte(s))
+	_, _ = w.Write([]byte(s))
 }
 
 // GetHeader retrieves a header value from the request

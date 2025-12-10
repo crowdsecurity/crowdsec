@@ -22,10 +22,6 @@ func LoggingMiddleware(logger *log.Entry) router.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			path := r.URL.Path
-			if r.URL.RawQuery != "" {
-				path += "?" + r.URL.RawQuery
-			}
 
 			// Create a response writer wrapper to capture status code
 			wrapped := &responseWriter{
