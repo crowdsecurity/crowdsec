@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"runtime"
 	"strings"
@@ -30,31 +31,28 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
-// convertTrustedProxies converts []string to []net.IPNet
-func convertTrustedProxies(proxyStrings []string) ([]net.IPNet, error) {
+// convertTrustedProxies converts []string to []netip.Prefix
+func convertTrustedProxies(proxyStrings []string) ([]netip.Prefix, error) {
 	if proxyStrings == nil {
 		return nil, nil
 	}
 
-	proxies := make([]net.IPNet, 0, len(proxyStrings))
+	proxies := make([]netip.Prefix, 0, len(proxyStrings))
 	for _, proxy := range proxyStrings {
-		_, ipNet, err := net.ParseCIDR(proxy)
+		prefix, err := netip.ParsePrefix(proxy)
 		if err != nil {
 			// Try parsing as a single IP and convert to /32 or /128
-			ip := net.ParseIP(proxy)
-			if ip == nil {
+			addr, err := netip.ParseAddr(proxy)
+			if err != nil {
 				return nil, fmt.Errorf("invalid proxy IP/CIDR: %s", proxy)
 			}
-			if ip.To4() != nil {
-				_, ipNet, err = net.ParseCIDR(proxy + "/32")
+			if addr.Is4() {
+				prefix = netip.PrefixFrom(addr, 32)
 			} else {
-				_, ipNet, err = net.ParseCIDR(proxy + "/128")
-			}
-			if err != nil {
-				return nil, fmt.Errorf("invalid proxy IP: %s", proxy)
+				prefix = netip.PrefixFrom(addr, 128)
 			}
 		}
-		proxies = append(proxies, *ipNet)
+		proxies = append(proxies, prefix)
 	}
 	return proxies, nil
 }
@@ -134,7 +132,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	httpRouter := router.New()
 
 	// Set up middleware
-	var trustedProxies []net.IPNet
+	var trustedProxies []netip.Prefix
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		var err error
 		trustedProxies, err = convertTrustedProxies(*config.TrustedProxies)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -109,7 +110,8 @@ func ClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 // ResolveClientIP resolves the client IP from the request, respecting trusted proxy headers
 // This should be called by middleware to determine the real client IP
 // It checks X-Forwarded-For and X-Real-IP headers based on trusted proxy configuration
-func ResolveClientIP(r *http.Request, trustedProxies []net.IPNet) string {
+// trustedProxies can be []net.IPNet (for compatibility) or []netip.Prefix (preferred)
+func ResolveClientIP(r *http.Request, trustedProxies any) string {
 	// Handle Unix socket case
 	if r.RemoteAddr == "@" {
 		return "127.0.0.1"
@@ -122,13 +124,33 @@ func ResolveClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 		host = r.RemoteAddr
 	}
 
-	clientIP := net.ParseIP(host)
-	if clientIP == nil {
+	clientAddr, err := netip.ParseAddr(host)
+	if err != nil {
 		return host // Return as-is if parsing fails
 	}
 
+	// Convert trusted proxies to netip.Prefix slice
+	var prefixes []netip.Prefix
+	switch tp := trustedProxies.(type) {
+	case []netip.Prefix:
+		prefixes = tp
+	case []net.IPNet:
+		prefixes = make([]netip.Prefix, 0, len(tp))
+		for _, ipNet := range tp {
+			prefix, err := netip.ParsePrefix(ipNet.String())
+			if err != nil {
+				continue
+			}
+			prefixes = append(prefixes, prefix)
+		}
+	case nil:
+		// No trusted proxies
+	default:
+		// Unknown type, treat as no trusted proxies
+	}
+
 	// If we have trusted proxies and X-Forwarded-For headers, check them
-	if len(trustedProxies) > 0 {
+	if len(prefixes) > 0 {
 		forwardedFor := r.Header.Get("X-Forwarded-For")
 		if forwardedFor != "" {
 			// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
@@ -136,15 +158,15 @@ func ResolveClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 			ips := strings.Split(forwardedFor, ",")
 			for i := range ips {
 				ips[i] = strings.TrimSpace(ips[i])
-				ip := net.ParseIP(ips[i])
-				if ip == nil {
+				addr, err := netip.ParseAddr(ips[i])
+				if err != nil {
 					continue
 				}
 
 				// Check if this IP is a trusted proxy
 				isTrusted := false
-				for _, trustedNet := range trustedProxies {
-					if trustedNet.Contains(ip) {
+				for _, prefix := range prefixes {
+					if prefix.Contains(addr) {
 						isTrusted = true
 						break
 					}
@@ -160,11 +182,11 @@ func ResolveClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 		// Check X-Real-IP header
 		realIP := r.Header.Get("X-Real-IP")
 		if realIP != "" {
-			ip := net.ParseIP(realIP)
-			if ip != nil {
+			addr, err := netip.ParseAddr(realIP)
+			if err == nil {
 				isTrusted := false
-				for _, trustedNet := range trustedProxies {
-					if trustedNet.Contains(ip) {
+				for _, prefix := range prefixes {
+					if prefix.Contains(addr) {
 						isTrusted = true
 						break
 					}
@@ -177,7 +199,7 @@ func ResolveClientIP(r *http.Request, trustedProxies []net.IPNet) string {
 	}
 
 	// Fall back to RemoteAddr
-	return clientIP.String()
+	return clientAddr.String()
 }
 
 // AbortWithStatus writes a status code and stops further processing

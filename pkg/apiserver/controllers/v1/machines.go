@@ -2,8 +2,8 @@ package v1
 
 import (
 	"errors"
-	"net"
 	"net/http"
+	"net/netip"
 
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -20,10 +20,10 @@ func (c *Controller) shouldAutoRegister(token string, r *http.Request) (bool, er
 
 	// Get client IP from context (resolved by ClientIPMiddleware)
 	clientIPStr := router.GetClientIP(r)
-	clientIP := net.ParseIP(clientIPStr)
+	clientIP, err := netip.ParseAddr(clientIPStr)
 
 	// Can probaby happen if using unix socket ?
-	if clientIP == nil {
+	if err != nil {
 		log.Warnf("Failed to parse client IP for watcher self registration: %s", clientIPStr)
 		return false, nil
 	}
@@ -39,7 +39,12 @@ func (c *Controller) shouldAutoRegister(token string, r *http.Request) (bool, er
 
 	// Check the source IP
 	for _, ipRange := range c.AutoRegisterCfg.AllowedRangesParsed {
-		if ipRange.Contains(clientIP) {
+		// Convert net.IPNet to netip.Prefix for comparison
+		prefix, err := netip.ParsePrefix(ipRange.String())
+		if err != nil {
+			continue
+		}
+		if prefix.Contains(clientIP) {
 			return true, nil
 		}
 	}

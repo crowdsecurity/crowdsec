@@ -3,6 +3,7 @@ package middlewares
 import (
 	"net"
 	"net/http"
+	"net/netip"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 )
@@ -11,7 +12,7 @@ import (
 // It resolves the real client IP once using trusted proxy configuration and stores it in the request context
 // Downstream handlers can then use router.GetClientIP() to retrieve the resolved IP
 // If useForwardedForHeaders is false, only RemoteAddr is used (forwarded headers are ignored)
-func ClientIPMiddleware(trustedProxies []net.IPNet, useForwardedForHeaders bool) router.Middleware {
+func ClientIPMiddleware(trustedProxies []netip.Prefix, useForwardedForHeaders bool) router.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Resolve the client IP using trusted proxy configuration

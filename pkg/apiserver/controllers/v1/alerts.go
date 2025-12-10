@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"time"
 
@@ -398,9 +399,17 @@ func (c *Controller) DeleteAlerts(w http.ResponseWriter, r *http.Request) {
 }
 
 func networksContainIP(networks []net.IPNet, ip string) bool {
-	parsedIP := net.ParseIP(ip)
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+
 	for _, network := range networks {
-		if network.Contains(parsedIP) {
+		prefix, err := netip.ParsePrefix(network.String())
+		if err != nil {
+			continue
+		}
+		if prefix.Contains(addr) {
 			return true
 		}
 	}
