@@ -1,16 +1,16 @@
 package appsec_rule
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 type ruleTest struct {
 	name        string
 	rule        CustomRule
-	expected        string
-	expectedErr     error
+	expected    string
+	expectedErr error
 }
 
 func runRuleTests(t *testing.T, tests []ruleTest) {
@@ -30,21 +30,21 @@ func TestConvert(t *testing.T) {
 		{
 			name: "Missing zone (nil)",
 			rule: CustomRule{
-				Zones:     nil,
+				Zones: nil,
 			},
 			expectedErr: ErrMissingZones,
 		},
 		{
 			name: "Missing zone (empty slice)",
 			rule: CustomRule{
-				Zones:     []string{},
+				Zones: []string{},
 			},
 			expectedErr: ErrMissingZones,
 		},
 		{
 			name: "Missing match type",
 			rule: CustomRule{
-				Zones:     []string{"ARGS"},
+				Zones: []string{"ARGS"},
 				Match: Match{Type: "", Value: "value"},
 			},
 			expectedErr: ErrMissingMatchType,
@@ -52,9 +52,9 @@ func TestConvert(t *testing.T) {
 		{
 			name: "Missing match value",
 			rule: CustomRule{
-				Zones:     []string{"ARGS"},
+				Zones: []string{"ARGS"},
 				Match: Match{
-					Type: "type",
+					Type:  "type",
 					Value: "",
 				},
 			},
@@ -68,7 +68,7 @@ func TestConvert(t *testing.T) {
 func TestVPatchRuleString(t *testing.T) {
 	tests := []ruleTest{
 		{
-			name:        "Collection count",
+			name: "Collection count",
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"foo"},
@@ -78,7 +78,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule &ARGS_GET:foo "@eq 1" "id:853070236,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Collection count',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Base Rule",
+			name: "Base Rule",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
@@ -89,7 +89,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Base Rule',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
-			name:        "One zone, multi var",
+			name: "One zone, multi var",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
@@ -100,7 +100,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar "@rx [^a-zA-Z]" "id:385719930,phase:1,deny,log,msg:'test rule',tag:'crowdsec-One zone, multi var',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
-			name:        "Base Rule #2",
+			name: "Base Rule #2",
 
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
@@ -109,7 +109,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule REQUEST_METHOD "@beginsWith toto" "id:2759779019,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Base Rule #2',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Base Negative Rule",
+			name: "Base Negative Rule",
 
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
@@ -118,7 +118,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule REQUEST_METHOD "!@beginsWith toto" "id:3966251995,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Base Negative Rule',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Multiple Zones",
+			name: "Multiple Zones",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -129,7 +129,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET:foo|ARGS_POST:foo "@rx [^a-zA-Z]" "id:3387135861,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Multiple Zones',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
-			name:        "Multiple Zones Multi Var",
+			name: "Multiple Zones Multi Var",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -140,7 +140,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar|ARGS_POST:foo|ARGS_POST:bar "@rx [^a-zA-Z]" "id:1119773585,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Multiple Zones Multi Var',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
-			name:        "Multiple Zones No Vars",
+			name: "Multiple Zones No Vars",
 
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
@@ -150,7 +150,7 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET|ARGS_POST "@rx [^a-zA-Z]" "id:2020110336,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Multiple Zones No Vars',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
 		{
-			name:        "Basic AND",
+			name: "Basic AND",
 
 			rule: CustomRule{
 				And: []CustomRule{
@@ -172,7 +172,7 @@ func TestVPatchRuleString(t *testing.T) {
 SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
-			name:        "Basic OR",
+			name: "Basic OR",
 
 			rule: CustomRule{
 				Or: []CustomRule{
@@ -194,7 +194,7 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:1,deny,log,msg:'test r
 SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Basic OR',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
-			name:        "OR AND mix",
+			name: "OR AND mix",
 
 			rule: CustomRule{
 				And: []CustomRule{
@@ -232,7 +232,7 @@ SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:1,deny,log,msg:'test r
 func TestPhaseOptimization(t *testing.T) {
 	tests := []ruleTest{
 		{
-			name:        "Phase 1 Rule - Headers",
+			name: "Phase 1 Rule - Headers",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS"},
 				Variables: []string{"User-Agent"},
@@ -241,7 +241,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule REQUEST_HEADERS:User-Agent "@contains bot" "id:906121382,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Phase 1 Rule - Headers',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Phase 1 Rule - Method",
+			name: "Phase 1 Rule - Method",
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
 				Match: Match{Type: "equals", Value: "POST"},
@@ -249,7 +249,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule REQUEST_METHOD "@streq POST" "id:704636723,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Phase 1 Rule - Method',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Phase 1 Rule - URI",
+			name: "Phase 1 Rule - URI",
 			rule: CustomRule{
 				Zones: []string{"URI"},
 				Match: Match{Type: "startsWith", Value: "/admin"},
@@ -257,7 +257,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule REQUEST_FILENAME "@beginsWith /admin" "id:1629291161,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Phase 1 Rule - URI',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Phase 1 Rule - GET Args",
+			name: "Phase 1 Rule - GET Args",
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"id"},
@@ -266,7 +266,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule ARGS_GET:id "@rx [0-9]+" "id:2620103902,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Phase 1 Rule - GET Args',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Phase 2 Rule - Body Args",
+			name: "Phase 2 Rule - Body Args",
 			rule: CustomRule{
 				Zones:     []string{"BODY_ARGS"},
 				Variables: []string{"password"},
@@ -276,7 +276,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule ARGS_POST:password "@rx .{8,}" "id:3965595689,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Phase 2 Rule - Body Args',tag:'cs-custom-rule',severity:'emergency',t:length"`,
 		},
 		{
-			name:        "Phase 2 Rule - Files",
+			name: "Phase 2 Rule - Files",
 			rule: CustomRule{
 				Zones:     []string{"FILES"},
 				Match:     Match{Type: "gt", Value: "0"},
@@ -285,7 +285,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule FILES "@gt 0" "id:3952889566,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Phase 2 Rule - Files',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Phase 2 Rule - Body Type",
+			name: "Phase 2 Rule - Body Type",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS"},
 				Variables: []string{"Content-Type"},
@@ -295,7 +295,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule REQUEST_HEADERS:Content-Type "@contains json" "id:2497270550,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Phase 2 Rule - Body Type',tag:'cs-custom-rule',severity:'emergency',ctl:requestBodyProcessor=JSON"`,
 		},
 		{
-			name:        "Mixed Zones - Phase 2 Required",
+			name: "Mixed Zones - Phase 2 Required",
 			rule: CustomRule{
 				Zones:     []string{"HEADERS", "BODY_ARGS"},
 				Variables: []string{"Content-Type"},
@@ -304,7 +304,7 @@ func TestPhaseOptimization(t *testing.T) {
 			expected: `SecRule REQUEST_HEADERS:Content-Type|ARGS_POST:Content-Type "@rx malicious" "id:2749918501,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Mixed Zones - Phase 2 Required',tag:'cs-custom-rule',severity:'emergency'"`,
 		},
 		{
-			name:        "Chained Rules - Phase 1 Compatible",
+			name: "Chained Rules - Phase 1 Compatible",
 			rule: CustomRule{
 				And: []CustomRule{
 					{
@@ -322,7 +322,7 @@ func TestPhaseOptimization(t *testing.T) {
 SecRule REQUEST_METHOD "@streq GET" "id:1698112565,phase:1,deny,log,msg:'test rule',tag:'crowdsec-Chained Rules - Phase 1 Compatible',tag:'cs-custom-rule'"`,
 		},
 		{
-			name:        "Chained Rules - Phase 2 Required",
+			name: "Chained Rules - Phase 2 Required",
 			rule: CustomRule{
 				And: []CustomRule{
 					{
@@ -341,7 +341,7 @@ SecRule REQUEST_METHOD "@streq GET" "id:1698112565,phase:1,deny,log,msg:'test ru
 SecRule ARGS_POST:action "@streq delete" "id:1325966539,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Chained Rules - Phase 2 Required',tag:'cs-custom-rule'"`,
 		},
 		{
-			name:        "OR Rules - Phase 2 First, Phase 1 Second",
+			name: "OR Rules - Phase 2 First, Phase 1 Second",
 			rule: CustomRule{
 				Or: []CustomRule{
 					{
@@ -360,7 +360,7 @@ SecRule ARGS_POST:action "@streq delete" "id:1325966539,phase:2,deny,log,msg:'te
 SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:3776099319,phase:1,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - Phase 2 First, Phase 1 Second',tag:'cs-custom-rule'"`,
 		},
 		{
-			name:        "AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)",
+			name: "AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)",
 			rule: CustomRule{
 				And: []CustomRule{
 					{

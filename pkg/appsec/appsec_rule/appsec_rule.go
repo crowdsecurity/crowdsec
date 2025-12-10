@@ -47,8 +47,8 @@ type CustomRule struct {
 }
 
 var (
-	ErrMissingZones = errors.New("no zones defined")
-	ErrMissingMatchType = errors.New("no match type defined")
+	ErrMissingZones      = errors.New("no zones defined")
+	ErrMissingMatchType  = errors.New("no match type defined")
 	ErrMissingMatchValue = errors.New("no match value defined")
 )
 
