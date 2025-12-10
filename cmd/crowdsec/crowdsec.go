@@ -98,14 +98,20 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 func startBucketRoutines(cConfig *csconfig.Config) {
 	bucketWg := &sync.WaitGroup{}
 
+	tombCtx, cancel := context.WithCancel(context.Background())
+	go func() {
+		log.Warning("Waiting for dying outputsTomb")
+		<-outputsTomb.Dying()
+		cancel()
+	}()
+
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
 
 		for range cConfig.Crowdsec.BucketsRoutinesCount {
 			bucketsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runPour")
-
-				return runPour(inputEventChan, holders, buckets, cConfig)
+				return runPour(tombCtx, inputEventChan, holders, buckets, cConfig)
 			})
 		}
 

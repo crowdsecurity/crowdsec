@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -34,13 +35,13 @@ func maybeGC(parsed pipeline.Event, buckets *leaky.Buckets, cConfig *csconfig.Co
 	return nil
 }
 
-func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
+func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
 	count := 0
 
 	for {
 		// bucket is now ready
 		select {
-		case <-bucketsTomb.Dying():
+		case <-ctx.Done():
 			log.Infof("Bucket routine exiting")
 			return nil
 		case parsed := <-input:
@@ -53,7 +54,7 @@ func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *
 				}
 			}
 			// here we can bucketify with parsed
-			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
+			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets)
 			if err != nil {
 				log.Errorf("bucketify failed for: %v with %s", parsed, err)
 				continue

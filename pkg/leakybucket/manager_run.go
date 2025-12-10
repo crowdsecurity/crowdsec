@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -20,7 +21,7 @@ var (
 	serialized      map[string]Leaky
 	BucketPourCache map[string][]pipeline.Event = make(map[string][]pipeline.Event)
 	BucketPourTrack bool
-	bucketPourMu	sync.Mutex
+	bucketPourMu    sync.Mutex
 )
 
 /*
@@ -41,7 +42,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		if !val.Ovflw_ts.IsZero() {
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
-			val.tomb.Kill(nil)
+			val.cancel()
 			return true
 		}
 		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
@@ -55,7 +56,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
-			val.tomb.Kill(nil)
+			val.cancel()
 			return true
 		}
 
@@ -75,18 +76,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	return nil
 }
 
-func ShutdownAllBuckets(buckets *Buckets) error {
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
-		key := rkey.(string)
-		val := rvalue.(*Leaky)
-		val.tomb.Kill(nil)
-		log.Infof("killed %s", key)
-		return true
-	})
-	return nil
-}
-
-func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
+func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -112,7 +102,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
-				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
 				if err != nil {
 					return false, err
 				}
@@ -142,7 +132,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
-					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+					bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
 					if err != nil {
 						return false, err
 					}
@@ -174,7 +164,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	return sent, nil
 }
 
-func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
+func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 
 	/* the bucket doesn't exist, create it !*/
@@ -196,9 +186,11 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
 		if !stored {
-			holder.tomb.Go(func() error {
-				return LeakRoutine(fresh_bucket)
-			})
+			go func() error {
+				ctx, cancel := context.WithCancel(ctx)
+				fresh_bucket.cancel = cancel
+				return LeakRoutine(ctx, fresh_bucket)
+			}()
 			biface = fresh_bucket
 			//once the created goroutine is ready to process event, we can return it
 			<-fresh_bucket.Signal
@@ -213,7 +205,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
+func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var ok, condition, poured bool
 
 	if BucketPourTrack {
@@ -266,7 +258,7 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 		buckey := GetKey(holders[idx], groupby)
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
-		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
+		bucket, err := LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
 			return false, fmt.Errorf("failed to load or store bucket: %w", err)
 		}
@@ -285,7 +277,7 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()

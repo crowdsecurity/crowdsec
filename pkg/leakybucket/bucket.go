@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -11,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -62,11 +62,11 @@ type Leaky struct {
 	scopeType           ScopeType
 	hash                string
 	scenarioVersion     string
-	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
+	cancel              context.CancelFunc
 }
 
 var LeakyRoutineCount int64
@@ -123,7 +123,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
 		Simulated:       bucketFactory.Simulated,
-		tomb:            bucketFactory.tomb,
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
@@ -150,7 +149,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
-func LeakRoutine(leaky *Leaky) error {
+func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
@@ -291,7 +290,7 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
-		case <-leaky.tomb.Dying():
+		case <-ctx.Done():
 			leaky.logger.Debugf("Bucket externally killed, return")
 			for len(leaky.Out) > 0 {
 				ofw := <-leaky.Out
