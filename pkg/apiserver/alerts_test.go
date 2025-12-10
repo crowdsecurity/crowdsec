@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -28,7 +28,7 @@ const (
 )
 
 type LAPI struct {
-	router     *gin.Engine
+	router     *router.Router
 	loginResp  models.WatcherAuthResponse
 	bouncerKey string
 	DBConfig   *csconfig.DatabaseCfg
@@ -77,22 +77,22 @@ func (l *LAPI) RecordResponse(t *testing.T, ctx context.Context, verb string, ur
 	return w
 }
 
-func InitMachineTest(t *testing.T, ctx context.Context) (*gin.Engine, models.WatcherAuthResponse, csconfig.Config) {
-	router, config := NewAPITest(t, ctx)
-	loginResp := LoginToTestAPI(t, ctx, router, config)
+func InitMachineTest(t *testing.T, ctx context.Context) (*router.Router, models.WatcherAuthResponse, csconfig.Config) {
+	rtr, config := NewAPITest(t, ctx)
+	loginResp := LoginToTestAPI(t, ctx, rtr, config)
 
-	return router, loginResp, config
+	return rtr, loginResp, config
 }
 
-func LoginToTestAPI(t *testing.T, ctx context.Context, router *gin.Engine, config csconfig.Config) models.WatcherAuthResponse {
-	body := CreateTestMachine(t, ctx, router, "")
+func LoginToTestAPI(t *testing.T, ctx context.Context, rtr *router.Router, config csconfig.Config) models.WatcherAuthResponse {
+	body := CreateTestMachine(t, ctx, rtr, "")
 	ValidateMachine(t, ctx, "test", config.API.Server.DbConfig)
 
 	w := httptest.NewRecorder()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
-	router.ServeHTTP(w, req)
+	rtr.ServeHTTP(w, req)
 
 	loginResp := models.WatcherAuthResponse{}
 	err = json.NewDecoder(w.Body).Decode(&loginResp)

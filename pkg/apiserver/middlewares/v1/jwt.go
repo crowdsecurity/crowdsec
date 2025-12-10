@@ -1,19 +1,21 @@
 package v1
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	jwt "github.com/appleboy/gin-jwt/v2"
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	jwtv4 "github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -23,76 +25,221 @@ import (
 
 const MachineIDKey = "id"
 
-type JWT struct {
-	Middleware *jwt.GinJWTMiddleware
-	DbClient   *database.Client
-	TlsAuth    *TLSAuth
-}
-
-func PayloadFunc(data any) jwt.MapClaims {
-	if value, ok := data.(*models.WatcherAuthRequest); ok {
-		return jwt.MapClaims{
-			MachineIDKey: &value.MachineID,
-		}
-	}
-
-	return jwt.MapClaims{}
-}
-
-func IdentityHandler(c *gin.Context) any {
-	claims := jwt.ExtractClaims(c)
-	machineID := claims[MachineIDKey].(string)
-
-	return &models.WatcherAuthRequest{
-		MachineID: &machineID,
-	}
-}
-
 type authInput struct {
 	machineID      string
 	clientMachine  *ent.Machine
 	scenariosInput []string
 }
 
-func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
-	ctx := c.Request.Context()
-	ret := authInput{}
+// randomSecret generates a cryptographically secure random secret
+func randomSecret() ([]byte, error) {
+	size := 64
+	secret := make([]byte, size)
+	n, err := rand.Read(secret)
+	if err != nil {
+		return nil, errors.New("unable to generate a new random seed for JWT generation")
+	}
+	if n != size {
+		return nil, errors.New("not enough entropy at random seed generation for JWT generation")
+	}
+	return secret, nil
+}
 
-	if j.TlsAuth == nil {
-		err := errors.New("tls authentication required")
-		log.Warn(err)
+// JWT is the JWT middleware implementation using golang-jwt/jwt/v4
+type JWT struct {
+	secret        []byte
+	dbClient      *database.Client
+	tlsAuth       *TLSAuth
+	timeout       time.Duration
+	maxRefresh    time.Duration
+	realm         string
+	tokenLookup   []string // e.g., ["header: Authorization", "query: token", "cookie: jwt"]
+	tokenHeadName string   // e.g., "Bearer"
+}
 
+type jwtClaims struct {
+	jwtv4.RegisteredClaims
+	MachineID *string `json:"id"`
+}
+
+// NewJWT creates a new JWT middleware using golang-jwt/jwt/v4
+func NewJWT(dbClient *database.Client) (*JWT, error) {
+	var (
+		secret []byte
+		err    error
+	)
+
+	// Get secret from environment variable
+	secretString := os.Getenv("CS_LAPI_SECRET")
+	secret = []byte(secretString)
+
+	switch l := len(secret); {
+	case l == 0:
+		secret, err = randomSecret()
+		if err != nil {
+			return nil, err
+		}
+	case l < 64:
+		return nil, errors.New("CS_LAPI_SECRET not strong enough")
+	}
+
+	return &JWT{
+		secret:        secret,
+		dbClient:      dbClient,
+		tlsAuth:       &TLSAuth{},
+		timeout:       time.Hour,
+		maxRefresh:    time.Hour,
+		realm:         "Crowdsec API local",
+		tokenLookup:   []string{"header: Authorization", "query: token", "cookie: jwt"},
+		tokenHeadName: "Bearer",
+	}, nil
+}
+
+// SetTlsAuth sets the TLS auth instance for the JWT middleware
+func (j *JWT) SetTlsAuth(tlsAuth *TLSAuth) {
+	j.tlsAuth = tlsAuth
+}
+
+// extractToken extracts the JWT token from the request
+// It checks header, query parameter, and cookie as configured
+func (j *JWT) extractToken(r *http.Request) (string, error) {
+	for _, lookup := range j.tokenLookup {
+		parts := strings.Split(lookup, ":")
+		if len(parts) != 2 {
+			continue
+		}
+
+		source := strings.TrimSpace(parts[0])
+		name := strings.TrimSpace(parts[1])
+
+		switch source {
+		case "header":
+			token := r.Header.Get(name)
+			if token != "" {
+				// Remove token head name (e.g., "Bearer ")
+				if j.tokenHeadName != "" && strings.HasPrefix(token, j.tokenHeadName+" ") {
+					return strings.TrimPrefix(token, j.tokenHeadName+" "), nil
+				}
+				return token, nil
+			}
+		case "query":
+			token := r.URL.Query().Get(name)
+			if token != "" {
+				return token, nil
+			}
+		case "cookie":
+			cookie, err := r.Cookie(name)
+			if err == nil && cookie.Value != "" {
+				return cookie.Value, nil
+			}
+		}
+	}
+
+	return "", errors.New("token not found")
+}
+
+// parseToken parses and validates a JWT token
+func (j *JWT) parseToken(tokenString string) (*jwtClaims, error) {
+	token, err := jwtv4.ParseWithClaims(tokenString, &jwtClaims{}, func(token *jwtv4.Token) (any, error) {
+		// Validate signing method
+		if _, ok := token.Method.(*jwtv4.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return j.secret, nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
-	extractedCN, err := j.TlsAuth.ValidateCert(c)
+	if claims, ok := token.Claims.(*jwtClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token claims")
+}
+
+// generateToken generates a new JWT token for the given machine ID
+func (j *JWT) generateToken(machineID string) (string, time.Time, error) {
+	now := time.Now()
+	expiresAt := now.Add(j.timeout)
+
+	claims := &jwtClaims{
+		RegisteredClaims: jwtv4.RegisteredClaims{
+			ExpiresAt: jwtv4.NewNumericDate(expiresAt),
+			IssuedAt:  jwtv4.NewNumericDate(now),
+			NotBefore: jwtv4.NewNumericDate(now),
+		},
+		MachineID: &machineID,
+	}
+
+	token := jwtv4.NewWithClaims(jwtv4.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(j.secret)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return tokenString, expiresAt, nil
+}
+
+// refreshToken refreshes an existing token if it's within the refresh window
+func (j *JWT) refreshToken(tokenString string) (string, time.Time, error) {
+	claims, err := j.parseToken(tokenString)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	// Check if token is within refresh window
+	now := time.Now()
+	if claims.ExpiresAt != nil {
+		expiresAt := claims.ExpiresAt.Time
+		refreshDeadline := expiresAt.Add(j.maxRefresh)
+		if now.After(refreshDeadline) {
+			return "", time.Time{}, errors.New("token refresh deadline exceeded")
+		}
+	}
+
+	// Generate new token with same machine ID
+	if claims.MachineID == nil {
+		return "", time.Time{}, errors.New("token missing machine ID")
+	}
+
+	return j.generateToken(*claims.MachineID)
+}
+
+// authTLS handles TLS-based authentication
+func (j *JWT) authTLS(r *http.Request, clientIP string) (*authInput, error) {
+	if j.tlsAuth == nil {
+		return nil, errors.New("tls authentication required")
+	}
+
+	extractedCN, err := j.tlsAuth.ValidateCertFromRequest(r)
 	if err != nil {
 		log.Warn(err)
 		return nil, err
 	}
 
-	logger := log.WithField("ip", c.ClientIP())
+	logger := log.WithField("ip", clientIP)
+	ret := authInput{}
 
-	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, clientIP)
 
-	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
+	ctx := r.Context()
+	ret.clientMachine, err = j.dbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
 		First(ctx)
 	if ent.IsNotFound(err) {
 		// Machine was not found, let's create it
 		logger.Infof("machine %s not found, create it", ret.machineID)
-		// let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 		pwd, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
 			logger.WithField("cn", extractedCN).
 				Errorf("error generating password: %s", err)
-
 			return nil, errors.New("error generating password")
 		}
 
 		password := strfmt.Password(pwd)
-
-		ret.clientMachine, err = j.DbClient.CreateMachine(ctx, &ret.machineID, &password, "", true, true, types.TlsAuthType)
+		ret.clientMachine, err = j.dbClient.CreateMachine(ctx, &ret.machineID, &password, "", true, true, types.TlsAuthType)
 		if err != nil {
 			return nil, fmt.Errorf("while creating machine entry for %s: %w", ret.machineID, err)
 		}
@@ -102,7 +249,6 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		if ret.clientMachine.AuthType != types.TlsAuthType {
 			return nil, fmt.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
-
 		ret.machineID = ret.clientMachine.MachineId
 	}
 
@@ -112,31 +258,24 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		Scenarios: []string{},
 	}
 
-	err = c.ShouldBindJSON(&loginInput)
-	if err != nil {
+	if err := router.BindJSON(r, &loginInput); err != nil {
 		return nil, fmt.Errorf("missing scenarios list in login request for TLS auth: %w", err)
 	}
 
 	ret.scenariosInput = loginInput.Scenarios
-
 	return &ret, nil
 }
 
-func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
-	var (
-		loginInput models.WatcherAuthRequest
-		err        error
-	)
-
-	ctx := c.Request.Context()
-
+// authPlain handles password-based authentication
+func (j *JWT) authPlain(r *http.Request) (*authInput, error) {
+	var loginInput models.WatcherAuthRequest
 	ret := authInput{}
 
-	if err = c.ShouldBindJSON(&loginInput); err != nil {
+	if err := router.BindJSON(r, &loginInput); err != nil {
 		return nil, fmt.Errorf("missing: %w", err)
 	}
 
-	if err = loginInput.Validate(strfmt.Default); err != nil {
+	if err := loginInput.Validate(strfmt.Default); err != nil {
 		return nil, err
 	}
 
@@ -144,7 +283,9 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	password := *loginInput.Password
 	ret.scenariosInput = loginInput.Scenarios
 
-	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
+	ctx := r.Context()
+	var err error
+	ret.clientMachine, err = j.dbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
 		First(ctx)
 	if err != nil {
@@ -154,7 +295,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 
 	if ret.clientMachine == nil {
 		log.Errorf("Nothing for '%s'", ret.machineID)
-		return nil, jwt.ErrFailedAuthentication
+		return nil, errors.New("failed authentication")
 	}
 
 	if ret.clientMachine.AuthType != types.PasswordAuthType {
@@ -166,165 +307,183 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(ret.clientMachine.Password), []byte(password)); err != nil {
-		return nil, jwt.ErrFailedAuthentication
+		return nil, errors.New("failed authentication")
 	}
 
 	return &ret, nil
 }
 
-func (j *JWT) Authenticator(c *gin.Context) (any, error) {
+// authenticator performs authentication and returns the authenticated machine ID
+func (j *JWT) authenticator(r *http.Request, clientIP string) (string, error) {
 	var (
 		err  error
 		auth *authInput
 	)
 
-	ctx := c.Request.Context()
+	ctx := r.Context()
 
-	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-		auth, err = j.authTLS(c)
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		auth, err = j.authTLS(r, clientIP)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	} else {
-		auth, err = j.authPlain(c)
+		auth, err = j.authPlain(r)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 
 	var scenarios string
-
 	if len(auth.scenariosInput) > 0 {
-		for _, scenario := range auth.scenariosInput {
-			if scenarios == "" {
-				scenarios = scenario
-			} else {
-				scenarios += "," + scenario
-			}
-		}
-
-		err = j.DbClient.UpdateMachineScenarios(ctx, scenarios, auth.clientMachine.ID)
+		scenarios = strings.Join(auth.scenariosInput, ",")
+		err = j.dbClient.UpdateMachineScenarios(ctx, scenarios, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", auth.machineID, err)
-			return nil, jwt.ErrFailedAuthentication
+			return "", errors.New("failed authentication")
 		}
 	}
 
-	clientIP := c.ClientIP()
-
 	if auth.clientMachine.IpAddress == "" {
-		err = j.DbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
+		err = j.dbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.machineID, err)
-			return nil, jwt.ErrFailedAuthentication
+			return "", errors.New("failed authentication")
 		}
 	}
 
 	if auth.clientMachine.IpAddress != clientIP && auth.clientMachine.IpAddress != "" {
 		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, clientIP, auth.clientMachine.IpAddress)
-
-		err = j.DbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
+		err = j.dbClient.UpdateMachineIP(ctx, clientIP, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
-			return nil, jwt.ErrFailedAuthentication
+			return "", errors.New("failed authentication")
 		}
 	}
 
-	useragent := strings.Split(c.Request.UserAgent(), "/")
+	useragent := strings.Split(r.UserAgent(), "/")
 	if len(useragent) != 2 {
-		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), clientIP)
-		return nil, jwt.ErrFailedAuthentication
+		log.Warningf("bad user agent '%s' from '%s'", r.UserAgent(), clientIP)
+		return "", errors.New("failed authentication")
 	}
 
-	if err := j.DbClient.UpdateMachineVersion(ctx, useragent[1], auth.clientMachine.ID); err != nil {
+	if err := j.dbClient.UpdateMachineVersion(ctx, useragent[1], auth.clientMachine.ID); err != nil {
 		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
-		return nil, jwt.ErrFailedAuthentication
+		return "", errors.New("failed authentication")
 	}
 
-	return &models.WatcherAuthRequest{
-		MachineID: &auth.machineID,
-	}, nil
+	return auth.machineID, nil
 }
 
-func Authorizator(data any, c *gin.Context) bool {
-	return true
-}
+// LoginHandler handles login requests and returns a JWT token
+func (j *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		router.AbortWithStatus(w, http.StatusMethodNotAllowed)
+		return
+	}
 
-func Unauthorized(c *gin.Context, code int, message string) {
-	c.JSON(code, gin.H{
-		"code":    code,
-		"message": message,
-	})
-}
-
-func randomSecret() ([]byte, error) {
-	size := 64
-	secret := make([]byte, size)
-
-	n, err := rand.Read(secret)
+	clientIP := router.GetClientIP(r) // Gets IP from context (resolved by ClientIPMiddleware)
+	machineID, err := j.authenticator(r, clientIP)
 	if err != nil {
-		return nil, errors.New("unable to generate a new random seed for JWT generation")
+		router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+			"code":    http.StatusUnauthorized,
+			"message": err.Error(),
+		})
+		return
 	}
 
-	if n != size {
-		return nil, errors.New("not enough entropy at random seed generation for JWT generation")
+	tokenString, expiresAt, err := j.generateToken(machineID)
+	if err != nil {
+		router.AbortWithJSON(w, http.StatusInternalServerError, map[string]any{
+			"code":    http.StatusInternalServerError,
+			"message": "failed to generate token",
+		})
+		return
 	}
 
-	return secret, nil
+	response := models.WatcherAuthResponse{
+		Token:  tokenString,
+		Expire: expiresAt.Format(time.RFC3339),
+	}
+
+	router.WriteJSON(w, http.StatusOK, response)
 }
 
-func NewJWT(dbClient *database.Client) (*JWT, error) {
-	// Get secret from environment variable "SECRET"
-	var (
-		secret []byte
-		err    error
-	)
-
-	// Please be aware that brute force HS256 is possible.
-	// PLEASE choose a STRONG secret
-	secretString := os.Getenv("CS_LAPI_SECRET")
-	secret = []byte(secretString)
-
-	switch l := len(secret); {
-	case l == 0:
-		secret, err = randomSecret()
-		if err != nil {
-			return &JWT{}, err
-		}
-	case l < 64:
-		return &JWT{}, errors.New("CS_LAPI_SECRET not strong enough")
+// RefreshHandler handles token refresh requests
+func (j *JWT) RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		router.AbortWithStatus(w, http.StatusMethodNotAllowed)
+		return
 	}
 
-	jwtMiddleware := &JWT{
-		DbClient: dbClient,
-		TlsAuth:  &TLSAuth{},
-	}
-
-	ret, err := jwt.New(&jwt.GinJWTMiddleware{
-		Realm:           "Crowdsec API local",
-		Key:             secret,
-		Timeout:         time.Hour,
-		MaxRefresh:      time.Hour,
-		IdentityKey:     MachineIDKey,
-		PayloadFunc:     PayloadFunc,
-		IdentityHandler: IdentityHandler,
-		Authenticator:   jwtMiddleware.Authenticator,
-		Authorizator:    Authorizator,
-		Unauthorized:    Unauthorized,
-		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
-		TokenHeadName:   "Bearer",
-		TimeFunc:        time.Now,
-	})
+	tokenString, err := j.extractToken(r)
 	if err != nil {
-		return &JWT{}, err
+		router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+			"code":    http.StatusUnauthorized,
+			"message": "token not found",
+		})
+		return
 	}
 
-	errInit := ret.MiddlewareInit()
-	if errInit != nil {
-		return &JWT{}, errors.New("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
+	newTokenString, expiresAt, err := j.refreshToken(tokenString)
+	if err != nil {
+		router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+			"code":    http.StatusUnauthorized,
+			"message": err.Error(),
+		})
+		return
 	}
 
-	jwtMiddleware.Middleware = ret
+	response := models.WatcherAuthResponse{
+		Token:  newTokenString,
+		Expire: expiresAt.Format(time.RFC3339),
+	}
 
-	return jwtMiddleware, nil
+	router.WriteJSON(w, http.StatusOK, response)
+}
+
+// MiddlewareFunc returns a middleware that validates JWT tokens
+func (j *JWT) MiddlewareFunc() router.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenString, err := j.extractToken(r)
+			if err != nil {
+				router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+					"code":    http.StatusUnauthorized,
+					"message": "token not found",
+				})
+				return
+			}
+
+			claims, err := j.parseToken(tokenString)
+			if err != nil {
+				router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+					"code":    http.StatusUnauthorized,
+					"message": "invalid token",
+				})
+				return
+			}
+
+			if claims.MachineID == nil {
+				router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
+					"code":    http.StatusUnauthorized,
+					"message": "token missing machine ID",
+				})
+				return
+			}
+
+			// Store machine ID in request context
+			ctx := context.WithValue(r.Context(), MachineIDKey, *claims.MachineID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// GetMachineIDFromRequest extracts the machine ID from the request context
+func GetMachineIDFromRequest(r *http.Request) (string, error) {
+	machineID, ok := r.Context().Value(MachineIDKey).(string)
+	if !ok || machineID == "" {
+		return "", errors.New("machine ID not found in request context")
+	}
+	return machineID, nil
 }

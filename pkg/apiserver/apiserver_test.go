@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -148,24 +148,23 @@ func NewAPIServer(t *testing.T, ctx context.Context) (*APIServer, csconfig.Confi
 	require.NoError(t, err)
 
 	log.Info("Creating new API server")
-	gin.SetMode(gin.TestMode)
 
 	return apiServer, config
 }
 
-func NewAPITest(t *testing.T, ctx context.Context) (*gin.Engine, csconfig.Config) {
+func NewAPITest(t *testing.T, ctx context.Context) (*router.Router, csconfig.Config) {
 	apiServer, config := NewAPIServer(t, ctx)
 
 	err := apiServer.InitController()
 	require.NoError(t, err)
 
-	router, err := apiServer.Router()
+	rtr, err := apiServer.Router()
 	require.NoError(t, err)
 
-	return router, config
+	return rtr, config
 }
 
-func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
+func NewAPITestForwardedFor(t *testing.T) (*router.Router, csconfig.Config) {
 	ctx := t.Context()
 	config := LoadTestConfigForwardedFor(t)
 
@@ -179,12 +178,11 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 	require.NoError(t, err)
 
 	log.Info("Creating new API server")
-	gin.SetMode(gin.TestMode)
 
-	router, err := apiServer.Router()
+	rtr, err := apiServer.Router()
 	require.NoError(t, err)
 
-	return router, config
+	return rtr, config
 }
 
 func ValidateMachine(t *testing.T, ctx context.Context, machineID string, config *csconfig.DatabaseCfg) {
@@ -286,7 +284,7 @@ func readDecisionsStreamResp(t *testing.T, resp *httptest.ResponseRecorder) (map
 	return response, resp.Code
 }
 
-func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, token string) string {
+func CreateTestMachine(t *testing.T, ctx context.Context, rtr *router.Router, token string) string {
 	regReq := MachineTest
 	regReq.RegistrationToken = token
 	b, err := json.Marshal(regReq)
@@ -298,7 +296,7 @@ func CreateTestMachine(t *testing.T, ctx context.Context, router *gin.Engine, to
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", UserAgent)
-	router.ServeHTTP(w, req)
+	rtr.ServeHTTP(w, req)
 
 	return body
 }

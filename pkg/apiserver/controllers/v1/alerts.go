@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -145,19 +145,19 @@ func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) (bo
 }
 
 // CreateAlert writes the alerts received in the body to the database
-func (c *Controller) CreateAlert(gctx *gin.Context) {
+func (c *Controller) CreateAlert(w http.ResponseWriter, r *http.Request) {
 	var input models.AddAlertsRequest
 
-	ctx := gctx.Request.Context()
-	machineID, _ := getMachineIDFromContext(gctx)
+	ctx := r.Context()
+	machineID, _ := getMachineIDFromContext(r)
 
-	if err := gctx.ShouldBindJSON(&input); err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if err := router.BindJSON(r, &input); err != nil {
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 
 	if err := input.Validate(strfmt.Default); err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
@@ -238,7 +238,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				case "ignore":
 					profile.Logger.Warningf("ignoring error: %s", err)
 				default:
-					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 					return
 				}
 			}
@@ -275,7 +275,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	c.DBClient.CanFlush = true
 
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
@@ -288,103 +288,105 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 	}
 
-	gctx.JSON(http.StatusCreated, alerts)
+	router.WriteJSON(w, http.StatusCreated, alerts)
 }
 
 // FindAlerts returns alerts from the database based on the specified filter
-func (c *Controller) FindAlerts(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
+func (c *Controller) FindAlerts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	result, err := c.DBClient.QueryAlertWithFilter(ctx, gctx.Request.URL.Query())
+	result, err := c.DBClient.QueryAlertWithFilter(ctx, r.URL.Query())
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
 	data := FormatAlerts(result)
 
-	if gctx.Request.Method == http.MethodHead {
-		gctx.String(http.StatusOK, "")
+	if r.Method == http.MethodHead {
+		router.String(w, http.StatusOK, "")
 		return
 	}
 
-	gctx.JSON(http.StatusOK, data)
+	router.WriteJSON(w, http.StatusOK, data)
 }
 
 // FindAlertByID returns the alert associated with the ID
-func (c *Controller) FindAlertByID(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
-	alertIDStr := gctx.Param("alert_id")
+func (c *Controller) FindAlertByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	alertIDStr := router.PathValue(r, "alert_id")
 
 	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "alert_id must be valid integer"})
 		return
 	}
 
 	result, err := c.DBClient.GetAlertByID(ctx, alertID)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
 	data := FormatOneAlert(result)
 
-	if gctx.Request.Method == http.MethodHead {
-		gctx.String(http.StatusOK, "")
+	if r.Method == http.MethodHead {
+		router.String(w, http.StatusOK, "")
 		return
 	}
 
-	gctx.JSON(http.StatusOK, data)
+	router.WriteJSON(w, http.StatusOK, data)
 }
 
-func authIP(gctx *gin.Context, trustedIPs []net.IPNet) (ip string, trusted bool) {
-	ip = gctx.ClientIP()
-	return ip, ip == "127.0.0.1" || ip == "::1" || networksContainIP(trustedIPs, ip) || isUnixSocket(gctx)
+func authIP(r *http.Request, trustedIPs []net.IPNet) (ip string, trusted bool) {
+	// Get client IP from context (resolved by ClientIPMiddleware)
+	// trustedIPs parameter is the ACL allowlist, not proxy networks
+	ip = router.GetClientIP(r)
+	return ip, ip == "127.0.0.1" || ip == "::1" || networksContainIP(trustedIPs, ip) || isUnixSocket(r)
 }
 
 // DeleteAlertByID delete the alert associated to the ID
-func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
+func (c *Controller) DeleteAlertByID(w http.ResponseWriter, r *http.Request) {
 	var err error
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
 
-	if incomingIP, trusted := authIP(gctx, c.TrustedIPs); !trusted {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
+	if incomingIP, trusted := authIP(r, c.TrustedIPs); !trusted {
+		router.WriteJSON(w, http.StatusForbidden, map[string]string{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 
-	decisionIDStr := gctx.Param("alert_id")
+	decisionIDStr := router.PathValue(r, "alert_id")
 
 	decisionID, err := strconv.Atoi(decisionIDStr)
 	if err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "alert_id must be valid integer"})
 		return
 	}
 
 	err = c.DBClient.DeleteAlertByID(ctx, decisionID)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
 	deleteAlertResp := models.DeleteAlertsResponse{NbDeleted: "1"}
 
-	gctx.JSON(http.StatusOK, deleteAlertResp)
+	router.WriteJSON(w, http.StatusOK, deleteAlertResp)
 }
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
-func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
+func (c *Controller) DeleteAlerts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	if incomingIP, trusted := authIP(gctx, c.TrustedIPs); !trusted {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
+	if incomingIP, trusted := authIP(r, c.TrustedIPs); !trusted {
+		router.WriteJSON(w, http.StatusForbidden, map[string]string{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 
-	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(ctx, gctx.Request.URL.Query())
+	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(ctx, r.URL.Query())
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
@@ -392,7 +394,7 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
-	gctx.JSON(http.StatusOK, deleteAlertsResp)
+	router.WriteJSON(w, http.StatusOK, deleteAlertsResp)
 }
 
 func networksContainIP(networks []net.IPNet, ip string) bool {

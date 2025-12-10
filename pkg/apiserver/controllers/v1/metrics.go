@@ -1,15 +1,16 @@
 package v1
 
 import (
+	"net/http"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
-	bouncer, _ := getBouncerFromContext(c)
+func PrometheusBouncersHasEmptyDecision(r *http.Request) {
+	bouncer, _ := getBouncerFromContext(r)
 	if bouncer != nil {
 		metrics.LapiNilDecisions.With(prometheus.Labels{
 			"bouncer": bouncer.Name,
@@ -17,8 +18,8 @@ func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
 	}
 }
 
-func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
-	bouncer, _ := getBouncerFromContext(c)
+func PrometheusBouncersHasNonEmptyDecision(r *http.Request) {
+	bouncer, _ := getBouncerFromContext(r)
 	if bouncer != nil {
 		metrics.LapiNonNilDecisions.With(prometheus.Labels{
 			"bouncer": bouncer.Name,
@@ -26,60 +27,67 @@ func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 	}
 }
 
-func PrometheusMachinesMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		machineID, _ := getMachineIDFromContext(c)
-		if machineID != "" {
-			fullPath := c.FullPath()
-			if fullPath == "" {
-				fullPath = "invalid-endpoint"
+func PrometheusMachinesMiddleware() router.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			machineID, _ := getMachineIDFromContext(r)
+			if machineID != "" {
+				route := r.URL.Path
+				if route == "" {
+					route = "invalid-endpoint"
+				}
+				metrics.LapiMachineHits.With(prometheus.Labels{
+					"machine": machineID,
+					"route":   route,
+					"method":  r.Method,
+				}).Inc()
 			}
-			metrics.LapiMachineHits.With(prometheus.Labels{
-				"machine": machineID,
-				"route":   fullPath,
-				"method":  c.Request.Method,
-			}).Inc()
-		}
 
-		c.Next()
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
-func PrometheusBouncersMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		bouncer, _ := getBouncerFromContext(c)
-		if bouncer != nil {
-			fullPath := c.FullPath()
-			if fullPath == "" {
-				fullPath = "invalid-endpoint"
+func PrometheusBouncersMiddleware() router.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bouncer, _ := getBouncerFromContext(r)
+			if bouncer != nil {
+				route := r.URL.Path
+				if route == "" {
+					route = "invalid-endpoint"
+				}
+				metrics.LapiBouncerHits.With(prometheus.Labels{
+					"bouncer": bouncer.Name,
+					"route":   route,
+					"method":  r.Method,
+				}).Inc()
 			}
-			metrics.LapiBouncerHits.With(prometheus.Labels{
-				"bouncer": bouncer.Name,
-				"route":   fullPath,
-				"method":  c.Request.Method,
-			}).Inc()
-		}
 
-		c.Next()
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
-func PrometheusMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		startTime := time.Now()
+func PrometheusMiddleware() router.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			startTime := time.Now()
 
-		fullPath := c.FullPath()
-		if fullPath == "" {
-			fullPath = "invalid-endpoint"
-		}
+			route := r.URL.Path
+			if route == "" {
+				route = "invalid-endpoint"
+			}
 
-		metrics.LapiRouteHits.With(prometheus.Labels{
-			"route":  fullPath,
-			"method": c.Request.Method,
-		}).Inc()
-		c.Next()
+			metrics.LapiRouteHits.With(prometheus.Labels{
+				"route":  route,
+				"method": r.Method,
+			}).Inc()
 
-		elapsed := time.Since(startTime)
-		metrics.LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.FullPath()}).Observe(elapsed.Seconds())
+			next.ServeHTTP(w, r)
+
+			elapsed := time.Since(startTime)
+			metrics.LapiResponseTime.With(prometheus.Labels{"method": r.Method, "endpoint": route}).Observe(elapsed.Seconds())
+		})
 	}
 }

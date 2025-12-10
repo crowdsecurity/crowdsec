@@ -5,24 +5,26 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, error) {
+func (c *Controller) shouldAutoRegister(token string, r *http.Request) (bool, error) {
 	if !*c.AutoRegisterCfg.Enable {
 		return false, nil
 	}
 
-	clientIP := net.ParseIP(gctx.ClientIP())
+	// Get client IP from context (resolved by ClientIPMiddleware)
+	clientIPStr := router.GetClientIP(r)
+	clientIP := net.ParseIP(clientIPStr)
 
 	// Can probaby happen if using unix socket ?
 	if clientIP == nil {
-		log.Warnf("Failed to parse client IP for watcher self registration: %s", gctx.ClientIP())
+		log.Warnf("Failed to parse client IP for watcher self registration: %s", clientIPStr)
 		return false, nil
 	}
 
@@ -45,62 +47,68 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 	return false, errors.New("IP not in allowed range for auto registration")
 }
 
-func (c *Controller) CreateMachine(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
+func (c *Controller) CreateMachine(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
 	var input models.WatcherRegistrationRequest
 
-	if err := gctx.ShouldBindJSON(&input); err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if err := router.BindJSON(r, &input); err != nil {
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 
 	if err := input.Validate(strfmt.Default); err != nil {
-		gctx.JSON(http.StatusUnprocessableEntity, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusUnprocessableEntity, map[string]string{"message": err.Error()})
 		return
 	}
 
-	autoRegister, err := c.shouldAutoRegister(input.RegistrationToken, gctx)
+	// Get client IP from context (resolved by ClientIPMiddleware)
+	// c.TrustedIPs is the ACL allowlist, not proxy networks
+	clientIP := router.GetClientIP(r)
+	autoRegister, err := c.shouldAutoRegister(input.RegistrationToken, r)
 	if err != nil {
-		log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": *input.MachineID}).Errorf("Auto-register failed: %s", err)
-		gctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+		log.WithFields(log.Fields{"ip": clientIP, "machine_id": *input.MachineID}).Errorf("Auto-register failed: %s", err)
+		router.WriteJSON(w, http.StatusUnauthorized, map[string]string{"message": err.Error()})
 
 		return
 	}
 
-	if _, err := c.DBClient.CreateMachine(ctx, input.MachineID, input.Password, gctx.ClientIP(), autoRegister, false, types.PasswordAuthType); err != nil {
-		c.HandleDBErrors(gctx, err)
+	if _, err := c.DBClient.CreateMachine(ctx, input.MachineID, input.Password, clientIP, autoRegister, false, types.PasswordAuthType); err != nil {
+		c.HandleDBErrors(w, err)
 		return
 	}
 
 	if autoRegister {
-		log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": *input.MachineID}).Info("Auto-registered machine")
-		gctx.Status(http.StatusAccepted)
+		log.WithFields(log.Fields{"ip": clientIP, "machine_id": *input.MachineID}).Info("Auto-registered machine")
+		w.WriteHeader(http.StatusAccepted)
 	} else {
-		gctx.Status(http.StatusCreated)
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
-func (c *Controller) DeleteMachine(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
+func (c *Controller) DeleteMachine(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	machineID, err := getMachineIDFromContext(gctx)
+	machineID, err := getMachineIDFromContext(r)
 
 	if err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 	if machineID == "" {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "machineID not found in claims"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "machineID not found in claims"})
 		return
 	}
 
 	if err := c.DBClient.DeleteWatcher(ctx, machineID); err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
-	log.WithFields(log.Fields{"ip": gctx.ClientIP(), "machine_id": machineID}).Info("Deleted machine")
+	// Get client IP from context (resolved by ClientIPMiddleware)
+	// c.TrustedIPs is the ACL allowlist, not proxy networks
+	clientIP := router.GetClientIP(r)
+	log.WithFields(log.Fields{"ip": clientIP, "machine_id": machineID}).Info("Deleted machine")
 
-	gctx.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
