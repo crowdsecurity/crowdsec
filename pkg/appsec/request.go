@@ -3,6 +3,7 @@ package appsec
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -145,7 +146,7 @@ func (r *ReqDumpFilter) FilterBody(out *ParsedRequest) error {
 		b, err := io.ReadAll(r.req.HTTPRequest.Body)
 		// Always close after attempt
 		_ = r.req.HTTPRequest.Body.Close()
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return fmt.Errorf("reading request body for dump: %w", err)
 		}
 
