@@ -10,7 +10,7 @@ var (
 	// verify interface compliance
 	_ DataSource          = (*journalctlacquisition.Source)(nil)
 	_ DSNConfigurer       = (*journalctlacquisition.Source)(nil)
-	_ Fetcher             = (*journalctlacquisition.Source)(nil)
+	_ BatchFetcher        = (*journalctlacquisition.Source)(nil)
 	_ RestartableStreamer = (*journalctlacquisition.Source)(nil)
 	_ MetricsProvider     = (*journalctlacquisition.Source)(nil)
 )
