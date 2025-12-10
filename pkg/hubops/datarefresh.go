@@ -35,7 +35,7 @@ func NewDataRefreshCommand(force bool) *DataRefreshCommand {
 	return &DataRefreshCommand{Force: force}
 }
 
-func (c *DataRefreshCommand) Prepare(plan *ActionPlan) (bool, error) {
+func (*DataRefreshCommand) Prepare(_ *ActionPlan) (bool, error) {
 	// we can't prepare much at this point because we don't know which data files yet,
 	// and items needs to be downloaded/updated
 	// evertyhing will be done in Run()
@@ -57,14 +57,14 @@ func (c *DataRefreshCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *DataRefreshCommand) OperationType() string {
+func (*DataRefreshCommand) OperationType() string {
 	return "check & update data files"
 }
 
-func (c *DataRefreshCommand) ItemType() string {
+func (*DataRefreshCommand) ItemType() string {
 	return ""
 }
 
-func (c *DataRefreshCommand) Detail() string {
+func (*DataRefreshCommand) Detail() string {
 	return ""
 }

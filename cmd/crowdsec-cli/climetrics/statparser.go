@@ -7,12 +7,12 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statParser map[string]map[string]int
 
-func (s statParser) Description() (string, string) {
+func (statParser) Description() (string, string) {
 	return "Parser Metrics",
 		`Tracks the number of events processed by each parser and indicates success of failure. ` +
 			`Zero parsed lines means the parser(s) failed. ` +

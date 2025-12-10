@@ -33,13 +33,12 @@ func TestAlertsListAsMachine(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	defer teardown()
 
@@ -47,7 +46,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 		if r.URL.RawQuery == "ip=1.2.3.4" {
 			testMethod(t, r, "GET")
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `null`)
+			fmt.Fprint(w, `null`)
 
 			return
 		}
@@ -214,20 +213,19 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	defer teardown()
 
 	mux.HandleFunc("/alerts/2", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, `{"message":"object not found"}`)
+		fmt.Fprint(w, `{"message":"object not found"}`)
 	})
 
 	mux.HandleFunc("/alerts/1", func(w http.ResponseWriter, r *http.Request) {
@@ -391,13 +389,12 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	defer teardown()
 
@@ -436,13 +433,12 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	defer teardown()
 

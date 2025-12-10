@@ -10,41 +10,35 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-// those constants are now defined in types/constants
-// const (
-// 	LIVE = iota
-// 	TIMEMACHINE
-// )
 
 // Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
-	Mode int //LIVE or TIMEMACHINE
-	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
+	Mode int // LIVE or TIMEMACHINE
+	// the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
-	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
-	Queue *types.Queue
-	//Leaky buckets are receiving message through a chan
-	In chan *types.Event `json:"-"`
-	//Leaky buckets are pushing their overflows through a chan
-	Out chan *types.Queue `json:"-"`
+	// Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
+	Queue *pipeline.Queue
+	// Leaky buckets are receiving message through a chan
+	In chan *pipeline.Event `json:"-"`
+	// Leaky buckets are pushing their overflows through a chan
+	Out chan *pipeline.Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterward)
-	AllOut chan types.Event `json:"-"`
-	//max capacity (for burst)
+	AllOut chan pipeline.Event `json:"-"`
+	// max capacity (for burst)
 	Capacity int
-	//CacheRatio is the number of elements that should be kept in memory (compared to capacity)
+	// CacheRatio is the number of elements that should be kept in memory (compared to capacity)
 	CacheSize int
-	//the unique identifier of the bucket (a hash)
+	// the unique identifier of the bucket (a hash)
 	Mapkey string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
@@ -59,25 +53,25 @@ type Leaky struct {
 	Leakspeed    time.Duration
 	BucketConfig *BucketFactory
 	Duration     time.Duration
-	Pour         func(*Leaky, types.Event) `json:"-"`
-	//Profiling when set to true enables profiling of bucket
+	Pour         func(*Leaky, pipeline.Event) `json:"-"`
+	// Profiling when set to true enables profiling of bucket
 	Profiling           bool
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
-	scopeType           types.ScopeType
+	scopeType           ScopeType
 	hash                string
 	scenarioVersion     string
 	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
-	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
 }
 
 var LeakyRoutineCount int64
 
-// Newleaky creates a new leaky bucket from a BucketFactory
+// NewLeaky creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
@@ -88,34 +82,34 @@ func NewLeaky(bucketFactory BucketFactory) *Leaky {
 
 func FromFactory(bucketFactory BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
-	//golang rate limiter. It's mainly intended for http rate limiter
+	// golang rate limiter. It's mainly intended for http rate limiter
 	Qsize := bucketFactory.Capacity
 	if bucketFactory.CacheSize > 0 {
-		//cache is smaller than actual capacity
+		// cache is smaller than actual capacity
 		if bucketFactory.CacheSize <= bucketFactory.Capacity {
 			Qsize = bucketFactory.CacheSize
-			//bucket might be counter (infinite size), allow cache limitation
+			// bucket might be counter (infinite size), allow cache limitation
 		} else if bucketFactory.Capacity == -1 {
 			Qsize = bucketFactory.CacheSize
 		}
 	}
 	if bucketFactory.Capacity == -1 {
-		//In this case we allow all events to pass.
-		//maybe in the future we could avoid using a limiter
+		// In this case we allow all events to pass.
+		// maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
 		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
 	metrics.BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
-	//create the leaky bucket per se
+	// create the leaky bucket per se
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
-		Queue:           types.NewQueue(Qsize),
+		Queue:           pipeline.NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
-		Out:             make(chan *types.Queue, 1),
+		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          bucketFactory.ret,
 		Capacity:        bucketFactory.Capacity,
@@ -124,7 +118,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Pour:            Pour,
 		Reprocess:       bucketFactory.Reprocess,
 		Profiling:       bucketFactory.Profiling,
-		Mode:            types.LIVE,
+		Mode:            pipeline.LIVE,
 		scopeType:       bucketFactory.ScopeType,
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
@@ -162,6 +156,12 @@ func LeakRoutine(leaky *Leaky) error {
 		durationTicker     *time.Ticker
 		firstEvent         = true
 	)
+
+	defer func() {
+		if durationTicker != nil {
+			durationTicker.Stop()
+		}
+	}()
 
 	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
@@ -232,7 +232,6 @@ func LeakRoutine(leaky *Leaky) error {
 				if firstEvent {
 					durationTicker = time.NewTicker(leaky.Duration)
 					durationTickerChan = durationTicker.C
-					defer durationTicker.Stop()
 				} else {
 					durationTicker.Reset(leaky.Duration)
 				}
@@ -250,19 +249,19 @@ func LeakRoutine(leaky *Leaky) error {
 			close(leaky.Signal)
 			metrics.BucketsCanceled.With(prometheus.Labels{"name": leaky.Name}).Inc()
 			leaky.logger.Debugf("Suicide triggered")
-			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
+			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTickerChan:
 			var (
-				alert types.RuntimeAlert
+				alert pipeline.RuntimeAlert
 				err   error
 			)
 			leaky.Ovflw_ts = time.Now().UTC()
 			close(leaky.Signal)
 			ofw := leaky.Queue
-			alert = types.RuntimeAlert{Mapkey: leaky.Mapkey}
+			alert = pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}
 
 			if leaky.timedOverflow {
 				metrics.BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
@@ -286,10 +285,10 @@ func LeakRoutine(leaky *Leaky) error {
 			}
 			if leaky.logger.Level >= log.TraceLevel {
 				/*don't sdump if it's not going to be printed, it's expensive*/
-				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
+				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
 			}
 
-			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
+			leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		case <-leaky.tomb.Dying():
@@ -298,7 +297,7 @@ func LeakRoutine(leaky *Leaky) error {
 				ofw := <-leaky.Out
 				leaky.overflow(ofw)
 			}
-			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
+			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return nil
 
 		}
@@ -306,7 +305,7 @@ func LeakRoutine(leaky *Leaky) error {
 	}
 }
 
-func Pour(leaky *Leaky, msg types.Event) {
+func Pour(leaky *Leaky, msg pipeline.Event) {
 	leaky.wgDumpState.Wait()
 	leaky.wgPour.Add(1)
 	defer leaky.wgPour.Done()
@@ -327,7 +326,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *types.Queue) {
+func (leaky *Leaky) overflow(ofw *pipeline.Queue) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
@@ -349,5 +348,5 @@ func (leaky *Leaky) overflow(ofw *types.Queue) {
 
 	metrics.BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
-	leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
+	leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)}
 }

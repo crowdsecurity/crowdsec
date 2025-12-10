@@ -203,10 +203,6 @@ difference() {
 
 #-----------------------------------#
 
-# Tell crowdsec we are running in docker
-# The user agent will be updated so we can better detect broken installations running in docker
-export CROWDSEC_CONTAINER_ENV="docker"
-
 if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     printf '%b' '\033[0;33m'
     echo "Warning: the variables CERT_FILE and KEY_FILE have been deprecated." >&2

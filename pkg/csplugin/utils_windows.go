@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -20,9 +21,14 @@ import (
 
 var (
 	advapi32 = syscall.NewLazyDLL("advapi32.dll")
-
 	procGetAce = advapi32.NewProc("GetAce")
 )
+
+var _ = func() any {
+	var pb PluginBroker
+	_ = pb.pluginProcConfig // reference to silence unused linter
+	return nil
+}()
 
 type AclSizeInformation struct {
 	AceCount      uint32
@@ -200,9 +206,9 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 	}, nil
 }
 
-func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+func (*PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
-	cmd := exec.Command(binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath)
 	cmd.SysProcAttr, err = getProcessAtr()
 	if err != nil {
 		return nil, fmt.Errorf("while getting process attributes: %w", err)

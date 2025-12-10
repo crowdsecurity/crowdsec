@@ -120,7 +120,7 @@ func TestEvaluateRules(t *testing.T) {
 			"",
 		},
 		{
-			"each expression must be a boolan",
+			"each expression must be a boolean",
 			[]string{"true", `"notabool"`},
 			false,
 			"",
@@ -129,7 +129,7 @@ func TestEvaluateRules(t *testing.T) {
 		{
 			// we keep evaluating expressions to ensure that the
 			// file is formally correct, even if it can some time.
-			"each expression must be a boolan (no short circuit)",
+			"each expression must be a boolean (no short circuit)",
 			[]string{"false", "3"},
 			false,
 			"",
@@ -258,7 +258,7 @@ detect:
 			require.NoError(t, err)
 			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
-				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
+				UnitMap{"crowdsec-setup-detect.service": UnitInfo{}},
 				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
@@ -356,7 +356,7 @@ detect:
         labels:
           type: something`,
 			want:    nil,
-			wantErr: "invalid acquisition spec for wizard: source is empty",
+			wantErr: "invalid acquisition spec for wizard: source field is required",
 		}, {
 			name: "source is unknown",
 			config: `
@@ -390,7 +390,7 @@ detect:
         source: journalctl
         filename: /path/to/file.log`,
 			want:    nil,
-			wantErr: `invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
+			wantErr: `invalid acquisition spec for foobar: cannot parse: [1:1] unknown field "filename"`,
 		}, {
 			name: "source file: required fields",
 			config: `

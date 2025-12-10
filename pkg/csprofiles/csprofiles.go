@@ -8,10 +8,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -35,10 +35,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		runtime := &Runtime{}
 
-		xlog := log.New()
-		if err := types.ConfigureLogger(xlog, ptr.Of(log.InfoLevel)); err != nil {
-			return nil, fmt.Errorf("while configuring profiles-specific logger: %w", err)
-		}
+		xlog := logging.SubLogger(log.StandardLogger(), "profile", log.InfoLevel)
 
 		runtime.Logger = xlog.WithFields(log.Fields{
 			"type": "profile",

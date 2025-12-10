@@ -17,17 +17,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/longpollclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
-	SyncInterval = time.Second * 10
-	PapiPullKey  = "papi:last_pull"
+	PAPIVersion        = "v1"
+	PAPIPollURL        = "/decisions/stream/poll"
+	PAPIPermissionsURL = "/permissions"
+	SyncInterval       = time.Second * 10
+	PapiPullKey        = "papi:last_pull"
 )
 
-var operationMap = map[string]func(*Message, *Papi, bool) error{
+var operationMap = map[string]func(context.Context, *Message, *Papi, bool) error{
 	"decision":   DecisionCmd,
 	"alert":      AlertCmd,
 	"management": ManagementCmd,
@@ -83,17 +86,16 @@ type PapiPermCheckSuccess struct {
 	Categories []string `json:"categories"`
 }
 
-func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
-	logger := log.New()
-	if err := types.ConfigureLogger(logger, &logLevel); err != nil {
-		return &Papi{}, fmt.Errorf("creating papi logger: %w", err)
+func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logger logging.ExtLogger) (*Papi, error) {
+	if logger == nil {
+		logger = log.StandardLogger()
 	}
 
-	papiUrl := *apic.apiClient.PapiURL
-	papiUrl.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
+	papiURL := *apic.apiClient.PapiURL
+	papiURL.Path = fmt.Sprintf("%s%s", PAPIVersion, PAPIPollURL)
 
 	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
-		Url:        papiUrl,
+		Url:        papiURL,
 		Logger:     logger,
 		HttpClient: apic.apiClient.GetClient(),
 	})
@@ -125,7 +127,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	return papi, nil
 }
 
-func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
+func (p *Papi) handleEvent(ctx context.Context, event longpollclient.Event, sync bool) error {
 	logger := p.Logger.WithField("request-id", event.RequestId)
 	logger.Debugf("message received: %+v", event.Data)
 
@@ -149,7 +151,7 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 
-	err := operationFunc(message, p, sync)
+	err := operationFunc(ctx, message, p, sync)
 	if err != nil {
 		return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
 	}
@@ -159,9 +161,9 @@ func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 
 func (p *Papi) GetPermissions(ctx context.Context) (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
-	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
+	papiCheckURL := fmt.Sprintf("%s%s%s", p.URL, PAPIVersion, PAPIPermissionsURL)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckUrl, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, papiCheckURL, http.NoBody)
 	if err != nil {
 		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -217,7 +219,7 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 	p.Logger.Infof("received %d events", eventsCount)
 
 	for i, event := range reversedEvents {
-		if err := p.handleEvent(event, sync); err != nil {
+		if err := p.handleEvent(ctx, event, sync); err != nil {
 			p.Logger.WithField("request-id", event.RequestId).Errorf("failed to handle event: %s", err)
 		}
 
@@ -230,9 +232,10 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 	return nil
 }
 
-// PullPAPI is the long polling client for real-time decisions from PAPI
+// Pull is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull(ctx context.Context) error {
 	defer trace.CatchPanic("lapi/PullPAPI")
+
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
@@ -306,7 +309,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 			lastTimestamp = newTime
 
-			err = p.handleEvent(event, false)
+			err = p.handleEvent(ctx, event, false)
 			if err != nil {
 				logger.Errorf("failed to handle event: %s", err)
 				continue
@@ -322,7 +325,6 @@ func (p *Papi) Pull(ctx context.Context) error {
 			cancel()
 		}
 	}
-
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {

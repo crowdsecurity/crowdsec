@@ -44,7 +44,7 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 
 		err := json.Unmarshal([]byte(newStr), &payload)
 		if err != nil || payload.MachineID == "" || payload.Password == "" {
-			log.Printf("Bad payload")
+			log.Info("Bad payload")
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
@@ -138,8 +138,7 @@ func TestWatcherAuth(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(clientConfig)
-	require.NoError(t, err)
+	client := NewClient(clientConfig)
 
 	scenarios, err := clientConfig.UpdateScenario(ctx)
 	require.NoError(t, err)
@@ -157,8 +156,7 @@ func TestWatcherAuth(t *testing.T) {
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientConfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
 
-		client, err := NewClient(clientConfig)
-		require.NoError(t, err)
+		client := NewClient(clientConfig)
 
 		_, resp, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 			MachineID: &clientConfig.MachineID,
@@ -204,10 +202,10 @@ func TestWatcherUnregister(t *testing.T) {
 		if newStr == `{"machine_id":"test_login","password":"test_password","scenarios":["crowdsecurity/test"]}
 ` {
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
+			fmt.Fprint(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
 		} else {
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, `{"message":"access forbidden"}`)
+			fmt.Fprint(w, `{"message":"access forbidden"}`)
 		}
 	})
 
@@ -228,8 +226,7 @@ func TestWatcherUnregister(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(mycfg)
-	require.NoError(t, err)
+	client := NewClient(mycfg)
 
 	_, err = client.Auth.UnregisterWatcher(ctx)
 	require.NoError(t, err)
@@ -257,18 +254,18 @@ func TestWatcherEnroll(t *testing.T) {
 ` {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `{"statusCode": 200, "message": "OK"}`)
+			fmt.Fprint(w, `{"statusCode": 200, "message": "OK"}`)
 		} else {
 			log.Print("bad key")
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, `{"message":"the attachment key provided is not valid"}`)
+			fmt.Fprint(w, `{"message":"the attachment key provided is not valid"}`)
 		}
 	})
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
+		fmt.Fprint(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
 	})
 
 	log.Printf("URL is %s", urlx)
@@ -288,8 +285,7 @@ func TestWatcherEnroll(t *testing.T) {
 		UpdateScenario: updateScenario,
 	}
 
-	client, err := NewClient(mycfg)
-	require.NoError(t, err)
+	client := NewClient(mycfg)
 
 	_, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false)
 	require.NoError(t, err)

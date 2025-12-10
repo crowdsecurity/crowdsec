@@ -6,7 +6,14 @@ import (
 	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
 )
 
+var (
+	// verify interface compliance
+	_ DataSource      = (*appsecacquisition.Source)(nil)
+	_ Tailer          = (*appsecacquisition.Source)(nil)
+	_ MetricsProvider = (*appsecacquisition.Source)(nil)
+)
+
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("appsec", func() DataSource { return &appsecacquisition.AppsecSource{} })
+	registerDataSource("appsec", func() DataSource { return &appsecacquisition.Source{} })
 }

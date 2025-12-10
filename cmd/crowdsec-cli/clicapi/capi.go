@@ -13,25 +13,24 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/idgen"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter = func() *csconfig.Config
+var CAPIBaseURL = "https://api.crowdsec.net/"
 
 type cliCapi struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliCapi {
+func New(cfg csconfig.Getter) *cliCapi {
 	return &cliCapi{
 		cfg: cfg,
 	}
@@ -65,9 +64,9 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 
 	password := strfmt.Password(pstr)
 
-	apiurl, err := url.Parse(types.CAPIBaseURL)
+	apiurl, err := url.Parse(CAPIBaseURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse api url %s: %w", types.CAPIBaseURL, err)
+		return fmt.Errorf("unable to parse api url %s: %w", CAPIBaseURL, err)
 	}
 
 	_, err = apiclient.RegisterClient(ctx, &apiclient.Config{
@@ -77,7 +76,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		VersionPrefix: "v3",
 	}, nil)
 	if err != nil {
-		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
+		return fmt.Errorf("api client register ('%s'): %w", CAPIBaseURL, err)
 	}
 
 	log.Infof("Successfully registered to Central API (CAPI)")
@@ -96,7 +95,7 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    capiUser,
 		Password: password.String(),
-		URL:      types.CAPIBaseURL,
+		URL:      CAPIBaseURL,
 	}
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
@@ -172,7 +171,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 
 	passwd := strfmt.Password(password)
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID: login,
 		Password:  passwd,
 		URL:       apiURL,
@@ -183,9 +182,6 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 			return itemsForAPI, nil
 		},
 	})
-	if err != nil {
-		return capiStatus{}, err
-	}
 
 	pw := strfmt.Password(password)
 
@@ -200,7 +196,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 		return capiStatus{}, err
 	}
 
-	if err := db.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token); err != nil {
+	if err := db.SaveAPICToken(ctx, authResp.Token); err != nil {
 		return capiStatus{}, err
 	}
 

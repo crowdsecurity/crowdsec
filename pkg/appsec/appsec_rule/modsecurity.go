@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"hash/fnv"
 	"strings"
+
+	cztypes "github.com/corazawaf/coraza/v3/types"
 )
 
 type ModsecurityRule struct {
@@ -27,7 +29,7 @@ var zonesMap = map[string]string{
 	"PROTOCOL":         "REQUEST_PROTOCOL",
 	"URI":              "REQUEST_FILENAME",
 	"URI_FULL":         "REQUEST_URI",
-	"RAW_BODY":         "REQUEST_BODY",
+	"RAW_BODY":         "RAW_REQUEST_BODY",
 	"FILENAMES":        "FILES",
 }
 
@@ -58,6 +60,7 @@ var matchMap = map[string]string{
 	"gte":             "@ge",
 	"lte":             "@le",
 	"eq":              "@eq",
+	"fromFile":        "@pmFromFile",
 }
 
 var bodyTypeMatch = map[string]string{
@@ -67,8 +70,17 @@ var bodyTypeMatch = map[string]string{
 	"urlencoded": "URLENCODED",
 }
 
-func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string) (string, []uint32, error) {
-	rules, err := m.buildRules(rule, appsecRuleName, false, 0, 0)
+func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string) (string, []uint32, error) {
+	//Validate severity
+	if rule.Severity == "" {
+		rule.Severity = cztypes.RuleSeverityEmergency.String()
+	}
+	_, err := cztypes.ParseRuleSeverity(rule.Severity)
+	if err != nil {
+		return "", nil, err
+	}
+
+	rules, err := m.buildRules(rule, appsecRuleName, appsecRuleDescription, false, 0, 0, true)
 	if err != nil {
 		return "", nil, err
 	}
@@ -94,7 +106,7 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	return id
 }
 
-func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, and bool, toSkip int, depth int) ([]string, error) {
+func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, and bool, toSkip int, depth int, isRoot bool) ([]string, error) {
 	ret := make([]string, 0)
 
 	if len(rule.And) != 0 && len(rule.Or) != 0 {
@@ -104,8 +116,10 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	if rule.And != nil {
 		for c, andRule := range rule.And {
 			depth++
+			andRule.Severity = rule.Severity
 			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
-			rules, err := m.buildRules(&andRule, appsecRuleName, !lastRule, 0, depth)
+			root := c == 0
+			rules, err := m.buildRules(&andRule, appsecRuleName, appsecRuleDescription, !lastRule, 0, depth, root)
 			if err != nil {
 				return nil, err
 			}
@@ -116,8 +130,10 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	if rule.Or != nil {
 		for c, orRule := range rule.Or {
 			depth++
+			orRule.Severity = rule.Severity
 			skip := len(rule.Or) - c - 1
-			rules, err := m.buildRules(&orRule, appsecRuleName, false, skip, depth)
+			root := c == 0
+			rules, err := m.buildRules(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root)
 			if err != nil {
 				return nil, err
 			}
@@ -176,8 +192,19 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 		r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
 	}
 
+	var msg string
+	if appsecRuleDescription != "" {
+		msg = appsecRuleDescription
+	} else {
+		msg = appsecRuleName
+	}
+
 	//Should phase:2 be configurable?
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s'`, m.generateRuleID(rule, appsecRuleName, depth), appsecRuleName, appsecRuleName))
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), msg, appsecRuleName))
+
+	if rule.Severity != "" && isRoot { // Only put severity on the root rule
+		r.WriteString(fmt.Sprintf(`,severity:'%s'`, rule.Severity))
+	}
 
 	if rule.Transform != nil {
 		for _, transform := range rule.Transform {

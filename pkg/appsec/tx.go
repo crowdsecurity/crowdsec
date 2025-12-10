@@ -13,6 +13,10 @@ type ExtendedTransaction struct {
 	Tx experimental.FullTransaction
 }
 
+type interrupter interface {
+	Interrupt(interruption *types.Interruption)
+}
+
 func NewExtendedTransaction(engine coraza.WAF, uuid string) ExtendedTransaction {
 	inBoundTx := engine.NewTransactionWithID(uuid)
 	expTx := inBoundTx.(experimental.FullTransaction)
@@ -106,4 +110,14 @@ func (t *ExtendedTransaction) Close() error {
 // IsRequestBodyAccessible exposes whether the engine has request body access enabled.
 func (t *ExtendedTransaction) IsRequestBodyAccessible() bool {
 	return t.Tx.IsRequestBodyAccessible()
+}
+
+func (t *ExtendedTransaction) Interrupt(interruption *types.Interruption) {
+	if t == nil || t.Tx == nil || interruption == nil {
+		return
+	}
+
+	if setter, ok := t.Tx.(interrupter); ok {
+		setter.Interrupt(interruption)
+	}
 }

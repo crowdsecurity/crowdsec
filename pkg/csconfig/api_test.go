@@ -13,8 +13,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -95,7 +93,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				URL:      "http://crowdsec.api",
 				Login:    "test",
 				Password: "testpassword",
-				PapiURL:  types.PAPIBaseURL,
+				PapiURL:  PAPIBaseURL,
 			},
 		},
 		{
@@ -174,7 +172,7 @@ func TestLoadAPIServer(t *testing.T) {
 							CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 						},
 						ProfilesPath: "./testdata/profiles.yaml",
-						PapiLogLevel: &logLevel,
+						PapiLogLevel: logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
@@ -182,8 +180,10 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata",
-					LogMedia: "stdout",
+					LogConfig: LogConfig{
+						LogDir:   "./testdata",
+						LogMedia: "stdout",
+					},
 				},
 				DisableAPI: false,
 			},
@@ -206,15 +206,13 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareContext:          ptr.Of(false),
 					ConsoleManagement:     ptr.Of(false),
 				},
-				LogDir:   "./testdata",
-				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 					Credentials: &ApiCredentialsCfg{
 						URL:      "http://crowdsec.api",
 						Login:    "test",
 						Password: "testpassword",
-						PapiURL:  types.PAPIBaseURL,
+						PapiURL:  PAPIBaseURL,
 					},
 					Sharing: ptr.Of(true),
 					PullConfig: CapiPullConfig{
@@ -225,7 +223,7 @@ func TestLoadAPIServer(t *testing.T) {
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./testdata/profiles.yaml",
 				UseForwardedForHeaders: false,
-				PapiLogLevel:           &logLevel,
+				PapiLogLevel:           logLevel,
 				AutoRegister: &LocalAPIAutoRegisterCfg{
 					Enable:              ptr.Of(false),
 					Token:               "",
@@ -244,14 +242,16 @@ func TestLoadAPIServer(t *testing.T) {
 					},
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata/",
-					LogMedia: "stdout",
+					LogConfig: LogConfig{
+						LogDir:   "./testdata/",
+						LogMedia: "stdout",
+					},
 				},
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
 				Enable:       ptr.Of(true),
-				PapiLogLevel: &logLevel,
+				PapiLogLevel: logLevel,
 			},
 			expectedErr: "no database configuration provided",
 		},

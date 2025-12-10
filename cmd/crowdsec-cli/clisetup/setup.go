@@ -3,17 +3,15 @@ package clisetup
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliSetup struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliSetup {
+func New(cfg csconfig.Getter) *cliSetup {
 	return &cliSetup{
 		cfg: cfg,
 	}

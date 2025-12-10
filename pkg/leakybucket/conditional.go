@@ -8,11 +8,11 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
-	conditionalExprCache     map[string]vm.Program
+	conditionalExprCache     = make(map[string]*vm.Program)
 	conditionalExprCacheLock sync.Mutex
 )
 
@@ -26,41 +26,42 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	var err error
 	var compiledExpr *vm.Program
 
-	if conditionalExprCache == nil {
-		conditionalExprCache = make(map[string]vm.Program)
-	}
 	conditionalExprCacheLock.Lock()
 	if compiled, ok := conditionalExprCache[g.ConditionalOverflow]; ok {
 		conditionalExprCacheLock.Unlock()
-		c.ConditionalFilterRuntime = &compiled
+		c.ConditionalFilterRuntime = compiled
 	} else {
 		conditionalExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
+
 		c.ConditionalFilterRuntime = compiledExpr
 		conditionalExprCacheLock.Lock()
-		conditionalExprCache[g.ConditionalOverflow] = *compiledExpr
+		conditionalExprCache[g.ConditionalOverflow] = compiledExpr
 		conditionalExprCacheLock.Unlock()
 	}
+
 	return err
 }
 
-func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, l *Leaky) *types.Event {
+func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, l *Leaky) *pipeline.Event {
 		var condition, ok bool
+
 		if c.ConditionalFilterRuntime != nil {
 			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
 
 			ret, err := exprhelpers.Run(c.ConditionalFilterRuntime,
-				map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l},
+				map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l},
 				l.logger, b.Debug)
 			if err != nil {
 				l.logger.Errorf("unable to run conditional filter : %s", err)
 				return &msg
 			}
+
 			l.logger.Debugf("Conditional bucket expression returned : %v", ret)
 
 			if condition, ok = ret.(bool); !ok {

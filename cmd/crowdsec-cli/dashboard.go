@@ -5,23 +5,20 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
 
-type cliDashboard struct {
-	cfg configGetter
-}
+type cliDashboard struct{}
 
-func NewCLIDashboard(cfg configGetter) *cliDashboard {
-	return &cliDashboard{
-		cfg: cfg,
-	}
+func NewCLIDashboard() *cliDashboard {
+	return &cliDashboard{}
 }
 
 var ErrDashboardDeprecated = errors.New("command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/")
 
-func (cli *cliDashboard) NewCommand() *cobra.Command {
+func (*cliDashboard) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "dashboard [command]",
 		Hidden:            true,
@@ -32,8 +29,8 @@ func (cli *cliDashboard) NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		fmt.Println(ErrDashboardDeprecated.Error())
+	cmd.SetHelpFunc(func(_ *cobra.Command, _ []string) {
+		fmt.Fprintln(os.Stdout, ErrDashboardDeprecated.Error())
 	})
 
 	return cmd

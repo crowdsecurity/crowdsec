@@ -10,6 +10,6 @@ func NewExprWindows() (*ExprWindows, error) {
 	return &ExprWindows{}, nil
 }
 
-func (e *ExprWindows) ServiceEnabled(serviceName string) (bool, error) {
+func (*ExprWindows) ServiceEnabled(_ string) (bool, error) {
 	return false, nil
 }

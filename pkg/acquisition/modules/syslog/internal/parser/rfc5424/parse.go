@@ -21,7 +21,6 @@ type RFC5424 struct {
 	len            int
 	position       int
 	buf            []byte
-	useCurrentYear bool //If no year is specified in the timestamp, use the current year
 	strictHostname bool //If the hostname contains invalid characters or is not an IP, return an error
 }
 
@@ -34,12 +33,6 @@ var VALID_TIMESTAMPS = []string{
 }
 
 const VALID_TIMESTAMP = time.RFC3339Nano
-
-func WithCurrentYear() RFC5424Option {
-	return func(r *RFC5424) {
-		r.useCurrentYear = true
-	}
-}
 
 func WithStrictHostname() RFC5424Option {
 	return func(r *RFC5424) {

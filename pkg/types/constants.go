@@ -7,15 +7,6 @@ const (
 )
 
 const (
-	PAPIBaseURL        = "https://papi.api.crowdsec.net/"
-	PAPIVersion        = "v1"
-	PAPIPollUrl        = "/decisions/stream/poll"
-	PAPIPermissionsUrl = "/permissions"
-)
-
-const CAPIBaseURL = "https://api.crowdsec.net/"
-
-const (
 	CscliOrigin                       = "cscli"
 	CrowdSecOrigin                    = "crowdsec"
 	ConsoleOrigin                     = "console"
@@ -23,6 +14,7 @@ const (
 	ListOrigin                        = "lists"
 	CAPIOrigin                        = "CAPI"
 	CommunityBlocklistPullSourceScope = "crowdsecurity/community-blocklist"
+	RemediationSyncOrigin             = "remediation_sync"
 )
 
 const DecisionTypeBan = "ban"
@@ -35,11 +27,6 @@ func GetOrigins() []string {
 		CscliImportOrigin,
 		ListOrigin,
 		CAPIOrigin,
+		RemediationSyncOrigin,
 	}
 }
-
-// Leakybucket can be in mode LIVE or TIMEMACHINE
-const (
-	LIVE = iota
-	TIMEMACHINE
-)

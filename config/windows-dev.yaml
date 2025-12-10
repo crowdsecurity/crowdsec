@@ -1,0 +1,46 @@
+common:
+  log_media: stdout
+  log_level: info
+config_paths:
+  config_dir: "%CONFIG_DIR%"
+  data_dir: "%DATA_DIR%"
+  notification_dir: "%CONFIG_DIR%/notifications/"
+  plugin_dir: "%PLUGINS_DIR%"
+  #simulation_path: /etc/crowdsec/config/simulation.yaml
+  #hub_dir: /etc/crowdsec/hub/
+  #index_path: ./config/hub/.index.json
+crowdsec_service:
+  acquisition_path: "%CONFIG_DIR%/acquis.yaml"
+  parser_routines: 1
+plugin_config:
+  user: "%USERNAME%"  # plugin process would be ran on behalf of this user
+  group: "%USERNAME%" # plugin process would be ran on behalf of this group
+cscli:
+  output: human
+db_config:
+  type: sqlite
+  db_path: "%DATA_DIR%/crowdsec.db"
+  user: root
+  password: crowdsec
+  db_name: crowdsec
+  host: "172.17.0.2"
+  port: 3306
+  flush:
+    #max_items: 10000
+    #max_age: 168h
+api:
+  client:
+    credentials_path: "%CONFIG_DIR%/local_api_credentials.yaml"
+  server:
+    console_path: "%CONFIG_DIR%/console.yaml"
+    #insecure_skip_verify: true
+    listen_uri: 127.0.0.1:8081
+    profiles_path: "%CONFIG_DIR%/profiles.yaml"
+    tls:
+      #cert_file: ./cert.pem
+      #key_file: ./key.pem
+    online_client: # Central API
+      credentials_path: "%CONFIG_DIR%/online_api_credentials.yaml"
+prometheus:
+  enabled: true
+  level: full

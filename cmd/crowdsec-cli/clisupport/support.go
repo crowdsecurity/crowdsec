@@ -12,17 +12,21 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/blackfireio/osinfo"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/host"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
@@ -30,7 +34,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -42,7 +46,7 @@ const (
 	SUPPORT_METRICS_DIR           = "metrics/"
 	SUPPORT_VERSION_PATH          = "version.txt"
 	SUPPORT_FEATURES_PATH         = "features.txt"
-	SUPPORT_OS_INFO_PATH          = "osinfo.txt"
+	SUPPORT_SYSTEM_PATH           = "system.yaml"
 	SUPPORT_HUB                   = "hub.txt"
 	SUPPORT_BOUNCERS_PATH         = "lapi/bouncers.txt"
 	SUPPORT_AGENTS_PATH           = "lapi/agents.txt"
@@ -86,14 +90,12 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-type configGetter func() *csconfig.Config
-
 type cliSupport struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
 func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
-	log.Info("Collecting prometheus metrics")
+	fmt.Fprintln(os.Stdout, "Collecting prometheus metrics")
 
 	cfg := cli.cfg()
 
@@ -137,13 +139,13 @@ func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw 
 }
 
 func (cli *cliSupport) dumpVersion(zw *zip.Writer) {
-	log.Info("Collecting version")
+	fmt.Fprintln(os.Stdout, "Collecting version")
 
 	cli.writeToZip(zw, SUPPORT_VERSION_PATH, time.Now(), strings.NewReader(cwversion.FullString()))
 }
 
 func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
-	log.Info("Collecting feature flags")
+	fmt.Fprintln(os.Stdout, "Collecting feature flags")
 
 	w := new(bytes.Buffer)
 	for _, k := range fflag.Crowdsec.GetEnabledFeatures() {
@@ -153,30 +155,71 @@ func (cli *cliSupport) dumpFeatures(zw *zip.Writer) {
 	cli.writeToZip(zw, SUPPORT_FEATURES_PATH, time.Now(), w)
 }
 
-func (cli *cliSupport) dumpOSInfo(zw *zip.Writer) error {
-	log.Info("Collecting OS info")
+func (cli *cliSupport) dumpSystemInfo(zw *zip.Writer) error {
+	fmt.Fprintln(os.Stdout, "Collecting system info (gopsutil + runtime)")
 
-	info, err := osinfo.GetOSInfo()
-	if err != nil {
-		return err
+	type snapshot struct {
+		Timestamp  time.Time `yaml:"timestamp"`
+		GoOS       string    `yaml:"go_os"`
+		GoARCH     string    `yaml:"go_arch"`
+		GoVersion  string    `yaml:"go_version"`
+		NumCPU     int       `yaml:"num_cpu"`
+		Goroutines int       `yaml:"goroutines"`
+		CgoCalls   int64     `yaml:"cgo_calls"`
+
+		Host      *host.InfoStat `yaml:"host,omitempty"`
+		CPUInfo   []cpu.InfoStat `yaml:"cpu_info,omitempty"`
+		CPUCounts struct {
+			Logical  int `yaml:"logical"`
+			Physical int `yaml:"physical"`
+		} `yaml:"cpu_counts"`
+		BuildInfo *debug.BuildInfo `yaml:"build_info,omitempty"`
 	}
 
-	w := new(bytes.Buffer)
-	fmt.Fprintf(w, "Architecture: %s\n", info.Architecture)
-	fmt.Fprintf(w, "Family: %s\n", info.Family)
-	fmt.Fprintf(w, "ID: %s\n", info.ID)
-	fmt.Fprintf(w, "Name: %s\n", info.Name)
-	fmt.Fprintf(w, "Codename: %s\n", info.Codename)
-	fmt.Fprintf(w, "Version: %s\n", info.Version)
-	fmt.Fprintf(w, "Build: %s\n", info.Build)
+	s := snapshot{
+		Timestamp:  time.Now(),
+		GoOS:       runtime.GOOS,
+		GoARCH:     runtime.GOARCH,
+		GoVersion:  runtime.Version(),
+		NumCPU:     runtime.NumCPU(),
+		Goroutines: runtime.NumGoroutine(),
+		CgoCalls:   runtime.NumCgoCall(),
+	}
 
-	cli.writeToZip(zw, SUPPORT_OS_INFO_PATH, time.Now(), w)
+	// best-effort, errors ignored
+
+	if h, err := host.Info(); err == nil {
+		s.Host = h
+	}
+
+	if ci, err := cpu.Info(); err == nil {
+		s.CPUInfo = ci
+	}
+
+	if n, err := cpu.Counts(true); err == nil {
+		s.CPUCounts.Logical = n
+	}
+
+	if n, err := cpu.Counts(false); err == nil {
+		s.CPUCounts.Physical = n
+	}
+
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		s.BuildInfo = bi
+	}
+
+	buf, err := yaml.Marshal(&s)
+	if err != nil {
+		return fmt.Errorf("serialize system info to YAML: %w", err)
+	}
+
+	cli.writeToZip(zw, SUPPORT_SYSTEM_PATH, time.Now(), bytes.NewReader(buf))
 
 	return nil
 }
 
 func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
-	log.Infof("Collecting hub")
+	fmt.Fprintln(os.Stdout, "Collecting hub")
 
 	if hub == nil {
 		return errors.New("no hub connection")
@@ -197,7 +240,7 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 }
 
 func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting bouncers")
+	fmt.Fprintln(os.Stdout, "Collecting bouncers")
 
 	if db == nil {
 		return errors.New("no database connection")
@@ -218,7 +261,7 @@ func (cli *cliSupport) dumpBouncers(ctx context.Context, zw *zip.Writer, db *dat
 }
 
 func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting agents")
+	fmt.Fprintln(os.Stdout, "Collecting agents")
 
 	if db == nil {
 		return errors.New("no database connection")
@@ -239,7 +282,11 @@ func (cli *cliSupport) dumpAgents(ctx context.Context, zw *zip.Writer, db *datab
 }
 
 func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub) error {
-	log.Info("Collecting LAPI status")
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
+	fmt.Fprintln(os.Stdout, "Collecting LAPI status")
 
 	out := new(bytes.Buffer)
 	cl := clilapi.New(cli.cfg)
@@ -257,7 +304,11 @@ func (cli *cliSupport) dumpLAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 }
 
 func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *cwhub.Hub, db *database.Client) error {
-	log.Info("Collecting CAPI status")
+	if hub == nil {
+		return errors.New("hub is nil")
+	}
+
+	fmt.Fprintln(os.Stdout, "Collecting CAPI status")
 
 	out := new(bytes.Buffer)
 	cc := clicapi.New(cli.cfg)
@@ -275,7 +326,7 @@ func (cli *cliSupport) dumpCAPIStatus(ctx context.Context, zw *zip.Writer, hub *
 }
 
 func (cli *cliSupport) dumpPAPIStatus(ctx context.Context, zw *zip.Writer, db *database.Client) error {
-	log.Info("Collecting PAPI status")
+	fmt.Fprintln(os.Stdout, "Collecting PAPI status")
 
 	out := new(bytes.Buffer)
 	cp := clipapi.New(cli.cfg)
@@ -293,7 +344,7 @@ func (cli *cliSupport) dumpPAPIStatus(ctx context.Context, zw *zip.Writer, db *d
 }
 
 func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
-	log.Info("Collecting crowdsec config")
+	fmt.Fprintln(os.Stdout, "Collecting crowdsec config")
 
 	cfg := cli.cfg()
 
@@ -312,7 +363,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheusCfg csconfig.PrometheusCfg, endpoint string) error {
-	log.Infof("Collecting pprof/%s data", endpoint)
+	fmt.Fprintf(os.Stdout, "Collecting pprof/%s data\n", endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
@@ -349,14 +400,14 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 }
 
 func (cli *cliSupport) dumpProfiles(zw *zip.Writer) {
-	log.Info("Collecting crowdsec profile")
+	fmt.Fprintln(os.Stdout, "Collecting crowdsec profile")
 
 	cfg := cli.cfg()
 	cli.writeFileToZip(zw, SUPPORT_CROWDSEC_PROFILE_PATH, cfg.API.Server.ProfilesPath)
 }
 
 func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) {
-	log.Info("Collecting acquisition config")
+	fmt.Fprintln(os.Stdout, "Collecting acquisition config")
 
 	cfg := cli.cfg()
 
@@ -367,7 +418,7 @@ func (cli *cliSupport) dumpAcquisitionConfig(zw *zip.Writer) {
 }
 
 func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
-	log.Info("Collecting CrowdSec logs")
+	fmt.Fprintln(os.Stdout, "Collecting CrowdSec logs")
 
 	cfg := cli.cfg()
 
@@ -386,7 +437,7 @@ func (cli *cliSupport) dumpLogs(zw *zip.Writer) error {
 }
 
 func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
-	log.Info("Collecting crash dumps")
+	fmt.Fprintln(os.Stdout, "Collecting crash dumps")
 
 	traceFiles, err := trace.List()
 	if err != nil {
@@ -400,7 +451,7 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	return nil
 }
 
-func New(cfg configGetter) *cliSupport {
+func New(cfg csconfig.Getter) *cliSupport {
 	return &cliSupport{
 		cfg: cfg,
 	}
@@ -419,7 +470,7 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 }
 
 // writeToZip adds a file to the zip archive, from a reader
-func (cli *cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) {
+func (*cliSupport) writeToZip(zipWriter *zip.Writer, filename string, mtime time.Time, reader io.Reader) {
 	header := &zip.FileHeader{
 		Name:     filename,
 		Method:   zip.Deflate,
@@ -457,7 +508,7 @@ func (cli *cliSupport) writeFileToZip(zw *zip.Writer, filename string, fromFile 
 	cli.writeToZip(zw, filename, mtime, fin)
 }
 
-func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
+func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) error {
 	var skipCAPI, skipLAPI, skipAgent bool
 
 	collector := &StringHook{
@@ -513,8 +564,8 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		log.Warn(err)
 	}
 
-	if err = cli.dumpOSInfo(zipWriter); err != nil {
-		log.Warnf("could not collect OS information: %s", err)
+	if err = cli.dumpSystemInfo(zipWriter); err != nil {
+		log.Warnf("could not collect system information: %s", err)
 	}
 
 	if err = cli.dumpConfigYAML(zipWriter); err != nil {
@@ -558,8 +609,12 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 			log.Warnf("could not collect pprof heap data: %s", err)
 		}
 
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
-			log.Warnf("could not collect pprof cpu data: %s", err)
+		if !fast {
+			fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
+
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
+				log.Warnf("could not collect pprof cpu data: %s", err)
+			}
 		}
 
 		cli.dumpProfiles(zipWriter)
@@ -600,20 +655,23 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string) error {
 		return fmt.Errorf("could not write zip file to %s: %w", outFile, err)
 	}
 
-	log.Infof("Written zip file to %s", outFile)
+	fmt.Fprintf(os.Stdout, "Written zip file to %s\n", outFile)
 
 	return nil
 }
 
 func (cli *cliSupport) NewDumpCmd() *cobra.Command {
-	var outFile string
+	var (
+		outFile string
+		fast bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all your configuration to a zip file for easier support",
 		Long: `Dump the following information:
 - Crowdsec version
-- OS version
+- OS version and runtime system information
 - Enabled feature flags
 - Latest Crowdsec logs (log processor, LAPI, remediation components)
 - Installed collections, parsers, scenarios...
@@ -632,11 +690,12 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if output != "human" {
 				return fmt.Errorf("output format %s not supported for this command", output)
 			}
-			return cli.dump(cmd.Context(), outFile)
+			return cli.dump(cmd.Context(), outFile, fast)
 		},
 	}
 
 	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+	cmd.Flags().BoolVar(&fast, "fast", false, "Skip slow operations, like cpu profiling")
 
 	return cmd
 }

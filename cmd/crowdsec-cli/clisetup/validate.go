@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
 func (cli *cliSetup) newValidateCmd() *cobra.Command {
@@ -25,7 +25,7 @@ generated it through other means.`,
 
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err

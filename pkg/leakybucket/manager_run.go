@@ -13,13 +13,14 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
 	serialized      map[string]Leaky
-	BucketPourCache map[string][]types.Event
+	BucketPourCache map[string][]pipeline.Event = make(map[string][]pipeline.Event)
 	BucketPourTrack bool
+	bucketPourMu	sync.Mutex
 )
 
 /*
@@ -32,16 +33,12 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgDumpState.Add(1)
 	defer buckets.wgDumpState.Done()
 
-	total := 0
-	discard := 0
 	toflush := []string{}
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		total += 1
 		//bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
-			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
@@ -89,7 +86,7 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	return nil
 }
 
-func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *types.Event) (bool, error) {
+func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -128,7 +125,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 
 		/*let's see if this time-bucket should have expired */
-		if bucket.Mode == types.TIMEMACHINE {
+		if bucket.Mode == pipeline.TIMEMACHINE {
 			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
 			lastTs := bucket.Last_ts
@@ -158,11 +155,11 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
-				if _, ok := BucketPourCache[bucket.Name]; !ok {
-					BucketPourCache[bucket.Name] = make([]types.Event, 0)
-				}
-				evt := deepcopy.Copy(*parsed)
-				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt.(types.Event))
+				evt := deepcopy.Copy(*parsed).(pipeline.Event)
+
+				bucketPourMu.Lock()
+				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt)
+				bucketPourMu.Unlock()
 			}
 			sent = true
 			continue
@@ -185,16 +182,16 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		var fresh_bucket *Leaky
 
 		switch expectMode {
-		case types.TIMEMACHINE:
+		case pipeline.TIMEMACHINE:
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
-		case types.LIVE:
+		case pipeline.LIVE:
 			fresh_bucket = NewLeaky(holder)
 			holder.logger.Debugf("Creating Live bucket")
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 		}
-		fresh_bucket.In = make(chan *types.Event)
+		fresh_bucket.In = make(chan *pipeline.Event)
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
@@ -216,18 +213,15 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
+func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var ok, condition, poured bool
 
 	if BucketPourTrack {
-		if BucketPourCache == nil {
-			BucketPourCache = make(map[string][]types.Event)
-		}
-		if _, ok = BucketPourCache["OK"]; !ok {
-			BucketPourCache["OK"] = make([]types.Event, 0)
-		}
-		evt := deepcopy.Copy(parsed)
-		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
+		evt := deepcopy.Copy(parsed).(pipeline.Event)
+
+		bucketPourMu.Lock()
+		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt)
+		bucketPourMu.Unlock()
 	}
 	//find the relevant holders (scenarios)
 	for idx := range holders {
