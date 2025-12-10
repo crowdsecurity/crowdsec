@@ -61,19 +61,45 @@ type DataSource interface {
 	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
 }
 
-type Fetcher interface {
+// BatchFetcher represents a data source that produces a finite set of events.
+//
+// Implementations should:
+//
+//  - send events to the output channel until the input is fully consumed
+//  - return (nil) early when the context is canceled
+//  - return errors if acquisition fails
+type BatchFetcher interface {
 	// Start one shot acquisition(eg, cat a file)
+	OneShot(ctx context.Context, out chan pipeline.Event) error
+}
+
+// Fetcher works like BatchFetcher but still relies on tombs, which are being replaced by context cancellation.
+// New datasources are expected to implement BatchFetcher instead.
+type Fetcher interface {
 	OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
-type Tailer interface {
+// RestartableStreamer represents a data source that produces an ongoing, potentially unbounded stream of events.
+//
+// Implementations should:
+//
+//  - send events to the output channel, continuously
+//  - return (nil) when the context is canceled
+//  - return errors if acquisition fails
+//  - as much as possible, do not attempt retry/backoff even for transient connection
+//    failures, but treat them as errors. The caller is responsible for supervising
+//    Stream(), and restarting it as needed. There is currently no way to differentiate
+//    retryable vs permanent errors.
+type RestartableStreamer interface {
 	// Start live acquisition (eg, tail a file)
-	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
+	Stream(ctx context.Context, out chan pipeline.Event) error
 }
 
-// RestartableStreamer works Like Tailer but should return any error and leave the retry logic to the caller
-type RestartableStreamer interface {
-	Stream(ctx context.Context, out chan pipeline.Event) error
+// Tailer has the same pupose as RestartableStreamer (provide ongoing events) but
+// is responsible for spawning its own goroutines, and handling errors and retries.
+// New datasources are expected to implement RestartableStreamer instead.
+type Tailer interface {
+	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type MetricsProvider interface {
@@ -473,6 +499,16 @@ func transform(transformChan chan pipeline.Event, output chan pipeline.Event, ac
 	}
 }
 
+func runBatchFetcher(ctx context.Context, bf BatchFetcher, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	// wrap tomb logic with context
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-acquisTomb.Dying()
+		cancel()
+	}()
+
+	return bf.OneShot(ctx, output)
+}
 
 func runRestartableStream(ctx context.Context, rs RestartableStreamer, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	// wrap tomb logic with context
@@ -521,10 +557,14 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 
 func acquireSource(ctx context.Context, source DataSource, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	if source.GetMode() == configuration.CAT_MODE {
+		if s, ok := source.(BatchFetcher); ok {
+			// s.Logger.Info("Start OneShot")
+			return runBatchFetcher(ctx, s, output, acquisTomb)
+		}
+
 		if s, ok := source.(Fetcher); ok {
 			// s.Logger.Info("Start OneShotAcquisition")
 			return s.OneShotAcquisition(ctx, output, acquisTomb)
-			// s.Logger.Info("Exit OneShotAcquisition")
 		}
 
 		return fmt.Errorf("%s: cat mode is set but OneShotAcquisition is not supported", source.GetName())
