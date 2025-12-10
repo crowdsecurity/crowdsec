@@ -46,7 +46,8 @@ func LoggingMiddleware(logger *log.Entry) router.Middleware {
 			// Use the provided logger which writes to the access log file
 			// Format the log message and write it directly to the logger's output writer
 			// This bypasses logrus formatting since access logs use a specific plain text format
-			// Only write if the logger level allows info-level messages (access logs are info-level)
+			// Only write if the logger level allows info-level messages or more verbose (debug/trace)
+			// IsLevelEnabled returns true if logger level >= InfoLevel (i.e., Info, Debug, or Trace)
 			if logger.Logger.IsLevelEnabled(log.InfoLevel) {
 				logMsg := fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
 					clientIP,

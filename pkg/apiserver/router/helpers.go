@@ -121,15 +121,12 @@ func isTrustedProxy(addr netip.Addr, trustedProxies []netip.Prefix) bool {
 
 // findFirstUntrustedIP iterates backwards through a comma-separated list of IPs
 // and returns the first (rightmost) IP that is not in the trusted proxy list
-// Returns empty string if all IPs are trusted or none are valid
 func findFirstUntrustedIP(ipList string, trustedProxies []netip.Prefix) string {
 	if ipList == "" {
 		return ""
 	}
 
 	ips := strings.Split(ipList, ",")
-	// Iterate backwards (right to left) to find the first untrusted IP
-	// This is the closest untrusted proxy/client to us
 	for i := len(ips) - 1; i >= 0; i-- {
 		ipStr := strings.TrimSpace(ips[i])
 		addr, err := netip.ParseAddr(ipStr)
@@ -137,7 +134,6 @@ func findFirstUntrustedIP(ipList string, trustedProxies []netip.Prefix) string {
 			continue
 		}
 
-		// If this IP is not trusted, it's our client IP (or closest untrusted proxy)
 		if !isTrustedProxy(addr, trustedProxies) {
 			return ipStr
 		}
@@ -148,9 +144,17 @@ func findFirstUntrustedIP(ipList string, trustedProxies []netip.Prefix) string {
 
 // isRemoteAddrTrusted checks if RemoteAddr is from a trusted proxy
 func isRemoteAddrTrusted(r *http.Request, trustedProxies []netip.Prefix) bool {
-	if r.RemoteAddr == "" || r.RemoteAddr == "@" {
-		// If RemoteAddr is empty, assume we trust the proxy (for tests)
+	if r.RemoteAddr == "" {
 		return true
+	}
+
+	// Treat Unix sockets as 127.0.0.1 for trusted proxy checking
+	if r.RemoteAddr == "@" {
+		addr, err := netip.ParseAddr("127.0.0.1")
+		if err != nil {
+			return false
+		}
+		return isTrustedProxy(addr, trustedProxies)
 	}
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -166,73 +170,83 @@ func isRemoteAddrTrusted(r *http.Request, trustedProxies []netip.Prefix) bool {
 	return isTrustedProxy(remoteAddr, trustedProxies)
 }
 
-// ResolveClientIP resolves the client IP from the request, respecting trusted proxy headers
-// This should be called by middleware to determine the real client IP
-// It checks X-Forwarded-For and X-Real-IP headers based on trusted proxy configuration
-func ResolveClientIP(r *http.Request, trustedProxies []netip.Prefix) string {
-	// Handle Unix socket case
-	if r.RemoteAddr == "@" {
-		return "127.0.0.1"
-	}
-
-	// If we have trusted proxies, check forwarded headers first (before RemoteAddr)
-	// This handles cases where RemoteAddr might be empty (e.g., in tests)
-	if len(trustedProxies) > 0 {
-		// Check X-Forwarded-For header
-		// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-		// Format: leftmost is original client, rightmost is most recent proxy
-		// We iterate backwards (right to left) to find the first untrusted IP
-		forwardedFor := r.Header.Get("X-Forwarded-For")
-		if forwardedFor != "" {
-			if ip := findFirstUntrustedIP(forwardedFor, trustedProxies); ip != "" {
-				return ip
-			}
-		}
-
-		// Check X-Real-IP header
-		// X-Real-IP contains the client IP as reported by the proxy
-		// While typically a single IP, it may contain multiple IPs (comma-separated) in some configurations
-		// We iterate backwards (right to left) like X-Forwarded-For to find the first untrusted IP
-		// (The trusted proxy check is about RemoteAddr, not the IP in X-Real-IP)
-		realIPHeader := r.Header.Get("X-Real-IP")
-		if realIPHeader != "" {
-			// Check if RemoteAddr is from a trusted proxy
-			if isRemoteAddrTrusted(r, trustedProxies) {
-				if ip := findFirstUntrustedIP(realIPHeader, trustedProxies); ip != "" {
-					return ip
-				}
-				// If all IPs in X-Real-IP are trusted, take the first one (leftmost)
-				// This handles the case where X-Real-IP contains only trusted proxy IPs
-				realIPs := strings.Split(realIPHeader, ",")
-				if len(realIPs) > 0 {
-					realIP := strings.TrimSpace(realIPs[0])
-					if _, err := netip.ParseAddr(realIP); err == nil {
-						return realIP
-					}
-				}
-			}
-		}
-	}
-
-	// Extract IP from RemoteAddr (format: "IP:port")
-	// Only fall back to RemoteAddr if no forwarded headers were found
-	if r.RemoteAddr == "" {
+// resolveFromForwardedFor extracts client IP from X-Forwarded-For header
+func resolveFromForwardedFor(r *http.Request, trustedProxies []netip.Prefix) string {
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+	if forwardedFor == "" {
 		return ""
 	}
 
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		// If RemoteAddr doesn't have a port, use it as-is
-		host = r.RemoteAddr
+	return findFirstUntrustedIP(forwardedFor, trustedProxies)
+}
+
+// resolveFromRealIP extracts client IP from X-Real-IP header
+func resolveFromRealIP(r *http.Request, trustedProxies []netip.Prefix) string {
+	realIPHeader := r.Header.Get("X-Real-IP")
+	if realIPHeader == "" {
+		return ""
 	}
 
-	clientAddr, err := netip.ParseAddr(host)
-	if err != nil {
-		return host // Return as-is if parsing fails
+	// Check if RemoteAddr is from a trusted proxy
+	if !isRemoteAddrTrusted(r, trustedProxies) {
+		return ""
 	}
 
-	// Fall back to RemoteAddr
-	return clientAddr.String()
+	if ip := findFirstUntrustedIP(realIPHeader, trustedProxies); ip != "" {
+		return ip
+	}
+
+	realIPs := strings.Split(realIPHeader, ",")
+	if len(realIPs) == 0 {
+		return ""
+	}
+
+	realIP := strings.TrimSpace(realIPs[0])
+	if _, err := netip.ParseAddr(realIP); err == nil {
+		return realIP
+	}
+
+	return ""
+}
+
+// ResolveClientIP resolves the client IP from the request, respecting trusted proxy headers
+func ResolveClientIP(r *http.Request, trustedProxies []netip.Prefix) string {
+	isUnixSocket := r.RemoteAddr == "@"
+
+	if len(trustedProxies) == 0 {
+		if isUnixSocket {
+			return "127.0.0.1"
+		}
+		return extractIPFromRemoteAddr(r.RemoteAddr)
+	}
+
+	if ip := resolveFromForwardedFor(r, trustedProxies); ip != "" {
+		return ip
+	}
+
+	if ip := resolveFromRealIP(r, trustedProxies); ip != "" {
+		return ip
+	}
+
+	if isUnixSocket {
+		return "127.0.0.1"
+	}
+
+	return extractIPFromRemoteAddr(r.RemoteAddr)
+}
+
+// extractIPFromRemoteAddr extracts the IP from RemoteAddr, handling port splitting
+func extractIPFromRemoteAddr(remoteAddr string) string {
+	if remoteAddr == "" {
+		return ""
+	}
+
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
+	}
+
+	return host
 }
 
 // AbortWithStatus writes a status code and stops further processing

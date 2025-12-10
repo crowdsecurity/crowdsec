@@ -264,8 +264,79 @@ func writeDeltaDecisions(w http.ResponseWriter, r *http.Request, filters map[str
 	return nil
 }
 
+// writeStartupResponse writes startup decisions (both active and expired) to the response
+func (c *Controller) writeStartupResponse(w http.ResponseWriter, r *http.Request, filters map[string][]string, flusher http.Flusher, hasFlusher bool) error {
+	// Active decisions
+	err := writeStartupDecisions(w, r, filters, c.DBClient.QueryAllDecisionsWithFilters)
+	if err != nil {
+		log.Errorf("failed sending new decisions for startup: %v", err)
+		_, _ = w.Write([]byte(`], "deleted": []}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+		return err
+	}
+
+	// Expired decisions
+	err = writeStartupDecisions(w, r, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
+	if err != nil {
+		log.Errorf("failed sending expired decisions for startup: %v", err)
+		_, _ = w.Write([]byte(`]}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte(`]}`)); err != nil {
+		return err
+	}
+	if hasFlusher {
+		flusher.Flush()
+	}
+	return nil
+}
+
+// writeDeltaResponse writes delta decisions (both new and expired) to the response
+func (c *Controller) writeDeltaResponse(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, filters map[string][]string, flusher http.Flusher, hasFlusher bool) error {
+	err := writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
+	if err != nil {
+		log.Errorf("failed sending new decisions for delta: %v", err)
+		_, _ = w.Write([]byte(`], "deleted": []}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+		return err
+	}
+
+	err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
+	if err != nil {
+		log.Errorf("failed sending expired decisions for delta: %v", err)
+		_, _ = w.Write([]byte("]}"))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte("]}")); err != nil {
+		return err
+	}
+	if hasFlusher {
+		flusher.Flush()
+	}
+	return nil
+}
+
 func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
-	var err error
 	flusher, hasFlusher := w.(http.Flusher)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -276,76 +347,12 @@ func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Reques
 	}
 
 	// if the blocker just started, return all decisions
-	if val, ok := r.URL.Query()["startup"]; ok && val[0] == "true" {
-		// Active decisions
-		err := writeStartupDecisions(w, r, filters, c.DBClient.QueryAllDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for startup: %v", err)
-			_, _ = w.Write([]byte(`], "deleted": []}`))
-			if hasFlusher {
-				flusher.Flush()
-			}
-
-			return err
-		}
-
-		if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
-			return err
-		}
-		// Expired decisions
-		err = writeStartupDecisions(w, r, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for startup: %v", err)
-			_, _ = w.Write([]byte(`]}`))
-			if hasFlusher {
-				flusher.Flush()
-			}
-
-			return err
-		}
-
-		if _, err := w.Write([]byte(`]}`)); err != nil {
-			return err
-		}
-		if hasFlusher {
-			flusher.Flush()
-		}
-	} else {
-		err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for delta: %v", err)
-			_, _ = w.Write([]byte(`], "deleted": []}`))
-			if hasFlusher {
-				flusher.Flush()
-			}
-
-			return err
-		}
-
-		if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
-			return err
-		}
-
-		err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for delta: %v", err)
-			_, _ = w.Write([]byte("]}"))
-			if hasFlusher {
-				flusher.Flush()
-			}
-
-			return err
-		}
-
-		if _, err := w.Write([]byte("]}")); err != nil {
-			return err
-		}
-		if hasFlusher {
-			flusher.Flush()
-		}
+	val, ok := r.URL.Query()["startup"]
+	if ok && val[0] == "true" {
+		return c.writeStartupResponse(w, r, filters, flusher, hasFlusher)
 	}
 
-	return nil
+	return c.writeDeltaResponse(w, r, bouncerInfo, filters, flusher, hasFlusher)
 }
 
 func (c *Controller) StreamDecisionNonChunked(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
