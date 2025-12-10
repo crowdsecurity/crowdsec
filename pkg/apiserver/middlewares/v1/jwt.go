@@ -409,6 +409,7 @@ func (j *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := models.WatcherAuthResponse{
+		Code:   200,
 		Token:  tokenString,
 		Expire: expiresAt.Format(time.RFC3339),
 	}
@@ -442,6 +443,7 @@ func (j *JWT) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := models.WatcherAuthResponse{
+		Code:   200,
 		Token:  newTokenString,
 		Expire: expiresAt.Format(time.RFC3339),
 	}
