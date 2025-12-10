@@ -29,7 +29,7 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 func TestGCandDump(t *testing.T) {
 	var (
 		buckets = NewBuckets()
-		ctx     = context.Background()
+		ctx     = t.Context()
 	)
 
 	Holders := []BucketFactory{
@@ -158,7 +158,7 @@ func TestShutdownBuckets(t *testing.T) {
 
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	ok, err := PourItemToHolders(ctx, in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)

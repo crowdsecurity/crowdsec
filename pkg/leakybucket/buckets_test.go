@@ -61,13 +61,13 @@ func TestBucket(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		wg := new(sync.WaitGroup)
+		var wg sync.WaitGroup
 
 		fds, err := os.ReadDir(testdata)
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
-
+		errCh := make(chan error, len(fds))
 		for _, fd := range fds {
 			if fd.Name() == "hub" {
 				continue
@@ -75,12 +75,12 @@ func TestBucket(t *testing.T) {
 
 			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
+			wg.Add(1)
 			go func() error {
-				wg.Add(1)
 				defer wg.Done()
 
 				if err := testOneBucket(t, hub, fname); err != nil {
-					t.Fatalf("Test '%s' failed : %s", fname, err)
+					errCh <- fmt.Errorf("Test '%s' failed : %s", fname, err)
 				}
 
 				return nil
@@ -88,6 +88,13 @@ func TestBucket(t *testing.T) {
 		}
 
 		wg.Wait()
+		close(errCh)
+
+		for err := range errCh {
+			if err != nil {
+				t.Fatalf("Test failed: %s", err)
+			}
+		}
 	}
 }
 
