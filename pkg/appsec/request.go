@@ -310,11 +310,9 @@ func (r *ReqDumpFilter) ToJSON() error {
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
-// If readBody is false, the body will not be read into memory and ParsedRequest.Body will be nil.
+// Body is not read here; it will be streamed by the runner if needed.
 func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
 	var err error
-	var body []byte
-	// Body is not read here; it will be streamed by the runner if needed.
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
@@ -428,7 +426,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		Headers:              r.Header,
 		URL:                  parsedURL,
 		Proto:                r.Proto,
-		Body:                 body,
+		Body:                 nil,
 		Args:                 exprhelpers.ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
