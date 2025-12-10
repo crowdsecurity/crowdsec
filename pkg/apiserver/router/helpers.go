@@ -76,11 +76,13 @@ func BindJSON(r *http.Request, v any) error {
 func JSON(w http.ResponseWriter, code int, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	data, err := json.Marshal(v)
+	if err != nil {
 		log.Errorf("Failed to encode JSON response: %v", err)
 		return err
 	}
-	return nil
+	_, err = w.Write(data)
+	return err
 }
 
 // WriteJSON writes a JSON response without returning an error

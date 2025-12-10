@@ -129,7 +129,10 @@ func (j *JWT) extractToken(r *http.Request) (string, error) {
 			}
 		case "cookie":
 			cookie, err := r.Cookie(name)
-			if err == nil && cookie.Value != "" {
+			if err == nil {
+				if cookie.Value == "" {
+					return "", errors.New("cookie token is empty")
+				}
 				return cookie.Value, nil
 			}
 		}
@@ -290,12 +293,16 @@ func (j *JWT) authPlain(r *http.Request) (*authInput, error) {
 		First(ctx)
 	if err != nil {
 		log.Infof("Error machine login for %s : %+v ", ret.machineID, err)
+		if ent.IsNotFound(err) {
+			// Return generic error for security (don't reveal if machine exists)
+			return nil, errors.New("incorrect Username or Password")
+		}
 		return nil, err
 	}
 
 	if ret.clientMachine == nil {
 		log.Errorf("Nothing for '%s'", ret.machineID)
-		return nil, errors.New("failed authentication")
+		return nil, errors.New("incorrect Username or Password")
 	}
 
 	if ret.clientMachine.AuthType != types.PasswordAuthType {
@@ -307,7 +314,7 @@ func (j *JWT) authPlain(r *http.Request) (*authInput, error) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(ret.clientMachine.Password), []byte(password)); err != nil {
-		return nil, errors.New("failed authentication")
+		return nil, errors.New("incorrect Username or Password")
 	}
 
 	return &ret, nil
@@ -420,7 +427,7 @@ func (j *JWT) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
 			"code":    http.StatusUnauthorized,
-			"message": "token not found",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -450,7 +457,7 @@ func (j *JWT) MiddlewareFunc() router.Middleware {
 			if err != nil {
 				router.AbortWithJSON(w, http.StatusUnauthorized, map[string]any{
 					"code":    http.StatusUnauthorized,
-					"message": "token not found",
+					"message": err.Error(),
 				})
 				return
 			}

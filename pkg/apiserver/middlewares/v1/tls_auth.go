@@ -138,6 +138,20 @@ func (ta *TLSAuth) ValidateCertFromRequest(r *http.Request) (string, error) {
 		return "", errors.New("no verified cert in request")
 	}
 
+	// Check all verified chains to ensure none are signed directly by root CA
+	// (which would indicate the cert is not signed by the expected intermediate CA)
+	for _, chain := range r.TLS.VerifiedChains {
+		// If chain has only 2 elements (leaf and root), it's signed directly by root
+		// This should be rejected if we expect certs signed by intermediate
+		if len(chain) == 2 {
+			// Check if the issuer (chain[1]) is a root CA (self-signed)
+			root := chain[1]
+			if root.IsCA && root.CheckSignatureFrom(root) == nil {
+				return "", errors.New("certificate signed directly by root CA, expected intermediate CA")
+			}
+		}
+	}
+
 	// although there can be multiple chains, the leaf certificate is the same
 	// we take the first one
 	leaf = r.TLS.VerifiedChains[0][0]
