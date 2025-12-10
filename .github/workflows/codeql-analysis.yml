@@ -44,20 +44,20 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         # required to pick up tags for BUILD_VERSION
         fetch-depth: 0
 
     - name: "Set up Go"
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
+      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
         go-version-file: go.mod
         cache-dependency-path: "**/go.sum"
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@fe4161a26a8629af62121b670040955b330f9af2
+      uses: github/codeql-action/init@bffd034ab1518ad839a542b8a7356e13a240e076 # v3.31.7
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -81,4 +81,4 @@ jobs:
        make clean build BUILD_RE2_WASM=1
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@fe4161a26a8629af62121b670040955b330f9af2
+      uses: github/codeql-action/analyze@bffd034ab1518ad839a542b8a7356e13a240e076 # v3.31.7
