@@ -118,7 +118,17 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 
 func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclient.ApiClient) {
 	log.Debugf("Starting HeartBeat service")
-	apiClient.HeartBeat.StartHeartBeat(ctx, &outputsTomb)
+
+	// parent ctx is currently not canceled, so we create a cancelable context from the tomb
+
+	tombCtx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		<-outputsTomb.Dying()
+		cancel()
+	}()
+
+	apiClient.HeartBeat.StartHeartBeat(tombCtx)
 }
 
 func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient) {
