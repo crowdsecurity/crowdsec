@@ -5,10 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +14,6 @@ import (
 	dockerTypesEvents "github.com/moby/moby/api/types/events"
 	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
 	"github.com/moby/moby/client"
-	yaml "github.com/goccy/go-yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/containerd/errdefs"
@@ -25,59 +21,9 @@ import (
 
 	"github.com/crowdsecurity/dlog"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker/tracker"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-type DockerConfiguration struct {
-	configuration.DataSourceCommonCfg `yaml:",inline"`
-
-	CheckInterval       string   `yaml:"check_interval"`
-	FollowStdout        bool     `yaml:"follow_stdout"`
-	FollowStdErr        bool     `yaml:"follow_stderr"`
-	Until               string   `yaml:"until"`
-	Since               string   `yaml:"since"`
-	DockerHost          string   `yaml:"docker_host"`
-	ContainerName       []string `yaml:"container_name"`
-	ContainerID         []string `yaml:"container_id"`
-	ContainerNameRegexp []string `yaml:"container_name_regexp"`
-	ContainerIDRegexp   []string `yaml:"container_id_regexp"`
-	ServiceName         []string `yaml:"service_name"`
-	ServiceID           []string `yaml:"service_id"`
-	ServiceNameRegexp   []string `yaml:"service_name_regexp"`
-	ServiceIDRegexp     []string `yaml:"service_id_regexp"`
-	UseServiceLabels    bool     `yaml:"use_service_labels"`
-	UseContainerLabels  bool     `yaml:"use_container_labels"`
-}
-
-type DockerSource struct {
-	metricsLevel          metrics.AcquisitionMetricsLevel
-	Config                DockerConfiguration
-	runningContainerState *tracker.Tracker[*ContainerConfig]
-	runningServiceState   *tracker.Tracker[*ContainerConfig]
-	compiledContainerName []*regexp.Regexp
-	compiledContainerID   []*regexp.Regexp
-	compiledServiceName   []*regexp.Regexp
-	compiledServiceID     []*regexp.Regexp
-	logger                *log.Entry
-	Client                client.APIClient
-	t                     *tomb.Tomb
-	containerLogsOptions  *client.ContainerLogsOptions
-	isSwarmManager        bool
-	backoffFactory        BackOffFactory
-}
-
-type ContainerConfig struct {
-	Name       string
-	ID         string
-	t          tomb.Tomb
-	logger     *log.Entry
-	Labels     map[string]string
-	Tty        bool
-	logOptions *client.ContainerLogsOptions
-}
 
 type BackOffFactory func() backoff.BackOff
 
@@ -93,284 +39,8 @@ func newDockerBackOffFactory() BackOffFactory {
     }
 }
 
-func (d *DockerSource) GetUuid() string {
-	return d.Config.UniqueId
-}
-
-func (dc *DockerConfiguration) hasServiceConfig() bool {
-	return len(dc.ServiceName) > 0 || len(dc.ServiceID) > 0 ||
-		len(dc.ServiceIDRegexp) > 0 || len(dc.ServiceNameRegexp) > 0 || dc.UseServiceLabels
-}
-
-func (dc *DockerConfiguration) hasContainerConfig() bool {
-	return len(dc.ContainerName) > 0 || len(dc.ContainerID) > 0 ||
-		len(dc.ContainerIDRegexp) > 0 || len(dc.ContainerNameRegexp) > 0 || dc.UseContainerLabels
-}
-
-func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
-	d.Config = DockerConfiguration{
-		FollowStdout: true, // default
-		FollowStdErr: true, // default
-	}
-
-	if err := yaml.UnmarshalWithOptions(yamlConfig, &d.Config, yaml.Strict()); err != nil {
-		return fmt.Errorf("while parsing DockerAcquisition configuration: %s", yaml.FormatError(err, false, false))
-	}
-
-	if d.logger != nil {
-		d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
-	}
-
-	// Check if we have any container or service configuration
-	if !d.Config.hasContainerConfig() && !d.Config.hasServiceConfig() {
-		return errors.New("no containers or services configuration provided")
-	}
-
-	if d.Config.UseContainerLabels && (len(d.Config.ContainerName) > 0 || len(d.Config.ContainerID) > 0 || len(d.Config.ContainerIDRegexp) > 0 || len(d.Config.ContainerNameRegexp) > 0) {
-		return errors.New("use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive")
-	}
-
-	if d.Config.UseServiceLabels && (len(d.Config.ServiceName) > 0 || len(d.Config.ServiceID) > 0 || len(d.Config.ServiceIDRegexp) > 0 || len(d.Config.ServiceNameRegexp) > 0) {
-		return errors.New("use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive")
-	}
-
-	if d.Config.CheckInterval != "" && d.logger != nil {
-		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
-	}
-
-	if d.Config.Mode == "" {
-		d.Config.Mode = configuration.TAIL_MODE
-	}
-
-	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
-		return fmt.Errorf("unsupported mode %s for docker datasource", d.Config.Mode)
-	}
-
-	for _, cont := range d.Config.ContainerNameRegexp {
-		compiled, err := regexp.Compile(cont)
-		if err != nil {
-			return fmt.Errorf("container_name_regexp: %w", err)
-		}
-
-		d.compiledContainerName = append(d.compiledContainerName, compiled)
-	}
-
-	for _, cont := range d.Config.ContainerIDRegexp {
-		compiled, err := regexp.Compile(cont)
-		if err != nil {
-			return fmt.Errorf("container_id_regexp: %w", err)
-		}
-
-		d.compiledContainerID = append(d.compiledContainerID, compiled)
-	}
-
-	for _, svc := range d.Config.ServiceNameRegexp {
-		compiled, err := regexp.Compile(svc)
-		if err != nil {
-			return fmt.Errorf("service_name_regexp: %w", err)
-		}
-
-		d.compiledServiceName = append(d.compiledServiceName, compiled)
-	}
-
-	for _, svc := range d.Config.ServiceIDRegexp {
-		compiled, err := regexp.Compile(svc)
-		if err != nil {
-			return fmt.Errorf("service_id_regexp: %w", err)
-		}
-
-		d.compiledServiceID = append(d.compiledServiceID, compiled)
-	}
-
-	if d.Config.Since == "" {
-		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	d.containerLogsOptions = &client.ContainerLogsOptions{
-		ShowStdout: d.Config.FollowStdout,
-		ShowStderr: d.Config.FollowStdErr,
-		Follow:     true,
-		Since:      d.Config.Since,
-	}
-
-	if d.Config.Until != "" {
-		d.containerLogsOptions.Until = d.Config.Until
-	}
-
-	return nil
-}
-
-func (d *DockerSource) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	d.logger = logger
-	d.metricsLevel = metricsLevel
-
-	err := d.UnmarshalConfig(yamlConfig)
-	if err != nil {
-		return err
-	}
-
-	d.runningContainerState = tracker.NewTracker[*ContainerConfig]()
-	d.runningServiceState = tracker.NewTracker[*ContainerConfig]()
-
-	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
-
-	opts := []client.Opt{
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	}
-
-	if d.Config.DockerHost != "" {
-		opts = append(opts, client.WithHost(d.Config.DockerHost))
-	}
-
-	d.Client, err = client.New(opts...)
-	if err != nil {
-		return err
-	}
-
-	info, err := d.Client.Info(ctx, client.InfoOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get docker info: %w", err)
-	}
-
-	if info.Info.Swarm.LocalNodeState == dockerTypesSwarm.LocalNodeStateActive && info.Info.Swarm.ControlAvailable {
-		hasServiceConfig := d.Config.hasServiceConfig()
-		if hasServiceConfig {
-			d.isSwarmManager = true
-			d.logger.Info("node is swarm manager, enabling swarm detection mode")
-		}
-
-		if !hasServiceConfig {
-			// we set to false cause user didnt provide service configuration even though we are a swarm manager
-			d.isSwarmManager = false
-			d.logger.Warn("node is swarm manager, but no service configuration provided - service monitoring will be disabled, if this is unintentional please apply constraints")
-		}
-	}
-
-	d.backoffFactory = newDockerBackOffFactory()
-
-	return nil
-}
-
-func (d *DockerSource) ConfigureByDSN(_ context.Context, dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	var err error
-
-	parsedURL, err := url.Parse(dsn)
-	if err != nil {
-		return fmt.Errorf("failed to parse DSN %s: %w", dsn, err)
-	}
-
-	if parsedURL.Scheme != d.GetName() {
-		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
-	}
-
-	d.Config = DockerConfiguration{
-		FollowStdout:  true,
-		FollowStdErr:  true,
-		CheckInterval: "1s",
-	}
-	d.Config.UniqueId = uuid
-	d.Config.ContainerName = make([]string, 0)
-	d.Config.ContainerID = make([]string, 0)
-	d.runningContainerState = tracker.NewTracker[*ContainerConfig]()
-	d.runningServiceState = tracker.NewTracker[*ContainerConfig]()
-	d.Config.Mode = configuration.CAT_MODE
-	d.logger = logger
-	d.Config.Labels = labels
-
-	opts := []client.Opt{
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	}
-
-	d.containerLogsOptions = &client.ContainerLogsOptions{
-		ShowStdout: d.Config.FollowStdout,
-		ShowStderr: d.Config.FollowStdErr,
-		Follow:     false,
-	}
-
-	containerNameOrID := parsedURL.Host
-
-	if containerNameOrID == "" {
-		return fmt.Errorf("empty %s DSN", d.GetName()+"://")
-	}
-
-	d.Config.ContainerName = append(d.Config.ContainerName, containerNameOrID)
-	// we add it as an ID also so user can provide docker name or docker ID
-	d.Config.ContainerID = append(d.Config.ContainerID, containerNameOrID)
-
-	parameters := parsedURL.Query()
-
-	for k, v := range parameters {
-		switch k {
-		case "log_level":
-			if len(v) != 1 {
-				return errors.New("only one 'log_level' parameters is required, not many")
-			}
-			lvl, err := log.ParseLevel(v[0])
-			if err != nil {
-				return fmt.Errorf("unknown level %s: %w", v[0], err)
-			}
-			d.logger.Logger.SetLevel(lvl)
-		case "until":
-			if len(v) != 1 {
-				return errors.New("only one 'until' parameters is required, not many")
-			}
-			d.containerLogsOptions.Until = v[0]
-		case "since":
-			if len(v) != 1 {
-				return errors.New("only one 'since' parameters is required, not many")
-			}
-			d.containerLogsOptions.Since = v[0]
-		case "follow_stdout":
-			if len(v) != 1 {
-				return errors.New("only one 'follow_stdout' parameters is required, not many")
-			}
-			followStdout, err := strconv.ParseBool(v[0])
-			if err != nil {
-				return fmt.Errorf("parsing 'follow_stdout' parameters: %s", err)
-			}
-			d.Config.FollowStdout = followStdout
-			d.containerLogsOptions.ShowStdout = followStdout
-		case "follow_stderr":
-			if len(v) != 1 {
-				return errors.New("only one 'follow_stderr' parameters is required, not many")
-			}
-			followStdErr, err := strconv.ParseBool(v[0])
-			if err != nil {
-				return fmt.Errorf("parsing 'follow_stderr' parameters: %s", err)
-			}
-			d.Config.FollowStdErr = followStdErr
-			d.containerLogsOptions.ShowStderr = followStdErr
-		case "docker_host":
-			if len(v) != 1 {
-				return errors.New("only one 'docker_host' parameters is required, not many")
-			}
-			opts = append(opts, client.WithHost(v[0]))
-		}
-	}
-
-	d.Client, err = client.New(opts...)
-	if err != nil {
-		return err
-	}
-
-	d.backoffFactory = newDockerBackOffFactory()
-
-	return nil
-}
-
-func (d *DockerSource) GetMode() string {
-	return d.Config.Mode
-}
-
-// SupportedModes returns the supported modes by the acquisition module
-func (*DockerSource) SupportedModes() []string {
-	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
-}
-
 // OneShotAcquisition reads a set of file and returns when done
-func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (d *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 
 	runningContainers, err := d.Client.ContainerList(ctx, client.ContainerListOptions{})
@@ -459,110 +129,7 @@ func (d *DockerSource) OneShotAcquisition(ctx context.Context, out chan pipeline
 	return nil
 }
 
-func (*DockerSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
-}
-
-func (*DockerSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{metrics.DockerDatasourceLinesRead}
-}
-
-func (*DockerSource) GetName() string {
-	return "docker"
-}
-
-func (*DockerSource) CanRun() error {
-	return nil
-}
-
-func (d *DockerSource) getContainerTTY(ctx context.Context, containerID string) bool {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
-	if err != nil {
-		return false
-	}
-
-	return containerDetails.Container.Config.Tty
-}
-
-func (d *DockerSource) getContainerLabels(ctx context.Context, containerID string) map[string]any {
-	containerDetails, err := d.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
-	if err != nil {
-		return map[string]any{}
-	}
-
-	return parseLabels(containerDetails.Container.Config.Labels)
-}
-
-func (d *DockerSource) processCrowdsecLabels(parsedLabels map[string]any, entityID string, entityType string) (map[string]string, error) {
-	if len(parsedLabels) == 0 {
-		d.logger.Tracef("%s has no 'crowdsec' labels set, ignoring %s: %s", entityType, entityType, entityID)
-		return nil, errors.New("no crowdsec labels")
-	}
-
-	if _, ok := parsedLabels["enable"]; !ok {
-		d.logger.Errorf("%s has 'crowdsec' labels set but no 'crowdsec.enable' key found", entityType)
-		return nil, errors.New("no crowdsec.enable key")
-	}
-
-	enable, ok := parsedLabels["enable"].(string)
-	if !ok {
-		d.logger.Errorf("%s has 'crowdsec.enable' label set but it's not a string", entityType)
-		return nil, errors.New("crowdsec.enable not a string")
-	}
-
-	if strings.ToLower(enable) != "true" {
-		d.logger.Debugf("%s has 'crowdsec.enable' label not set to true ignoring %s: %s", entityType, entityType, entityID)
-		return nil, errors.New("crowdsec.enable not true")
-	}
-
-	if _, ok = parsedLabels["labels"]; !ok {
-		d.logger.Errorf("%s has 'crowdsec.enable' label set to true but no 'labels' keys found", entityType)
-		return nil, errors.New("no labels key")
-	}
-
-	labelsTypeCast, ok := parsedLabels["labels"].(map[string]any)
-	if !ok {
-		d.logger.Errorf("%s has 'crowdsec.enable' label set to true but 'labels' is not a map", entityType)
-		return nil, errors.New("labels not a map")
-	}
-
-	d.logger.Debugf("%s labels %+v", entityType, labelsTypeCast)
-
-	labels := make(map[string]string)
-
-	for k, v := range labelsTypeCast {
-		if v, ok := v.(string); ok {
-			log.Debugf("label %s is a string with value %s", k, v)
-			labels[k] = v
-			continue
-		}
-
-		d.logger.Errorf("label %s is not a string", k)
-	}
-
-	return labels, nil
-}
-
-// NewContainerConfig creates per-container log options by copying the base options
-func NewContainerConfig(baseOpts *client.ContainerLogsOptions, id string, name string, labels map[string]string, tty bool) *ContainerConfig {
-	opts := &client.ContainerLogsOptions{
-		ShowStdout: baseOpts.ShowStdout,
-		ShowStderr: baseOpts.ShowStderr,
-		Follow:     baseOpts.Follow,
-		Since:      baseOpts.Since,
-		Until:      baseOpts.Until,
-	}
-
-	return &ContainerConfig{
-		ID:         id,
-		Name:       name,
-		Labels:     labels,
-		Tty:        tty,
-		logOptions: opts,
-	}
-}
-
-func (d *DockerSource) EvalContainer(ctx context.Context, container dockerContainer.Summary) *ContainerConfig {
+func (d *Source) EvalContainer(ctx context.Context, container dockerContainer.Summary) *ContainerConfig {
 	// fixed params
 	newConfig := func(name string, labels map[string]string) *ContainerConfig {
 		return NewContainerConfig(d.containerLogsOptions, container.ID, name, labels, d.getContainerTTY(ctx, container.ID))
@@ -622,7 +189,7 @@ func (d *DockerSource) EvalContainer(ctx context.Context, container dockerContai
 	return nil
 }
 
-func (d *DockerSource) EvalService(_ context.Context, service dockerTypesSwarm.Service) *ContainerConfig {
+func (d *Source) EvalService(_ context.Context, service dockerTypesSwarm.Service) *ContainerConfig {
 	// fixed params
 	newConfig := func(labels map[string]string) *ContainerConfig {
 		// Services don't use TTY
@@ -673,7 +240,7 @@ func (d *DockerSource) EvalService(_ context.Context, service dockerTypesSwarm.S
 	return nil
 }
 
-func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+func (d *Source) checkServices(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
 	// Track current running services for garbage collection
 	runningServicesID := make(map[string]bool)
 
@@ -727,7 +294,7 @@ func (d *DockerSource) checkServices(ctx context.Context, monitChan chan *Contai
 	return nil
 }
 
-func (d *DockerSource) checkContainers(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+func (d *Source) checkContainers(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
 	// to track for garbage collection
 	runningContainersID := make(map[string]bool)
 
@@ -782,7 +349,7 @@ type subscription struct {
     errs   <-chan error
 }
 
-func (d *DockerSource) trySubscribeEvents(ctx context.Context) (*subscription, error) {
+func (d *Source) trySubscribeEvents(ctx context.Context) (*subscription, error) {
 	filters := client.Filters{
 		"type": {
 			"container": true,
@@ -811,7 +378,7 @@ func (d *DockerSource) trySubscribeEvents(ctx context.Context) (*subscription, e
 // subscribeEvents will loop until it can successfully call d.Client.Events()
 // without immediately receiving an error. It applies exponential backoff on failures.
 // Returns the new (eventsChan, errChan) pair or an error if context/tomb is done.
-func (d *DockerSource) subscribeEvents(ctx context.Context) (*subscription, error) {
+func (d *Source) subscribeEvents(ctx context.Context) (*subscription, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -850,7 +417,7 @@ func (d *DockerSource) subscribeEvents(ctx context.Context) (*subscription, erro
 	return sub, nil
 }
 
-func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerConfig, containerDeleteChan chan *ContainerConfig, serviceChan chan *ContainerConfig, serviceDeleteChan chan *ContainerConfig) error {
+func (d *Source) Watch(ctx context.Context, containerChan chan *ContainerConfig, containerDeleteChan chan *ContainerConfig, serviceChan chan *ContainerConfig, serviceDeleteChan chan *ContainerConfig) error {
 	err := d.checkContainers(ctx, containerChan, containerDeleteChan)
 	if err != nil {
 		return err
@@ -920,7 +487,7 @@ func (d *DockerSource) Watch(ctx context.Context, containerChan chan *ContainerC
 	}
 }
 
-func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	d.t = t
 	containerChan := make(chan *ContainerConfig)
 	containerDeleteChan := make(chan *ContainerConfig)
@@ -942,10 +509,6 @@ func (d *DockerSource) StreamingAcquisition(ctx context.Context, out chan pipeli
 	return d.Watch(ctx, containerChan, containerDeleteChan, serviceChan, serviceDeleteChan)
 }
 
-func (d *DockerSource) Dump() any {
-	return d
-}
-
 func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) error {
 	for scanner.Scan() {
 		out <- scanner.Text()
@@ -955,7 +518,7 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 }
 
 // isContainerStillRunning checks if a container is still running via Docker API
-func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
+func (d *Source) isContainerStillRunning(ctx context.Context, container *ContainerConfig) bool {
 	if ctx.Err() != nil {
 		container.logger.Debugf("context canceled while checking container")
 		return false
@@ -986,7 +549,7 @@ func (d *DockerSource) isContainerStillRunning(ctx context.Context, container *C
 }
 
 // isServiceStillRunning checks if a service still exists via Docker API
-func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
+func (d *Source) isServiceStillRunning(ctx context.Context, service *ContainerConfig) bool {
 	if ctx.Err() != nil {
 		service.logger.Debugf("context canceled while checking service")
 		return false
@@ -1010,7 +573,7 @@ func (d *DockerSource) isServiceStillRunning(ctx context.Context, service *Conta
 	return true
 }
 
-func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
+func (d *Source) TailContainer(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
 	container.logger.Info("start monitoring")
 
 	// we'll use just the interval generator, won't call backoff.Retry()
@@ -1057,7 +620,7 @@ func (d *DockerSource) TailContainer(ctx context.Context, container *ContainerCo
 	}
 }
 
-func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
+func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
 	dockerReader, err := d.Client.ContainerLogs(ctx, container.ID, *container.logOptions)
 	if err != nil {
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
@@ -1122,7 +685,7 @@ func (d *DockerSource) tailContainerAttempt(ctx context.Context, container *Cont
 	}
 }
 
-func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
+func (d *Source) TailService(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, deleteChan chan *ContainerConfig) error {
 	service.logger.Info("start monitoring")
 
 	// we'll use just the interval generator, won't call backoff.Retry()
@@ -1170,7 +733,7 @@ func (d *DockerSource) TailService(ctx context.Context, service *ContainerConfig
 	}
 }
 
-func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
+func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfig, outChan chan pipeline.Event, bo backoff.BackOff) error {
 	// For services, we need to get the service logs using the service logs API
 	// Docker service logs aggregates logs from all running tasks of the service
 	logOptions := client.ServiceLogsOptions{
@@ -1240,7 +803,7 @@ func (d *DockerSource) tailServiceAttempt(ctx context.Context, service *Containe
 	}
 }
 
-func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
+func (d *Source) ContainerManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
 	d.logger.Info("Container Manager started")
 
 	for {
@@ -1280,7 +843,7 @@ func (d *DockerSource) ContainerManager(ctx context.Context, in chan *ContainerC
 	}
 }
 
-func (d *DockerSource) ServiceManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
+func (d *Source) ServiceManager(ctx context.Context, in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan pipeline.Event) error {
 	d.logger.Info("Service Manager started")
 
 	for {
