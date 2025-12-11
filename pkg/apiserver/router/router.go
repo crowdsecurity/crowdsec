@@ -38,6 +38,38 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// our middleware chain above, so logging/recovery/gzip all work correctly
 }
 
+// findPatternWithVariables matches a request path against patterns with variables
+func (r *Router) findPatternWithVariables(path, method string) string {
+	bestMatch := ""
+	bestMatchPattern := ""
+
+	for storedPattern, routePattern := range r.patternMap {
+		// Extract method and path from stored pattern
+		storedMethod := ""
+		patternPath := storedPattern
+		if idx := strings.Index(storedPattern, " "); idx > 0 {
+			storedMethod = storedPattern[:idx]
+			patternPath = storedPattern[idx+1:]
+		}
+
+		// Skip if method doesn't match (unless stored pattern has no method)
+		if storedMethod != "" && storedMethod != method {
+			continue
+		}
+
+		// Check if pattern has variables
+		if strings.Contains(patternPath, "{") && matchesPattern(path, patternPath) {
+			// Use the longest matching pattern (most specific)
+			if len(patternPath) > len(bestMatch) {
+				bestMatch = patternPath
+				bestMatchPattern = routePattern
+			}
+		}
+	}
+
+	return bestMatchPattern
+}
+
 // patternSettingMiddleware sets the route pattern in context before other middleware runs
 // This must be the first middleware so metrics and logging see the template
 func (r *Router) patternSettingMiddleware() Middleware {
@@ -48,51 +80,22 @@ func (r *Router) patternSettingMiddleware() Middleware {
 			methodPath := req.Method + " " + req.URL.Path
 			if pattern, ok := r.patternMap[methodPath]; ok {
 				req = SetRoutePattern(req, pattern)
-			} else {
-				// Try path-only exact match (for routes without method restriction)
-				if pattern, ok := r.patternMap[req.URL.Path]; ok {
-					req = SetRoutePattern(req, pattern)
-				} else {
-					// Try to match against patterns with variables (e.g., /v1/alerts/{id} matches /v1/alerts/123)
-					// Match by checking if the request path matches the pattern structure
-					path := req.URL.Path
-					method := req.Method
-					bestMatch := ""
-					bestMatchPattern := ""
-
-					for storedPattern, routePattern := range r.patternMap {
-						// Extract method and path from stored pattern
-						storedMethod := ""
-						patternPath := storedPattern
-						if idx := strings.Index(storedPattern, " "); idx > 0 {
-							storedMethod = storedPattern[:idx]
-							patternPath = storedPattern[idx+1:]
-						}
-
-						// Skip if method doesn't match (unless stored pattern has no method)
-						if storedMethod != "" && storedMethod != method {
-							continue
-						}
-
-						// Check if pattern has variables
-						if strings.Contains(patternPath, "{") {
-							// Convert pattern to regex-like matching
-							// Replace {variable} with a wildcard and check if path matches
-							if r.matchesPattern(path, patternPath) {
-								// Use the longest matching pattern (most specific)
-								if len(patternPath) > len(bestMatch) {
-									bestMatch = patternPath
-									bestMatchPattern = routePattern
-								}
-							}
-						}
-					}
-
-					if bestMatchPattern != "" {
-						req = SetRoutePattern(req, bestMatchPattern)
-					}
-				}
+				next.ServeHTTP(w, req)
+				return
 			}
+
+			// Try path-only exact match (for routes without method restriction)
+			if pattern, ok := r.patternMap[req.URL.Path]; ok {
+				req = SetRoutePattern(req, pattern)
+				next.ServeHTTP(w, req)
+				return
+			}
+
+			// Try to match against patterns with variables (e.g., /v1/alerts/{id} matches /v1/alerts/123)
+			if bestMatchPattern := r.findPatternWithVariables(req.URL.Path, req.Method); bestMatchPattern != "" {
+				req = SetRoutePattern(req, bestMatchPattern)
+			}
+
 			next.ServeHTTP(w, req)
 		})
 	}
@@ -100,7 +103,7 @@ func (r *Router) patternSettingMiddleware() Middleware {
 
 // matchesPattern checks if a concrete path matches a pattern with variables
 // e.g., /v1/alerts/123 matches /v1/alerts/{alert_id}
-func (r *Router) matchesPattern(path, pattern string) bool {
+func matchesPattern(path, pattern string) bool {
 	// Split both path and pattern by /
 	pathParts := strings.Split(strings.Trim(path, "/"), "/")
 	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
@@ -109,7 +112,7 @@ func (r *Router) matchesPattern(path, pattern string) bool {
 		return false
 	}
 
-	for i := range len(pathParts) {
+	for i := range pathParts {
 		// If pattern part is a variable {something}, it matches any path part
 		if strings.HasPrefix(patternParts[i], "{") && strings.HasSuffix(patternParts[i], "}") {
 			continue
