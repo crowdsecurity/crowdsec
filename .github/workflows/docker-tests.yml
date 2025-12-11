@@ -42,7 +42,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
           tags: crowdsecurity/crowdsec:test${{ matrix.flavor == 'full' && '' || '-' }}${{ matrix.flavor == 'full' && '' || matrix.flavor }}
           target: ${{ matrix.flavor == 'debian' && 'full' || matrix.flavor }}
           platforms: linux/amd64
@@ -58,17 +58,17 @@ jobs:
         with:
           version: 0.5.24
           enable-cache: true
-          working-directory: "./docker/test"
+          working-directory: "./build/docker/test"
 
       - name: "Set up Python"
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
-          python-version-file: "./docker/test/.python-version"
+          python-version-file: "./build/docker/test/.python-version"
 
       # running serially to reduce test flakiness
       - name: Lint and run the tests
         run: |
-          cd docker/test
+          cd build/docker/test
           uv sync --all-extras --dev --locked
           uv run ruff check
           uv run basedpyright

@@ -44,8 +44,8 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/co
 
 COPY --from=build /go/bin/yq /usr/local/bin/crowdsec /usr/local/bin/cscli /usr/local/bin/
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
-COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
-COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
+COPY --from=build /go/src/crowdsec/build/docker/docker_start.sh /
+COPY --from=build /go/src/crowdsec/build/docker/config.yaml /staging/etc/crowdsec/config.yaml
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
