@@ -76,14 +76,12 @@ func TestBucket(t *testing.T) {
 			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
 			wg.Add(1)
-			go func() error {
+			go func() {
 				defer wg.Done()
 
 				if err := testOneBucket(t, hub, fname); err != nil {
 					errCh <- fmt.Errorf("Test '%s' failed : %s", fname, err)
 				}
-
-				return nil
 			}()
 		}
 
@@ -184,7 +182,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		log.Warning("end of test file")
 	}
 	var latest_ts time.Time
-	ctx := context.Background()
+	ctx := t.Context()
 	for _, in := range tf.Lines {
 		// just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
