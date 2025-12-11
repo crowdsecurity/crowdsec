@@ -101,7 +101,7 @@ func startBucketRoutines(cConfig *csconfig.Config) {
 	tombCtx, cancel := context.WithCancel(context.Background())
 	go func() {
 		log.Warning("Waiting for dying outputsTomb")
-		<-outputsTomb.Dying()
+		<-bucketsTomb.Dying()
 		cancel()
 	}()
 
