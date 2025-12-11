@@ -149,7 +149,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
-func LeakRoutine(ctx context.Context, leaky *Leaky) error {
+func LeakRoutine(ctx context.Context, leaky *Leaky) {
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
@@ -185,7 +185,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 		if err != nil {
 			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 			close(leaky.Signal)
-			return fmt.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
+			return
 		}
 	}
 
@@ -242,7 +242,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 			}
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
-			return nil
+			return
 		/*suiciiiide*/
 		case <-leaky.Suicide:
 			close(leaky.Signal)
@@ -250,7 +250,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 			leaky.logger.Debugf("Suicide triggered")
 			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			leaky.logger.Tracef("Returning from leaky routine.")
-			return nil
+			return
 		/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTickerChan:
 			var (
@@ -289,7 +289,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 
 			leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
-			return nil
+			return
 		case <-ctx.Done():
 			leaky.logger.Debugf("Bucket externally killed, return")
 			for len(leaky.Out) > 0 {
@@ -297,7 +297,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) error {
 				leaky.overflow(ofw)
 			}
 			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
-			return nil
+			return
 
 		}
 	End:

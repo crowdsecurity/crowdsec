@@ -186,7 +186,7 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
 		if !stored {
-			go func() error {
+			go func() {
 				ctx, cancel := context.WithCancel(ctx)
 				fresh_bucket.cancel = cancel
 				return LeakRoutine(ctx, fresh_bucket)
