@@ -14,10 +14,29 @@ import (
 // Context key for client IP
 type clientIPKey struct{}
 
+// Context key for route pattern
+type routePatternKey struct{}
+
 // SetClientIP stores the resolved client IP in the request context
 // This should be called by middleware that resolves the IP from trusted proxy headers
 func SetClientIP(r *http.Request, ip string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), clientIPKey{}, ip))
+}
+
+// SetRoutePattern stores the route pattern (template) in the request context
+// This is used for metrics to avoid high cardinality from concrete paths
+func SetRoutePattern(r *http.Request, pattern string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), routePatternKey{}, pattern))
+}
+
+// GetRoutePattern retrieves the route pattern from the request context
+// Falls back to r.URL.Path if not set (for backwards compatibility)
+func GetRoutePattern(r *http.Request) string {
+	if pattern, ok := r.Context().Value(routePatternKey{}).(string); ok && pattern != "" {
+		return pattern
+	}
+	// If pattern not set, return empty string so invalid endpoint can be used
+	return ""
 }
 
 // GetClientIP retrieves the client IP from the request context

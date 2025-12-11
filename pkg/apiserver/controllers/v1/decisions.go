@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"strconv"
 	"time"
@@ -149,16 +150,23 @@ func writeStartupDecisions(w http.ResponseWriter, r *http.Request, filters map[s
 	ctx := r.Context()
 	flusher, hasFlusher := w.(http.Flusher)
 
+	// Work on a copy of filters to avoid mutating the shared map
+	filtersCopy := make(map[string][]string, len(filters)+2)
+	maps.Copy(filtersCopy, filters)
+
 	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
+	filtersCopy["limit"] = []string{limitStr}
 
 	for {
 		if lastId > 0 {
 			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
+			filtersCopy["id_gt"] = []string{lastIdStr}
+		} else {
+			// Clear id_gt if it exists from previous iteration
+			delete(filtersCopy, "id_gt")
 		}
 
-		data, err := dbFunc(ctx, filters)
+		data, err := dbFunc(ctx, filtersCopy)
 		if err != nil {
 			return err
 		}
@@ -211,16 +219,23 @@ func writeDeltaDecisions(w http.ResponseWriter, r *http.Request, filters map[str
 	ctx := r.Context()
 	flusher, hasFlusher := w.(http.Flusher)
 
+	// Work on a copy of filters to avoid mutating the shared map
+	filtersCopy := make(map[string][]string, len(filters)+2)
+	maps.Copy(filtersCopy, filters)
+
 	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
+	filtersCopy["limit"] = []string{limitStr}
 
 	for {
 		if lastId > 0 {
 			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
+			filtersCopy["id_gt"] = []string{lastIdStr}
+		} else {
+			// Clear id_gt if it exists from previous iteration
+			delete(filtersCopy, "id_gt")
 		}
 
-		data, err := dbFunc(ctx, lastPull, filters)
+		data, err := dbFunc(ctx, lastPull, filtersCopy)
 		if err != nil {
 			return err
 		}

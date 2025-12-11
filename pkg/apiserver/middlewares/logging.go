@@ -1,7 +1,11 @@
 package middlewares
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -49,6 +53,9 @@ func LoggingMiddleware(logger *log.Entry) router.Middleware {
 			// Only write if the logger level allows info-level messages or more verbose (debug/trace)
 			// IsLevelEnabled returns true if logger level >= InfoLevel (i.e., Info, Debug, or Trace)
 			if logger.Logger.IsLevelEnabled(log.InfoLevel) {
+				// Use concrete path (r.URL.Path) for access logs to show actual requests
+				// This is useful for debugging, e.g., seeing which IPs bouncers check in live mode
+				// Prometheus metrics use route templates to keep cardinality bounded
 				logMsg := fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
 					clientIP,
 					start.Format(time.RFC1123),
@@ -68,6 +75,8 @@ func LoggingMiddleware(logger *log.Entry) router.Middleware {
 }
 
 // responseWriter wraps http.ResponseWriter to capture status code
+// It also forwards optional interfaces (Flusher, Hijacker, Pusher, ReaderFrom)
+// to ensure streaming and connection upgrades work correctly
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -76,4 +85,36 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Flush implements http.Flusher if the underlying ResponseWriter supports it
+func (rw *responseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+// Hijack implements http.Hijacker if the underlying ResponseWriter supports it
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, errors.New("underlying ResponseWriter does not implement http.Hijacker")
+}
+
+// Push implements http.Pusher if the underlying ResponseWriter supports it
+func (rw *responseWriter) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := rw.ResponseWriter.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return http.ErrNotSupported
+}
+
+// ReadFrom implements io.ReaderFrom if the underlying ResponseWriter supports it
+func (rw *responseWriter) ReadFrom(src io.Reader) (int64, error) {
+	if readerFrom, ok := rw.ResponseWriter.(io.ReaderFrom); ok {
+		return readerFrom.ReadFrom(src)
+	}
+	// Fallback to standard implementation if not supported
+	return io.Copy(rw.ResponseWriter, src)
 }

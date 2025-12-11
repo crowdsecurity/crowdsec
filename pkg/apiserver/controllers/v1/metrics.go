@@ -32,7 +32,7 @@ func PrometheusMachinesMiddleware() router.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			machineID, _ := getMachineIDFromContext(r)
 			if machineID != "" {
-				route := r.URL.Path
+				route := router.GetRoutePattern(r)
 				if route == "" {
 					route = "invalid-endpoint"
 				}
@@ -53,7 +53,7 @@ func PrometheusBouncersMiddleware() router.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			bouncer, _ := getBouncerFromContext(r)
 			if bouncer != nil {
-				route := r.URL.Path
+				route := router.GetRoutePattern(r)
 				if route == "" {
 					route = "invalid-endpoint"
 				}
@@ -74,7 +74,7 @@ func PrometheusMiddleware() router.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			startTime := time.Now()
 
-			route := r.URL.Path
+			route := router.GetRoutePattern(r)
 			if route == "" {
 				route = "invalid-endpoint"
 			}
