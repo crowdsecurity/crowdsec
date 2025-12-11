@@ -94,11 +94,12 @@ func (n *EmailPlugin) Configure(_ context.Context, config *protobufs.Config) (*p
 }
 
 func (n *EmailPlugin) Notify(_ context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.GetName()]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
-	}
+	name := notification.GetName()
+	cfg, ok := n.ConfigByName[name]
 
-	cfg := n.ConfigByName[notification.GetName()]
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
+	}
 
 	logger := baseLogger.Named(cfg.Name)
 

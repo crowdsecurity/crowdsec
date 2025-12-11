@@ -43,17 +43,18 @@ type Payload struct {
 }
 
 func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
-		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", notification.GetName())
-	}
+	name := notification.GetName()
+	cfg, ok := s.PluginConfigByName[name]
 
-	cfg := s.PluginConfigByName[notification.GetName()]
+	if !ok {
+		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", name)
+	}
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.GetName()))
+	logger.Info(fmt.Sprintf("received notify signal for %s config", name))
 
 	p := Payload{Event: notification.GetText()}
 

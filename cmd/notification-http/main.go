@@ -117,19 +117,22 @@ func getTLSClient(c *PluginConfig) error {
 }
 
 func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
-	}
+	name := notification.GetName()
+	cfg, ok := s.PluginConfigByName[name]
 
-	cfg := s.PluginConfigByName[notification.GetName()]
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
+	}
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("received signal for %s config", notification.GetName()))
+	logger.Info(fmt.Sprintf("received signal for %s config", name))
 
-	request, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, bytes.NewReader([]byte(notification.GetText())))
+	text := notification.GetText()
+
+	request, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, bytes.NewReader([]byte(text)))
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +142,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 		request.Header.Add(headerName, headerValue)
 	}
 
-	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, notification.GetText()))
+	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, text))
 
 	resp, err := cfg.Client.Do(request.WithContext(ctx))
 	if err != nil {

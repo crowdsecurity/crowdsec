@@ -36,21 +36,25 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.GetName()]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
-	}
+	name := notification.GetName()
 
-	cfg := n.ConfigByName[notification.GetName()]
+	cfg, ok := n.ConfigByName[name]
+
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
+	}
 
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.GetName()))
-	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.GetText()))
+	text := notification.GetText()
+
+	logger.Info(fmt.Sprintf("found notify signal for %s config", name))
+	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, text))
 
 	err := slack.PostWebhookContext(ctx, cfg.Webhook, &slack.WebhookMessage{
-		Text:      notification.GetText(),
+		Text:      text,
 		Channel:   cfg.Channel,
 		Username:  cfg.Username,
 		IconEmoji: cfg.IconEmoji,
