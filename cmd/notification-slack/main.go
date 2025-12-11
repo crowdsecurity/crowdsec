@@ -15,13 +15,13 @@ import (
 )
 
 type PluginConfig struct {
-	Name      string  `yaml:"name"`
-	Webhook   string  `yaml:"webhook"`
-	Channel   string  `yaml:"channel"`
-	Username  string  `yaml:"username"`
-	IconEmoji string  `yaml:"icon_emoji"`
-	IconURL   string  `yaml:"icon_url"`
-	LogLevel  *string `yaml:"log_level"`
+	Name      string `yaml:"name"`
+	Webhook   string `yaml:"webhook"`
+	Channel   string `yaml:"channel"`
+	Username  string `yaml:"username"`
+	IconEmoji string `yaml:"icon_emoji"`
+	IconURL   string `yaml:"icon_url"`
+	LogLevel  string `yaml:"log_level"`
 }
 type Notify struct {
 	protobufs.UnimplementedNotifierServer
@@ -44,8 +44,8 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	text := notification.GetText()

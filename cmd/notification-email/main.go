@@ -37,8 +37,8 @@ var EncryptionStringToType map[string]mail.Encryption = map[string]mail.Encrypti
 }
 
 type PluginConfig struct {
-	Name     string  `yaml:"name"`
-	LogLevel *string `yaml:"log_level"`
+	Name     string `yaml:"name"`
+	LogLevel string `yaml:"log_level"`
 
 	SMTPHost       string   `yaml:"smtp_host"`
 	SMTPPort       int      `yaml:"smtp_port"`
@@ -103,8 +103,8 @@ func (n *EmailPlugin) Notify(_ context.Context, notification *protobufs.Notifica
 
 	logger := baseLogger.Named(cfg.Name)
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Debug("got notification")

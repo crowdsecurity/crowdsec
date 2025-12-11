@@ -26,10 +26,10 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 type PluginConfig struct {
-	Name     string  `yaml:"name"`
-	URL      string  `yaml:"url"`
-	Token    string  `yaml:"token"`
-	LogLevel *string `yaml:"log_level"`
+	Name     string `yaml:"name"`
+	URL      string `yaml:"url"`
+	Token    string `yaml:"token"`
+	LogLevel string `yaml:"log_level"`
 }
 
 type Splunk struct {
@@ -50,8 +50,8 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", name)
 	}
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Info(fmt.Sprintf("received notify signal for %s config", name))

@@ -14,9 +14,9 @@ import (
 )
 
 type PluginConfig struct {
-	Name       string  `yaml:"name"`
-	LogLevel   *string `yaml:"log_level"`
-	OutputFile *string `yaml:"output_file"`
+	Name       string `yaml:"name"`
+	LogLevel   string `yaml:"log_level"`
+	OutputFile string `yaml:"output_file"`
 }
 
 type DummyPlugin struct {
@@ -39,8 +39,8 @@ func (s *DummyPlugin) Notify(_ context.Context, notification *protobufs.Notifica
 		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Info(fmt.Sprintf("received signal for %s config", name))
@@ -49,8 +49,8 @@ func (s *DummyPlugin) Notify(_ context.Context, notification *protobufs.Notifica
 
 	logger.Debug(text)
 
-	if cfg.OutputFile != nil && *cfg.OutputFile != "" {
-		f, err := os.OpenFile(*cfg.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if cfg.OutputFile != "" {
+		f, err := os.OpenFile(cfg.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Cannot open notification file: %s", err))
 		}

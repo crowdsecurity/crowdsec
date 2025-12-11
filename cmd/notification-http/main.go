@@ -27,7 +27,7 @@ type PluginConfig struct {
 	Headers             map[string]string `yaml:"headers"`
 	SkipTLSVerification bool              `yaml:"skip_tls_verification"`
 	Method              string            `yaml:"method"`
-	LogLevel            *string           `yaml:"log_level"`
+	LogLevel            string            `yaml:"log_level"`
 	Client              *http.Client      `yaml:"-"`
 	CertPath            string            `yaml:"cert_path"`
 	KeyPath             string            `yaml:"key_path"`
@@ -124,8 +124,8 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Info(fmt.Sprintf("received signal for %s config", name))

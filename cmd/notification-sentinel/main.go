@@ -20,11 +20,11 @@ import (
 )
 
 type PluginConfig struct {
-	Name       string  `yaml:"name"`
-	CustomerID string  `yaml:"customer_id"`
-	SharedKey  string  `yaml:"shared_key"`
-	LogType    string  `yaml:"log_type"`
-	LogLevel   *string `yaml:"log_level"`
+	Name       string `yaml:"name"`
+	CustomerID string `yaml:"customer_id"`
+	SharedKey  string `yaml:"shared_key"`
+	LogType    string `yaml:"log_type"`
+	LogLevel   string `yaml:"log_level"`
 }
 
 type SentinelPlugin struct {
@@ -66,8 +66,8 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Info("received notification for sentinel config", "name", name)
