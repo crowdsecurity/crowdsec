@@ -189,7 +189,7 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 			go func() {
 				ctx, cancel := context.WithCancel(ctx)
 				fresh_bucket.cancel = cancel
-				return LeakRoutine(ctx, fresh_bucket)
+				LeakRoutine(ctx, fresh_bucket)
 			}()
 			biface = fresh_bucket
 			//once the created goroutine is ready to process event, we can return it

@@ -183,7 +183,7 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 
 	startParserRoutines(cConfig, parsers)
 
-	startBucketRoutines(cConfig)
+	startBucketRoutines(cConfig) //nolint:contextcheck // remove the global bucketsTomb later
 
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
