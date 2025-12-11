@@ -33,16 +33,13 @@ func PrometheusMachinesMiddleware() router.Middleware {
 			machineID, _ := getMachineIDFromContext(r)
 			if machineID != "" {
 				route := router.GetRoutePattern(r)
-				if route == "" {
-					route = "invalid-endpoint"
-				}
+				// routePatternMiddleware always sets a pattern (UnknownRoutePattern for unmatched routes)
 				metrics.LapiMachineHits.With(prometheus.Labels{
 					"machine": machineID,
 					"route":   route,
 					"method":  r.Method,
 				}).Inc()
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -54,16 +51,13 @@ func PrometheusBouncersMiddleware() router.Middleware {
 			bouncer, _ := getBouncerFromContext(r)
 			if bouncer != nil {
 				route := router.GetRoutePattern(r)
-				if route == "" {
-					route = "invalid-endpoint"
-				}
+				// routePatternMiddleware always sets a pattern (UnknownRoutePattern for unmatched routes)
 				metrics.LapiBouncerHits.With(prometheus.Labels{
 					"bouncer": bouncer.Name,
 					"route":   route,
 					"method":  r.Method,
 				}).Inc()
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -72,21 +66,16 @@ func PrometheusBouncersMiddleware() router.Middleware {
 func PrometheusMiddleware() router.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			startTime := time.Now()
-
 			route := router.GetRoutePattern(r)
-			if route == "" {
-				route = "invalid-endpoint"
-			}
-
+			// routePatternMiddleware always sets a pattern (UnknownRoutePattern for unmatched routes)
+			// Start timing just before handler execution to avoid including pattern lookup overhead
+			startTime := time.Now()
+			next.ServeHTTP(w, r)
+			elapsed := time.Since(startTime)
 			metrics.LapiRouteHits.With(prometheus.Labels{
 				"route":  route,
 				"method": r.Method,
 			}).Inc()
-
-			next.ServeHTTP(w, r)
-
-			elapsed := time.Since(startTime)
 			metrics.LapiResponseTime.With(prometheus.Labels{"method": r.Method, "endpoint": route}).Observe(elapsed.Seconds())
 		})
 	}

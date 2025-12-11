@@ -43,6 +43,9 @@ func (c *Controller) Init() error {
 
 	*/
 
+	// Build router after all routes are registered
+	c.Router.Build()
+
 	return nil
 }
 

@@ -9,20 +9,25 @@ import (
 type Router struct {
 	mux            *http.ServeMux
 	middleware     []Middleware
-	wrappedHandler http.Handler      // Cached handler with middleware chain
-	patternMap     map[string]string // Maps fullPattern (method + path) to route pattern (path only)
+	wrappedHandler http.Handler      // Cached handler with middleware chain (built once via Build())
+	patternMap     map[string]string // Maps fullPattern (method + path) to route template
+	built          bool              // Whether Build() has been called
 }
+
+const (
+	// UnknownRoutePattern is the sentinel pattern used for unmatched routes (404/405)
+	// This ensures metrics cardinality stays bounded for unknown routes
+	UnknownRoutePattern = "invalid-endpoint"
+)
 
 // New creates a new Router instance
 func New() *Router {
-	r := &Router{
+	return &Router{
 		mux:        http.NewServeMux(),
 		middleware: []Middleware{},
 		patternMap: make(map[string]string),
+		built:      false,
 	}
-	// Initialize wrapped handler (no middleware yet, so just the mux)
-	r.wrappedHandler = r.mux
-	return r
 }
 
 // ServeMux returns the underlying http.ServeMux for use with http.Server
@@ -32,18 +37,31 @@ func (r *Router) ServeMux() *http.ServeMux {
 
 // ServeHTTP implements http.Handler so Router can be used directly as a handler
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Use cached wrapped handler (built when middleware is added)
+	// Use cached wrapped handler (built via Build())
 	r.wrappedHandler.ServeHTTP(w, req)
 	// Note: http.ServeMux will handle 404/405 with its default responses, but they still go through
 	// our middleware chain above, so logging/recovery/gzip all work correctly
 }
 
-// findPatternWithVariables matches a request path against patterns with variables
-func (r *Router) findPatternWithVariables(path, method string) string {
-	bestMatch := ""
-	bestMatchPattern := ""
+// matchPattern finds the route template that matches the given method and path
+// Supports path variables (e.g., /v1/alerts/{alert_id} matches /v1/alerts/123)
+// Returns UnknownRoutePattern if no match is found
+// Safe to call without locks since patternMap is read-only after Build()
+func (r *Router) matchPattern(method, path string) string {
+	// Try exact match first: "GET /v1/alerts/{alert_id}"
+	methodPath := method + " " + path
+	if pattern, ok := r.patternMap[methodPath]; ok {
+		return pattern
+	}
 
-	for storedPattern, routePattern := range r.patternMap {
+	// Try path-only match: "/v1/alerts/{alert_id}"
+	if pattern, ok := r.patternMap[path]; ok {
+		return pattern
+	}
+
+	// Try to match against patterns with variables
+	// Compare segment by segment using matchesPattern helper
+	for storedPattern, template := range r.patternMap {
 		// Extract method and path from stored pattern
 		storedMethod := ""
 		patternPath := storedPattern
@@ -57,54 +75,19 @@ func (r *Router) findPatternWithVariables(path, method string) string {
 			continue
 		}
 
-		// Check if pattern has variables
+		// Check if pattern has variables and matches path
 		if strings.Contains(patternPath, "{") && matchesPattern(path, patternPath) {
-			// Use the longest matching pattern (most specific)
-			if len(patternPath) > len(bestMatch) {
-				bestMatch = patternPath
-				bestMatchPattern = routePattern
-			}
+			return template
 		}
 	}
 
-	return bestMatchPattern
-}
-
-// patternSettingMiddleware sets the route pattern in context before other middleware runs
-// This must be the first middleware so metrics and logging see the template
-func (r *Router) patternSettingMiddleware() Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			// Try to find matching pattern
-			// First try method + path exact match
-			methodPath := req.Method + " " + req.URL.Path
-			if pattern, ok := r.patternMap[methodPath]; ok {
-				req = SetRoutePattern(req, pattern)
-				next.ServeHTTP(w, req)
-				return
-			}
-
-			// Try path-only exact match (for routes without method restriction)
-			if pattern, ok := r.patternMap[req.URL.Path]; ok {
-				req = SetRoutePattern(req, pattern)
-				next.ServeHTTP(w, req)
-				return
-			}
-
-			// Try to match against patterns with variables (e.g., /v1/alerts/{id} matches /v1/alerts/123)
-			if bestMatchPattern := r.findPatternWithVariables(req.URL.Path, req.Method); bestMatchPattern != "" {
-				req = SetRoutePattern(req, bestMatchPattern)
-			}
-
-			next.ServeHTTP(w, req)
-		})
-	}
+	// Return sentinel pattern for unknown routes to bound metrics cardinality
+	return UnknownRoutePattern
 }
 
 // matchesPattern checks if a concrete path matches a pattern with variables
 // e.g., /v1/alerts/123 matches /v1/alerts/{alert_id}
 func matchesPattern(path, pattern string) bool {
-	// Split both path and pattern by /
 	pathParts := strings.Split(strings.Trim(path, "/"), "/")
 	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
 
@@ -126,14 +109,41 @@ func matchesPattern(path, pattern string) bool {
 	return true
 }
 
+// routePatternMiddleware sets the route pattern in context before other middleware runs
+// This must be the first middleware so metrics see the template pattern
+// Unknown routes get UnknownRoutePattern to bound metrics cardinality
+func (r *Router) routePatternMiddleware() Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			pattern := r.matchPattern(req.Method, req.URL.Path)
+			req = SetRoutePattern(req, pattern)
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
+// Build finalizes the router by building the wrapped handler with all middleware
+// This should be called once after all routes and middleware are registered
+// After Build(), the router is read-only and safe for concurrent use
+func (r *Router) Build() {
+	if r.built {
+		return // Already built, no-op
+	}
+
+	middlewares := make([]Middleware, 0, len(r.middleware)+1)
+	middlewares = append(middlewares, r.routePatternMiddleware())
+	middlewares = append(middlewares, r.middleware...)
+	r.wrappedHandler = ChainMiddleware(middlewares...)(r.mux)
+	r.built = true
+}
+
 // Use adds middleware to the router that will be applied to all routes
+// Must be called before Build()
 func (r *Router) Use(middlewares ...Middleware) {
+	if r.built {
+		panic("router: cannot add middleware after Build()")
+	}
 	r.middleware = append(r.middleware, middlewares...)
-	// Pattern setting middleware must run first, before other middleware
-	// so metrics and logging see the template instead of concrete paths
-	allMiddleware := []Middleware{r.patternSettingMiddleware()}
-	allMiddleware = append(allMiddleware, r.middleware...)
-	r.wrappedHandler = ChainMiddleware(allMiddleware...)(r.mux)
 }
 
 // Group creates a route group with a path prefix
@@ -155,29 +165,43 @@ func (r *Router) Group(prefix string) *Group {
 // Pattern can use Go 1.22+ path variables like /users/{id}
 // If method is empty, it matches all methods
 // Note: Router-level middleware is applied in ServeHTTP, not here, to ensure 404/405 also go through middleware
+// The pattern is stored for routePatternMiddleware to use for metrics
+// Must be called before Build()
 func (r *Router) HandleFunc(pattern, method string, handler http.HandlerFunc) {
+	if r.built {
+		panic("router: cannot register routes after Build()")
+	}
 	fullPattern := pattern
 	if method != "" {
 		fullPattern = method + " " + pattern
 	}
-	// Store pattern mapping for early pattern setting (before middleware)
+	// Store pattern mapping for routePatternMiddleware
 	r.patternMap[fullPattern] = pattern
-	// Also store without method for fallback matching
-	r.patternMap[pattern] = pattern
+	// Only store bare path entry for method-less handlers to avoid template conflicts
+	if method == "" {
+		r.patternMap[pattern] = pattern
+	}
 	r.mux.HandleFunc(fullPattern, handler)
 }
 
 // Handle registers a handler for the given pattern with optional method restriction
 // Note: Router-level middleware is applied in ServeHTTP, not here, to ensure 404/405 also go through middleware
+// The pattern is stored for routePatternMiddleware to use for metrics
+// Must be called before Build()
 func (r *Router) Handle(pattern, method string, handler http.Handler) {
+	if r.built {
+		panic("router: cannot register routes after Build()")
+	}
 	fullPattern := pattern
 	if method != "" {
 		fullPattern = method + " " + pattern
 	}
-	// Store pattern mapping for early pattern setting (before middleware)
+	// Store pattern mapping for routePatternMiddleware
 	r.patternMap[fullPattern] = pattern
-	// Also store without method for fallback matching
-	r.patternMap[pattern] = pattern
+	// Only store bare path entry for method-less handlers to avoid template conflicts
+	if method == "" {
+		r.patternMap[pattern] = pattern
+	}
 	r.mux.Handle(fullPattern, handler)
 }
 
@@ -220,14 +244,14 @@ func (g *Group) Use(middlewares ...Middleware) {
 func (g *Group) HandleFunc(pattern, method string, handler http.HandlerFunc) {
 	fullPattern := g.prefix + pattern
 
-	// Create wrapped handler with group middleware
+	// Apply group middleware
 	var wrapped http.Handler = handler
 	if len(g.middleware) > 0 {
 		wrapped = ChainMiddleware(g.middleware...)(handler)
 	}
 
 	// Register with router (router-level middleware is applied in ServeHTTP)
-	// Router.HandleFunc will set the route pattern in context
+	// Router.HandleFunc will store the pattern for routePatternMiddleware
 	g.router.HandleFunc(fullPattern, method, func(w http.ResponseWriter, r *http.Request) {
 		wrapped.ServeHTTP(w, r)
 	})
@@ -237,13 +261,13 @@ func (g *Group) HandleFunc(pattern, method string, handler http.HandlerFunc) {
 func (g *Group) Handle(pattern, method string, handler http.Handler) {
 	fullPattern := g.prefix + pattern
 
-	// Create wrapped handler with group middleware
+	// Apply group middleware
 	wrapped := handler
 	if len(g.middleware) > 0 {
 		wrapped = ChainMiddleware(g.middleware...)(handler)
 	}
 
 	// Register with router (router-level middleware is applied in ServeHTTP)
-	// Router.Handle will set the route pattern in context
+	// Router.Handle will store the pattern for routePatternMiddleware
 	g.router.Handle(fullPattern, method, wrapped)
 }
