@@ -28,8 +28,7 @@ import (
 
 const defaultPollInterval = 30 * time.Second
 
-// OneShotAcquisition reads a set of file and returns when done
-func (s *Source) OneShotAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("In oneshot")
 
 	for _, file := range s.files {
@@ -45,7 +44,7 @@ func (s *Source) OneShotAcquisition(_ context.Context, out chan pipeline.Event, 
 
 		s.logger.Infof("reading %s at once", file)
 
-		err = s.readFile(file, out, t)
+		err = s.readFile(ctx, file, out)
 		if err != nil {
 			return err
 		}
@@ -367,7 +366,7 @@ func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail
 	}
 }
 
-func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) readFile(ctx context.Context, filename string, out chan pipeline.Event) error {
 	var scanner *bufio.Scanner
 
 	logger := s.logger.WithField("oneshot", filename)
@@ -402,7 +401,7 @@ func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb
 
 	for scanner.Scan() {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			logger.Info("File datasource stopping")
 			return nil
 		default:
@@ -428,12 +427,8 @@ func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb
 
 	if err := scanner.Err(); err != nil {
 		logger.Errorf("Error while reading file: %s", err)
-		t.Kill(err)
-
 		return err
 	}
-
-	t.Kill(nil)
 
 	return nil
 }
