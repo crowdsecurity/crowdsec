@@ -33,13 +33,13 @@ func runTest(tests []cfgTest) error {
 
 func TestBadBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//empty
+		// empty
 		{BucketFactory{}, false, false},
-		//missing description
+		// missing description
 		{BucketFactory{Name: "test"}, false, false},
-		//missing type
+		// missing type
 		{BucketFactory{Name: "test", Description: "test1"}, false, false},
-		//bad type
+		// bad type
 		{BucketFactory{Name: "test", Description: "test1", Type: "ratata"}, false, false},
 	}
 	if err := runTest(CfgTests); err != nil {

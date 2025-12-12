@@ -91,7 +91,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	buckets := NewBuckets()
 
-	/*load the scenarios*/
+	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
 	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
 		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
@@ -241,7 +241,6 @@ POLL_AGAIN:
 	checkresultsloop:
 		for eidx, out := range results {
 			for ridx, expected := range tf.Results {
-
 				log.Tracef("Checking next expected result.")
 
 				// empty overflow

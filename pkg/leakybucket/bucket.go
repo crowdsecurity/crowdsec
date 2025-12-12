@@ -147,8 +147,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	return l
 }
 
-/* for now mimic a leak routine */
-//LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
+// for now mimic a leak routine
+// LeakRoutine is the life of a bucket. It dies when the bucket underflows or overflows
 func LeakRoutine(ctx context.Context, leaky *Leaky) {
 	var (
 		durationTickerChan = make(<-chan time.Time)
@@ -167,13 +167,13 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
 	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
 
-	/*todo : we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea*/
+	// TODO: we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea
 	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
 
-	//We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
-	//If we don't copy, processors using local cache (such as Uniq) are subject to race conditions
-	//This can lead to creating buckets that will discard their first events, preventing the underflow ticker from being initialized
-	//and preventing them from being destroyed
+	// We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
+	// If we don't copy, processors using local cache (such as Uniq) are subject to race conditions
+	// This can lead to creating buckets that will discard their first events, preventing the underflow ticker from being initialized
+	// and preventing them from being destroyed
 	processors := deepcopy.Copy(leaky.BucketConfig.processors).([]Processor)
 
 	leaky.Signal <- true
@@ -192,9 +192,9 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
 	for {
 		select {
-		/*receiving an event*/
+		// receiving an event
 		case msg := <-leaky.In:
-			/*the msg var use is confusing and is redeclared in a different type :/*/
+			// the msg var use is confusing and is redeclared in a different type :/
 			for _, processor := range processors {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
@@ -222,7 +222,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 				}
 			}
 
-			//Clear cache on behalf of pour
+			// Clear cache on behalf of pour
 
 			// if durationTicker isn't initialized, then we're pouring our first event
 
@@ -236,14 +236,14 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 				}
 			}
 			firstEvent = false
-			/*we overflowed*/
+			// we overflowed
 			if leaky.orderEvent {
 				orderEvent[leaky.Mapkey].Done()
 			}
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return
-		/*suiciiiide*/
+		// suiciiiide
 		case <-leaky.Suicide:
 			close(leaky.Signal)
 			metrics.BucketsCanceled.With(prometheus.Labels{"name": leaky.Name}).Inc()
@@ -251,7 +251,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return
-		/*we underflow or reach bucket deadline (timers)*/
+		// we underflow or reach bucket deadline (timers)
 		case <-durationTickerChan:
 			var (
 				alert pipeline.RuntimeAlert
@@ -280,10 +280,9 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			} else {
 				leaky.logger.Debugf("bucket underflow, destroy")
 				metrics.BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-
 			}
 			if leaky.logger.Level >= log.TraceLevel {
-				/*don't sdump if it's not going to be printed, it's expensive*/
+				// don't sdump if it's not going to be printed, it's expensive
 				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
 			}
 
