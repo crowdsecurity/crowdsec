@@ -27,7 +27,6 @@ import (
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
@@ -103,18 +102,12 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	}
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
-	parsersTomb.Kill(nil)
 	drainChan(inputEventChan)
 
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("Parsers returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
+	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
 	cancel()
 
+	log.Debugf("parsers is done")
 	log.Debugf("buckets is done")
 	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
@@ -304,7 +297,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}

@@ -69,31 +69,15 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	return csParsers, datasources, nil
 }
 
-func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
+func startParserRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers) {
 	// start go-routines for parsing, buckets pour and outputs.
-	parserWg := &sync.WaitGroup{}
-
-	parsersTomb.Go(func() error {
-		parserWg.Add(1)
-
-		for range cConfig.Crowdsec.ParserRoutinesCount {
-			parsersTomb.Go(func() error {
-				defer trace.CatchPanic("crowdsec/runParse")
-
-				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil {
-					// this error will never happen as parser.Parse is not able to return errors
-					return err
-				}
-
-				return nil
-			})
-		}
-
-		parserWg.Done()
-
-		return nil
-	})
-	parserWg.Wait()
+	for idx := range cConfig.Crowdsec.ParserRoutinesCount {
+		log.Infof("Starting parser routing %d", idx)
+		go func() {
+			defer trace.CatchPanic("crowdsec/runParse/"+strconv.Itoa(idx))
+			runParse(ctx, inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
+		}()
+	}
 }
 
 func startBucketRoutines(ctx context.Context, cConfig *csconfig.Config) {
@@ -165,7 +149,7 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 	inputEventChan = make(chan pipeline.Event)
 	inputLineChan = make(chan pipeline.Event)
 
-	startParserRoutines(cConfig, parsers)
+	startParserRoutines(ctx, cConfig, parsers)
 
 	startBucketRoutines(ctx, cConfig)
 
