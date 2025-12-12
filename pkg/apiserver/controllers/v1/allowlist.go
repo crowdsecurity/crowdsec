@@ -4,22 +4,22 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func (c *Controller) CheckInAllowlistBulk(gctx *gin.Context) {
+func (c *Controller) CheckInAllowlistBulk(w http.ResponseWriter, r *http.Request) {
 	var req models.BulkCheckAllowlistRequest
 
-	if err := gctx.ShouldBindJSON(&req); err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if err := router.BindJSON(r, &req); err != nil {
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	}
 
 	if len(req.Targets) == 0 {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "targets list cannot be empty"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "targets list cannot be empty"})
 		return
 	}
 
@@ -28,9 +28,9 @@ func (c *Controller) CheckInAllowlistBulk(gctx *gin.Context) {
 	}
 
 	for _, target := range req.Targets {
-		lists, err := c.DBClient.IsAllowlistedBy(gctx.Request.Context(), target)
+		lists, err := c.DBClient.IsAllowlistedBy(r.Context(), target)
 		if err != nil {
-			c.HandleDBErrors(gctx, err)
+			c.HandleDBErrors(w, err)
 			return
 		}
 
@@ -44,28 +44,28 @@ func (c *Controller) CheckInAllowlistBulk(gctx *gin.Context) {
 		})
 	}
 
-	gctx.JSON(http.StatusOK, resp)
+	router.WriteJSON(w, http.StatusOK, resp)
 }
 
-func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
-	value := gctx.Param("ip_or_range")
+func (c *Controller) CheckInAllowlist(w http.ResponseWriter, r *http.Request) {
+	value := router.PathValue(r, "ip_or_range")
 
 	if value == "" {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "value is required"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "value is required"})
 		return
 	}
 
-	allowlisted, reason, err := c.DBClient.IsAllowlisted(gctx.Request.Context(), value)
+	allowlisted, reason, err := c.DBClient.IsAllowlisted(r.Context(), value)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
-	if gctx.Request.Method == http.MethodHead {
+	if r.Method == http.MethodHead {
 		if allowlisted {
-			gctx.Status(http.StatusOK)
+			w.WriteHeader(http.StatusOK)
 		} else {
-			gctx.Status(http.StatusNoContent)
+			w.WriteHeader(http.StatusNoContent)
 		}
 
 		return
@@ -76,17 +76,17 @@ func (c *Controller) CheckInAllowlist(gctx *gin.Context) {
 		Reason:      reason,
 	}
 
-	gctx.JSON(http.StatusOK, resp)
+	router.WriteJSON(w, http.StatusOK, resp)
 }
 
-func (c *Controller) GetAllowlists(gctx *gin.Context) {
-	params := gctx.Request.URL.Query()
+func (c *Controller) GetAllowlists(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
 
 	withContent := params.Get("with_content") == "true"
 
-	allowlists, err := c.DBClient.ListAllowLists(gctx.Request.Context(), withContent)
+	allowlists, err := c.DBClient.ListAllowLists(r.Context(), withContent)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
@@ -121,18 +121,18 @@ func (c *Controller) GetAllowlists(gctx *gin.Context) {
 		})
 	}
 
-	gctx.JSON(http.StatusOK, resp)
+	router.WriteJSON(w, http.StatusOK, resp)
 }
 
-func (c *Controller) GetAllowlist(gctx *gin.Context) {
-	allowlist := gctx.Param("allowlist_name")
+func (c *Controller) GetAllowlist(w http.ResponseWriter, r *http.Request) {
+	allowlist := router.PathValue(r, "allowlist_name")
 
-	params := gctx.Request.URL.Query()
+	params := r.URL.Query()
 	withContent := params.Get("with_content") == "true"
 
-	allowlistModel, err := c.DBClient.GetAllowList(gctx.Request.Context(), allowlist, withContent)
+	allowlistModel, err := c.DBClient.GetAllowList(r.Context(), allowlist, withContent)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
@@ -163,5 +163,5 @@ func (c *Controller) GetAllowlist(gctx *gin.Context) {
 		Items:          items,
 	}
 
-	gctx.JSON(http.StatusOK, resp)
+	router.WriteJSON(w, http.StatusOK, resp)
 }

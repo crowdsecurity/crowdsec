@@ -3,13 +3,14 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -37,24 +38,24 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 	return results
 }
 
-func (c *Controller) GetDecision(gctx *gin.Context) {
+func (c *Controller) GetDecision(w http.ResponseWriter, r *http.Request) {
 	var (
 		results []*models.Decision
 		data    []*ent.Decision
 	)
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
 
-	bouncerInfo, err := getBouncerFromContext(gctx)
+	bouncerInfo, err := getBouncerFromContext(r)
 	if err != nil {
-		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+		router.WriteJSON(w, http.StatusUnauthorized, map[string]string{"message": "not allowed"})
 
 		return
 	}
 
-	data, err = c.DBClient.QueryDecisionWithFilter(ctx, gctx.Request.URL.Query())
+	data, err = c.DBClient.QueryDecisionWithFilter(ctx, r.URL.Query())
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 
 		return
 	}
@@ -63,13 +64,13 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	/*let's follow a naive logic : when a bouncer queries /decisions, if the answer is empty, we assume there is no decision for this ip/user/...,
 	but if it's non-empty, it means that there is one or more decisions for this target*/
 	if len(results) > 0 {
-		PrometheusBouncersHasNonEmptyDecision(gctx)
+		PrometheusBouncersHasNonEmptyDecision(r)
 	} else {
-		PrometheusBouncersHasEmptyDecision(gctx)
+		PrometheusBouncersHasEmptyDecision(r)
 	}
 
-	if gctx.Request.Method == http.MethodHead {
-		gctx.String(http.StatusOK, "")
+	if r.Method == http.MethodHead {
+		router.String(w, http.StatusOK, "")
 
 		return
 	}
@@ -80,24 +81,24 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		}
 	}
 
-	gctx.JSON(http.StatusOK, results)
+	router.WriteJSON(w, http.StatusOK, results)
 }
 
-func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
-	decisionIDStr := gctx.Param("decision_id")
+func (c *Controller) DeleteDecisionById(w http.ResponseWriter, r *http.Request) {
+	decisionIDStr := router.PathValue(r, "decision_id")
 
 	decisionID, err := strconv.Atoi(decisionIDStr)
 	if err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": "decision_id must be valid integer"})
 
 		return
 	}
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
 
 	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionByID(ctx, decisionID)
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 
 		return
 	}
@@ -113,15 +114,15 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
-	gctx.JSON(http.StatusOK, deleteDecisionResp)
+	router.WriteJSON(w, http.StatusOK, deleteDecisionResp)
 }
 
-func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	ctx := gctx.Request.Context()
+func (c *Controller) DeleteDecisions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(ctx, gctx.Request.URL.Query())
+	nbDeleted, deletedFromDB, err := c.DBClient.ExpireDecisionsWithFilter(ctx, r.URL.Query())
 	if err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 
 		return
 	}
@@ -137,27 +138,35 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
-	gctx.JSON(http.StatusOK, deleteDecisionResp)
+	router.WriteJSON(w, http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
+func writeStartupDecisions(w http.ResponseWriter, r *http.Request, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
 	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
+	flusher, hasFlusher := w.(http.Flusher)
+
+	// Work on a copy of filters to avoid mutating the shared map
+	filtersCopy := make(map[string][]string, len(filters)+2)
+	maps.Copy(filtersCopy, filters)
 
 	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
+	filtersCopy["limit"] = []string{limitStr}
 
 	for {
 		if lastId > 0 {
 			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
+			filtersCopy["id_gt"] = []string{lastIdStr}
+		} else {
+			// Clear id_gt if it exists from previous iteration
+			delete(filtersCopy, "id_gt")
 		}
 
-		data, err := dbFunc(ctx, filters)
+		data, err := dbFunc(ctx, filtersCopy)
 		if err != nil {
 			return err
 		}
@@ -170,27 +179,29 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					// respBuffer.Write([]byte(","))
-					gctx.Writer.WriteString(",")
+					if _, err := w.Write([]byte(",")); err != nil {
+						return err
+					}
 				} else {
 					needComma = true
 				}
-				//respBuffer.Write(decisionJSON)
-				//_, err := gctx.Writer.Write(respBuffer.Bytes())
-				_, err := gctx.Writer.Write(decisionJSON)
+				_, err := w.Write(decisionJSON)
 				if err != nil {
-					gctx.Writer.Flush()
+					if hasFlusher {
+						flusher.Flush()
+					}
 
 					return err
 				}
-				// respBuffer.Reset()
 			}
 		}
 
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 
 		if len(data) < limit {
-			gctx.Writer.Flush()
+			if hasFlusher {
+				flusher.Flush()
+			}
 
 			break
 		}
@@ -199,24 +210,32 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+func writeDeltaDecisions(w http.ResponseWriter, r *http.Request, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
+	flusher, hasFlusher := w.(http.Flusher)
+
+	// Work on a copy of filters to avoid mutating the shared map
+	filtersCopy := make(map[string][]string, len(filters)+2)
+	maps.Copy(filtersCopy, filters)
 
 	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
+	filtersCopy["limit"] = []string{limitStr}
 
 	for {
 		if lastId > 0 {
 			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
+			filtersCopy["id_gt"] = []string{lastIdStr}
+		} else {
+			// Clear id_gt if it exists from previous iteration
+			delete(filtersCopy, "id_gt")
 		}
 
-		data, err := dbFunc(ctx, lastPull, filters)
+		data, err := dbFunc(ctx, lastPull, filtersCopy)
 		if err != nil {
 			return err
 		}
@@ -229,27 +248,29 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 				decisionJSON, _ := json.Marshal(decision)
 
 				if needComma {
-					// respBuffer.Write([]byte(","))
-					gctx.Writer.WriteString(",")
+					if _, err := w.Write([]byte(",")); err != nil {
+						return err
+					}
 				} else {
 					needComma = true
 				}
-				//respBuffer.Write(decisionJSON)
-				//_, err := gctx.Writer.Write(respBuffer.Bytes())
-				_, err := gctx.Writer.Write(decisionJSON)
+				_, err := w.Write(decisionJSON)
 				if err != nil {
-					gctx.Writer.Flush()
+					if hasFlusher {
+						flusher.Flush()
+					}
 
 					return err
 				}
-				// respBuffer.Reset()
 			}
 		}
 
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 
 		if len(data) < limit {
-			gctx.Writer.Flush()
+			if hasFlusher {
+				flusher.Flush()
+			}
 
 			break
 		}
@@ -258,85 +279,115 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 	return nil
 }
 
-func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
-	var err error
+// writeStartupResponse writes startup decisions (both active and expired) to the response
+func (c *Controller) writeStartupResponse(w http.ResponseWriter, r *http.Request, filters map[string][]string, flusher http.Flusher, hasFlusher bool) error {
+	// Active decisions
+	err := writeStartupDecisions(w, r, filters, c.DBClient.QueryAllDecisionsWithFilters)
+	if err != nil {
+		log.Errorf("failed sending new decisions for startup: %v", err)
+		_, _ = w.Write([]byte(`], "deleted": []}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
 
-	gctx.Writer.Header().Set("Content-Type", "application/json")
-	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
-	gctx.Writer.WriteHeader(http.StatusOK)
-	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
+	if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+		return err
+	}
+
+	// Expired decisions
+	err = writeStartupDecisions(w, r, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
+	if err != nil {
+		log.Errorf("failed sending expired decisions for startup: %v", err)
+		_, _ = w.Write([]byte(`]}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte(`]}`)); err != nil {
+		return err
+	}
+	if hasFlusher {
+		flusher.Flush()
+	}
+	return nil
+}
+
+// writeDeltaResponse writes delta decisions (both new and expired) to the response
+func (c *Controller) writeDeltaResponse(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, filters map[string][]string, flusher http.Flusher, hasFlusher bool) error {
+	err := writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
+	if err != nil {
+		log.Errorf("failed sending new decisions for delta: %v", err)
+		_, _ = w.Write([]byte(`], "deleted": []}`))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte(`], "deleted": [`)); err != nil {
+		return err
+	}
+
+	err = writeDeltaDecisions(w, r, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
+	if err != nil {
+		log.Errorf("failed sending expired decisions for delta: %v", err)
+		_, _ = w.Write([]byte("]}"))
+		if hasFlusher {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if _, err := w.Write([]byte("]}")); err != nil {
+		return err
+	}
+	if hasFlusher {
+		flusher.Flush()
+	}
+	return nil
+}
+
+func (c *Controller) StreamDecisionChunked(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
+	flusher, hasFlusher := w.(http.Flusher)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte(`{"new": [`)); err != nil { // Write initial JSON structure
+		return err
+	}
 
 	// if the blocker just started, return all decisions
-	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
-		// Active decisions
-		err := writeStartupDecisions(gctx, filters, c.DBClient.QueryAllDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for startup: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString(`], "deleted": [`)
-		// Expired decisions
-		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.WriteString(`]}`)
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString(`]}`)
-		gctx.Writer.Flush()
-	} else {
-		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for delta: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString(`], "deleted": [`)
-
-		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.WriteString("]}")
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString("]}")
-		gctx.Writer.Flush()
+	val, ok := r.URL.Query()["startup"]
+	if ok && val[0] == "true" {
+		return c.writeStartupResponse(w, r, filters, flusher, hasFlusher)
 	}
 
-	return nil
+	return c.writeDeltaResponse(w, r, bouncerInfo, filters, flusher, hasFlusher)
 }
 
-func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
+func (c *Controller) StreamDecisionNonChunked(w http.ResponseWriter, r *http.Request, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
 	var (
 		data []*ent.Decision
 		err  error
 	)
 
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
 
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
 
-	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
+	if val, ok := r.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
 			data, err = c.DBClient.QueryAllDecisionsWithFilters(ctx, filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 
 				return err
 			}
@@ -347,14 +398,14 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(ctx, filters)
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 
 				return err
 			}
 
 			ret["deleted"] = FormatDecisions(data)
 
-			gctx.JSON(http.StatusOK, ret)
+			router.WriteJSON(w, http.StatusOK, ret)
 
 			return nil
 		}
@@ -364,7 +415,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(ctx, bouncerInfo.LastPull, filters)
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 
 		return err
 	}
@@ -380,51 +431,52 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(ctx, &since, filters) // do we want to give exactly lastPull time ?
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 
 		return err
 	}
 
 	ret["deleted"] = FormatDecisions(data)
-	gctx.JSON(http.StatusOK, ret)
+	router.WriteJSON(w, http.StatusOK, ret)
 
 	return nil
 }
 
-func (c *Controller) StreamDecision(gctx *gin.Context) {
+func (c *Controller) StreamDecision(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	streamStartTime := time.Now().UTC()
 
-	bouncerInfo, err := getBouncerFromContext(gctx)
+	bouncerInfo, err := getBouncerFromContext(r)
 	if err != nil {
-		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+		router.WriteJSON(w, http.StatusUnauthorized, map[string]string{"message": "not allowed"})
 
 		return
 	}
 
-	if gctx.Request.Method == http.MethodHead {
+	if r.Method == http.MethodHead {
 		// For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
 		// We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
-		gctx.String(http.StatusOK, "")
+		router.String(w, http.StatusOK, "")
 
 		return
 	}
 
-	filters := gctx.Request.URL.Query()
+	filters := r.URL.Query()
 	if _, ok := filters["scopes"]; !ok {
 		filters["scopes"] = []string{"ip,range"}
 	}
 
 	if fflag.ChunkedDecisionsStream.IsEnabled() {
-		err = c.StreamDecisionChunked(gctx, bouncerInfo, streamStartTime, filters)
+		err = c.StreamDecisionChunked(w, r, bouncerInfo, streamStartTime, filters)
 	} else {
-		err = c.StreamDecisionNonChunked(gctx, bouncerInfo, streamStartTime, filters)
+		err = c.StreamDecisionNonChunked(w, r, bouncerInfo, streamStartTime, filters)
 	}
 
 	if err == nil {
 		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
-		// Do not reuse the context provided by gin because we already have sent the response to the client, so there's a chance for it to already be canceled
+		// Use a background context since we've already sent the response and the request context may be canceled
+		//nolint:contextcheck // We intentionally use context.Background() here since the response is already sent
 		if err := c.DBClient.UpdateBouncerLastPull(context.Background(), streamStartTime, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}

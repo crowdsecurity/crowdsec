@@ -34,7 +34,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.JSONEq(t, `{"code":401,"message":"ent: machine not found"}`, w.Body.String())
+	assert.JSONEq(t, `{"code":401,"message":"incorrect Username or Password"}`, w.Body.String())
 
 	// Login with invalid body
 	w = httptest.NewRecorder()

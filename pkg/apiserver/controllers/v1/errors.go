@@ -5,24 +5,23 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
-func (*Controller) HandleDBErrors(gctx *gin.Context, err error) {
+func (*Controller) HandleDBErrors(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, database.ItemNotFound):
-		gctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusNotFound, map[string]string{"message": err.Error()})
 		return
 	case errors.Is(err, database.UserExists):
-		gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusForbidden, map[string]string{"message": err.Error()})
 		return
 	case errors.Is(err, database.HashError):
-		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 		return
 	default:
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		router.WriteJSON(w, http.StatusInternalServerError, map[string]string{"message": err.Error()})
 		return
 	}
 }
