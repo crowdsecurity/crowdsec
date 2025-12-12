@@ -170,10 +170,42 @@ linters:
         - waitgroup
 
     perfsprint:
-      concat-loop: false
-      hex-format: false
+      # Enable/disable optimization of integer formatting.
+      # Default: true
       integer-format: false
+      # Optimizes even if it requires an int or uint type cast.
+      # Default: true
+      int-conversion: false
+      # Enable/disable optimization of error formatting.
+      # Default: true
+      error-format: true
+      # Optimizes into `err.Error()` even if it is only equivalent for non-nil errors.
+      # Default: false
+      err-error: true
+      # Optimizes `fmt.Errorf`.
+      # Default: true
+      errorf: true
+      # Enable/disable optimization of string formatting.
+      # Default: true
       string-format: false
+      # Optimizes `fmt.Sprintf` with only one argument.
+      # Default: true
+      sprintf1: true
+      # Optimizes into strings concatenation.
+      # Default: true
+      strconcat: false
+      # Enable/disable optimization of bool formatting.
+      # Default: true
+      bool-format: true
+      # Enable/disable optimization of hex formatting.
+      # Default: true
+      hex-format: false
+      # Enable/disable optimization of concat loop.
+      # Default: true
+      concat-loop: false
+      # Optimization of `concat-loop` even with other operations.
+      # Default: false
+      loop-other-ops: false
 
     unused:
       # Mark all struct fields that have been written to as used.
