@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,12 +12,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func runParse(input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
+func runParse(ctx context.Context, input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) {
 	for {
 		select {
-		case <-parsersTomb.Dying():
+		case <-ctx.Done():
 			log.Infof("Killing parser routines")
-			return nil
+			return
 		case event := <-input:
 			if !event.Process {
 				continue
