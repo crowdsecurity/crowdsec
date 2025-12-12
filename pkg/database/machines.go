@@ -232,23 +232,6 @@ func (c *Client) UpdateMachineVersion(ctx context.Context, ipAddr string, id int
 	return nil
 }
 
-func (c *Client) IsMachineRegistered(ctx context.Context, machineID string) (bool, error) {
-	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if len(exist) == 1 {
-		return true, nil
-	}
-
-	if len(exist) > 1 {
-		return false, errors.New("more than one item with the same machineID in database")
-	}
-
-	return false, nil
-}
-
 func (c *Client) QueryMachinesInactiveSince(ctx context.Context, t time.Time) ([]*ent.Machine, error) {
 	return c.Ent.Machine.Query().Where(
 		machine.Or(
