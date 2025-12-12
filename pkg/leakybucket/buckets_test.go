@@ -10,13 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -32,9 +32,7 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
-	var (
-		envSetting = os.Getenv("TEST_ONLY")
-	)
+	var envSetting = os.Getenv("TEST_ONLY")
 
 	testdata := "./testdata"
 
@@ -60,13 +58,11 @@ func TestBucket(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		var wg sync.WaitGroup
+		var eg errgroup.Group
 
 		fds, err := os.ReadDir(testdata)
-		if err != nil {
-			t.Fatalf("Unable to read test directory : %s", err)
-		}
-		errCh := make(chan error, len(fds))
+		require.NoError(t, err)
+
 		for _, fd := range fds {
 			if fd.Name() == "hub" {
 				continue
@@ -74,24 +70,12 @@ func TestBucket(t *testing.T) {
 
 			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				if err := testOneBucket(t, hub, fname); err != nil {
-					errCh <- fmt.Errorf("Test '%s' failed : %s", fname, err)
-				}
-			}()
+			eg.Go(func() error {
+				return testOneBucket(t, hub, fname)
+			})
 		}
 
-		wg.Wait()
-		close(errCh)
-
-		for err := range errCh {
-			if err != nil {
-				t.Fatalf("Test failed: %s", err)
-			}
-		}
+		require.NoError(t, eg.Wait())
 	}
 }
 

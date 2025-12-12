@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -95,46 +96,19 @@ func startParserRoutines(cConfig *csconfig.Config, parsers *parser.Parsers) {
 	parserWg.Wait()
 }
 
-func startBucketRoutines(cConfig *csconfig.Config) {
-	bucketWg := &sync.WaitGroup{}
-
-	tombCtx, cancel := context.WithCancel(context.Background())
-	go func() {
-		log.Warning("Waiting for dying outputsTomb")
-		<-bucketsTomb.Dying()
-		cancel()
-	}()
-
-	bucketsTomb.Go(func() error {
-		bucketWg.Add(1)
-
-		for range cConfig.Crowdsec.BucketsRoutinesCount {
-			bucketsTomb.Go(func() error {
-				defer trace.CatchPanic("crowdsec/runPour")
-				return runPour(tombCtx, inputEventChan, holders, buckets, cConfig)
-			})
-		}
-
-		bucketWg.Done()
-
-		return nil
-	})
-	bucketWg.Wait()
+func startBucketRoutines(ctx context.Context, cConfig *csconfig.Config) {
+	for idx := range cConfig.Crowdsec.BucketsRoutinesCount {
+		log.Infof("Starting bucket routine %d", idx)
+		go func() {
+			defer trace.CatchPanic("crowdsec/runPour/"+strconv.Itoa(idx))
+			runPour(ctx, inputEventChan, holders, buckets, cConfig)
+		}()
+	}
 }
 
 func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclient.ApiClient) {
 	log.Debugf("Starting HeartBeat service")
-
-	// parent ctx is currently not canceled, so we create a cancelable context from the tomb
-
-	tombCtx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		<-outputsTomb.Dying()
-		cancel()
-	}()
-
-	apiClient.HeartBeat.StartHeartBeat(tombCtx)
+	apiClient.HeartBeat.StartHeartBeat(ctx)
 }
 
 func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient) {
@@ -193,7 +167,7 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 
 	startParserRoutines(cConfig, parsers)
 
-	startBucketRoutines(cConfig) //nolint:contextcheck // remove the global bucketsTomb later
+	startBucketRoutines(ctx, cConfig)
 
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
@@ -219,6 +193,9 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 
 // serveCrowdsec wraps the log processor service
 func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool) {
+	cctx, cancel := context.WithCancel(ctx)
+
+
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
@@ -229,7 +206,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 
 			agentReady <- true
 
-			if err := runCrowdsec(ctx, cConfig, parsers, hub, datasources); err != nil {
+			if err := runCrowdsec(cctx, cConfig, parsers, hub, datasources); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -241,7 +218,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 		waitOnTomb()
 		log.Debugf("Shutting down crowdsec routines")
 
-		if err := ShutdownCrowdsecRoutines(); err != nil {
+		if err := ShutdownCrowdsecRoutines(cancel); err != nil {
 			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 

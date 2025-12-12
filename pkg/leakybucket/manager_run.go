@@ -29,7 +29,7 @@ The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
-func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
+func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
 	defer buckets.wgDumpState.Done()
@@ -73,7 +73,6 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	for _, flushkey := range toflush {
 		buckets.Bucket_map.Delete(flushkey)
 	}
-	return nil
 }
 
 func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {

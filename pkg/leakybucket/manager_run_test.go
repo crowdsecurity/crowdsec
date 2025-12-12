@@ -104,9 +104,7 @@ func TestGCandDump(t *testing.T) {
 	log.Info("Bucket GC")
 
 	// call garbage collector
-	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
-		t.Fatalf("failed to garbage collect buckets : %s", err)
-	}
+	GarbageCollectBuckets(time.Now().UTC(), buckets)
 
 	if err := expectBucketCount(buckets, 1); err != nil {
 		t.Fatal(err)

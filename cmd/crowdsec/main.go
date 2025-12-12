@@ -32,7 +32,6 @@ var (
 	// tombs for the parser, buckets and outputs.
 	acquisTomb    tomb.Tomb
 	parsersTomb   tomb.Tomb
-	bucketsTomb   tomb.Tomb
 	outputsTomb   tomb.Tomb
 	apiTomb       tomb.Tomb
 	crowdsecTomb  tomb.Tomb
