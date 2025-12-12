@@ -5,7 +5,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/oschwald/geoip2-golang"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -56,7 +55,7 @@ func GeoIpASN(field string, _ *pipeline.Event, plog *log.Entry) (map[string]stri
 		return nil, nil
 	}
 
-	record, ok := r.(*geoip2.ASN)
+	record, ok := r.(*exprhelpers.GeoIPASN)
 
 	if !ok {
 		return nil, nil
@@ -92,7 +91,7 @@ func GeoIpCity(field string, _ *pipeline.Event, plog *log.Entry) (map[string]str
 		return nil, nil
 	}
 
-	record, ok := r.(*geoip2.City)
+	record, ok := r.(*exprhelpers.GeoIPCity)
 
 	if !ok {
 		return nil, nil
