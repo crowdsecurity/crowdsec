@@ -110,7 +110,7 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	log.Debugf("buckets is done")
 	log.Debugf("metrics are done")
 
-	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now
+	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
