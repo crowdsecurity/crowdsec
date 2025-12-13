@@ -132,13 +132,8 @@ func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pip
 			}
 
 			if event.Overflow.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
-				select {
-				case input <- event:
-					log.Debugf("reprocessing overflow event")
-// XXX:				case <-parsersTomb.Dead():
-//					log.Debugf("parsing is dead, skipping")
-				}
+				log.Debug("Reprocessing overflow event")
+				input <- event
 			}
 			if dumpStates {
 				continue
