@@ -126,9 +126,9 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 		hub,
 	)
 
-	lpMetricsTomb.Go(func() error {
-		return mp.Run(ctx, &lpMetricsTomb)
-	})
+	go func() {
+		mp.Run(ctx)
+	}()
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false

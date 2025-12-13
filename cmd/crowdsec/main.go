@@ -35,7 +35,6 @@ var (
 	apiTomb       tomb.Tomb
 	crowdsecTomb  tomb.Tomb
 	pluginTomb    tomb.Tomb
-	lpMetricsTomb tomb.Tomb
 
 	flags Flags
 
