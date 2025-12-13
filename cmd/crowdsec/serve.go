@@ -27,12 +27,10 @@ import (
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -103,19 +101,15 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	}
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
-	parsersTomb.Kill(nil)
 	drainChan(inputEventChan)
 
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("Parsers returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
+	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
 	cancel()
 
+	log.Debugf("parsers is done")
 	log.Debugf("buckets is done")
+	log.Debugf("metrics are done")
+
 	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
@@ -138,15 +132,6 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 		// this can happen if outputs are stuck in a http retry loop
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
-
-	lpMetricsTomb.Kill(nil)
-
-	if err := lpMetricsTomb.Wait(); err != nil {
-		log.Warningf("Metrics returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
@@ -304,12 +289,10 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig
