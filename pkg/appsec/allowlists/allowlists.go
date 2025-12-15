@@ -24,8 +24,8 @@ type metadata struct {
 
 type AppsecAllowlist struct {
 	LAPIClient *apiclient.ApiClient
-	trie       *bart.Lite             // BART lite table for IP/CIDR lookups
-	meta       map[string]*metadata   // Metadata keyed by CIDR prefix string
+	trie       *bart.Lite           // BART lite table for IP/CIDR lookups
+	meta       map[string]*metadata // Metadata keyed by CIDR prefix string
 	lock       sync.RWMutex
 	logger     *log.Entry
 	tomb       *tomb.Tomb
@@ -55,12 +55,9 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 		return err
 	}
 
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	prevSize := a.trie.Size()
-	a.trie = new(bart.Lite)
-	a.meta = make(map[string]*metadata)
+	// Build new trie and metadata map outside the lock to minimize contention
+	newTrie := new(bart.Lite)
+	newMeta := make(map[string]*metadata)
 
 	var ipCount, cidrCount int
 
@@ -90,22 +87,49 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 				ipCount++
 			}
 
-			// Insert into BART lite trie
-			a.trie.Insert(prefix)
+			// Insert into new BART lite trie
+			newTrie.Insert(prefix)
 
 			// Store metadata keyed by prefix string
 			prefixStr := prefix.String()
-			a.meta[prefixStr] = &metadata{
+			newMeta[prefixStr] = &metadata{
 				Description:   item.Description,
 				AllowlistName: allowlist.Name,
 			}
 		}
 	}
 
-	if a.trie.Size() != prevSize && a.trie.Size() > 0 {
-		a.logger.Infof("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, a.trie.Size())
+	// Atomically swap the new trie and metadata map under lock
+	// Only replace if the data has actually changed to avoid unnecessary pointer swaps
+	a.lock.Lock()
+	prevSize := a.trie.Size()
+	newSize := newTrie.Size()
+
+	// Quick check: if sizes differ, data definitely changed
+	dataChanged := prevSize != newSize
+
+	// If sizes match, compare trie structure (expensive but avoids unnecessary replacement)
+	if !dataChanged {
+		dataChanged = !a.trie.Equal(newTrie)
 	}
-	a.logger.Debugf("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, a.trie.Size())
+
+	if !dataChanged {
+		// Data unchanged (same trie structure), metadata map should also be identical
+		// since it's built from the same source. No need to swap.
+		a.lock.Unlock()
+		a.logger.Debugf("allowlist unchanged: %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
+		return nil
+	}
+
+	// Data changed, atomically swap to new trie and metadata
+	a.trie = newTrie
+	a.meta = newMeta
+	a.lock.Unlock()
+
+	if newSize != prevSize && newSize > 0 {
+		a.logger.Infof("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
+	}
+	a.logger.Debugf("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
 
 	return nil
 }
