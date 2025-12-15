@@ -32,7 +32,6 @@ var (
 	// tombs for the parser, buckets and outputs.
 	acquisTomb    tomb.Tomb
 	parsersTomb   tomb.Tomb
-	bucketsTomb   tomb.Tomb
 	outputsTomb   tomb.Tomb
 	apiTomb       tomb.Tomb
 	crowdsecTomb  tomb.Tomb
@@ -64,7 +63,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, buckets, flags.OrderEvent)
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %w", err)
 	}
@@ -104,8 +103,8 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 }
 
 var (
-	dumpFolder         string
-	dumpStates         bool
+	dumpFolder       string
+	dumpStates       bool
 	additionalLabels = make(labelsMap)
 )
 

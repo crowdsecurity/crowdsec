@@ -28,7 +28,6 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
-	bucketsTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
@@ -87,7 +86,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	return cConfig, nil
 }
 
-func ShutdownCrowdsecRoutines() error {
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -114,12 +113,7 @@ func ShutdownCrowdsecRoutines() error {
 
 	log.Debugf("parsers is done")
 	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
-	bucketsTomb.Kill(nil)
-
-	if err := bucketsTomb.Wait(); err != nil {
-		log.Warningf("Buckets returned error : %s", err)
-		reterr = err
-	}
+	cancel()
 
 	log.Debugf("buckets is done")
 	time.Sleep(1 * time.Second) // ugly workaround for now
@@ -311,7 +305,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
-	bucketsTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
