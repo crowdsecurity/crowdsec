@@ -23,6 +23,9 @@ jobs:
         with:
           cmd: yq --version
 
+      - name: cleanup json
+        run: find  ./pkg/acquisition -type -f name '*json' -exec rm {} \;
+
       - name: transform to json all datasource schema
         uses: mikefarah/yq@v4.50.1
         with:
@@ -36,12 +39,6 @@ jobs:
       - name: split YAML to per-doc JSON (no jq)
         run: |
           set -euxo pipefail
-
-          # delete generated json in schema dir except valid/invalid
-          find ./pkg/acquisition/schema -type f -name '*.json' \
-            ! -path './pkg/acquisition/schema/valid/*' \
-            ! -path './pkg/acquisition/schema/invalid/*' \
-            -delete
 
           find . \
             \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) -prune -o \
