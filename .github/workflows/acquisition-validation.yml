@@ -34,7 +34,7 @@ jobs:
                 yq -o=json "$f" > "$(dirname "$f")/$(basename "$f" .yaml).json"
               ' sh {} \;
 
-      - name: split hub YAML to per-doc JSON (no jq)
+      - name: split YAML to per-doc JSON (no jq)
         run: |
           set -euxo pipefail
 
@@ -58,6 +58,9 @@ jobs:
             done
             echo "split $f -> ${i} JSON doc(s)"
           done
+      - name: debug
+        run: |
+          find .
       - name: validate datasources against schemas
         run: |
           set -euxo pipefail
