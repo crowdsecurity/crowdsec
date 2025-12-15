@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  hub-validation:
+  datasource-validation:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
@@ -19,16 +19,12 @@ jobs:
           go-version: "stable"
 
       - name: Install yq
-        uses: mikefarah/yq@v4.44.5
-        with:
-          cmd: yq --version
-      - name: transform to json all datasource schema
-        uses: mikefarah/yq@4.44.5
+        uses: mikefarah/yq@v4.50.1
         with:
           cmd: yq --version
 
       - name: transform to json all datasource schema
-        uses: mikefarah/yq@v4.44.5
+        uses: mikefarah/yq@vv4.50.1
         with:
           cmd: |
             set -euxo pipefail
