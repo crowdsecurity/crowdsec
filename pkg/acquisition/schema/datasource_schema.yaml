@@ -7,7 +7,7 @@ description: >
 type: object
 properties:
   datasource:
-    $ref: ../modules/docker/docker.yaml
+    $ref: ../modules/docker/docker_schema.yaml
 required:
   - datasource
 additionalProperties: false
