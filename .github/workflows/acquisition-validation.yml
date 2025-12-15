@@ -24,7 +24,7 @@ jobs:
           cmd: yq --version
 
       - name: cleanup json
-        run: find ./pkg/acquisition -type -f -name '*json' -exec rm {} \;
+        run: find ./pkg/acquisition -type f -name '*json' -exec rm {} \;
 
       - name: transform to json all datasource schema
         uses: mikefarah/yq@v4.50.1
