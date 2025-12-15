@@ -13,31 +13,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
-        uses: actions/checkout@v3
-      - name: transform to json all datasource schema
-        uses: mikefarah/yq@master
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          cmd: find . -path ./pkg/acquisition -prune -o -name "*"schema.yaml -exec sh -c 'yq  -o=json {} > $(dirname {})/$(basename {} .yaml).json' \;
-      - name: split hub YAML to per-doc JSON (no jq)
-        uses: mikefarah/yq@master
+          go-version: "stable"
+
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.5
+        with:
+          cmd: yq --version
+      - name: transform to json all datasource schema
+        uses: mikefarah/yq@4.44.5
+        with:
+          cmd: yq --version
+
+      - name: transform to json all datasource schema
+        uses: mikefarah/yq@v4.44.5
         with:
           cmd: |
-            set -eu
-            find . -path ./pkg/acquisition/schema -prune -name '*json' -exec rm {} \;
-            for f in $(find . \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) -prune -o -name '*.yaml' -print); do
-               base="${f%.yaml}"  # trim .yaml
-               i=0
-               while : ; do
-                   out="${base}.${i}.json"
-                   # select one YAML document by index (0-based) and write it
-                   yq -o=json 'select(documentIndex == '"$i"')' "$f" > "$out"
-                   # empty file => no more docs, clean up and stop
-                   if [ ! -s "$out" ]; then rm -f "$out"; break; fi
-                   i=$((i+1))
-                   done
-               echo "split $f -> ${i} JSON doc(s)"
+            set -euxo pipefail
+            find . -path './pkg/acquisition' -prune -o -type f -name '*schema.yaml' \
+              -exec sh -c '
+                f="$1"
+                yq -o=json "$f" > "$(dirname "$f")/$(basename "$f" .yaml).json"
+              ' sh {} \;
+
+      - name: split hub YAML to per-doc JSON (no jq)
+        run: |
+          set -euxo pipefail
+
+          # delete generated json in schema dir except valid/invalid
+          find ./pkg/acquisition/schema -type f -name '*.json' \
+            ! -path './pkg/acquisition/schema/valid/*' \
+            ! -path './pkg/acquisition/schema/invalid/*' \
+            -delete
+
+          find . \
+            \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) -prune -o \
+            -type f -name '*.yaml' -print0 |
+          while IFS= read -r -d '' f; do
+            base="${f%.yaml}"
+            i=0
+            while :; do
+              out="${base}.${i}.json"
+              yq -o=json 'select(documentIndex == '"$i"')' "$f" > "$out" || true
+              if [ ! -s "$out" ]; then rm -f "$out"; break; fi
+              i=$((i+1))
             done
+            echo "split $f -> ${i} JSON doc(s)"
+          done
       - name: validate datasources against schemas
         run: |
+          set -euxo pipefail
           go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
-          for ITEM in ./pkg/acquisition/schema/valid/*.json; do echo $ITEM &&  ~/go/bin/jv parser_schema.json $ITEM ; done
+          JV="$(go env GOPATH)/bin/jv"
+          for item in ./pkg/acquisition/schema/valid/*.json; do
+            echo "$item"
+            "$JV" ./pkg/acquisition/schema/datasource_schema.json "$item"
+          done
