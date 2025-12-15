@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
@@ -48,7 +49,7 @@ type RulesDetails struct {
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
 var AppsecRulesDetails = make(map[int]RulesDetails)
 
-func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, error) {
+func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]AppsecCollection, error) {
 	ret := make([]AppsecCollection, 0)
 
 	for _, appsecRule := range appsecRules {

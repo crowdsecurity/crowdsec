@@ -61,7 +61,7 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 		}
 	}
 
-	datasources, err := LoadAcquisition(ctx, cConfig)
+	datasources, err := LoadAcquisition(ctx, cConfig, hub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("while loading acquisition config: %w", err)
 	}

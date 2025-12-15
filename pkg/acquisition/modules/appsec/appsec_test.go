@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -105,7 +106,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		DefaultRemediation:     test.DefaultRemediation,
 		DefaultPassAction:      test.DefaultPassAction,
 	}
-	AppsecRuntime, err := appsecCfg.Build()
+
+	hub := cwhub.Hub{}
+	AppsecRuntime, err := appsecCfg.Build(&hub)
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}

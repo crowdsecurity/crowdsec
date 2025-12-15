@@ -10,10 +10,12 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type Source struct {
 	config                Configuration
+	hub                   *cwhub.Hub
 	logger                *log.Entry
 	mux                   *http.ServeMux
 	server                *http.Server
@@ -59,6 +61,10 @@ func (ac *AuthCache) Delete(apiKey string) {
 	ac.mu.Lock()
 	delete(ac.APIKeys, apiKey)
 	ac.mu.Unlock()
+}
+
+func (w *Source) SetHub(hub *cwhub.Hub) {
+	w.hub = hub
 }
 
 func (w *Source) GetMode() string {
