@@ -63,7 +63,7 @@ jobs:
           sed -i 's/\.yaml$/.json/' ./pkg/acquisition/schema/datasource_schema.json
           go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
           JV="$(go env GOPATH)/bin/jv"
-          for item in ./pkg/acquisition/schema/valid/*.json; do
+          for item in './pkg/acquisition/schema/valid/*.json'; do
             echo "$item"
             "$JV" ./pkg/acquisition/schema/datasource_schema.json "$item"
           done
