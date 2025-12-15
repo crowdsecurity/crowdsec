@@ -36,15 +36,36 @@ var zonesMap = map[string]string{
 var transformMap = map[string]string{
 	"lowercase": "t:lowercase",
 	"uppercase": "t:uppercase",
-	"b64decode": "t:base64Decode",
-	//"hexdecode":          "t:hexDecode", -> not supported by coraza
-	"length":             "t:length",
-	"urldecode":          "t:urlDecode",
-	"trim":               "t:trim",
-	"normalize_path":     "t:normalizePath",
-	"normalizepath":      "t:normalizePath",
+	"length":    "t:length",
+	// trim
+	"trim":       "t:trim",
+	"trim_left":  "t:trimLeft",
+	"trim_right": "t:trimRight",
+	// Decoding transforms
 	"htmlentitydecode":   "t:htmlEntityDecode",
 	"html_entity_decode": "t:htmlEntityDecode",
+	"js_decode":          "t:jsDecode",
+	"css_decode":         "t:cssDecode",
+	"urldecode":          "t:urlDecode",
+	"hexdecode":          "t:hexDecode",
+	"cmdline":            "t:cmdLine",
+	// b64-related transforms
+	"b64decode":         "t:base64Decode",    // strict base64 decode
+	"b64decode_lenient": "t:base64DecodeExt", // lenient base64 decode (no padding, decode up to first invalid char, skip whitespaces and dots)
+	"b64encode":         "t:base64Encode",
+	// Path normalization
+	"normalize_path":     "t:normalizePath",
+	"normalizepath":      "t:normalizePath",
+	"normalize_path_win": "t:normalizePathWin",
+	"normalizepathwin":   "t:normalizePathWin",
+	// Whitespaces
+	"remove_whitespaces":   "t:removeWhitespace",
+	"compress_whitespaces": "t:compressWhitespace",
+	"remove_nulls":         "t:removeNulls",
+	"replace_nulls":        "t:replaceNulls",
+	// Comments
+	"remove_comments":  "t:removeComments",
+	"replace_comments": "t:replaceComments",
 }
 
 var matchMap = map[string]string{
