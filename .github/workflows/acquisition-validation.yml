@@ -23,9 +23,8 @@ jobs:
         with:
           cmd: |
             set -eu
-            # iterate all YAMLs except .tests
-            find hub -path ./pkg/acquisition/schema/valid -path ./pkg/acquisition/schema/invalid  -prune -name '*json' -exec rm {} \;
-            for f in $(find hub -path ./pkg/acquisition/schema/valid   -path ./pkg/acquisition/schema/invalid -prune -o -name '*yaml' -print); do
+            find . -path ./pkg/acquisition/schema -prune -name '*json' -exec rm {} \;
+            for f in $(find . \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) -prune -o -name '*.yaml' -print); do
                base="${f%.yaml}"  # trim .yaml
                i=0
                while : ; do
