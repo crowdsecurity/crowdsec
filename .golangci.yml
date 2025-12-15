@@ -72,10 +72,10 @@ linters:
     # Formatting only, useful in IDE but should not be forced on CI
     #
 
-    - godot                 # Check if comments end in a period
-    - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
-    - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
-    - wsl_v5                # add or remove empty lines
+    - godot      # Check if comments end in a period
+    - nlreturn   # nlreturn checks for a new line before return and branch statements to increase code clarity
+    - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
+    - wsl_v5     # add or remove empty lines
 
   settings:
 
@@ -223,16 +223,15 @@ linters:
         ifElseChain:
           minThreshold: 4
 
-    modernize:
+    gomoddirectives:
+      replace-allow-list:
+        - golang.org/x/time
+        - github.com/corazawaf/coraza/v3
+
+    govet:
       disable:
-        - any
-        - fmtappendf
-        - forvar
-        - omitzero
-        - slicessort
-        - stringsbuilder
-        - stringsseq
-        - waitgroup
+        - fieldalignment
+      enable-all: true
 
     iface:
       enable:
@@ -244,6 +243,42 @@ linters:
         - opaque
         # Identifies interfaces that are not exported but are used in exported functions or methods.
         # - unexported
+
+    interfacebloat:
+      max: 7
+
+    maintidx:
+      # raise this after refactoring
+      under: 21
+
+    misspell:
+      locale: US
+
+    modernize:
+      disable:
+        - any
+        - fmtappendf
+        - forvar
+        - omitzero
+        - slicessort
+        - stringsbuilder
+        - stringsseq
+        - waitgroup
+
+    nestif:
+      # lower this after refactoring
+      min-complexity: 15
+
+    nlreturn:
+      block-size: 6
+
+    nolintlint:
+      # don't require an explanation for nolint directives
+      require-explanation: false
+      # don't require nolint directives to be specific about which linter is being skipped
+      require-specific: true
+      # report any unused nolint directives
+      allow-unused: false
 
     perfsprint:
       # Enable/disable optimization of integer formatting.
@@ -282,64 +317,6 @@ linters:
       # Optimization of `concat-loop` even with other operations.
       # Default: false
       loop-other-ops: false
-
-    unused:
-      # Mark all struct fields that have been written to as used.
-      # Default: true
-      field-writes-are-uses: false
-      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
-      # Default: false
-      post-statements-are-reads: false
-      # Mark all exported identifiers as used.
-      # Default: true
-      # exported-is-used: false
-      # Mark all exported fields as used.
-      # default: true
-      exported-fields-are-used: false
-      # Mark all function parameters as used.
-      # default: true
-      parameters-are-used: true
-      # Mark all local variables as used.
-      # default: true
-      local-variables-are-used: false
-      # Mark all identifiers inside generated files as used.
-      # Default: true
-      generated-is-used: false
-
-    gomoddirectives:
-      replace-allow-list:
-        - golang.org/x/time
-        - github.com/corazawaf/coraza/v3
-
-    govet:
-      disable:
-        - fieldalignment
-      enable-all: true
-
-    interfacebloat:
-      max: 7
-
-    maintidx:
-      # raise this after refactoring
-      under: 21
-
-    misspell:
-      locale: US
-
-    nestif:
-      # lower this after refactoring
-      min-complexity: 15
-
-    nlreturn:
-      block-size: 6
-
-    nolintlint:
-      # don't require an explanation for nolint directives
-      require-explanation: false
-      # don't require nolint directives to be specific about which linter is being skipped
-      require-specific: true
-      # report any unused nolint directives
-      allow-unused: false
 
     recvcheck:
       # Disables the built-in method exclusions:
@@ -461,6 +438,29 @@ linters:
         - -ST1012  # error var ... should have name of the form ...
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
+
+    unused:
+      # Mark all struct fields that have been written to as used.
+      # Default: true
+      field-writes-are-uses: false
+      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
+      # Default: false
+      post-statements-are-reads: false
+      # Mark all exported identifiers as used.
+      # Default: true
+      # exported-is-used: false
+      # Mark all exported fields as used.
+      # default: true
+      exported-fields-are-used: false
+      # Mark all function parameters as used.
+      # default: true
+      parameters-are-used: true
+      # Mark all local variables as used.
+      # default: true
+      local-variables-are-used: false
+      # Mark all identifiers inside generated files as used.
+      # Default: true
+      generated-is-used: false
 
     usestdlibvars:
       # Suggest the use of http.MethodXX.
