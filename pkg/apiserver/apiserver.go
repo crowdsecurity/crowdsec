@@ -81,7 +81,8 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover() //nolint:revive
+	//revive:disable-next-line:defer
+	err := recover()
 	if err == nil {
 		return
 	}
