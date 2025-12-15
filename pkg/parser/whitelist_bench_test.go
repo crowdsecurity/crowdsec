@@ -20,9 +20,9 @@ func BenchmarkCheckIPsWL_SmallAllowlist(b *testing.B) {
 	}
 
 	// Small allowlist: 10 IPs + 2 CIDRs
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		ip := netip.MustParseAddr("192.168.0.1")
-		for j := 0; j < i; j++ {
+		for range i {
 			ip = ip.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(ip, 32))
@@ -37,7 +37,7 @@ func BenchmarkCheckIPsWL_SmallAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -52,16 +52,16 @@ func BenchmarkCheckIPsWL_MediumAllowlist(b *testing.B) {
 	}
 
 	// Medium allowlist: 100 IPs + 10 CIDRs
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		ip := netip.MustParseAddr("192.168.0.1")
-		for j := 0; j < i; j++ {
+		for range i {
 			ip = ip.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(ip, 32))
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		base := netip.MustParseAddr("10.0.0.0")
-		for j := 0; j < i; j++ {
+		for range i {
 			base = base.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(base, 24))
@@ -74,7 +74,7 @@ func BenchmarkCheckIPsWL_MediumAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -89,16 +89,16 @@ func BenchmarkCheckIPsWL_LargeAllowlist(b *testing.B) {
 	}
 
 	// Large allowlist: 1000 IPs + 50 CIDRs
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		ip := netip.MustParseAddr("192.168.0.1")
-		for j := 0; j < i; j++ {
+		for range i {
 			ip = ip.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(ip, 32))
 	}
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		base := netip.MustParseAddr("10.0.0.0")
-		for j := 0; j < i*256; j++ {
+		for range i * 256 {
 			base = base.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(base, 24))
@@ -111,7 +111,7 @@ func BenchmarkCheckIPsWL_LargeAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -126,9 +126,9 @@ func BenchmarkCheckIPsWL_NotInAllowlist(b *testing.B) {
 	}
 
 	// Add 1000 IPs but test with IP not in list
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		ip := netip.MustParseAddr("192.168.0.1")
-		for j := 0; j < i; j++ {
+		for range i {
 			ip = ip.Next()
 		}
 		node.Whitelist.B_Trie.Insert(netip.PrefixFrom(ip, 32))
@@ -141,7 +141,7 @@ func BenchmarkCheckIPsWL_NotInAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = node.CheckIPsWL(event)
 	}
 }
