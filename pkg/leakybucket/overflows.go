@@ -361,7 +361,8 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true { //nolint:revive
+		//revive:disable-next-line:bool-literal-in-expr
+		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
 			newApiAlert.Remediation = true
 		}
 
