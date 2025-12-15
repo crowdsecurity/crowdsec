@@ -5,10 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,7 +37,8 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocationPath checks a single chain against OCSP and CRL
-func (ta *TLSAuth) checkRevocationPath(ctx context.Context, chain []*x509.Certificate) (error, bool) { //nolint:revive
+//nolint:revive // error-return: error should be last, but bool indicates if check was possible
+func (ta *TLSAuth) checkRevocationPath(ctx context.Context, chain []*x509.Certificate) (error, bool) {
 	// if we ever fail to check OCSP or CRL, we should not cache the result
 	couldCheck := true
 
@@ -97,65 +98,6 @@ func (ta *TLSAuth) checkAllowedOU(ous []string) error {
 	return fmt.Errorf("client certificate OU %v doesn't match expected OU %v", ous, ta.AllowedOUs)
 }
 
-func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
-	// Checks cert validity, Returns true + CN if client cert matches requested OU
-	var leaf *x509.Certificate
-
-	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
-		return "", errors.New("no certificate in request")
-	}
-
-	if len(c.Request.TLS.VerifiedChains) == 0 {
-		return "", errors.New("no verified cert in request")
-	}
-
-	// although there can be multiple chains, the leaf certificate is the same
-	// we take the first one
-	leaf = c.Request.TLS.VerifiedChains[0][0]
-
-	if err := ta.checkAllowedOU(leaf.Subject.OrganizationalUnit); err != nil {
-		return "", err
-	}
-
-	if ta.isExpired(leaf) {
-		return "", errors.New("client certificate is expired")
-	}
-
-	if validErr, cached := ta.revocationCache.Get(leaf); cached {
-		if validErr != nil {
-			return "", fmt.Errorf("(cache) %w", validErr)
-		}
-
-		return leaf.Subject.CommonName, nil
-	}
-
-	okToCache := true
-
-	var (
-		validErr   error
-		couldCheck bool
-	)
-
-	for _, chain := range c.Request.TLS.VerifiedChains {
-		validErr, couldCheck = ta.checkRevocationPath(c.Request.Context(), chain)
-		okToCache = okToCache && couldCheck
-
-		if validErr != nil {
-			break
-		}
-	}
-
-	if okToCache {
-		ta.revocationCache.Set(leaf, validErr)
-	}
-
-	if validErr != nil {
-		return "", validErr
-	}
-
-	return leaf.Subject.CommonName, nil
-}
-
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
 	var err error
 
@@ -182,4 +124,64 @@ func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Durati
 	}
 
 	return ta, nil
+}
+
+// ValidateCertFromRequest is like ValidateCert but takes http.Request instead of gin.Context
+func (ta *TLSAuth) ValidateCertFromRequest(r *http.Request) (string, error) {
+	// Checks cert validity, Returns true + CN if client cert matches requested OU
+	var leaf *x509.Certificate
+
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return "", errors.New("no certificate in request")
+	}
+
+	if len(r.TLS.VerifiedChains) == 0 {
+		return "", errors.New("no verified cert in request")
+	}
+
+	// although there can be multiple chains, the leaf certificate is the same
+	// we take the first one
+	leaf = r.TLS.VerifiedChains[0][0]
+
+	if err := ta.checkAllowedOU(leaf.Subject.OrganizationalUnit); err != nil {
+		return "", err
+	}
+
+	if ta.isExpired(leaf) {
+		return "", errors.New("client certificate is expired")
+	}
+
+	if validErr, cached := ta.revocationCache.Get(leaf); cached {
+		if validErr != nil {
+			return "", fmt.Errorf("(cache) %w", validErr)
+		}
+
+		return leaf.Subject.CommonName, nil
+	}
+
+	okToCache := true
+
+	var (
+		validErr   error
+		couldCheck bool
+	)
+
+	for _, chain := range r.TLS.VerifiedChains {
+		validErr, couldCheck = ta.checkRevocationPath(r.Context(), chain)
+		okToCache = okToCache && couldCheck
+
+		if validErr != nil {
+			break
+		}
+	}
+
+	if okToCache {
+		ta.revocationCache.Set(leaf, validErr)
+	}
+
+	if validErr != nil {
+		return "", validErr
+	}
+
+	return leaf.Subject.CommonName, nil
 }

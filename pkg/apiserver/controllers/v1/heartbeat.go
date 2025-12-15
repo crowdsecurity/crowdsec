@@ -1,20 +1,16 @@
 package v1
 
-import (
-	"net/http"
+import "net/http"
 
-	"github.com/gin-gonic/gin"
-)
+func (c *Controller) HeartBeat(w http.ResponseWriter, r *http.Request) {
+	machineID, _ := getMachineIDFromContext(r)
 
-func (c *Controller) HeartBeat(gctx *gin.Context) {
-	machineID, _ := getMachineIDFromContext(gctx)
-
-	ctx := gctx.Request.Context()
+	ctx := r.Context()
 
 	if err := c.DBClient.UpdateMachineLastHeartBeat(ctx, machineID); err != nil {
-		c.HandleDBErrors(gctx, err)
+		c.HandleDBErrors(w, err)
 		return
 	}
 
-	gctx.Status(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }

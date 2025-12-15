@@ -1,20 +1,18 @@
 package apiserver
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -22,13 +20,41 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
+
+// convertTrustedProxies converts []string to []netip.Prefix
+func convertTrustedProxies(proxyStrings []string) ([]netip.Prefix, error) {
+	if proxyStrings == nil {
+		return nil, nil
+	}
+
+	proxies := make([]netip.Prefix, 0, len(proxyStrings))
+	for _, proxy := range proxyStrings {
+		prefix, err := netip.ParsePrefix(proxy)
+		if err != nil {
+			// Try parsing as a single IP and convert to /32 or /128
+			addr, err := netip.ParseAddr(proxy)
+			if err != nil {
+				return nil, fmt.Errorf("invalid proxy IP/CIDR: %s", proxy)
+			}
+			if addr.Is4() {
+				prefix = netip.PrefixFrom(addr, 32)
+			} else {
+				prefix = netip.PrefixFrom(addr, 128)
+			}
+		}
+		proxies = append(proxies, prefix)
+	}
+	return proxies, nil
+}
 
 const keyLength = 32
 
@@ -37,79 +63,11 @@ type APIServer struct {
 	dbClient       *database.Client
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
-	router         *gin.Engine
+	router         *router.Router
 	httpServer     *http.Server
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-}
-
-func isBrokenConnection(maybeError any) bool {
-	err, ok := maybeError.(error)
-	if !ok {
-		return false
-	}
-
-	var netOpError *net.OpError
-	if errors.As(err, &netOpError) {
-		var syscallError *os.SyscallError
-		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
-				return true
-			}
-		}
-	}
-
-	// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
-	// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
-	// stolen from http2/server.go in x/net
-	var (
-		errClientDisconnected = errors.New("client disconnected")
-		errClosedBody         = errors.New("body closed by handler")
-		errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
-		errStreamClosed       = errors.New("http2: stream closed")
-	)
-
-	if errors.Is(err, errClientDisconnected) ||
-		errors.Is(err, errClosedBody) ||
-		errors.Is(err, errHandlerComplete) ||
-		errors.Is(err, errStreamClosed) {
-		return true
-	}
-
-	return false
-}
-
-func recoverFromPanic(c *gin.Context) {
-	err := recover() //nolint:revive
-	if err == nil {
-		return
-	}
-
-	// Check for a broken connection, as it is not really a
-	// condition that warrants a panic stack trace.
-	if isBrokenConnection(err) {
-		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
-		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
-}
-
-// CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
-func CustomRecoveryWithWriter() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer recoverFromPanic(c)
-		c.Next()
-	}
 }
 
 // NewServer creates a LAPI server.
@@ -133,59 +91,37 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		}
 	}
 
-	if !log.IsLevelEnabled(log.DebugLevel) {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	// Create new router
+	httpRouter := router.New()
 
-	router := gin.New()
-
-	router.ForwardedByClientIP = false
-
-	// set the remore address of the request to 127.0.0.1 if it comes from a unix socket
-	router.Use(func(c *gin.Context) {
-		if c.Request.RemoteAddr == "@" {
-			c.Request.RemoteAddr = "127.0.0.1:65535"
-		}
-	})
-
+	// Set up middleware
+	var trustedProxies []netip.Prefix
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
-		if err = router.SetTrustedProxies(*config.TrustedProxies); err != nil {
-			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
+		var err error
+		trustedProxies, err = convertTrustedProxies(*config.TrustedProxies)
+		if err != nil {
+			return nil, fmt.Errorf("while parsing trusted proxies: %w", err)
 		}
-
-		router.ForwardedByClientIP = true
 	}
 
-	gin.DefaultErrorWriter = accessLogger.WriterLevel(log.ErrorLevel)
-	gin.DefaultWriter = accessLogger.Writer()
+	// Apply middleware in order
+	httpRouter.Use(middlewares.ClientIPMiddleware(trustedProxies, config.UseForwardedForHeaders))
+	httpRouter.Use(middlewares.LoggingMiddleware(accessLogger))
+	httpRouter.Use(middlewares.RecoveryMiddleware())
+	httpRouter.Use(middlewares.GzipDecompressMiddleware())
 
-	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
-			param.ClientIP,
-			param.TimeStamp.Format(time.RFC1123),
-			param.Method,
-			param.Path,
-			param.Request.Proto,
-			param.StatusCode,
-			param.Latency,
-			param.Request.UserAgent(),
-			param.ErrorMessage,
-		)
-	}))
-
-	router.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
-	})
-	router.Use(CustomRecoveryWithWriter())
+	// Handle 404 - http.ServeMux handles this, but we can add custom handler
+	// Note: Method not allowed is handled by http.ServeMux automatically
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
-		Router:                        router,
+		Router:                        httpRouter,
 		Profiles:                      config.Profiles,
 		Log:                           accessLogger,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
+		// TrustedIPs will be set later from config.GetTrustedIPs() - don't confuse with trustedProxies
 	}
 
 	var (
@@ -232,18 +168,18 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		cfg:		config,
+		cfg:            config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
-		router:         router,
+		router:         httpRouter,
 		apic:           apiClient,
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 	}, nil
 }
 
-func (s *APIServer) Router() (*gin.Engine, error) {
+func (s *APIServer) Router() (*router.Router, error) {
 	return s.router, nil
 }
 
@@ -324,7 +260,7 @@ func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
 
 	s.httpServer = &http.Server{
 		Addr:      s.cfg.ListenURI,
-		Handler:   s.router,
+		Handler:   s.router, // Use router directly so middleware is applied (404/405 will be logged)
 		TLSConfig: tlsCfg,
 		Protocols: &http.Protocols{},
 	}
@@ -473,14 +409,8 @@ func (s *APIServer) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	// close io.writer logger given to gin
-	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
-		pipe.Close()
-	}
-
-	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
-		pipe.Close()
-	}
+	// Note: We no longer use gin.DefaultErrorWriter/DefaultWriter
+	// If we add custom writers in the future, close them here
 
 	s.httpServerTomb.Kill(nil)
 
@@ -546,7 +476,7 @@ func (s *APIServer) InitController() error {
 		cacheExpiration = *s.cfg.TLS.CacheExpiration
 	}
 
-	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedAgentsOU, s.cfg.TLS.CRLPath,
+	tlsAuthAgents, err := v1.NewTLSAuth(s.cfg.TLS.AllowedAgentsOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",
@@ -555,8 +485,9 @@ func (s *APIServer) InitController() error {
 	if err != nil {
 		return fmt.Errorf("while creating TLS auth for agents: %w", err)
 	}
+	s.controller.HandlerV1.Middlewares.JWT.SetTlsAuth(tlsAuthAgents)
 
-	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedBouncersOU, s.cfg.TLS.CRLPath,
+	tlsAuthBouncers, err := v1.NewTLSAuth(s.cfg.TLS.AllowedBouncersOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",
@@ -565,6 +496,7 @@ func (s *APIServer) InitController() error {
 	if err != nil {
 		return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
 	}
+	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth = tlsAuthBouncers
 
 	return nil
 }

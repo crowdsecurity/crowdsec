@@ -56,7 +56,7 @@ func TestCreateMachine(t *testing.T) {
 func TestCreateMachineWithForwardedFor(t *testing.T) {
 	ctx := t.Context()
 	router, config := NewAPITestForwardedFor(t)
-	router.TrustedPlatform = "X-Real-IP"
+	// Trusted proxies are configured via middleware in NewAPITestForwardedFor
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)

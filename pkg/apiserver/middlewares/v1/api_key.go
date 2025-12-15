@@ -9,9 +9,9 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver/router"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -84,15 +84,15 @@ func HashSHA512(str string) string {
 	return hashStr
 }
 
-func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
+func (a *APIKey) authTLS(r *http.Request, clientIP string, logger *log.Entry) *ent.Bouncer {
 	if a.TlsAuth == nil {
 		logger.Warn("TLS Auth is not configured but client presented a certificate")
 		return nil
 	}
 
-	ctx := c.Request.Context()
+	ctx := r.Context()
 
-	extractedCN, err := a.TlsAuth.ValidateCert(c)
+	extractedCN, err := a.TlsAuth.ValidateCertFromRequest(r)
 	if err != nil {
 		logger.Warn(err)
 		return nil
@@ -100,7 +100,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	logger = logger.WithField("cn", extractedCN)
 
-	bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+	bouncerName := fmt.Sprintf("%s@%s", extractedCN, clientIP)
 	bouncer, err := a.DbClient.SelectBouncerByName(ctx, bouncerName)
 
 	// This is likely not the proper way, but isNotFound does not seem to work
@@ -115,7 +115,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 		logger.Infof("Creating bouncer %s", bouncerName)
 
-		bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType, true)
+		bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, clientIP, HashSHA512(apiKey), types.TlsAuthType, true)
 		if err != nil {
 			logger.Errorf("while creating bouncer db entry: %s", err)
 			return nil
@@ -133,22 +133,20 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	return bouncer
 }
 
-func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
-	val, ok := c.Request.Header[APIKeyHeader]
+func (a *APIKey) authPlain(r *http.Request, clientIP string, logger *log.Entry) *ent.Bouncer {
+	val, ok := r.Header[APIKeyHeader]
 	if !ok {
 		logger.Errorf("API key not found")
 		return nil
 	}
 
-	clientIP := c.ClientIP()
-
-	ctx := c.Request.Context()
+	ctx := r.Context()
 
 	hashStr := HashSHA512(val[0])
 
 	// Appsec case, we only care if the key is valid
 	// No content is returned, no last_pull update or anything
-	if c.Request.Method == http.MethodHead {
+	if r.Method == http.MethodHead {
 		bouncer, err := a.DbClient.SelectBouncers(ctx, hashStr, types.ApiKeyAuthType)
 		if err != nil {
 			logger.Errorf("while fetching bouncer info: %s", err)
@@ -216,65 +214,64 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	return bouncer
 }
 
-func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var bouncer *ent.Bouncer
+// MiddlewareFunc returns a middleware that validates API keys
+func (a *APIKey) MiddlewareFunc() router.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var bouncer *ent.Bouncer
 
-		ctx := c.Request.Context()
+			ctx := r.Context()
+			clientIP := router.GetClientIP(r) // Gets IP from context (resolved by ClientIPMiddleware)
 
-		clientIP := c.ClientIP()
+			logger := log.WithField("ip", clientIP)
 
-		logger := log.WithField("ip", clientIP)
+			if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+				bouncer = a.authTLS(r, clientIP, logger)
+			} else {
+				bouncer = a.authPlain(r, clientIP, logger)
+			}
 
-		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-			bouncer = a.authTLS(c, logger)
-		} else {
-			bouncer = a.authPlain(c, logger)
-		}
-
-		if bouncer == nil {
-			// XXX: StatusUnauthorized?
-			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-			c.Abort()
-
-			return
-		}
-
-		// Appsec request, return immediately if we found something
-		if c.Request.Method == http.MethodHead {
-			c.Set(BouncerContextKey, bouncer)
-			return
-		}
-
-		logger = logger.WithField("name", bouncer.Name)
-
-		// 1st time we see this bouncer, we update its IP
-		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
-				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-				c.Abort()
-
+			if bouncer == nil {
+				router.AbortWithJSON(w, http.StatusForbidden, map[string]string{"message": "access forbidden"})
 				return
 			}
-		}
 
-		useragent := strings.Split(c.Request.UserAgent(), "/")
-		if len(useragent) != 2 {
-			logger.Warningf("bad user agent '%s'", c.Request.UserAgent())
-			useragent = []string{c.Request.UserAgent(), "N/A"}
-		}
-
-		if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
-			if err := a.DbClient.UpdateBouncerTypeAndVersion(ctx, useragent[0], useragent[1], bouncer.ID); err != nil {
-				logger.Errorf("failed to update bouncer version and type: %s", err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
-				c.Abort()
-
+			// Appsec request, return immediately if we found something
+			if r.Method == http.MethodHead {
+				// Store bouncer in context and continue
+				r = router.SetContextValue(r, BouncerContextKey, bouncer)
+				next.ServeHTTP(w, r)
 				return
 			}
-		}
 
-		c.Set(BouncerContextKey, bouncer)
+			logger = logger.WithField("name", bouncer.Name)
+
+			// 1st time we see this bouncer, we update its IP
+			if bouncer.IPAddress == "" {
+				if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
+					logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
+					router.AbortWithJSON(w, http.StatusForbidden, map[string]string{"message": "access forbidden"})
+					return
+				}
+			}
+
+			useragent := strings.Split(r.UserAgent(), "/")
+			if len(useragent) != 2 {
+				logger.Warningf("bad user agent '%s'", r.UserAgent())
+				useragent = []string{r.UserAgent(), "N/A"}
+			}
+
+			if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
+				if err := a.DbClient.UpdateBouncerTypeAndVersion(ctx, useragent[0], useragent[1], bouncer.ID); err != nil {
+					logger.Errorf("failed to update bouncer version and type: %s", err)
+					router.AbortWithJSON(w, http.StatusForbidden, map[string]string{"message": "bad user agent"})
+					return
+				}
+			}
+
+			// Store bouncer in context
+			r = router.SetContextValue(r, BouncerContextKey, bouncer)
+			next.ServeHTTP(w, r)
+		})
 	}
 }
