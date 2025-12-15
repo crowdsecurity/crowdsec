@@ -25,7 +25,7 @@ func BenchmarkIsAllowlisted_Small(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_, _ = a.IsAllowlisted("192.168.0.5")
 	}
 }
@@ -53,7 +53,7 @@ func BenchmarkIsAllowlisted_Large(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_, _ = a.IsAllowlisted("10.0.0.1")
 	}
 }
@@ -72,7 +72,7 @@ func BenchmarkIsAllowlisted_NotInList(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_, _ = a.IsAllowlisted("203.0.113.1")
 	}
 }

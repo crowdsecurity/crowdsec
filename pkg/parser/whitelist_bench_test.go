@@ -37,7 +37,7 @@ func BenchmarkCheckIPsWL_SmallAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -74,7 +74,7 @@ func BenchmarkCheckIPsWL_MediumAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -111,7 +111,7 @@ func BenchmarkCheckIPsWL_LargeAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_ = node.CheckIPsWL(event)
 	}
 }
@@ -141,7 +141,7 @@ func BenchmarkCheckIPsWL_NotInAllowlist(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_ = node.CheckIPsWL(event)
 	}
 }
