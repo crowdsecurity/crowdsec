@@ -299,8 +299,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 
 		err = LoadBucket(&bucketFactory)
 		if err != nil {
-			log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
-			return nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
+			return nil, fmt.Errorf("bucket %s: %w", bucketFactory.Name, err)
 		}
 
 		bucketFactory.orderEvent = orderEvent
@@ -370,7 +369,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.Filter == "" {
 		bucketFactory.logger.Warning("Bucket without filter, abort.")
-		return errors.New("bucket without filter directive")
+		return errors.New("missing filter directive")
 	}
 
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
