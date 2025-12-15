@@ -59,7 +59,15 @@ func setupWithPrefix(urlPrefix string) (*http.ServeMux, string, func()) {
 	return mux, server.URL, server.Close
 }
 
-func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
+func runTests(t *testing.T, tests []appsecRuleTest) {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testAppSecEngine(t, test)
+		})
+	}
+}
+
+func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	if testing.Verbose() {
 		log.SetLevel(log.TraceLevel)
 	} else {
