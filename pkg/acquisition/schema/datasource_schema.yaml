@@ -4,10 +4,5 @@ description: >
   Schema for acquisition entries consumed by CrowdSec. Every field
   mirrors the configuration of at least one acquisition module and the embedded
   configuration DataSourceCommonCfg.
-type: object
-properties:
-  datasource:
-    $ref: ../modules/docker/docker_schema.yaml
-required:
-  - datasource
-additionalProperties: false
+anyOf:
+  - $ref: ../modules/docker/docker_schema.yaml
