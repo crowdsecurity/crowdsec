@@ -239,6 +239,19 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 		hubAware.SetHub(hub)
 	}
 
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		apiClient, err := apiclient.GetLAPIClient()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+		}
+
+		lapiClientAware.SetClient(apiClient)
+
+		cConfig := csconfig.GetConfig()
+
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
+	}
+
 	dsnConf, ok := dataSrc.(DSNConfigurer)
 	if !ok {
 		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
