@@ -221,7 +221,6 @@ filename: %s`, deletedFile),
 
 			subLogger := logger.WithField("type", "file")
 
-			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event, 100)
 			f := fileacquisition.Source{}
 
@@ -240,7 +239,7 @@ filename: %s`, deletedFile),
 				tc.afterConfigure()
 			}
 
-			err = f.OneShotAcquisition(ctx, out, &tomb)
+			err = f.OneShot(ctx, out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
