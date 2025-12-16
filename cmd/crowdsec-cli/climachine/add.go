@@ -116,7 +116,7 @@ func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword 
 
 		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
 	} else {
-		fmt.Print(string(apiConfigDump))
+		fmt.Fprint(os.Stderr, string(apiConfigDump))
 	}
 
 	return nil
