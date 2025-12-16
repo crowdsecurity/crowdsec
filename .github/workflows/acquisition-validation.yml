@@ -41,7 +41,7 @@ jobs:
           set -euxo pipefail
 
           find . \
-            \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) -prune -o \
+            \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) \
             -type f -name '*.yaml' -print0 |
           while IFS= read -r -d '' f; do
             base="${f%.yaml}"

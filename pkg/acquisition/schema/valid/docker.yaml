@@ -1,0 +1,31 @@
+source: docker
+container_name:
+  - my_container_name
+container_id:
+  - 843ee92d231b
+labels:
+  type: log_type
+---
+source: docker
+container_name_regexp:
+  - my_containers_*
+container_id_regexp:
+  - i-*
+labels:
+  type: log_type
+---
+source: docker
+service_name:
+  - my_service_name
+service_id:
+  - abcdef123456
+labels:
+  type: log_type
+---
+source: docker
+service_name_regexp:
+  - web_*
+service_id_regexp:
+  - svc-*
+labels:
+  type: log_type
