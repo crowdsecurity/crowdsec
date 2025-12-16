@@ -20,7 +20,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -91,10 +90,6 @@ func (w *Source) UnmarshalConfig(yamlConfig []byte) error {
 		}
 	}
 
-	csConfig := csconfig.GetConfig()
-	w.lapiURL = fmt.Sprintf("%sv1/decisions/stream", csConfig.API.Client.Credentials.URL)
-	w.AuthCache = NewAuthCache()
-
 	return nil
 }
 
@@ -125,10 +120,21 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
 	}
 
+	if w.lapiClient == nil {
+		return errors.New("appsec datasource requires a lapi client. this is a bug, please report")
+	}
+
+	if w.lapiClientConfig == nil {
+		return errors.New("appsec datasource requires a lapi client configuration. this is a bug, please report")
+	}
+
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
+
+	w.lapiURL = fmt.Sprintf("%sv1/decisions/stream", w.lapiClientConfig.Credentials.URL)
+	w.AuthCache = NewAuthCache()
 
 	w.logger = logger
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
@@ -218,12 +224,10 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	// We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
 
-	csConfig := csconfig.GetConfig()
-
 	caCertPath := ""
 
-	if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
-		caCertPath = csConfig.API.Client.Credentials.CACertPath
+	if w.lapiClientConfig != nil && w.lapiClientConfig.Credentials != nil {
+		caCertPath = w.lapiClientConfig.Credentials.CACertPath
 	}
 
 	w.lapiCACertPool, err = loadCertPool(caCertPath, w.logger)

@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
@@ -116,6 +117,11 @@ type DSNConfigurer interface {
 	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
+type LAPIClientAware interface {
+	SetClient(client *apiclient.ApiClient)
+	SetClientConfig(config *csconfig.LocalApiClientCfg)
+}
+
 type HubAware interface {
 	SetHub(hub *cwhub.Hub)
 }
@@ -184,6 +190,19 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 
 	if hubAware, ok := dataSrc.(HubAware); ok {
 		hubAware.SetHub(hub)
+	}
+
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		apiClient, err := apiclient.GetLAPIClient()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+		}
+
+		lapiClientAware.SetClient(apiClient)
+
+		cConfig := csconfig.GetConfig()
+
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
 	}
 
 	/* configure the actual datasource */

@@ -8,14 +8,18 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type Source struct {
 	config                Configuration
 	hub                   *cwhub.Hub
+	lapiClient            *apiclient.ApiClient
+	lapiClientConfig      *csconfig.LocalApiClientCfg
 	logger                *log.Entry
 	mux                   *http.ServeMux
 	server                *http.Server
@@ -61,6 +65,14 @@ func (ac *AuthCache) Delete(apiKey string) {
 	ac.mu.Lock()
 	delete(ac.APIKeys, apiKey)
 	ac.mu.Unlock()
+}
+
+func (w *Source) SetClient(client *apiclient.ApiClient) {
+	w.lapiClient = client
+}
+
+func (w *Source) SetClientConfig(config *csconfig.LocalApiClientCfg) {
+	w.lapiClientConfig = config
 }
 
 func (w *Source) SetHub(hub *cwhub.Hub) {
