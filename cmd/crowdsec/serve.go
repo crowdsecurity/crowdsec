@@ -125,15 +125,11 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
 	cancel()
 
 	log.Debugf("parsers is done")
 	log.Debugf("buckets is done")
 	log.Debugf("metrics are done")
-
-	// XXX: not required anymore?
-	// time.Sleep(1 * time.Second) // ugly workaround for now
 
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
