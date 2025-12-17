@@ -67,10 +67,6 @@ func (ac *AuthCache) Delete(apiKey string) {
 	ac.mu.Unlock()
 }
 
-func (w *Source) SetClient(client *apiclient.ApiClient) {
-	w.lapiClient = client
-}
-
 func (w *Source) SetClientConfig(config *csconfig.LocalApiClientCfg) {
 	w.lapiClientConfig = config
 }

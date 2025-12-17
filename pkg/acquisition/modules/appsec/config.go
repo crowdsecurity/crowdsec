@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -120,16 +121,18 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
 	}
 
-	if w.lapiClient == nil {
-		return errors.New("appsec datasource requires a lapi client. this is a bug, please report")
-	}
-
 	if w.lapiClientConfig == nil {
 		return errors.New("appsec datasource requires a lapi client configuration. this is a bug, please report")
 	}
 
-	err := w.UnmarshalConfig(yamlConfig)
+	client, err := apiclient.GetLAPIClient()
 	if err != nil {
+		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+	}
+
+	w.lapiClient = client
+
+	if err := w.UnmarshalConfig(yamlConfig); err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
 
