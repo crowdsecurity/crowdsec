@@ -103,14 +103,6 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	drainChan(inputEventChan)
 
-	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
-	cancel()
-
-	log.Debugf("parsers is done")
-	log.Debugf("buckets is done")
-	log.Debugf("metrics are done")
-
-	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
@@ -132,6 +124,16 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 		// this can happen if outputs are stuck in a http retry loop
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
+
+	// XXX: time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
+	cancel()
+
+	log.Debugf("parsers is done")
+	log.Debugf("buckets is done")
+	log.Debugf("metrics are done")
+
+	// XXX: not required anymore?
+	// time.Sleep(1 * time.Second) // ugly workaround for now
 
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
