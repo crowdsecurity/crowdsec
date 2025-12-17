@@ -155,7 +155,7 @@ func CheckPerms(path string) error {
 	return nil
 }
 
-func getProcessAtr() (*syscall.SysProcAttr, error) {
+func getProcessAttr() (*syscall.SysProcAttr, error) {
 	var procToken, token windows.Token
 
 	proc := windows.CurrentProcess()
@@ -209,7 +209,7 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 func (*PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
 	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.SysProcAttr, err = getProcessAtr()
+	cmd.SysProcAttr, err = getProcessAttr()
 	if err != nil {
 		return nil, fmt.Errorf("while getting process attributes: %w", err)
 	}

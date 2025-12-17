@@ -12,7 +12,7 @@ services:
     environment:
       AWS_HOST: localstack
       DEBUG: ""
-      KINESYS_ERROR_PROBABILITY: ""
+      KINESIS_ERROR_PROBABILITY: ""
       LOCALSTACK_HOST: "localstack"
       AWS_REGION: "us-east-1"
 
