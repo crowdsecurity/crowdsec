@@ -44,7 +44,7 @@ setup() {
 
 @test "we have one decision" {
     rune -0 cscli simulation disable --global
-    fake_log | "$CROWDSEC" -dsn file:///dev/fd/0 -type syslog -no-api
+    fake_log | "$CROWDSEC" -dsn file:///dev/fd/0 -type syslog -no-api --debug
     rune -0 cscli decisions list -o json
     rune -0 jq '. | length' <(output)
     assert_output 1

@@ -179,7 +179,6 @@ func runCrowdsec(ctx context.Context, cConfig *csconfig.Config, parsers *parser.
 func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool) {
 	cctx, cancel := context.WithCancel(ctx)
 
-
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
