@@ -127,8 +127,8 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 
 	cancel()
 
-	log.Debugf("parsers is done")
-	log.Debugf("buckets is done")
+	log.Debugf("parsers are done")
+	log.Debugf("buckets are done")
 	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
