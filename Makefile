@@ -20,8 +20,9 @@ include build/mk/gmsl/gmsl
 # (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
-#expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := netgo,osusergo,expr_debug
+# expr_debug tag is required to enable the debug mode in expr
+# nomsgpack builds gin without msgpack support, to reduce binary size
+GO_TAGS := netgo,osusergo,expr_debug,nomsgpack
 
 # By default, build with sqlite3.
 BUILD_SQLITE ?= mattn
