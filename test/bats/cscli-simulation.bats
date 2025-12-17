@@ -16,7 +16,6 @@ setup_file() {
     cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
     cscli parsers install crowdsecurity/dateparse-enrich --error >/dev/null
 
-    config_set '.common.log_level="debug"'
     ./instance-crowdsec start
 }
 
