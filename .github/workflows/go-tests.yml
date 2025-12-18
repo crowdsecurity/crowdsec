@@ -214,6 +214,12 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
-        version: v2.9
+        version: v2.10
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
+
+    - name: Build custom-gcl (nilaway plugin)
+      run: golangci-lint custom -v
+
+    - name: nilaway
+      run: ./custom-gcl run --issues-exit-code=1 --timeout 10m --enable-only=nilaway
