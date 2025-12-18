@@ -47,8 +47,6 @@ var (
 	inputLineChan   chan pipeline.Event
 	inputEventChan  chan pipeline.Event
 	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
-	// settings
-	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
 )
 

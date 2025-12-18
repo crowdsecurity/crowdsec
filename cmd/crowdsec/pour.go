@@ -66,12 +66,6 @@ func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.Buc
 			} else {
 				metrics.GlobalBucketPourKo.Inc()
 			}
-
-			if parsed.MarshaledTime != "" {
-				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-					log.Warningf("failed to parse time from event: %s", err)
-				}
-			}
 		}
 	}
 }
