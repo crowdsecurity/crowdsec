@@ -77,7 +77,6 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		flags.Labels = additionalLabels
 		flags.Labels["type"] = flags.SingleFileType
 
 		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
@@ -99,10 +98,6 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 
 	return dataSources, nil
 }
-
-var (
-	additionalLabels = make(labelsMap)
-)
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {

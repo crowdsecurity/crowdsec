@@ -18,7 +18,7 @@ type Flags struct {
 
 	PrintVersion   bool
 	SingleFileType string
-	Labels         map[string]string
+	Labels         labelsMap
 	OneShotDSN     string
 	TestMode       bool
 	DisableAgent   bool
@@ -70,7 +70,7 @@ func (f *Flags) parse() {
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
+	flag.Var(&f.Labels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
