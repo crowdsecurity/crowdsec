@@ -13,7 +13,6 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -403,11 +402,11 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 	}
 }
 
-func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
+func (m *MetricsProvider) Run(ctx context.Context) {
 	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
 
 	if m.interval == time.Duration(0) {
-		return nil
+		return
 	}
 
 	ticker := time.NewTicker(1) // Send on start
@@ -418,9 +417,9 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 			met := m.metricsPayload()
 			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
-		case <-myTomb.Dying():
+		case <-ctx.Done():
 			ticker.Stop()
-			return nil
+			return
 		}
 	}
 }

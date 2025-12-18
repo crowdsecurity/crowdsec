@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
@@ -27,12 +28,10 @@ import (
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -86,7 +85,19 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	return cConfig, nil
 }
 
-func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
+func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() { done <- g.Wait() }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return context.DeadlineExceeded
+	}
+}
+
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -103,20 +114,8 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	}
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
-	parsersTomb.Kill(nil)
 	drainChan(inputEventChan)
 
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("Parsers returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
-	cancel()
-
-	log.Debugf("buckets is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
@@ -139,13 +138,14 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	lpMetricsTomb.Kill(nil)
+	cancel()
 
-	if err := lpMetricsTomb.Wait(); err != nil {
-		log.Warningf("Metrics returned error : %s", err)
-		reterr = err
+	if err := waitErrGroup(g, 3 * time.Second); err != nil {
+		log.WithError(err).Warn("timeout waiting for parser/bucket routines")
 	}
 
+	log.Debugf("parsers are done")
+	log.Debugf("buckets are done")
 	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
@@ -304,12 +304,10 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig
