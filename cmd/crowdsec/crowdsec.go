@@ -71,7 +71,7 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 
 func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers) {
 	for idx := range cConfig.Crowdsec.ParserRoutinesCount {
-		log.WithField("idx", idx).Info("Starting parser routine", idx)
+		log.WithField("idx", idx).Info("Starting parser routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runParse/"+strconv.Itoa(idx))
 			runParse(ctx, inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
@@ -82,7 +82,7 @@ func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 
 func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config) {
 	for idx := range cConfig.Crowdsec.BucketsRoutinesCount {
-		log.WithField("idx", idx).Info("Starting bucket routine", idx)
+		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runPour/"+strconv.Itoa(idx))
 			runPour(ctx, inputEventChan, holders, buckets, cConfig)
@@ -98,7 +98,7 @@ func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclien
 
 func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient) {
 	for idx := range cConfig.Crowdsec.OutputRoutinesCount {
-		log.WithField("idx", idx).Info("Starting output routine", idx)
+		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runOutput/"+strconv.Itoa(idx))
 			return runOutput(ctx, inputEventChan, outputEventChan, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient)
