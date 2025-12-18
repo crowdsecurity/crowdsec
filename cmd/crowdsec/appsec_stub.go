@@ -6,6 +6,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func LoadAppsecRules(hub *cwhub.Hub) error {
+func LoadAppsecRules(_ *cwhub.Hub) error {
 	return nil
 }

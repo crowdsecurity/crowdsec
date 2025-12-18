@@ -111,7 +111,6 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 		apiClient,
 		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
-		[]string{},
 		datasources,
 		hub,
 	)
