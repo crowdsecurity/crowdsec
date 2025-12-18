@@ -240,7 +240,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
-	Loop:
 		for {
 			s := <-signalChan
 			switch s {
@@ -250,14 +249,12 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig, err = reloadHandler(ctx, s); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig != nil {
@@ -269,8 +266,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				exitChan <- nil
