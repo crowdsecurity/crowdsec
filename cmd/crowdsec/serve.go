@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
@@ -84,7 +85,19 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	return cConfig, nil
 }
 
-func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
+func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() { done <- g.Wait() }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return context.DeadlineExceeded
+	}
+}
+
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -126,6 +139,10 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc) error {
 	}
 
 	cancel()
+
+	if err := waitErrGroup(g, 3 * time.Second); err != nil {
+		log.WithError(err).Warn("timeout waiting for parser/bucket routines")
+	}
 
 	log.Debugf("parsers are done")
 	log.Debugf("buckets are done")
