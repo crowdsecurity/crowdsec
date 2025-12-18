@@ -101,8 +101,6 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 }
 
 var (
-	dumpFolder       string
-	dumpStates       bool
 	additionalLabels = make(labelsMap)
 )
 
@@ -124,11 +122,9 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		}
 	}
 
-	if dumpFolder != "" {
+	if flags.DumpDir != "" {
 		parser.ParseDump = true
-		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
-		dumpStates = true
 	}
 
 	if flags.haveTimeMachine() {

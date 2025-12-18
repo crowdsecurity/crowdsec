@@ -28,6 +28,7 @@ type Flags struct {
 	Transform      string
 	OrderEvent     bool
 	CPUProfile     string
+	DumpDir        string
 }
 
 func (f *Flags) haveTimeMachine() bool {
@@ -80,7 +81,7 @@ func (f *Flags) parse() {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
 
-	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
+	flag.StringVar(&f.DumpDir, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
 	flag.Parse()
 
