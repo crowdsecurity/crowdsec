@@ -12,9 +12,9 @@ if ($version.Contains("-"))
     $version = $version.Substring(0, $version.IndexOf("-"))
 }
 
-Set-Location .\build\windows\Chocolatey\crowdsec
-Copy-Item ..\..\..\crowdsec_$version.msi tools\crowdsec.msi
+Set-Location (Join-Path $env:BUILD_SOURCESDIRECTORY 'build\windows\Chocolatey\crowdsec')
+Copy-Item (Join-Path $env:BUILD_SOURCESDIRECTORY "crowdsec_$version.msi") "tools\crowdsec.msi"
 
 choco pack --version $version
 
-Copy-Item crowdsec.$version.nupkg ..\..\..\
+Copy-Item "crowdsec.$version.nupkg" (Join-Path $env:BUILD_SOURCESDIRECTORY ".")
