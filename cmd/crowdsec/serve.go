@@ -105,7 +105,7 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) erro
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
-		drainChan(inputLineChan)
+		drainChan(logLines)
 
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
@@ -114,7 +114,7 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) erro
 	}
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
-	drainChan(inputEventChan)
+	drainChan(inEvents)
 
 	outputsTomb.Kill(nil)
 
