@@ -48,9 +48,9 @@
       </UI>
 
       <UIRef Id="WixUI_Common" />
-      <WixVariable Id="WixUIDialogBmp" Value="..\windows\installer\installer_dialog.bmp" />
-      <WixVariable Id="WixUIBannerBmp" Value="..\windows\installer\crowdsec_msi_top_banner.bmp" />
-      <Icon Id="icon.ico" SourceFile="..\windows\installer\crowdsec_icon.ico"/>
+      <WixVariable Id="WixUIDialogBmp" Value="..\build\windows\installer\installer_dialog.bmp" />
+      <WixVariable Id="WixUIBannerBmp" Value="..\build\windows\installer\crowdsec_msi_top_banner.bmp" />
+      <Icon Id="icon.ico" SourceFile="..\build\windows\installer\crowdsec_icon.ico"/>
       <Property Id="ARPPRODUCTICON" Value="icon.ico" />
    </Fragment>
 </Wix>
