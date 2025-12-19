@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -192,7 +192,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 // or uptime of the application
 var crowdsecT0 time.Time
 
-func run() error {
+func run(flags Flags) error {
 	if flags.CPUProfile != "" {
 		f, err := os.Create(flags.CPUProfile)
 		if err != nil {
@@ -238,22 +238,22 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	// Handle command line arguments
-	flags.parse()
-
-	if len(flag.Args()) > 0 {
-		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
-		flag.Usage()
-		// the flag package exits with 2 in case of unknown flag
+	parsedFlags, err := parseFlags(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, color.RedString("Error:"), err)
+		// the flag package exits with 2 in case of unknown flag,
+		// we do the same for extra arguments
 		os.Exit(2)
 	}
 
+	flags = parsedFlags
+
 	if flags.PrintVersion {
 		os.Stdout.WriteString(cwversion.FullString())
-		os.Exit(0)
+		return
 	}
 
-	if err := run(); err != nil {
+	if err := run(flags); err != nil {
 		log.Fatal(err)
 	}
 }
