@@ -9,14 +9,14 @@ on:
       - master
       - releases/**
     paths:
-      - windows/installer/*.wxs
+      - build/windows/installer/*.wxs
       - .github/workflows/ci-windows-build-msi.yml
   pull_request:
     branches:
       - master
       - releases/**
     paths:
-      - windows/installer/*.wxs
+      - build/windows/installer/*.wxs
       - .github/workflows/ci-windows-build-msi.yml
 
 jobs:

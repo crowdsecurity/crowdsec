@@ -427,11 +427,11 @@ release: check_release build package  ## Build a release tarball
 
 .PHONY: windows_installer
 windows_installer: build  ## Windows - build the installer
-	@.\make_installer.ps1 -version $(BUILD_VERSION)
+	@.\build\windows\make_installer.ps1 -version $(BUILD_VERSION)
 
 .PHONY: chocolatey
 chocolatey: windows_installer  ## Windows - build the chocolatey package
-	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
+	@.\build\windows\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
 # Include test/bats.mk only if it exists
 # to allow building without a test/ directory
