@@ -8,7 +8,7 @@ if ($version.StartsWith("v"))
 }
 
 #Pre-releases will be like 1.4.0-rc1, remove everything after the dash as it does not conform to the MSI versioning scheme
-if ($version.Contains("-")) 
+if ($version.Contains("-"))
 {
     $version = $version.Substring(0, $version.IndexOf("-"))
 }
