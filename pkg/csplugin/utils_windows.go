@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	advapi32 = syscall.NewLazyDLL("advapi32.dll")
+	advapi32 = windows.NewLazyDLL("advapi32.dll")
 	procGetAce = advapi32.NewProc("GetAce")
 )
 
@@ -155,7 +155,7 @@ func CheckPerms(path string) error {
 	return nil
 }
 
-func getProcessAttr() (*syscall.SysProcAttr, error) {
+func getProcessAttr() (*windows.SysProcAttr, error) {
 	var procToken, token windows.Token
 
 	proc := windows.CurrentProcess()
@@ -201,7 +201,7 @@ func getProcessAttr() (*syscall.SysProcAttr, error) {
 	}
 
 	return &windows.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP,
 		Token:         syscall.Token(token),
 	}, nil
 }
