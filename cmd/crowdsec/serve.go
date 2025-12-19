@@ -235,11 +235,6 @@ func unregisterWatcher(ctx context.Context, cConfig *csconfig.Config) (bool, err
 }
 
 func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
-	var (
-		newConfig *csconfig.Config
-		err       error
-	)
-
 	signalChan := make(chan os.Signal, 1)
 
 	// We add os.Interrupt mostly to ease windows development,
@@ -265,24 +260,23 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
 					return
 				}
 
-				if newConfig, err = reloadHandler(ctx, s); err != nil {
+				newConfig, err := reloadHandler(ctx, s)
+				if err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
 					return
 				}
 
-				if newConfig != nil {
-					cConfig = newConfig
-				}
+				cConfig = newConfig
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
 					return
 				}
@@ -292,7 +286,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 		}
 	}()
 
-	err = <-exitChan
+	err := <-exitChan
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
