@@ -27,6 +27,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -115,6 +116,14 @@ type DSNConfigurer interface {
 	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
+type LAPIClientAware interface {
+	SetClientConfig(config *csconfig.LocalApiClientCfg)
+}
+
+type HubAware interface {
+	SetHub(hub *cwhub.Hub)
+}
+
 var (
 	// We register the datasources at init time so we can tell if they are unsupported, or excluded from the build
 	AcquisitionSources = map[string]func() DataSource{}
@@ -157,7 +166,7 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
+func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
 	if err != nil {
 		return nil, err
@@ -177,6 +186,15 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 
 	subLogger.Info("Configuring datasource")
 
+	if hubAware, ok := dataSrc.(HubAware); ok {
+		hubAware.SetHub(hub)
+	}
+
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		cConfig := csconfig.GetConfig()
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
+	}
+
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
@@ -185,7 +203,7 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) (DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string, hub *cwhub.Hub) (DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
@@ -205,6 +223,15 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 		}
 
 		transformRuntimes[uniqueID] = vm
+	}
+
+	if hubAware, ok := dataSrc.(HubAware); ok {
+		hubAware.SetHub(hub)
+	}
+
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		cConfig := csconfig.GetConfig()
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
 	}
 
 	dsnConf, ok := dataSrc.(DSNConfigurer)
@@ -272,7 +299,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -356,7 +383,7 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 		uniqueID := uuid.NewString()
 		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel)
+		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -383,13 +410,13 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 }
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg, hub *cwhub.Hub) ([]DataSource, error) {
 	var allSources []DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel, hub)
 		if err != nil {
 			return nil, err
 		}

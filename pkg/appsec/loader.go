@@ -12,10 +12,7 @@ import (
 
 var appsecRules = make(map[string]AppsecCollectionConfig) // FIXME: would probably be better to have a struct for this
 
-var hub *cwhub.Hub // FIXME: this is a temporary hack to make the hub available in the package
-
-func LoadAppsecRules(hubInstance *cwhub.Hub) error {
-	hub = hubInstance
+func LoadAppsecRules(hub *cwhub.Hub) error {
 	appsecRules = make(map[string]AppsecCollectionConfig)
 
 	for _, hubAppsecRuleItem := range hub.GetInstalledByType(cwhub.APPSEC_RULES, false) {

@@ -407,11 +407,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
@@ -824,11 +821,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
@@ -917,11 +910,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestOnMatchRemediationHooks(t *testing.T) {
@@ -1090,9 +1079,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

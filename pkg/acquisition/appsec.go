@@ -11,6 +11,8 @@ var (
 	_ DataSource      = (*appsecacquisition.Source)(nil)
 	_ Tailer          = (*appsecacquisition.Source)(nil)
 	_ MetricsProvider = (*appsecacquisition.Source)(nil)
+	_ HubAware        = (*appsecacquisition.Source)(nil)
+	_ LAPIClientAware = (*appsecacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
