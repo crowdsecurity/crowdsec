@@ -87,7 +87,7 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 }
 
 // newStaticMetrics is called when the process starts, or reloads the configuration
-func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) staticMetrics {
+func newStaticMetrics(datasources []acquisition.DataSource, hub *cwhub.Hub) staticMetrics {
 	datasourceMap := map[string]int64{}
 
 	for _, ds := range datasources {
@@ -111,11 +111,10 @@ func NewMetricsProvider(
 	apic *apiclient.ApiClient,
 	interval time.Duration,
 	logger *logrus.Entry,
-	consoleOptions []string,
 	datasources []acquisition.DataSource,
 	hub *cwhub.Hub,
 ) *MetricsProvider {
-	static := newStaticMetrics(consoleOptions, datasources, hub)
+	static := newStaticMetrics(datasources, hub)
 	
 	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 

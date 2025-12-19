@@ -216,6 +216,24 @@ func drainChan(c chan pipeline.Event) {
 	}
 }
 
+func unregisterWatcher(ctx context.Context, cConfig *csconfig.Config) (bool, error) {
+	if cConfig.API == nil || cConfig.API.Client == nil || !cConfig.API.Client.UnregisterOnExit {
+		return false, nil
+	}
+
+	lapiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = lapiClient.Auth.UnregisterWatcher(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	var (
 		newConfig *csconfig.Config
@@ -240,7 +258,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
-	Loop:
 		for {
 			s := <-signalChan
 			switch s {
@@ -250,14 +267,12 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig, err = reloadHandler(ctx, s); err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
 				if newConfig != nil {
@@ -269,8 +284,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 				if err = shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				exitChan <- nil
@@ -283,20 +297,11 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 		log.Warning("Crowdsec service shutting down")
 	}
 
-	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
-		log.Warning("Unregistering watcher")
-
-		lapiClient, err := apiclient.GetLAPIClient()
-		if err != nil {
-			return err
+	if ok, werr := unregisterWatcher(ctx, cConfig); werr != nil {
+		log.WithError(werr).Warning("unregistering watcher")
+		if ok {
+			log.Warning("Watcher unregistered")
 		}
-
-		_, err = lapiClient.Auth.UnregisterWatcher(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to unregister watcher: %w", err)
-		}
-
-		log.Warning("Watcher unregistered")
 	}
 
 	return err

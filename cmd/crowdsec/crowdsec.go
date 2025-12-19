@@ -111,7 +111,6 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 		apiClient,
 		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
-		[]string{},
 		datasources,
 		hub,
 	)
@@ -198,8 +197,10 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 
 		log.Debugf("everything is dead, return crowdsecTomb")
 
-		if dumpStates {
-			if err := dumpAllStates(); err != nil {
+		if flags.DumpDir != "" {
+			log.Debugf("Dumping parser+bucket states to %s", flags.DumpDir)
+
+			if err := dumpAllStates(flags.DumpDir); err != nil {
 				log.Fatal(err)
 			}
 

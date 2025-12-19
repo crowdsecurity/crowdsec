@@ -123,7 +123,7 @@ func runOutput(
 
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
-			if dumpStates && ov.Alert != nil {
+			if flags.DumpDir != "" && ov.Alert != nil {
 				bucketOverflows = append(bucketOverflows, event)
 			}
 
@@ -141,7 +141,7 @@ func runOutput(
 				}
 			}
 
-			if dumpStates {
+			if flags.DumpDir != "" {
 				continue
 			}
 
