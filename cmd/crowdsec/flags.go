@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -18,7 +19,7 @@ type Flags struct {
 
 	PrintVersion   bool
 	SingleFileType string
-	Labels         map[string]string
+	Labels         labelsMap
 	OneShotDSN     string
 	TestMode       bool
 	DisableAgent   bool
@@ -54,36 +55,44 @@ func (l *labelsMap) Set(label string) error {
 	return nil
 }
 
-func (f *Flags) parse() {
-	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
+func parseFlags(argv []string) (Flags, error) {
+	var f Flags
+
+	fs := flag.NewFlagSet("crowdsec", flag.ExitOnError)
+	fs.SetOutput(os.Stderr)
+
+	fs.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 
 	var trace, debug, info, warn, erro, fatal bool
+	fs.BoolVar(&trace, "trace", false, "set log level to 'trace' (VERY verbose)")
+	fs.BoolVar(&debug, "debug", false, "set log level to 'debug'")
+	fs.BoolVar(&info, "info", false, "set log level to 'info'")
+	fs.BoolVar(&warn, "warning", false, "set log level to 'warning'")
+	fs.BoolVar(&erro, "error", false, "set log level to 'error'")
+	fs.BoolVar(&fatal, "fatal", false, "set log level to 'fatal'")
 
-	flag.BoolVar(&trace, "trace", false, "set log level to 'trace' (VERY verbose)")
-	flag.BoolVar(&debug, "debug", false, "set log level to 'debug'")
-	flag.BoolVar(&info, "info", false, "set log level to 'info'")
-	flag.BoolVar(&warn, "warning", false, "set log level to 'warning'")
-	flag.BoolVar(&erro, "error", false, "set log level to 'error'")
-	flag.BoolVar(&fatal, "fatal", false, "set log level to 'fatal'")
-
-	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
-	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
-	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
-	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
-	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
-	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
-	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
-	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
-	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
+	fs.BoolVar(&f.PrintVersion, "version", false, "display version")
+	fs.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
+	fs.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
+	fs.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
+	f.Labels = make(labelsMap)
+	fs.Var(&f.Labels, "label", "Additional Labels for file in time-machine")
+	fs.BoolVar(&f.TestMode, "t", false, "only test configs")
+	fs.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
+	fs.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	fs.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	fs.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
 
 	if runtime.GOOS == "windows" {
-		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
+		fs.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
 
-	flag.StringVar(&f.DumpDir, "dump-data", "", "dump parsers/buckets raw outputs")
-	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
-	flag.Parse()
+	fs.StringVar(&f.DumpDir, "dump-data", "", "dump parsers/buckets raw outputs")
+	fs.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
+
+	if err := fs.Parse(argv); err != nil {
+		return f, err
+	}
 
 	// Set the log level selected by the --trace, --debug, --info, etc. flags,
 	// giving precedence to the most verbose flag if multiple are set. If no flag is specified,
@@ -102,4 +111,11 @@ func (f *Flags) parse() {
 	case fatal:
 		f.LogLevel = log.FatalLevel
 	}
+
+	if len(fs.Args()) > 0 {
+		return f, fmt.Errorf("argument provided but not defined: %s", fs.Args()[0])
+
+	}
+
+	return f, nil
 }
