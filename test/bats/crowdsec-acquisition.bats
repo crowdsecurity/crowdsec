@@ -138,7 +138,7 @@ teardown() {
 	  type: appsec
 	EOT
 
-    config_set '.common.log_level="debug" | .common.log_media="stdout"'
+    config_set '.common.log_media="stdout"'
 
     rune -0 "$CROWDSEC" -t --trace
 

@@ -8,7 +8,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -18,7 +17,6 @@ import (
 type Source struct {
 	config                Configuration
 	hub                   *cwhub.Hub
-	lapiClient            *apiclient.ApiClient
 	lapiClientConfig      *csconfig.LocalApiClientCfg
 	logger                *log.Entry
 	mux                   *http.ServeMux

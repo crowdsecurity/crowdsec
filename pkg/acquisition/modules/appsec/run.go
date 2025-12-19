@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -119,7 +120,12 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 }
 
 func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	err := w.appsecAllowlistClient.Start(ctx, w.lapiClient)
+	lapiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
+	}
+
+	err = w.appsecAllowlistClient.Start(ctx, lapiClient)
 	if err != nil {
 		w.logger.Errorf("failed to fetch allowlists for appsec, disabling them: %s", err)
 	} else {

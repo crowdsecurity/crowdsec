@@ -17,7 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -125,13 +124,6 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return errors.New("appsec datasource requires a lapi client configuration. this is a bug, please report")
 	}
 
-	client, err := apiclient.GetLAPIClient()
-	if err != nil {
-		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
-	}
-
-	w.lapiClient = client
-
 	if err := w.UnmarshalConfig(yamlConfig); err != nil {
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
@@ -167,16 +159,16 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 
 	// let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
-		if err = appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
+		if err := appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if w.config.AppsecConfig != "" {
-		if err = appsecCfg.Load(w.config.AppsecConfig, w.hub); err != nil {
+		if err := appsecCfg.Load(w.config.AppsecConfig, w.hub); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
 	} else if len(w.config.AppsecConfigs) > 0 {
 		for _, appsecConfig := range w.config.AppsecConfigs {
-			if err = appsecCfg.Load(appsecConfig, w.hub); err != nil {
+			if err := appsecCfg.Load(appsecConfig, w.hub); err != nil {
 				return fmt.Errorf("unable to load appsec_config: %w", err)
 			}
 		}
@@ -187,10 +179,12 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	// Now we can set up the logger
 	appsecCfg.SetUpLogger()
 
-	w.AppsecRuntime, err = appsecCfg.Build(w.hub)
+	appsecRuntime, err := appsecCfg.Build(w.hub)
 	if err != nil {
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
+
+	w.AppsecRuntime = appsecRuntime
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
 	if err != nil {
