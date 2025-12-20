@@ -20,11 +20,11 @@ import (
 )
 
 type PluginConfig struct {
-	Name       string  `yaml:"name"`
-	CustomerID string  `yaml:"customer_id"`
-	SharedKey  string  `yaml:"shared_key"`
-	LogType    string  `yaml:"log_type"`
-	LogLevel   *string `yaml:"log_level"`
+	Name       string `yaml:"name"`
+	CustomerID string `yaml:"customer_id"`
+	SharedKey  string `yaml:"shared_key"`
+	LogType    string `yaml:"log_type"`
+	LogLevel   string `yaml:"log_level"`
 }
 
 type SentinelPlugin struct {
@@ -39,17 +39,19 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginName string) (string, error) {
+func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, name string) (string, error) {
 	xHeaders := "X-Ms-Date:" + now
 
+	cfg := s.PluginConfigByName[name]
+
 	stringToHash := fmt.Sprintf("POST\n%d\napplication/json\n%s\n/api/logs", length, xHeaders)
-	decodedKey, _ := base64.StdEncoding.DecodeString(s.PluginConfigByName[pluginName].SharedKey)
+	decodedKey, _ := base64.StdEncoding.DecodeString(cfg.SharedKey)
 
 	h := hmac.New(sha256.New, decodedKey)
 	h.Write([]byte(stringToHash))
 
 	encodedHash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-	authorization := "SharedKey " + s.PluginConfigByName[pluginName].CustomerID + ":" + encodedHash
+	authorization := "SharedKey " + cfg.CustomerID + ":" + encodedHash
 
 	logger.Trace("authorization header", "header", authorization)
 
@@ -57,25 +59,28 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 }
 
 func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.GetName()]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
+	name := notification.GetName()
+	cfg, ok := s.PluginConfigByName[name]
+
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	cfg := s.PluginConfigByName[notification.GetName()]
-
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
-	logger.Info("received notification for sentinel config", "name", notification.GetName())
+	logger.Info("received notification for sentinel config", "name", name)
 
-	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", s.PluginConfigByName[notification.GetName()].CustomerID)
-	body := strings.NewReader(notification.GetText())
+	text := notification.GetText()
+
+	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", cfg.CustomerID)
+	body := strings.NewReader(text)
 
 	// Cannot use time.RFC1123 as azure wants GMT, not UTC
 	now := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 
-	authorization, err := s.getAuthorizationHeader(now, len(notification.GetText()), notification.GetName())
+	authorization, err := s.getAuthorizationHeader(now, len(text), name)
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -87,7 +92,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Log-Type", s.PluginConfigByName[notification.GetName()].LogType)
+	req.Header.Set("Log-Type", cfg.LogType)
 	req.Header.Set("Authorization", authorization)
 	req.Header.Set("X-Ms-Date", now)
 
