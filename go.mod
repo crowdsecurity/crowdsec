@@ -64,8 +64,7 @@ require (
 	github.com/moby/moby/client v0.1.1-0.20251116162601-e9ff10bf365a
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/nxadm/tail v1.4.11
-	github.com/oschwald/geoip2-golang v1.9.0
-	github.com/oschwald/maxminddb-golang v1.12.0
+	github.com/oschwald/maxminddb-golang/v2 v2.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
@@ -85,7 +84,7 @@ require (
 	golang.org/x/mod v0.28.0
 	golang.org/x/net v0.44.0
 	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.37.0
+	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.29.0
 	golang.org/x/time v0.13.0
 	google.golang.org/grpc v1.74.2

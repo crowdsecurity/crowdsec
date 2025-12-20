@@ -25,8 +25,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
-	"github.com/oschwald/geoip2-golang"
-	"github.com/oschwald/maxminddb-golang"
+	"github.com/oschwald/maxminddb-golang/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/umahmood/haversine"
@@ -64,9 +63,8 @@ func init() { //nolint:gochecknoinits
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 var (
-	geoIPCityReader  *geoip2.Reader
-	geoIPASNReader   *geoip2.Reader
-	geoIPRangeReader *maxminddb.Reader
+	geoIPCityReader     *maxminddb.Reader
+	geoIPASNRangeReader *maxminddb.Reader
 )
 
 func GetExprOptions(ctx map[string]any) []expr.Option {
@@ -81,19 +79,13 @@ func GetExprOptions(ctx map[string]any) []expr.Option {
 func GeoIPInit(datadir string) error {
 	var err error
 
-	geoIPCityReader, err = geoip2.Open(filepath.Join(datadir, "GeoLite2-City.mmdb"))
+	geoIPCityReader, err = maxminddb.Open(filepath.Join(datadir, "GeoLite2-City.mmdb"))
 	if err != nil {
 		log.Errorf("unable to open GeoLite2-City.mmdb : %s", err)
 		return err
 	}
 
-	geoIPASNReader, err = geoip2.Open(filepath.Join(datadir, "GeoLite2-ASN.mmdb"))
-	if err != nil {
-		log.Errorf("unable to open GeoLite2-ASN.mmdb : %s", err)
-		return err
-	}
-
-	geoIPRangeReader, err = maxminddb.Open(filepath.Join(datadir, "GeoLite2-ASN.mmdb"))
+	geoIPASNRangeReader, err = maxminddb.Open(filepath.Join(datadir, "GeoLite2-ASN.mmdb"))
 	if err != nil {
 		log.Errorf("unable to open GeoLite2-ASN.mmdb : %s", err)
 		return err
@@ -107,12 +99,8 @@ func GeoIPClose() {
 		geoIPCityReader.Close()
 	}
 
-	if geoIPASNReader != nil {
-		geoIPASNReader.Close()
-	}
-
-	if geoIPRangeReader != nil {
-		geoIPRangeReader.Close()
+	if geoIPASNRangeReader != nil {
+		geoIPASNRangeReader.Close()
 	}
 }
 

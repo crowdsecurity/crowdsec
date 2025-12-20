@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/oschwald/geoip2-golang"
-
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 )
@@ -493,14 +491,14 @@ var exprFuncs = []exprCustomFunc{
 		name:     "GeoIPEnrich",
 		function: GeoIPEnrich,
 		signature: []any{
-			new(func(string) *geoip2.City),
+			new(func(string) *GeoIPCity),
 		},
 	},
 	{
 		name:     "GeoIPASNEnrich",
 		function: GeoIPASNEnrich,
 		signature: []any{
-			new(func(string) *geoip2.ASN),
+			new(func(string) *GeoIPASN),
 		},
 	},
 	{
