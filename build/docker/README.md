@@ -48,7 +48,7 @@ You can build your custom images with Dockerfile and Dockerfile-debian.
 For example, if you need a Debian version without plugin notifiers:
 
 ```console
-$ docker build -f Dockerfile.debian --target slim .
+$ docker build -f build/docker/Dockerfile.debian --target slim .
 ```
 
 The supported values for target are: full, geoip, plugins, slim.
@@ -56,7 +56,7 @@ The supported values for target are: full, geoip, plugins, slim.
 Note: for crowdsec versions < 1.5.0, the syntax is
 
 ```console
-$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim .
+$ docker build -f build/docker/Dockerfile.debian --build-arg=BUILD_ENV=slim .
 ```
 
 

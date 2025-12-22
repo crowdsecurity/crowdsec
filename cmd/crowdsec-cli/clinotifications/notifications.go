@@ -43,13 +43,11 @@ type NotificationsCfg struct {
 	ids      []uint
 }
 
-type configGetter func() *csconfig.Config
-
 type cliNotifications struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliNotifications {
+func New(cfg csconfig.Getter) *cliNotifications {
 	return &cliNotifications{
 		cfg: cfg,
 	}
@@ -112,7 +110,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 	}
 
 	if err := filepath.Walk(cfg.ConfigPaths.NotificationDir, wf); err != nil {
-		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
+		return nil, fmt.Errorf("while loading notification plugin configuration: %w", err)
 	}
 
 	return pcfgs, nil
@@ -414,7 +412,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 
 			if cfg.API.Server != nil && cfg.API.Server.DbConfig != nil {
-				dbClient, err := database.NewClient(ctx, cfg.API.Server.DbConfig)
+				dbCfg := cfg.API.Server.DbConfig
+				dbClient, err := database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 				if err != nil {
 					log.Errorf("failed to get database client: %s", err)
 				}

@@ -10,7 +10,7 @@ var (
 	// verify interface compliance
 	_ DataSource      = (*wineventlogacquisition.Source)(nil)
 	_ DSNConfigurer   = (*wineventlogacquisition.Source)(nil)
-	_ Fetcher         = (*wineventlogacquisition.Source)(nil)
+	_ BatchFetcher    = (*wineventlogacquisition.Source)(nil)
 	_ Tailer          = (*wineventlogacquisition.Source)(nil)
 	_ MetricsProvider = (*wineventlogacquisition.Source)(nil)
 )

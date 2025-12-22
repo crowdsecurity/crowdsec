@@ -14,24 +14,24 @@ type Processor interface {
 
 type DumbProcessor struct{}
 
-func (*DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
+func (*DumbProcessor) OnBucketInit(_ *BucketFactory) error {
 	return nil
 }
 
-func (*DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+func (*DumbProcessor) OnBucketPour(_ *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, _ *Leaky) *pipeline.Event {
 		return &msg
 	}
 }
 
-func (*DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (*DumbProcessor) OnBucketOverflow(_ *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return func(_ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 		return alert, queue
 	}
 }
 
-func (*DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+func (*DumbProcessor) AfterBucketPour(_ *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
+	return func(msg pipeline.Event, _ *Leaky) *pipeline.Event {
 		return &msg
 	}
 }

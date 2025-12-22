@@ -10,14 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -33,10 +32,7 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
-	var (
-		envSetting = os.Getenv("TEST_ONLY")
-		tomb       = &tomb.Tomb{}
-	)
+	var envSetting = os.Getenv("TEST_ONLY")
 
 	testdata := "./testdata"
 
@@ -58,16 +54,14 @@ func TestBucket(t *testing.T) {
 	}
 
 	if envSetting != "" {
-		if err := testOneBucket(t, hub, envSetting, tomb); err != nil {
+		if err := testOneBucket(t, hub, envSetting); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		wg := new(sync.WaitGroup)
+		var eg errgroup.Group
 
 		fds, err := os.ReadDir(testdata)
-		if err != nil {
-			t.Fatalf("Unable to read test directory : %s", err)
-		}
+		require.NoError(t, err)
 
 		for _, fd := range fds {
 			if fd.Name() == "hub" {
@@ -76,36 +70,16 @@ func TestBucket(t *testing.T) {
 
 			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
-			tomb.Go(func() error {
-				wg.Add(1)
-				defer wg.Done()
-
-				if err := testOneBucket(t, hub, fname, tomb); err != nil {
-					t.Fatalf("Test '%s' failed : %s", fname, err)
-				}
-
-				return nil
+			eg.Go(func() error {
+				return testOneBucket(t, hub, fname)
 			})
 		}
 
-		wg.Wait()
+		require.NoError(t, eg.Wait())
 	}
 }
 
-// during tests, we're likely to have only one scenario, and thus only one holder.
-// we want to avoid the death of the tomb because all existing buckets have been destroyed.
-func watchTomb(tomb *tomb.Tomb) {
-	for {
-		if !tomb.Alive() {
-			log.Warning("Tomb is dead")
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) error {
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 	var (
 		holders []BucketFactory
 
@@ -117,7 +91,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 
 	buckets := NewBuckets()
 
-	/*load the scenarios*/
+	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
 	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
 		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
@@ -157,15 +131,10 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) er
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, scenarios, tomb, buckets, false)
+	holders, response, err := LoadBuckets(cscfg, hub, scenarios, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
-
-	tomb.Go(func() error {
-		watchTomb(tomb)
-		return nil
-	})
 
 	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
@@ -196,6 +165,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		log.Warning("end of test file")
 	}
 	var latest_ts time.Time
+	ctx := t.Context()
 	for _, in := range tf.Lines {
 		// just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
@@ -214,7 +184,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		in.ExpectMode = pipeline.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
-		ok, err := PourItemToHolders(in, holders, buckets)
+		ok, err := PourItemToHolders(ctx, in, holders, buckets)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
 		}
@@ -237,7 +207,7 @@ POLL_AGAIN:
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
-				ok, err := PourItemToHolders(ret, holders, buckets)
+				ok, err := PourItemToHolders(ctx, ret, holders, buckets)
 				if err != nil {
 					t.Fatalf("Failed to pour : %s", err)
 				}
@@ -271,7 +241,6 @@ POLL_AGAIN:
 	checkresultsloop:
 		for eidx, out := range results {
 			for ridx, expected := range tf.Results {
-
 				log.Tracef("Checking next expected result.")
 
 				// empty overflow

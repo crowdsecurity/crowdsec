@@ -10,7 +10,7 @@ var (
 	// verify interface compliance
 	_ DataSource      = (*fileacquisition.Source)(nil)
 	_ DSNConfigurer   = (*fileacquisition.Source)(nil)
-	_ Fetcher         = (*fileacquisition.Source)(nil)
+	_ BatchFetcher    = (*fileacquisition.Source)(nil)
 	_ Tailer          = (*fileacquisition.Source)(nil)
 	_ MetricsProvider = (*fileacquisition.Source)(nil)
 )

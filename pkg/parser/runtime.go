@@ -242,10 +242,7 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-var (
-	ParseDump  bool
-	DumpFolder string
-)
+var ParseDump  bool
 
 var (
 	StageParseCache dumps.ParserResults = make(dumps.ParserResults)

@@ -27,6 +27,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -61,19 +62,45 @@ type DataSource interface {
 	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
 }
 
-type Fetcher interface {
+// BatchFetcher represents a data source that produces a finite set of events.
+//
+// Implementations should:
+//
+//  - send events to the output channel until the input is fully consumed
+//  - return (nil) early when the context is canceled
+//  - return errors if acquisition fails
+type BatchFetcher interface {
 	// Start one shot acquisition(eg, cat a file)
+	OneShot(ctx context.Context, out chan pipeline.Event) error
+}
+
+// Fetcher works like BatchFetcher but still relies on tombs, which are being replaced by context cancellation.
+// New datasources are expected to implement BatchFetcher instead.
+type Fetcher interface {
 	OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
-type Tailer interface {
+// RestartableStreamer represents a data source that produces an ongoing, potentially unbounded stream of events.
+//
+// Implementations should:
+//
+//  - send events to the output channel, continuously
+//  - return (nil) when the context is canceled
+//  - return errors if acquisition fails
+//  - as much as possible, do not attempt retry/backoff even for transient connection
+//    failures, but treat them as errors. The caller is responsible for supervising
+//    Stream(), and restarting it as needed. There is currently no way to differentiate
+//    retryable vs permanent errors.
+type RestartableStreamer interface {
 	// Start live acquisition (eg, tail a file)
-	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
+	Stream(ctx context.Context, out chan pipeline.Event) error
 }
 
-// RestartableStreamer works Like Tailer but should return any error and leave the retry logic to the caller
-type RestartableStreamer interface {
-	Stream(ctx context.Context, out chan pipeline.Event) error
+// Tailer has the same pupose as RestartableStreamer (provide ongoing events) but
+// is responsible for spawning its own goroutines, and handling errors and retries.
+// New datasources are expected to implement RestartableStreamer instead.
+type Tailer interface {
+	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
 type MetricsProvider interface {
@@ -87,6 +114,14 @@ type MetricsProvider interface {
 type DSNConfigurer interface {
 	// Configure the datasource
 	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
+}
+
+type LAPIClientAware interface {
+	SetClientConfig(config *csconfig.LocalApiClientCfg)
+}
+
+type HubAware interface {
+	SetHub(hub *cwhub.Hub)
 }
 
 var (
@@ -127,37 +162,12 @@ func registerDataSource(dataSourceType string, dsGetter func() DataSource) {
 	AcquisitionSources[dataSourceType] = dsGetter
 }
 
-// setupLogger creates a logger for the datasource to use at runtime.
-func setupLogger(typ, name string, level log.Level) (*log.Entry, error) {
-	clog := log.New()
-	if err := logging.ConfigureLogger(clog, level); err != nil {
-		return nil, fmt.Errorf("configuring datasource logger: %w", err)
-	}
-
-	fields := log.Fields{
-		"type": typ,
-	}
-
-	if name != "" {
-		fields["name"] = name
-	}
-
-	subLogger := clog.WithFields(fields)
-
-	return subLogger, nil
-}
-
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
 // can be checked for the appropriate action.
-func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel) (DataSource, error) {
+func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSourceCommonCfg, yamlConfig []byte, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) (DataSource, error) {
 	dataSrc, err := GetDataSourceIface(commonConfig.Source)
-	if err != nil {
-		return nil, err
-	}
-
-	subLogger, err := setupLogger(commonConfig.Source, commonConfig.Name, commonConfig.LogLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +176,25 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 	if err := dataSrc.CanRun(); err != nil {
 		return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 	}
+
+	clog := logging.SubLogger(log.StandardLogger(), "acquisition."+commonConfig.Source, commonConfig.LogLevel)
+	subLogger := clog.WithField("type", commonConfig.Source)
+
+	if commonConfig.Name != "" {
+		subLogger = subLogger.WithField("name", commonConfig.Name)
+	}
+
+	subLogger.Info("Configuring datasource")
+
+	if hubAware, ok := dataSrc.(HubAware); ok {
+		hubAware.SetHub(hub)
+	}
+
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		cConfig := csconfig.GetConfig()
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
+	}
+
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
@@ -174,7 +203,7 @@ func DataSourceConfigure(ctx context.Context, commonConfig configuration.DataSou
 	return dataSrc, nil
 }
 
-func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string) (DataSource, error) {
+func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]string, transformExpr string, hub *cwhub.Hub) (DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
 		return nil, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
@@ -183,13 +212,6 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 	dataSrc, err := GetDataSourceIface(frags[0])
 	if err != nil {
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
-	}
-
-	typ := labels["type"]
-
-	subLogger, err := setupLogger(typ, "", 0)
-	if err != nil {
-		return nil, err
 	}
 
 	uniqueID := uuid.NewString()
@@ -203,10 +225,21 @@ func LoadAcquisitionFromDSN(ctx context.Context, dsn string, labels map[string]s
 		transformRuntimes[uniqueID] = vm
 	}
 
+	if hubAware, ok := dataSrc.(HubAware); ok {
+		hubAware.SetHub(hub)
+	}
+
+	if lapiClientAware, ok := dataSrc.(LAPIClientAware); ok {
+		cConfig := csconfig.GetConfig()
+		lapiClientAware.SetClientConfig(cConfig.API.Client)
+	}
+
 	dsnConf, ok := dataSrc.(DSNConfigurer)
 	if !ok {
 		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
 	}
+
+	subLogger := log.StandardLogger().WithField("type", labels["type"])
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("configuring datasource for %q: %w", dsn, err)
@@ -266,7 +299,7 @@ func detectType(r io.Reader) (string, error) {
 }
 
 // sourcesFromFile reads and parses one acquisition file into DataSources.
-func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel) ([]DataSource, error) {
+func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) ([]DataSource, error) {
 	var sources []DataSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
@@ -350,7 +383,7 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 		uniqueID := uuid.NewString()
 		sub.UniqueId = uniqueID
 
-		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel)
+		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
 		if err != nil {
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
@@ -377,13 +410,13 @@ func sourcesFromFile(ctx context.Context, acquisFile string, metricsLevel metric
 }
 
 // LoadAcquisitionFromFiles unmarshals the configuration item and checks its availability
-func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg) ([]DataSource, error) {
+func LoadAcquisitionFromFiles(ctx context.Context, config *csconfig.CrowdsecServiceCfg, prom *csconfig.PrometheusCfg, hub *cwhub.Hub) ([]DataSource, error) {
 	var allSources []DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel, hub)
 		if err != nil {
 			return nil, err
 		}
@@ -493,6 +526,16 @@ func transform(transformChan chan pipeline.Event, output chan pipeline.Event, ac
 	}
 }
 
+func runBatchFetcher(ctx context.Context, bf BatchFetcher, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
+	// wrap tomb logic with context
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-acquisTomb.Dying()
+		cancel()
+	}()
+
+	return bf.OneShot(ctx, output)
+}
 
 func runRestartableStream(ctx context.Context, rs RestartableStreamer, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	// wrap tomb logic with context
@@ -541,7 +584,13 @@ func runRestartableStream(ctx context.Context, rs RestartableStreamer, name stri
 
 func acquireSource(ctx context.Context, source DataSource, name string, output chan pipeline.Event, acquisTomb *tomb.Tomb) error {
 	if source.GetMode() == configuration.CAT_MODE {
+		if s, ok := source.(BatchFetcher); ok {
+			// s.Logger.Info("Start OneShot")
+			return runBatchFetcher(ctx, s, output, acquisTomb)
+		}
+
 		if s, ok := source.(Fetcher); ok {
+			// s.Logger.Info("Start OneShotAcquisition")
 			return s.OneShotAcquisition(ctx, output, acquisTomb)
 		}
 
@@ -549,6 +598,7 @@ func acquireSource(ctx context.Context, source DataSource, name string, output c
 	}
 
 	if s, ok := source.(Tailer); ok {
+		// s.Logger.Info("Streaming Acquisition")
 		return s.StreamingAcquisition(ctx, output, acquisTomb)
 	}
 
@@ -566,7 +616,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 	}
 
 	for i := range sources {
-		subsrc := sources[i] // ensure its a copy
+		subsrc := sources[i] // ensure it's a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		acquisTomb.Go(func() error {
@@ -593,7 +643,7 @@ func StartAcquisition(ctx context.Context, sources []DataSource, output chan pip
 			}
 
 			if err := acquireSource(ctx, subsrc, subsrc.GetName(), output, acquisTomb); err != nil {
-				// if one of the acqusition returns an error, we kill the others to properly shutdown
+				// if one of the acquisitions returns an error, we kill the others to properly shutdown
 				acquisTomb.Kill(err)
 			}
 

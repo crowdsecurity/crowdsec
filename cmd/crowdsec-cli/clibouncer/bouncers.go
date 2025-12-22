@@ -14,14 +14,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliBouncers struct {
 	db  *database.Client
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliBouncers {
+func New(cfg csconfig.Getter) *cliBouncers {
 	return &cliBouncers{
 		cfg: cfg,
 	}

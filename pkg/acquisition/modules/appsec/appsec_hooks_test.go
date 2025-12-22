@@ -407,11 +407,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
@@ -656,6 +653,85 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
+			name:             "pre_eval : drop request helper",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"DropRequest('drop requested by config')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 3)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[2].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.True(t, events[2].Appsec.HasOutBandMatches)
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
+				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "drop requested by config", events[1].Appsec.MatchedRules[0]["name"])
+				require.Equal(t, "drop requested by config", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, "drop requested by config", events[1].Parsed["appsec_drop_reason"])
+			},
+		},
+		{
+			name:             "pre_eval : set remediation and return code",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SetRemediation('log')", "SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Empty(t, events)
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, 200, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:             "pre_eval : drop helper with remediation override",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SetRemediation('log')", "SetReturnCode(418)", "DropRequest('drop requested by config')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 3)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[2].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.True(t, events[2].Appsec.HasOutBandMatches)
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, "log", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+				require.Equal(t, "drop requested by config", events[1].Appsec.MatchedRules[0]["name"])
+				require.Equal(t, "drop requested by config", events[2].Appsec.MatchedRules[0]["name"])
+			},
+		},
+		{
 			name:             "pre_eval : set remediation by ID",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
@@ -745,11 +821,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
@@ -838,11 +910,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestOnMatchRemediationHooks(t *testing.T) {
@@ -1011,9 +1079,6 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

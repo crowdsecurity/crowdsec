@@ -295,7 +295,7 @@ func (*HubTestItem) ImprovedLogDisplay(crowdsecLogFile string) error {
 	failures := []string{}
 	general := []string{}
 
-	for _, line := range strings.Split(string(crowdsecLog), "\n") {
+	for line := range strings.SplitSeq(string(crowdsecLog), "\n") {
 		if strings.Contains(line, `"Evaluating operator: MATCH"`) {
 			success = append(success, line)
 		} else if strings.Contains(line, `"Evaluating operator: NO MATCH"`) {

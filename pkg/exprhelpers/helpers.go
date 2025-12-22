@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -723,9 +724,7 @@ func MedianInterval(params ...any) (any, error) {
 	}
 
 	// Sort intervals for median calculation
-	sort.Slice(intervals, func(i, j int) bool {
-		return intervals[i] < intervals[j]
-	})
+	slices.Sort(intervals)
 
 	n := len(intervals)
 	if n%2 == 1 {

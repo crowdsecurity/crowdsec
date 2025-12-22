@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
@@ -104,7 +105,7 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 	return nil
 }
 
-func compAllItems(itemType string, args []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+func compAllItems(itemType string, args []string, toComplete string, cfg csconfig.Getter) ([]string, cobra.ShellCompDirective) {
 	hub, err := require.Hub(cfg(), nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

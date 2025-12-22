@@ -3,16 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/pprof"
-	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -33,13 +31,10 @@ import (
 var (
 	// tombs for the parser, buckets and outputs.
 	acquisTomb    tomb.Tomb
-	parsersTomb   tomb.Tomb
-	bucketsTomb   tomb.Tomb
 	outputsTomb   tomb.Tomb
 	apiTomb       tomb.Tomb
 	crowdsecTomb  tomb.Tomb
 	pluginTomb    tomb.Tomb
-	lpMetricsTomb tomb.Tomb
 
 	flags Flags
 
@@ -52,40 +47,8 @@ var (
 	inputLineChan   chan pipeline.Event
 	inputEventChan  chan pipeline.Event
 	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
-	// settings
-	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
 	pluginBroker      csplugin.PluginBroker
 )
-
-type Flags struct {
-	ConfigFile string
-
-	LogLevelTrace bool
-	LogLevelDebug bool
-	LogLevelInfo  bool
-	LogLevelWarn  bool
-	LogLevelError bool
-	LogLevelFatal bool
-
-	PrintVersion   bool
-	SingleFileType string
-	Labels         map[string]string
-	OneShotDSN     string
-	TestMode       bool
-	DisableAgent   bool
-	DisableAPI     bool
-	WinSvc         string
-	DisableCAPI    bool
-	Transform      string
-	OrderEvent     bool
-	CPUProfile     string
-}
-
-func (f *Flags) haveTimeMachine() bool {
-	return f.OneShotDSN != ""
-}
-
-type labelsMap map[string]string
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var err error
@@ -96,9 +59,9 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, buckets, flags.OrderEvent)
 	if err != nil {
-		return fmt.Errorf("scenario loading failed: %w", err)
+		return err
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
@@ -110,18 +73,17 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
+func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisition.DataSource, error) {
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		flags.Labels = additionalLabels
 		flags.Labels["type"] = flags.SingleFileType
 
-		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
+		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform, hub)
 		if err != nil {
 			return nil, err
 		}
 		dataSources = append(dataSources, ds)
 	} else {
-		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub)
 		if err != nil {
 			return nil, err
 		}
@@ -135,91 +97,6 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisiti
 	return dataSources, nil
 }
 
-var (
-	dumpFolder         string
-	dumpStates         bool
-	additionalLabels = make(labelsMap)
-)
-
-func (*labelsMap) String() string {
-	return "labels"
-}
-
-func (l *labelsMap) Set(label string) error {
-	for pair := range strings.SplitSeq(label, ",") {
-		split := strings.Split(pair, ":")
-		if len(split) != 2 {
-			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
-		}
-
-		(*l)[split[0]] = split[1]
-	}
-
-	return nil
-}
-
-func (f *Flags) Parse() {
-	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
-
-	flag.BoolVar(&f.LogLevelTrace, "trace", false, "set log level to 'trace' (VERY verbose)")
-	flag.BoolVar(&f.LogLevelDebug, "debug", false, "set log level to 'debug'")
-	flag.BoolVar(&f.LogLevelInfo, "info", false, "set log level to 'info'")
-	flag.BoolVar(&f.LogLevelWarn, "warning", false, "set log level to 'warning'")
-	flag.BoolVar(&f.LogLevelError, "error", false, "set log level to 'error'")
-	flag.BoolVar(&f.LogLevelFatal, "fatal", false, "set log level to 'fatal'")
-
-	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
-	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
-	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
-	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.Var(&additionalLabels, "label", "Additional Labels for file in time-machine")
-	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
-	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
-	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
-	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
-	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
-
-	if runtime.GOOS == "windows" {
-		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
-	}
-
-	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-	flag.StringVar(&f.CPUProfile, "cpu-profile", "", "write cpu profile to file")
-	flag.Parse()
-}
-
-func newLogLevel(curLevel log.Level, f *Flags) (log.Level, bool) {
-	// mother of all defaults
-	ret := log.InfoLevel
-	logLevelViaFlag := true
-
-	// keep if already set
-	if curLevel != log.PanicLevel {
-		ret = curLevel
-	}
-
-	// override from flags
-	switch {
-	case f.LogLevelTrace:
-		ret = log.TraceLevel
-	case f.LogLevelDebug:
-		ret = log.DebugLevel
-	case f.LogLevelInfo:
-		ret = log.InfoLevel
-	case f.LogLevelWarn:
-		ret = log.WarnLevel
-	case f.LogLevelError:
-		ret = log.ErrorLevel
-	case f.LogLevelFatal:
-		ret = log.FatalLevel
-	default:
-		// We set logLevelViaFlag to false in default cause no flag was provided
-		logLevelViaFlag = false
-	}
-
-	return ret, logLevelViaFlag
-}
-
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
 	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
@@ -231,28 +108,24 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, fmt.Errorf("while setting up trace directory: %w", err)
 	}
 
-	var logLevelViaFlag bool
-
-	cConfig.Common.LogLevel, logLevelViaFlag = newLogLevel(cConfig.Common.LogLevel, &flags)
-
-	if dumpFolder != "" {
-		parser.ParseDump = true
-		parser.DumpFolder = dumpFolder
-		leakybucket.BucketPourTrack = true
-		dumpStates = true
+	if flags.LogLevel != 0 {
+		cConfig.Common.LogLevel = flags.LogLevel
+		if cConfig.API != nil && cConfig.API.Server != nil {
+			cConfig.API.Server.LogLevel = flags.LogLevel
+		}
 	}
 
-	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		// if we're in time-machine mode, we don't want to log to file
+	if flags.DumpDir != "" {
+		parser.ParseDump = true
+		leakybucket.BucketPourTrack = true
+	}
+
+	if flags.haveTimeMachine() {
+		// in time-machine mode, we want to see what's happening
 		cConfig.Common.LogMedia = "stdout"
 	}
 
-	// Configure logging
-	if err := logging.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.LogFormat, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs, logLevelViaFlag); err != nil {
+	if err := logging.SetupStandardLogger(cConfig.Common.LogConfig, cConfig.Common.LogLevel, cConfig.Common.ForceColorLogs); err != nil {
 		return nil, err
 	}
 
@@ -300,8 +173,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
 		}
-
-		log.Infof("single file mode : log_media=%s", cConfig.Common.LogMedia)
 	}
 
 	if cConfig.Common.PidDir != "" {
@@ -321,9 +192,38 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 // or uptime of the application
 var crowdsecT0 time.Time
 
+func run(flags Flags) error {
+	if flags.CPUProfile != "" {
+		f, err := os.Create(flags.CPUProfile)
+		if err != nil {
+			return fmt.Errorf("could not create CPU profile: %w", err)
+		}
+
+		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
+
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			return fmt.Errorf("could not start CPU profile: %s", err)
+		}
+
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
+	ctx := context.Background()
+
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	if err != nil {
+		return err
+	}
+
+	return StartRunSvc(ctx, cConfig)
+}
+
 func main() {
+	// Add a timestamp to avoid the ugly [0000]
 	// The initial log level is INFO, even if the user provided an -error or -warning flag
-	// because we need feature flags before parsing cli flags
+	// because we need feature flags before parsing cli flags.
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true})
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
@@ -338,47 +238,22 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	log.Debugf("os.Args: %v", os.Args)
-
-	// Handle command line arguments
-	flags.Parse()
-
-	if len(flag.Args()) > 0 {
-		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
-		flag.Usage()
-		// the flag package exits with 2 in case of unknown flag
+	parsedFlags, err := parseFlags(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, color.RedString("Error:"), err)
+		// the flag package exits with 2 in case of unknown flag,
+		// we do the same for extra arguments
 		os.Exit(2)
 	}
 
+	flags = parsedFlags
+
 	if flags.PrintVersion {
 		os.Stdout.WriteString(cwversion.FullString())
-		os.Exit(0)
+		return
 	}
 
-	if flags.CPUProfile != "" {
-		f, err := os.Create(flags.CPUProfile)
-		if err != nil {
-			log.Fatalf("could not create CPU profile: %s", err)
-		}
-
-		log.Infof("CPU profile will be written to %s", flags.CPUProfile)
-
-		if err := pprof.StartCPUProfile(f); err != nil {
-			f.Close()
-			log.Fatalf("could not start CPU profile: %s", err)
-		}
-
-		defer f.Close()
-		defer pprof.StopCPUProfile()
+	if err := run(flags); err != nil {
+		log.Fatal(err)
 	}
-
-	ctx := context.Background()
-
-	err := StartRunSvc(ctx)
-	if err != nil {
-		pprof.StopCPUProfile()
-		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
-	}
-
-	os.Exit(0)
 }

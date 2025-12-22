@@ -29,20 +29,20 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the repo
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           buildkitd-config: .github/buildkit.toml
 
       - name: "Build image"
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
           tags: crowdsecurity/crowdsec:test${{ matrix.flavor == 'full' && '' || '-' }}${{ matrix.flavor == 'full' && '' || matrix.flavor }}
           target: ${{ matrix.flavor == 'debian' && 'full' || matrix.flavor }}
           platforms: linux/amd64
@@ -54,21 +54,21 @@ jobs:
         run: docker network create net-test
 
       - name: Install uv
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
           version: 0.5.24
           enable-cache: true
-          working-directory: "./docker/test"
+          working-directory: "./build/docker/test"
 
       - name: "Set up Python"
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
-          python-version-file: "./docker/test/.python-version"
+          python-version-file: "./build/docker/test/.python-version"
 
       # running serially to reduce test flakiness
       - name: Lint and run the tests
         run: |
-          cd docker/test
+          cd build/docker/test
           uv sync --all-extras --dev --locked
           uv run ruff check
           uv run basedpyright

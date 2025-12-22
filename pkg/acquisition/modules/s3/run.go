@@ -27,7 +27,7 @@ import (
 )
 
 // For some reason, the aws sdk doesn't have a struct for this
-// The one aws-lamdbda-go/events is only intended when using S3 Notification without event bridge
+// The one aws-lambda-go/events is only intended when using S3 Notification without event bridge
 type S3Event struct {
 	Version    string   `json:"version"`
 	Id         string   `json:"id"`

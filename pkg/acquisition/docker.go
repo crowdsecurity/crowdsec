@@ -8,14 +8,14 @@ import (
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*dockeracquisition.DockerSource)(nil)
-	_ DSNConfigurer   = (*dockeracquisition.DockerSource)(nil)
-	_ Fetcher         = (*dockeracquisition.DockerSource)(nil)
-	_ Tailer          = (*dockeracquisition.DockerSource)(nil)
-	_ MetricsProvider = (*dockeracquisition.DockerSource)(nil)
+	_ DataSource      = (*dockeracquisition.Source)(nil)
+	_ DSNConfigurer   = (*dockeracquisition.Source)(nil)
+	_ Fetcher         = (*dockeracquisition.Source)(nil)
+	_ Tailer          = (*dockeracquisition.Source)(nil)
+	_ MetricsProvider = (*dockeracquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("docker", func() DataSource { return &dockeracquisition.DockerSource{} })
+	registerDataSource("docker", func() DataSource { return &dockeracquisition.Source{} })
 }

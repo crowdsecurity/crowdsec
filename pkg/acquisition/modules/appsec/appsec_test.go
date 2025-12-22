@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -58,7 +59,15 @@ func setupWithPrefix(urlPrefix string) (*http.ServeMux, string, func()) {
 	return mux, server.URL, server.Close
 }
 
-func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
+func runTests(t *testing.T, tests []appsecRuleTest) {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testAppSecEngine(t, test)
+		})
+	}
+}
+
+func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	if testing.Verbose() {
 		log.SetLevel(log.TraceLevel)
 	} else {
@@ -105,7 +114,9 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		DefaultRemediation:     test.DefaultRemediation,
 		DefaultPassAction:      test.DefaultPassAction,
 	}
-	AppsecRuntime, err := appsecCfg.Build()
+
+	hub := cwhub.Hub{}
+	AppsecRuntime, err := appsecCfg.Build(&hub)
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
@@ -181,29 +192,53 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	input := test.input_request
 	input.ResponseChannel = make(chan appsec.AppsecTempResponse)
-	OutputEvents := make([]pipeline.Event, 0)
-	OutputResponses := make([]appsec.AppsecTempResponse, 0)
-	go func() {
-		for {
-			//log.Printf("reading from %p", input.ResponseChannel)
-			out := <-input.ResponseChannel
-			OutputResponses = append(OutputResponses, out)
-			//log.Errorf("response -> %s", spew.Sdump(out))
+
+	// collect both responses and events until no activity for idleDuration
+	idleDuration := 50 * time.Millisecond
+	idle := time.NewTimer(idleDuration)
+	defer idle.Stop()
+
+	// when we receive something, drain and restart the idle timer
+	reset := func() {
+		if !idle.Stop() {
+			select {
+			case <-idle.C:
+			default:
+			}
 		}
-	}()
+		idle.Reset(idleDuration)
+	}
+
+	responses :=[]appsec.AppsecTempResponse{}
+	events := []pipeline.Event{}
+
+	done := make(chan struct{})
+
+	// collect in a goroutine so a receiver is ready
 	go func() {
 		for {
-			out := <-OutChan
-			OutputEvents = append(OutputEvents, out)
-			//log.Errorf("outchan -> %s", spew.Sdump(out))
+			select {
+			case r := <-input.ResponseChannel:
+				responses = append(responses, r)
+				reset()
+			case e := <-OutChan:
+				events = append(events, e)
+				reset()
+			case <-idle.C:
+				close(done)
+				return
+			}
 		}
 	}()
 
 	runner.handleRequest(&input)
-	time.Sleep(50 * time.Millisecond)
 
-	http_status, appsecResponse := AppsecRuntime.GenerateResponse(OutputResponses[0], logger)
-	log.Infof("events : %s", spew.Sdump(OutputEvents))
-	log.Infof("responses : %s", spew.Sdump(OutputResponses))
-	test.output_asserts(OutputEvents, OutputResponses, appsecResponse, http_status)
+	// wait for the idle duration
+	<-done
+
+	require.NotEmpty(t, responses)
+	httpStatus, appsecResponse := AppsecRuntime.GenerateResponse(responses[0], logger)
+	log.Infof("events : %s", spew.Sdump(events))
+	log.Infof("responses : %s", spew.Sdump(responses))
+	test.output_asserts(events, responses, appsecResponse, httpStatus)
 }

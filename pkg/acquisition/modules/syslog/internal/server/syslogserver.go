@@ -1,20 +1,17 @@
 package syslogserver
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 )
 
 type SyslogServer struct {
-	listenAddr    string
-	port          int
-	channel       chan SyslogMessage
-	udpConn       *net.UDPConn
+	conn          *net.UDPConn
 	Logger        *log.Entry
 	MaxMessageLen int
 }
@@ -25,68 +22,57 @@ type SyslogMessage struct {
 }
 
 func (s *SyslogServer) Listen(listenAddr string, port int) error {
-	s.listenAddr = listenAddr
-	s.port = port
-	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", s.listenAddr, s.port))
+	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(listenAddr, strconv.Itoa(port)))
 	if err != nil {
-		return fmt.Errorf("could not resolve addr %s: %w", s.listenAddr, err)
+		return fmt.Errorf("could not resolve addr %s: %w", listenAddr, err)
 	}
+
 	udpConn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return fmt.Errorf("could not listen on port %d: %w", s.port, err)
+		return fmt.Errorf("could not listen on port %d: %w", port, err)
 	}
-	s.Logger.Debugf("listening on %s:%d", s.listenAddr, s.port)
-	s.udpConn = udpConn
 
-	err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
-	if err != nil {
-		return fmt.Errorf("could not set read deadline on UDP socket: %w", err)
-	}
+	s.Logger.Debugf("listening on %s:%d", listenAddr, port)
+	s.conn = udpConn
+
 	return nil
 }
 
-func (s *SyslogServer) SetChannel(c chan SyslogMessage) {
-	s.channel = c
-}
+func (s *SyslogServer) Serve(ctx context.Context, msgChan chan SyslogMessage) error {
+	go func() {
+		<-ctx.Done()
+		// closing the socket unblocks ReadFrom()
+		s.conn.Close()
+	}()
 
-func (s *SyslogServer) StartServer() *tomb.Tomb {
-	t := tomb.Tomb{}
+	// RFC3164 says 1024 bytes max
+	// RFC5424 says 480 bytes minimum, and should support up to 2048 bytes
+	buf := make([]byte, s.MaxMessageLen)
 
-	t.Go(func() error {
-		for {
-			select {
-			case <-t.Dying():
-				s.Logger.Info("Syslog server tomb is dying")
-				err := s.KillServer()
-				return err
-			default:
-				//RFC3164 says 1024 bytes max
-				//RFC5424 says 480 bytes minimum, and should support up to 2048 bytes
-				b := make([]byte, s.MaxMessageLen)
-				n, addr, err := s.udpConn.ReadFrom(b)
-				if err != nil && !strings.Contains(err.Error(), "i/o timeout") {
-					s.Logger.Errorf("error while reading from socket : %s", err)
-					s.udpConn.Close()
-					return err
-				}
-				if err == nil {
-					s.channel <- SyslogMessage{Message: b[:n], Client: strings.Split(addr.String(), ":")[0]}
-				}
-				err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
-				if err != nil {
-					return err
-				}
+	for {
+		n, addr, err := s.conn.ReadFrom(buf)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil //nolint:nilerr  // context cancelation is not a failure
 			}
+
+			return fmt.Errorf("reading from socket: %w", err)
 		}
-	})
-	return &t
+
+		msg := SyslogMessage{Message: buf[:n], Client: strings.Split(addr.String(), ":")[0]}
+
+		select {
+		case msgChan <- msg:
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (s *SyslogServer) KillServer() error {
-	err := s.udpConn.Close()
-	if err != nil {
+	if err := s.conn.Close(); err != nil {
 		return fmt.Errorf("could not close UDP connection: %w", err)
 	}
-	close(s.channel)
+
 	return nil
 }

@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -20,7 +21,7 @@ var (
 	serialized      map[string]Leaky
 	BucketPourCache map[string][]pipeline.Event = make(map[string][]pipeline.Event)
 	BucketPourTrack bool
-	bucketPourMu	sync.Mutex
+	bucketPourMu    sync.Mutex
 )
 
 /*
@@ -28,34 +29,34 @@ The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
-func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
+func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
 	defer buckets.wgDumpState.Done()
 
 	toflush := []string{}
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
+	buckets.Bucket_map.Range(func(rkey, rvalue any) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		//bucket already overflowed, we can kill it
+		// bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
-			val.tomb.Kill(nil)
+			val.cancel()
 			return true
 		}
-		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
-		match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals*/
+		// FIXME : sometimes the gettokenscountat has some rounding issues when we try to
+		// match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals
 		tokat := val.Limiter.GetTokensCountAt(deadline)
 		tokcapa := float64(val.Capacity)
 		tokat = math.Round(tokat*100) / 100
 		tokcapa = math.Round(tokcapa*100) / 100
-		//bucket actually underflowed based on log time, but no in real time
+		// bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
 			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
-			val.tomb.Kill(nil)
+			val.cancel()
 			return true
 		}
 
@@ -72,21 +73,9 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	for _, flushkey := range toflush {
 		buckets.Bucket_map.Delete(flushkey)
 	}
-	return nil
 }
 
-func ShutdownAllBuckets(buckets *Buckets) error {
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
-		key := rkey.(string)
-		val := rvalue.(*Leaky)
-		val.tomb.Kill(nil)
-		log.Infof("killed %s", key)
-		return true
-	})
-	return nil
-}
-
-func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
+func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -108,23 +97,23 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		select {
 		case _, ok := <-bucket.Signal:
 			if !ok {
-				//the bucket was found and dead, get a new one and continue
+				// the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
-				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
 				if err != nil {
 					return false, err
 				}
 				continue
 			}
-			//holder.logger.Tracef("Signal exists, try to pour :)")
+			// holder.logger.Tracef("Signal exists, try to pour :)")
 		default:
-			/*nothing to read, but not closed, try to pour */
-			//holder.logger.Tracef("Signal exists but empty, try to pour :)")
+			// nothing to read, but not closed, try to pour
+			// holder.logger.Tracef("Signal exists but empty, try to pour :)")
 		}
 
-		/*let's see if this time-bucket should have expired */
+		// let's see if this time-bucket should have expired
 		if bucket.Mode == pipeline.TIMEMACHINE {
 			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
@@ -140,9 +129,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
-					//not sure about this, should we create a new one ?
+					// not sure about this, should we create a new one ?
 					sigclosed += 1
-					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+					bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
 					if err != nil {
 						return false, err
 					}
@@ -150,10 +139,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 			}
 		}
-		/*the bucket seems to be up & running*/
+		// the bucket seems to be up & running
 		select {
 		case bucket.In <- parsed:
-			//holder.logger.Tracef("Successfully sent !")
+			// holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
 
@@ -165,7 +154,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			continue
 		default:
 			failed_sent += 1
-			//holder.logger.Tracef("Failed to send, try again")
+			// holder.logger.Tracef("Failed to send, try again")
 			continue
 
 		}
@@ -174,7 +163,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	return sent, nil
 }
 
-func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
+func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 
 	/* the bucket doesn't exist, create it !*/
@@ -196,11 +185,13 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
 		if !stored {
-			holder.tomb.Go(func() error {
-				return LeakRoutine(fresh_bucket)
-			})
+			go func() {
+				ctx, cancel := context.WithCancel(ctx)
+				fresh_bucket.cancel = cancel
+				LeakRoutine(ctx, fresh_bucket)
+			}()
 			biface = fresh_bucket
-			//once the created goroutine is ready to process event, we can return it
+			// once the created goroutine is ready to process event, we can return it
 			<-fresh_bucket.Signal
 		} else {
 			holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
@@ -213,7 +204,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
+func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var ok, condition, poured bool
 
 	if BucketPourTrack {
@@ -223,15 +214,14 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt)
 		bucketPourMu.Unlock()
 	}
-	//find the relevant holders (scenarios)
+	// find the relevant holders (scenarios)
 	for idx := range holders {
-		//for idx, holder := range holders {
-
-		//evaluate bucket's condition
+		// for idx, holder := range holders {
+		// evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
 			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
-				map[string]interface{}{"evt": &parsed},
+				map[string]any{"evt": &parsed},
 				holders[idx].logger,
 				holders[idx].Debug)
 			if err != nil {
@@ -249,10 +239,10 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 			}
 		}
 
-		//groupby determines the partition key for the specific bucket
+		// groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]any{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")
@@ -265,12 +255,12 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 		}
 		buckey := GetKey(holders[idx], groupby)
 
-		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
-		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
+		// we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
+		bucket, err := LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
 			return false, fmt.Errorf("failed to load or store bucket: %w", err)
 		}
-		//finally, pour the even into the bucket
+		// finally, pour the even into the bucket
 
 		if bucket.orderEvent {
 			if orderEvent == nil {
@@ -285,7 +275,7 @@ func PourItemToHolders(parsed pipeline.Event, holders []BucketFactory, buckets *
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()

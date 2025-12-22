@@ -6,7 +6,7 @@ Now, run PowerShell as Administrator, go in the crowdsec repository (if you
 already cloned it) and run:
 
 ```powershell
-PS C:\Users\johndoe\src\crowdsec> powershell .\windows\install_dev_windows.ps1
+PS C:\Users\johndoe\src\crowdsec> powershell .\build\windows\install_dev_windows.ps1
 [...]
 ```
 
@@ -18,7 +18,7 @@ Now you should have the right dependencies (go, gcc, git). You can verify with
 to also build the choco or MSI packages, you need more dependencies:
 
 ```powershell
-PS C:\Users\johndoe\src\crowdsec> powershell .\windows\install_installer_windows.ps1
+PS C:\Users\johndoe\src\crowdsec> powershell .\build\windows\install_installer_windows.ps1
 [...]
 ```
 
@@ -28,7 +28,7 @@ You can now use
 * `make test` to run unit tests. Some tests requiring localstack are disabled. Functional tests are also only available on unix systems.
 
 * `make windows_installer` to build a `crowdsec_x.y.z.msi` installer
-* `make chocolatey` to build a package under `.\windows\Chocolatey\crowdsec\crowdsec_x.y.z.nupkg` which you can test using `choco install <filename>`
+* `make chocolatey` to build a package under `.\build\windows\Chocolatey\crowdsec\crowdsec_x.y.z.nupkg` which you can test using `choco install <filename>`
 
 After installing CrowdSec, the binaries are in `C:\Program Files\CrowdSec\`:
 

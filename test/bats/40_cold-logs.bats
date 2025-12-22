@@ -46,7 +46,6 @@ setup() {
 @test "the one-shot mode works" {
     rune -0 "$CROWDSEC" -dsn file://<(fake_log) -type syslog -no-api
     refute_output
-    assert_stderr --partial "single file mode : log_media=stdout"
     assert_stderr --regexp "Adding file .* to filelist"
     assert_stderr --regexp "reading .* at once"
     assert_stderr --partial "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over "

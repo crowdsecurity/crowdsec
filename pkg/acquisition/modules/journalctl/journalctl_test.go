@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	logtest "github.com/sirupsen/logrus/hooks/test"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -141,7 +140,6 @@ journalctl_filter:
 		},
 	}
 	for _, ts := range tests {
-		tomb := tomb.Tomb{}
 		out := make(chan pipeline.Event, 100)
 		j := Source{}
 
@@ -150,7 +148,7 @@ journalctl_filter:
 		err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
-		err = j.OneShotAcquisition(ctx, out, &tomb)
+		err = j.OneShot(ctx, out)
 		cstest.RequireErrorContains(t, err, ts.expectedErr)
 
 		for _, expectedMessage := range ts.expectedLog {

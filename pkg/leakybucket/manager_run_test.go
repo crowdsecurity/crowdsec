@@ -1,12 +1,12 @@
 package leakybucket
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -29,7 +29,7 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 func TestGCandDump(t *testing.T) {
 	var (
 		buckets = NewBuckets()
-		tomb    = &tomb.Tomb{}
+		ctx     = t.Context()
 	)
 
 	Holders := []BucketFactory{
@@ -73,7 +73,7 @@ func TestGCandDump(t *testing.T) {
 	}
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx], tomb); err != nil {
+		if err := LoadBucket(&Holders[idx]); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
@@ -86,7 +86,7 @@ func TestGCandDump(t *testing.T) {
 
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(in, Holders, buckets)
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item: %s", err)
 	}
@@ -104,9 +104,7 @@ func TestGCandDump(t *testing.T) {
 	log.Info("Bucket GC")
 
 	// call garbage collector
-	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
-		t.Fatalf("failed to garbage collect buckets : %s", err)
-	}
+	GarbageCollectBuckets(time.Now().UTC(), buckets)
 
 	if err := expectBucketCount(buckets, 1); err != nil {
 		t.Fatal(err)
@@ -142,12 +140,10 @@ func TestShutdownBuckets(t *testing.T) {
 				wgPour:      buckets.wgPour,
 			},
 		}
-
-		tomb = &tomb.Tomb{}
 	)
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx], tomb); err != nil {
+		if err := LoadBucket(&Holders[idx]); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
@@ -160,7 +156,8 @@ func TestShutdownBuckets(t *testing.T) {
 
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(in, Holders, buckets)
+	ctx, cancel := context.WithCancel(t.Context())
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
 	}
@@ -175,9 +172,7 @@ func TestShutdownBuckets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ShutdownAllBuckets(buckets); err != nil {
-		t.Fatalf("while shutting down buckets : %s", err)
-	}
+	cancel()
 
 	time.Sleep(2 * time.Second)
 

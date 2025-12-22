@@ -21,13 +21,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliHub struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHub {
+func New(cfg csconfig.Getter) *cliHub {
 	return &cliHub{
 		cfg: cfg,
 	}

@@ -81,15 +81,17 @@ func (s *Stash) Compile(logger *log.Entry) (*RuntimeStash, error) {
 		return nil, fmt.Errorf("while parsing stash ttl: %w", err)
 	}
 
-	logLvl := logger.Logger.GetLevel()
 	// init the cache, does it make sense to create it here just to be sure everything is fine ?
-	if err = cache.CacheInit(cache.CacheCfg{
+
+	cacheCfg := cache.CacheCfg{
 		Size:     s.MaxMapSize,
 		TTL:      rs.TTLVal,
 		Name:     s.Name,
 		Strategy: s.Strategy,
-		LogLevel: logLvl,
-	}); err != nil {
+		LogLevel: logger.Logger.GetLevel(),
+	}
+
+	if err = cache.CacheInit(cacheCfg, cacheCfg.NewLogger()); err != nil {
 		return nil, fmt.Errorf("while initializing cache: %w", err)
 	}
 
