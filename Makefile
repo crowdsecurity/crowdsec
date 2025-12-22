@@ -87,10 +87,8 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
+# Define LD_OPTS for the sub-makefiles in cmd/
 #
-
-MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
 -X 'github.com/crowdsecurity/go-cs-lib/version.Version=$(BUILD_VERSION)' \
@@ -152,6 +150,14 @@ endif
 
 #--------------------------------------
 #
+# List of required build-time dependencies
+
+DEPS_DIR := $(CURDIR)/build/deps
+
+DEPS_FILES :=
+
+#--------------------------------------
+#
 # Handle optional components and build profiles, to save space on the final binaries.
 #
 # Keep it safe for now until we decide how to expand on the idea. Either choose a profile or exclude components manually.
@@ -177,6 +183,7 @@ COMPONENTS := \
 	datasource_syslog \
 	datasource_wineventlog \
 	cscli_setup \
+	mlsupport \
 	db_mysql \
 	db_postgres \
 	db_sqlite
@@ -192,6 +199,9 @@ INCLUDE_MINIMAL := db_sqlite datasource_file
 
 EXCLUDE_MINIMAL := $(filter-out $(INCLUDE_MINIMAL),$(strip $(COMPONENTS)))
 
+# ml-support requires pre-built static libraries and weights 20MB
+EXCLUDE_DEFAULT := mlsupport
+
 # example
 # EXCLUDE_MEDIUM := datasource_kafka,datasource_kinesis,datasource_s3
 
@@ -200,8 +210,10 @@ BUILD_PROFILE ?= default
 # Set the EXCLUDE_LIST based on the chosen profile, unless EXCLUDE is already set
 ifeq ($(BUILD_PROFILE),minimal)
 EXCLUDE ?= $(EXCLUDE_MINIMAL)
-else ifneq ($(BUILD_PROFILE),default)
-$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default)
+else ifeq ($(BUILD_PROFILE),default)
+EXCLUDE ?= $(EXCLUDE_DEFAULT)
+else ifneq ($(BUILD_PROFILE),full)
+$(error Invalid build profile specified: $(BUILD_PROFILE). Valid profiles are: minimal, default, full)
 endif
 
 # Create list of excluded components from the EXCLUDE variable
@@ -217,6 +229,24 @@ COMPONENT_TAGS := $(foreach component,$(EXCLUDE_LIST),no_$(component))
 
 ifneq ($(COMPONENT_TAGS),)
 GO_TAGS := $(GO_TAGS),$(subst $(space),$(comma),$(COMPONENT_TAGS))
+endif
+
+ifeq ($(filter mlsupport,$(EXCLUDE_LIST)),)
+    $(info mlsupport is included)
+    # Set additional variables when mlsupport is included
+ifneq ($(call bool,$(BUILD_RE2_WASM)),1)
+    $(error for now, the flag BUILD_RE2_WASM is required for mlsupport)
+endif
+    CGO_CPPFLAGS := -I$(DEPS_DIR)/src/onnxruntime/include/onnxruntime/core/session
+    CGO_LDFLAGS := -L$(DEPS_DIR)/libs-lstdc++ -lonnxruntime -dl -lm
+    LIBRARY_PATH := $(DEPS_DIR)/lib
+    DEPS_FILES += $(DEPS_DIR)/lib/libtokenizers.a
+    DEPS_FILES += $(DEPS_DIR)/lib/libonnxruntime.a
+    DEPS_FILES += $(DEPS_DIR)/src/onnxruntime
+else
+    CGO_CPPFLAGS :=
+    CGO_LDFLAGS :=
+    LIBRARY_PATH :=
 endif
 
 #--------------------------------------
@@ -248,7 +278,7 @@ endif
 #--------------------------------------
 
 .PHONY: build
-build: build-info crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
+build: build-info download-deps crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 
 .PHONY: build-info
 build-info:  ## Print build information
@@ -276,6 +306,29 @@ endif
 .PHONY: all
 all: clean test build  ## Clean, test and build (requires localstack)
 
+
+.PHONY: download-deps
+download-deps: $(DEPS_FILES)
+
+$(DEPS_DIR)/lib/libtokenizers.a:
+	curl --fail -L --output $@ --create-dirs \
+		https://github.com/crowdsecurity/packaging-onnx/releases/download/test/libtokenizers.a \
+
+$(DEPS_DIR)/lib/libonnxruntime.a:
+	curl --fail -L --output $@ --create-dirs \
+		https://github.com/crowdsecurity/packaging-onnx/releases/download/test/libonnxruntime.a \
+
+$(DEPS_DIR)/src/onnxruntime:
+	git clone --depth 1 https://github.com/microsoft/onnxruntime $(DEPS_DIR)/src/onnxruntime -b v1.19.2
+
+# Full list of flags that are passed down to the sub-makefiles in cmd/
+
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)" CGO_CPPFLAGS="$(CGO_CPPFLAGS)" LIBRARY_PATH="$(LIBRARY_PATH)"
+
+.PHONY: clean-deps
+clean-deps:
+	@$(RM) -r $(DEPS_DIR)
+
 .PHONY: plugins
 plugins:  ## Build notification plugins
 	@$(foreach plugin,$(PLUGINS), \
@@ -301,7 +354,7 @@ clean-rpm:
 	@$(RM) -r rpm/SRPMS
 
 .PHONY: clean
-clean: clean-debian clean-rpm bats-clean  ## Remove build artifacts
+clean: clean-debian clean-rpm clean-deps bats-clean  ## Remove build artifacts
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)

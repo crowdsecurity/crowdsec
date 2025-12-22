@@ -1,6 +1,23 @@
+FROM rust:1.70.0-bullseye AS rust_build
+
+WORKDIR /
+
+RUN apt-get update && \
+    apt-get install -y -q \
+    build-essential \
+    curl \
+    git \
+    make
+
+RUN git clone https://github.com/daulet/tokenizers.git /tokenizer && \
+    cd /tokenizer && \
+    cargo build --release && \
+    cp target/release/libtokenizers.a /tokenizer/libtokenizers.a
+
 FROM docker.io/golang:1.25-bookworm AS build
 
 ARG BUILD_VERSION
+ARG ONNXRUNTIME_VERSION=1.18.1
 
 WORKDIR /go/src/crowdsec
 
@@ -24,7 +41,36 @@ RUN apt-get update && \
 
 COPY . .
 
-RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
+COPY --from=rust_build /tokenizer/libtokenizers.a /usr/local/lib/
+
+# INSTALL ONNXRUNTIME
+RUN cd /tmp && \
+    wget -O onnxruntime.tgz https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION}.tgz && \
+    tar -C /tmp -xvf onnxruntime.tgz && \
+    mv onnxruntime-linux-aarch64-${ONNXRUNTIME_VERSION} onnxruntime && \
+    rm -rf onnxruntime.tgz && \
+    cp -R onnxruntime/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION} /usr/local/lib && \
+    cp onnxruntime/include/*.h /usr/local/include && \
+    rm -rf onnxruntime
+
+RUN ln -s /usr/local/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION} /usr/local/lib/libonnxruntime.so
+
+RUN ls -la /usr/local/include
+RUN ls -la /usr/local/lib
+
+RUN ldconfig
+
+# Test if linking works with a simple program
+RUN echo "#include <onnxruntime_c_api.h>" > test.c && \
+    echo "int main() { return 0; }" >> test.c && \
+    gcc test.c -L/usr/local/lib -lonnxruntime -o test_executable && ./test_executable
+    
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=0 \
+    CGO_CFLAGS="-D_LARGEFILE64_SOURCE -I/usr/local/include"  \
+    CGO_CPPFLAGS="-I/usr/local/include" \
+    CGO_LDFLAGS="-L/usr/local/lib -lstdc++ -lonnxruntime /usr/local/lib/libtokenizers.a -ldl -lm" \
+    LIBRARY_PATH="/usr/local/lib" \
+    LD_LIBRARY_PATH="/usr/local/lib" && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
@@ -41,6 +87,8 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
 FROM docker.io/debian:bookworm-slim AS slim
+
+ARG ONNXRUNTIME_VERSION=1.18.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
@@ -63,6 +111,15 @@ COPY --from=build /go/bin/yq /usr/local/bin/crowdsec /usr/local/bin/cscli /usr/l
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /go/src/crowdsec/build/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/build/docker/config.yaml /staging/etc/crowdsec/config.yaml
+
+# Note Copying this since can't build statically yet
+COPY --from=build /usr/local/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION} /usr/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION}
+COPY --from=build /usr/local/lib/libtokenizers.a /usr/lib/libtokenizers.a
+RUN ln -s /usr/local/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION} /usr/lib/libonnxruntime.so
+COPY --from=build /usr/local/lib/libre2.* /usr/lib/
+
+RUN ls -la /usr/lib
+
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml && \
     yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
 
