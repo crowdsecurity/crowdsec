@@ -15,7 +15,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     cd re2-${RE2_VERSION} && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.44.3
+    go install github.com/mikefarah/yq/v4@v4.50.1
 
 COPY . .
 
