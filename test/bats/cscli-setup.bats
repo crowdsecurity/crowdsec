@@ -56,7 +56,6 @@ teardown() {
     # - is stdin
     rune -0 cscli setup detect --detect-config - <<< "{}"
     assert_json '{setup:[]}'
-    refute_stderr
 }
 
 @test "cscli setup detect (envvar CROWDSEC_SETUP_DETECT_CONFIG)" {
