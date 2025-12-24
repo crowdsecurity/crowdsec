@@ -11,27 +11,30 @@ import (
 
 func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
 	bouncer, _ := getBouncerFromContext(c)
-	if bouncer != nil {
-		metrics.LapiNilDecisions.With(prometheus.Labels{
-			"bouncer": bouncer.Name,
-		}).Inc()
+	if bouncer == nil {
+		return
 	}
+
+	metrics.LapiNilDecisions.With(prometheus.Labels{
+		"bouncer": bouncer.Name,
+	}).Inc()
 }
 
 func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 	bouncer, _ := getBouncerFromContext(c)
-	if bouncer != nil {
-		metrics.LapiNonNilDecisions.With(prometheus.Labels{
-			"bouncer": bouncer.Name,
-		}).Inc()
+	if bouncer == nil {
+		return
 	}
+
+	metrics.LapiNonNilDecisions.With(prometheus.Labels{
+		"bouncer": bouncer.Name,
+	}).Inc()
 }
 
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		machineID, _ := getMachineIDFromContext(c)
 		if machineID == "" {
-			c.Next()
 			return
 		}
 
@@ -47,7 +50,6 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bouncer, _ := getBouncerFromContext(c)
 		if bouncer == nil {
-			c.Next()
 			return
 		}
 
@@ -70,6 +72,10 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		c.Next()
 
 		elapsed := time.Since(startTime)
-		metrics.LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.FullPath()}).Observe(elapsed.Seconds())
+		metrics.LapiResponseTime.With(
+			prometheus.Labels{
+				"method": c.Request.Method,
+				"endpoint": c.FullPath(),
+			}).Observe(elapsed.Seconds())
 	}
 }
