@@ -92,17 +92,18 @@ func recoverFromPanic(c *gin.Context) {
 	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
+
+	log.Warningf("client %s error: %s", c.ClientIP(), err)
+
+	filename, err := trace.WriteStackTrace(err)
+	if err != nil {
+		log.Errorf("also while writing stacktrace: %s", err)
+	}
+
+	log.Warningf("stacktrace written to %s, please join to your issue", filename)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
