@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"cmp"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -29,38 +30,32 @@ func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		machineID, _ := getMachineIDFromContext(c)
-		if machineID != "" {
-			fullPath := c.FullPath()
-			if fullPath == "" {
-				fullPath = "invalid-endpoint"
-			}
-			metrics.LapiMachineHits.With(prometheus.Labels{
-				"machine": machineID,
-				"route":   fullPath,
-				"method":  c.Request.Method,
-			}).Inc()
+		if machineID == "" {
+			c.Next()
+			return
 		}
 
-		c.Next()
+		metrics.LapiMachineHits.With(prometheus.Labels{
+			"machine": machineID,
+			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+			"method":  c.Request.Method,
+		}).Inc()
 	}
 }
 
 func PrometheusBouncersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bouncer, _ := getBouncerFromContext(c)
-		if bouncer != nil {
-			fullPath := c.FullPath()
-			if fullPath == "" {
-				fullPath = "invalid-endpoint"
-			}
-			metrics.LapiBouncerHits.With(prometheus.Labels{
-				"bouncer": bouncer.Name,
-				"route":   fullPath,
-				"method":  c.Request.Method,
-			}).Inc()
+		if bouncer == nil {
+			c.Next()
+			return
 		}
 
-		c.Next()
+		metrics.LapiBouncerHits.With(prometheus.Labels{
+			"bouncer": bouncer.Name,
+			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+			"method":  c.Request.Method,
+		}).Inc()
 	}
 }
 
@@ -68,13 +63,8 @@ func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
 
-		fullPath := c.FullPath()
-		if fullPath == "" {
-			fullPath = "invalid-endpoint"
-		}
-
 		metrics.LapiRouteHits.With(prometheus.Labels{
-			"route":  fullPath,
+			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
 			"method": c.Request.Method,
 		}).Inc()
 		c.Next()
