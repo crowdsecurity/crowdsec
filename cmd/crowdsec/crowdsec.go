@@ -39,8 +39,8 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	}
 
 	// Start loading configs
-	csParsers := parser.NewParsers(hub)
-	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
+	csParsers, err := parser.LoadParsers(cConfig, hub)
+	if err != nil {
 		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
