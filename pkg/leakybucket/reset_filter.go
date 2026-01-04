@@ -53,16 +53,12 @@ func (u *CancelOnFilter) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leak
 	return &msg
 }
 
-func (*CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-		return alert, queue
-	}
+func (*CancelOnFilter) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return alert, queue
 }
 
-func (*CancelOnFilter) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		return &msg
-	}
+func (*CancelOnFilter) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
