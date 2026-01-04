@@ -196,7 +196,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 		case msg := <-leaky.In:
 			// the msg var use is confusing and is redeclared in a different type :/
 			for _, processor := range processors {
-				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig, *msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					if leaky.orderEvent {

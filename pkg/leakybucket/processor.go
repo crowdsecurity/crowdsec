@@ -6,7 +6,7 @@ import (
 
 type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
-	OnBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
+	OnBucketPour(Bucket *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
 	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
 	AfterBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
@@ -18,10 +18,8 @@ func (*DumbProcessor) OnBucketInit(_ *BucketFactory) error {
 	return nil
 }
 
-func (*DumbProcessor) OnBucketPour(_ *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, _ *Leaky) *pipeline.Event {
-		return &msg
-	}
+func (*DumbProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
 func (*DumbProcessor) OnBucketOverflow(_ *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
