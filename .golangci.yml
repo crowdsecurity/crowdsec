@@ -144,7 +144,7 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - syscall.FreeLibrary
+        - golang.org/x/sys/windows.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
         - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
