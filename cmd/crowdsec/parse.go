@@ -24,7 +24,7 @@ func parseEvent(
 	- one that is treated as a log and can go to scenarios
 	- another one that will go directly to LAPI*/
 	if event.Type == pipeline.APPSEC {
-		outputEventChan <- event
+		outEvents <- event
 		return nil
 	}
 	if event.Line.Module == "" {

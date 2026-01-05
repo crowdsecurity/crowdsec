@@ -74,7 +74,7 @@ func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 		log.WithField("idx", idx).Info("Starting parser routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runParse/"+strconv.Itoa(idx))
-			runParse(ctx, inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
+			runParse(ctx, logLines, inEvents, *parsers.Ctx, parsers.Nodes)
 			return nil
 		})
 	}
@@ -85,7 +85,7 @@ func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runPour/"+strconv.Itoa(idx))
-			runPour(ctx, inputEventChan, holders, buckets, cConfig)
+			runPour(ctx, inEvents, holders, buckets, cConfig)
 			return nil
 		})
 	}
@@ -101,7 +101,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runOutput/"+strconv.Itoa(idx))
-			return runOutput(ctx, inputEventChan, outputEventChan, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient)
+			return runOutput(ctx, inEvents, outEvents, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient)
 		})
 	}
 }
@@ -135,8 +135,8 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 
 // runCrowdsec starts the log processor service
 func runCrowdsec(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
-	inputEventChan = make(chan pipeline.Event)
-	inputLineChan = make(chan pipeline.Event)
+	inEvents = make(chan pipeline.Event)
+	logLines = make(chan pipeline.Event)
 
 	startParserRoutines(ctx, g, cConfig, parsers)
 	startBucketRoutines(ctx, g, cConfig)
@@ -156,7 +156,7 @@ func runCrowdsec(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Confi
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, dataSources, inputLineChan, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(ctx, dataSources, logLines, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
