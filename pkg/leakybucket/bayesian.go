@@ -60,29 +60,27 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	return err
 }
 
-func (c *BayesianBucket) AfterBucketPour(_ *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, l *Leaky) *pipeline.Event {
-		c.posterior = c.prior
-		l.logger.Debugf("starting bayesian evaluation with prior: %v", c.posterior)
+func (c *BayesianBucket) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
+	c.posterior = c.prior
+	l.logger.Debugf("starting bayesian evaluation with prior: %v", c.posterior)
 
-		for _, bevent := range c.bayesianEventArray {
-			err := bevent.bayesianUpdate(c, msg, l)
-			if err != nil {
-				l.logger.Errorf("bayesian update failed for %s with %s", bevent.rawCondition.ConditionalFilterName, err)
-			}
+	for _, bevent := range c.bayesianEventArray {
+		err := bevent.bayesianUpdate(c, msg, l)
+		if err != nil {
+			l.logger.Errorf("bayesian update failed for %s with %s", bevent.rawCondition.ConditionalFilterName, err)
 		}
-
-		l.logger.Debugf("value of posterior after events : %v", c.posterior)
-
-		if c.posterior > c.threshold {
-			l.logger.Debugf("Bayesian bucket overflow")
-			l.Ovflw_ts = l.Last_ts
-			l.Out <- l.Queue
-			return nil
-		}
-
-		return &msg
 	}
+
+	l.logger.Debugf("value of posterior after events : %v", c.posterior)
+
+	if c.posterior > c.threshold {
+		l.logger.Debugf("Bayesian bucket overflow")
+		l.Ovflw_ts = l.Last_ts
+		l.Out <- l.Queue
+		return nil
+	}
+
+	return &msg
 }
 
 func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg pipeline.Event, l *Leaky) error {
