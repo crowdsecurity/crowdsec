@@ -2,5 +2,11 @@
 # "make release" target, which uses git to retrieve the build version and tag.
 #.git
 
-/tests
+/build
+!/build/deps
+!/build/docker
+!/build/mk
+/debian
+/rpm
+/test
 /crowdsec-v*

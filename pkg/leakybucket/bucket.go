@@ -196,7 +196,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 		case msg := <-leaky.In:
 			// the msg var use is confusing and is redeclared in a different type :/
 			for _, processor := range processors {
-				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig, *msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					if leaky.orderEvent {
@@ -213,7 +213,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			leaky.Pour(leaky, *msg) // glue for now
 
 			for _, processor := range processors {
-				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
+				msg = processor.AfterBucketPour(leaky.BucketConfig, *msg, leaky)
 				if msg == nil {
 					if leaky.orderEvent {
 						orderEvent[leaky.Mapkey].Done()
@@ -270,7 +270,7 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 					log.Error(err)
 				}
 				for _, f := range leaky.BucketConfig.processors {
-					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
+					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig, leaky, alert, ofw)
 					if ofw == nil {
 						leaky.logger.Debugf("Overflow has been discarded (%T)", f)
 						break
@@ -297,7 +297,6 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			}
 			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return
-
 		}
 	End:
 	}
@@ -332,7 +331,7 @@ func (leaky *Leaky) overflow(ofw *pipeline.Queue) {
 	}
 	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
 	for _, f := range leaky.BucketConfig.processors {
-		alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
+		alert, ofw = f.OnBucketOverflow(leaky.BucketConfig, leaky, alert, ofw)
 		if ofw == nil {
 			leaky.logger.Debugf("Overflow has been discarded (%T)", f)
 			break

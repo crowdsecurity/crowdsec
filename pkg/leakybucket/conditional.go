@@ -32,8 +32,8 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 		c.ConditionalFilterRuntime = compiled
 	} else {
 		conditionalExprCacheLock.Unlock()
-		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+		// release the lock during compile
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
@@ -47,36 +47,34 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	return err
 }
 
-func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, l *Leaky) *pipeline.Event {
-		var condition, ok bool
+func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
+	var condition, ok bool
 
-		if c.ConditionalFilterRuntime != nil {
-			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
+	if c.ConditionalFilterRuntime != nil {
+		l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
 
-			ret, err := exprhelpers.Run(c.ConditionalFilterRuntime,
-				map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l},
-				l.logger, b.Debug)
-			if err != nil {
-				l.logger.Errorf("unable to run conditional filter : %s", err)
-				return &msg
-			}
-
-			l.logger.Debugf("Conditional bucket expression returned : %v", ret)
-
-			if condition, ok = ret.(bool); !ok {
-				l.logger.Warningf("overflow condition, unexpected non-bool return : %T", ret)
-				return &msg
-			}
-
-			if condition {
-				l.logger.Debugf("Conditional bucket overflow")
-				l.Ovflw_ts = l.Last_ts
-				l.Out <- l.Queue
-				return nil
-			}
+		ret, err := exprhelpers.Run(c.ConditionalFilterRuntime,
+			map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l},
+			l.logger, b.Debug)
+		if err != nil {
+			l.logger.Errorf("unable to run conditional filter : %s", err)
+			return &msg
 		}
 
-		return &msg
+		l.logger.Debugf("Conditional bucket expression returned : %v", ret)
+
+		if condition, ok = ret.(bool); !ok {
+			l.logger.Warningf("overflow condition, unexpected non-bool return : %T", ret)
+			return &msg
+		}
+
+		if condition {
+			l.logger.Debugf("Conditional bucket overflow")
+			l.Ovflw_ts = l.Last_ts
+			l.Out <- l.Queue
+			return nil
+		}
 	}
+
+	return &msg
 }
