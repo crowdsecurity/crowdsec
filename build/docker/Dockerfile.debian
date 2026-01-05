@@ -20,7 +20,7 @@ RUN apt-get update && \
     make && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.44.3
+    go install github.com/mikefarah/yq/v4@v4.50.1
 
 COPY . .
 
