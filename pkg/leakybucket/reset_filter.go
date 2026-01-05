@@ -46,7 +46,7 @@ func (u *CancelOnFilter) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leak
 		if condition {
 			leaky.logger.Debugf("reset_filter matched, kill bucket")
 			leaky.Suicide <- true
-			return nil //counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
+			return nil // counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
 		}
 		leaky.logger.Debugf("reset_filter didn't match")
 	}
@@ -81,7 +81,7 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	}
 
 	cancelExprCacheLock.Unlock()
-	//release the lock during compile
+	// release the lock during compile
 
 	compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {

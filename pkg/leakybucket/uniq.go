@@ -64,7 +64,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 		u.DistinctCompiled = &compiled
 	} else {
 		uniqExprCacheLock.Unlock()
-		//release the lock during compile
+		// release the lock during compile
 		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return err

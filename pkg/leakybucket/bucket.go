@@ -297,7 +297,6 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			}
 			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return
-
 		}
 	End:
 	}

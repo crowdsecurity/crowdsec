@@ -28,7 +28,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	u := OverflowFilter{}
 	u.Filter = g.OverflowFilter
 
-	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
+	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
@@ -37,7 +37,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 }
 
 func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	el, err := exprhelpers.Run(u.FilterRuntime, map[string]interface{}{
+	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
 		"queue": q, "signal": s, "leaky": l}, l.logger, bucket.Debug)
 	if err != nil {
 		l.logger.Errorf("Failed running overflow filter: %s", err)
@@ -48,7 +48,7 @@ func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory, l *Leaky, s pip
 		l.logger.Errorf("Overflow filter didn't return bool: %s", err)
 		return s, q
 	}
-	/*filter returned false, event is blackholded*/
+	// filter returned false, event is blackholded
 	if !element {
 		l.logger.Infof("Event is discarded by overflow filter (%s)", u.Filter)
 		return pipeline.RuntimeAlert{

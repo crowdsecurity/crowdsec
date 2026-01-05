@@ -35,7 +35,6 @@ func (bl *blackhole) OnBucketOverflow(_ *BucketFactory, leaky *Leaky, alert pipe
 	var tmp []hiddenKey
 	// search if we are blackholed and refresh the slice
 	for _, element := range bl.hiddenKeys {
-
 		if element.key == leaky.Mapkey {
 			if element.expiration.After(leaky.Ovflw_ts) {
 				leaky.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(leaky.Ovflw_ts))

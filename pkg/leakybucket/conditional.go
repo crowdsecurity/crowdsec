@@ -32,8 +32,8 @@ func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 		c.ConditionalFilterRuntime = compiled
 	} else {
 		conditionalExprCacheLock.Unlock()
-		//release the lock during compile
-		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+		// release the lock during compile
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
