@@ -31,51 +31,45 @@ func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 	}).Inc()
 }
 
-func PrometheusMachinesMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		machineID, _ := getMachineIDFromContext(c)
-		if machineID == "" {
-			return
-		}
-
-		metrics.LapiMachineHits.With(prometheus.Labels{
-			"machine": machineID,
-			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
-			"method":  c.Request.Method,
-		}).Inc()
+func PrometheusMachinesMiddleware(c *gin.Context) {
+	machineID, _ := getMachineIDFromContext(c)
+	if machineID == "" {
+		return
 	}
+
+	metrics.LapiMachineHits.With(prometheus.Labels{
+		"machine": machineID,
+		"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+		"method":  c.Request.Method,
+	}).Inc()
 }
 
-func PrometheusBouncersMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		bouncer, _ := getBouncerFromContext(c)
-		if bouncer == nil {
-			return
-		}
-
-		metrics.LapiBouncerHits.With(prometheus.Labels{
-			"bouncer": bouncer.Name,
-			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
-			"method":  c.Request.Method,
-		}).Inc()
+func PrometheusBouncersMiddleware(c *gin.Context) {
+	bouncer, _ := getBouncerFromContext(c)
+	if bouncer == nil {
+		return
 	}
+
+	metrics.LapiBouncerHits.With(prometheus.Labels{
+		"bouncer": bouncer.Name,
+		"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+		"method":  c.Request.Method,
+	}).Inc()
 }
 
-func PrometheusMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		startTime := time.Now()
+func PrometheusMiddleware(c *gin.Context) {
+	startTime := time.Now()
 
-		metrics.LapiRouteHits.With(prometheus.Labels{
-			"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+	metrics.LapiRouteHits.With(prometheus.Labels{
+		"route":   cmp.Or(c.FullPath(), "invalid-endpoint"),
+		"method": c.Request.Method,
+	}).Inc()
+	c.Next()
+
+	elapsed := time.Since(startTime)
+	metrics.LapiResponseTime.With(
+		prometheus.Labels{
 			"method": c.Request.Method,
-		}).Inc()
-		c.Next()
-
-		elapsed := time.Since(startTime)
-		metrics.LapiResponseTime.With(
-			prometheus.Labels{
-				"method": c.Request.Method,
-				"endpoint": c.FullPath(),
-			}).Observe(elapsed.Seconds())
-	}
+			"endpoint": c.FullPath(),
+		}).Observe(elapsed.Seconds())
 }

@@ -108,11 +108,9 @@ func recoverFromPanic(c *gin.Context) {
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
-func CustomRecoveryWithWriter() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer recoverFromPanic(c)
-		c.Next()
-	}
+func CustomRecoveryWithWriter(c *gin.Context) {
+	defer recoverFromPanic(c)
+	c.Next()
 }
 
 // NewServer creates a LAPI server.
@@ -179,7 +177,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 	})
-	router.Use(CustomRecoveryWithWriter())
+	router.Use(CustomRecoveryWithWriter)
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
