@@ -20,7 +20,6 @@ import (
 var (
 	serialized      map[string]Leaky
 	BucketPourCache map[string][]pipeline.Event = make(map[string][]pipeline.Event)
-	BucketPourTrack bool
 	bucketPourMu    sync.Mutex
 )
 
@@ -75,7 +74,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
 	}
 }
 
-func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event) (bool, error) {
+func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event, track bool) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -143,7 +142,7 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 		select {
 		case bucket.In <- parsed:
 			// holder.logger.Tracef("Successfully sent !")
-			if BucketPourTrack {
+			if track {
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
 
 				bucketPourMu.Lock()
@@ -204,10 +203,10 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
+func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets, track bool) (bool, error) {
 	var ok, condition, poured bool
 
-	if BucketPourTrack {
+	if track {
 		evt := deepcopy.Copy(parsed).(pipeline.Event)
 
 		bucketPourMu.Lock()
@@ -275,7 +274,7 @@ func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []Buc
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed)
+		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed, track)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()

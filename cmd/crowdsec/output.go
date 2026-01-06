@@ -114,7 +114,8 @@ func runOutput(
 			}
 
 			/* process post overflow parser nodes */
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
+			dump := flags.DumpDir != ""
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, dump)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}

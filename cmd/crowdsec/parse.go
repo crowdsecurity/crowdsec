@@ -35,7 +35,8 @@ func parseEvent(
 
 	startParsing := time.Now()
 	/* parse the log using magic */
-	parsed, err := parser.Parse(parserCTX, event, nodes)
+	dump := flags.DumpDir != ""
+	parsed, err := parser.Parse(parserCTX, event, nodes, dump)
 	if err != nil {
 		log.Errorf("failed parsing: %v", err)
 	}
