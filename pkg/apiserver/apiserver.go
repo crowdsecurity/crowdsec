@@ -54,7 +54,8 @@ func isBrokenConnection(maybeError any) bool {
 	if errors.As(err, &netOpError) {
 		var syscallError *os.SyscallError
 		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
+			s := strings.ToLower(syscallError.Error())
+			if strings.Contains(s, "broken pipe") || strings.Contains(s, "connection reset by peer") {
 				return true
 			}
 		}
@@ -92,17 +93,18 @@ func recoverFromPanic(c *gin.Context) {
 	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
+
+	log.Warningf("client %s error: %s", c.ClientIP(), err)
+
+	filename, err := trace.WriteStackTrace(err)
+	if err != nil {
+		log.Errorf("also while writing stacktrace: %s", err)
+	}
+
+	log.Warningf("stacktrace written to %s, please join to your issue", filename)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
