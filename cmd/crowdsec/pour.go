@@ -52,7 +52,8 @@ func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.Buc
 				triggerGC(parsed, buckets, cConfig)
 			}
 			// here we can bucketify with parsed
-			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets)
+			track := flags.DumpDir != ""
+			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets, track)
 			if err != nil {
 				log.Warningf("bucketify failed for: %v with %s", parsed, err)
 				continue

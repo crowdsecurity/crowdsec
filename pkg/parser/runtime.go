@@ -242,8 +242,6 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-var ParseDump  bool
-
 var (
 	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
 	StageParseMutex sync.Mutex
@@ -254,7 +252,7 @@ var (
 	})
 )
 
-func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, error) {
+func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, dump bool) (pipeline.Event, error) {
 	event := xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
@@ -288,7 +286,7 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, 
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
-	if ParseDump {
+	if dump {
 		ensureStageCache()
 	}
 
@@ -339,7 +337,7 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, 
 
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 
-			if ParseDump {
+			if dump {
 				var parserIdxInStage int
 
 				// copy outside of critical section

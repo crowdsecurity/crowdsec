@@ -24,7 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -113,11 +112,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.LogLevel = flags.LogLevel
 		}
-	}
-
-	if flags.DumpDir != "" {
-		parser.ParseDump = true
-		leakybucket.BucketPourTrack = true
 	}
 
 	if flags.haveTimeMachine() {
