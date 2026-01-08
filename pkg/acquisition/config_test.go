@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -51,6 +52,21 @@ func wantErrFromYAML(t *testing.T, fileContent []byte) (want string, found bool)
 	return strings.TrimSpace(string(m[1])), true
 }
 
+func shouldSkip(t *testing.T, parsed *ParsedSourceConfig, gotErr error) bool {
+	t.Helper()
+
+	if parsed == nil {
+		return false
+	}
+
+	// not supported in windows and will raise an error we are ignoring here.
+	if parsed.Common.Source == "journalctl" && runtime.GOOS == "windows" && strings.Contains(gotErr.Error(), "executable file not found") {
+		return true
+	}
+
+	return false
+}
+
 func TestParseSourceConfig(t *testing.T) {
 	ctx := t.Context()
 
@@ -81,19 +97,25 @@ func TestParseSourceConfig(t *testing.T) {
 
 					if s.expectValid {
 						require.False(t, hasWant, "valid config must not include # wantErr: directive")
-						_, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+						if shouldSkip(t, parsed, err) {
+							return
+						}
 						require.NoError(t, err)
 						return
 					}
 
 					// invalid
+
 					require.True(t, hasWant, "invalid config must include '# wantErr: <exact error>'")
 					require.NotEmpty(t, wantErr, "wantErr directive found but empty")
 
-					_, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+					if shouldSkip(t, parsed, err) {
+						return
+					}
 					require.Error(t, err, "got no error, expected %q", wantErr)
 					assert.Equal(t, wantErr, err.Error())
-//					assert.Contains(t, err.Error(), wantErr)
 				})
 			}
 		})
