@@ -264,7 +264,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/missing_labels.yaml"},
 			},
-			ExpectedError: "missing labels in testdata/missing_labels.yaml",
+			ExpectedError: "testdata/missing_labels.yaml: missing labels",
 		},
 		{
 			TestName: "backward_compat",
@@ -278,14 +278,14 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_source.yaml"},
 			},
-			ExpectedError: "in file testdata/bad_source.yaml (position 0) - unknown data source does_not_exist",
+			ExpectedError: "testdata/bad_source.yaml: unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "configuring datasource of type file from testdata/bad_filetype.yaml",
+			ExpectedError: "testdata/bad_filetype.yaml: datasource of type file: cannot parse FileAcquisition configuration: [2:12] string was used where sequence is expected",
 		},
 		{
 			TestName: "from_env",

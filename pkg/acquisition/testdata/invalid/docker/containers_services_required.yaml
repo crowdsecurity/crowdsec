@@ -1,0 +1,2 @@
+# wantErr: datasource of type docker: no containers or services configuration provided
+source: docker

@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/cenkalti/backoff/v5"
@@ -146,7 +147,7 @@ func LoadAcquisitionFromDSN(
 	subLogger := log.StandardLogger().WithField("type", labels["type"])
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
-		return nil, fmt.Errorf("configuring datasource for %q: %w", dsn, err)
+		return nil, fmt.Errorf("datasource for %q: %w", dsn, err)
 	}
 
 	return dataSrc, nil
@@ -202,6 +203,115 @@ func detectType(r io.Reader) (string, error) {
 	}
 }
 
+type ParsedSourceConfig struct {
+	Common    configuration.DataSourceCommonCfg
+	Source    types.DataSource
+	Transform *vm.Program
+	SourceMissing bool      // the "source" field was missing, and detected
+	SourceOverridden string // the "source" field was not missing, but didn't match the detected one
+}
+
+var ErrEmptyYAMLDocument = errors.New("empty yaml document")
+
+// ParseSourceConfig validates and configures one YAML document.
+//
+// It does not expand env variables, they must already be expanded.
+//
+// - return sentinel error for empty/comment-only documents
+// - backward-compat source auto-detection (filename/filenames/journalctl_filter)
+// - validate common fields
+// - delegate per-source config validation to the appropriate module
+// - compile transform expression
+func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) (*ParsedSourceConfig, error) {
+	detectedType, err := detectType(bytes.NewReader(yamlDoc))
+	if err != nil {
+		return nil, err
+	}
+
+	// if there are not keys or only comments, the document will be skipped
+	empty, err := csyaml.IsEmptyYAML(bytes.NewReader(yamlDoc))
+	if err != nil {
+		return nil, err
+	}
+
+	if empty {
+		return nil, ErrEmptyYAMLDocument
+	}
+
+	var sub configuration.DataSourceCommonCfg
+
+	// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
+	if err = yaml.UnmarshalWithOptions(yamlDoc, &sub); err != nil {
+		return nil, fmt.Errorf("failed to parse: %w", errors.New(yaml.FormatError(err, false, false)))
+	}
+
+	parsed := &ParsedSourceConfig{}
+
+	// report that the user did not specify a source
+	if sub.Source == "" {
+		parsed.SourceMissing = true
+	}
+
+	// report that the user specified a source that doesn't match with one detected from the presence of other fields
+	if detectedType != "" {
+		if sub.Source != detectedType {
+			parsed.SourceOverridden = sub.Source
+		}
+
+		sub.Source = detectedType
+	}
+
+	parsed.Common = sub
+
+	// could not detect, alas
+	if sub.Source == "" {
+		return nil, errors.New("missing 'source' field")
+	}
+
+	// pre-check that the source is valid
+	_, err = registry.LookupFactory(sub.Source)
+	if err != nil {
+		return nil, err
+	}
+
+	// check for labels now, an error for missing labels has lower priority
+	// than missing or unknown source type
+	if len(sub.Labels) == 0 && sub.Source != "docker" {
+		// docker is the only source that does not require labels
+		return nil, errors.New("missing labels")
+	}
+
+	uniqueID := uuid.NewString()
+	sub.UniqueId = uniqueID
+
+	src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
+	if err != nil {
+		return nil, fmt.Errorf("datasource of type %s: %w", sub.Source, err)
+	}
+	parsed.Source = src
+
+	if sub.TransformExpr != "" {
+		vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		if err != nil {
+			return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s: %w", sub.TransformExpr, sub.Source, err)
+		}
+ 
+		parsed.Transform = vm
+	}
+
+	return parsed, nil
+}
+
+func formatConfigLocation(acquisFile string, withPos bool, idx int) string {
+	ret := acquisFile
+
+	if withPos {
+		ret += " (position " + strconv.Itoa(idx) + ")"
+	}
+
+	return ret
+}
+
 // sourcesFromFile reads and parses one acquisition file into DataSources.
 func sourcesFromFile(
 	ctx context.Context,
@@ -235,84 +345,43 @@ func sourcesFromFile(
 	idx := -1
 
 	for _, yamlDoc := range documents {
-		detectedType, err := detectType(bytes.NewReader(yamlDoc))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), err)
-		}
-
 		idx += 1
 
-		var sub configuration.DataSourceCommonCfg
+		loc := formatConfigLocation(acquisFile, len(documents) > 1, idx)
 
-		// can't be strict here, the doc contains specific datasource config too but we won't collect them now.
-		if err = yaml.UnmarshalWithOptions(yamlDoc, &sub); err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", yamlFile.Name(), errors.New(yaml.FormatError(err, false, false)))
-		}
+		parsed, err := ParseSourceConfig(ctx, yamlDoc, metricsLevel, hub)
 
-		// for backward compat ('type' was not mandatory, detect it)
-		if guessType := detectedType; guessType != "" {
-			log.Debugf("datasource type missing in %s (position %d): detected 'source=%s'", acquisFile, idx, guessType)
-
-			if sub.Source != "" && sub.Source != guessType {
-				log.Warnf("datasource type mismatch in %s (position %d): found '%s' but should probably be '%s'", acquisFile, idx, sub.Source, guessType)
+		// report data source detection, it can be required to understand an error
+		if parsed != nil {
+			if parsed.SourceMissing {
+				log.Debugf("%s: datasource type missing, detected 'source=%s'", loc, parsed.Common.Source)
 			}
 
-			sub.Source = guessType
-		}
-
-		// it's an empty item, skip it
-
-		empty, err := csyaml.IsEmptyYAML(bytes.NewReader(yamlDoc))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s (position %d): %w", acquisFile, idx, err)
-		}
-
-		if empty {
-			// there are no keys or only comments, skip the document
-			continue
-		}
-
-		if len(sub.Labels) == 0 {
-			if sub.Source != "docker" {
-				// docker is the only source that can be empty
-				return nil, fmt.Errorf("missing labels in %s (position %d)", acquisFile, idx)
+			if parsed.SourceOverridden != "" {
+				log.Warnf("%s: datasource type mismatch: found '%s' but should probably be '%s'", loc, parsed.SourceOverridden, parsed.Common.Source)
 			}
 		}
 
-		if sub.Source == "" {
-			return nil, fmt.Errorf("missing 'source' field in %s (position %d)", acquisFile, idx)
-		}
-
-		// pre-check that the source is valid
-		_, err = registry.LookupFactory(sub.Source)
 		if err != nil {
-			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
-		}
-
-		uniqueID := uuid.NewString()
-		sub.UniqueId = uniqueID
-
-		src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
-		if err != nil {
-			var dserr *DataSourceUnavailableError
-			if errors.As(err, &dserr) {
-				log.Error(err)
+			if errors.Is(err, ErrEmptyYAMLDocument) {
 				continue
 			}
 
-			return nil, fmt.Errorf("configuring datasource of type %s from %s (position %d): %w", sub.Source, acquisFile, idx, err)
-		}
-
-		if sub.TransformExpr != "" {
-			vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
-			if err != nil {
-				return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
+			var dserr *DataSourceUnavailableError
+			if errors.As(err, &dserr) {
+				// XXX: ok with log.Error?
+				log.Error(fmt.Errorf("%s: %w", loc, err))
+				continue
 			}
 
-			transformRuntimes[uniqueID] = vm
+			return nil, fmt.Errorf("%s: %w", loc, err)
 		}
 
-		sources = append(sources, src)
+		if parsed.Transform != nil {
+			transformRuntimes[parsed.Common.UniqueId] = parsed.Transform
+		}
+
+		sources = append(sources, parsed.Source)
 	}
 
 	return sources, nil
