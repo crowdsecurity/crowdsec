@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alexliesenfeld/health"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 
@@ -47,18 +46,6 @@ func (c *Controller) Init() error {
 	return nil
 }
 
-// endpoint for health checking
-func serveHealth() http.HandlerFunc {
-	checker := health.NewChecker(
-		// just simple up/down status is enough
-		health.WithDisabledDetails(),
-		// no caching required
-		health.WithDisabledCache(),
-	)
-
-	return health.NewHandler(checker)
-}
-
 func eitherAuthMiddleware(jwtMiddleware gin.HandlerFunc, apiKeyMiddleware gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		switch {
@@ -95,7 +82,10 @@ func (c *Controller) NewV1() error {
 		return err
 	}
 
-	c.Router.GET("/health", gin.WrapF(serveHealth()))
+	c.Router.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "up"})
+	})
+
 	c.Router.Use(v1.PrometheusMiddleware)
 	// We don't want to compress the response body as it would likely break some existing bouncers
 	// But we do want to automatically uncompress incoming requests
