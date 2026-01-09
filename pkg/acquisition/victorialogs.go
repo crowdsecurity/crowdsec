@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("victorialogs", func() types.DataSource { return &victorialogs.Source{} })
+	registry.RegisterDataSource("victorialogs", func() types.DataSource { return &victorialogs.Source{} })
 }

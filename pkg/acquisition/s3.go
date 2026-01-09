@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("s3", func() types.DataSource { return &s3acquisition.Source{} })
+	registry.RegisterDataSource("s3", func() types.DataSource { return &s3acquisition.Source{} })
 }

@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("wineventlog", func() types.DataSource { return &wineventlogacquisition.Source{} })
+	registry.RegisterDataSource("wineventlog", func() types.DataSource { return &wineventlogacquisition.Source{} })
 }

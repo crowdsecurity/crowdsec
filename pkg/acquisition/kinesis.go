@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -16,5 +17,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kinesis", func() types.DataSource { return &kinesisacquisition.Source{} })
+	registry.RegisterDataSource("kinesis", func() types.DataSource { return &kinesisacquisition.Source{} })
 }

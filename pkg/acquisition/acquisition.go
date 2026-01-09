@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -49,14 +50,10 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
 
-var (
-	// We register the datasources at init time so we can tell if they are unsupported, or excluded from the build
-	AcquisitionSources = map[string]func() types.DataSource{}
-	transformRuntimes  = map[string]*vm.Program{}
-)
+var transformRuntimes  = map[string]*vm.Program{}
 
 func GetDataSourceIface(dataSourceType string) (types.DataSource, error) {
-	source, registered := AcquisitionSources[dataSourceType]
+	source, registered := registry.AcquisitionSources[dataSourceType]
 	if registered {
 		return source(), nil
 	}
@@ -76,15 +73,6 @@ func GetDataSourceIface(dataSourceType string) (types.DataSource, error) {
 	}
 
 	return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
-}
-
-// registerDataSource registers a datasource in the AcquisitionSources map.
-// It must be called in the init() function of the datasource package, and the datasource name
-// must be declared with a nil value in the map, to allow for conditional compilation.
-func registerDataSource(dataSourceType string, dsGetter func() types.DataSource) {
-	component.Register("datasource_" + dataSourceType)
-
-	AcquisitionSources[dataSourceType] = dsGetter
 }
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,

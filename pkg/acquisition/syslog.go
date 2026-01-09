@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -16,5 +17,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("syslog", func() types.DataSource { return &syslogacquisition.Source{} })
+	registry.RegisterDataSource("syslog", func() types.DataSource { return &syslogacquisition.Source{} })
 }

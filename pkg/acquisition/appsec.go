@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("appsec", func() types.DataSource { return &appsecacquisition.Source{} })
+	registry.RegisterDataSource("appsec", func() types.DataSource { return &appsecacquisition.Source{} })
 }

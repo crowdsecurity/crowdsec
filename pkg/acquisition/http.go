@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	httpacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/http"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -16,5 +17,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("http", func() types.DataSource { return &httpacquisition.Source{} })
+	registry.RegisterDataSource("http", func() types.DataSource { return &httpacquisition.Source{} })
 }

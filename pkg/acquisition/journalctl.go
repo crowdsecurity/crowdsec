@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("journalctl", func() types.DataSource { return &journalctlacquisition.Source{} })
+	registry.RegisterDataSource("journalctl", func() types.DataSource { return &journalctlacquisition.Source{} })
 }

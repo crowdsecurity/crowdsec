@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("docker", func() types.DataSource { return &dockeracquisition.Source{} })
+	registry.RegisterDataSource("docker", func() types.DataSource { return &dockeracquisition.Source{} })
 }

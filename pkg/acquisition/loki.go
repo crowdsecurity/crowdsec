@@ -4,6 +4,7 @@ package acquisition
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
@@ -18,5 +19,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("loki", func() types.DataSource { return &loki.Source{} })
+	registry.RegisterDataSource("loki", func() types.DataSource { return &loki.Source{} })
 }
