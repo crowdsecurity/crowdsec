@@ -14,6 +14,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
 )
 
 var (

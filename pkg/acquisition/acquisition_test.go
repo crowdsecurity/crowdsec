@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -75,8 +76,8 @@ func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
-	AcquisitionSources["mock"] = func() types.DataSource { return &MockSource{} }
-	AcquisitionSources["mock_cant_run"] = func() types.DataSource { return &MockSourceCantRun{} }
+	registry.RegisterDataSource("mock", func() types.DataSource { return &MockSource{} })
+	registry.RegisterDataSource("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
 }
 
 func TestDataSourceConfigure(t *testing.T) {
@@ -552,7 +553,7 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	AcquisitionSources["mockdsn"] = func() types.DataSource { return &MockSourceByDSN{} }
+	registry.RegisterDataSource("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
