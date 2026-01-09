@@ -4,18 +4,19 @@ package acquisition
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*victorialogs.Source)(nil)
-	_ DSNConfigurer   = (*victorialogs.Source)(nil)
-	_ Fetcher         = (*victorialogs.Source)(nil)
-	_ Tailer          = (*victorialogs.Source)(nil)
-	_ MetricsProvider = (*victorialogs.Source)(nil)
+	_ types.DataSource      = (*victorialogs.Source)(nil)
+	_ types.DSNConfigurer   = (*victorialogs.Source)(nil)
+	_ types.Fetcher         = (*victorialogs.Source)(nil)
+	_ types.Tailer          = (*victorialogs.Source)(nil)
+	_ types.MetricsProvider = (*victorialogs.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("victorialogs", func() DataSource { return &victorialogs.Source{} })
+	registerDataSource("victorialogs", func() types.DataSource { return &victorialogs.Source{} })
 }

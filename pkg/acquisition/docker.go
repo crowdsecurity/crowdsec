@@ -4,18 +4,19 @@ package acquisition
 
 import (
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*dockeracquisition.Source)(nil)
-	_ DSNConfigurer   = (*dockeracquisition.Source)(nil)
-	_ Fetcher         = (*dockeracquisition.Source)(nil)
-	_ Tailer          = (*dockeracquisition.Source)(nil)
-	_ MetricsProvider = (*dockeracquisition.Source)(nil)
+	_ types.DataSource      = (*dockeracquisition.Source)(nil)
+	_ types.DSNConfigurer   = (*dockeracquisition.Source)(nil)
+	_ types.Fetcher         = (*dockeracquisition.Source)(nil)
+	_ types.Tailer          = (*dockeracquisition.Source)(nil)
+	_ types.MetricsProvider = (*dockeracquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("docker", func() DataSource { return &dockeracquisition.Source{} })
+	registerDataSource("docker", func() types.DataSource { return &dockeracquisition.Source{} })
 }

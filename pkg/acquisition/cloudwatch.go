@@ -4,18 +4,19 @@ package acquisition
 
 import (
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*cloudwatchacquisition.Source)(nil)
-	_ DSNConfigurer   = (*cloudwatchacquisition.Source)(nil)
-	_ Fetcher         = (*cloudwatchacquisition.Source)(nil)
-	_ Tailer          = (*cloudwatchacquisition.Source)(nil)
-	_ MetricsProvider = (*cloudwatchacquisition.Source)(nil)
+	_ types.DataSource      = (*cloudwatchacquisition.Source)(nil)
+	_ types.DSNConfigurer   = (*cloudwatchacquisition.Source)(nil)
+	_ types.Fetcher         = (*cloudwatchacquisition.Source)(nil)
+	_ types.Tailer          = (*cloudwatchacquisition.Source)(nil)
+	_ types.MetricsProvider = (*cloudwatchacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("cloudwatch", func() DataSource { return &cloudwatchacquisition.Source{} })
+	registerDataSource("cloudwatch", func() types.DataSource { return &cloudwatchacquisition.Source{} })
 }

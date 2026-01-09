@@ -4,18 +4,19 @@ package acquisition
 
 import (
 	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*appsecacquisition.Source)(nil)
-	_ Tailer          = (*appsecacquisition.Source)(nil)
-	_ MetricsProvider = (*appsecacquisition.Source)(nil)
-	_ HubAware        = (*appsecacquisition.Source)(nil)
-	_ LAPIClientAware = (*appsecacquisition.Source)(nil)
+	_ types.DataSource      = (*appsecacquisition.Source)(nil)
+	_ types.Tailer          = (*appsecacquisition.Source)(nil)
+	_ types.MetricsProvider = (*appsecacquisition.Source)(nil)
+	_ types.HubAware        = (*appsecacquisition.Source)(nil)
+	_ types.LAPIClientAware = (*appsecacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("appsec", func() DataSource { return &appsecacquisition.Source{} })
+	registerDataSource("appsec", func() types.DataSource { return &appsecacquisition.Source{} })
 }

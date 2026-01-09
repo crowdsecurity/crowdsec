@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -74,8 +75,8 @@ func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
-	AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
-	AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
+	AcquisitionSources["mock"] = func() types.DataSource { return &MockSource{} }
+	AcquisitionSources["mock_cant_run"] = func() types.DataSource { return &MockSourceCantRun{} }
 }
 
 func TestDataSourceConfigure(t *testing.T) {
@@ -395,7 +396,7 @@ func (*MockTail) GetUuid() string { return "" }
 
 func TestStartAcquisitionCat(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockCat{},
 	}
 	out := make(chan pipeline.Event)
@@ -423,7 +424,7 @@ READLOOP:
 
 func TestStartAcquisitionTail(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTail{},
 	}
 	out := make(chan pipeline.Event)
@@ -472,7 +473,7 @@ func (*MockTailError) StreamingAcquisition(_ context.Context, out chan pipeline.
 
 func TestStartAcquisitionTailError(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTailError{},
 	}
 	out := make(chan pipeline.Event)
@@ -551,7 +552,7 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
+	AcquisitionSources["mockdsn"] = func() types.DataSource { return &MockSourceByDSN{} }
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
@@ -587,7 +588,7 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&TailModeNoTailer{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
@@ -610,7 +611,7 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&CatModeNoFetcher{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }

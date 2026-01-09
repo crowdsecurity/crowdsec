@@ -4,18 +4,19 @@ package acquisition
 
 import (
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*wineventlogacquisition.Source)(nil)
-	_ DSNConfigurer   = (*wineventlogacquisition.Source)(nil)
-	_ BatchFetcher    = (*wineventlogacquisition.Source)(nil)
-	_ Tailer          = (*wineventlogacquisition.Source)(nil)
-	_ MetricsProvider = (*wineventlogacquisition.Source)(nil)
+	_ types.DataSource      = (*wineventlogacquisition.Source)(nil)
+	_ types.DSNConfigurer   = (*wineventlogacquisition.Source)(nil)
+	_ types.BatchFetcher    = (*wineventlogacquisition.Source)(nil)
+	_ types.Tailer          = (*wineventlogacquisition.Source)(nil)
+	_ types.MetricsProvider = (*wineventlogacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("wineventlog", func() DataSource { return &wineventlogacquisition.Source{} })
+	registerDataSource("wineventlog", func() types.DataSource { return &wineventlogacquisition.Source{} })
 }

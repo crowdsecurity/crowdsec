@@ -4,16 +4,17 @@ package acquisition
 
 import (
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*kinesisacquisition.Source)(nil)
-	_ Tailer          = (*kinesisacquisition.Source)(nil)
-	_ MetricsProvider = (*kinesisacquisition.Source)(nil)
+	_ types.DataSource      = (*kinesisacquisition.Source)(nil)
+	_ types.Tailer          = (*kinesisacquisition.Source)(nil)
+	_ types.MetricsProvider = (*kinesisacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("kinesis", func() DataSource { return &kinesisacquisition.Source{} })
+	registerDataSource("kinesis", func() types.DataSource { return &kinesisacquisition.Source{} })
 }

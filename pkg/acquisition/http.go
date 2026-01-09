@@ -4,16 +4,17 @@ package acquisition
 
 import (
 	httpacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/http"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 )
 
 var (
 	// verify interface compliance
-	_ DataSource      = (*httpacquisition.Source)(nil)
-	_ Tailer          = (*httpacquisition.Source)(nil)
-	_ MetricsProvider = (*httpacquisition.Source)(nil)
+	_ types.DataSource      = (*httpacquisition.Source)(nil)
+	_ types.Tailer          = (*httpacquisition.Source)(nil)
+	_ types.MetricsProvider = (*httpacquisition.Source)(nil)
 )
 
 //nolint:gochecknoinits
 func init() {
-	registerDataSource("http", func() DataSource { return &httpacquisition.Source{} })
+	registerDataSource("http", func() types.DataSource { return &httpacquisition.Source{} })
 }
