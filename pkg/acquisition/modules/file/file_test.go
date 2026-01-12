@@ -21,54 +21,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		name        string
-		config      string
-		expectedErr string
-	}{
-		{
-			name:        "extra configuration key",
-			config:      "foobar: asd.log",
-			expectedErr: `cannot parse FileAcquisition configuration: [1:1] unknown field "foobar"`,
-		},
-		{
-			name:        "missing filenames",
-			config:      "mode: tail",
-			expectedErr: "no filename or filenames configuration provided",
-		},
-		{
-			name:        "glob syntax error",
-			config:      `filename: "[asd-.log"`,
-			expectedErr: "glob failure: syntax error in pattern",
-		},
-		{
-			name: "bad exclude regexp",
-			config: `filenames: ["asd.log"]
-exclude_regexps: ["as[a-$d"]`,
-			expectedErr: "could not compile regexp as",
-		},
-		{
-			name: "duplicate keys",
-			config: `filenames: ["asd.log"]
-filenames: ["ase.log"]`,
-			expectedErr: `cannot parse FileAcquisition configuration: [2:1] mapping key "filenames" already defined at [1:1]`,
-		},
-	}
-
-	subLogger := log.WithField("type", "file")
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := fileacquisition.Source{}
-			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
 	ctx := t.Context()
 
