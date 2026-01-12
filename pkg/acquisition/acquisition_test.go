@@ -76,15 +76,19 @@ func (*MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") 
 func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
-func appendMockSource() {
-	registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
-	registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+func appendMockSource(t *testing.T) {
+	t.Helper()
+
+	restore := registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	t.Cleanup(restore)
+	restore = registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+	t.Cleanup(restore)
 }
 
 func TestDataSourceConfigure(t *testing.T) {
 	ctx := t.Context()
 
-	appendMockSource()
+	appendMockSource(t)
 
 	tests := []struct {
 		TestName      string
@@ -218,7 +222,7 @@ filename: foo.log
 }
 
 func TestLoadAcquisitionFromFiles(t *testing.T) {
-	appendMockSource()
+	appendMockSource(t)
 	t.Setenv("TEST_ENV", "test_value2")
 
 	ctx := t.Context()
@@ -554,7 +558,8 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	restore := registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	t.Cleanup(restore)
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
