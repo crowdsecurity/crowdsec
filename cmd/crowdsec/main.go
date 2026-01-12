@@ -17,6 +17,8 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
+	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -38,7 +40,7 @@ var (
 	flags Flags
 
 	// the state of acquisition
-	dataSources []acquisition.DataSource
+	dataSources []acquisitionTypes.DataSource
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
 	buckets *leakybucket.Buckets
@@ -72,7 +74,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	return nil
 }
 
-func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisition.DataSource, error) {
+func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisitionTypes.DataSource, error) {
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels["type"] = flags.SingleFileType
 
