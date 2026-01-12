@@ -25,7 +25,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const (
@@ -42,15 +42,15 @@ func TestConfigure(t *testing.T) {
 	}{
 		{
 			config: `
-foobar: bla`,
-			expectedErr: "invalid configuration: listen_addr or listen_socket is required",
+timeout: 1m`,
+			expectedErr: "listen_addr or listen_socket is required",
 		},
 		{
 			config: `
 source: http
 listen_addr: 127.0.0.1:8080
 path: wrongpath`,
-			expectedErr: "invalid configuration: path must start with /",
+			expectedErr: "path must start with /",
 		},
 		{
 			config: `
@@ -58,7 +58,7 @@ source: http
 listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: basic_auth`,
-			expectedErr: "invalid configuration: basic_auth is selected, but basic_auth is not provided",
+			expectedErr: "basic_auth is selected, but basic_auth is not provided",
 		},
 		{
 			config: `
@@ -66,7 +66,7 @@ source: http
 listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers`,
-			expectedErr: "invalid configuration: headers is selected, but headers is not provided",
+			expectedErr: "headers is selected, but headers is not provided",
 		},
 		{
 			config: `
@@ -76,7 +76,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   username: 132`,
-			expectedErr: "invalid configuration: basic_auth is selected, but password is not provided",
+			expectedErr: "basic_auth is selected, but password is not provided",
 		},
 		{
 			config: `
@@ -86,7 +86,7 @@ path: /test
 auth_type: basic_auth
 basic_auth:
   password: 132`,
-			expectedErr: "invalid configuration: basic_auth is selected, but username is not provided",
+			expectedErr: "basic_auth is selected, but username is not provided",
 		},
 		{
 			config: `
@@ -95,7 +95,7 @@ listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: headers
 headers:`,
-			expectedErr: "invalid configuration: headers is selected, but headers is not provided",
+			expectedErr: "headers is selected, but headers is not provided",
 		},
 		{
 			config: `
@@ -103,7 +103,7 @@ source: http
 listen_addr: 127.0.0.1:8080
 path: /test
 auth_type: toto`,
-			expectedErr: "invalid configuration: invalid auth_type: must be one of basic_auth, headers, mtls",
+			expectedErr: "invalid auth_type: must be one of basic_auth, headers, mtls",
 		},
 		{
 			config: `
@@ -115,7 +115,7 @@ headers:
   key: value
 tls:
   server_key: key`,
-			expectedErr: "invalid configuration: server_cert is required",
+			expectedErr: "server_cert is required",
 		},
 		{
 			config: `
@@ -127,7 +127,7 @@ headers:
   key: value
 tls:
   server_cert: cert`,
-			expectedErr: "invalid configuration: server_key is required",
+			expectedErr: "server_key is required",
 		},
 		{
 			config: `
@@ -138,7 +138,7 @@ auth_type: mtls
 tls:
   server_cert: cert
   server_key: key`,
-			expectedErr: "invalid configuration: mtls is selected, but ca_cert is not provided",
+			expectedErr: "mtls is selected, but ca_cert is not provided",
 		},
 		{
 			config: `
@@ -149,7 +149,7 @@ auth_type: headers
 headers:
   key: value
 max_body_size: 0`,
-			expectedErr: "invalid configuration: max_body_size must be positive",
+			expectedErr: "max_body_size must be positive",
 		},
 		{
 			config: `
@@ -160,7 +160,7 @@ auth_type: headers
 headers:
   key: value
 timeout: toto`,
-			expectedErr: "cannot parse http datasource configuration: yaml: unmarshal errors:\n  line 8: cannot unmarshal !!str `toto` into time.Duration",
+			expectedErr: `cannot parse: time: invalid duration "toto"`,
 		},
 		{
 			config: `
@@ -171,7 +171,7 @@ auth_type: headers
 headers:
   key: value
 custom_status_code: 999`,
-			expectedErr: "invalid configuration: invalid HTTP status code",
+			expectedErr: "invalid HTTP status code",
 		},
 	}
 
@@ -180,40 +180,40 @@ custom_status_code: 999`,
 	})
 
 	for _, test := range tests {
-		h := HTTPSource{}
+		h := Source{}
 		err := h.Configure(ctx, []byte(test.config), subLogger, 0)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
 func TestGetUuid(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	h.Config.UniqueId = "test"
 	assert.Equal(t, "test", h.GetUuid())
 }
 
 func TestUnmarshalConfig(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	err := h.UnmarshalConfig([]byte(`
 source: http
 listen_addr: 127.0.0.1:8080
 path: 15
 	auth_type: headers`))
-	cstest.AssertErrorMessage(t, err, "cannot parse http datasource configuration: yaml: line 4: found a tab character that violates indentation")
+	cstest.AssertErrorMessage(t, err, "cannot parse: [5:1] found character '\t' that cannot start any token")
 }
 
 func TestGetMode(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	h.Config.Mode = "test"
 	assert.Equal(t, "test", h.GetMode())
 }
 
 func TestGetName(t *testing.T) {
-	h := HTTPSource{}
+	h := Source{}
 	assert.Equal(t, "http", h.GetName())
 }
 
-func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan types.Event, *prometheus.Registry, *tomb.Tomb) {
+func SetupAndRunHTTPSource(t *testing.T, h *Source, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
 		"type": "http",
@@ -222,7 +222,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 	err = h.StreamingAcquisition(ctx, out, &tomb)
 	require.NoError(t, err)
 
@@ -236,7 +236,7 @@ func SetupAndRunHTTPSource(t *testing.T, h *HTTPSource, config []byte, metricLev
 }
 
 func TestStreamingAcquisitionHTTPMethod(t *testing.T) {
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -285,7 +285,7 @@ basic_auth:
 func TestStreamingAcquisitionUnknownPath(t *testing.T) {
 	ctx := t.Context()
 
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -312,7 +312,7 @@ basic_auth:
 
 func TestStreamingAcquisitionBasicAuth(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -350,7 +350,7 @@ basic_auth:
 
 func TestStreamingAcquisitionBadHeaders(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -379,7 +379,7 @@ headers:
 
 func TestStreamingAcquisitionMaxBodySize(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -409,7 +409,7 @@ max_body_size: 5`), 0)
 
 func TestStreamingAcquisitionSuccess(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -447,7 +447,7 @@ headers:
 
 func TestStreamingAcquisitionCustomStatusCodeAndCustomHeaders(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -492,7 +492,7 @@ func TestAcquistionSocket(t *testing.T) {
 	socketFile := filepath.Join(tempDir, "test.sock")
 
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_socket: `+socketFile+`
@@ -552,8 +552,8 @@ func (sr *slowReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func assertEvents(out chan types.Event, expected []string, errChan chan error) {
-	readLines := []types.Event{}
+func assertEvents(out chan pipeline.Event, expected []string, errChan chan error) {
+	readLines := []pipeline.Event{}
 
 	for range expected {
 		select {
@@ -592,7 +592,7 @@ func assertEvents(out chan types.Event, expected []string, errChan chan error) {
 
 func TestStreamingAcquisitionTimeout(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -630,7 +630,7 @@ timeout: 1s`), 0)
 func TestStreamingAcquisitionTLSHTTPRequest(t *testing.T) {
 	ctx := t.Context()
 
-	h := &HTTPSource{}
+	h := &Source{}
 	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -660,7 +660,7 @@ tls:
 
 func TestStreamingAcquisitionTLSWithHeadersAuthSuccess(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -718,7 +718,7 @@ tls:
 
 func TestStreamingAcquisitionMTLS(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -778,7 +778,7 @@ tls:
 
 func TestStreamingAcquisitionGzipData(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080
@@ -833,7 +833,7 @@ headers:
 
 func TestStreamingAcquisitionNDJson(t *testing.T) {
 	ctx := t.Context()
-	h := &HTTPSource{}
+	h := &Source{}
 	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
 source: http
 listen_addr: 127.0.0.1:8080

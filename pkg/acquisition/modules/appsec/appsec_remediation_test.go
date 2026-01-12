@@ -9,7 +9,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestAppsecDefaultPassRemediation(t *testing.T) {
@@ -33,7 +33,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -60,7 +60,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultPassAction: "allow",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -87,7 +87,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultPassAction: "captcha",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode) //@tko: body is captcha, but as it's 200, captcha won't be showed to user
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
@@ -114,7 +114,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			UserPassedHTTPCode: 200,
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -141,7 +141,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			UserPassedHTTPCode: 418,
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -149,11 +149,8 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecDefaultRemediation(t *testing.T) {
@@ -177,7 +174,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -204,7 +201,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "ban",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -231,7 +228,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "allow",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -258,7 +255,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "captcha",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
@@ -285,7 +282,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			UserBlockedHTTPCode: 418,
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -313,7 +310,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			},
 			UserBlockedHTTPCode: 418,
 			DefaultRemediation:  "foobar",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, "foobar", responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, "foobar", appsecResponse.Action)
@@ -322,9 +319,5 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }

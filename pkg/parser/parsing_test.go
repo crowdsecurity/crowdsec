@@ -19,12 +19,12 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type TestFile struct {
-	Lines   []types.Event `yaml:"lines,omitempty"`
-	Results []types.Event `yaml:"results,omitempty"`
+	Lines   []pipeline.Event `yaml:"lines,omitempty"`
+	Results []pipeline.Event `yaml:"results,omitempty"`
 }
 
 var debug = false
@@ -214,7 +214,7 @@ func loadTestFile(t require.TestingT, file string) []TestFile {
 	return testSet
 }
 
-func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
+func matchEvent(expected pipeline.Event, out pipeline.Event, debug bool) ([]string, bool) {
 	var retInfo []string
 
 	valid := false
@@ -313,10 +313,10 @@ checkFinished:
 }
 
 func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
-	var results []types.Event
+	var results []pipeline.Event
 
 	for _, in := range testSet.Lines {
-		out, err := Parse(pctx, in, nodes)
+		out, err := Parse(pctx, in, nodes, false)
 		if err != nil {
 			log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
 		}

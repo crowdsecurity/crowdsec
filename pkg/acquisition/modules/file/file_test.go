@@ -18,7 +18,7 @@ import (
 
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -62,7 +62,7 @@ filenames: ["ase.log"]`,
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -103,7 +103,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 			err := f.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -221,9 +221,8 @@ filename: %s`, deletedFile),
 
 			subLogger := logger.WithField("type", "file")
 
-			tomb := tomb.Tomb{}
-			out := make(chan types.Event, 100)
-			f := fileacquisition.FileSource{}
+			out := make(chan pipeline.Event, 100)
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -240,7 +239,7 @@ filename: %s`, deletedFile),
 				tc.afterConfigure()
 			}
 
-			err = f.OneShotAcquisition(ctx, out, &tomb)
+			err = f.OneShot(ctx, out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
@@ -389,9 +388,9 @@ force_inotify: true`, testPattern),
 			subLogger := logger.WithField("type", "file")
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -496,7 +495,7 @@ exclude_regexps: ["\\.gz$"]`
 	// logger.SetLevel(ts.logLevel)
 	subLogger := logger.WithField("type", "file")
 
-	f := fileacquisition.FileSource{}
+	f := fileacquisition.Source{}
 	err := f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
@@ -550,7 +549,7 @@ mode: tail
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fileacquisition.FileSource{}
+			f := &fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 		})
@@ -574,12 +573,12 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
+	f := &fileacquisition.Source{}
 	err := f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	// Create channel for events
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	// Start acquisition
@@ -626,11 +625,11 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
+	f := &fileacquisition.Source{}
 	err = f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	err = f.StreamingAcquisition(ctx, eventChan, &tomb)

@@ -7,7 +7,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type RawBayesianCondition struct {
@@ -60,32 +60,30 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	return err
 }
 
-func (c *BayesianBucket) AfterBucketPour(_ *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, l *Leaky) *types.Event {
-		c.posterior = c.prior
-		l.logger.Debugf("starting bayesian evaluation with prior: %v", c.posterior)
+func (c *BayesianBucket) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
+	c.posterior = c.prior
+	l.logger.Debugf("starting bayesian evaluation with prior: %v", c.posterior)
 
-		for _, bevent := range c.bayesianEventArray {
-			err := bevent.bayesianUpdate(c, msg, l)
-			if err != nil {
-				l.logger.Errorf("bayesian update failed for %s with %s", bevent.rawCondition.ConditionalFilterName, err)
-			}
+	for _, bevent := range c.bayesianEventArray {
+		err := bevent.bayesianUpdate(c, msg, l)
+		if err != nil {
+			l.logger.Errorf("bayesian update failed for %s with %s", bevent.rawCondition.ConditionalFilterName, err)
 		}
-
-		l.logger.Debugf("value of posterior after events : %v", c.posterior)
-
-		if c.posterior > c.threshold {
-			l.logger.Debugf("Bayesian bucket overflow")
-			l.Ovflw_ts = l.Last_ts
-			l.Out <- l.Queue
-			return nil
-		}
-
-		return &msg
 	}
+
+	l.logger.Debugf("value of posterior after events : %v", c.posterior)
+
+	if c.posterior > c.threshold {
+		l.logger.Debugf("Bayesian bucket overflow")
+		l.Ovflw_ts = l.Last_ts
+		l.Out <- l.Queue
+		return nil
+	}
+
+	return &msg
 }
 
-func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Leaky) error {
+func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg pipeline.Event, l *Leaky) error {
 	var condition, ok bool
 
 	if b.conditionalFilterRuntime == nil {
@@ -148,7 +146,7 @@ func (b *BayesianEvent) compileCondition() (*vm.Program, error) {
 	}
 
 	// don't hold lock during compile
-	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 	if err != nil {
 		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 
 	"github.com/fatih/color"
@@ -45,7 +46,7 @@ func (cli *cliMachines) inspectHubHuman(out io.Writer, machine *ent.Machine) {
 	state := machine.Hubstate
 
 	if len(state) == 0 {
-		fmt.Println("No hub items found for this machine")
+		fmt.Fprintln(os.Stdout, "No hub items found for this machine")
 		return
 	}
 

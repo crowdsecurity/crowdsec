@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -32,7 +33,8 @@ func (cli *cliHubTest) newListCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Println(string(j))
+
+				fmt.Fprintln(os.Stdout, string(j))
 			default:
 				return errors.New("only human/json output modes are supported")
 			}

@@ -29,6 +29,8 @@ func (nc *NucleiConfig) RunNucleiTemplate(ctx context.Context, testName string, 
 	outputPrefix := fmt.Sprintf("%s/%s-%d", nc.OutputDir, testName, tstamp)
 	// CVE-2023-34362_CVE-2023-34362-1702562399_stderr.txt
 	args := []string{
+		// removing the banner with --silent also removes useful [WRN] lines, so it is what it is
+		// "-silent",
 		"-u", target,
 		"-t", templatePath,
 		"-o", outputPrefix + ".json",
@@ -46,25 +48,33 @@ func (nc *NucleiConfig) RunNucleiTemplate(ctx context.Context, testName string, 
 	cmd.Stdout = &out
 	cmd.Stderr = &outErr
 
-	err := cmd.Run()
+	cmdErr := cmd.Run()
 	if err := os.WriteFile(outputPrefix+"_stdout.txt", out.Bytes(), 0o644); err != nil {
-		log.Warningf("Error writing stdout: %s", err)
+		log.Errorf("Error writing stdout: %s", err)
 	}
 
-	if err := os.WriteFile(outputPrefix+"_stderr.txt", outErr.Bytes(), 0o644); err != nil {
-		log.Warningf("Error writing stderr: %s", err)
+	errBytes := outErr.Bytes()
+
+	if err := os.WriteFile(outputPrefix+"_stderr.txt", errBytes, 0o644); err != nil {
+		log.Errorf("Error writing stderr: %s", err)
 	}
 
-	if err != nil {
-		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
-		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
-		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
+	if cmdErr != nil {
+		// display stderr in addition to writing to a file
+		os.Stdout.Write(errBytes)
+		os.Stdout.WriteString("\n")
 
-		return fmt.Errorf("%w: %v", ErrNucleiRunFail, err)
-	} else if out.String() == "" {
-		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
-		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
-		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
+		fmt.Fprintln(os.Stdout, "Stdout saved to", outputPrefix+"_stdout.txt")
+		fmt.Fprintln(os.Stdout, "Stderr saved to", outputPrefix+"_stderr.txt")
+		fmt.Fprintln(os.Stdout, "Nuclei generated output saved to", outputPrefix+".json")
+
+		return fmt.Errorf("%w: %v", ErrNucleiRunFail, cmdErr)
+	}
+
+	if out.String() == "" {
+		fmt.Fprintln(os.Stdout, "Stdout saved to", outputPrefix+"_stdout.txt")
+		fmt.Fprintln(os.Stdout, "Stderr saved to", outputPrefix+"_stderr.txt")
+		fmt.Fprintln(os.Stdout, "Nuclei generated output saved to", outputPrefix+".json")
 
 		// No stdout means no finding, it means our test failed
 		return ErrNucleiTemplateFail

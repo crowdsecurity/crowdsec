@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
-	dockerContainer "github.com/docker/docker/api/types/container"
-	dockerTypesEvents "github.com/docker/docker/api/types/events"
-	dockerTypesSwarm "github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/api/types/system"
-	"github.com/docker/docker/client"
+	dockerContainer "github.com/moby/moby/api/types/container"
+	dockerTypesEvents "github.com/moby/moby/api/types/events"
+	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/api/types/system"
+	"github.com/moby/moby/client"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +24,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const testContainerName = "docker_test"
@@ -131,7 +130,7 @@ service_id_regexp:
 
 	for _, tc := range tests {
 		t.Run(tc.config, func(t *testing.T) {
-			f := DockerSource{}
+			f := Source{}
 			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -191,7 +190,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := DockerSource{}
+			f := Source{}
 			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
@@ -204,21 +203,19 @@ type mockDockerCli struct {
 }
 
 // Simplified Info method - just return basic info without complex types
-func (*mockDockerCli) Info(_ context.Context) (system.Info, error) {
-	info := system.Info{}
+func (*mockDockerCli) Info(_ context.Context, _ client.InfoOptions) (client.SystemInfoResult, error) {
 	// For testing purposes, we'll set the swarm info based on our mock flag
 	// The exact type matching can be handled in integration tests
-	return info, nil
+	return client.SystemInfoResult{
+		Info: system.Info{},
+	}, nil
 }
 
-func (cli *mockDockerCli) ServiceList(_ context.Context, _ dockerTypes.ServiceListOptions) ([]dockerTypesSwarm.Service, error) {
-	if cli.services != nil {
-		return cli.services, nil
-	}
+func (cli *mockDockerCli) ServiceList(_ context.Context, _ client.ServiceListOptions) (client.ServiceListResult, error) {
+	items := cli.services
 
-	// Default test service
-	services := []dockerTypesSwarm.Service{
-		{
+	if items == nil {
+		defaultTestService :=  dockerTypesSwarm.Service{
 			ID: "service123",
 			Spec: dockerTypesSwarm.ServiceSpec{
 				Annotations: dockerTypesSwarm.Annotations{
@@ -228,13 +225,16 @@ func (cli *mockDockerCli) ServiceList(_ context.Context, _ dockerTypes.ServiceLi
 					},
 				},
 			},
-		},
+		}
+		items = []dockerTypesSwarm.Service{defaultTestService}
 	}
 
-	return services, nil
+	return client.ServiceListResult{
+		Items: items,
+	}, nil
 }
 
-func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
+func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options client.ServiceLogsOptions) (client.ServiceLogsResult, error) {
 	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"service\n", "log\n", "test\n"}
 	ret := ""
@@ -338,8 +338,8 @@ service_name_regexp:
 			subLogger := log.WithField("type", "docker")
 
 			dockerTomb := tomb.Tomb{}
-			out := make(chan types.Event)
-			dockerSource := DockerSource{}
+			out := make(chan pipeline.Event)
+			dockerSource := Source{}
 			err := dockerSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -490,7 +490,7 @@ use_service_labels: true`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := DockerSource{}
+			f := Source{}
 			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
@@ -564,7 +564,7 @@ service_name:
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			subLogger := log.WithField("type", "docker")
-			f := DockerSource{
+			f := Source{
 				Client: &mockDockerCli{},
 			}
 
@@ -579,19 +579,20 @@ service_name:
 	}
 }
 
-func (*mockDockerCli) ContainerList(_ context.Context, _ dockerContainer.ListOptions) ([]dockerTypes.Container, error) {
+func (*mockDockerCli) ContainerList(_ context.Context, _ client.ContainerListOptions) (client.ContainerListResult, error) {
 	// Always return test container for the mock
-	containers := make([]dockerTypes.Container, 0)
-	container := &dockerTypes.Container{
-		ID:    "12456",
-		Names: []string{testContainerName},
+	result := client.ContainerListResult{}
+	result.Items = []dockerContainer.Summary{
+		{
+			ID:    "12456",
+			Names: []string{testContainerName},
+		},
 	}
-	containers = append(containers, *container)
 
-	return containers, nil
+	return result, nil
 }
 
-func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options dockerContainer.LogsOptions) (io.ReadCloser, error) {
+func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	// Return test data - behavior depends on whether this is streaming or oneshot
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
@@ -625,22 +626,17 @@ func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options docke
 	return reader, nil
 }
 
-func (*mockDockerCli) ContainerInspect(_ context.Context, _ string) (dockerTypes.ContainerJSON, error) {
-	r := dockerTypes.ContainerJSON{
-		ContainerJSONBase: &dockerTypes.ContainerJSONBase{
-			State: &dockerTypes.ContainerState{
-				Running: true, // Mock container is running
-			},
-		},
-		Config: &dockerContainer.Config{
-			Tty: false,
-		},
+func (*mockDockerCli) ContainerInspect(_ context.Context, _ string, _ client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	res := client.ContainerInspectResult{}
+	res.Container = dockerContainer.InspectResponse{
+		Config: &dockerContainer.Config{ Tty: false },
+		State:  &dockerContainer.State{ Running: true }, // Mock container is running
 	}
 
-	return r, nil
+	return res, nil
 }
 
-func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string, _ dockerTypes.ServiceInspectOptions) (dockerTypesSwarm.Service, []byte, error) {
+func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string, _ client.ServiceInspectOptions) (dockerTypesSwarm.Service, []byte, error) {
 	// Return a mock service that exists
 	service := dockerTypesSwarm.Service{
 		ID: serviceID,
@@ -653,13 +649,15 @@ func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string,
 
 	return service, []byte("{}"), nil
 }
-
 // Since we are mocking the docker client, we return channels that will never be used
-func (*mockDockerCli) Events(_ context.Context, _ dockerTypesEvents.ListOptions) (<-chan dockerTypesEvents.Message, <-chan error) {
+func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) client.EventsResult {
 	eventsChan := make(chan dockerTypesEvents.Message)
 	errChan := make(chan error)
 
-	return eventsChan, errChan
+	return client.EventsResult{
+		Messages: eventsChan,
+		Err: errChan,
+	}
 }
 
 func TestOneShot(t *testing.T) {
@@ -694,7 +692,7 @@ func TestOneShot(t *testing.T) {
 		t.Run(ts.dsn, func(t *testing.T) {
 			subLogger := log.WithField("type", "docker")
 
-			dockerClient := &DockerSource{}
+			dockerClient := &Source{}
 			labels := make(map[string]string)
 			labels["type"] = ts.logType
 
@@ -702,7 +700,7 @@ func TestOneShot(t *testing.T) {
 			require.NoError(t, err)
 
 			dockerClient.Client = &mockDockerCli{}
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 
 			tomb := tomb.Tomb{}
 

@@ -390,7 +390,7 @@ detect:
         source: journalctl
         filename: /path/to/file.log`,
 			want:    nil,
-			wantErr: `invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
+			wantErr: `invalid acquisition spec for foobar: cannot parse: [1:1] unknown field "filename"`,
 		}, {
 			name: "source file: required fields",
 			config: `

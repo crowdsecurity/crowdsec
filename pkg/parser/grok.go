@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type GrokPattern struct {
@@ -70,7 +70,7 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 	// if grok source is an expression
 	if g.ExpValue != "" {
 		rg.RunTimeValue, err = expr.Compile(g.ExpValue,
-			exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+			exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling grok's expression: %w", err)
 		}

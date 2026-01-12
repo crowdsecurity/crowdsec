@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 var PAPIBaseURL = "https://papi.api.crowdsec.net/"
@@ -226,27 +228,53 @@ type LocalApiServerCfg struct {
 	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
 	TLS                           *TLSCfg                  `yaml:"tls"`
 	DbConfig                      *DatabaseCfg             `yaml:"-"`
-	LogDir                        string                   `yaml:"-"`
-	LogMedia                      string                   `yaml:"-"`
 	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
 	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
 	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
 	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
 	Profiles                      []*ProfileCfg            `yaml:"-"`
-	LogLevel                      log.Level                `yaml:"log_level"`
+	LogLevel                      log.Level                `yaml:"log_level"` // 0 == Panic - default to common log level
 	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
 	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool                    `yaml:"-"`
-	LogMaxSize                    int                      `yaml:"-"`
-	LogMaxAge                     int                      `yaml:"-"`
-	LogMaxFiles                   int                      `yaml:"-"`
-	LogFormat                     string                   `yaml:"-"`
 	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
 	PapiLogLevel                  log.Level                `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
+	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+}
+
+// NewAccessLogger builds and returns a logger configured for HTTP access
+// logging using the provided log configuration.
+// If log_media is "file", the access log is written to the provided filename
+// inside LogDir. For "stdout" or "syslog", the access logger uses the same
+// output destination as the standard logger.
+func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Entry {
+	media := cfg.GetMedia()
+	logger := log.WithField("output", media)
+
+	defer func() {
+		logger.Debug("starting access logger")
+	}()
+
+	accessLogger := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+
+	if media != "file" {
+		return accessLogger
+	}
+
+	logPath := filepath.Join(cfg.GetDir(), filename)
+	logger = logger.WithField("file", logPath)
+
+	accessLogger.Logger.SetOutput(cfg.NewRotatingLogger(filename))
+
+	return accessLogger
+}
+
+func (c *LocalApiServerCfg) NewPAPILogger() *log.Entry {
+	level := cmp.Or(c.PapiLogLevel, c.LogLevel)
+	return logging.SubLogger(log.StandardLogger(), "papi", level)
 }
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
@@ -338,14 +366,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	// inherit log level from api->server, common, and default to info
-	// 0 = panicLevel, not useful / not allowed
-	logLevel := cmp.Or(c.API.Server.LogLevel, c.Common.LogLevel, log.InfoLevel)
-
-	if c.API.Server.PapiLogLevel == log.PanicLevel {
-		c.API.Server.PapiLogLevel = logLevel
-	}
-
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return fmt.Errorf("loading online client credentials: %w", err)
@@ -390,14 +410,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
-
-	c.API.Server.LogDir = c.Common.LogDir
-	c.API.Server.LogMedia = c.Common.LogMedia
-	c.API.Server.CompressLogs = c.Common.CompressLogs
-	c.API.Server.LogMaxSize = c.Common.LogMaxSize
-	c.API.Server.LogMaxAge = c.Common.LogMaxAge
-	c.API.Server.LogFormat = c.Common.LogFormat
-	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}

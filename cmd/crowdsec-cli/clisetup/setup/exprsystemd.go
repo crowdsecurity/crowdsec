@@ -24,14 +24,14 @@ func NewExprSystemd(installedUnits UnitMap, logger logrus.FieldLogger) *ExprSyst
 }
 
 // UnitInstalled returns true if the unit is installed, even if it is not enabled or running.
-func (e *ExprSystemd) UnitInstalled(ctx context.Context, unitName string) (bool, error) {
+func (e *ExprSystemd) UnitInstalled(_ context.Context, unitName string) (bool, error) {
 	_, ok := e.installedUnits[unitName]
 
 	return ok, nil
 }
 
 // UnitConfig returns the value of the specified key in the unit's configuration.
-func (e *ExprSystemd) UnitConfig(ctx context.Context, unitName, key string) (string, error) {
+func (e *ExprSystemd) UnitConfig(_ context.Context, unitName, key string) (string, error) {
 	unit, ok := e.installedUnits[unitName]
 	if !ok {
 		// unit not installed

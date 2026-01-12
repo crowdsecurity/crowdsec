@@ -24,9 +24,9 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var pluginMutex sync.Mutex
@@ -50,6 +50,7 @@ type PluginBroker struct {
 	pluginKillMethods               []func()
 	pluginProcConfig                *csconfig.PluginCfg
 	pluginsTypesToDispatch          map[string]struct{}
+	newBackoff                      backoffFactory
 }
 
 // holder to determine where to dispatch config and how to format messages
@@ -58,7 +59,7 @@ type PluginConfig struct {
 	Name           string        `yaml:"name"`
 	GroupWait      time.Duration `yaml:"group_wait,omitempty"`
 	GroupThreshold int           `yaml:"group_threshold,omitempty"`
-	MaxRetry       int           `yaml:"max_retry,omitempty"`
+	MaxRetry       uint          `yaml:"max_retry,omitempty"`
 	TimeOut        time.Duration `yaml:"timeout,omitempty"`
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
@@ -77,10 +78,6 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 
 	if aux.Type == "" {
 		return errors.New("missing required field 'type'")
-	}
-
-	if aux.MaxRetry == 0 {
-		aux.MaxRetry = 1
 	}
 
 	if aux.TimeOut == 0 {
@@ -115,6 +112,13 @@ func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg,
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 
 	return nil
+}
+
+func (pb *PluginBroker) ensureBackoff() backoffFactory {
+	if pb.newBackoff == nil {
+		pb.newBackoff = defaultBackoffFactory
+	}
+	return pb.newBackoff
 }
 
 func (pb *PluginBroker) Kill() {
@@ -341,12 +345,7 @@ func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string,
 	}
 
 	pb.pluginMap[name] = &NotifierPlugin{}
-	l := log.New()
-
-	err = types.ConfigureLogger(l, log.TraceLevel)
-	if err != nil {
-		return nil, err
-	}
+	l := logging.SubLogger(log.StandardLogger(), "plugin", log.TraceLevel)
 	// We set the highest level to permit plugins to set their own log level
 	// without that, crowdsec log level is controlling plugins level
 	logger := NewHCLogAdapter(l, "")
@@ -403,27 +402,33 @@ func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message strin
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginName string, alerts []*models.Alert) error {
-	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
+	logger := log.WithField("plugin", pluginName)
+
+	logger.Debugf("pushing %d alerts to plugin", len(alerts))
 
 	if len(alerts) == 0 {
 		return nil
 	}
 
-	message, err := FormatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
+	pluginCfg := pb.pluginConfigByName[pluginName]
+
+	message, err := FormatAlerts(pluginCfg.Format, alerts)
 	if err != nil {
-		return err
+		return fmt.Errorf("format alerts for notification: %w", err)
 	}
 
-	backoffDuration := time.Second
+	// make sure we have a default or custom backoff
+	pb.ensureBackoff()
 
-	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
-		if err = pb.tryNotify(ctx, pluginName, message); err == nil {
-			return nil
+	err = retryWithBackoff(ctx, pluginCfg, logger, func(ctx context.Context) error {
+		return pb.tryNotify(ctx, pluginName, message)
+	}, pb.newBackoff)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			logger.Warn("delivery canceled during shutdown")
+		} else {
+			logger.Errorf("delivery failed after retries: %v", err)
 		}
-
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
-		time.Sleep(backoffDuration)
-		backoffDuration *= 2
 	}
 
 	return err

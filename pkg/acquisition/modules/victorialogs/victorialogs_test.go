@@ -23,7 +23,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestConfiguration(t *testing.T) {
@@ -68,7 +68,7 @@ query: >
         {server="demo"}
 limit: true
 `,
-			expectedErr: "[7:8] cannot unmarshal bool into Go struct field VLConfiguration.Limit of type int",
+			expectedErr: "[7:8] cannot unmarshal bool into Go struct field Configuration.Limit of type int",
 			testName:    "mismatched type",
 		},
 		{
@@ -115,7 +115,7 @@ query: >
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			vlSource := victorialogs.VLSource{}
+			vlSource := victorialogs.Source{}
 			err := vlSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
@@ -200,7 +200,7 @@ func TestConfigureDSN(t *testing.T) {
 
 		t.Logf("Test : %s", test.name)
 
-		vlSource := &victorialogs.VLSource{}
+		vlSource := &victorialogs.Source{}
 		err := vlSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 
@@ -297,7 +297,7 @@ since: 1h
 	for _, ts := range tests {
 		logger := log.New()
 		subLogger := logger.WithField("type", "victorialogs")
-		vlSource := victorialogs.VLSource{}
+		vlSource := victorialogs.Source{}
 
 		err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		if err != nil {
@@ -309,7 +309,7 @@ since: 1h
 			t.Fatalf("Unexpected error : %s", err)
 		}
 
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		read := 0
 
 		go func() {
@@ -381,9 +381,9 @@ query: >
 				"name": ts.name,
 			})
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			vlTomb := tomb.Tomb{}
-			vlSource := victorialogs.VLSource{}
+			vlSource := victorialogs.Source{}
 
 			err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
@@ -457,14 +457,14 @@ query: >
 	logger := log.New()
 	subLogger := logger.WithField("type", "victorialogs")
 	title := time.Now().String()
-	vlSource := victorialogs.VLSource{}
+	vlSource := victorialogs.Source{}
 
 	err := vlSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	out := make(chan types.Event, 10)
+	out := make(chan pipeline.Event, 10)
 
 	vlTomb := &tomb.Tomb{}
 

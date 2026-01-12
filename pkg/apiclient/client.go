@@ -26,7 +26,7 @@ var (
 	lapiClient         *ApiClient
 )
 
-type TokenSave func(ctx context.Context, tokenKey string, token string) error
+type TokenSave func(ctx context.Context, token string) error
 
 type ApiClient struct {
 	// The http client used to make requests

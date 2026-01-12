@@ -2,6 +2,7 @@ package clihubtest
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -23,18 +24,21 @@ func (*cliHubTest) newInfoCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("unable to load test '%s': %w", testName, err)
 				}
-				fmt.Println()
-				fmt.Printf("  Test name                   :  %s\n", test.Name)
-				fmt.Printf("  Test path                   :  %s\n", test.Path)
+
+				fmt.Fprintln(os.Stdout)
+				fmt.Fprintf(os.Stdout, "  Test name                   :  %s\n", test.Name)
+				fmt.Fprintf(os.Stdout, "  Test path                   :  %s\n", test.Path)
+
 				if isAppsecTest {
-					fmt.Printf("  Nuclei Template             :  %s\n", test.Config.NucleiTemplate)
-					fmt.Printf("  Appsec Rules                  :  %s\n", strings.Join(test.Config.AppsecRules, ", "))
+					fmt.Fprintf(os.Stdout, "  Nuclei Template             :  %s\n", test.Config.NucleiTemplate)
+					fmt.Fprintf(os.Stdout, "  Appsec Rules                  :  %s\n", strings.Join(test.Config.AppsecRules, ", "))
 				} else {
-					fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
-					fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
-					fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, hubtest.ScenarioAssertFileName))
+					fmt.Fprintf(os.Stdout, "  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
+					fmt.Fprintf(os.Stdout, "  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
+					fmt.Fprintf(os.Stdout, "  Scenario assertion file     :  %s\n", filepath.Join(test.Path, hubtest.ScenarioAssertFileName))
 				}
-				fmt.Printf("  Configuration File          :  %s\n", filepath.Join(test.Path, "config.yaml"))
+
+				fmt.Fprintf(os.Stdout, "  Configuration File          :  %s\n", filepath.Join(test.Path, "config.yaml"))
 			}
 
 			return nil

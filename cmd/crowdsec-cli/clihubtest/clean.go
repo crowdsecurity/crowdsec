@@ -3,6 +3,7 @@ package clihubtest
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -21,7 +22,7 @@ func (*cliHubTest) newCleanCmd() *cobra.Command {
 				return errors.New("please provide test to run or --all flag")
 			}
 
-			fmt.Println("Cleaning test data...")
+			fmt.Fprintln(os.Stdout, "Cleaning test data...")
 
 			tests := []*hubtest.HubTestItem{}
 
@@ -37,6 +38,7 @@ func (*cliHubTest) newCleanCmd() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("unable to load test '%s': %w", testName, err)
 					}
+
 					tests = append(tests, test)
 				}
 			}

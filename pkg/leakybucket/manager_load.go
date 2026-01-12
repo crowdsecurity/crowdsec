@@ -13,60 +13,61 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion/constraint"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
 // generic struct for buckets. This can be seen as a bucket factory.
 type BucketFactory struct {
-	FormatVersion       string                 `yaml:"format"`
-	Author              string                 `yaml:"author"`
-	Description         string                 `yaml:"description"`
-	References          []string               `yaml:"references"`
-	Type                string                 `yaml:"type"`                // Type can be : leaky, counter, trigger. It determines the main bucket characteristics
-	Name                string                 `yaml:"name"`                // Name of the bucket, used later in log and user-messages. Should be unique
-	Capacity            int                    `yaml:"capacity"`            // Capacity is applicable to leaky buckets and determines the "burst" capacity
-	LeakSpeed           string                 `yaml:"leakspeed"`           // Leakspeed is a float representing how many events per second leak out of the bucket
-	Duration            string                 `yaml:"duration"`            // Duration allows 'counter' buckets to have a fixed life-time
-	Filter              string                 `yaml:"filter"`              // Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
-	GroupBy             string                 `yaml:"groupby,omitempty"`   // groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
-	Distinct            string                 `yaml:"distinct"`            // Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
-	Debug               bool                   `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
-	Labels              map[string]any         `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
-	Blackhole           string                 `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry             // logger is bucket-specific logger (used by Debug as well)
-	Reprocess           bool                   `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                    `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                   `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                 `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ConditionalOverflow string                 `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
-	BayesianPrior       float32                `yaml:"bayesian_prior"`
-	BayesianThreshold   float32                `yaml:"bayesian_threshold"`
-	BayesianConditions  []RawBayesianCondition `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
-	ScopeType           types.ScopeType        `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
-	BucketName          string                 `yaml:"-"`
-	Filename            string                 `yaml:"-"`
-	RunTimeFilter       *vm.Program            `json:"-"`
-	RunTimeGroupBy      *vm.Program            `json:"-"`
-	Data                []*types.DataSource    `yaml:"data,omitempty"`
-	DataDir             string                 `yaml:"-"`
-	CancelOnFilter      string                 `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
-	leakspeed           time.Duration          // internal representation of `Leakspeed`
-	duration            time.Duration          // internal representation of `Duration`
-	ret                 chan types.Event       // the bucket-specific output chan for overflows
-	processors          []Processor            // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	ScenarioVersion     string                 `yaml:"version,omitempty"`
+	FormatVersion       string                     `yaml:"format"`
+	Author              string                     `yaml:"author"`
+	Description         string                     `yaml:"description"`
+	References          []string                   `yaml:"references"`
+	Type                string                     `yaml:"type"`                // Type can be : leaky, counter, trigger. It determines the main bucket characteristics
+	Name                string                     `yaml:"name"`                // Name of the bucket, used later in log and user-messages. Should be unique
+	Capacity            int                        `yaml:"capacity"`            // Capacity is applicable to leaky buckets and determines the "burst" capacity
+	LeakSpeed           string                     `yaml:"leakspeed"`           // Leakspeed is a float representing how many events per second leak out of the bucket
+	Duration            string                     `yaml:"duration"`            // Duration allows 'counter' buckets to have a fixed life-time
+	Filter              string                     `yaml:"filter"`              // Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
+	GroupBy             string                     `yaml:"groupby,omitempty"`   // groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
+	Distinct            string                     `yaml:"distinct"`            // Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
+	Debug               bool                       `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
+	Labels              map[string]any             `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
+	Blackhole           string                     `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
+	logger              *log.Entry                 // logger is bucket-specific logger (used by Debug as well)
+	Reprocess           bool                       `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize           int                        `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling           bool                       `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter      string                     `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	ConditionalOverflow string                     `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
+	BayesianPrior       float32                    `yaml:"bayesian_prior"`
+	BayesianThreshold   float32                    `yaml:"bayesian_threshold"`
+	BayesianConditions  []RawBayesianCondition     `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
+	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
+	BucketName          string                     `yaml:"-"`
+	Filename            string                     `yaml:"-"`
+	RunTimeFilter       *vm.Program                `json:"-"`
+	RunTimeGroupBy      *vm.Program                `json:"-"`
+	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
+	DataDir             string                     `yaml:"-"`
+	CancelOnFilter      string                     `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
+	leakspeed           time.Duration              // internal representation of `Leakspeed`
+	duration            time.Duration              // internal representation of `Duration`
+	ret                 chan pipeline.Event        // the bucket-specific output chan for overflows
+	processors          []Processor                // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	ScenarioVersion     string                     `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
-	tomb                *tomb.Tomb
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
@@ -221,7 +222,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 		return errors.New("filter is mandatory for non-IP, non-Range scope")
 	}
 
-	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("error compiling the scope filter: %w", err)
 	}
@@ -231,7 +232,7 @@ func compileScopeFilter(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, tomb *tomb.Tomb, response chan types.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -296,10 +297,9 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.wgDumpState = buckets.wgDumpState
 		bucketFactory.wgPour = buckets.wgPour
 
-		err = LoadBucket(&bucketFactory, tomb)
+		err = LoadBucket(&bucketFactory)
 		if err != nil {
-			log.Errorf("Failed to load bucket %s: %v", bucketFactory.Name, err)
-			return nil, fmt.Errorf("loading of %s failed: %w", bucketFactory.Name, err)
+			return nil, fmt.Errorf("bucket %s: %w", bucketFactory.Name, err)
 		}
 
 		bucketFactory.orderEvent = orderEvent
@@ -310,14 +310,14 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 	return factories, nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
-	response := make(chan types.Event, 1)
+	response := make(chan pipeline.Event, 1)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, tomb, response, orderEvent, cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, response, orderEvent, cscfg.SimulationConfig)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -335,14 +335,11 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
+func LoadBucket(bucketFactory *BucketFactory) error {
 	var err error
 
 	if bucketFactory.Debug {
-		clog := log.New()
-		if err = types.ConfigureLogger(clog, log.DebugLevel); err != nil {
-			return fmt.Errorf("while creating bucket-specific logger: %w", err)
-		}
+		clog := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
 
 		bucketFactory.logger = clog.WithFields(log.Fields{
 			"cfg":  bucketFactory.BucketName,
@@ -372,16 +369,16 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 	if bucketFactory.Filter == "" {
 		bucketFactory.logger.Warning("Bucket without filter, abort.")
-		return errors.New("bucket without filter directive")
+		return errors.New("missing filter directive")
 	}
 
-	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("invalid filter '%s' in %s: %w", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.GroupBy != "" {
-		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s: %w", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
@@ -409,7 +406,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid distinct '%s' in %s: %w", bucketFactory.Distinct, bucketFactory.Filename, err)
 		}
@@ -419,7 +416,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", bucketFactory.CancelOnFilter, bucketFactory.Filename, err)
 		}
@@ -453,7 +450,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
 		}
@@ -485,8 +482,6 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if err := ValidateFactory(bucketFactory); err != nil {
 		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}
-
-	bucketFactory.tomb = tomb
 
 	return nil
 }

@@ -25,13 +25,13 @@ jobs:
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       with:
         fetch-depth: 0
         submodules: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
       with:
         go-version-file: go.mod
 
@@ -49,15 +49,15 @@ jobs:
         make testcover
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
       with:
         files: coverage.out
         flags: unit-windows
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
-        version: v2.5
+        version: v2.7
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

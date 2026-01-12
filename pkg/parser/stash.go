@@ -11,7 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type Stash struct {
@@ -65,13 +65,13 @@ func (s *Stash) Compile(logger *log.Entry) (*RuntimeStash, error) {
 	rs := &RuntimeStash{Config: s}
 
 	rs.ValueExpression, err = expr.Compile(s.Value,
-		exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return nil, fmt.Errorf("while compiling stash value expression: %w", err)
 	}
 
 	rs.KeyExpression, err = expr.Compile(s.Key,
-		exprhelpers.GetExprOptions(map[string]any{"evt": &types.Event{}})...)
+		exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return nil, fmt.Errorf("while compiling stash key expression: %w", err)
 	}
@@ -81,15 +81,17 @@ func (s *Stash) Compile(logger *log.Entry) (*RuntimeStash, error) {
 		return nil, fmt.Errorf("while parsing stash ttl: %w", err)
 	}
 
-	logLvl := logger.Logger.GetLevel()
 	// init the cache, does it make sense to create it here just to be sure everything is fine ?
-	if err = cache.CacheInit(cache.CacheCfg{
+
+	cacheCfg := cache.CacheCfg{
 		Size:     s.MaxMapSize,
 		TTL:      rs.TTLVal,
 		Name:     s.Name,
 		Strategy: s.Strategy,
-		LogLevel: logLvl,
-	}); err != nil {
+		LogLevel: logger.Logger.GetLevel(),
+	}
+
+	if err = cache.CacheInit(cacheCfg, cacheCfg.NewLogger()); err != nil {
 		return nil, fmt.Errorf("while initializing cache: %w", err)
 	}
 

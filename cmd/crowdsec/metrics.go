@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,8 +20,8 @@ import (
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// catch panics here because they are not handled by servePrometheus
 		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
+
 		// update cache metrics (stash)
 		cache.UpdateCacheMetrics()
 		// update cache metrics (regexp)
@@ -36,7 +37,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 
 		decisions, err := dbClient.QueryDecisionCountByScenario(ctx)
 		if err != nil {
-			log.Errorf("Error querying decisions for metrics: %v", err)
+			log.WithError(err).Error("querying decisions for metrics")
 			next.ServeHTTP(w, r)
 
 			return
@@ -56,7 +57,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 
 		alerts, err := dbClient.AlertsCountPerScenario(ctx, alertsFilter)
 		if err != nil {
-			log.Errorf("Error querying alerts for metrics: %v", err)
+			log.WithError(err).Error("querying alerts for metrics")
 			next.ServeHTTP(w, r)
 
 			return
@@ -76,7 +77,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	}
 
 	if err := metrics.RegisterMetrics(config.Level); err != nil {
-		log.Errorf("Error registering prometheus metrics: %v", err)
+		log.WithError(err).Error("registering prometheus metrics")
 		return
 	}
 }
@@ -92,10 +93,10 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
+	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), nil); err != nil {
 		// in time machine, we most likely have the LAPI using the port
 		if !flags.haveTimeMachine() {
-			log.Warningf("prometheus: %s", err)
+			log.WithError(err).Warning("serving metrics")
 		}
 	}
 }

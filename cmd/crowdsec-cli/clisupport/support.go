@@ -90,10 +90,8 @@ func stripAnsiString(str string) string {
 	return reStripAnsi.ReplaceAllString(str, "")
 }
 
-type configGetter func() *csconfig.Config
-
 type cliSupport struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
 func (cli *cliSupport) dumpMetrics(ctx context.Context, db *database.Client, zw *zip.Writer) error {
@@ -453,7 +451,7 @@ func (cli *cliSupport) dumpCrash(zw *zip.Writer) error {
 	return nil
 }
 
-func New(cfg configGetter) *cliSupport {
+func New(cfg csconfig.Getter) *cliSupport {
 	return &cliSupport{
 		cfg: cfg,
 	}

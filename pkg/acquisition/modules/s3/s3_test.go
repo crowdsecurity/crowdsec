@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -46,7 +46,7 @@ source: s3
 source: s3
 max_buffer_size: true
 `,
-			expectedErr: "[3:18] cannot unmarshal bool into Go struct field S3Configuration.MaxBufferSize of type int",
+			expectedErr: "[3:18] cannot unmarshal bool into Go struct field Configuration.MaxBufferSize of type int",
 		},
 		{
 			name: "invalid polling method",
@@ -80,7 +80,7 @@ sqs_name: foobar
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := S3Source{}
+			f := Source{}
 
 			err := f.Configure(ctx, []byte(test.config), nil, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -122,7 +122,7 @@ polling_method: list
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
 
 			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
@@ -270,7 +270,7 @@ func TestDSNAcquis(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
 			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"foo": "bar"}, logger, "")
 			require.NoError(t, err)
@@ -280,7 +280,7 @@ func TestDSNAcquis(t *testing.T) {
 			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
 			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			done := make(chan bool)
 
 			go func() {
@@ -340,7 +340,7 @@ prefix: foo/
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
 
@@ -353,7 +353,7 @@ prefix: foo/
 				t.Fatalf("expected list polling, got %s", f.Config.PollingMethod)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := tomb.Tomb{}
 
 			go func() {
@@ -425,7 +425,7 @@ sqs_name: test
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
 			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
@@ -449,7 +449,7 @@ sqs_name: test
 				t.Fatalf("unknown notification type %s", test.notifType)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := tomb.Tomb{}
 
 			go func() {

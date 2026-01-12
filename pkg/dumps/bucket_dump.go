@@ -6,10 +6,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-type BucketPourInfo map[string][]types.Event
+type BucketPourInfo map[string][]pipeline.Event
 
 func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
 	dumpData, err := os.Open(filepath)

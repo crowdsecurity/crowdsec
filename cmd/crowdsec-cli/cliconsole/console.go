@@ -29,13 +29,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliConsole struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliConsole {
+func New(cfg csconfig.Getter) *cliConsole {
 	return &cliConsole{
 		cfg: cfg,
 	}

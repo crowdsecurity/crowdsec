@@ -9,10 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func IpToRange(field string, _ *types.Event, plog *log.Entry) (map[string]string, error) {
+func IpToRange(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}
@@ -40,7 +40,7 @@ func IpToRange(field string, _ *types.Event, plog *log.Entry) (map[string]string
 	return ret, nil
 }
 
-func GeoIpASN(field string, _ *types.Event, plog *log.Entry) (map[string]string, error) {
+func GeoIpASN(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}
@@ -76,7 +76,7 @@ func GeoIpASN(field string, _ *types.Event, plog *log.Entry) (map[string]string,
 	return ret, nil
 }
 
-func GeoIpCity(field string, _ *types.Event, plog *log.Entry) (map[string]string, error) {
+func GeoIpCity(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}

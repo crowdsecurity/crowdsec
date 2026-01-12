@@ -85,7 +85,7 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 
 		log.Printf("Local API credentials written to '%s'", dumpFile)
 	} else {
-		fmt.Printf("%s\n", string(apiConfigDump))
+		fmt.Fprintln(os.Stdout, string(apiConfigDump))
 	}
 
 	if msg := reload.UserMessage(); msg != "" {

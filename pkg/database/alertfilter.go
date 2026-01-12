@@ -26,7 +26,7 @@ func handleSimulatedFilter(filter map[string][]string, predicates *[]predicate.A
 	}
 }
 
-func handleOriginFilter(filter map[string][]string, predicates *[]predicate.Alert) {
+func handleOriginFilter(filter map[string][]string) {
 	if _, ok := filter["origin"]; ok {
 		filter["include_capi"] = []string{"true"}
 	}
@@ -172,7 +172,7 @@ func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error 
 			),
 		))
 	} else if value != "true" {
-		log.Errorf("invalid bool '%s' for include_capi", value)
+		log.Errorf("invalid bool %q for include_capi", value)
 	}
 
 	return nil
@@ -189,11 +189,11 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 
 	contains := true
 
-	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)*/
+	// if contains is true, return bans that *contains* the given value (value is the inner)
+	// else, return bans that are *contained* by the given value (value is the outer)
 
 	handleSimulatedFilter(filter, &predicates)
-	handleOriginFilter(filter, &predicates)
+	handleOriginFilter(filter)
 
 	for param, value := range filter {
 		switch param {
@@ -208,7 +208,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.SourceValueEQ(value[0]))
 		case "scenario":
 			predicates = append(predicates, alert.Or(
-				alert.ScenarioEQ(value[0]),  // match alerts with no decisions
+				alert.ScenarioEQ(value[0]), // match alerts with no decisions
 				alert.HasDecisionsWith(decision.ScenarioEQ(value[0])),
 			))
 		case "ip", "range":

@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func GenSubObject(t *testing.T, i int) []byte {
@@ -115,7 +115,7 @@ func TestBadConfiguration(t *testing.T) {
 			config: `
 source: kinesis
 max_retries: whatev`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field KinesisConfiguration.MaxRetries of type int",
+			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.MaxRetries of type int",
 		},
 		{
 			config: `
@@ -143,7 +143,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
-			f := KinesisSource{}
+			f := Source{}
 			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
@@ -170,13 +170,13 @@ stream_name: stream-1-shard`,
 		},
 	}
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
@@ -215,13 +215,13 @@ stream_name: stream-2-shards`,
 	}
 
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
@@ -264,13 +264,13 @@ from_subscription: true`,
 	}
 
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
 		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream

@@ -35,7 +35,7 @@ func NewDataRefreshCommand(force bool) *DataRefreshCommand {
 	return &DataRefreshCommand{Force: force}
 }
 
-func (*DataRefreshCommand) Prepare(plan *ActionPlan) (bool, error) {
+func (*DataRefreshCommand) Prepare(_ *ActionPlan) (bool, error) {
 	// we can't prepare much at this point because we don't know which data files yet,
 	// and items needs to be downloaded/updated
 	// evertyhing will be done in Run()

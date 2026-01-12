@@ -12,7 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestAppsecRuleMatches(t *testing.T) {
@@ -37,11 +37,11 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -70,7 +70,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Len(t, responses, 1)
 				require.False(t, responses[0].InBandInterrupt)
@@ -98,7 +98,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "allow",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -126,7 +126,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			DefaultRemediation: "captcha",
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
@@ -154,7 +154,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			UserBlockedHTTPCode: 418,
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
@@ -184,7 +184,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -213,7 +213,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -242,7 +242,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
@@ -268,11 +268,11 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Headers:     http.Header{"Cookie": []string{"foo=toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -300,11 +300,11 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Headers:     http.Header{"Cookie": []string{"foo=toto; bar=tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -332,11 +332,11 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Headers:     http.Header{"Cookie": []string{"bar=tutu; tututata=toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -371,11 +371,11 @@ toto
 --boundary--`),
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
@@ -403,11 +403,11 @@ toto
 				Headers:     http.Header{"Content-Type": []string{"multipart/form-data; boundary=boundary"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.True(t, events[1].Appsec.HasInBandMatches)
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "block ip", events[1].Appsec.MatchedRules[0]["msg"])
@@ -418,11 +418,7 @@ toto
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestAppsecRuleTransforms(t *testing.T) {
@@ -445,10 +441,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/toto",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -470,10 +466,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/TOTO",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -495,10 +491,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/toto",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -521,10 +517,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/?foo=dG90bw",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -547,10 +543,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/?foo=dG90bw===",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -573,10 +569,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/?foo=toto",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -599,10 +595,10 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/?foo=%42%42%2F%41",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -625,19 +621,16 @@ func TestAppsecRuleTransforms(t *testing.T) {
 				URI:         "/?foo=%20%20%42%42%2F%41%20%20",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecRuleZones(t *testing.T) {
@@ -665,10 +658,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				URI:         "/foobar?something=toto&foobar=smth",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -694,10 +687,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				URI:         "/foobar?something=toto&foobar=smth",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -725,10 +718,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -756,10 +749,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -786,10 +779,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				Headers:     http.Header{"foobar": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -816,10 +809,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				Headers:     http.Header{"foobar": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -840,10 +833,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				URI:         "/",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -865,10 +858,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				Proto:       "HTTP/3.1",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -889,10 +882,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				URI:         "/foobar",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -913,10 +906,10 @@ func TestAppsecRuleZones(t *testing.T) {
 				URI:         "/foobar?a=b",
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
@@ -939,17 +932,14 @@ func TestAppsecRuleZones(t *testing.T) {
 				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
 				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

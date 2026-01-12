@@ -27,7 +27,7 @@ import (
 
 // NewHCLogAdapter takes an instance of a Logrus logger and returns an hclog
 // logger in the form of an HCLogAdapter.
-func NewHCLogAdapter(l *logrus.Logger, name string) hclog.Logger {
+func NewHCLogAdapter(l *logrus.Entry, name string) hclog.Logger {
 	return &HCLogAdapter{l, name}
 }
 
@@ -35,7 +35,7 @@ func NewHCLogAdapter(l *logrus.Logger, name string) hclog.Logger {
 // log entries back to ephemeral-iam and this adapter allows for those logs
 // to be handled by ephemeral-iam's Logrus logger.
 type HCLogAdapter struct {
-	log  *logrus.Logger
+	log  *logrus.Entry
 	name string
 
 	// impliedArgs []interface{}
@@ -79,23 +79,23 @@ func (h HCLogAdapter) Error(msg string, args ...any) {
 }
 
 func (h HCLogAdapter) IsTrace() bool {
-	return h.log.GetLevel() >= logrus.TraceLevel
+	return h.log.Logger.GetLevel() >= logrus.TraceLevel
 }
 
 func (h HCLogAdapter) IsDebug() bool {
-	return h.log.GetLevel() >= logrus.DebugLevel
+	return h.log.Logger.GetLevel() >= logrus.DebugLevel
 }
 
 func (h HCLogAdapter) IsInfo() bool {
-	return h.log.GetLevel() >= logrus.InfoLevel
+	return h.log.Logger.GetLevel() >= logrus.InfoLevel
 }
 
 func (h HCLogAdapter) IsWarn() bool {
-	return h.log.GetLevel() >= logrus.WarnLevel
+	return h.log.Logger.GetLevel() >= logrus.WarnLevel
 }
 
 func (h HCLogAdapter) IsError() bool {
-	return h.log.GetLevel() >= logrus.ErrorLevel
+	return h.log.Logger.GetLevel() >= logrus.ErrorLevel
 }
 
 func (HCLogAdapter) ImpliedArgs() []any {
@@ -120,11 +120,11 @@ func (h HCLogAdapter) ResetNamed(name string) hclog.Logger {
 }
 
 func (h *HCLogAdapter) SetLevel(level hclog.Level) {
-	h.log.SetLevel(level2logrus(level))
+	h.log.Logger.SetLevel(level2logrus(level))
 }
 
 func (h HCLogAdapter) GetLevel() hclog.Level {
-	return level2hclog(h.log.GetLevel())
+	return level2hclog(h.log.Logger.GetLevel())
 }
 
 func (h HCLogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
@@ -234,5 +234,7 @@ func safeString(str fmt.Stringer) (s string) {
 	} else {
 		s = str.String()
 	}
-	return //nolint:revive // bare return for the defer
+
+	//revive:disable-next-line:bare-return
+	return // bare return is required for the defer
 }

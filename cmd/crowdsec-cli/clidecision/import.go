@@ -292,7 +292,7 @@ Raw values, standard input:
 
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format)
 		},
 	}

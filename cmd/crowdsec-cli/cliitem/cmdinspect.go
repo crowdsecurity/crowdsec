@@ -64,7 +64,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 
 		wantMetrics := !noMetrics && item.State.IsInstalled()
 
-		if err := inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		if err := inspectItem(ctx, hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
@@ -200,7 +200,7 @@ func (cli *cliItem) newInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
+func inspectItem(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
 	// This is dirty...
 	// We want to show current dependencies (from content), not latest (from index).
 	// The item is modifed but after this function the whole hub should be thrown away.
@@ -235,7 +235,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	if wantMetrics {
 		fmt.Fprint(os.Stdout, "\nCurrent metrics: \n")
 
-		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
+		if err := showMetrics(ctx, prometheusURL, hub, item, wantColor); err != nil {
 			return err
 		}
 	}

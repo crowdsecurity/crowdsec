@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,9 +36,9 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
@@ -136,7 +137,7 @@ func ResetDataFiles() {
 	dataFileRegexCache = make(map[string]gcache.Cache)
 }
 
-func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
+func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
 	// cache is explicitly disabled
 	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
 		return nil
@@ -708,9 +709,7 @@ func MedianInterval(params ...any) (any, error) {
 	}
 
 	// Sort intervals for median calculation
-	sort.Slice(intervals, func(i, j int) bool {
-		return intervals[i] < intervals[j]
-	})
+	slices.Sort(intervals)
 
 	n := len(intervals)
 	if n%2 == 1 {

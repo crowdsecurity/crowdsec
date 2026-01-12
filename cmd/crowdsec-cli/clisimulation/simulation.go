@@ -16,13 +16,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliSimulation struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliSimulation {
+func New(cfg csconfig.Getter) *cliSimulation {
 	return &cliSimulation{
 		cfg: cfg,
 	}

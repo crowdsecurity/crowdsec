@@ -19,11 +19,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
-func SetTargetByName(target string, value string, evt *types.Event) bool {
+func SetTargetByName(target string, value string, evt *pipeline.Event) bool {
 	if evt == nil {
 		return false
 	}
@@ -117,7 +117,7 @@ func (s *Static) targetExpr() string {
 	}
 }
 
-func (rs *RuntimeStatic) Apply(event *types.Event, enrichFunctions EnricherCtx, logger *log.Entry, debug bool) error {
+func (rs *RuntimeStatic) Apply(event *pipeline.Event, enrichFunctions EnricherCtx, logger *log.Entry, debug bool) error {
 	// we have a few cases :
 	// (meta||key) + (static||reference||expr)
 	exprEnv := map[string]any{"evt": event}
@@ -212,7 +212,7 @@ func (rs *RuntimeStatic) Apply(event *types.Event, enrichFunctions EnricherCtx, 
 	return nil
 }
 
-func (n *Node) ProcessStatics(event *types.Event) error {
+func (n *Node) ProcessStatics(event *pipeline.Event) error {
 	for _, rs := range n.RuntimeStatics {
 		if err := rs.Apply(event, n.EnrichFunctions, n.Logger, n.Debug); err != nil {
 			return fmt.Errorf("applying %s: %w", rs.Config.targetExpr(), err)
@@ -222,7 +222,7 @@ func (n *Node) ProcessStatics(event *types.Event) error {
 	return nil
 }
 
-func (rg *RuntimeGrokPattern) ProcessStatics(event *types.Event, ectx EnricherCtx, logger *log.Entry, debug bool) error {
+func (rg *RuntimeGrokPattern) ProcessStatics(event *pipeline.Event, ectx EnricherCtx, logger *log.Entry, debug bool) error {
 	for _, rs := range rg.RuntimeStatics {
 		if err := rs.Apply(event, ectx, logger, debug); err != nil {
 			return fmt.Errorf("applying %s: %w", rs.Config.targetExpr(), err)
@@ -243,11 +243,6 @@ func stageidx(stage string, stages []string) int {
 }
 
 var (
-	ParseDump  bool
-	DumpFolder string
-)
-
-var (
 	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
 	StageParseMutex sync.Mutex
 	// initialize the cache only once, even if called concurrently
@@ -257,7 +252,7 @@ var (
 	})
 )
 
-func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
+func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, dump bool) (pipeline.Event, error) {
 	event := xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
@@ -287,11 +282,11 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		event.Unmarshaled = make(map[string]any)
 	}
 
-	if event.Type == types.LOG {
+	if event.Type == pipeline.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
-	if ParseDump {
+	if dump {
 		ensureStageCache()
 	}
 
@@ -342,7 +337,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 
-			if ParseDump {
+			if dump {
 				var parserIdxInStage int
 
 				// copy outside of critical section
@@ -367,7 +362,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				}
 
 				stageMap[name] = append(stageMap[name], dumps.ParserResult{
-					Evt:     evtcopy.(types.Event),
+					Evt:     evtcopy.(pipeline.Event),
 					Success: ret, Idx: parserIdxInStage,
 				})
 

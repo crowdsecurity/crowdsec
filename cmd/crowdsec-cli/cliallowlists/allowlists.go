@@ -31,13 +31,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliAllowLists struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliAllowLists {
+func New(cfg csconfig.Getter) *cliAllowLists {
 	return &cliAllowLists{
 		cfg: cfg,
 	}
@@ -507,7 +505,7 @@ func (*cliAllowLists) add(ctx context.Context, db *database.Client, name string,
 		return fmt.Errorf("unable to apply allowlists to existing decisions: %w", err)
 	}
 	if deleted > 0 {
-		fmt.Printf("%d decisions deleted by allowlists\n", deleted)
+		fmt.Fprintf(os.Stdout, "%d decisions deleted by allowlists\n", deleted)
 	}
 
 	return nil

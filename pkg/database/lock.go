@@ -9,7 +9,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -21,7 +20,7 @@ func (c *Client) AcquireLock(ctx context.Context, name string) error {
 	log.Debugf("acquiring lock %s", name)
 	_, err := c.Ent.Lock.Create().
 		SetName(name).
-		SetCreatedAt(types.UtcNow()).
+		SetCreatedAt(time.Now().UTC()).
 		Save(ctx)
 
 	if ent.IsConstraintError(err) {

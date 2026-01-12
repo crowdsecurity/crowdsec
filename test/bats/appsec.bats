@@ -44,7 +44,7 @@ teardown() {
 	EOT
 
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type appsec from $ACQUIS_DIR/appsec.yaml (position 0): unable to parse appsec configuration: appsec_config or appsec_config_path must be set"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type appsec from $ACQUIS_DIR/appsec.yaml (position 0): unable to parse appsec configuration: appsec_config or appsec_config_path must be set"
 }
 
 @test "appsec allow and ban" {

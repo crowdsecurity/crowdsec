@@ -44,16 +44,36 @@ var (
 	csConfig       *csconfig.Config
 )
 
-type configGetter func() *csconfig.Config
-
 var mergedConfig string
 
+type logFlags struct {
+	trace bool
+	debug bool
+	info  bool
+	warn  bool
+	error bool
+}
+
+func (lf *logFlags) Level() log.Level {
+	switch {
+	case lf.trace:
+		return log.TraceLevel
+	case lf.debug:
+		return log.DebugLevel
+	case lf.info:
+		return log.InfoLevel
+	case lf.warn:
+		return log.WarnLevel
+	case lf.error:
+		return log.ErrorLevel
+	default:
+		return log.InfoLevel
+	}
+}
+
+
 type cliRoot struct {
-	logTrace     bool
-	logDebug     bool
-	logInfo      bool
-	logWarn      bool
-	logErr       bool
+	logFlags     logFlags
 	outputColor  string
 	outputFormat string
 	// flagBranch overrides the value in csConfig.Cscli.HubBranch
@@ -68,24 +88,6 @@ func newCliRoot() *cliRoot {
 // we pass it to subcommands because the file is not read until the Execute() call
 func (*cliRoot) cfg() *csconfig.Config {
 	return csConfig
-}
-
-// wantedLogLevel returns the log level requested in the command line flags.
-func (cli *cliRoot) wantedLogLevel() log.Level {
-	switch {
-	case cli.logTrace:
-		return log.TraceLevel
-	case cli.logDebug:
-		return log.DebugLevel
-	case cli.logInfo:
-		return log.InfoLevel
-	case cli.logWarn:
-		return log.WarnLevel
-	case cli.logErr:
-		return log.ErrorLevel
-	default:
-		return log.InfoLevel
-	}
 }
 
 // loadConfigFor loads the configuration file for the given sub-command.
@@ -121,7 +123,14 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 func (cli *cliRoot) initialize() error {
 	var err error
 
-	log.SetLevel(cli.wantedLogLevel())
+	// log level in cscli always comes from flags,
+	// the logging options in config.yaml are ignored
+
+	log.SetLevel(cli.logFlags.Level())
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp:       true,
+		DisableLevelTruncation: true,
+	})
 
 	csConfig, mergedConfig, err = loadConfigFor(os.Args[1])
 	if err != nil {
@@ -150,11 +159,6 @@ func (cli *cliRoot) initialize() error {
 		return fmt.Errorf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
 	}
 
-	log.SetFormatter(&log.TextFormatter{
-		DisableTimestamp:       true,
-		DisableLevelTruncation: true,
-	})
-
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
@@ -175,7 +179,7 @@ func (cli *cliRoot) initialize() error {
 	}
 
 	if csConfig.DbConfig != nil {
-		csConfig.DbConfig.LogLevel = cli.wantedLogLevel()
+		csConfig.DbConfig.LogLevel = cli.logFlags.Level()
 	}
 
 	return nil
@@ -243,11 +247,11 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	pflags.StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
 	pflags.StringVarP(&cli.outputFormat, "output", "o", "", "Output format: human, json, raw")
 	pflags.StringVarP(&cli.outputColor, "color", "", "auto", "Output color: yes, no, auto")
-	pflags.BoolVar(&cli.logDebug, "debug", false, "Set logging to debug")
-	pflags.BoolVar(&cli.logInfo, "info", false, "Set logging to info")
-	pflags.BoolVar(&cli.logWarn, "warning", false, "Set logging to warning")
-	pflags.BoolVar(&cli.logErr, "error", false, "Set logging to error")
-	pflags.BoolVar(&cli.logTrace, "trace", false, "Set logging to trace")
+	pflags.BoolVar(&cli.logFlags.debug, "debug", false, "Set logging to debug")
+	pflags.BoolVar(&cli.logFlags.info, "info", false, "Set logging to info")
+	pflags.BoolVar(&cli.logFlags.warn, "warning", false, "Set logging to warning")
+	pflags.BoolVar(&cli.logFlags.error, "error", false, "Set logging to error")
+	pflags.BoolVar(&cli.logFlags.trace, "trace", false, "Set logging to trace")
 	pflags.StringVar(&cli.flagBranch, "branch", "", "Override hub branch on github")
 
 	_ = pflags.MarkHidden("branch")
@@ -272,7 +276,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliconfig.New(cli.cfg).NewCommand(func() string { return mergedConfig }))
 	cmd.AddCommand(clihub.New(cli.cfg).NewCommand())
 	cmd.AddCommand(climetrics.New(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
+	cmd.AddCommand(NewCLIDashboard().NewCommand())
 	cmd.AddCommand(clidecision.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clialert.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisimulation.New(cli.cfg).NewCommand())
@@ -282,7 +286,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(clilapi.New(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
 	cmd.AddCommand(cliconsole.New(cli.cfg).NewCommand())
-	cmd.AddCommand(cliexplain.New(cli.cfg, ConfigFilePath).NewCommand())
+	cmd.AddCommand(cliexplain.New(ConfigFilePath).NewCommand())
 	cmd.AddCommand(clihubtest.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clinotifications.New(cli.cfg).NewCommand())
 	cmd.AddCommand(clisupport.New(cli.cfg).NewCommand())

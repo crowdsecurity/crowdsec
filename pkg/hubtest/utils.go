@@ -18,13 +18,13 @@ func IsAlive(ctx context.Context, target string) (bool, error) {
 		dialer := &net.Dialer{}
 		conn, err := dialer.DialContext(ctx, "tcp", target)
 		if err == nil {
-			log.Debugf("'%s' is up after %s", target, time.Since(start))
+			log.Debugf("%q is up after %s", target, time.Since(start))
 			conn.Close()
 			return true, nil
 		}
 		time.Sleep(500 * time.Millisecond)
 		if time.Since(start) > 10*time.Second {
-			return false, fmt.Errorf("took more than 10s for %s to be available", target)
+			return false, fmt.Errorf(`timeout connecting to %s -- did you run "sudo docker compose -f docker/appsec/docker-compose.yaml up -d --build" ?`, target)
 		}
 	}
 }

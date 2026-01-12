@@ -17,8 +17,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getDBClient(t *testing.T) *database.Client {
@@ -30,7 +30,7 @@ func getDBClient(t *testing.T) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: ":memory:",
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return testDBClient
@@ -276,7 +276,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// cache with no TTL
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(1)})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(1)})
 	require.NoError(t, err)
 
 	ret, _ := RegexpInFile("crowdsec", filename)
@@ -289,7 +289,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 
 	// cache with TTL
 	ttl := 500 * time.Millisecond
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
 	require.NoError(t, err)
 
 	ret, _ = RegexpInFile("crowdsec", filename)

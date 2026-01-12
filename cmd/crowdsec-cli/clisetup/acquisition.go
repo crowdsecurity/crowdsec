@@ -13,8 +13,8 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
 type acquisitionFlags struct {
@@ -54,7 +54,7 @@ cscli setup install-acquisition setup.yaml --dry-run
 `,
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err
@@ -100,7 +100,7 @@ func shouldOverwrite(path string, newContent []byte) (bool, error) {
 	oldContent, err := os.ReadFile(path)
 	if err != nil {
 		// File doesn't exist or unreadable, assume overwrite
-		return true, nil //nolint: nilerr
+		return true, nil //nolint:nilerr
 	}
 
 	if err := VerifyChecksum(bytes.NewReader(oldContent)); err == nil {

@@ -17,7 +17,8 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 const (
@@ -45,6 +46,10 @@ type DatabaseCfg struct {
 	MaxOpenConns     int         `yaml:"max_open_conns,omitempty"`
 	UseWal           *bool       `yaml:"use_wal,omitempty"`
 	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
+}
+
+func (d *DatabaseCfg) NewLogger() *log.Entry {
+	return logging.SubLogger(log.StandardLogger(), "db", d.LogLevel)
 }
 
 type AuthGCCfg struct {
@@ -85,7 +90,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 	if !inCli && c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
-			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			isNetwork, fsType, err := fsutil.IsNetworkFS(dbDir)
 			switch {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)
@@ -102,7 +107,7 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 			}
 		} else if *c.DbConfig.UseWal {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
-			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			isNetwork, fsType, err := fsutil.IsNetworkFS(dbDir)
 			switch {
 			case err != nil:
 				log.Warnf("unable to determine if database is on network filesystem: %s", err)
@@ -130,11 +135,10 @@ func (d *DatabaseCfg) ConnectionString() (string, error) {
 
 	switch d.Type {
 	case "sqlite":
-		var sqliteConnectionStringParameters string
+		// this should make both sqlite3 and modernc/sqlite happy.
+		sqliteConnectionStringParameters := "_busy_timeout=100000&_fk=1&_pragma=foreign_keys(1)"
 		if d.UseWal != nil && *d.UseWal {
-			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
-		} else {
-			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+			sqliteConnectionStringParameters += "&_journal_mode=WAL"
 		}
 
 		connString = fmt.Sprintf("file:%s?%s", d.DbPath, sqliteConnectionStringParameters)

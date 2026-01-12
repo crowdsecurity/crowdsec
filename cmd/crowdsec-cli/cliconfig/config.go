@@ -6,15 +6,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter func() *csconfig.Config
-
 type mergedConfigGetter func() string
 
 type cliConfig struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliConfig {
+func New(cfg csconfig.Getter) *cliConfig {
 	return &cliConfig{
 		cfg: cfg,
 	}

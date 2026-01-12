@@ -6,8 +6,6 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // Alert holds the schema definition for the Alert entity.
@@ -19,17 +17,17 @@ type Alert struct {
 func (Alert) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			Immutable(),
 		field.Time("updated_at").
-			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow),
+			Default(UtcNow).
+			UpdateDefault(UtcNow),
 		field.String("scenario").Immutable(),
 		field.String("bucketId").Default("").Optional().Immutable(),
 		field.String("message").Default("").Optional().Immutable(),
 		field.Int32("eventsCount").Default(0).Optional().Immutable(),
-		field.Time("startedAt").Default(types.UtcNow).Optional().Immutable(),
-		field.Time("stoppedAt").Default(types.UtcNow).Optional().Immutable(),
+		field.Time("startedAt").Default(UtcNow).Optional().Immutable(),
+		field.Time("stoppedAt").Default(UtcNow).Optional().Immutable(),
 		field.String("sourceIp").
 			Optional().Immutable(),
 		field.String("sourceRange").

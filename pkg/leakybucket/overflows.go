@@ -14,21 +14,22 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // SourceFromEvent extracts and formats a valid models.Source object from an Event
-func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
+func SourceFromEvent(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, error) {
 	/*if it's already an overflow, we have properly formatted sources.
 	we can just twitch them to reflect the requested scope*/
-	if evt.Type == types.OVFLW {
+	if evt.Type == pipeline.OVFLW {
 		return overflowEventSources(evt, leaky)
 	}
 
 	return eventSources(evt, leaky)
 }
 
-func overflowEventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
+func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
 
 	for k, v := range evt.Overflow.Sources {
@@ -89,7 +90,7 @@ func overflowEventSources(evt types.Event, leaky *Leaky) (map[string]models.Sour
 	return srcs, nil
 }
 
-func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
+func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
 
 	src := models.Source{}
@@ -198,7 +199,7 @@ func eventSources(evt types.Event, leaky *Leaky) (map[string]models.Source, erro
 }
 
 // EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
-func EventsFromQueue(queue *types.Queue) []*models.Event {
+func EventsFromQueue(queue *pipeline.Queue) []*models.Event {
 	events := []*models.Event{}
 
 	qEvents := queue.GetQueue()
@@ -251,7 +252,7 @@ func EventsFromQueue(queue *types.Queue) []*models.Event {
 }
 
 // alertFormatSource iterates over the queue to collect sources
-func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
+func alertFormatSource(leaky *Leaky, queue *pipeline.Queue) (map[string]models.Source, string, error) {
 	var source_type string
 
 	sources := make(map[string]models.Source)
@@ -283,8 +284,8 @@ func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Sour
 }
 
 // NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
-func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
-	var runtimeAlert types.RuntimeAlert
+func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error) {
+	var runtimeAlert pipeline.RuntimeAlert
 
 	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
 	/*
@@ -360,7 +361,8 @@ func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true { //nolint:revive
+		//revive:disable-next-line:bool-literal-in-expr
+		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
 			newApiAlert.Remediation = true
 		}
 

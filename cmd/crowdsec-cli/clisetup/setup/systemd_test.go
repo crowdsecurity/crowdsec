@@ -21,7 +21,7 @@ func fakeExecCommand(ctx context.Context, command string, args ...string) *exec.
 	return cmd
 }
 
-func TestHelperProcess(t *testing.T) {
+func TestHelperProcess(_ *testing.T) {
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
@@ -38,7 +38,7 @@ func TestHelperProcess(t *testing.T) {
 	}
 
 	if i >= len(args) {
-		os.Exit(2) //nolint:revive
+		os.Exit(2)
 	}
 
 	if args[i] == "systemctl" && i+1 < len(args) {
@@ -54,7 +54,7 @@ func TestHelperProcess(t *testing.T) {
 			fmt.Fprint(os.Stdout, "Names="+unit+"\n")
 			fmt.Fprint(os.Stdout, "StandardOutput=journal\n")
 			fmt.Fprint(os.Stdout, "StandardError=journal\n")
-			os.Exit(0) //nolint:revive
+			os.Exit(0)
 		case "list-unit-files":
 			// systemctl list-unit-files --type=service
 			//nolint:dupword
@@ -64,7 +64,7 @@ apache2.service                           enabled  enabled
 apparmor.service                          enabled  enabled
 
 3 unit files listed.`)
-			os.Exit(0) //nolint:revive
+			os.Exit(0)
 		}
 	}
 }

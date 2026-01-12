@@ -31,7 +31,6 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 	go func() {
-	loop:
 		for {
 			select {
 			case <-tick:
@@ -47,7 +46,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 						log.Errorf("Error while shutting down: %s", err)
 						// don't return, we still want to notify windows that we are stopped ?
 					}
-					break loop
+					return
 				default:
 					log.Errorf("unexpected control request #%d", c)
 				}
@@ -57,7 +56,12 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 
 	ctx := context.TODO()
 
-	err := WindowsRun(ctx)
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = WindowsRun(ctx, cConfig)
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
 		log.Fatal(err)
