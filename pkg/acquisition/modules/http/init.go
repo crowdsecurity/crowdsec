@@ -14,5 +14,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterDataSource("http", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory("http", func() types.DataSource { return &Source{} })
 }

@@ -16,5 +16,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterDataSource("docker", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory("docker", func() types.DataSource { return &Source{} })
 }

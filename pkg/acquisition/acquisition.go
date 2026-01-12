@@ -30,7 +30,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion/component"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -52,29 +51,6 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 
 var transformRuntimes  = map[string]*vm.Program{}
 
-func GetDataSourceIface(dataSourceType string) (types.DataSource, error) {
-	source, registered := registry.AcquisitionSources[dataSourceType]
-	if registered {
-		return source(), nil
-	}
-
-	built, known := component.Built["datasource_"+dataSourceType]
-
-	if dataSourceType == "" {
-		return nil, errors.New("data source type is empty")
-	}
-
-	if !known {
-		return nil, fmt.Errorf("unknown data source %s", dataSourceType)
-	}
-
-	if built {
-		panic("datasource " + dataSourceType + " is built but not registered")
-	}
-
-	return nil, fmt.Errorf("data source %s is not built in this version of crowdsec", dataSourceType)
-}
-
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
@@ -86,10 +62,12 @@ func DataSourceConfigure(
 	metricsLevel metrics.AcquisitionMetricsLevel,
 	hub *cwhub.Hub,
 ) (types.DataSource, error) {
-	dataSrc, err := GetDataSourceIface(commonConfig.Source)
+	factory, err := registry.LookupFactory(commonConfig.Source)
 	if err != nil {
 		return nil, err
 	}
+
+	dataSrc := factory()
 
 	/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 	if err := dataSrc.CanRun(); err != nil {
@@ -134,11 +112,12 @@ func LoadAcquisitionFromDSN(
 		return nil, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
 	}
 
-	dataSrc, err := GetDataSourceIface(frags[0])
+	factory, err := registry.LookupFactory(frags[0])
 	if err != nil {
 		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
+	dataSrc := factory()
 	uniqueID := uuid.NewString()
 
 	if transformExpr != "" {
@@ -305,7 +284,7 @@ func sourcesFromFile(
 		}
 
 		// pre-check that the source is valid
-		_, err = GetDataSourceIface(sub.Source)
+		_, err = registry.LookupFactory(sub.Source)
 		if err != nil {
 			return nil, fmt.Errorf("in file %s (position %d) - %w", acquisFile, idx, err)
 		}

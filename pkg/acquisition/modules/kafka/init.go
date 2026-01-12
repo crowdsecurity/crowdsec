@@ -14,5 +14,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterDataSource("kafka", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory("kafka", func() types.DataSource { return &Source{} })
 }

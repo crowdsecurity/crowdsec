@@ -14,5 +14,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterDataSource("k8s-audit", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory("k8s-audit", func() types.DataSource { return &Source{} })
 }

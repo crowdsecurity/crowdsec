@@ -16,5 +16,5 @@ var (
 
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterDataSource("s3", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory("s3", func() types.DataSource { return &Source{} })
 }

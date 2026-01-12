@@ -12,7 +12,7 @@ import (
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
 )
@@ -49,10 +49,12 @@ func (d DatasourceConfig) Validate() error {
 		return ErrMissingSourceField
 	}
 
-	ds, err := acquisition.GetDataSourceIface(commonDS.Source)
+	factory, err := registry.LookupFactory(commonDS.Source)
 	if err != nil {
 		return err
 	}
+
+	ds := factory()
 
 	// validate the rest of the fields with the concrete implementation
 

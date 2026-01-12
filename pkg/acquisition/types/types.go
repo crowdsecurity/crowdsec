@@ -27,6 +27,8 @@ type DataSource interface {
 	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
 }
 
+type DataSourceFactory func() DataSource
+
 // BatchFetcher represents a data source that produces a finite set of events.
 //
 // Implementations should:
