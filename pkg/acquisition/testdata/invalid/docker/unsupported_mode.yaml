@@ -1,0 +1,5 @@
+# wantErr: datasource of type docker: unsupported mode server for docker datasource
+mode: server
+source: docker
+container_name:
+ - toto
