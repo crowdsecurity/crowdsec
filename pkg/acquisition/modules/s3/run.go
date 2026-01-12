@@ -393,7 +393,7 @@ func (s *Source) readFile(bucket string, key string) error {
 			logger.Tracef("Read line %s", text)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
+				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": ModuleName, "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 
 			l := pipeline.Line{}

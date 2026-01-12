@@ -54,7 +54,7 @@ func (*Source) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (*Source) GetName() string {
-	return "wineventlog"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

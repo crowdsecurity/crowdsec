@@ -145,7 +145,7 @@ no_ready_check: 37
 			testName:    "type mismatch",
 		},
 	}
-	subLogger := log.WithField("type", "loki")
+	subLogger := log.WithField("type", loki.ModuleName)
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -246,7 +246,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			subLogger := log.WithFields(log.Fields{
-				"type": "loki",
+				"type": loki.ModuleName,
 				"name": test.name,
 			})
 
@@ -373,7 +373,7 @@ since: 1h
 	for _, ts := range tests {
 		t.Run(ts.config, func(t *testing.T) {
 			logger := log.New()
-			subLogger := logger.WithField("type", "loki")
+			subLogger := logger.WithField("type", loki.ModuleName)
 			lokiSource := loki.Source{}
 
 			if err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
@@ -455,7 +455,7 @@ query: >
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
 			subLogger := logger.WithFields(log.Fields{
-				"type": "loki",
+				"type": loki.ModuleName,
 				"name": ts.name,
 			})
 
@@ -535,7 +535,7 @@ query: >
   {server="demo"}
 `
 	logger := log.New()
-	subLogger := logger.WithField("type", "loki")
+	subLogger := logger.WithField("type", loki.ModuleName)
 	title := time.Now().String()
 	lokiSource := loki.Source{}
 

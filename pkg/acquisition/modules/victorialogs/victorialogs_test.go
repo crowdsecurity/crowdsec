@@ -111,7 +111,7 @@ query: >
 			testName:    "Correct config with password",
 		},
 	}
-	subLogger := log.WithField("type", "victorialogs")
+	subLogger := log.WithField("type", victorialogs.ModuleName)
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, test := range tests {
 		subLogger := log.WithFields(log.Fields{
-			"type": "victorialogs",
+			"type": victorialogs.ModuleName,
 			"name": test.name,
 		})
 
@@ -296,7 +296,7 @@ since: 1h
 
 	for _, ts := range tests {
 		logger := log.New()
-		subLogger := logger.WithField("type", "victorialogs")
+		subLogger := logger.WithField("type", victorialogs.ModuleName)
 		vlSource := victorialogs.Source{}
 
 		err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -377,7 +377,7 @@ query: >
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
 			subLogger := logger.WithFields(log.Fields{
-				"type": "victorialogs",
+				"type": victorialogs.ModuleName,
 				"name": ts.name,
 			})
 
@@ -455,7 +455,7 @@ query: >
   server:"demo"
 `
 	logger := log.New()
-	subLogger := logger.WithField("type", "victorialogs")
+	subLogger := logger.WithField("type", victorialogs.ModuleName)
 	title := time.Now().String()
 	vlSource := victorialogs.Source{}
 
