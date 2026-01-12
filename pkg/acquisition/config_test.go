@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -61,6 +63,13 @@ func TestParseSourceConfig(t *testing.T) {
 		expectValid bool
 	}
 
+	// load a configuration, appsec needs it
+	_, _, err := csconfig.NewConfig("./testdata/config.yaml", false, false, true)
+	require.NoError(t, err)
+
+	// load a hub, appsec needs it
+	hub := cwhub.Hub{}
+
 	suites := []suite{
 		{name: "valid", root: filepath.Join("testdata", "valid"), expectValid: true},
 		{name: "invalid", root: filepath.Join("testdata", "invalid"), expectValid: false},
@@ -86,7 +95,7 @@ func TestParseSourceConfig(t *testing.T) {
 
 					if s.expectValid {
 						require.False(t, hasWant, "valid config must not include # wantErr: directive")
-						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub)
 						require.NotNil(t, parsed)
 						require.NoError(t, err)
 						return
@@ -97,7 +106,7 @@ func TestParseSourceConfig(t *testing.T) {
 					require.True(t, hasWant, "invalid config must include '# wantErr: <exact error>'")
 					require.NotEmpty(t, wantErr, "wantErr directive found but empty")
 
-					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, nil)
+					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub)
 					require.Nil(t, parsed)
 					require.Error(t, err, "got no error, expected %q", wantErr)
 					assert.Equal(t, wantErr, err.Error())
