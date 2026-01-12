@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
