@@ -254,7 +254,7 @@ func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics
 
 	// report that the user specified a source that doesn't match with one detected from the presence of other fields
 	if detectedType != "" {
-		if sub.Source != detectedType {
+		if sub.Source != "" && sub.Source != detectedType {
 			parsed.SourceOverridden = sub.Source
 		}
 
