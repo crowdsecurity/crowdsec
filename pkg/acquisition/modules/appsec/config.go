@@ -293,20 +293,26 @@ func (w *Source) checkAuth(ctx context.Context, apiKey string) error {
 		return nil
 	}
 
-	if now.After(expiration) { // Key is expired, recheck the value OR keep it if we cannot contact LAPI
-		isAuth, err := w.isValidKey(ctx, apiKey)
-		if isAuth {
-			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
-		} else if err != nil { // General error when querying LAPI, consider the key still valid
-			w.logger.Errorf("Error checking auth for API key: %s, extending cache duration", err)
-			w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
-		} else { // Key is not valid, remove it from cache
-			w.AuthCache.Delete(apiKey)
-			return errInvalidAPIKey
-		}
+	if !now.After(expiration) {
+		return nil
 	}
 
-	return nil
+	// Key is expired, recheck the value OR keep it if we cannot contact LAPI
+	isAuth, err := w.isValidKey(ctx, apiKey)
+	if err != nil { // General error when querying LAPI, consider the key still valid
+		w.logger.Errorf("Error checking auth for API key: %s, extending cache duration", err)
+		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		return nil
+	}
+
+	if isAuth {
+		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+		return nil
+	}
+
+	// Key is not valid, remove it from cache
+	w.AuthCache.Delete(apiKey)
+	return errInvalidAPIKey
 }
 
 // should this be in the runner ?

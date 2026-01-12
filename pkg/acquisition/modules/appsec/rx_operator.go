@@ -39,21 +39,23 @@ func newRX(options plugintypes.OperatorOptions) (plugintypes.Operator, error) {
 }
 
 func (o *rx) Evaluate(tx plugintypes.TransactionState, value string) bool {
-	if tx.Capturing() {
-		match := o.re.FindStringSubmatch(value)
-		if len(match) == 0 {
-			return false
-		}
-		for i, c := range match {
-			if i == 9 {
-				return true
-			}
-			tx.CaptureField(i, c)
-		}
-		return true
+	if !tx.Capturing() {
+		return o.re.MatchString(value)
 	}
 
-	return o.re.MatchString(value)
+	match := o.re.FindStringSubmatch(value)
+	if len(match) == 0 {
+		return false
+	}
+
+	for i, c := range match {
+		if i == 9 {
+			return true
+		}
+		tx.CaptureField(i, c)
+	}
+
+	return true
 }
 
 // RegisterRX registers the rx operator using a WASI implementation instead of Go.
