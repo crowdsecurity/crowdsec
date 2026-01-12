@@ -1,0 +1,69 @@
+name: check acquisition datasource
+on:
+  push:
+    branches:
+      - master
+      - docker/schema
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  datasource-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Install yq
+        uses: mikefarah/yq@v4.50.1
+        with:
+          cmd: yq --version
+
+      - name: cleanup json
+        run: find ./pkg/acquisition -type f -name '*json' -exec rm {} \;
+
+      - name: transform to json all datasource schema
+        uses: mikefarah/yq@v4.50.1
+        with:
+          cmd: |
+            set -euxo pipefail
+            find './pkg/acquisition' -type f -name '*schema.yaml' -print0 |
+            while IFS= read -r -d '' f; do
+              yq -o=json "$f" > "${f%.yaml}.json"
+            done
+
+      - name: split YAML to per-doc JSON (no jq)
+        run: |
+          set -euxo pipefail
+
+          find . \
+            \( -path './pkg/acquisition/schema/valid/*' -o -path './pkg/acquisition/schema/invalid/*' \) \
+            -type f -name '*.yaml' -print0 |
+          while IFS= read -r -d '' f; do
+            base="${f%.yaml}"
+            i=0
+            while :; do
+              out="${base}.${i}.json"
+              yq -o=json 'select(documentIndex == '"$i"')' "$f" > "$out" || true
+              if [ ! -s "$out" ]; then rm -f "$out"; break; fi
+              i=$((i+1))
+            done
+            echo "split $f -> ${i} JSON doc(s)"
+          done
+      - name: debug
+        run: |
+          find .
+      - name: validate datasources against schemas
+        run: |
+          set -euxo pipefail
+          sed -i 's/\.yaml/.json/' ./pkg/acquisition/schema/datasource_schema.json
+          go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
+          JV="$(go env GOPATH)/bin/jv"
+          for item in ./pkg/acquisition/schema/valid/*.json; do
+            echo validating "$item"
+            "$JV" ./pkg/acquisition/schema/datasource_schema.json "$item"
+          done
