@@ -23,6 +23,14 @@ func RegisterFactory(moduleName string, factory types.DataSourceFactory) {
 	factoriesByName[moduleName] = factory
 }
 
+// RegisterTestFactory does not attempt to register it as a component,
+// production code should call RegisterFactory() instead and make the datasource
+// code optional using the appropriate build tag.
+// This function may be called outside init().
+func RegisterTestFactory(moduleName string, factory types.DataSourceFactory) {
+	factoriesByName[moduleName] = factory
+}
+
 func LookupFactory(moduleName string) (types.DataSourceFactory, error) {
 	source, registered := factoriesByName[moduleName]
 	if registered {

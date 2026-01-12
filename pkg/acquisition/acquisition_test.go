@@ -76,8 +76,8 @@ func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
-	registry.RegisterFactory("mock", func() types.DataSource { return &MockSource{} })
-	registry.RegisterFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+	registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
 }
 
 func TestDataSourceConfigure(t *testing.T) {
@@ -553,7 +553,7 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	registry.RegisterFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
