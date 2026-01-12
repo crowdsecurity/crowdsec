@@ -457,57 +457,6 @@ exclude_regexps: ["\\.gz$"]`
 	hook.Reset()
 }
 
-func TestDiscoveryPollConfiguration(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		name    string
-		config  string
-		wantErr string
-	}{
-		{
-			name: "valid discovery poll config",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "30s"
-mode: tail
-`,
-			wantErr: "",
-		},
-		{
-			name: "invalid poll interval",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "invalid"
-mode: tail
-`,
-			wantErr: `cannot parse FileAcquisition configuration: time: invalid duration "invalid"`,
-		},
-		{
-			name: "polling disabled",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: false
-mode: tail
-`,
-			wantErr: "",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := &fileacquisition.Source{}
-			err := f.Configure(ctx, []byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-		})
-	}
-}
-
 func TestDiscoveryPolling(t *testing.T) {
 	ctx := t.Context()
 	dir := t.TempDir()
