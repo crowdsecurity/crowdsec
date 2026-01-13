@@ -1,3 +1,4 @@
-# wantErr: datasource of type docker: while parsing DockerAcquisition configuration: [3:1] unknown field "foobar"
+# wantErr: datasource of type docker: while parsing DockerAcquisition configuration: [4:1] unknown field "foobar"
+# schemaErr: /: additional properties 'foobar' not allowed
 source: docker
 foobar: asd.log

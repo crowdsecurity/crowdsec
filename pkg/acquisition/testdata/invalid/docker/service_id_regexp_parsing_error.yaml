@@ -1,4 +1,5 @@
 # wantErr: datasource of type docker: service_id_regexp: error parsing regexp: missing argument to repetition operator: `+`
+# schemaErr:
 source: docker
 service_id_regexp:
  - "+invalid"

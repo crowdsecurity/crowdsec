@@ -1,4 +1,5 @@
 # wantErr: datasource of type docker: use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive
+# schemaErr: /: 'allOf' failed; /: 'not' failed
 source: docker
 use_service_labels: true
 service_name:

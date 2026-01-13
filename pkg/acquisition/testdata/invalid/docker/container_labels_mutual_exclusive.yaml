@@ -1,4 +1,5 @@
 # wantErr: datasource of type docker: use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive
+# schemaErr: /: 'allOf' failed; /: 'not' failed
 source: docker
 use_container_labels: true
 container_name:

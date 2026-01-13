@@ -49,7 +49,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse %s datasource configuration: %s", s.GetName(), yaml.FormatError(err, false, false))
+		return fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
 	}
 
 	if len(s.Config.Brokers) == 0 {

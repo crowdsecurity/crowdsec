@@ -1,6 +1,8 @@
 package acquisition
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,13 +13,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
-var wantErrLineRE = regexp.MustCompile(`(?m)^\s*#\s*wantErr:\s*(.*?)\s*$`)
+var (
+	wantErrLineRE = regexp.MustCompile(`(?m)^\s*#\s*wantErr:\s*(.*?)\s*$`)
+	wantSchemaErrLineRE = regexp.MustCompile(`(?m)^[ \t]*#[ \t]*schemaErr:[ \t]*([^\r\n]*)[ \t]*$`)
+)
 
 func findYAMLFiles(t *testing.T, root string) []string {
 	t.Helper()
@@ -54,6 +60,17 @@ func wantErrFromYAML(t *testing.T, fileContent []byte) (want string, found bool)
 	return strings.TrimSpace(string(m[1])), true
 }
 
+func wantSchemaErrFromYAML(t *testing.T, fileContent []byte) (want string, found bool) {
+	t.Helper()
+
+	m := wantSchemaErrLineRE.FindSubmatch(fileContent)
+	if len(m) == 0 {
+		return "", false
+	}
+
+	return strings.TrimSpace(string(m[1])), true
+}
+
 func TestParseSourceConfig(t *testing.T) {
 	ctx := t.Context()
 
@@ -61,6 +78,10 @@ func TestParseSourceConfig(t *testing.T) {
 		name        string
 		root        string
 		expectValid bool
+	}
+
+	type source struct {
+		Source string
 	}
 
 	// load a configuration, appsec needs it
@@ -87,6 +108,15 @@ func TestParseSourceConfig(t *testing.T) {
 				require.NoError(t, err, "read %q", path)
 
 				t.Run(filepath.ToSlash(rel), func(t *testing.T) {
+					var (
+						so source
+						schema string
+					)
+
+					if err = yaml.Unmarshal(fileContent, &so); err == nil {
+						schema = filepath.Join("schemas", so.Source + ".yaml")
+					}
+
 					if runtime.GOOS == "windows" && strings.Contains(path, "journalctl") {
 						return
 					}
@@ -97,11 +127,20 @@ func TestParseSourceConfig(t *testing.T) {
 
 					wantErr, hasWant := wantErrFromYAML(t, fileContent)
 
+					wantSchemaErr, hasWantSchemaErr := wantSchemaErrFromYAML(t, fileContent)
+
 					if s.expectValid {
 						require.False(t, hasWant, "valid config must not include # wantErr: directive")
 						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub)
 						require.NoError(t, err)
 						require.NotNil(t, parsed)
+						if schema != "" {
+							err = ValidateYAML(fileContent, schema)
+							if !errors.Is(err, fs.ErrNotExist) {
+								// XXX: ignore missing schema
+								require.NoError(t, err)
+							}
+						}
 						return
 					}
 
@@ -114,6 +153,31 @@ func TestParseSourceConfig(t *testing.T) {
 					require.Error(t, err, "got no error, expected %q", wantErr)
 					require.Nil(t, parsed)
 					assert.Equal(t, wantErr, err.Error())
+					if schema == "" {
+						return
+					}
+
+					// schema validation
+
+					err = ValidateYAML(fileContent, schema)
+					if errors.Is(err, fs.ErrNotExist) {
+						// XXX: ignore missing schema, for now
+						return
+					}
+
+					// a "schemaErr" comment must be present, even if empty
+					require.True(t, hasWantSchemaErr, "invalid configurations require an exlicit schemaErr comment. it can be empty string if the schema cannot detect the issue")
+					switch {
+					case err == nil && wantSchemaErr != "":
+						require.Error(t, err, "got no schema error, expected %q", wantSchemaErr)
+					case err != nil && wantSchemaErr == "":
+						require.Error(t, err, "got schema error %q, expected nil", err)
+					case err != nil:
+						assert.Contains(t, err.Error(), wantSchemaErr)
+					default:
+						require.NoError(t, err)
+						assert.Empty(t, wantSchemaErr)
+					}
 				})
 			}
 		})

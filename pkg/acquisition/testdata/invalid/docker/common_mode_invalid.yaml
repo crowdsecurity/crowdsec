@@ -1,4 +1,5 @@
 # wantErr: datasource of type docker: unsupported mode server for docker datasource
+# schemaErr: /mode: value must be one of 'tail', 'cat'
 mode: server
 source: docker
 container_name:

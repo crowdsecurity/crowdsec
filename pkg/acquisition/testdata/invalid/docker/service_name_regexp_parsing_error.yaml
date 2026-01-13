@@ -1,4 +1,5 @@
 # wantErr: datasource of type docker: service_name_regexp: error parsing regexp: invalid named capture: `(?P<invalid`
+# schemaErr:
 source: docker
 service_name_regexp:
  - "(?P<invalid"
