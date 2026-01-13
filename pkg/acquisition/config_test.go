@@ -91,6 +91,10 @@ func TestParseSourceConfig(t *testing.T) {
 						return
 					}
 
+					if runtime.GOOS != "windows" && strings.Contains(path, "wineventlog") {
+						return
+					}
+
 					wantErr, hasWant := wantErrFromYAML(t, fileContent)
 
 					if s.expectValid {
