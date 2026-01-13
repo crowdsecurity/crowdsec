@@ -57,7 +57,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.Config.Topic == "" {
-		return fmt.Errorf("cannot create a %s reader with am empty topic", s.GetName())
+		return fmt.Errorf("cannot create a %s reader with an empty topic", s.GetName())
 	}
 
 	if s.Config.Mode == "" {

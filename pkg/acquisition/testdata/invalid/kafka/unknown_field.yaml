@@ -1,0 +1,5 @@
+# wantErr: datasource of type journalctl: cannot parse: [5:1] unknown field "foobar"
+source: journalctl
+labels:
+  type: sometype
+foobar: bla

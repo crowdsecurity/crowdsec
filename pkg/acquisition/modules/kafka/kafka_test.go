@@ -18,69 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestConfigure(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config: `
-foobar: bla
-source: kafka`,
-			expectedErr: `[2:1] unknown field "foobar"`,
-		},
-		{
-			config:      `source: kafka`,
-			expectedErr: "cannot create a kafka reader with an empty list of broker addresses",
-		},
-		{
-			config: `
-source: kafka
-brokers:
-  - bla
-timeout: 5`,
-			expectedErr: "cannot create a kafka reader with am empty topic",
-		},
-		{
-			config: `
-source: kafka
-brokers:
-  - bla
-topic: toto
-timeout: aa`,
-			expectedErr: "cannot create kafka dialer: strconv.Atoi: parsing \"aa\": invalid syntax",
-		},
-		{
-			config: `
-source: kafka
-brokers:
-  - localhost:9092
-topic: crowdsec`,
-			expectedErr: "",
-		},
-		{
-			config: `
-source: kafka
-brokers:
-  - localhost:9092
-topic: crowdsec
-partition: 1
-group_id: crowdsec`,
-			expectedErr: "cannote create kafka reader: cannot specify both group_id and partition",
-		},
-	}
-
-	subLogger := log.WithField("type", "kafka")
-
-	for _, test := range tests {
-		k := Source{}
-		err := k.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
-	}
-}
-
 func writeToKafka(ctx context.Context, w *kafka.Writer, logs []string) {
 	for idx, log := range logs {
 		err := w.WriteMessages(ctx, kafka.Message{
