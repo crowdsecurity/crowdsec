@@ -18,54 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestConfigure(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config: `
-foobar: bla
-source: syslog`,
-			expectedErr: `[2:1] unknown field "foobar"`,
-		},
-		{
-			config:      `source: syslog`,
-			expectedErr: "",
-		},
-		{
-			config: `
-source: syslog
-listen_port: asd`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.Port of type int",
-		},
-		{
-			config: `
-source: syslog
-listen_port: 424242`,
-			expectedErr: "invalid port 424242",
-		},
-		{
-			config: `
-source: syslog
-listen_addr: 10.0.0`,
-			expectedErr: "invalid listen IP 10.0.0",
-		},
-	}
-
-	subLogger := log.WithField("type", "syslog")
-
-	for _, test := range tests {
-		t.Run(test.config, func(t *testing.T) {
-			s := Source{}
-			err := s.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
-		})
-	}
-}
-
 func writeToSyslog(ctx context.Context, logs []string) error {
 	dialer := &net.Dialer{}
 

@@ -1,0 +1,5 @@
+# wantErr: datasource of type syslog: cannot parse: [5:1] unknown field "foobar"
+source: syslog
+labels:
+  type: sometype
+foobar: asd
