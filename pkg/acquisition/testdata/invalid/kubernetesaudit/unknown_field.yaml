@@ -1,0 +1,5 @@
+# wantErr: datasource of type k8s-audit: cannot parse: [5:1] unknown field "foobar"
+source: k8s-audit
+labels:
+  type: sometype
+foobar: asd.log

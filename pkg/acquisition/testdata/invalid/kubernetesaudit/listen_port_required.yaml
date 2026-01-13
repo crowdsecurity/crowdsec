@@ -1,0 +1,5 @@
+# wantErr: datasource of type k8s-audit: listen_port cannot be empty
+source: k8s-audit
+labels:
+  type: sometype
+listen_addr: 0.0.0.0
