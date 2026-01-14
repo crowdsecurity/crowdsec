@@ -7,11 +7,12 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dumpAllStates(dir string) error {
+func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
@@ -25,11 +26,28 @@ func dumpAllStates(dir string) error {
 		return fmt.Errorf("dumping bucket overflow state: %w", err)
 	}
 
-	if err := dumpState(dir, "bucketpour-dump.yaml", leaky.BucketPourCache); err != nil {
+	if err := dumpCollector(dir, "bucketpour-dump.yaml", pourCollector); err != nil {
 		return fmt.Errorf("dumping bucket pour state: %w", err)
 	}
 
 	return nil
+}
+
+type Collector interface {
+	Snapshot() map[string][]pipeline.Event
+}
+
+func dumpCollector(dir, name string, collector Collector) error {
+	if collector == nil {
+		return nil
+	}
+
+	out, err := yaml.Marshal(collector.Snapshot())
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Join(dir, name), out, 0o644)
 }
 
 func dumpState(dir, name string, obj any) error {

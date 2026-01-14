@@ -16,13 +16,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 )
 
 func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
+func StartRunSvc(ctx context.Context, cConfig *csconfig.Config, pourCollector *leakybucket.PourCollector) error {
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
 	// Always try to stop CPU profiling to avoid passing flags around
@@ -63,5 +64,5 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 		}()
 	}
 
-	return Serve(ctx, cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady, pourCollector)
 }

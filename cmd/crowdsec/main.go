@@ -213,7 +213,13 @@ func run(flags Flags) error {
 		return err
 	}
 
-	return StartRunSvc(ctx, cConfig)
+	var pourCollector *leakybucket.PourCollector
+
+	if flags.DumpDir != "" {
+		pourCollector = leakybucket.NewPourCollector()
+	}
+
+	return StartRunSvc(ctx, cConfig, pourCollector)
 }
 
 func main() {

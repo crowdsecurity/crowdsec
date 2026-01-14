@@ -86,7 +86,7 @@ func TestGCandDump(t *testing.T) {
 
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(ctx, in, Holders, buckets, false)
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
 	if err != nil {
 		t.Fatalf("while pouring item: %s", err)
 	}
@@ -157,7 +157,7 @@ func TestShutdownBuckets(t *testing.T) {
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
 	ctx, cancel := context.WithCancel(t.Context())
-	ok, err := PourItemToHolders(ctx, in, Holders, buckets, false)
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
 	}
