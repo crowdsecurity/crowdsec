@@ -3,6 +3,8 @@ package leakybucket
 import (
 	"sync"
 	
+	"gopkg.in/yaml.v3"
+
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -42,4 +44,12 @@ func (c *PourCollector) Snapshot() map[string][]pipeline.Event {
 		out[k] = tmp
 	}
 	return out
+}
+
+func (c *PourCollector) DumpYAML() ([]byte, error) {
+	if c == nil {
+		return nil, nil
+	}
+
+	return yaml.Marshal(c.Snapshot())
 }

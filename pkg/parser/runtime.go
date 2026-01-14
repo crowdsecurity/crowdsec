@@ -11,13 +11,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -242,17 +239,7 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-var (
-	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
-	StageParseMutex sync.Mutex
-	// initialize the cache only once, even if called concurrently
-	ensureStageCache = sync.OnceFunc(func() {
-		StageParseCache["success"] = make(map[string][]dumps.ParserResult)
-		StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
-	})
-)
-
-func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, dump bool) (pipeline.Event, error) {
+func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, collector *StageParseCollector) (pipeline.Event, error) {
 	event := xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
@@ -284,10 +271,6 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, dump bool) (pipel
 
 	if event.Type == pipeline.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
-	}
-
-	if dump {
-		ensureStageCache()
 	}
 
 	exprEnv := map[string]any{"evt": &event}
@@ -337,36 +320,8 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, dump bool) (pipel
 
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 
-			if dump {
-				var parserIdxInStage int
-
-				// copy outside of critical section
-				evtcopy := deepcopy.Copy(event)
-				name := nodes[idx].Name
-
-				// ensure the stage map exists
-				StageParseMutex.Lock()
-
-				stageMap, ok := StageParseCache[stage]
-				if !ok {
-					stageMap = make(map[string][]dumps.ParserResult)
-					StageParseCache[stage] = stageMap
-				}
-
-				// ensure the slice for this parser exists
-				if _, ok := stageMap[name]; !ok {
-					stageMap[name] = make([]dumps.ParserResult, 0)
-					parserIdxInStage = len(stageMap)
-				} else {
-					parserIdxInStage = stageMap[name][0].Idx
-				}
-
-				stageMap[name] = append(stageMap[name], dumps.ParserResult{
-					Evt:     evtcopy.(pipeline.Event),
-					Success: ret, Idx: parserIdxInStage,
-				})
-
-				StageParseMutex.Unlock()
+			if collector != nil {
+				collector.Add(stage, nodes[idx].Name, event, ret)
 			}
 
 			if ret {

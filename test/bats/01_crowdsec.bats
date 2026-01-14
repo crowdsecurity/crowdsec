@@ -383,3 +383,46 @@ teardown() {
     rune -1 wait-for "$CROWDSEC"
     assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
 }
+
+@test "crowdsec --dump-data" {
+    fake_log() {
+        for _ in $(seq 1 6); do
+            echo "$(LC_ALL=C date '+%b %d %H:%M:%S ')"'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424'
+        done
+    }
+
+    DUMP_DIR="$BATS_FILE_TMPDIR"
+
+    rune -0 cscli collections install crowdsecurity/sshd --error >/dev/null
+    rune -0 cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+
+    rune -0 ./instance-crowdsec start
+    rune -0 "$CROWDSEC" -dsn file://<(fake_log) -type syslog -no-api --dump-data="$DUMP_DIR"
+    rune -0 ./instance-crowdsec stop
+
+    #shellcheck disable=SC2016
+    rune -0 yq -e '
+      . as $doc
+      | ["OK",
+         "crowdsecurity/ssh-bf",
+         "crowdsecurity/ssh-bf_user-enum",
+         "crowdsecurity/ssh-slow-bf",
+         "crowdsecurity/ssh-slow-bf_user-enum"] as $wanted
+      | (($doc | keys) - $wanted) | length == 0
+    ' "$DUMP_DIR/bucketpour-dump.yaml"
+
+    rune -0 yq -e '
+      has("s00-raw") and has("s01-parse")
+      and .s00-raw | has("crowdsecurity/syslog-logs")
+      and .s01-parse | has("crowdsecurity/sshd-logs")
+    ' "$DUMP_DIR/parser-dump.yaml"
+
+    rune -0 yq -e '
+      (.s00-raw."crowdsecurity/syslog-logs" | length) == 6
+      and
+      (.s01-parse."crowdsecurity/sshd-logs" | length) == 6
+    ' "$DUMP_DIR/parser-dump.yaml"
+
+#    rune -0 yq -e '.[] | .Overflow.Alert.scenario == "crowdsecurity/ssh-bf"' "$DUMP_DIR/bucket-dump.yaml"
+#    rune -0 yq -e '.[] | .Overflow.Alert.eventscount == 6' "$DUMP_DIR/bucket-dump.yaml"
+}

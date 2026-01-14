@@ -62,6 +62,7 @@ func runOutput(
 	postOverflowCTX parser.UnixParserCtx,
 	postOverflowNodes []parser.Node,
 	client *apiclient.ApiClient,
+	stageCollector *parser.StageParseCollector,
 ) error {
 	var (
 		cache      []pipeline.RuntimeAlert
@@ -114,8 +115,7 @@ func runOutput(
 			}
 
 			/* process post overflow parser nodes */
-			dump := flags.DumpDir != ""
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, dump)
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, stageCollector)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}

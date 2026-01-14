@@ -9,16 +9,15 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector) error {
+func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	if err := dumpState(dir, "parser-dump.yaml", parser.StageParseCache); err != nil {
+	if err := dumpCollector(dir, "parser-dump.yaml", stageCollector); err != nil {
 		return fmt.Errorf("dumping parser state: %w", err)
 	}
 
@@ -33,16 +32,12 @@ func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector) error {
 	return nil
 }
 
-type Collector interface {
-	Snapshot() map[string][]pipeline.Event
+type YAMLDumper interface {
+	DumpYAML() ([]byte, error)
 }
 
-func dumpCollector(dir, name string, collector Collector) error {
-	if collector == nil {
-		return nil
-	}
-
-	out, err := yaml.Marshal(collector.Snapshot())
+func dumpCollector(dir, name string, collector YAMLDumper) error {
+	out, err := collector.DumpYAML()
 	if err != nil {
 		return err
 	}

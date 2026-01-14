@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -34,10 +35,14 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
-	var pourCollector *leakybucket.PourCollector
+	var (
+		pourCollector *leakybucket.PourCollector
+		stageCollector *parser.StageParseCollector
+	)
 
 	if flags.DumpDir != "" {
 		pourCollector = leakybucket.NewPourCollector()
+		stageCollector = parser.NewStageParseCollector()
 	}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
@@ -84,7 +89,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector)
 	}
 
 	log.Info("Reload is finished")
@@ -308,7 +313,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	return err
 }
 
-func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, pourCollector *leakybucket.PourCollector) error {
+func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector) error {
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
@@ -381,7 +386,7 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, 
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector)
 		} else {
 			agentReady <- true
 		}

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -71,12 +70,12 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	return csParsers, datasources, nil
 }
 
-func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers) {
+func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers, stageCollector *parser.StageParseCollector) {
 	for idx := range cConfig.Crowdsec.ParserRoutinesCount {
 		log.WithField("idx", idx).Info("Starting parser routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runParse/"+strconv.Itoa(idx))
-			runParse(ctx, logLines, inEvents, *parsers.Ctx, parsers.Nodes)
+			runParse(ctx, logLines, inEvents, *parsers.Ctx, parsers.Nodes, stageCollector)
 			return nil
 		})
 	}
@@ -98,12 +97,12 @@ func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclien
 	apiClient.HeartBeat.StartHeartBeat(ctx)
 }
 
-func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient) {
+func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient, stageCollector *parser.StageParseCollector) {
 	for idx := range cConfig.Crowdsec.OutputRoutinesCount {
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runOutput/"+strconv.Itoa(idx))
-			return runOutput(ctx, inEvents, outEvents, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient)
+			return runOutput(ctx, inEvents, outEvents, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, stageCollector)
 		})
 	}
 }
@@ -136,11 +135,20 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 }
 
 // runCrowdsec starts the log processor service
-func runCrowdsec(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisitionTypes.DataSource, pourCollector *leakybucket.PourCollector) error {
+func runCrowdsec(
+	ctx context.Context,
+	g *errgroup.Group,
+	cConfig *csconfig.Config,
+	parsers *parser.Parsers,
+	hub *cwhub.Hub,
+	datasources []acquisitionTypes.DataSource,
+	pourCollector *leakybucket.PourCollector,
+	stageCollector *parser.StageParseCollector,
+) error {
 	inEvents = make(chan pipeline.Event)
 	logLines = make(chan pipeline.Event)
 
-	startParserRoutines(ctx, g, cConfig, parsers)
+	startParserRoutines(ctx, g, cConfig, parsers, stageCollector)
 	startBucketRoutines(ctx, g, cConfig, pourCollector)
 
 	apiClient, err := apiclient.GetLAPIClient()
@@ -150,7 +158,7 @@ func runCrowdsec(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Confi
 
 	startHeartBeat(ctx, cConfig, apiClient)
 
-	startOutputRoutines(ctx, cConfig, parsers, apiClient)
+	startOutputRoutines(ctx, cConfig, parsers, apiClient, stageCollector)
 
 	if err := startLPMetrics(ctx, cConfig, apiClient, hub, datasources); err != nil {
 		return err
@@ -166,7 +174,16 @@ func runCrowdsec(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Confi
 }
 
 // serveCrowdsec wraps the log processor service
-func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisitionTypes.DataSource, agentReady chan bool, pourCollector *leakybucket.PourCollector) {
+func serveCrowdsec(
+	ctx context.Context,
+	parsers *parser.Parsers,
+	cConfig *csconfig.Config,
+	hub *cwhub.Hub,
+	datasources []acquisitionTypes.DataSource,
+	agentReady chan bool,
+	pourCollector *leakybucket.PourCollector,
+	stageCollector *parser.StageParseCollector,
+) {
 	cctx, cancel := context.WithCancel(ctx)
 
 	var g errgroup.Group
@@ -181,7 +198,7 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 
 			agentReady <- true
 
-			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, pourCollector); err != nil {
+			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, pourCollector, stageCollector); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -202,11 +219,11 @@ func serveCrowdsec(ctx context.Context, parsers *parser.Parsers, cConfig *csconf
 		if flags.DumpDir != "" {
 			log.Debugf("Dumping parser+bucket states to %s", flags.DumpDir)
 
-			if err := dumpAllStates(flags.DumpDir, pourCollector); err != nil {
+			if err := dumpAllStates(flags.DumpDir, pourCollector, stageCollector); err != nil {
 				log.Fatal(err)
 			}
 
-			os.Exit(0)
+			return nil
 		}
 
 		return nil
