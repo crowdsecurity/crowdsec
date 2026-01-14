@@ -372,7 +372,6 @@ func sourcesFromFile(
 
 			var dserr *DataSourceUnavailableError
 			if errors.As(err, &dserr) {
-				// XXX: ok with log.Error?
 				log.Error(fmt.Errorf("%s: %w", loc, err))
 				continue
 			}

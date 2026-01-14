@@ -19,5 +19,4 @@ const (
 	TAIL_MODE   = "tail"
 	CAT_MODE    = "cat"
 	SERVER_MODE = "server" // No difference with tail, just a bit more verbose
-	// XXX:
 )

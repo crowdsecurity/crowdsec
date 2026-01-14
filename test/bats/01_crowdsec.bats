@@ -313,7 +313,6 @@ teardown() {
 	EOT
 
     #shellcheck disable=SC2016
-    # XXX: 
     rune -1 wait-for \
         --err "crowdsec init: while loading acquisition config: in file $ACQUIS_DIR/foo.yaml (position: 0) - data source journalctl is not built in this version of crowdsec" \
         env PATH='' "$CROWDSEC".min
