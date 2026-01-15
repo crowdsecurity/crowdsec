@@ -147,7 +147,7 @@ func handleAlertIPPredicates(rng csnet.Range, contains bool, predicates *[]predi
 	case 0:
 		return nil
 	default:
-		return fmt.Errorf("Unknown ip size %d: %w", rng.Size(), InvalidFilter)
+		return fmt.Errorf("unknown ip size %d: %w", rng.Size(), InvalidFilter)
 	}
 }
 
@@ -246,7 +246,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "with_decisions":
 			continue
 		default:
-			return nil, fmt.Errorf("Filter parameter '%s' is unknown (=%s): %w", param, value[0], InvalidFilter)
+			return nil, fmt.Errorf("filter parameter '%s' is unknown (=%s): %w", param, value[0], InvalidFilter)
 		}
 	}
 

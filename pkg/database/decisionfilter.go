@@ -113,14 +113,14 @@ func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (
 
 func decisionIPv4Filter(decisions *ent.DecisionQuery, contains bool, rng csnet.Range) (*ent.DecisionQuery, error) {
 	if contains {
-		/*Decision contains {start_ip,end_ip}*/
+		// Decision contains {start_ip,end_ip}
 		return decisions.Where(decision.And(
 			decision.StartIPLTE(rng.Start.Addr),
 			decision.EndIPGTE(rng.End.Addr),
 			decision.IPSizeEQ(int64(rng.Size())))), nil
 	}
 
-	/*Decision is contained within {start_ip,end_ip}*/
+	// Decision is contained within {start_ip,end_ip}
 	return decisions.Where(decision.And(
 		decision.StartIPGTE(rng.Start.Addr),
 		decision.EndIPLTE(rng.End.Addr),
@@ -128,7 +128,7 @@ func decisionIPv4Filter(decisions *ent.DecisionQuery, contains bool, rng csnet.R
 }
 
 func decisionIPv6Filter(decisions *ent.DecisionQuery, contains bool, rng csnet.Range) (*ent.DecisionQuery, error) {
-	/*decision contains {start_ip,end_ip}*/
+	// decision contains {start_ip,end_ip}
 	if contains {
 		return decisions.Where(decision.And(
 			// matching addr size
@@ -155,7 +155,7 @@ func decisionIPv6Filter(decisions *ent.DecisionQuery, contains bool, rng csnet.R
 		)), nil
 	}
 
-	/*decision is contained within {start_ip,end_ip}*/
+	// decision is contained within {start_ip,end_ip}
 	return decisions.Where(decision.And(
 		// matching addr size
 		decision.IPSizeEQ(int64(rng.Size())),

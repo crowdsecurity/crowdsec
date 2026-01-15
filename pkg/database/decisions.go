@@ -242,8 +242,8 @@ func (c *Client) ExpireDecisionsWithFilter(ctx context.Context, filter map[strin
 	)
 
 	contains := true
-	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)*/
+	// if contains is true, return bans that *contains* the given value (value is the inner)
+	// else, return bans that are *contained* by the given value (value is the outer)
 	decisions := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
 
 	for param, value := range filter {
