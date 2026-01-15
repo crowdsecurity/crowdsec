@@ -112,8 +112,6 @@ linters:
     depguard:
       rules:
         wrap:
-          files:
-            - '!**/pkg/database/*.go'
           deny:
             - pkg: github.com/pkg/errors
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
