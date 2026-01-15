@@ -217,6 +217,7 @@ func run(flags Flags) error {
 	var (
 		pourCollector *leakybucket.PourCollector
 		stageCollector *parser.StageParseCollector
+		bucketOverflows []pipeline.Event
 	)
 
 	if flags.DumpDir != "" {
@@ -224,7 +225,7 @@ func run(flags Flags) error {
 		stageCollector = parser.NewStageParseCollector()
 	}
 
-	return StartRunSvc(ctx, cConfig, pourCollector, stageCollector)
+	return StartRunSvc(ctx, cConfig, pourCollector, stageCollector, bucketOverflows)
 }
 
 func main() {

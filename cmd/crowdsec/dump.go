@@ -9,9 +9,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector) error {
+func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector, bucketOverflows []pipeline.Event) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err

@@ -52,8 +52,6 @@ func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *api
 	return nil
 }
 
-var bucketOverflows []pipeline.Event
-
 func runOutput(
 	ctx context.Context,
 	input chan pipeline.Event,
@@ -63,6 +61,7 @@ func runOutput(
 	postOverflowNodes []parser.Node,
 	client *apiclient.ApiClient,
 	stageCollector *parser.StageParseCollector,
+	bucketOverflows []pipeline.Event,
 ) error {
 	var (
 		cache      []pipeline.RuntimeAlert

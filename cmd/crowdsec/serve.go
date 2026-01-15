@@ -38,6 +38,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	var (
 		pourCollector *leakybucket.PourCollector
 		stageCollector *parser.StageParseCollector
+		bucketOverflows []pipeline.Event
 	)
 
 	if flags.DumpDir != "" {
@@ -89,7 +90,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector, bucketOverflows)
 	}
 
 	log.Info("Reload is finished")
@@ -313,7 +314,14 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	return err
 }
 
-func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector) error {
+func Serve(
+	ctx context.Context,
+	cConfig *csconfig.Config,
+	agentReady chan bool,
+	pourCollector *leakybucket.PourCollector,
+	stageCollector *parser.StageParseCollector,
+	bucketOverflows []pipeline.Event,
+) error {
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
@@ -386,7 +394,7 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool, 
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector, bucketOverflows)
 		} else {
 			agentReady <- true
 		}
