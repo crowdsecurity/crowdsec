@@ -100,22 +100,15 @@ func ExprWrapExtractQueryParam(params ...any) (any, error) {
 // ExtractQueryParam extracts values for a given query parameter from a raw URI string.
 func ExtractQueryParam(uri, param string) []string {
 	// Find the first occurrence of "?"
-	idx := strings.Index(uri, "?")
-	if idx == -1 {
+	_, queryString, ok := strings.Cut(uri, "?")
+	if !ok || queryString == "" {
 		// No query string present
 		return []string{}
 	}
-
-	// Extract the query string part
-	queryString := uri[idx+1:]
 
 	// Parse the query string using a function that supports both `&` and `;`
 	values := ParseQuery(queryString)
 
-	if values == nil {
-		// No query string present
-		return []string{}
-	}
 	// Retrieve the values for the specified parameter
 	if _, ok := values[param]; !ok {
 		return []string{}
