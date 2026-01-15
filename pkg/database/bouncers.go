@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -74,7 +72,7 @@ func (c *Client) SelectBouncerByName(ctx context.Context, bouncerName string) (*
 func (c *Client) ListBouncers(ctx context.Context) ([]*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().All(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
+		return nil, fmt.Errorf("listing bouncers: %w: %w", err, QueryFail)
 	}
 
 	return result, nil

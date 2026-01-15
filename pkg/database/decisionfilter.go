@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -40,7 +38,7 @@ func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return nil, fmt.Errorf("invalid contains value: %w: %w", err, InvalidFilter)
 			}
 		case "scopes", "scope": // Swagger mentions both of them, let's just support both to make sure we don't break anything
 			scopes := strings.Split(value[0], ",")
@@ -79,26 +77,26 @@ func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (
 		case "ip", "range":
 			rng, err = csnet.NewRange(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
+				return nil, fmt.Errorf("unable to convert '%s' to int: %w: %w", value[0], err, InvalidIPOrRange)
 			}
 		case "limit":
 			limit, err := strconv.Atoi(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid limit value : %s", err)
+				return nil, fmt.Errorf("invalid limit value: %w: %w", err, InvalidFilter)
 			}
 
 			query = query.Limit(limit)
 		case "offset":
 			offset, err := strconv.Atoi(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid offset value : %s", err)
+				return nil, fmt.Errorf("invalid offset value: %w: %w", err, InvalidFilter)
 			}
 
 			query = query.Offset(offset)
 		case "id_gt":
 			id, err := strconv.Atoi(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid id_gt value : %s", err)
+				return nil, fmt.Errorf("invalid id_gt value: %w: %w", err, InvalidFilter)
 			}
 
 			query = query.Where(decision.IDGT(id))
@@ -192,7 +190,7 @@ func decisionIPFilter(decisions *ent.DecisionQuery, contains bool, rng csnet.Ran
 	case 0:
 		return decisions, nil
 	default:
-		return nil, errors.Wrapf(InvalidFilter, "unknown ip size %d", rng.Size())
+		return nil, fmt.Errorf("unknown ip size %d: %w", rng.Size(), InvalidFilter)
 	}
 }
 

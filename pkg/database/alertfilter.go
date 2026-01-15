@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -148,7 +147,7 @@ func handleAlertIPPredicates(rng csnet.Range, contains bool, predicates *[]predi
 	case 0:
 		return nil
 	default:
-		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", rng.Size())
+		return fmt.Errorf("Unknown ip size %d: %w", rng.Size(), InvalidFilter)
 	}
 }
 
@@ -200,7 +199,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return nil, fmt.Errorf("invalid contains value: %w: %w", err, InvalidFilter)
 			}
 		case "scope":
 			handleScopeFilter(value[0], &predicates)
@@ -230,7 +229,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			}
 		case "has_active_decision":
 			if hasActiveDecision, err = strconv.ParseBool(value[0]); err != nil {
-				return nil, errors.Wrapf(ParseType, "'%s' is not a boolean: %s", value[0], err)
+				return nil, fmt.Errorf("'%s' is not a boolean: %w: %w", value[0], err, ParseType)
 			}
 
 			if hasActiveDecision {
@@ -247,7 +246,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "with_decisions":
 			continue
 		default:
-			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
+			return nil, fmt.Errorf("Filter parameter '%s' is unknown (=%s): %w", param, value[0], InvalidFilter)
 		}
 	}
 
