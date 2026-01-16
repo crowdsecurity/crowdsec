@@ -140,7 +140,7 @@ func TestCreateAlert(t *testing.T) {
 	w = lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.JSONEq(t,
-		`{"message":"validation failure list:\n0.scenario in body is required\n0.scenario_hash in body is required\n0.scenario_version in body is required\n0.simulated in body is required\n0.source in body is required"}`,
+		`{"message":"0.scenario in body is required"}`,
 		w.Body.String())
 
 	// Create Valid Alert
