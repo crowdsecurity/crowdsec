@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -75,7 +74,7 @@ func runService(name string, sd *StateDumper) error {
 	// All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
 	err := eventlog.InstallAsEventCreate("CrowdSec", eventlog.Error|eventlog.Warning|eventlog.Info)
 	if err != nil {
-		if errno, ok := err.(syscall.Errno); ok {   //nolint:errorlint
+		if errno, ok := err.(windows.Errno); ok {   //nolint:errorlint
 			if errno == windows.ERROR_ACCESS_DENIED {
 				log.Warnf("Access denied when installing event source, running as non-admin?")
 			} else {

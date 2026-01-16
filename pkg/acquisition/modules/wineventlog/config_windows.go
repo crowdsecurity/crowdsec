@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"syscall"
 
 	yaml "github.com/goccy/go-yaml"
 	"github.com/google/winops/winlog"
@@ -117,15 +116,15 @@ func (s *Source) generateConfig(query string, live bool) (*winlog.SubscribeConfi
 		}
 		config.Flags = wevtapi.EvtSubscribeToFutureEvents
 	} else {
-		config.ChannelPath, err = syscall.UTF16PtrFromString(s.config.EventFile)
+		config.ChannelPath, err = windows.UTF16PtrFromString(s.config.EventFile)
 		if err != nil {
-			return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
+			return &config, fmt.Errorf("windows.UTF16PtrFromString failed: %v", err)
 		}
 		config.Flags = wevtapi.EvtQueryFilePath | wevtapi.EvtQueryForwardDirection
 	}
-	config.Query, err = syscall.UTF16PtrFromString(query)
+	config.Query, err = windows.UTF16PtrFromString(query)
 	if err != nil {
-		return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
+		return &config, fmt.Errorf("windows.UTF16PtrFromString failed: %v", err)
 	}
 
 	return &config, nil
