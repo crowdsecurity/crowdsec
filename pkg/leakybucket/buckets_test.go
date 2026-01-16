@@ -184,7 +184,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		in.ExpectMode = pipeline.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
-		ok, err := PourItemToHolders(ctx, in, holders, buckets, false)
+		ok, err := PourItemToHolders(ctx, in, holders, buckets, nil)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
 		}
@@ -207,7 +207,7 @@ POLL_AGAIN:
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
-				ok, err := PourItemToHolders(ctx, ret, holders, buckets, false)
+				ok, err := PourItemToHolders(ctx, ret, holders, buckets, nil)
 				if err != nil {
 					t.Fatalf("Failed to pour : %s", err)
 				}

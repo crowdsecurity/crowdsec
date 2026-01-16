@@ -16,6 +16,7 @@ func parseEvent(
 	event pipeline.Event,
 	parserCTX parser.UnixParserCtx,
 	nodes []parser.Node,
+	stageCollector *parser.StageParseCollector,
 ) *pipeline.Event {
 	if !event.Process {
 		return nil
@@ -35,8 +36,7 @@ func parseEvent(
 
 	startParsing := time.Now()
 	/* parse the log using magic */
-	dump := flags.DumpDir != ""
-	parsed, err := parser.Parse(parserCTX, event, nodes, dump)
+	parsed, err := parser.Parse(parserCTX, event, nodes, stageCollector)
 	if err != nil {
 		log.Errorf("failed parsing: %v", err)
 	}
@@ -56,14 +56,14 @@ func parseEvent(
 	return &parsed
 }
 
-func runParse(ctx context.Context, input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) {
+func runParse(ctx context.Context, input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node, stageCollector *parser.StageParseCollector) {
 	for {
 		select {
 		case <-ctx.Done():
 			log.Infof("Killing parser routines")
 			return
 		case event := <-input:
-			parsed := parseEvent(event, parserCTX, nodes)
+			parsed := parseEvent(event, parserCTX, nodes, stageCollector)
 			if parsed == nil {
 				continue
 			}

@@ -19,8 +19,6 @@ import (
 
 var (
 	serialized      map[string]Leaky
-	BucketPourCache map[string][]pipeline.Event = make(map[string][]pipeline.Event)
-	bucketPourMu    sync.Mutex
 )
 
 /*
@@ -74,7 +72,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
 	}
 }
 
-func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event, track bool) (bool, error) {
+func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event, collector *PourCollector) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -142,12 +140,9 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 		select {
 		case bucket.In <- parsed:
 			// holder.logger.Tracef("Successfully sent !")
-			if track {
+			if collector != nil {
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
-
-				bucketPourMu.Lock()
-				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt)
-				bucketPourMu.Unlock()
+				collector.Add(bucket.Name, evt)
 			}
 			sent = true
 			continue
@@ -203,15 +198,12 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets, track bool) (bool, error) {
+func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets, collector *PourCollector) (bool, error) {
 	var ok, condition, poured bool
 
-	if track {
+	if collector != nil {
 		evt := deepcopy.Copy(parsed).(pipeline.Event)
-
-		bucketPourMu.Lock()
-		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt)
-		bucketPourMu.Unlock()
+		collector.Add("OK", evt)
 	}
 	// find the relevant holders (scenarios)
 	for idx := range holders {
@@ -274,7 +266,7 @@ func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []Buc
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed, track)
+		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed, collector)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()

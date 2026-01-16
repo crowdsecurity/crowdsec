@@ -35,7 +35,7 @@ func triggerGC(parsed pipeline.Event, buckets *leaky.Buckets, cConfig *csconfig.
 	leaky.GarbageCollectBuckets(*z, buckets)
 }
 
-func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) {
+func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config, pourCollector *leaky.PourCollector) {
 	count := 0
 
 	for {
@@ -52,8 +52,7 @@ func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.Buc
 				triggerGC(parsed, buckets, cConfig)
 			}
 			// here we can bucketify with parsed
-			track := flags.DumpDir != ""
-			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets, track)
+			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets, pourCollector)
 			if err != nil {
 				log.Warningf("bucketify failed for: %v with %s", parsed, err)
 				continue

@@ -213,7 +213,9 @@ func run(flags Flags) error {
 		return err
 	}
 
-	return StartRunSvc(ctx, cConfig)
+	sd := NewStateDumper(flags.DumpDir)
+
+	return StartRunSvc(ctx, cConfig, sd)
 }
 
 func main() {

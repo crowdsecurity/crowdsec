@@ -135,6 +135,7 @@ func (cli *cliExplain) run(ctx context.Context) error {
 
 	defer func() {
 		if cli.flags.noClean {
+			fmt.Fprintf(os.Stdout, "Not removing dump directory: %s\n", dir)
 			return
 		}
 
