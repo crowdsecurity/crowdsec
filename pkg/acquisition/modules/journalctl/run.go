@@ -153,7 +153,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 			s.logger.Debugf("getting one line: %s", line.Raw)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": line.Labels["type"]}).Inc()
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": ModuleName, "acquis_type": line.Labels["type"]}).Inc()
 			}
 
 			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)

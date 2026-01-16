@@ -31,6 +31,7 @@ linters:
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - unparam      # Reports unused function parameters
     - errchkjson   # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
+    - unqueryvet   # Detects SELECT * in SQL queries and SQL builders, preventing performance issues and encouraging explicit column selection.
 
     # we allow named returns (to improve readability, in the function signatures)
     # but disallow implicit (or "naked") returns, to improve readability in the actual code.
@@ -111,8 +112,6 @@ linters:
     depguard:
       rules:
         wrap:
-          files:
-            - '!**/pkg/database/*.go'
           deny:
             - pkg: github.com/pkg/errors
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()

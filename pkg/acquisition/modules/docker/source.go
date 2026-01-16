@@ -50,7 +50,7 @@ func (d *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "docker"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

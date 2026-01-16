@@ -115,9 +115,9 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 
 		switch s.metricsLevel {
 		case metrics.AcquisitionMetricsLevelAggregated:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": ModuleName, "acquis_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelFull:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": ModuleName, "acquis_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelNone:
 			// No metrics for this level
 		}

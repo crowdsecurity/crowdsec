@@ -12,7 +12,9 @@ var (
 	_ types.MetricsProvider = (*Source)(nil)
 )
 
+const ModuleName = "k8s-audit"
+
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterFactory("k8s-audit", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory(ModuleName, func() types.DataSource { return &Source{} })
 }

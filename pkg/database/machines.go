@@ -2,12 +2,12 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -76,7 +76,7 @@ func (c *Client) CreateMachine(ctx context.Context, machineID *string, password 
 		Where(machine.MachineIdEQ(*machineID)).
 		Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
+		return nil, fmt.Errorf("machine '%s': %w: %w", *machineID, err, QueryFail)
 	}
 
 	if len(machineExist) > 0 {
@@ -84,18 +84,18 @@ func (c *Client) CreateMachine(ctx context.Context, machineID *string, password 
 			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(ctx)
 			if err != nil {
 				c.Log.Warningf("CreateMachine : %s", err)
-				return nil, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
+				return nil, fmt.Errorf("machine '%s': %w", *machineID, UpdateFail)
 			}
 
 			machine, err := c.QueryMachineByID(ctx, *machineID)
 			if err != nil {
-				return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
+				return nil, fmt.Errorf("machine '%s': %w: %w", *machineID, err, QueryFail)
 			}
 
 			return machine, nil
 		}
 
-		return nil, errors.Wrapf(UserExists, "user '%s'", *machineID)
+		return nil, fmt.Errorf("user '%s': %w", *machineID, UserExists)
 	}
 
 	machine, err := c.Ent.Machine.
@@ -108,7 +108,7 @@ func (c *Client) CreateMachine(ctx context.Context, machineID *string, password 
 		Save(ctx)
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
-		return nil, errors.Wrapf(InsertFail, "creating machine '%s'", *machineID)
+		return nil, fmt.Errorf("creating machine '%s': %w", *machineID, InsertFail)
 	}
 
 	return machine, nil
@@ -121,7 +121,7 @@ func (c *Client) QueryMachineByID(ctx context.Context, machineID string) (*ent.M
 		Only(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryMachineByID : %s", err)
-		return &ent.Machine{}, errors.Wrapf(UserNotExists, "user '%s'", machineID)
+		return &ent.Machine{}, fmt.Errorf("user '%s': %w", machineID, UserNotExists)
 	}
 
 	return machine, nil
@@ -130,7 +130,7 @@ func (c *Client) QueryMachineByID(ctx context.Context, machineID string) (*ent.M
 func (c *Client) ListMachines(ctx context.Context) ([]*ent.Machine, error) {
 	machines, err := c.Ent.Machine.Query().All(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(QueryFail, "listing machines: %s", err)
+		return nil, fmt.Errorf("listing machines: %w: %w", err, QueryFail)
 	}
 
 	return machines, nil
@@ -139,7 +139,7 @@ func (c *Client) ListMachines(ctx context.Context) ([]*ent.Machine, error) {
 func (c *Client) ValidateMachine(ctx context.Context, machineID string) error {
 	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(ctx)
 	if err != nil {
-		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
+		return fmt.Errorf("validating machine: %w: %w", err, UpdateFail)
 	}
 
 	if rets == 0 {
@@ -153,7 +153,7 @@ func (c *Client) QueryPendingMachine(ctx context.Context) ([]*ent.Machine, error
 	machines, err := c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(ctx)
 	if err != nil {
 		c.Log.Warningf("QueryPendingMachine : %s", err)
-		return nil, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
+		return nil, fmt.Errorf("querying pending machines: %w: %w", err, QueryFail)
 	}
 
 	return machines, nil
@@ -192,7 +192,7 @@ func (c *Client) BulkDeleteWatchers(ctx context.Context, machines []*ent.Machine
 func (c *Client) UpdateMachineLastHeartBeat(ctx context.Context, machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastHeartbeat(time.Now().UTC()).Save(ctx)
 	if err != nil {
-		return errors.Wrapf(UpdateFail, "updating machine last_heartbeat: %s", err)
+		return fmt.Errorf("updating machine last_heartbeat: %w: %w", err, UpdateFail)
 	}
 
 	return nil

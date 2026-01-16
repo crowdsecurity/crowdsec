@@ -83,7 +83,7 @@ func (s *Source) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	for idx := range auditEvents.Items {
 		if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": s.addr, "datasource_type": "k8s-audit", "acquis_type": s.config.Labels["type"]}).Inc()
+			metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": s.addr, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])
