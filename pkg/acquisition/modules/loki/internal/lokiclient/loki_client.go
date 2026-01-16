@@ -274,6 +274,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	}
 
 	lc.t.Go(func() error {
+		defer conn.Close()
 		for {
 			jsonResponse := &LokiResponse{}
 
