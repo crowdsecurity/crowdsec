@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -222,7 +223,7 @@ func serveCrowdsec(
 				log.Fatal(err)
 			}
 
-			return nil
+			os.Exit(0)
 		}
 
 		return nil
