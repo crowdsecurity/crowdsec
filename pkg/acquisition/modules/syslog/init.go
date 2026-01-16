@@ -12,7 +12,9 @@ var (
 	_ types.MetricsProvider     = (*Source)(nil)
 )
 
+const ModuleName = "syslog"
+
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterFactory("syslog", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory(ModuleName, func() types.DataSource { return &Source{} })
 }

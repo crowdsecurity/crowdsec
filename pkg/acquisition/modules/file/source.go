@@ -31,7 +31,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "file"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

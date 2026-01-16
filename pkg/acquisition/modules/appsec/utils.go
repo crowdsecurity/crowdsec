@@ -305,8 +305,8 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
 		Process: true,
-		Module:  "appsec",
-		Src:     "appsec",
+		Module:  ModuleName,
+		Src:     ModuleName,
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
 	evt.Appsec = pipeline.AppsecEvent{}
@@ -322,19 +322,19 @@ func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 
 	if evt.Meta["appsec_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else if evt.Parsed["outofband_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())

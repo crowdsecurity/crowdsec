@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -43,8 +41,8 @@ func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName strin
 }
 
 func (c *Client) SelectBouncers(ctx context.Context, apiKeyHash string, authType string) ([]*ent.Bouncer, error) {
-	//Order by ID so manually created bouncer will be first in the list to use as the base name
-	//when automatically creating a new entry if API keys are shared
+	// Order by ID so manually created bouncer will be first in the list to use as the base name
+	// when automatically creating a new entry if API keys are shared
 	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash), bouncer.AuthTypeEQ(authType)).Order(ent.Asc(bouncer.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
@@ -74,7 +72,7 @@ func (c *Client) SelectBouncerByName(ctx context.Context, bouncerName string) (*
 func (c *Client) ListBouncers(ctx context.Context) ([]*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().All(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
+		return nil, fmt.Errorf("listing bouncers: %w: %w", err, QueryFail)
 	}
 
 	return result, nil

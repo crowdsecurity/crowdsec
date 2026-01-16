@@ -334,7 +334,7 @@ func (s *Source) TailLogStream(ctx context.Context, cfg *LogStreamTailConfig, ou
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						metrics.CloudWatchDatasourceLinesRead.With(prometheus.Labels{
 							"group": cfg.GroupName, "stream": cfg.StreamName,
-							"datasource_type": "cloudwatch", "acquis_type": evt.Line.Labels["type"],
+							"datasource_type": ModuleName, "acquis_type": evt.Line.Labels["type"],
 						}).Inc()
 					}
 
@@ -446,7 +446,6 @@ func (s *Source) CatLogStream(ctx context.Context, cfg *LogStreamTailConfig, out
 }
 
 func cwLogToEvent(log cwTypes.OutputLogEvent, cfg *LogStreamTailConfig) (pipeline.Event, error) {
-	l := pipeline.Line{}
 	evt := pipeline.MakeEvent(cfg.ExpectMode == pipeline.TIMEMACHINE, pipeline.LOG, true)
 
 	if log.Message == nil {
@@ -459,12 +458,15 @@ func cwLogToEvent(log cwTypes.OutputLogEvent, cfg *LogStreamTailConfig) (pipelin
 		msg = eventTimestamp.String() + " " + msg
 	}
 
-	l.Raw = msg
-	l.Labels = cfg.Labels
-	l.Time = time.Now().UTC()
-	l.Src = fmt.Sprintf("%s/%s", cfg.GroupName, cfg.StreamName)
-	l.Process = true
-	l.Module = "cloudwatch"
+	l := pipeline.Line{
+		Raw: msg,
+		Labels: cfg.Labels,
+		Time: time.Now().UTC(),
+		Src: cfg.GroupName + "/" + cfg.StreamName,
+		Process: true,
+		Module: ModuleName,
+	}
+
 	evt.Line = l
 	cfg.logger.Debugf("returned event labels : %+v", evt.Line.Labels)
 

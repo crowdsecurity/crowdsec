@@ -12,7 +12,9 @@ var (
 	_ types.MetricsProvider = (*Source)(nil)
 )
 
+const ModuleName = "http"
+
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterFactory("http", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory(ModuleName, func() types.DataSource { return &Source{} })
 }

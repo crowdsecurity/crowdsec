@@ -181,24 +181,116 @@ cscli_if_clean() {
 # Output the difference between two lists
 # of items separated by spaces
 difference() {
-  list1="$1"
-  list2="$2"
+    list1="$1"
+    list2="$2"
 
-  # split into words
-  # shellcheck disable=SC2086
-  set -- $list1
-  for item in "$@"; do
-    found=false
-    for i in $list2; do
-      if [ "$item" = "$i" ]; then
-        found=true
-        break
-      fi
+    # split into words
+    # shellcheck disable=SC2086
+    set -- $list1
+    for item in "$@"; do
+        found=false
+        for i in $list2; do
+            if [ "$item" = "$i" ]; then
+                found=true
+                break
+            fi
     done
+
     if [ "$found" = false ]; then
-      echo "$item"
+        echo "$item"
     fi
   done
+}
+
+# prepare_hub updates/installs/removes Hub items based on env vars, but only when the agent is expected to run.
+# It exits early when the agent is disabled with DISABLE_AGENT or in the configuration.
+prepare_hub() {
+    if istrue "$DISABLE_AGENT"; then
+        return
+    fi
+
+    if conf_get '.crowdsec_service ?= null or (.crowdsec_service.enable? == false)' >/dev/null 2>&1; then
+        return
+    fi
+
+    ## Install hub items
+
+    run_hub_update_if_from_volume || true
+    run_hub_upgrade_if_from_volume || true
+
+    cscli_if_clean parsers install crowdsecurity/docker-logs
+    cscli_if_clean parsers install crowdsecurity/cri-logs
+
+    if [ "$COLLECTIONS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean collections install "$(difference "$COLLECTIONS" "$DISABLE_COLLECTIONS")"
+    fi
+
+    if [ "$PARSERS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean parsers install "$(difference "$PARSERS" "$DISABLE_PARSERS")"
+    fi
+
+    if [ "$SCENARIOS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean scenarios install "$(difference "$SCENARIOS" "$DISABLE_SCENARIOS")"
+    fi
+
+    if [ "$POSTOVERFLOWS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
+    fi
+
+    if [ "$CONTEXTS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+    fi
+
+    if [ "$APPSEC_CONFIGS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
+    fi
+
+    if [ "$APPSEC_RULES" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
+    fi
+
+    ## Remove collections, parsers, scenarios & postoverflows
+    if [ "$DISABLE_COLLECTIONS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
+    fi
+
+    if [ "$DISABLE_PARSERS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
+    fi
+
+    if [ "$DISABLE_SCENARIOS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
+    fi
+
+    if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
+    fi
+
+    if [ "$DISABLE_CONTEXTS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
+    fi
+
+    if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
+    fi
+
+    if [ "$DISABLE_APPSEC_RULES" != "" ]; then
+        # shellcheck disable=SC2086
+        cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
+    fi
 }
 
 #-----------------------------------#
@@ -374,84 +466,7 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install hub items
-
-run_hub_update_if_from_volume || true
-run_hub_upgrade_if_from_volume || true
-
-cscli_if_clean parsers install crowdsecurity/docker-logs
-cscli_if_clean parsers install crowdsecurity/cri-logs
-
-if [ "$COLLECTIONS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean collections install "$(difference "$COLLECTIONS" "$DISABLE_COLLECTIONS")"
-fi
-
-if [ "$PARSERS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean parsers install "$(difference "$PARSERS" "$DISABLE_PARSERS")"
-fi
-
-if [ "$SCENARIOS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean scenarios install "$(difference "$SCENARIOS" "$DISABLE_SCENARIOS")"
-fi
-
-if [ "$POSTOVERFLOWS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
-fi
-
-if [ "$CONTEXTS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
-fi
-
-if [ "$APPSEC_CONFIGS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
-fi
-
-if [ "$APPSEC_RULES" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
-fi
-
-## Remove collections, parsers, scenarios & postoverflows
-if [ "$DISABLE_COLLECTIONS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
-fi
-
-if [ "$DISABLE_PARSERS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
-fi
-
-if [ "$DISABLE_SCENARIOS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
-fi
-
-if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
-fi
-
-if [ "$DISABLE_CONTEXTS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
-fi
-
-if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
-fi
-
-if [ "$DISABLE_APPSEC_RULES" != "" ]; then
-    # shellcheck disable=SC2086
-    cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
-fi
+prepare_hub
 
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do

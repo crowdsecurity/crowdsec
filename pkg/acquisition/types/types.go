@@ -13,20 +13,38 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// The interface each datasource must implement
+// DataSource is the common interface implemented by all acquisition modules.
+//
+// A DataSource can always be configured from YAML.
 type DataSource interface {
 	// identity, lifecycle
-	GetMode() string                                                                                    // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                                                    // Get the name of the module
-	GetUuid() string                                                                                    // Get the unique identifier of the datasource
+	
+	// GetMode returns the operating mode of the datasource (e.g. TAIL, CAT, SERVER).
+	GetMode() string
+
+	// GetName returns the module name (e.g. "file", "journalctl", "docker").
+	GetName() string
+
+	// GetUuid returns a unique identifier for this datasource instance.
+	GetUuid() string
+
 	Dump() any
-	CanRun() error                                                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+
+	// CanRun reports whether the datasource can run on the current platform/environment
+	// (e.g. journalctl not available on some systems like BSD).
+	CanRun() error
 
 	// configuration
-	UnmarshalConfig(yamlConfig []byte) error                                                            // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error // Complete the YAML datasource configuration and perform runtime checks.
+
+	// UnmarshalConfig decodes and pre-validates the YAML datasource configuration.
+	// Implementations should validate everything that can be checked without I/O.
+	UnmarshalConfig(yamlConfig []byte) error
+
+	// Configure completes datasource configuration and performs runtime checks.
+	Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error
 }
 
+// DataSourceFactory constructs a new unconfigured DataSource instance.
 type DataSourceFactory func() DataSource
 
 // BatchFetcher represents a data source that produces a finite set of events.
@@ -70,23 +88,27 @@ type Tailer interface {
 	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
 
+// MetricsProvider exposes Prometheus collectors owned by a datasource.
 type MetricsProvider interface {
-	// Returns pointers to metrics that are managed by the module
+	// GetMetrics returns collectors for full (non-aggregated) metrics.
 	GetMetrics() []prometheus.Collector
 
-	// Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	// GetAggregMetrics returns collectors for aggregated metrics (reduced cardinality).
 	GetAggregMetrics() []prometheus.Collector
 }
 
+// DSNConfigurer is implemented by datasources that support command-line / DSN-based configuration.
 type DSNConfigurer interface {
-	// Configure the datasource
+	// ConfigureByDSN configures the datasource from a DSN string and labels.
 	ConfigureByDSN(ctx context.Context, dsn string, labels map[string]string, logger *log.Entry, uniqueID string) error
 }
 
+// LAPIClientAware is implemented by datasources that need access to the Local API client configuration.
 type LAPIClientAware interface {
 	SetClientConfig(config *csconfig.LocalApiClientCfg)
 }
 
+// HubAware is implemented by datasources that need access to the Hub (e.g. for appsec rules/scenarios).
 type HubAware interface {
 	SetHub(hub *cwhub.Hub)
 }
