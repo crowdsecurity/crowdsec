@@ -1057,16 +1057,18 @@ func parseValueLax(s string) string {
 		return ""
 	}
 
-	if s[0] == '"' {
-		if len(s) >= 2 && s[len(s)-1] == '"' {
-			body := s[1 : len(s)-1]
-			body = strings.ReplaceAll(body, `\\`, `\`)
-			body = strings.ReplaceAll(body, `\"`, `"`)
-			return body
-		}
-		return strings.TrimPrefix(s, `"`)
+	if s[0] != '"' {
+		return s
 	}
-	return s
+
+	if len(s) >= 2 && s[len(s)-1] == '"' {
+		body := s[1 : len(s)-1]
+		body = strings.ReplaceAll(body, `\\`, `\`)
+		body = strings.ReplaceAll(body, `\"`, `"`)
+		return body
+	}
+
+	return strings.TrimPrefix(s, `"`)
 }
 
 // isInsideQuotedValue checks if a position in the string is inside a quoted value
@@ -1078,19 +1080,17 @@ func isInsideQuotedValue(s string, pos int) bool {
 		if s[i] != '"' {
 			continue
 		}
-		// Check if this quote is escaped
-		escaped := false
+
 		backslashCount := 0
 		for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
 			backslashCount++
 		}
+
 		if backslashCount%2 == 1 {
-			escaped = true
+			continue
 		}
 
-		if !escaped {
-			inQuote = !inQuote
-		}
+		inQuote = !inQuote
 	}
 
 	return inQuote

@@ -2292,6 +2292,30 @@ func TestParseKvLax(t *testing.T) {
 			want:  map[string]string{"error": "user_not_found,", "code_id": "e44d80b4-058d-4b45-b2ee-fac3d174e10c,", "userId": "null,", "type": "LOGIN_ERROR"},
 			expr:  `ParseKVLax(value, out, "a")`,
 		},
+		{
+			name:  "ParseKVLax() test: key= after escaped quotes inside quoted value",
+			value: `msg="say \"fake=val\" here" real=value`,
+			want:  map[string]string{"msg": `say "fake=val" here`, "real": "value"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslash before closing quote",
+			value: `path="C:\\" next=val`,
+			want:  map[string]string{"path": `C:\`, "next": "val"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:         "ParseKVLax() test: invalid type for first argument",
+			value:        "",
+			expr:         `ParseKVLax(42, out, "a")`,
+			wantBuildErr: true,
+		},
+		{
+			name:           "ParseKVLax() test: no key=value pairs",
+			value:          "no pairs here",
+			expr:           `ParseKVLax(value, out, "a")`,
+			wantRuntimeErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -2302,8 +2326,19 @@ func TestParseKvLax(t *testing.T) {
 				"out":   outMap,
 			}
 			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.wantBuildErr {
+				require.Error(t, err)
+				return
+			}
+
 			require.NoError(t, err)
+
 			_, err = expr.Run(vm, env)
+			if tc.wantRuntimeErr {
+				require.Error(t, err)
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, outMap["a"])
 		})
