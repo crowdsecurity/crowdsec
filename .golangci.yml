@@ -522,11 +522,6 @@ linters:
           - govet
         text: 'shadow: declaration of "(err|ctx)" shadows declaration'
 
-      # https://github.com/timakin/bodyclose
-      - linters:
-          - bodyclose
-        text: response body must be closed
-
       - linters:
           - revive
         path: pkg/leakybucket/manager_load.go
