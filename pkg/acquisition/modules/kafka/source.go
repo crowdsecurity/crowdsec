@@ -23,7 +23,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "kafka"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

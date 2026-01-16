@@ -10,6 +10,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
@@ -27,13 +28,10 @@ import (
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	// re-initialize tombs
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
-	bucketsTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -87,7 +85,19 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	return cConfig, nil
 }
 
-func ShutdownCrowdsecRoutines() error {
+func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() { done <- g.Wait() }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return context.DeadlineExceeded
+	}
+}
+
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -95,7 +105,7 @@ func ShutdownCrowdsecRoutines() error {
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
-		drainChan(inputLineChan)
+		drainChan(logLines)
 
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
@@ -104,25 +114,8 @@ func ShutdownCrowdsecRoutines() error {
 	}
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
-	parsersTomb.Kill(nil)
-	drainChan(inputEventChan)
+	drainChan(inEvents)
 
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("Parsers returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
-	bucketsTomb.Kill(nil)
-
-	if err := bucketsTomb.Wait(); err != nil {
-		log.Warningf("Buckets returned error : %s", err)
-		reterr = err
-	}
-
-	log.Debugf("buckets is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
 	done := make(chan error, 1)
@@ -145,13 +138,14 @@ func ShutdownCrowdsecRoutines() error {
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	lpMetricsTomb.Kill(nil)
+	cancel()
 
-	if err := lpMetricsTomb.Wait(); err != nil {
-		log.Warningf("Metrics returned error : %s", err)
-		reterr = err
+	if err := waitErrGroup(g, 3 * time.Second); err != nil {
+		log.WithError(err).Warn("timeout waiting for parser/bucket routines")
 	}
 
+	log.Debugf("parsers are done")
+	log.Debugf("buckets are done")
 	log.Debugf("metrics are done")
 
 	// He's dead, Jim.
@@ -222,12 +216,25 @@ func drainChan(c chan pipeline.Event) {
 	}
 }
 
-func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
-	var (
-		newConfig *csconfig.Config
-		err       error
-	)
+func unregisterWatcher(ctx context.Context, cConfig *csconfig.Config) (bool, error) {
+	if cConfig.API == nil || cConfig.API.Client == nil || !cConfig.API.Client.UnregisterOnExit {
+		return false, nil
+	}
 
+	lapiClient, err := apiclient.GetLAPIClient()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = lapiClient.Auth.UnregisterWatcher(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	signalChan := make(chan os.Signal, 1)
 
 	// We add os.Interrupt mostly to ease windows development,
@@ -246,7 +253,6 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 
-	Loop:
 		for {
 			s := <-signalChan
 			switch s {
@@ -254,29 +260,25 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 			case syscall.SIGHUP:
 				log.Warning("SIGHUP received, reloading")
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
-				if newConfig, err = reloadHandler(ctx, s); err != nil {
+				newConfig, err := reloadHandler(ctx, s)
+				if err != nil {
 					exitChan <- fmt.Errorf("reload handler failure: %w", err)
-
-					break Loop
+					return
 				}
 
-				if newConfig != nil {
-					cConfig = newConfig
-				}
+				cConfig = newConfig
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
 
-				if err = shutdown(s, cConfig); err != nil {
+				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- fmt.Errorf("failed shutdown: %w", err)
-
-					break Loop
+					return
 				}
 
 				exitChan <- nil
@@ -284,25 +286,16 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 		}
 	}()
 
-	err = <-exitChan
+	err := <-exitChan
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
 
-	if cConfig.API != nil && cConfig.API.Client != nil && cConfig.API.Client.UnregisterOnExit {
-		log.Warning("Unregistering watcher")
-
-		lapiClient, err := apiclient.GetLAPIClient()
-		if err != nil {
-			return err
+	if ok, werr := unregisterWatcher(ctx, cConfig); werr != nil {
+		log.WithError(werr).Warning("unregistering watcher")
+		if ok {
+			log.Warning("Watcher unregistered")
 		}
-
-		_, err = lapiClient.Auth.UnregisterWatcher(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to unregister watcher: %w", err)
-		}
-
-		log.Warning("Watcher unregistered")
 	}
 
 	return err
@@ -310,13 +303,10 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 
 func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
-	bucketsTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
-	lpMetricsTomb = tomb.Tomb{}
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig

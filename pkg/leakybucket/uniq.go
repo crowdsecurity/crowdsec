@@ -27,36 +27,30 @@ type Uniq struct {
 	CacheMutex       sync.Mutex
 }
 
-func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		element, err := getElement(msg, u.DistinctCompiled)
-		if err != nil {
-			leaky.logger.Errorf("Uniq filter exec failed : %v", err)
-			return &msg
-		}
-		leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
-		u.CacheMutex.Lock()
-		defer u.CacheMutex.Unlock()
-		if _, ok := u.KeyCache[element]; !ok {
-			leaky.logger.Debugf("Uniq(%s) : ok", element)
-			u.KeyCache[element] = true
-			return &msg
-		}
-		leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
-		return nil
-	}
-}
-
-func (*Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-		return alert, queue
-	}
-}
-
-func (*Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+	element, err := getElement(msg, u.DistinctCompiled)
+	if err != nil {
+		leaky.logger.Errorf("Uniq filter exec failed : %v", err)
 		return &msg
 	}
+	leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
+	u.CacheMutex.Lock()
+	defer u.CacheMutex.Unlock()
+	if _, ok := u.KeyCache[element]; !ok {
+		leaky.logger.Debugf("Uniq(%s) : ok", element)
+		u.KeyCache[element] = true
+		return &msg
+	}
+	leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
+	return nil
+}
+
+func (*Uniq) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return alert, queue
+}
+
+func (*Uniq) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
 func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
@@ -70,7 +64,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 		u.DistinctCompiled = &compiled
 	} else {
 		uniqExprCacheLock.Unlock()
-		//release the lock during compile
+		// release the lock during compile
 		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
 			return err

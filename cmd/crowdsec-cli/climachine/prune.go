@@ -25,7 +25,7 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 				"This can break installations if the machines are only temporarily disconnected. Continue?", false); err != nil {
 			return err
 		} else if !yes {
-			fmt.Println("User aborted prune. No changes were made.")
+			fmt.Fprintln(os.Stdout, "User aborted prune. No changes were made.")
 			return nil
 		}
 	}
@@ -42,7 +42,7 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 	}
 
 	if len(machines) == 0 {
-		fmt.Println("No machines to prune.")
+		fmt.Fprintln(os.Stdout, "No machines to prune.")
 		return nil
 	}
 
@@ -54,7 +54,7 @@ func (cli *cliMachines) prune(ctx context.Context, duration time.Duration, notVa
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
 		} else if !yes {
-			fmt.Println("User aborted prune. No changes were made.")
+			fmt.Fprintln(os.Stdout, "User aborted prune. No changes were made.")
 			return nil
 		}
 	}

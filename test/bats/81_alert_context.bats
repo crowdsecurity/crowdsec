@@ -30,7 +30,7 @@ teardown() {
 
 #----------
 
-@test "$FILE 1.1.1.172 has context" {
+@test "1.1.1.172 has context" {
     tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
     touch "$tmpfile"
 

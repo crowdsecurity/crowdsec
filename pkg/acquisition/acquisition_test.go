@@ -17,7 +17,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -73,8 +77,8 @@ func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource() {
-	AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
-	AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
+	registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
 }
 
 func TestDataSourceConfigure(t *testing.T) {
@@ -181,7 +185,8 @@ filename: foo.log
 			common := configuration.DataSourceCommonCfg{}
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
-			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone)
+			hub := cwhub.Hub{}
+			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone, &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -292,7 +297,8 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil)
+			hub := cwhub.Hub{}
+			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil, &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -392,7 +398,7 @@ func (*MockTail) GetUuid() string { return "" }
 
 func TestStartAcquisitionCat(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockCat{},
 	}
 	out := make(chan pipeline.Event)
@@ -420,7 +426,7 @@ READLOOP:
 
 func TestStartAcquisitionTail(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTail{},
 	}
 	out := make(chan pipeline.Event)
@@ -469,7 +475,7 @@ func (*MockTailError) StreamingAcquisition(_ context.Context, out chan pipeline.
 
 func TestStartAcquisitionTailError(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTailError{},
 	}
 	out := make(chan pipeline.Event)
@@ -548,11 +554,12 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
+	registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "")
+			hub := cwhub.Hub{}
+			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "", &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -583,7 +590,7 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&TailModeNoTailer{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
@@ -606,7 +613,7 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&CatModeNoFetcher{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }

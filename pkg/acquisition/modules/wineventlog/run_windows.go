@@ -98,7 +98,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 				}
 				for _, event := range renderedEvents {
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 					}
 					l := pipeline.Line{}
 					l.Raw = event
@@ -119,7 +119,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	handle, err := wevtapi.EvtQuery(localMachine, s.evtConfig.ChannelPath, s.evtConfig.Query, s.evtConfig.Flags)
 	if err != nil {
 		return fmt.Errorf("EvtQuery failed: %v", err)
@@ -137,7 +137,7 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 OUTER_LOOP:
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			s.logger.Infof("wineventlog is dying")
 			return nil
 		default:
@@ -152,7 +152,7 @@ OUTER_LOOP:
 			for _, evt := range evts {
 				s.logger.Tracef("Event: %s", evt)
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 				}
 				l := pipeline.Line{}
 				l.Raw = evt

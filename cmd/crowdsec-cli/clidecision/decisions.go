@@ -261,7 +261,6 @@ cscli decisions list --origin lists --scenario list_name
 	return cmd
 }
 
-//nolint:revive // we'll reduce the number of args later
 func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string, bypassAllowlist bool) error {
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin

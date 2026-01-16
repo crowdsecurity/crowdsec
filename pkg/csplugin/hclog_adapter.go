@@ -234,5 +234,7 @@ func safeString(str fmt.Stringer) (s string) {
 	} else {
 		s = str.String()
 	}
-	return //nolint:revive // bare return for the defer
+
+	//revive:disable-next-line:bare-return
+	return // bare return is required for the defer
 }

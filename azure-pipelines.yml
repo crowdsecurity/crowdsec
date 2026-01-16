@@ -114,11 +114,11 @@ stages:
               --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign crowdsec binaries"
           - pwsh: |
-              .\make_installer.ps1 -version '$(BuildVersion)'
+              .\build\windows\make_installer.ps1 -version '$(BuildVersion)'
             displayName: "Build Crowdsec MSI"
             name: BuildMSI
           - pwsh: |
-              .\make_chocolatey.ps1 -version '$(BuildVersion)'
+              .\build\windows\make_chocolatey.ps1 -version '$(BuildVersion)'
             displayName: "Build Chocolatey nupkg"
           - pwsh: |
               sign code azure-key-vault `

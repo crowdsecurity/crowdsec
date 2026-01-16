@@ -6,32 +6,26 @@ import (
 
 type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
-	OnBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
-	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
+	OnBucketPour(Bucket *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
+	OnBucketOverflow(Bucket *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
-	AfterBucketPour(Bucket *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event
+	AfterBucketPour(Bucket *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
 }
 
 type DumbProcessor struct{}
 
-func (*DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
+func (*DumbProcessor) OnBucketInit(_ *BucketFactory) error {
 	return nil
 }
 
-func (*DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		return &msg
-	}
+func (*DumbProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
-func (*DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-		return alert, queue
-	}
+func (*DumbProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return alert, queue
 }
 
-func (*DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		return &msg
-	}
+func (*DumbProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }

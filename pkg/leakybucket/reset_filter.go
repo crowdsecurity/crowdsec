@@ -30,41 +30,35 @@ var (
 	}
 )
 
-func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		var condition, ok bool
-		if u.CancelOnFilter != nil {
-			leaky.logger.Tracef("running cancel_on filter")
-			output, err := exprhelpers.Run(u.CancelOnFilter, map[string]any{"evt": &msg}, leaky.logger, u.Debug)
-			if err != nil {
-				leaky.logger.Warningf("cancel_on error : %s", err)
-				return &msg
-			}
-			if condition, ok = output.(bool); !ok {
-				leaky.logger.Warningf("cancel_on, unexpected non-bool return : %T", output)
-				return &msg
-			}
-			if condition {
-				leaky.logger.Debugf("reset_filter matched, kill bucket")
-				leaky.Suicide <- true
-				return nil //counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
-			}
-			leaky.logger.Debugf("reset_filter didn't match")
+func (u *CancelOnFilter) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+	var condition, ok bool
+	if u.CancelOnFilter != nil {
+		leaky.logger.Tracef("running cancel_on filter")
+		output, err := exprhelpers.Run(u.CancelOnFilter, map[string]any{"evt": &msg}, leaky.logger, u.Debug)
+		if err != nil {
+			leaky.logger.Warningf("cancel_on error : %s", err)
+			return &msg
 		}
-		return &msg
+		if condition, ok = output.(bool); !ok {
+			leaky.logger.Warningf("cancel_on, unexpected non-bool return : %T", output)
+			return &msg
+		}
+		if condition {
+			leaky.logger.Debugf("reset_filter matched, kill bucket")
+			leaky.Suicide <- true
+			return nil // counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
+		}
+		leaky.logger.Debugf("reset_filter didn't match")
 	}
+	return &msg
 }
 
-func (*CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, pipeline.RuntimeAlert, *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	return func(leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-		return alert, queue
-	}
+func (*CancelOnFilter) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return alert, queue
 }
 
-func (*CancelOnFilter) AfterBucketPour(bucketFactory *BucketFactory) func(pipeline.Event, *Leaky) *pipeline.Event {
-	return func(msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-		return &msg
-	}
+func (*CancelOnFilter) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
@@ -87,7 +81,7 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	}
 
 	cancelExprCacheLock.Unlock()
-	//release the lock during compile
+	// release the lock during compile
 
 	compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {

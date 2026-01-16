@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,49 +13,49 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func maybeGC(parsed pipeline.Event, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
-	log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
-	// when in forensics mode, garbage collect buckets
-	if cConfig.Crowdsec.BucketsGCEnabled {
-		if parsed.MarshaledTime != "" {
-			z := &time.Time{}
-			if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-				log.Warningf("Failed to parse time from event '%s': %s", parsed.MarshaledTime, err)
-			} else {
-				log.Warning("Starting buckets garbage collection ...")
-
-				if err = leaky.GarbageCollectBuckets(*z, buckets); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
+func shouldTriggerGC(count int) bool {
+	return count % 5000 == 0
 }
 
-func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
+func triggerGC(parsed pipeline.Event, buckets *leaky.Buckets, cConfig *csconfig.Config) {
+	log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
+	// when in forensics mode, garbage collect buckets
+	if !cConfig.Crowdsec.BucketsGCEnabled || parsed.MarshaledTime == "" {
+		return
+	}
+
+	z := &time.Time{}
+	if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
+		log.Warningf("Failed to parse time from event '%s': %s", parsed.MarshaledTime, err)
+		return
+	}
+
+	log.Warning("Starting buckets garbage collection ...")
+
+	leaky.GarbageCollectBuckets(*z, buckets)
+}
+
+func runPour(ctx context.Context, input chan pipeline.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) {
 	count := 0
 
 	for {
 		// bucket is now ready
 		select {
-		case <-bucketsTomb.Dying():
-			log.Infof("Bucket routine exiting")
-			return nil
+		case <-ctx.Done():
+			log.Info("Bucket routine exiting")
+			return
 		case parsed := <-input:
 			startTime := time.Now()
 
 			count++
-			if count%5000 == 0 {
-				if err := maybeGC(parsed, buckets, cConfig); err != nil {
-					return fmt.Errorf("failed to start bucket GC: %w", err)
-				}
+			if shouldTriggerGC(count) {
+				triggerGC(parsed, buckets, cConfig)
 			}
 			// here we can bucketify with parsed
-			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
+			track := flags.DumpDir != ""
+			poured, err := leaky.PourItemToHolders(ctx, parsed, holders, buckets, track)
 			if err != nil {
-				log.Errorf("bucketify failed for: %v with %s", parsed, err)
+				log.Warningf("bucketify failed for: %v with %s", parsed, err)
 				continue
 			}
 
@@ -66,12 +66,6 @@ func runPour(input chan pipeline.Event, holders []leaky.BucketFactory, buckets *
 				metrics.GlobalBucketPourOk.Inc()
 			} else {
 				metrics.GlobalBucketPourKo.Inc()
-			}
-
-			if parsed.MarshaledTime != "" {
-				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-					log.Warningf("failed to parse time from event : %s", err)
-				}
 			}
 		}
 	}

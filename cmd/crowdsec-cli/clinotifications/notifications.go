@@ -110,7 +110,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 	}
 
 	if err := filepath.Walk(cfg.ConfigPaths.NotificationDir, wf); err != nil {
-		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
+		return nil, fmt.Errorf("while loading notification plugin configuration: %w", err)
 	}
 
 	return pcfgs, nil

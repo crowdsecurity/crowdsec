@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 )
@@ -17,7 +15,7 @@ func (c *Client) GetConfigItem(ctx context.Context, key string) (string, error) 
 	case ent.IsNotFound(err):
 		return "", nil
 	case err != nil:
-		return "", errors.Wrapf(QueryFail, "select config item: %s", err)
+		return "", fmt.Errorf("select config item: %w: %w", err, QueryFail)
 	default:
 		return result.Value, nil
 	}

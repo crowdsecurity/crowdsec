@@ -20,18 +20,15 @@ func dedupAlerts(alerts []pipeline.RuntimeAlert) []*models.Alert {
 
 	for idx, alert := range alerts {
 		log.Tracef("alert %d/%d", idx, len(alerts))
-		// if we have more than one source, we need to dedup
-		if len(alert.Sources) == 0 || len(alert.Sources) == 1 {
+		if len(alert.Sources) <= 1 {
 			dedupCache = append(dedupCache, alert.Alert)
 			continue
 		}
 
-		for k := range alert.Sources {
-			refsrc := *alert.Alert // copy
-
+		// if we have more than one source, we need to dedup
+		for k, src := range alert.Sources {
 			log.Tracef("source[%s]", k)
-
-			src := alert.Sources[k]
+			refsrc := *alert.Alert // copy
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
 		}
@@ -57,8 +54,15 @@ func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *api
 
 var bucketOverflows []pipeline.Event
 
-func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pipeline.Event, buckets *leaky.Buckets, postOverflowCTX parser.UnixParserCtx,
-	postOverflowNodes []parser.Node, client *apiclient.ApiClient) error {
+func runOutput(
+	ctx context.Context,
+	input chan pipeline.Event,
+	overflow chan pipeline.Event,
+	buckets *leaky.Buckets,
+	postOverflowCTX parser.UnixParserCtx,
+	postOverflowNodes []parser.Node,
+	client *apiclient.ApiClient,
+) error {
 	var (
 		cache      []pipeline.RuntimeAlert
 		cacheMutex sync.Mutex
@@ -73,8 +77,7 @@ func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pip
 			if len(cache) > 0 {
 				cacheMutex.Lock()
 				cachecopy := cache
-				newcache := make([]pipeline.RuntimeAlert, 0)
-				cache = newcache
+				cache = nil
 				cacheMutex.Unlock()
 				/*
 					This loop needs to block as little as possible as scenarios directly write to the input chan
@@ -103,49 +106,48 @@ func runOutput(ctx context.Context, input chan pipeline.Event, overflow chan pip
 			}
 			return nil
 		case event := <-overflow:
+			ov := event.Overflow
 			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
-			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+			if ov.Alert == nil && ov.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
 			}
+
 			/* process post overflow parser nodes */
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
+			dump := flags.DumpDir != ""
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, dump)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 
-			log.Info(*event.Overflow.Alert.Message)
+			log.Info(*ov.Alert.Message)
 
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
-			if dumpStates && event.Overflow.Alert != nil {
-				if bucketOverflows == nil {
-					bucketOverflows = make([]pipeline.Event, 0)
-				}
-
+			if flags.DumpDir != "" && ov.Alert != nil {
 				bucketOverflows = append(bucketOverflows, event)
 			}
 
-			if event.Overflow.Whitelisted {
-				log.Infof("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
+			if ov.Whitelisted {
+				log.Infof("[%s] is whitelisted, skip.", *ov.Alert.Message)
 				continue
 			}
 
-			if event.Overflow.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
+			if ov.Reprocess {
 				select {
 				case input <- event:
-					log.Debugf("reprocessing overflow event")
-				case <-parsersTomb.Dead():
-					log.Debugf("parsing is dead, skipping")
+					log.Debug("Reprocessing overflow event")
+				case <-ctx.Done():
+					log.Debug("Reprocessing overflow event: parsing is dead, skipping")
 				}
 			}
-			if dumpStates {
+
+			if flags.DumpDir != "" {
 				continue
 			}
 
 			cacheMutex.Lock()
-			cache = append(cache, event.Overflow)
+			cache = append(cache, ov)
 			cacheMutex.Unlock()
 		}
 	}
