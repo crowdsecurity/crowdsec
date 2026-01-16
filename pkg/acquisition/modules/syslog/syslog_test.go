@@ -55,7 +55,7 @@ listen_addr: 10.0.0`,
 		},
 	}
 
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithField("type", "syslog")
 
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
@@ -166,7 +166,7 @@ disable_rfc_parser: true`,
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			subLogger := log.WithField("type", ModuleName)
+			subLogger := log.WithField("type", "syslog")
 			s := Source{}
 
 			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)

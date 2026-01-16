@@ -292,7 +292,7 @@ func TestOneShot(t *testing.T) {
 			c := make(chan pipeline.Event)
 			f := Source{}
 
-			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", ModuleName), "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
 			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
 				return

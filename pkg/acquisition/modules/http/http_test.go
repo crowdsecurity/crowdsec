@@ -175,7 +175,9 @@ custom_status_code: 999`,
 		},
 	}
 
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithFields(log.Fields{
+		"type": "http",
+	})
 
 	for _, test := range tests {
 		h := Source{}
@@ -213,7 +215,9 @@ func TestGetName(t *testing.T) {
 
 func SetupAndRunHTTPSource(t *testing.T, h *Source, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithFields(log.Fields{
+		"type": "http",
+	})
 	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
 

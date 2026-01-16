@@ -72,7 +72,7 @@ group_id: crowdsec`,
 		},
 	}
 
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithField("type", "kafka")
 
 	for _, test := range tests {
 		k := Source{}
@@ -150,7 +150,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecplaintext", "localhost:9092")
 
@@ -223,7 +223,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithField("type", "kafka")
 
 	createTopic("crowdsecssl", "localhost:9092")
 
