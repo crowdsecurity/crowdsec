@@ -1081,16 +1081,15 @@ func isInsideQuotedValue(s string, pos int) bool {
 			continue
 		}
 
+		// Check if this quote is escaped
 		backslashCount := 0
 		for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
 			backslashCount++
 		}
 
-		if backslashCount%2 == 1 {
-			continue
+		if backslashCount%2 == 0 {
+			inQuote = !inQuote
 		}
-
-		inQuote = !inQuote
 	}
 
 	return inQuote
