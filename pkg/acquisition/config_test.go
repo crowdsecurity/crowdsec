@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/goccy/go-yaml"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -90,6 +92,10 @@ func TestParseSourceConfig(t *testing.T) {
 
 	// load a hub, appsec needs it
 	hub := cwhub.Hub{}
+
+	// some tests use the mock datasource
+	restore := registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	t.Cleanup(restore)
 
 	suites := []suite{
 		{name: "valid", root: filepath.Join("testdata", "valid"), expectValid: true},
