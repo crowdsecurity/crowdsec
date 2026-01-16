@@ -407,11 +407,13 @@ func transform(
 			if err != nil {
 				logger.Errorf("while running transform expression: %s, sending event as-is", err)
 				output <- evt
+				continue
 			}
 
 			if out == nil {
 				logger.Errorf("transform expression returned nil, sending event as-is")
 				output <- evt
+				continue
 			}
 
 			switch v := out.(type) {
