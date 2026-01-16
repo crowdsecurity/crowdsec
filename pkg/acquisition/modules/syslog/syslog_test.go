@@ -118,7 +118,7 @@ disable_rfc_parser: true`,
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			subLogger := log.WithField("type", "syslog")
+			subLogger := log.WithField("type", ModuleName)
 			s := Source{}
 
 			err := s.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)

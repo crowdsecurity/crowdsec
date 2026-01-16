@@ -120,7 +120,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -165,7 +165,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -214,7 +214,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -258,7 +258,7 @@ use_enhanced_fanout: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
+		err := f.Configure([]byte(config), log.WithField("type", ModuleName))
 		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)

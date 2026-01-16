@@ -51,7 +51,7 @@ func TestGetName(t *testing.T) {
 func SetupAndRunHTTPSource(t *testing.T, h *Source, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
 	subLogger := log.WithFields(log.Fields{
-		"type": "http",
+		"type": ModuleName,
 	})
 	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
