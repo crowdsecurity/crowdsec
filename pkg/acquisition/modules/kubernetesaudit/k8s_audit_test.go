@@ -79,7 +79,7 @@ webhook_path: /k8s-audit`,
 		},
 	}
 
-	subLogger := log.WithField("type", "k8s-audit")
+	subLogger := log.WithField("type", ModuleName)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -225,7 +225,7 @@ func TestHandler(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithField("type", "k8s-audit")
+	subLogger := log.WithField("type", ModuleName)
 
 	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

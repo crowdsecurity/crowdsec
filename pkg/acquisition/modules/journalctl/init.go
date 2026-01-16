@@ -14,7 +14,9 @@ var (
 	_ types.MetricsProvider     = (*Source)(nil)
 )
 
+const ModuleName = "journalctl"
+
 //nolint:gochecknoinits
 func init() {
-	registry.RegisterFactory("journalctl", func() types.DataSource { return &Source{} })
+	registry.RegisterFactory(ModuleName, func() types.DataSource { return &Source{} })
 }

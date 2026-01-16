@@ -25,7 +25,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "journalctl"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

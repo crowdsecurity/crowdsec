@@ -98,7 +98,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 				}
 				for _, event := range renderedEvents {
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 					}
 					l := pipeline.Line{}
 					l.Raw = event
@@ -152,7 +152,7 @@ OUTER_LOOP:
 			for _, evt := range evts {
 				s.logger.Tracef("Event: %s", evt)
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 				}
 				l := pipeline.Line{}
 				l.Raw = evt
