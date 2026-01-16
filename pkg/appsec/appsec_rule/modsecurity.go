@@ -143,7 +143,8 @@ func (m *ModsecurityRule) buildRulesWithPhase(rule *CustomRule, appsecRuleName s
 	if rule.And != nil {
 		// For chained rules (AND), all must be in the same phase
 		// Find the highest required phase for all rules in the chain
-		chainPhase := m.determineChainPhase(rule)
+		// Also respect forcedPhase from parent (e.g., if inside an OR that requires phase 2)
+		chainPhase := max(forcedPhase, m.determineChainPhase(rule))
 		for c, andRule := range rule.And {
 			depth++
 			andRule.Severity = rule.Severity
@@ -158,13 +159,16 @@ func (m *ModsecurityRule) buildRulesWithPhase(rule *CustomRule, appsecRuleName s
 	}
 
 	if rule.Or != nil {
-		// For OR rules, each can have its own optimal phase
+		// For OR rules using skip, all must be in the same phase
+		// Determine the max phase needed across all OR rules
+		// Also respect forcedPhase from parent (e.g., if inside an AND chain that requires phase 2)
+		orPhase := max(forcedPhase, m.determineOrPhase(rule))
 		for c, orRule := range rule.Or {
 			depth++
 			orRule.Severity = rule.Severity
 			skip := len(rule.Or) - c - 1
 			root := c == 0
-			rules, err := m.buildRulesWithPhase(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root, forcedPhase)
+			rules, err := m.buildRulesWithPhase(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root, orPhase)
 			if err != nil {
 				return nil, err
 			}
@@ -276,13 +280,11 @@ func (m *ModsecurityRule) buildRulesWithPhase(rule *CustomRule, appsecRuleName s
 
 // determineOptimalPhase determines the optimal phase for a rule based on its zones
 func (*ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int) int {
-	if forcedPhase > 0 {
-		return forcedPhase
-	}
+	minPhase := 1
 
 	// If rule has body type specified, it requires phase 2
 	if rule.BodyType != "" {
-		return 2
+		minPhase = 2
 	}
 
 	// Check all zones used by this rule
@@ -290,17 +292,19 @@ func (*ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int)
 		zoneInfo, ok := GetZone(zoneName)
 		if !ok {
 			// Unknown zone, default to phase 2 for safety
-			return 2
+			minPhase = 2
+			break
 		}
 
 		// If any zone requires phase 2, the whole rule must be phase 2
 		if zoneInfo.RequiresPhase2() {
-			return 2
+			minPhase = 2
+			break
 		}
 	}
 
-	// If all zones are phase 1 suitable, use phase 1 for optimization
-	return 1
+	// Return the higher of forcedPhase and the rule's minimum required phase
+	return max(forcedPhase, minPhase)
 }
 
 // determineChainPhase determines the required phase for a chain of AND rules
@@ -315,6 +319,34 @@ func (m *ModsecurityRule) determineChainPhase(rule *CustomRule) int {
 		// Recursively check nested AND chains
 		if len(andRule.And) > 0 {
 			maxPhase = max(maxPhase, m.determineChainPhase(&andRule))
+		}
+
+		// Also check nested OR rules within AND children
+		if len(andRule.Or) > 0 {
+			maxPhase = max(maxPhase, m.determineOrPhase(&andRule))
+		}
+	}
+
+	return max(maxPhase, 1)
+}
+
+// determineOrPhase determines the required phase for OR rules (using skip)
+// All OR rules must be in the same phase for skip to work correctly
+func (m *ModsecurityRule) determineOrPhase(rule *CustomRule) int {
+	maxPhase := m.determineOptimalPhase(rule, 0)
+
+	// Check all OR rules
+	for _, orRule := range rule.Or {
+		maxPhase = max(maxPhase, m.determineOptimalPhase(&orRule, 0))
+
+		// Recursively check nested OR rules
+		if len(orRule.Or) > 0 {
+			maxPhase = max(maxPhase, m.determineOrPhase(&orRule))
+		}
+
+		// Also check nested AND rules within OR branches
+		if len(orRule.And) > 0 {
+			maxPhase = max(maxPhase, m.determineChainPhase(&orRule))
 		}
 	}
 

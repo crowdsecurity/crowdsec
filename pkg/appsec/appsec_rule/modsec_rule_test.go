@@ -341,7 +341,7 @@ SecRule REQUEST_METHOD "@streq GET" "id:1698112565,phase:1,deny,log,msg:'test ru
 SecRule ARGS_POST:action "@streq delete" "id:1325966539,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Chained Rules - Phase 2 Required',tag:'cs-custom-rule'"`,
 		},
 		{
-			name: "OR Rules - Phase 2 First, Phase 1 Second",
+			name: "OR Rules - All Use Max Phase",
 			rule: CustomRule{
 				Or: []CustomRule{
 					{
@@ -356,8 +356,9 @@ SecRule ARGS_POST:action "@streq delete" "id:1325966539,phase:2,deny,log,msg:'te
 					},
 				},
 			},
-			expected: `SecRule ARGS_POST:username "@streq admin" "id:801106468,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - Phase 2 First, Phase 1 Second',tag:'cs-custom-rule',severity:'emergency',skip:1"
-SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:3776099319,phase:1,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - Phase 2 First, Phase 1 Second',tag:'cs-custom-rule'"`,
+			// Both rules must be phase 2 because OR uses skip, which requires same phase
+			expected: `SecRule ARGS_POST:username "@streq admin" "id:1971397178,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - All Use Max Phase',tag:'cs-custom-rule',severity:'emergency',skip:1"
+SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:3649305393,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - All Use Max Phase',tag:'cs-custom-rule'"`,
 		},
 		{
 			name: "AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)",
@@ -377,6 +378,77 @@ SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:3776099319,phase:
 			},
 			expected: `SecRule ARGS_POST:username "@streq admin" "id:3508654757,phase:2,deny,log,msg:'test rule',tag:'crowdsec-AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)',tag:'cs-custom-rule',severity:'emergency',chain"
 SecRule REQUEST_HEADERS:Authorization "@beginsWith Bearer" "id:438006436,phase:2,deny,log,msg:'test rule',tag:'crowdsec-AND Rules - Phase 2 First, Phase 1 Second (Both Forced to Phase 2)',tag:'cs-custom-rule'"`,
+		},
+		{
+			name: "OR Rules - All Phase 1",
+			rule: CustomRule{
+				Or: []CustomRule{
+					{
+						Zones:     []string{"HEADERS"},
+						Variables: []string{"User-Agent"},
+						Match:     Match{Type: "contains", Value: "bot"},
+					},
+					{
+						Zones: []string{"METHOD"},
+						Match: Match{Type: "equals", Value: "POST"},
+					},
+				},
+			},
+			// All phase 1, so all rules stay phase 1
+			expected: `SecRule REQUEST_HEADERS:User-Agent "@contains bot" "id:2414335292,phase:1,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - All Phase 1',tag:'cs-custom-rule',severity:'emergency',skip:1"
+SecRule REQUEST_METHOD "@streq POST" "id:4100634459,phase:1,deny,log,msg:'test rule',tag:'crowdsec-OR Rules - All Phase 1',tag:'cs-custom-rule'"`,
+		},
+		{
+			name: "Nested AND Chain - Inner Phase 2 Forces Outer",
+			rule: CustomRule{
+				And: []CustomRule{
+					{
+						Zones: []string{"HEADERS"},
+						Match: Match{Type: "contains", Value: "bot"},
+					},
+					{
+						Zones: []string{"METHOD"},
+						Match: Match{Type: "equals", Value: "POST"},
+						And: []CustomRule{
+							{
+								Zones:     []string{"BODY_ARGS"},
+								Variables: []string{"action"},
+								Match:     Match{Type: "equals", Value: "delete"},
+							},
+						},
+					},
+				},
+			},
+			// Nested AND has BODY_ARGS (phase 2), so entire chain is phase 2
+			expected: `SecRule REQUEST_HEADERS "@contains bot" "id:2470939732,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested AND Chain - Inner Phase 2 Forces Outer',tag:'cs-custom-rule',severity:'emergency',chain"
+SecRule ARGS_POST:action "@streq delete" "id:1632333098,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested AND Chain - Inner Phase 2 Forces Outer',tag:'cs-custom-rule',severity:'emergency'"
+SecRule REQUEST_METHOD "@streq POST" "id:1650126244,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested AND Chain - Inner Phase 2 Forces Outer',tag:'cs-custom-rule'"`,
+		},
+		{
+			name: "Nested OR - Inner Phase 2 Forces All",
+			rule: CustomRule{
+				Or: []CustomRule{
+					{
+						Zones: []string{"METHOD"},
+						Match: Match{Type: "equals", Value: "GET"},
+					},
+					{
+						Zones: []string{"HEADERS"},
+						Match: Match{Type: "contains", Value: "bot"},
+						Or: []CustomRule{
+							{
+								Zones:     []string{"BODY_ARGS"},
+								Variables: []string{"id"},
+								Match:     Match{Type: "regex", Value: "[0-9]+"},
+							},
+						},
+					},
+				},
+			},
+			// Nested OR has BODY_ARGS (phase 2), so all OR rules use phase 2
+			expected: `SecRule REQUEST_METHOD "@streq GET" "id:1188325159,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested OR - Inner Phase 2 Forces All',tag:'cs-custom-rule',severity:'emergency',skip:1"
+SecRule ARGS_POST:id "@rx [0-9]+" "id:3600614865,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested OR - Inner Phase 2 Forces All',tag:'cs-custom-rule',severity:'emergency'"
+SecRule REQUEST_HEADERS "@contains bot" "id:3038570991,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Nested OR - Inner Phase 2 Forces All',tag:'cs-custom-rule'"`,
 		},
 	}
 
