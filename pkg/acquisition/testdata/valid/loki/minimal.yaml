@@ -1,0 +1,5 @@
+source: loki
+labels:
+  type: sometype
+query: >
+        {server="demo"}

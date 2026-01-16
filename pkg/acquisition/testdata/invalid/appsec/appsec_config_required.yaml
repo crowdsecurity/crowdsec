@@ -1,0 +1,4 @@
+# wantErr: datasource of type appsec: unable to parse appsec configuration: appsec_config or appsec_config_path must be set
+source: appsec
+labels:
+  type: sometype

@@ -18,50 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	tests := []struct {
-		config      string
-		name        string
-		expectedErr string
-	}{
-		{
-			name: "unknown field",
-			config: `source: k8s-audit
-foobar: asd.log`,
-			expectedErr: `[2:1] unknown field "foobar"`,
-		},
-		{
-			name:        "missing listen_addr",
-			config:      `source: k8s-audit`,
-			expectedErr: "listen_addr cannot be empty",
-		},
-		{
-			name: "missing listen_port",
-			config: `source: k8s-audit
-listen_addr: 0.0.0.0`,
-			expectedErr: "listen_port cannot be empty",
-		},
-		{
-			name: "mismatched types",
-			config: `
-source: k8s-audit
-listen_addr: 0.0.0.0
-listen_port: true
-`,
-			expectedErr: `[4:14] cannot unmarshal bool into Go struct field Configuration.ListenPort of type int`,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := Source{}
-
-			err := f.UnmarshalConfig([]byte(test.config))
-			cstest.RequireErrorContains(t, err, test.expectedErr)
-		})
-	}
-}
-
 func TestInvalidConfig(t *testing.T) {
 	ctx := t.Context()
 	tests := []struct {

@@ -256,7 +256,7 @@ teardown() {
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: missing labels in $ACQUIS_DIR/foo.yaml (position 0)"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/foo.yaml: missing 'source' field"
 }
 
 @test "crowdsec (error if acquisition_path and acquisition_dir are not defined)" {
@@ -376,12 +376,12 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_YAML: datasource of type file: no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_YAML (position 0): cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_YAML: datasource of type file: cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
 }
 
 @test "crowdsec --dump-data" {

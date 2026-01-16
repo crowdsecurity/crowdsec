@@ -1,0 +1,5 @@
+# Under windows, don't mess with line endings at least for yaml test files,
+# otherwise the reported line numbers don't match the expected errors.
+
+**/testdata/**/*.yaml  text eol=lf
+**/testdata/**/*.yml   text eol=lf

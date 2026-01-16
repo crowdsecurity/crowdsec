@@ -1,0 +1,8 @@
+# wantErr: datasource of type kafka: cannot create kafka dialer: strconv.Atoi: parsing "aa": invalid syntax
+source: kafka
+labels:
+  type: sometype
+brokers:
+  - bla
+topic: toto
+timeout: aa

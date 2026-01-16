@@ -1,0 +1,4 @@
+# wantErr: datasource of type file: no filename or filenames configuration provided
+source: file
+labels:
+  type: sometype

@@ -1,0 +1,5 @@
+# wantErr: datasource of type kafka: cannot parse: [5:1] unknown field "foobar"
+source: kafka
+labels:
+  type: sometype
+foobar: bla

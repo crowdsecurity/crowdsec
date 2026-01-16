@@ -1,0 +1,10 @@
+source: victorialogs
+labels:
+  type: sometype
+url: http://localhost:9428/
+wait_for_ready: 5s
+auth:
+  username: foo
+  password: bar
+query: >
+        {server="demo"}

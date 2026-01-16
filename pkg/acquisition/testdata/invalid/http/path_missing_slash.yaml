@@ -1,0 +1,6 @@
+# wantErr: datasource of type http: path must start with /
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: wrongpath
