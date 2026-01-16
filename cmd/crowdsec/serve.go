@@ -22,8 +22,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -35,16 +33,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
-	var (
-		pourCollector *leakybucket.PourCollector
-		stageCollector *parser.StageParseCollector
-		bucketOverflows []pipeline.Event
-	)
-
-	if flags.DumpDir != "" {
-		pourCollector = leakybucket.NewPourCollector()
-		stageCollector = parser.NewStageParseCollector()
-	}
+	sd := NewStateDumper(flags.DumpDir)
 
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
@@ -90,7 +79,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector, bucketOverflows)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
 	}
 
 	log.Info("Reload is finished")
@@ -318,9 +307,7 @@ func Serve(
 	ctx context.Context,
 	cConfig *csconfig.Config,
 	agentReady chan bool,
-	pourCollector *leakybucket.PourCollector,
-	stageCollector *parser.StageParseCollector,
-	bucketOverflows []pipeline.Event,
+	sd *StateDumper,
 ) error {
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
@@ -394,7 +381,7 @@ func Serve(
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, pourCollector, stageCollector, bucketOverflows)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
 		} else {
 			agentReady <- true
 		}

@@ -26,7 +26,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -214,18 +213,9 @@ func run(flags Flags) error {
 		return err
 	}
 
-	var (
-		pourCollector *leakybucket.PourCollector
-		stageCollector *parser.StageParseCollector
-		bucketOverflows []pipeline.Event
-	)
+	sd := NewStateDumper(flags.DumpDir)
 
-	if flags.DumpDir != "" {
-		pourCollector = leakybucket.NewPourCollector()
-		stageCollector = parser.NewStageParseCollector()
-	}
-
-	return StartRunSvc(ctx, cConfig, pourCollector, stageCollector, bucketOverflows)
+	return StartRunSvc(ctx, cConfig, sd)
 }
 
 func main() {

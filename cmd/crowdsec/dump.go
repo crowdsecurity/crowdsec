@@ -12,21 +12,42 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dumpAllStates(dir string, pourCollector *leakybucket.PourCollector, stageCollector *parser.StageParseCollector, bucketOverflows []pipeline.Event) error {
+type StateDumper struct {
+	DumpDir string
+	Pour *leakybucket.PourCollector
+	StageParse *parser.StageParseCollector
+	BucketOverflows []pipeline.Event
+}
+
+func NewStateDumper(dumpDir string) *StateDumper {
+	if dumpDir == "" {
+		return &StateDumper{}
+	}
+
+	return &StateDumper{
+		DumpDir:    dumpDir,
+		Pour:       leakybucket.NewPourCollector(),
+		StageParse: parser.NewStageParseCollector(),
+	}
+}
+
+func (sd *StateDumper) Dump() error {
+	dir := sd.DumpDir
+
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	if err := dumpCollector(dir, "parser-dump.yaml", stageCollector); err != nil {
+	if err := dumpCollector(dir, "parser-dump.yaml", sd.StageParse); err != nil {
 		return fmt.Errorf("dumping parser state: %w", err)
 	}
 
-	if err := dumpState(dir, "bucket-dump.yaml", bucketOverflows); err != nil {
+	if err := dumpState(dir, "bucket-dump.yaml", sd.BucketOverflows); err != nil {
 		return fmt.Errorf("dumping bucket overflow state: %w", err)
 	}
 
-	if err := dumpCollector(dir, "bucketpour-dump.yaml", pourCollector); err != nil {
+	if err := dumpCollector(dir, "bucketpour-dump.yaml", sd.Pour); err != nil {
 		return fmt.Errorf("dumping bucket pour state: %w", err)
 	}
 

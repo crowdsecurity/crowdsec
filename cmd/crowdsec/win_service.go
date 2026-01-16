@@ -18,12 +18,11 @@ import (
 	"golang.org/x/sys/windows/svc/eventlog"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 )
 
 type crowdsec_winservice struct {
 	config *csconfig.Config
-	pourCollector *leakybucket.PourCollector
+	stateDumper *StateDumper
 }
 
 func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
@@ -63,7 +62,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 		log.Fatal(err)
 	}
 
-	err = WindowsRun(ctx, cConfig, m.pourCollector)
+	err = WindowsRun(ctx, cConfig, m.stateDumper)
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +71,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	return false, 0
 }
 
-func runService(name string, pourCollector *leakybucket.PourCollector) error {
+func runService(name string, sd *StateDumper) error {
 	// All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
 	err := eventlog.InstallAsEventCreate("CrowdSec", eventlog.Error|eventlog.Warning|eventlog.Info)
 	if err != nil {
@@ -112,7 +111,7 @@ func runService(name string, pourCollector *leakybucket.PourCollector) error {
 	}
 
 	log.Infof("starting %s service", name)
-	winsvc := crowdsec_winservice{config: cConfig, pourCollector: pourCollector}
+	winsvc := crowdsec_winservice{config: cConfig, stateDumper: sd}
 
 	if err := svc.Run(name, &winsvc); err != nil {
 		return fmt.Errorf("%s service failed: %w", name, err)

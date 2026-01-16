@@ -142,15 +142,13 @@ func runCrowdsec(
 	parsers *parser.Parsers,
 	hub *cwhub.Hub,
 	datasources []acquisitionTypes.DataSource,
-	pourCollector *leakybucket.PourCollector,
-	stageCollector *parser.StageParseCollector,
-	bucketOverflows []pipeline.Event,
+	sd *StateDumper,
 ) error {
 	inEvents = make(chan pipeline.Event)
 	logLines = make(chan pipeline.Event)
 
-	startParserRoutines(ctx, g, cConfig, parsers, stageCollector)
-	startBucketRoutines(ctx, g, cConfig, pourCollector)
+	startParserRoutines(ctx, g, cConfig, parsers, sd.StageParse)
+	startBucketRoutines(ctx, g, cConfig, sd.Pour)
 
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
@@ -159,7 +157,7 @@ func runCrowdsec(
 
 	startHeartBeat(ctx, cConfig, apiClient)
 
-	startOutputRoutines(ctx, cConfig, parsers, apiClient, stageCollector, bucketOverflows)
+	startOutputRoutines(ctx, cConfig, parsers, apiClient, sd.StageParse, sd.BucketOverflows)
 
 	if err := startLPMetrics(ctx, cConfig, apiClient, hub, datasources); err != nil {
 		return err
@@ -182,9 +180,7 @@ func serveCrowdsec(
 	hub *cwhub.Hub,
 	datasources []acquisitionTypes.DataSource,
 	agentReady chan bool,
-	pourCollector *leakybucket.PourCollector,
-	stageCollector *parser.StageParseCollector,
-	bucketOverflows []pipeline.Event,
+	sd *StateDumper,
 ) {
 	cctx, cancel := context.WithCancel(ctx)
 
@@ -200,7 +196,7 @@ func serveCrowdsec(
 
 			agentReady <- true
 
-			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, pourCollector, stageCollector, bucketOverflows); err != nil {
+			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -217,11 +213,12 @@ func serveCrowdsec(
 		}
 
 		log.Debugf("everything is dead, return crowdsecTomb")
+		log.Debugf("sd.DumpDir == %s", sd.DumpDir)
 
-		if flags.DumpDir != "" {
-			log.Debugf("Dumping parser+bucket states to %s", flags.DumpDir)
+		if sd.DumpDir != "" {
+			log.Debugf("Dumping parser+bucket states to %s", sd.DumpDir)
 
-			if err := dumpAllStates(flags.DumpDir, pourCollector, stageCollector, bucketOverflows); err != nil {
+			if err := sd.Dump(); err != nil {
 				log.Fatal(err)
 			}
 

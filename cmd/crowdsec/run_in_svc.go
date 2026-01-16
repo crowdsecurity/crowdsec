@@ -16,9 +16,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func isWindowsService() (bool, error) {
@@ -28,9 +25,7 @@ func isWindowsService() (bool, error) {
 func StartRunSvc(
 	ctx context.Context,
 	cConfig *csconfig.Config,
-	pourCollector *leakybucket.PourCollector,
-	stageCollector *parser.StageParseCollector,
-	bucketOverflows []pipeline.Event,
+	sd *StateDumper,
 ) error {
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
@@ -72,5 +67,5 @@ func StartRunSvc(
 		}()
 	}
 
-	return Serve(ctx, cConfig, agentReady, pourCollector, stageCollector, bucketOverflows)
+	return Serve(ctx, cConfig, agentReady, sd)
 }
