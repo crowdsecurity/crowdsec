@@ -194,7 +194,7 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	input.ResponseChannel = make(chan appsec.AppsecTempResponse)
 
 	// collect both responses and events until no activity for idleDuration
-	idleDuration := 50 * time.Millisecond
+	idleDuration := 200 * time.Millisecond
 	idle := time.NewTimer(idleDuration)
 	defer idle.Stop()
 
