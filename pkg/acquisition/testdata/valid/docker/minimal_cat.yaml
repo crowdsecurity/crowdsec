@@ -1,0 +1,4 @@
+mode: cat
+source: docker
+container_name:
+ - toto

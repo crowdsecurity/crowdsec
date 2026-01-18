@@ -66,12 +66,12 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/oschwald/maxminddb-golang v1.12.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.66.1
 	github.com/r3labs/diff/v2 v2.15.1
 	github.com/sanity-io/litter v1.5.8
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/segmentio/kafka-go v0.4.48
 	github.com/shirou/gopsutil/v4 v4.25.8
 	github.com/sirupsen/logrus v1.9.3

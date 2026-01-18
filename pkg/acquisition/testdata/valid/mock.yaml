@@ -1,0 +1,4 @@
+source: mock
+toto: toto
+labels:
+  type: sometype

@@ -33,6 +33,8 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
+	sd := NewStateDumper(flags.DumpDir)
+
 	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
 		return nil, err
@@ -77,7 +79,7 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
 	}
 
 	log.Info("Reload is finished")
@@ -301,7 +303,12 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	return err
 }
 
-func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) error {
+func Serve(
+	ctx context.Context,
+	cConfig *csconfig.Config,
+	agentReady chan bool,
+	sd *StateDumper,
+) error {
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
@@ -374,7 +381,7 @@ func Serve(ctx context.Context, cConfig *csconfig.Config, agentReady chan bool) 
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
 		} else {
 			agentReady <- true
 		}

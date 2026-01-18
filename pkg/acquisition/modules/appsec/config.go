@@ -128,6 +128,10 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return fmt.Errorf("unable to parse appsec configuration: %w", err)
 	}
 
+	if w.lapiClientConfig.Credentials == nil {
+		return errors.New("missing lapi client credentials")
+	}
+
 	w.lapiURL = fmt.Sprintf("%sv1/decisions/stream", w.lapiClientConfig.Credentials.URL)
 	w.AuthCache = NewAuthCache()
 

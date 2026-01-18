@@ -1,0 +1,5 @@
+# wantErr: datasource of type victorialogs: cannot parse VictoriaLogs acquisition configuration: [5:1] unknown field "foobar"
+source: victorialogs
+labels:
+  type: sometype
+foobar: asd.log

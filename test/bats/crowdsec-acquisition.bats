@@ -33,7 +33,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field Configuration.Filename of type string"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: datasource of type file: cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field Configuration.Filename of type string"
 }
 
 @test "empty acquisition file" {
@@ -50,7 +50,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: missing 'source' field in $ACQUIS_DIR/file.yaml (position 0)"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: missing 'source' field"
 }
 
 @test "malformed acquisition file (duplicate key)" {
@@ -62,7 +62,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: failed to parse $ACQUIS_DIR/file.yaml: position 0: [3:1] mapping key \"filename\" already defined at [1:1]"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: position 0: [3:1] mapping key \"filename\" already defined at [1:1]"
 }
 
 @test "datasource type detection" {
@@ -82,8 +82,8 @@ teardown() {
 	EOT
 
     rune -0 "$CROWDSEC" -t
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/file.yaml (position 0): detected 'source=file'"
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/file.yaml (position 1): detected 'source=file'"
+    assert_stderr --partial "$ACQUIS_DIR/file.yaml (position 0): datasource type missing, detected 'source=file'"
+    assert_stderr --partial "$ACQUIS_DIR/file.yaml (position 1): datasource type missing, detected 'source=file'"
 
     rm -f  "$ACQUIS_DIR/file.yaml"
 
@@ -96,7 +96,7 @@ teardown() {
 
     rune -0 "$CROWDSEC" -t
 
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/journal.yaml (position 0): detected 'source=journalctl'"
+    assert_stderr --partial "$ACQUIS_DIR/journal.yaml: datasource type missing, detected 'source=journalctl'"
 
     rm -f  "$ACQUIS_DIR/journal.yaml"
 
@@ -113,7 +113,7 @@ teardown() {
 
     rune -1 "$CROWDSEC" -t
 
-    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/bad.yaml: datasource of type docker: while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
 }
 
 @test "datasource docker (regexp)" {
@@ -126,7 +126,7 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: configuring datasource of type docker from $ACQUIS_DIR/bad.yaml (position 0): container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/bad.yaml: datasource of type docker: container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
 }
 
 @test "test mode does not fail because of appsec and allowlists" {

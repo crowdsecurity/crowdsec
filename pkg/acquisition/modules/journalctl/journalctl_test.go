@@ -21,44 +21,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	cstest.SkipOnWindows(t)
-
-	ctx := t.Context()
-
-	tests := []struct {
-		config  string
-		wantErr string
-	}{
-		{
-			config:  `foobar: asd.log`,
-			wantErr: `cannot parse: [1:1] unknown field "foobar"`,
-		},
-		{
-			config: `
-mode: tail
-source: journalctl`,
-			wantErr: "journalctl_filter is required",
-		},
-		{
-			config: `
-mode: cat
-source: journalctl
-journalctl_filter:
- - _UID=42`,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.config, func(t *testing.T) {
-			f := Source{}
-			logger, _ := logtest.NewNullLogger()
-			err := f.Configure(ctx, []byte(tc.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
 	cstest.SkipOnWindows(t)
 

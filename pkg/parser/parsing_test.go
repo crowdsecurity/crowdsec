@@ -316,7 +316,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 	var results []pipeline.Event
 
 	for _, in := range testSet.Lines {
-		out, err := Parse(pctx, in, nodes, false)
+		out, err := Parse(pctx, in, nodes, nil)
 		if err != nil {
 			log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
 		}

@@ -22,7 +22,11 @@ func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
+func StartRunSvc(
+	ctx context.Context,
+	cConfig *csconfig.Config,
+	sd *StateDumper,
+) error {
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
 	// Always try to stop CPU profiling to avoid passing flags around
@@ -63,5 +67,5 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 		}()
 	}
 
-	return Serve(ctx, cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady, sd)
 }

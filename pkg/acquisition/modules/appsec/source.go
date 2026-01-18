@@ -78,7 +78,7 @@ func (w *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "appsec"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

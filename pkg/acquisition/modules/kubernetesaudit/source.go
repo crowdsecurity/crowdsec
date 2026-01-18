@@ -28,7 +28,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "k8s-audit"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

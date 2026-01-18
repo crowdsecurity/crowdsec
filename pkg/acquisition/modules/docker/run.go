@@ -97,7 +97,7 @@ func (d *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 					l.Module = d.GetName()
 
 					if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
+						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": containerConfig.Name, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 					}
 
 					evt := pipeline.MakeEvent(true, pipeline.LOG, true)
@@ -668,7 +668,7 @@ func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerC
 			evt.Line = l
 
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": "docker", "acquis_type": evt.Line.Labels["type"]}).Inc()
+				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": ModuleName, "acquis_type": evt.Line.Labels["type"]}).Inc()
 			}
 
 			outChan <- evt
@@ -787,7 +787,7 @@ func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfi
 			evt.Line = l
 
 			if d.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": service.Name, "acquis_type": l.Labels["type"], "datasource_type": "docker"}).Inc()
+				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": service.Name, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 			}
 
 			outChan <- evt

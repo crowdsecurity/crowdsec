@@ -112,8 +112,6 @@ linters:
     depguard:
       rules:
         wrap:
-          files:
-            - '!**/pkg/database/*.go'
           deny:
             - pkg: github.com/pkg/errors
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
@@ -145,7 +143,7 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - syscall.FreeLibrary
+        - golang.org/x/sys/windows.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
         - (*golang.org/x/sys/windows/svc/eventlog.Log).Info

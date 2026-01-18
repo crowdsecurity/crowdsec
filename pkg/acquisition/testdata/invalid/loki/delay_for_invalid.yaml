@@ -1,0 +1,7 @@
+# wantErr: datasource of type loki: delay_for should be a value between 1s and 5s
+source: loki
+labels:
+  type: sometype
+delay_for: 10s
+query: >
+        {server="demo"}

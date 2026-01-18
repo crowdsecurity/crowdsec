@@ -52,8 +52,6 @@ func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *api
 	return nil
 }
 
-var bucketOverflows []pipeline.Event
-
 func runOutput(
 	ctx context.Context,
 	input chan pipeline.Event,
@@ -62,6 +60,7 @@ func runOutput(
 	postOverflowCTX parser.UnixParserCtx,
 	postOverflowNodes []parser.Node,
 	client *apiclient.ApiClient,
+	sd *StateDumper,
 ) error {
 	var (
 		cache      []pipeline.RuntimeAlert
@@ -114,8 +113,7 @@ func runOutput(
 			}
 
 			/* process post overflow parser nodes */
-			dump := flags.DumpDir != ""
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, dump)
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, sd.StageParse)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
@@ -125,7 +123,7 @@ func runOutput(
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
 			if flags.DumpDir != "" && ov.Alert != nil {
-				bucketOverflows = append(bucketOverflows, event)
+				sd.BucketOverflows = append(sd.BucketOverflows, event)
 			}
 
 			if ov.Whitelisted {

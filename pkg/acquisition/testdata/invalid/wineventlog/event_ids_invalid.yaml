@@ -1,0 +1,5 @@
+# wantErr: datasource of type wineventlog: cannot parse wineventlog configuration: [5:12] boolean was used where sequence is expected
+source: wineventlog
+labels:
+  type: sometype
+event_ids: true

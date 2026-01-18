@@ -76,15 +76,19 @@ func (*MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") 
 func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
-func appendMockSource() {
-	registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
-	registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+func appendMockSource(t *testing.T) {
+	t.Helper()
+
+	restore := registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	t.Cleanup(restore)
+	restore = registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+	t.Cleanup(restore)
 }
 
 func TestDataSourceConfigure(t *testing.T) {
 	ctx := t.Context()
 
-	appendMockSource()
+	appendMockSource(t)
 
 	tests := []struct {
 		TestName      string
@@ -218,7 +222,7 @@ filename: foo.log
 }
 
 func TestLoadAcquisitionFromFiles(t *testing.T) {
-	appendMockSource()
+	appendMockSource(t)
 	t.Setenv("TEST_ENV", "test_value2")
 
 	ctx := t.Context()
@@ -264,7 +268,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/missing_labels.yaml"},
 			},
-			ExpectedError: "missing labels in testdata/missing_labels.yaml",
+			ExpectedError: "testdata/missing_labels.yaml: missing labels",
 		},
 		{
 			TestName: "backward_compat",
@@ -278,14 +282,14 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_source.yaml"},
 			},
-			ExpectedError: "in file testdata/bad_source.yaml (position 0) - unknown data source does_not_exist",
+			ExpectedError: "testdata/bad_source.yaml: unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "configuring datasource of type file from testdata/bad_filetype.yaml",
+			ExpectedError: "testdata/bad_filetype.yaml: datasource of type file: cannot parse FileAcquisition configuration: [2:12] string was used where sequence is expected",
 		},
 		{
 			TestName: "from_env",
@@ -554,7 +558,8 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	restore := registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	t.Cleanup(restore)
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
