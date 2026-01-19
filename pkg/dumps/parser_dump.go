@@ -174,7 +174,6 @@ func (t *tree) displayResults(opts DumpOpts) {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
-	whitelistReason := ""
 
 	// get each line
 	for tstamp, rawstr := range t.assoc {
@@ -190,6 +189,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 
 		// iterate stage
 		var prevItem pipeline.Event
+		whitelistReason := ""
 
 		for _, stage := range skeys {
 			parsers := t.state[tstamp][stage]
