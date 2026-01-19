@@ -170,11 +170,39 @@ func (t *tree) processBuckets(bucketPour BucketPourInfo) {
 	}
 }
 
-func (t *tree) displayResults(opts DumpOpts) {
-	yellow := color.New(color.FgYellow).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
+var (
+	yellow = color.New(color.FgYellow).SprintFunc()
+	red = color.New(color.FgRed).SprintFunc()
+	green = color.New(color.FgGreen).SprintFunc()
+)
 
+func buildSummary(created, updated, deleted int, whitelisted bool) string {
+	ret := []string{}
+
+	if created > 0 {
+		ret = append(ret, green(fmt.Sprintf("+%d", created)))
+	}
+
+	if updated > 0 {
+		ret = append(ret, yellow(fmt.Sprintf("~%d", updated)))
+	}
+
+	if deleted > 0 {
+		ret = append(ret, red(fmt.Sprintf("-%d", deleted)))
+	}
+
+	if whitelisted {
+		ret = append(ret, red("[whitelisted]"))
+	}
+
+	if len(ret) == 0 {
+		return yellow("unchanged")
+	}
+
+	return strings.Join(ret, " ")
+}
+
+func (t *tree) displayResults(opts DumpOpts) {
 	// get each line
 	for tstamp, rawstr := range t.assoc {
 		if opts.SkipOk {
@@ -219,7 +247,6 @@ func (t *tree) displayResults(opts DumpOpts) {
 				updated := 0
 				deleted := 0
 				whitelisted := false
-				changeStr := ""
 				detailsDisplay := ""
 
 				changelog, _ := diff.Diff(prevItem, parsers[parser].Evt)
@@ -251,37 +278,7 @@ func (t *tree) displayResults(opts DumpOpts) {
 
 				prevItem = parsers[parser].Evt
 
-				if created > 0 {
-					changeStr += green(fmt.Sprintf("+%d", created))
-				}
-
-				if updated > 0 {
-					if changeStr != "" {
-						changeStr += " "
-					}
-
-					changeStr += yellow(fmt.Sprintf("~%d", updated))
-				}
-
-				if deleted > 0 {
-					if changeStr != "" {
-						changeStr += " "
-					}
-
-					changeStr += red(fmt.Sprintf("-%d", deleted))
-				}
-
-				if whitelisted {
-					if changeStr != "" {
-						changeStr += " "
-					}
-
-					changeStr += red("[whitelisted]")
-				}
-
-				if changeStr == "" {
-					changeStr = yellow("unchanged")
-				}
+				changeStr := buildSummary(created, updated, deleted, whitelisted)
 
 				fmt.Fprintf(os.Stdout, "\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
 

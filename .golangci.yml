@@ -348,7 +348,7 @@ linters:
         - name: cognitive-complexity
           arguments:
             # lower this after refactoring
-            - 87
+            - 52
         - name: comment-spacings
           disabled: true
         - name: confusing-results
