@@ -101,22 +101,30 @@ type tree struct {
 	parserOrder map[string][]string
 }
 
-func newTree() *tree {
-	return &tree{
-		state:       make(map[time.Time]map[string]map[string]ParserResult),
-		assoc:       make(map[time.Time]string),
-		parserOrder: make(map[string][]string),
+func (t *tree) ensureInit() {
+	if t.state == nil {
+		t.state = make(map[time.Time]map[string]map[string]ParserResult)
+	}
+
+	if t.assoc == nil {
+		t.assoc = make(map[time.Time]string)
+	}
+
+	if t.parserOrder == nil {
+		t.parserOrder = make(map[string][]string)
 	}
 }
 
 func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpOpts) {
-	t := newTree()
+	t := tree{}
 	t.processEvents(parserResults)
 	t.processBuckets(bucketPour)
 	t.displayResults(opts)
 }
 
 func (t *tree) processEvents(parserResults ParserResults) {
+	t.ensureInit()
+
 	for stage, parsers := range parserResults {
 		// let's process parsers in the order according to idx
 		t.parserOrder[stage] = make([]string, len(parsers))
@@ -147,30 +155,40 @@ func (t *tree) processEvents(parserResults ParserResults) {
 }
 
 func (t *tree) processBuckets(bucketPour BucketPourInfo) {
+	t.ensureInit()
+
 	for bname, events := range bucketPour {
 		for i := range events {
 			if events[i].Line.Raw == "" {
 				continue
 			}
 
+			ts := events[i].Line.Time
+
 			// it might be bucket overflow being reprocessed, skip this
-			if _, ok := t.state[events[i].Line.Time]; !ok {
-				t.state[events[i].Line.Time] = make(map[string]map[string]ParserResult)
-				t.assoc[events[i].Line.Time] = events[i].Line.Raw
+			state, ok := t.state[ts]
+			if !ok || state == nil {
+				state = make(map[string]map[string]ParserResult)
+				t.state[ts] = state
+				t.assoc[ts] = events[i].Line.Raw
 			}
 
 			// there is a trick: to know if an event successfully exit the parsers, we check if it reached the pour() phase
 			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
-			if _, ok := t.state[events[i].Line.Time]["buckets"]; !ok {
-				t.state[events[i].Line.Time]["buckets"] = make(map[string]ParserResult)
+			buckets, ok := state["buckets"]
+			if !ok || buckets == nil {
+				buckets = make(map[string]ParserResult)
+				state["buckets"] = buckets
 			}
 
-			t.state[events[i].Line.Time]["buckets"][bname] = ParserResult{Success: true}
+			buckets[bname] = ParserResult{Success: true}
 		}
 	}
 }
 
 func (t *tree) displayResults(opts DumpOpts) {
+	t.ensureInit()
+
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
