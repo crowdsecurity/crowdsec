@@ -56,6 +56,7 @@ func lookupLatest(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
 	latest := make(map[string]any)
 

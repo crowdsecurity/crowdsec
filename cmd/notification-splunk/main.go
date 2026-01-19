@@ -75,6 +75,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		content, err := io.ReadAll(resp.Body)

@@ -31,6 +31,14 @@ const (
 	testHTTPServerAddrTLS = "https://127.0.0.1:8080"
 )
 
+func closeBody(t *testing.T, resp *http.Response) {
+	t.Helper()
+
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+}
+
 func TestGetUuid(t *testing.T) {
 	h := Source{}
 	h.Config.UniqueId = "test"
@@ -94,6 +102,7 @@ basic_auth:
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusMethodNotAllowed, res.StatusCode)
+	closeBody(t, res)
 
 	// Check that GET/HEAD requests return a 200
 
@@ -103,6 +112,7 @@ basic_auth:
 	res, err = http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+	closeBody(t, res)
 
 	req, err = http.NewRequestWithContext(ctx, http.MethodHead, testHTTPServerAddr+"/test", http.NoBody)
 	require.NoError(t, err)
@@ -110,6 +120,7 @@ basic_auth:
 	res, err = http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+	closeBody(t, res)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -138,6 +149,7 @@ basic_auth:
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	closeBody(t, res)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -168,6 +180,7 @@ basic_auth:
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	closeBody(t, resp)
 
 	req, err = http.NewRequestWithContext(ctx, http.MethodPost, testHTTPServerAddr+"/test", strings.NewReader("test"))
 	require.NoError(t, err)
@@ -176,6 +189,7 @@ basic_auth:
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	closeBody(t, resp)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -205,6 +219,7 @@ headers:
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	closeBody(t, resp)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -235,6 +250,7 @@ max_body_size: 5`), 0)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
+	closeBody(t, resp)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -268,6 +284,7 @@ headers:
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -310,6 +327,7 @@ custom_headers:
 
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 	assert.Equal(t, "true", resp.Header.Get("Success"))
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -357,6 +375,7 @@ headers:
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -455,6 +474,7 @@ timeout: 1s`), 0)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	closeBody(t, resp)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -486,6 +506,7 @@ tls:
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	closeBody(t, resp)
 
 	h.Server.Close()
 	tomb.Kill(nil)
@@ -539,6 +560,7 @@ tls:
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -599,6 +621,7 @@ tls:
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -654,6 +677,7 @@ headers:
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
@@ -695,6 +719,7 @@ headers:
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
 
 	err = <-errChan
 	require.NoError(t, err)
