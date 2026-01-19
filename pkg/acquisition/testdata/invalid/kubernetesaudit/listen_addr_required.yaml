@@ -1,0 +1,4 @@
+# wantErr: datasource of type k8s-audit: listen_addr cannot be empty
+source: k8s-audit
+labels:
+  type: sometype

@@ -1,0 +1,5 @@
+# wantErr: position 0: [5:11] sequence end token ']' not found
+source: file
+labels:
+  type: sometype
+filename: [asd-.log

@@ -1,0 +1,4 @@
+# wantErr: failed to parse: not a valid logrus Level: "toto"
+# schemaErr: /log_level: value must be one of 'panic', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'trace'
+source: victorialogs
+log_level: toto

@@ -22,8 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -33,171 +31,10 @@ const (
 	testHTTPServerAddrTLS = "https://127.0.0.1:8080"
 )
 
-func TestConfigure(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config: `
-timeout: 1m`,
-			expectedErr: "listen_addr or listen_socket is required",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: wrongpath`,
-			expectedErr: "path must start with /",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: basic_auth`,
-			expectedErr: "basic_auth is selected, but basic_auth is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers`,
-			expectedErr: "headers is selected, but headers is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: basic_auth
-basic_auth:
-  username: 132`,
-			expectedErr: "basic_auth is selected, but password is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: basic_auth
-basic_auth:
-  password: 132`,
-			expectedErr: "basic_auth is selected, but username is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:`,
-			expectedErr: "headers is selected, but headers is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: toto`,
-			expectedErr: "invalid auth_type: must be one of basic_auth, headers, mtls",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:
-  key: value
-tls:
-  server_key: key`,
-			expectedErr: "server_cert is required",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:
-  key: value
-tls:
-  server_cert: cert`,
-			expectedErr: "server_key is required",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: mtls
-tls:
-  server_cert: cert
-  server_key: key`,
-			expectedErr: "mtls is selected, but ca_cert is not provided",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:
-  key: value
-max_body_size: 0`,
-			expectedErr: "max_body_size must be positive",
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:
-  key: value
-timeout: toto`,
-			expectedErr: `cannot parse: time: invalid duration "toto"`,
-		},
-		{
-			config: `
-source: http
-listen_addr: 127.0.0.1:8080
-path: /test
-auth_type: headers
-headers:
-  key: value
-custom_status_code: 999`,
-			expectedErr: "invalid HTTP status code",
-		},
-	}
-
-	subLogger := log.WithField("type", ModuleName)
-
-	for _, test := range tests {
-		h := Source{}
-		err := h.Configure(ctx, []byte(test.config), subLogger, 0)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
-	}
-}
-
 func TestGetUuid(t *testing.T) {
 	h := Source{}
 	h.Config.UniqueId = "test"
 	assert.Equal(t, "test", h.GetUuid())
-}
-
-func TestUnmarshalConfig(t *testing.T) {
-	h := Source{}
-	err := h.UnmarshalConfig([]byte(`
-source: http
-listen_addr: 127.0.0.1:8080
-path: 15
-	auth_type: headers`))
-	cstest.AssertErrorMessage(t, err, "cannot parse: [5:1] found character '\t' that cannot start any token")
 }
 
 func TestGetMode(t *testing.T) {
@@ -213,7 +50,9 @@ func TestGetName(t *testing.T) {
 
 func SetupAndRunHTTPSource(t *testing.T, h *Source, config []byte, metricLevel metrics.AcquisitionMetricsLevel) (chan pipeline.Event, *prometheus.Registry, *tomb.Tomb) {
 	ctx := t.Context()
-	subLogger := log.WithField("type", ModuleName)
+	subLogger := log.WithFields(log.Fields{
+		"type": ModuleName,
+	})
 	err := h.Configure(ctx, config, subLogger, metricLevel)
 	require.NoError(t, err)
 

@@ -1,0 +1,6 @@
+# wantErr: datasource of type s3: invalid polling method foobar
+source: s3
+labels:
+  type: sometype
+bucket_name: foobar
+polling_method: foobar

@@ -7,29 +7,64 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func dumpAllStates(dir string) error {
+type StateDumper struct {
+	DumpDir string
+	Pour *leakybucket.PourCollector
+	StageParse *parser.StageParseCollector
+	BucketOverflows []pipeline.Event
+}
+
+func NewStateDumper(dumpDir string) *StateDumper {
+	if dumpDir == "" {
+		return &StateDumper{}
+	}
+
+	return &StateDumper{
+		DumpDir:    dumpDir,
+		Pour:       leakybucket.NewPourCollector(),
+		StageParse: parser.NewStageParseCollector(),
+	}
+}
+
+func (sd *StateDumper) Dump() error {
+	dir := sd.DumpDir
+
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	if err := dumpState(dir, "parser-dump.yaml", parser.StageParseCache); err != nil {
+	if err := dumpCollector(dir, "parser-dump.yaml", sd.StageParse); err != nil {
 		return fmt.Errorf("dumping parser state: %w", err)
 	}
 
-	if err := dumpState(dir, "bucket-dump.yaml", bucketOverflows); err != nil {
+	if err := dumpState(dir, "bucket-dump.yaml", sd.BucketOverflows); err != nil {
 		return fmt.Errorf("dumping bucket overflow state: %w", err)
 	}
 
-	if err := dumpState(dir, "bucketpour-dump.yaml", leaky.BucketPourCache); err != nil {
+	if err := dumpCollector(dir, "bucketpour-dump.yaml", sd.Pour); err != nil {
 		return fmt.Errorf("dumping bucket pour state: %w", err)
 	}
 
 	return nil
+}
+
+type YAMLDumper interface {
+	DumpYAML() ([]byte, error)
+}
+
+func dumpCollector(dir, name string, collector YAMLDumper) error {
+	out, err := collector.DumpYAML()
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Join(dir, name), out, 0o644)
 }
 
 func dumpState(dir, name string, obj any) error {

@@ -422,25 +422,6 @@ group_name: test_group
 stream_name: test_stream`,
 			expectedStartErr: "The specified log group does not exist",
 		},
-		{
-			config: `
-xxx: cloudwatch
-labels:
-  type: test_source
-group_name: test_group
-stream_name: test_stream`,
-			expectedCfgErr: `[2:1] unknown field "xxx"`,
-		},
-		{
-			name: "missing_group_name",
-			config: `
-source: cloudwatch
-aws_region: us-east-1
-labels:
-  type: test_source
-stream_name: test_stream`,
-			expectedCfgErr: "group_name is mandatory for CloudwatchSource",
-		},
 	}
 
 	for _, tc := range tests {

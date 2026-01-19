@@ -1,0 +1,5 @@
+# wantErr: datasource of type loki: cannot parse loki acquisition configuration: [5:1] unknown field "foobar"
+source: loki
+labels:
+  type: sometype
+foobar: asd

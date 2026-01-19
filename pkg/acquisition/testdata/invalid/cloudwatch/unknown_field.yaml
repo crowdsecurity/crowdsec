@@ -1,0 +1,5 @@
+# wantErr: datasource of type cloudwatch: cannot parse: [5:1] unknown field "xxx"
+source: cloudwatch
+labels:
+  type: sometype
+xxx: dummy
