@@ -2201,3 +2201,146 @@ func TestParseKv(t *testing.T) {
 		})
 	}
 }
+
+func TestParseKvLax(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		value          string
+		want           map[string]string
+		expr           string
+		wantBuildErr   bool
+		wantRuntimeErr bool
+	}{
+		{
+			name:  "ParseKVLax() test: valid string",
+			value: "foo=bar",
+			want:  map[string]string{"foo": "bar"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: valid string multiple",
+			value: "foo=bar bar=foo",
+			want:  map[string]string{"foo": "bar", "bar": "foo"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: quoted string",
+			value: `foo="bar=toto"`,
+			want:  map[string]string{"foo": "bar=toto"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted string",
+			value: `foo= bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty quoted string",
+			value: `foo="" bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: unquoted value with spaces",
+			value: `UNIFIhost=Express 7 port=443`,
+			want:  map[string]string{"UNIFIhost": "Express 7", "port": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: mixed quoted and unquoted with spaces",
+			value: `msg="Hello World" host=My Server name=test`,
+			want:  map[string]string{"msg": "Hello World", "host": "My Server", "name": "test"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped quotes in quoted value",
+			value: `msg="He said \"Hello\"" status=ok`,
+			want:  map[string]string{"msg": `He said "Hello"`, "status": "ok"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslashes in quoted value",
+			value: `path="C:\\Program Files\\App" status=running`,
+			want:  map[string]string{"path": `C:\Program Files\App`, "status": "running"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted value at end",
+			value: `host=server port=443 debug=`,
+			want:  map[string]string{"host": "server", "port": "443", "debug": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: complex CEF-like log extension",
+			value: `src=192.168.1.100 duser=admin msg=User login successful UNIFIhost=Express 7 UNIFIport=443`,
+			want:  map[string]string{"src": "192.168.1.100", "duser": "admin", "msg": "User login successful", "UNIFIhost": "Express 7", "UNIFIport": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: iptables-style values with flags",
+			value: `RES=0x00 SYN URGP=0 ID=25029 DF PROTO=TCP`,
+			want:  map[string]string{"RES": "0x00 SYN", "URGP": "0", "ID": "25029 DF", "PROTO": "TCP"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: keycloak-style JSON values",
+			value: `error=user_not_found, code_id=e44d80b4-058d-4b45-b2ee-fac3d174e10c, userId=null, type=LOGIN_ERROR`,
+			want:  map[string]string{"error": "user_not_found,", "code_id": "e44d80b4-058d-4b45-b2ee-fac3d174e10c,", "userId": "null,", "type": "LOGIN_ERROR"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: key= after escaped quotes inside quoted value",
+			value: `msg="say \"fake=val\" here" real=value`,
+			want:  map[string]string{"msg": `say "fake=val" here`, "real": "value"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslash before closing quote",
+			value: `path="C:\\" next=val`,
+			want:  map[string]string{"path": `C:\`, "next": "val"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:         "ParseKVLax() test: invalid type for first argument",
+			value:        "",
+			expr:         `ParseKVLax(42, out, "a")`,
+			wantBuildErr: true,
+		},
+		{
+			name:           "ParseKVLax() test: no key=value pairs",
+			value:          "no pairs here",
+			expr:           `ParseKVLax(value, out, "a")`,
+			wantRuntimeErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			outMap := make(map[string]any)
+			env := map[string]any{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.wantBuildErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			_, err = expr.Run(vm, env)
+			if tc.wantRuntimeErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
