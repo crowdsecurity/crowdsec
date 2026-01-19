@@ -202,6 +202,8 @@ func buildSummary(created, updated, deleted int, whitelisted bool) string {
 	return strings.Join(ret, " ")
 }
 
+const presep = "|"
+
 func (t *tree) displayResults(opts DumpOpts) {
 	// get each line
 	for tstamp, rawstr := range t.assoc {
@@ -223,7 +225,6 @@ func (t *tree) displayResults(opts DumpOpts) {
 			parsers := t.state[tstamp][stage]
 
 			sep := "├"
-			presep := "|"
 
 			fmt.Fprintf(os.Stdout, "\t%s %s\n", sep, stage)
 
