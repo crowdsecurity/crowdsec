@@ -193,7 +193,7 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		bucketFactory.wgDumpState = buckets.wgDumpState
 		bucketFactory.wgPour = buckets.wgPour
 
-		err = LoadBucket(&bucketFactory)
+		err = bucketFactory.LoadBucket()
 		if err != nil {
 			return nil, fmt.Errorf("bucket %s: %w", bucketFactory.Name, err)
 		}
@@ -231,152 +231,144 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios [
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(bucketFactory *BucketFactory) error {
+func (f *BucketFactory) LoadBucket() error {
 	var err error
 
-	if bucketFactory.Debug {
+	if f.Debug {
 		clog := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
 
-		bucketFactory.logger = clog.WithFields(log.Fields{
-			"cfg":  bucketFactory.BucketName,
-			"name": bucketFactory.Name,
+		f.logger = clog.WithFields(log.Fields{
+			"cfg":  f.BucketName,
+			"name": f.Name,
 		})
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
-		bucketFactory.logger = log.WithFields(log.Fields{
-			"cfg":  bucketFactory.BucketName,
-			"name": bucketFactory.Name,
+		f.logger = log.WithFields(log.Fields{
+			"cfg":  f.BucketName,
+			"name": f.Name,
 		})
 	}
 
-	if bucketFactory.LeakSpeed != "" {
-		if bucketFactory.leakspeed, err = time.ParseDuration(bucketFactory.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s: %w", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
+	if f.LeakSpeed != "" {
+		if f.leakspeed, err = time.ParseDuration(f.LeakSpeed); err != nil {
+			return fmt.Errorf("bad leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
 		}
 	} else {
-		bucketFactory.leakspeed = time.Duration(0)
+		f.leakspeed = time.Duration(0)
 	}
 
-	if bucketFactory.Duration != "" {
-		if bucketFactory.duration, err = time.ParseDuration(bucketFactory.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s: %w", bucketFactory.Duration, bucketFactory.Filename, err)
+	if f.Duration != "" {
+		if f.duration, err = time.ParseDuration(f.Duration); err != nil {
+			return fmt.Errorf("invalid Duration '%s' in %s: %w", f.Duration, f.Filename, err)
 		}
 	}
 
-	if bucketFactory.Filter == "" {
-		bucketFactory.logger.Warning("Bucket without filter, abort.")
+	if f.Filter == "" {
+		f.logger.Warning("Bucket without filter, abort.")
 		return errors.New("missing filter directive")
 	}
 
-	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	f.RunTimeFilter, err = expr.Compile(f.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
-		return fmt.Errorf("invalid filter '%s' in %s: %w", bucketFactory.Filter, bucketFactory.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s: %w", f.Filter, f.Filename, err)
 	}
 
-	if bucketFactory.GroupBy != "" {
-		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	if f.GroupBy != "" {
+		f.RunTimeGroupBy, err = expr.Compile(f.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid groupby '%s' in %s: %w", bucketFactory.GroupBy, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s: %w", f.GroupBy, f.Filename, err)
 		}
 	}
 
-	bucketFactory.logger.Infof("Adding %s bucket", bucketFactory.Type)
+	f.logger.Infof("Adding %s bucket", f.Type)
 	// return the Holder corresponding to the type of bucket
-	bucketFactory.processors = []Processor{}
-	switch bucketFactory.Type {
-	case "leaky":
-		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
-	case "trigger":
-		bucketFactory.processors = append(bucketFactory.processors, &TriggerProcessor{})
-	case "counter":
-		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
-	case "conditional":
-		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
-	case "bayesian":
-		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
-	default:
-		return fmt.Errorf("invalid type '%s' in %s: %w", bucketFactory.Type, bucketFactory.Filename, err)
+
+	impl, ok := bucketTypes[f.Type]
+	if !ok {
+		return fmt.Errorf("invalid type '%s' in %s: %w", f.Type, f.Filename, err)
 	}
 
-	if bucketFactory.Distinct != "" {
-		bucketFactory.logger.Tracef("Adding a non duplicate filter")
-		bucketFactory.processors = append(bucketFactory.processors, &UniqProcessor{})
+	f.processors = impl.BuildProcessors(f)
+
+	if f.Distinct != "" {
+		f.logger.Tracef("Adding a non duplicate filter")
+		f.processors = append(f.processors, &UniqProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		_, err = expr.Compile(f.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid distinct '%s' in %s: %w", bucketFactory.Distinct, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid distinct '%s' in %s: %w", f.Distinct, f.Filename, err)
 		}
 	}
 
-	if bucketFactory.CancelOnFilter != "" {
-		bucketFactory.logger.Tracef("Adding a cancel_on filter")
-		bucketFactory.processors = append(bucketFactory.processors, &CancelProcessor{})
+	if f.CancelOnFilter != "" {
+		f.logger.Tracef("Adding a cancel_on filter")
+		f.processors = append(f.processors, &CancelProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		_, err = expr.Compile(f.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", bucketFactory.CancelOnFilter, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", f.CancelOnFilter, f.Filename, err)
 		}
 	}
 
-	if bucketFactory.OverflowFilter != "" {
-		bucketFactory.logger.Tracef("Adding an overflow filter")
+	if f.OverflowFilter != "" {
+		f.logger.Tracef("Adding an overflow filter")
 
-		filovflw, err := NewOverflowFilter(bucketFactory)
+		filovflw, err := NewOverflowFilter(f)
 		if err != nil {
-			bucketFactory.logger.Errorf("Error creating overflow_filter : %s", err)
+			f.logger.Errorf("Error creating overflow_filter : %s", err)
 			return fmt.Errorf("error creating overflow_filter: %w", err)
 		}
 
-		bucketFactory.processors = append(bucketFactory.processors, filovflw)
+		f.processors = append(f.processors, filovflw)
 	}
 
-	if bucketFactory.Blackhole != "" {
-		bucketFactory.logger.Tracef("Adding blackhole.")
+	if f.Blackhole != "" {
+		f.logger.Tracef("Adding blackhole.")
 
-		blackhole, err := NewBlackholeProcessor(bucketFactory)
+		blackhole, err := NewBlackholeProcessor(f)
 		if err != nil {
-			bucketFactory.logger.Errorf("Error creating blackhole : %s", err)
+			f.logger.Errorf("Error creating blackhole : %s", err)
 			return fmt.Errorf("error creating blackhole : %w", err)
 		}
 
-		bucketFactory.processors = append(bucketFactory.processors, blackhole)
+		f.processors = append(f.processors, blackhole)
 	}
 
-	if bucketFactory.ConditionalOverflow != "" {
-		bucketFactory.logger.Tracef("Adding conditional overflow")
-		bucketFactory.processors = append(bucketFactory.processors, &ConditionalProcessor{})
+	if f.ConditionalOverflow != "" {
+		f.logger.Tracef("Adding conditional overflow")
+		f.processors = append(f.processors, &ConditionalProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+		_, err = expr.Compile(f.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
-			return fmt.Errorf("invalid condition '%s' in %s: %w", bucketFactory.ConditionalOverflow, bucketFactory.Filename, err)
+			return fmt.Errorf("invalid condition '%s' in %s: %w", f.ConditionalOverflow, f.Filename, err)
 		}
 	}
 
-	if bucketFactory.BayesianThreshold != 0 {
-		bucketFactory.logger.Tracef("Adding bayesian processor")
-		bucketFactory.processors = append(bucketFactory.processors, &BayesianProcessor{})
+	if f.BayesianThreshold != 0 {
+		f.logger.Tracef("Adding bayesian processor")
+		f.processors = append(f.processors, &BayesianProcessor{})
 	}
 
-	for _, data := range bucketFactory.Data {
+	for _, data := range f.Data {
 		if data.DestPath == "" {
-			bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
+			f.logger.Errorf("no dest_file provided for '%s'", f.Name)
 			continue
 		}
 
-		err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
+		err = exprhelpers.FileInit(f.DataDir, data.DestPath, data.Type)
 		if err != nil {
-			bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
+			f.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 		}
 
 		if data.Type == "regexp" { // cache only makes sense for regexp
 			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
-				bucketFactory.logger.Error(err.Error())
+				f.logger.Error(err.Error())
 			}
 		}
 	}
 
-	if err := bucketFactory.Validate(); err != nil {
-		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
+	if err := f.Validate(); err != nil {
+		return fmt.Errorf("invalid bucket from %s: %w", f.Filename, err)
 	}
 
 	return nil
