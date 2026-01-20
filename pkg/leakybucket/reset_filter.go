@@ -10,7 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// ResetFilter allows to kill the bucket (without overflowing), if a particular condition is met.
+// CancelOnFilter allows to kill the bucket (without overflowing), if a particular condition is met.
 // An example would be a scenario to detect aggressive crawlers that *do not* fetch any static resources :
 // type : leaky
 // filter: "evt.Meta.log_type == 'http_access-log'
