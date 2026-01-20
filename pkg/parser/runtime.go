@@ -239,9 +239,7 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node, collector *StageParseCollector) (pipeline.Event, error) {
-	event := xp
-
+func Parse(ctx UnixParserCtx, event pipeline.Event, nodes []Node, collector *StageParseCollector) (pipeline.Event, error) {
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
 		event.Stage = ctx.Stages[0]
