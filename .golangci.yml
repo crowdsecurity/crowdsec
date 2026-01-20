@@ -504,7 +504,7 @@ linters:
       constant-kind: true
 
     usetesting:
-      os-temp-dir: false
+      os-temp-dir: true
       context-background: true
       context-todo: true
 
@@ -626,16 +626,6 @@ linters:
           - gocritic
         path: pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)
         text: 'rangeValCopy: .*'
-
-      - linters:
-          - usetesting
-        path: pkg/apiserver/(.+)_test.go
-        text: os.MkdirTemp.* could be replaced by t.TempDir.*
-
-      - linters:
-          - usetesting
-        path: pkg/apiserver/(.+)_test.go
-        text: os.CreateTemp.* could be replaced by os.CreateTemp.*
 
       - linters:
           - containedctx

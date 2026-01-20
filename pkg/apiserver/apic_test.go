@@ -38,7 +38,7 @@ import (
 func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
+	dbPath, err := os.CreateTemp(t.TempDir(), "*sqlite")
 	require.NoError(t, err)
 	dbClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
