@@ -1,0 +1,35 @@
+name: Deploy to Cloudflare Pages (Direct Upload)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' && github.event.release.prerelease == false)
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Get latest CrowdSec release
+        id: crowdsec_release
+        run: |
+          TAG=$(gh release list --json tagName --exclude-pre-releases --limit 1 | jq '.[0].tagName')
+          mkdir -p ./dist
+          echo "version=$TAG" >> ./dist/latest
+
+      # Deploy the build output directory (adjust ./dist to your framework output)
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./dist --project-name your-pages-project-name
