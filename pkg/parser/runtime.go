@@ -8,6 +8,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"reflect"
 	"strconv"
 	"strings"
@@ -229,16 +230,6 @@ func (rg *RuntimeGrokPattern) ProcessStatics(event *pipeline.Event, ectx Enriche
 	return nil
 }
 
-func stageidx(stage string, stages []string) int {
-	for i, v := range stages {
-		if stage == v {
-			return i
-		}
-	}
-
-	return -1
-}
-
 func Parse(ctx UnixParserCtx, event pipeline.Event, nodes []Node, collector *StageParseCollector) (pipeline.Event, error) {
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
@@ -276,7 +267,7 @@ func Parse(ctx UnixParserCtx, event pipeline.Event, nodes []Node, collector *Sta
 	for _, stage := range ctx.Stages {
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
-		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
+		if slices.Index(ctx.Stages, event.Stage) > slices.Index(ctx.Stages, stage) {
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
 			continue
 		}
