@@ -437,7 +437,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	if bucketFactory.Blackhole != "" {
 		bucketFactory.logger.Tracef("Adding blackhole.")
 
-		blackhole, err := NewBlackhole(bucketFactory)
+		blackhole, err := NewBlackholeProcessor(bucketFactory)
 		if err != nil {
 			bucketFactory.logger.Errorf("Error creating blackhole : %s", err)
 			return fmt.Errorf("error creating blackhole : %w", err)
