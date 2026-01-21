@@ -448,7 +448,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
-		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+		bucketFactory.processors = append(bucketFactory.processors, &ConditionalProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
