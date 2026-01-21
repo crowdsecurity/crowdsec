@@ -458,7 +458,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.BayesianThreshold != 0 {
 		bucketFactory.logger.Tracef("Adding bayesian processor")
-		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
+		bucketFactory.processors = append(bucketFactory.processors, &BayesianProcessor{})
 	}
 
 	for _, data := range bucketFactory.Data {
