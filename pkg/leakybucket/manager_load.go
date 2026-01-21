@@ -97,33 +97,33 @@ func (f *BucketFactory) Validate() error {
 	return compileScopeFilter(f)
 }
 
-func compileScopeFilter(bucketFactory *BucketFactory) error {
-	if bucketFactory.ScopeType.Scope == types.Undefined {
-		bucketFactory.ScopeType.Scope = types.Ip
+func compileScopeFilter(f *BucketFactory) error {
+	if f.ScopeType.Scope == types.Undefined {
+		f.ScopeType.Scope = types.Ip
 	}
 
-	if bucketFactory.ScopeType.Scope == types.Ip {
-		if bucketFactory.ScopeType.Filter != "" {
+	if f.ScopeType.Scope == types.Ip {
+		if f.ScopeType.Filter != "" {
 			return errors.New("filter is not allowed for IP scope")
 		}
 
 		return nil
 	}
 
-	if bucketFactory.ScopeType.Scope == types.Range && bucketFactory.ScopeType.Filter == "" {
+	if f.ScopeType.Scope == types.Range && f.ScopeType.Filter == "" {
 		return nil
 	}
 
-	if bucketFactory.ScopeType.Filter == "" {
+	if f.ScopeType.Filter == "" {
 		return errors.New("filter is mandatory for non-IP, non-Range scope")
 	}
 
-	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	runTimeFilter, err := expr.Compile(f.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("error compiling the scope filter: %w", err)
 	}
 
-	bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
+	f.ScopeType.RunTimeFilter = runTimeFilter
 
 	return nil
 }
@@ -145,9 +145,9 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 	factories := []BucketFactory{}
 
 	for {
-		bucketFactory := BucketFactory{}
+		f := BucketFactory{}
 
-		err = dec.Decode(&bucketFactory)
+		err = dec.Decode(&f)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Errorf("Bad yaml in %s: %v", itemPath, err)
@@ -159,48 +159,48 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 			break
 		}
 
-		bucketFactory.DataDir = hub.GetDataDir()
+		f.DataDir = hub.GetDataDir()
 		// check empty
-		if bucketFactory.Name == "" {
+		if f.Name == "" {
 			log.Errorf("Won't load nameless bucket")
 			return nil, errors.New("nameless bucket")
 		}
 		// check compat
-		if bucketFactory.FormatVersion == "" {
-			log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
-			bucketFactory.FormatVersion = "1.0"
+		if f.FormatVersion == "" {
+			log.Tracef("no version in %s : %s, assuming '1.0'", f.Name, itemPath)
+			f.FormatVersion = "1.0"
 		}
 
-		ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
+		ok, err := constraint.Satisfies(f.FormatVersion, constraint.Scenario)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check version: %w", err)
 		}
 
 		if !ok {
-			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
+			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", f.Name, f.FormatVersion, constraint.Scenario)
 			continue
 		}
 
-		bucketFactory.Filename = filepath.Clean(itemPath)
-		bucketFactory.BucketName = seed.Generate()
-		bucketFactory.ret = response
+		f.Filename = filepath.Clean(itemPath)
+		f.BucketName = seed.Generate()
+		f.ret = response
 
-		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
+		f.Simulated = simulationConfig.IsSimulated(f.Name)
 
-		bucketFactory.ScenarioVersion = item.State.LocalVersion
-		bucketFactory.hash = item.State.LocalHash
+		f.ScenarioVersion = item.State.LocalVersion
+		f.hash = item.State.LocalHash
 
-		bucketFactory.wgDumpState = buckets.wgDumpState
-		bucketFactory.wgPour = buckets.wgPour
+		f.wgDumpState = buckets.wgDumpState
+		f.wgPour = buckets.wgPour
 
-		err = bucketFactory.LoadBucket()
+		err = f.LoadBucket()
 		if err != nil {
-			return nil, fmt.Errorf("bucket %s: %w", bucketFactory.Name, err)
+			return nil, fmt.Errorf("bucket %s: %w", f.Name, err)
 		}
 
-		bucketFactory.orderEvent = orderEvent
+		f.orderEvent = orderEvent
 
-		factories = append(factories, bucketFactory)
+		factories = append(factories, f)
 	}
 
 	return factories, nil
