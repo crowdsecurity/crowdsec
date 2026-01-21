@@ -5,11 +5,11 @@ import (
 )
 
 type Processor interface {
-	OnBucketInit(Bucket *BucketFactory) error
-	OnBucketPour(Bucket *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
-	OnBucketOverflow(Bucket *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
+	OnBucketInit(f *BucketFactory) error
+	OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
+	OnBucketOverflow(f *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
-	AfterBucketPour(Bucket *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
+	AfterBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
 }
 
 type DumbProcessor struct{}
