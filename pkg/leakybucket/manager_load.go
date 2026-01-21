@@ -414,7 +414,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.CancelOnFilter != "" {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
-		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
+		bucketFactory.processors = append(bucketFactory.processors, &CancelProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {

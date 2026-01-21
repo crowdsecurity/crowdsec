@@ -18,7 +18,7 @@ import (
 // ....
 // Thus, if the bucket receives a request that matches fetching a static resource (here css), it cancels itself
 
-type CancelOnFilter struct {
+type CancelProcessor struct {
 	CancelOnFilter *vm.Program
 	Debug          bool
 }
@@ -30,11 +30,11 @@ var (
 	}
 )
 
-func (u *CancelOnFilter) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+func (p *CancelProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 	var condition, ok bool
-	if u.CancelOnFilter != nil {
+	if p.CancelOnFilter != nil {
 		leaky.logger.Tracef("running cancel_on filter")
-		output, err := exprhelpers.Run(u.CancelOnFilter, map[string]any{"evt": &msg}, leaky.logger, u.Debug)
+		output, err := exprhelpers.Run(p.CancelOnFilter, map[string]any{"evt": &msg}, leaky.logger, p.Debug)
 		if err != nil {
 			leaky.logger.Warningf("cancel_on error : %s", err)
 			return &msg
@@ -53,15 +53,15 @@ func (u *CancelOnFilter) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leak
 	return &msg
 }
 
-func (*CancelOnFilter) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (*CancelProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	return alert, queue
 }
 
-func (*CancelOnFilter) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+func (*CancelProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
 	return &msg
 }
 
-func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
+func (p *CancelProcessor) OnBucketInit(f *BucketFactory) error {
 	var err error
 	var compiledExpr struct {
 		CancelOnFilter *vm.Program
@@ -74,26 +74,26 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	}
 
 	cancelExprCacheLock.Lock()
-	if compiled, ok := cancelExprCache[bucketFactory.CancelOnFilter]; ok {
+	if compiled, ok := cancelExprCache[f.CancelOnFilter]; ok {
 		cancelExprCacheLock.Unlock()
-		u.CancelOnFilter = compiled.CancelOnFilter
+		p.CancelOnFilter = compiled.CancelOnFilter
 		return nil
 	}
 
 	cancelExprCacheLock.Unlock()
 	// release the lock during compile
 
-	compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	compiledExpr.CancelOnFilter, err = expr.Compile(f.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	if err != nil {
-		bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
+		f.logger.Errorf("reset_filter compile error : %s", err)
 		return err
 	}
-	u.CancelOnFilter = compiledExpr.CancelOnFilter
-	if bucketFactory.Debug {
-		u.Debug = true
+	p.CancelOnFilter = compiledExpr.CancelOnFilter
+	if f.Debug {
+		p.Debug = true
 	}
 	cancelExprCacheLock.Lock()
-	cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
+	cancelExprCache[f.CancelOnFilter] = compiledExpr
 	cancelExprCacheLock.Unlock()
 	return nil
 }
