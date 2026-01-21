@@ -404,7 +404,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
-		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+		bucketFactory.processors = append(bucketFactory.processors, &UniqProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
