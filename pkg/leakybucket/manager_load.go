@@ -391,7 +391,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	case "leaky":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "trigger":
-		bucketFactory.processors = append(bucketFactory.processors, &Trigger{})
+		bucketFactory.processors = append(bucketFactory.processors, &TriggerProcessor{})
 	case "counter":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "conditional":
