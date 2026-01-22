@@ -78,7 +78,7 @@ func (d *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if d.Config.CheckInterval != "" && d.logger != nil {
-		d.logger.Warn("check_interval is deprecated, it will be removed in a future version")
+		d.logger.Warn("check_interval is ignored: this datasource now uses events instead of polling (will be removed in a future version)")
 	}
 
 	if d.Config.Mode == "" {
@@ -210,7 +210,6 @@ func (d *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 	d.Config = Configuration{
 		FollowStdout:  true,
 		FollowStdErr:  true,
-		CheckInterval: "1s",
 	}
 	d.Config.UniqueId = uuid
 	d.Config.ContainerName = make([]string, 0)

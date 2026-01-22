@@ -62,6 +62,7 @@ func init() { //nolint:gochecknoinits
 }
 
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
+var keyStart = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_.-]*)=`) // More restrictive key pattern for loose parsing
 
 var (
 	geoIPCityReader  *geoip2.Reader
@@ -986,6 +987,112 @@ func ParseKV(params ...any) (any, error) {
 	log.Tracef("unmarshaled KV: %+v", target[prefix])
 
 	return nil, nil
+}
+
+// ParseKVLax parses key-value pairs with lax matching, supporting unquoted multi-word values
+// by using a scanner approach instead of regex.
+func ParseKVLax(params ...any) (any, error) {
+	blob := params[0].(string)
+	target := params[1].(map[string]any)
+	prefix := params[2].(string)
+
+	if _, ok := target[prefix]; !ok {
+		target[prefix] = make(map[string]string)
+	} else if _, ok := target[prefix].(map[string]string); !ok {
+		log.Errorf("ParseKVLax: target is not a map[string]string")
+		return nil, errors.New("target is not a map[string]string")
+	}
+
+	km := target[prefix].(map[string]string)
+
+	// Find all key= occurrences and slice values between them.
+	idxs := keyStart.FindAllStringSubmatchIndex(blob, -1)
+	if len(idxs) == 0 {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, errors.New("invalid input format")
+	}
+
+	// Filter out matches that are inside quoted values
+	validIdxs := make([][]int, 0, len(idxs))
+	for _, m := range idxs {
+		keyStartPos := m[0]
+		// Check if this key= is inside a quoted value by looking backwards
+		if !isInsideQuotedValue(blob, keyStartPos) {
+			validIdxs = append(validIdxs, m)
+		}
+	}
+
+	if len(validIdxs) == 0 {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, errors.New("invalid input format")
+	}
+
+	for i, m := range validIdxs {
+		// m layout: [ fullStart, fullEnd, group1Start, group1End ]
+		key := blob[m[2]:m[3]]
+		valStart := m[1] // right after '='
+
+		var valEnd int
+		if i+1 < len(validIdxs) {
+			valEnd = validIdxs[i+1][0] // start of next key
+		} else {
+			valEnd = len(blob)
+		}
+
+		raw := strings.TrimSpace(blob[valStart:valEnd])
+		val := parseValueLax(raw)
+		km[key] = val
+	}
+
+	log.Tracef("unmarshaled KV (lax): %+v", target[prefix])
+	return nil, nil
+}
+
+// parseValueLax handles quoted and unquoted values for lax parsing.
+//   - If it begins with a quote, it removes the surrounding quotes
+//     if the closing one is present and unescapes \" and \\.
+//   - For unquoted values, returns the entire trimmed value as-is
+func parseValueLax(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	if s[0] != '"' {
+		return s
+	}
+
+	if len(s) >= 2 && s[len(s)-1] == '"' {
+		body := s[1 : len(s)-1]
+		body = strings.ReplaceAll(body, `\\`, `\`)
+		body = strings.ReplaceAll(body, `\"`, `"`)
+		return body
+	}
+
+	return strings.TrimPrefix(s, `"`)
+}
+
+// isInsideQuotedValue checks if a position in the string is inside a quoted value
+// by counting unescaped quotes before the position
+func isInsideQuotedValue(s string, pos int) bool {
+	inQuote := false
+
+	for i := 0; i <= pos && i < len(s); i++ {
+		if s[i] != '"' {
+			continue
+		}
+
+		// Check if this quote is escaped
+		backslashCount := 0
+		for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+			backslashCount++
+		}
+
+		if backslashCount%2 == 0 {
+			inQuote = !inQuote
+		}
+	}
+
+	return inQuote
 }
 
 func Hostname(params ...any) (any, error) {
