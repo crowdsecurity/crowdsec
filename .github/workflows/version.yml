@@ -27,6 +27,7 @@ jobs:
         id: pick_version
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
