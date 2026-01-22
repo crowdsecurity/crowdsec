@@ -39,6 +39,12 @@ jobs:
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Write dist artifact
+        run: |
+          set -euo pipefail
+          mkdir -p ./dist
+          echo "version=${{ steps.pick_version.outputs.tag }}" > ./dist/latest
+
       # Deploy the build output directory (adjust ./dist to your framework output)
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3
