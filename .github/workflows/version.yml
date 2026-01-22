@@ -9,6 +9,7 @@ on:
         description: "CrowdSec version/tag to deploy (e.g. v1.6.0). Leave empty to deploy latest release."
         required: false
         type: string
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
