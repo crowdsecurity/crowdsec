@@ -391,7 +391,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	case "leaky":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "trigger":
-		bucketFactory.processors = append(bucketFactory.processors, &Trigger{})
+		bucketFactory.processors = append(bucketFactory.processors, &TriggerProcessor{})
 	case "counter":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "conditional":
@@ -404,7 +404,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter")
-		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+		bucketFactory.processors = append(bucketFactory.processors, &UniqProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
@@ -414,7 +414,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.CancelOnFilter != "" {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter")
-		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
+		bucketFactory.processors = append(bucketFactory.processors, &CancelProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 		if err != nil {
@@ -437,7 +437,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	if bucketFactory.Blackhole != "" {
 		bucketFactory.logger.Tracef("Adding blackhole.")
 
-		blackhole, err := NewBlackhole(bucketFactory)
+		blackhole, err := NewBlackholeProcessor(bucketFactory)
 		if err != nil {
 			bucketFactory.logger.Errorf("Error creating blackhole : %s", err)
 			return fmt.Errorf("error creating blackhole : %w", err)
@@ -448,7 +448,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
-		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+		bucketFactory.processors = append(bucketFactory.processors, &ConditionalProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
 		_, err = expr.Compile(bucketFactory.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 		if err != nil {
@@ -458,7 +458,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 
 	if bucketFactory.BayesianThreshold != 0 {
 		bucketFactory.logger.Tracef("Adding bayesian processor")
-		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
+		bucketFactory.processors = append(bucketFactory.processors, &BayesianProcessor{})
 	}
 
 	for _, data := range bucketFactory.Data {

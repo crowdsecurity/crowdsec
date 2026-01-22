@@ -169,7 +169,7 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
 		case pipeline.LIVE:
-			fresh_bucket = NewLeaky(holder)
+			fresh_bucket = NewLeakyFromFactory(holder)
 			holder.logger.Debugf("Creating Live bucket")
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)

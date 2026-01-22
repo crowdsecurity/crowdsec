@@ -71,78 +71,75 @@ type Leaky struct {
 
 var LeakyRoutineCount int64
 
-// NewLeaky creates a new leaky bucket from a BucketFactory
+// NewLeakyFromFactory creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
-func NewLeaky(bucketFactory BucketFactory) *Leaky {
-	bucketFactory.logger.Tracef("Instantiating live bucket %s", bucketFactory.Name)
-	return FromFactory(bucketFactory)
-}
+func NewLeakyFromFactory(f BucketFactory) *Leaky {
+	f.logger.Tracef("Instantiating live bucket %s", f.Name)
 
-func FromFactory(bucketFactory BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
 	// golang rate limiter. It's mainly intended for http rate limiter
-	Qsize := bucketFactory.Capacity
-	if bucketFactory.CacheSize > 0 {
+	Qsize := f.Capacity
+	if f.CacheSize > 0 {
 		// cache is smaller than actual capacity
-		if bucketFactory.CacheSize <= bucketFactory.Capacity {
-			Qsize = bucketFactory.CacheSize
+		if f.CacheSize <= f.Capacity {
+			Qsize = f.CacheSize
 			// bucket might be counter (infinite size), allow cache limitation
-		} else if bucketFactory.Capacity == -1 {
-			Qsize = bucketFactory.CacheSize
+		} else if f.Capacity == -1 {
+			Qsize = f.CacheSize
 		}
 	}
-	if bucketFactory.Capacity == -1 {
+	if f.Capacity == -1 {
 		// In this case we allow all events to pass.
 		// maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
-		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
+		limiter = rate.NewLimiter(rate.Every(f.leakspeed), f.Capacity)
 	}
-	metrics.BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
+	metrics.BucketsInstantiation.With(prometheus.Labels{"name": f.Name}).Inc()
 
 	// create the leaky bucket per se
 	l := &Leaky{
-		Name:            bucketFactory.Name,
+		Name:            f.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
 		Queue:           pipeline.NewQueue(Qsize),
-		CacheSize:       bucketFactory.CacheSize,
+		CacheSize:       f.CacheSize,
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
-		AllOut:          bucketFactory.ret,
-		Capacity:        bucketFactory.Capacity,
-		Leakspeed:       bucketFactory.leakspeed,
-		BucketConfig:    &bucketFactory,
+		AllOut:          f.ret,
+		Capacity:        f.Capacity,
+		Leakspeed:       f.leakspeed,
+		BucketConfig:    &f,
 		Pour:            Pour,
-		Reprocess:       bucketFactory.Reprocess,
-		Profiling:       bucketFactory.Profiling,
+		Reprocess:       f.Reprocess,
+		Profiling:       f.Profiling,
 		Mode:            pipeline.LIVE,
-		scopeType:       bucketFactory.ScopeType,
-		scenarioVersion: bucketFactory.ScenarioVersion,
-		hash:            bucketFactory.hash,
-		Simulated:       bucketFactory.Simulated,
-		wgPour:          bucketFactory.wgPour,
-		wgDumpState:     bucketFactory.wgDumpState,
+		scopeType:       f.ScopeType,
+		scenarioVersion: f.ScenarioVersion,
+		hash:            f.hash,
+		Simulated:       f.Simulated,
+		wgPour:          f.wgPour,
+		wgDumpState:     f.wgDumpState,
 		mutex:           &sync.Mutex{},
-		orderEvent:      bucketFactory.orderEvent,
+		orderEvent:      f.orderEvent,
 	}
-	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
-		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
+	if f.Capacity > 0 && f.leakspeed != time.Duration(0) {
+		l.Duration = time.Duration(f.Capacity+1) * f.leakspeed
 	}
-	if l.BucketConfig.duration != time.Duration(0) {
-		l.Duration = l.BucketConfig.duration
+	if f.duration != time.Duration(0) {
+		l.Duration = f.duration
 		l.timedOverflow = true
 	}
 
-	if l.BucketConfig.Type == "conditional" {
+	if f.Type == "conditional" {
 		l.conditionalOverflow = true
-		l.Duration = l.BucketConfig.leakspeed
+		l.Duration = f.leakspeed
 	}
 
-	if l.BucketConfig.Type == "bayesian" {
-		l.Duration = l.BucketConfig.leakspeed
+	if f.Type == "bayesian" {
+		l.Duration = f.leakspeed
 	}
 	return l
 }
