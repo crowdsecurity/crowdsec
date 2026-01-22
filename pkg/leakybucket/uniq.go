@@ -53,7 +53,7 @@ func (*UniqProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *L
 	return &msg
 }
 
-func (u *UniqProcessor) OnBucketInit(f *BucketFactory) error {
+func (p *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 	if uniqExprCache == nil {
 		uniqExprCache = make(map[string]vm.Program)
 	}
@@ -61,7 +61,7 @@ func (u *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 	uniqExprCacheLock.Lock()
 	if compiled, ok := uniqExprCache[f.Distinct]; ok {
 		uniqExprCacheLock.Unlock()
-		u.DistinctCompiled = &compiled
+		p.DistinctCompiled = &compiled
 	} else {
 		uniqExprCacheLock.Unlock()
 		// release the lock during compile
@@ -69,12 +69,12 @@ func (u *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 		if err != nil {
 			return err
 		}
-		u.DistinctCompiled = compiledExpr
+		p.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
 		uniqExprCache[f.Distinct] = *compiledExpr
 		uniqExprCacheLock.Unlock()
 	}
-	u.KeyCache = make(map[string]bool)
+	p.KeyCache = make(map[string]bool)
 	return nil
 }
 
