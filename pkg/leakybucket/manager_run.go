@@ -159,40 +159,41 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 
 func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
+	if ok {
+		return biface.(*Leaky), nil
+	}
 
 	/* the bucket doesn't exist, create it !*/
-	if !ok {
-		var fresh_bucket *Leaky
+	var fresh_bucket *Leaky
 
-		switch expectMode {
-		case pipeline.TIMEMACHINE:
-			fresh_bucket = NewTimeMachine(holder)
-			holder.logger.Debugf("Creating TimeMachine bucket")
-		case pipeline.LIVE:
-			fresh_bucket = NewLeakyFromFactory(holder)
-			holder.logger.Debugf("Creating Live bucket")
-		default:
-			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
-		}
-		fresh_bucket.In = make(chan *pipeline.Event)
-		fresh_bucket.Mapkey = partitionKey
-		fresh_bucket.Signal = make(chan bool, 1)
-		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
-		if !stored {
-			go func() {
-				ctx, cancel := context.WithCancel(ctx)
-				fresh_bucket.cancel = cancel
-				fresh_bucket.LeakRoutine(ctx)
-			}()
-			biface = fresh_bucket
-			// once the created goroutine is ready to process event, we can return it
-			<-fresh_bucket.Signal
-		} else {
-			holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
-			biface = actual
-		}
-		holder.logger.Debugf("Created new bucket %s", partitionKey)
+	switch expectMode {
+	case pipeline.TIMEMACHINE:
+		fresh_bucket = NewTimeMachine(holder)
+		holder.logger.Debugf("Creating TimeMachine bucket")
+	case pipeline.LIVE:
+		fresh_bucket = NewLeakyFromFactory(holder)
+		holder.logger.Debugf("Creating Live bucket")
+	default:
+		return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 	}
+	fresh_bucket.In = make(chan *pipeline.Event)
+	fresh_bucket.Mapkey = partitionKey
+	fresh_bucket.Signal = make(chan bool, 1)
+	actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
+	if !stored {
+		go func() {
+			ctx, cancel := context.WithCancel(ctx)
+			fresh_bucket.cancel = cancel
+			fresh_bucket.LeakRoutine(ctx)
+		}()
+		biface = fresh_bucket
+		// once the created goroutine is ready to process event, we can return it
+		<-fresh_bucket.Signal
+	} else {
+		holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
+		biface = actual
+	}
+	holder.logger.Debugf("Created new bucket %s", partitionKey)
 	return biface.(*Leaky), nil
 }
 
