@@ -114,7 +114,7 @@ func TestGCandDump(t *testing.T) {
 func TestShutdownBuckets(t *testing.T) {
 	var (
 		bucketStore = NewBucketStore()
-		Holders = []BucketFactory{
+		Holders     = []BucketFactory{
 			// one long counter
 			{
 				Name:        "test_counter_slow",

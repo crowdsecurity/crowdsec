@@ -96,7 +96,14 @@ func (f *BucketFactory) Validate() error {
 	return f.ScopeType.CompileFilter()
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, bucketStore *BucketStore, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(
+	item *cwhub.Item,
+	hub *cwhub.Hub,
+	bucketStore *BucketStore,
+	response chan pipeline.Event,
+	orderEvent bool,
+	simulationConfig csconfig.SimulationConfig,
+) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -174,7 +181,13 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, bucketStore *
 	return factories, nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, bucketStore *BucketStore, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
+func LoadBuckets(
+	cscfg *csconfig.CrowdsecServiceCfg,
+	hub *cwhub.Hub,
+	scenarios []*cwhub.Item,
+	bucketStore *BucketStore,
+	orderEvent bool,
+) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
 	response := make(chan pipeline.Event, 1)
 
