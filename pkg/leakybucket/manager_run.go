@@ -17,10 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-var (
-	serialized map[string]Leaky
-)
-
 /*
 The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
@@ -58,11 +54,6 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 		}
 
 		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
-		if _, ok := serialized[key]; ok {
-			log.Errorf("entry %s already exists", key)
-			return false
-		}
-		log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
 
 		return true
 	})
