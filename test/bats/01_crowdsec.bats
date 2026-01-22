@@ -407,7 +407,9 @@ teardown() {
          "crowdsecurity/ssh-bf",
          "crowdsecurity/ssh-bf_user-enum",
          "crowdsecurity/ssh-slow-bf",
-         "crowdsecurity/ssh-slow-bf_user-enum"] as $wanted
+         "crowdsecurity/ssh-slow-bf_user-enum",
+         "crowdsecurity/ssh-time-based-bf",
+         "crowdsecurity/ssh-time-based-bf_user-enum"] as $wanted
       | (($doc | keys) - $wanted) | length == 0
     ' "$DUMP_DIR/bucketpour-dump.yaml"
 
