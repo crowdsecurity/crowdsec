@@ -26,13 +26,13 @@ The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
-func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
-	buckets.wgPour.Wait()
-	buckets.wgDumpState.Add(1)
-	defer buckets.wgDumpState.Done()
+func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
+	bucketStore.wgPour.Wait()
+	bucketStore.wgDumpState.Add(1)
+	defer bucketStore.wgDumpState.Done()
 
 	toflush := []string{}
-	buckets.Bucket_map.Range(func(rkey, rvalue any) bool {
+	bucketStore.Bucket_map.Range(func(rkey, rvalue any) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
 		// bucket already overflowed, we can kill it
@@ -68,11 +68,11 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) {
 	})
 	log.Infof("Cleaned %d buckets", len(toflush))
 	for _, flushkey := range toflush {
-		buckets.Bucket_map.Delete(flushkey)
+		bucketStore.Bucket_map.Delete(flushkey)
 	}
 }
 
-func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *pipeline.Event, collector *PourCollector) (bool, error) {
+func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, bucketStore *BucketStore, parsed *pipeline.Event, collector *PourCollector) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -96,9 +96,9 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 			if !ok {
 				// the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
-				buckets.Bucket_map.Delete(buckey)
+				bucketStore.Bucket_map.Delete(buckey)
 				sigclosed += 1
-				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
+				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
 				if err != nil {
 					return false, err
 				}
@@ -125,10 +125,10 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					buckets.Bucket_map.Delete(buckey)
+					bucketStore.Bucket_map.Delete(buckey)
 					// not sure about this, should we create a new one ?
 					sigclosed += 1
-					bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holder, parsed.ExpectMode)
+					bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
 					if err != nil {
 						return false, err
 					}
@@ -157,7 +157,7 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 	return sent, nil
 }
 
-func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
+func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *BucketStore, holder BucketFactory, expectMode int) (*Leaky, error) {
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 	if ok {
 		return biface.(*Leaky), nil
@@ -199,7 +199,7 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *Buckets, collector *PourCollector) (bool, error) {
+func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *BucketStore, collector *PourCollector) (bool, error) {
 	var ok, condition, poured bool
 
 	if collector != nil {

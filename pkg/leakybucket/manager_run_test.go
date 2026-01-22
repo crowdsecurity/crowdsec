@@ -11,10 +11,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func expectBucketCount(buckets *Buckets, expected int) error {
+func expectBucketCount(bucketStore *BucketStore, expected int) error {
 	count := 0
 
-	buckets.Bucket_map.Range(func(_, _ any) bool {
+	bucketStore.Bucket_map.Range(func(_, _ any) bool {
 		count++
 		return true
 	})
@@ -28,8 +28,8 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 
 func TestGCandDump(t *testing.T) {
 	var (
-		buckets = NewBuckets()
-		ctx     = t.Context()
+		bucketStore = NewBucketStore()
+		ctx         = t.Context()
 	)
 
 	Holders := []BucketFactory{
@@ -43,8 +43,8 @@ func TestGCandDump(t *testing.T) {
 			Duration:    "0.5s",
 			Blackhole:   "1m",
 			Filter:      "true",
-			wgDumpState: buckets.wgDumpState,
-			wgPour:      buckets.wgPour,
+			wgDumpState: bucketStore.wgDumpState,
+			wgPour:      bucketStore.wgPour,
 		},
 		// one long counter
 		{
@@ -55,8 +55,8 @@ func TestGCandDump(t *testing.T) {
 			Capacity:    -1,
 			Duration:    "10m",
 			Filter:      "true",
-			wgDumpState: buckets.wgDumpState,
-			wgPour:      buckets.wgPour,
+			wgDumpState: bucketStore.wgDumpState,
+			wgPour:      bucketStore.wgPour,
 		},
 		// slow leaky
 		{
@@ -67,8 +67,8 @@ func TestGCandDump(t *testing.T) {
 			Capacity:    5,
 			LeakSpeed:   "10m",
 			Filter:      "true",
-			wgDumpState: buckets.wgDumpState,
-			wgPour:      buckets.wgPour,
+			wgDumpState: bucketStore.wgDumpState,
+			wgPour:      bucketStore.wgPour,
 		},
 	}
 
@@ -86,7 +86,7 @@ func TestGCandDump(t *testing.T) {
 
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
+	ok, err := PourItemToHolders(ctx, in, Holders, bucketStore, nil)
 	if err != nil {
 		t.Fatalf("while pouring item: %s", err)
 	}
@@ -97,23 +97,23 @@ func TestGCandDump(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	if err := expectBucketCount(buckets, 3); err != nil {
+	if err := expectBucketCount(bucketStore, 3); err != nil {
 		t.Fatal(err)
 	}
 
 	log.Info("Bucket GC")
 
 	// call garbage collector
-	GarbageCollectBuckets(time.Now().UTC(), buckets)
+	GarbageCollectBuckets(time.Now().UTC(), bucketStore)
 
-	if err := expectBucketCount(buckets, 1); err != nil {
+	if err := expectBucketCount(bucketStore, 1); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestShutdownBuckets(t *testing.T) {
 	var (
-		buckets = NewBuckets()
+		bucketStore = NewBucketStore()
 		Holders = []BucketFactory{
 			// one long counter
 			{
@@ -124,8 +124,8 @@ func TestShutdownBuckets(t *testing.T) {
 				Capacity:    -1,
 				Duration:    "10m",
 				Filter:      "true",
-				wgDumpState: buckets.wgDumpState,
-				wgPour:      buckets.wgPour,
+				wgDumpState: bucketStore.wgDumpState,
+				wgPour:      bucketStore.wgPour,
 			},
 			// slow leaky
 			{
@@ -136,8 +136,8 @@ func TestShutdownBuckets(t *testing.T) {
 				Capacity:    5,
 				LeakSpeed:   "10m",
 				Filter:      "true",
-				wgDumpState: buckets.wgDumpState,
-				wgPour:      buckets.wgPour,
+				wgDumpState: bucketStore.wgDumpState,
+				wgPour:      bucketStore.wgPour,
 			},
 		}
 	)
@@ -157,7 +157,7 @@ func TestShutdownBuckets(t *testing.T) {
 	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
 	// pour an item that will go to leaky + counter
 	ctx, cancel := context.WithCancel(t.Context())
-	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
+	ok, err := PourItemToHolders(ctx, in, Holders, bucketStore, nil)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
 	}
@@ -168,7 +168,7 @@ func TestShutdownBuckets(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	if err := expectBucketCount(buckets, 2); err != nil {
+	if err := expectBucketCount(bucketStore, 2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -176,7 +176,7 @@ func TestShutdownBuckets(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	if err := expectBucketCount(buckets, 2); err != nil {
+	if err := expectBucketCount(bucketStore, 2); err != nil {
 		t.Fatal(err)
 	}
 }
