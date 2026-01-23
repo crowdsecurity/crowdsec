@@ -73,7 +73,7 @@ func TestGCandDump(t *testing.T) {
 	}
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx]); err != nil {
+		if err := Holders[idx].LoadBucket(); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
@@ -143,7 +143,7 @@ func TestShutdownBuckets(t *testing.T) {
 	)
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx]); err != nil {
+		if err := Holders[idx].LoadBucket(); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
