@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func GenSubObject(t *testing.T, i int) []byte {
@@ -43,6 +44,7 @@ func GenSubObject(t *testing.T, i int) []byte {
 	require.NoError(t, err)
 
 	var b bytes.Buffer
+
 	gz := gzip.NewWriter(&b)
 	_, err = gz.Write(body)
 	require.NoError(t, err)
@@ -53,8 +55,14 @@ func GenSubObject(t *testing.T, i int) []byte {
 }
 
 func WriteToStream(t *testing.T, endpoint string, streamName string, count int, shards int, sub bool) {
-	sess := session.Must(session.NewSession())
-	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
+	ctx := t.Context()
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"), config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	require.NoError(t, err)
+
+	kinesisClient := kinesis.NewFromConfig(cfg, func(o *kinesis.Options) {
+		o.BaseEndpoint = aws.String(endpoint)
+	})
 
 	for i := range count {
 		partition := "partition"
@@ -70,7 +78,7 @@ func WriteToStream(t *testing.T, endpoint string, streamName string, count int, 
 			data = []byte(strconv.Itoa(i))
 		}
 
-		_, err := kinesisClient.PutRecord(&kinesis.PutRecordInput{
+		_, err := kinesisClient.PutRecord(ctx, &kinesis.PutRecordInput{
 			Data:         data,
 			PartitionKey: aws.String(partition),
 			StreamName:   aws.String(streamName),
@@ -88,56 +96,6 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	// delete_streams()
 	os.Exit(code)
-}
-
-func TestBadConfiguration(t *testing.T) {
-	cstest.SkipOnWindows(t)
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config:      `source: kinesis`,
-			expectedErr: "stream_name is mandatory when use_enhanced_fanout is false",
-		},
-		{
-			config: `
-source: kinesis
-max_retries: whatev`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field KinesisConfiguration.MaxRetries of type int",
-		},
-		{
-			config: `
-source: kinesis
-use_enhanced_fanout: true`,
-			expectedErr: "stream_arn is mandatory when use_enhanced_fanout is true",
-		},
-		{
-			config: `
-source: kinesis
-use_enhanced_fanout: true
-stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
-			expectedErr: "consumer_name is mandatory when use_enhanced_fanout is true",
-		},
-		{
-			config: `
-source: kinesis
-stream_name: foobar
-stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
-			expectedErr: "stream_arn and stream_name are mutually exclusive",
-		},
-	}
-
-	subLogger := log.WithField("type", "kinesis")
-
-	for _, test := range tests {
-		t.Run(test.config, func(t *testing.T) {
-			f := KinesisSource{}
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
-		})
-	}
 }
 
 func TestReadFromStream(t *testing.T) {
@@ -160,13 +118,13 @@ stream_name: stream-1-shard`,
 		},
 	}
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
@@ -205,13 +163,13 @@ stream_name: stream-2-shards`,
 	}
 
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
@@ -254,13 +212,13 @@ from_subscription: true`,
 	}
 
 	for _, test := range tests {
-		f := KinesisSource{}
+		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan pipeline.Event)
 		err = f.StreamingAcquisition(ctx, out, tomb)
 		require.NoError(t, err)
 		// Allow the datasource to start listening to the stream
@@ -300,7 +258,7 @@ use_enhanced_fanout: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
+		err := f.Configure([]byte(config), log.WithField("type", ModuleName))
 		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)

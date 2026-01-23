@@ -1290,6 +1290,10 @@ definitions:
         type: string
         description: name of the OS
         maxLength: 255
+      family:
+        type: string
+        description: family of the OS
+        maxLength: 255
       version:
         type: string
         description: version of the OS

@@ -35,7 +35,7 @@ func BuildSetup(ctx context.Context, detectConfig *DetectConfig, opts DetectOpti
 
 	logger.Debugf("Detected host info: %s", hostInfo)
 
-	exprSystemd := NewExprSystemd(installedUnits)
+	exprSystemd := NewExprSystemd(installedUnits, logger)
 	exprSystem := NewExprSystem(runningProcesses)
 
 	exprWindows, err := NewExprWindows()

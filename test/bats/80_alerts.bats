@@ -73,6 +73,25 @@ teardown() {
     assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
 }
 
+@test "cscli alerts list --scenario" {
+    rune -0 cscli decisions add --ip 1.2.3.4 --reason my/decision
+
+    # change the scenario of the alert, we should be able
+    # to look for alerts without decisions
+
+    ./instance-crowdsec stop
+    rune -0 ./instance-db exec_sql "UPDATE alerts SET scenario='my/alert'"
+    ./instance-crowdsec start
+
+    rune -0 cscli alerts list --scenario my/decision -o json
+    rune -0 jq 'length' <(output)
+    assert_output 1
+
+    rune -0 cscli alerts list --scenario my/alert -o json
+    rune -0 jq 'length' <(output)
+    assert_output 1
+}
+
 @test "cscli alerts inspect" {
     rune -1 cscli alerts inspect
     assert_stderr 'Error: cscli alerts inspect: requires at least 1 arg(s), only received 0'

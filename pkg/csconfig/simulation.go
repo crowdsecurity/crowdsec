@@ -14,14 +14,14 @@ import (
 )
 
 type SimulationConfig struct {
-	Simulation *bool    `yaml:"simulation"`
+	Simulation bool     `yaml:"simulation"`
 	Exclusions []string `yaml:"exclusions,omitempty"`
 }
 
 func (s *SimulationConfig) IsSimulated(scenario string) bool {
 	var simulated bool
 
-	if s.Simulation != nil && *s.Simulation {
+	if s.Simulation {
 		simulated = true
 	}
 
@@ -55,16 +55,12 @@ func (c *Config) LoadSimulation() error {
 		}
 	}
 
-	if simCfg.Simulation == nil {
-		simCfg.Simulation = new(bool)
-	}
-
 	if c.Crowdsec != nil {
-		c.Crowdsec.SimulationConfig = &simCfg
+		c.Crowdsec.SimulationConfig = simCfg
 	}
 
 	if c.Cscli != nil {
-		c.Cscli.SimulationConfig = &simCfg
+		c.Cscli.SimulationConfig = simCfg
 	}
 
 	return nil

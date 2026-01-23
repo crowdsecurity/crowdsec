@@ -15,19 +15,19 @@ import (
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
-	Enable                    *bool             `yaml:"enable"`
-	AcquisitionFilePath       string            `yaml:"acquisition_path,omitempty"`
-	AcquisitionDirPath        string            `yaml:"acquisition_dir,omitempty"`
-	ConsoleContextPath        string            `yaml:"console_context_path"`
-	ConsoleContextValueLength int               `yaml:"console_context_value_length"`
-	AcquisitionFiles          []string          `yaml:"-"`
-	ParserRoutinesCount       int               `yaml:"parser_routines"`
-	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
-	OutputRoutinesCount       int               `yaml:"output_routines"`
-	SimulationConfig          *SimulationConfig `yaml:"-"`
-	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
-	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
-	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	Enable                    *bool            `yaml:"enable"`
+	AcquisitionFilePath       string           `yaml:"acquisition_path,omitempty"`
+	AcquisitionDirPath        string           `yaml:"acquisition_dir,omitempty"`
+	ConsoleContextPath        string           `yaml:"console_context_path"`
+	ConsoleContextValueLength int              `yaml:"console_context_value_length"`
+	AcquisitionFiles          []string         `yaml:"-"`
+	ParserRoutinesCount       int              `yaml:"parser_routines"`
+	BucketsRoutinesCount      int              `yaml:"buckets_routines"`
+	OutputRoutinesCount       int              `yaml:"output_routines"`
+	SimulationConfig          SimulationConfig `yaml:"-"`
+	BucketStateFile           string           `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
+	BucketStateDumpDir        string           `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
+	BucketsGCEnabled          bool             `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`

@@ -14,7 +14,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 const MaxContextValueLen = 4000
@@ -25,14 +25,13 @@ type Context struct {
 	ContextToSend         map[string][]string
 	ContextValueLen       int
 	ContextToSendCompiled map[string][]*vm.Program
-	Log                   *log.Logger
 }
 
 func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
 		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{
-			"evt":   &types.Event{},
-			"match": &types.MatchedRule{},
+			"evt":   &pipeline.Event{},
+			"match": &pipeline.MatchedRule{},
 			"req":   &http.Request{},
 		})...)
 		if err != nil {
@@ -44,25 +43,19 @@ func ValidateContextExpr(key string, expressions []string) error {
 }
 
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
-	clog := log.New()
-	if err := types.ConfigureLogger(clog, nil); err != nil {
-		return fmt.Errorf("couldn't create logger for alert context: %w", err)
-	}
-
 	if valueLength == 0 {
-		clog.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
+		log.Debugf("No console context value length provided, using default: %d", MaxContextValueLen)
 		valueLength = MaxContextValueLen
 	}
 
 	if valueLength > MaxContextValueLen {
-		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
+		log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, MaxContextValueLen)
 		valueLength = MaxContextValueLen
 	}
 
 	alertContext = Context{
 		ContextToSend:         contextToSend,
 		ContextValueLen:       valueLength,
-		Log:                   clog,
 		ContextToSendCompiled: make(map[string][]*vm.Program),
 	}
 
@@ -77,8 +70,8 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 
 		for _, value := range values {
 			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{
-				"evt":   &types.Event{},
-				"match": &types.MatchedRule{},
+				"evt":   &pipeline.Event{},
+				"match": &pipeline.MatchedRule{},
 				"req":   &http.Request{},
 			})...)
 			if err != nil {
@@ -151,13 +144,13 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
+func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
 	var errors []error
 
 	// if we're evaluating context for appsec event, match and request will be present.
 	// otherwise, only evt will be.
 	if match == nil {
-		match = types.NewMatchedRule()
+		match = pipeline.NewMatchedRule()
 	}
 
 	if request == nil {
@@ -219,12 +212,12 @@ func EvalAlertContextRules(evt types.Event, match *types.MatchedRule, request *h
 }
 
 // Iterate over the individual appsec matched rules to create the needed alert context.
-func AppsecEventToContext(event types.AppsecEvent, request *http.Request) (models.Meta, []error) {
+func AppsecEventToContext(event pipeline.AppsecEvent, request *http.Request) (models.Meta, []error) {
 	var errors []error
 
 	tmpContext := make(map[string][]string)
 
-	evt := types.MakeEvent(false, types.LOG, false)
+	evt := pipeline.MakeEvent(false, pipeline.LOG, false)
 	for _, matched_rule := range event.MatchedRules {
 		tmpErrors := EvalAlertContextRules(evt, &matched_rule, request, tmpContext)
 		errors = append(errors, tmpErrors...)
@@ -239,7 +232,7 @@ func AppsecEventToContext(event types.AppsecEvent, request *http.Request) (model
 }
 
 // Iterate over the individual events to create the needed alert context.
-func EventToContext(events []types.Event) (models.Meta, []error) {
+func EventToContext(events []pipeline.Event) (models.Meta, []error) {
 	var errors []error
 
 	tmpContext := make(map[string][]string)

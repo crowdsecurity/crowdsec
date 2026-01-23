@@ -27,21 +27,21 @@ import (
 
 // NewHCLogAdapter takes an instance of a Logrus logger and returns an hclog
 // logger in the form of an HCLogAdapter.
-func NewHCLogAdapter(l *logrus.Logger, name string) hclog.Logger {
-	return &HCLogAdapter{l, name, nil}
+func NewHCLogAdapter(l *logrus.Entry, name string) hclog.Logger {
+	return &HCLogAdapter{l, name}
 }
 
 // HCLogAdapter implements the hclog interface.  Plugins use hclog to send
 // log entries back to ephemeral-iam and this adapter allows for those logs
 // to be handled by ephemeral-iam's Logrus logger.
 type HCLogAdapter struct {
-	log  *logrus.Logger
+	log  *logrus.Entry
 	name string
 
-	impliedArgs []interface{}
+	// impliedArgs []interface{}
 }
 
-func (h HCLogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
+func (h HCLogAdapter) Log(level hclog.Level, msg string, args ...any) {
 	switch level { //nolint:exhaustive
 	case hclog.NoLevel:
 		return
@@ -58,52 +58,52 @@ func (h HCLogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
 	}
 }
 
-func (h HCLogAdapter) Trace(msg string, args ...interface{}) {
+func (h HCLogAdapter) Trace(msg string, args ...any) {
 	h.log.WithFields(toLogrusFields(args)).Trace(msg)
 }
 
-func (h HCLogAdapter) Debug(msg string, args ...interface{}) {
+func (h HCLogAdapter) Debug(msg string, args ...any) {
 	h.log.WithFields(toLogrusFields(args)).Debug(msg)
 }
 
-func (h HCLogAdapter) Info(msg string, args ...interface{}) {
+func (h HCLogAdapter) Info(msg string, args ...any) {
 	h.log.WithFields(toLogrusFields(args)).Info(msg)
 }
 
-func (h HCLogAdapter) Warn(msg string, args ...interface{}) {
+func (h HCLogAdapter) Warn(msg string, args ...any) {
 	h.log.WithFields(toLogrusFields(args)).Warn(msg)
 }
 
-func (h HCLogAdapter) Error(msg string, args ...interface{}) {
+func (h HCLogAdapter) Error(msg string, args ...any) {
 	h.log.WithFields(toLogrusFields(args)).Error(msg)
 }
 
 func (h HCLogAdapter) IsTrace() bool {
-	return h.log.GetLevel() >= logrus.TraceLevel
+	return h.log.Logger.GetLevel() >= logrus.TraceLevel
 }
 
 func (h HCLogAdapter) IsDebug() bool {
-	return h.log.GetLevel() >= logrus.DebugLevel
+	return h.log.Logger.GetLevel() >= logrus.DebugLevel
 }
 
 func (h HCLogAdapter) IsInfo() bool {
-	return h.log.GetLevel() >= logrus.InfoLevel
+	return h.log.Logger.GetLevel() >= logrus.InfoLevel
 }
 
 func (h HCLogAdapter) IsWarn() bool {
-	return h.log.GetLevel() >= logrus.WarnLevel
+	return h.log.Logger.GetLevel() >= logrus.WarnLevel
 }
 
 func (h HCLogAdapter) IsError() bool {
-	return h.log.GetLevel() >= logrus.ErrorLevel
+	return h.log.Logger.GetLevel() >= logrus.ErrorLevel
 }
 
-func (h HCLogAdapter) ImpliedArgs() []interface{} {
+func (HCLogAdapter) ImpliedArgs() []any {
 	// Not supported.
 	return nil
 }
 
-func (h HCLogAdapter) With(args ...interface{}) hclog.Logger {
+func (h HCLogAdapter) With(args ...any) hclog.Logger {
 	return &h
 }
 
@@ -120,11 +120,11 @@ func (h HCLogAdapter) ResetNamed(name string) hclog.Logger {
 }
 
 func (h *HCLogAdapter) SetLevel(level hclog.Level) {
-	h.log.SetLevel(level2logrus(level))
+	h.log.Logger.SetLevel(level2logrus(level))
 }
 
 func (h HCLogAdapter) GetLevel() hclog.Level {
-	return level2hclog(h.log.GetLevel())
+	return level2hclog(h.log.Logger.GetLevel())
 }
 
 func (h HCLogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
@@ -134,7 +134,7 @@ func (h HCLogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Log
 	return log.New(h.StandardWriter(opts), "", 0)
 }
 
-func (h HCLogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (HCLogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
 	return os.Stderr
 }
 
@@ -178,8 +178,8 @@ func level2hclog(level logrus.Level) hclog.Level {
 
 // toLogrusFields takes a list of key/value pairs passed to the hclog logger
 // and converts them to a map to be used as Logrus fields.
-func toLogrusFields(kvPairs []interface{}) map[string]interface{} {
-	m := map[string]interface{}{}
+func toLogrusFields(kvPairs []any) map[string]any {
+	m := map[string]any{}
 	if len(kvPairs) == 0 {
 		return m
 	}
@@ -200,7 +200,7 @@ func toLogrusFields(kvPairs []interface{}) map[string]interface{} {
 
 // merge takes a key/value pair and converts them to strings then adds them to
 // the dst map.
-func merge(dst map[string]interface{}, k, v interface{}) {
+func merge(dst map[string]any, k, v any) {
 	var key string
 
 	switch x := k.(type) {
@@ -228,6 +228,13 @@ func safeString(str fmt.Stringer) (s string) {
 		}
 	}()
 
-	s = str.String()
-	return //nolint:revive // bare return for the defer
+	if str == nil {
+		// typed nil, happy nilaway
+		s = "NULL"
+	} else {
+		s = str.String()
+	}
+
+	//revive:disable-next-line:bare-return
+	return // bare return is required for the defer
 }

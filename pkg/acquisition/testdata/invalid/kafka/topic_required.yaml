@@ -1,0 +1,6 @@
+# wantErr: datasource of type kafka: cannot create a kafka reader with an empty topic
+source: kafka
+labels:
+  type: sometype
+brokers:
+  - bla

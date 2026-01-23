@@ -7,12 +7,12 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statBucket map[string]map[string]int
 
-func (s statBucket) Description() (string, string) {
+func (statBucket) Description() (string, string) {
 	return "Scenario Metrics",
 		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. ` +
 			`Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`

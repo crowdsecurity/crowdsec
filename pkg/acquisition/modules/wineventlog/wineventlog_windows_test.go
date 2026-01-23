@@ -16,10 +16,12 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestBadConfiguration(t *testing.T) {
+	ctx := t.Context()
+
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
 
@@ -61,15 +63,17 @@ event_ids: true`,
 		},
 	}
 
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 	for _, test := range tests {
-		f := WinEventLogSource{}
-		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		f := Source{}
+		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		assert.Contains(t, err.Error(), test.expectedErr)
 	}
 }
 
 func TestQueryBuilder(t *testing.T) {
+	ctx := t.Context()
+
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
 
@@ -118,12 +122,12 @@ event_level: bla`,
 			expectedErr:   "invalid log level",
 		},
 	}
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
-			f := WinEventLogSource{}
+			f := Source{}
 
-			err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 			if test.expectedErr != "" {
 				return
@@ -186,7 +190,7 @@ event_ids:
 			expectedLines: nil,
 		},
 	}
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 
 	evthandler, err := eventlog.Open("Application")
 	if err != nil {
@@ -195,10 +199,10 @@ event_ids:
 
 	for _, test := range tests {
 		to := &tomb.Tomb{}
-		c := make(chan types.Event)
-		f := WinEventLogSource{}
+		c := make(chan pipeline.Event)
+		f := Source{}
 
-		err := f.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		err = f.StreamingAcquisition(ctx, c, to)
@@ -220,7 +224,7 @@ event_ids:
 				if test.expectedLines == nil {
 					break READLOOP
 				}
-				t.Fatalf("timeout")
+				t.Fatal("timeout")
 			case e := <-c:
 				line, _ := exprhelpers.XMLGetNodeValue(e.Line.Raw, "/Event/EventData[1]/Data")
 				linesRead = append(linesRead, line.(string))
@@ -235,11 +239,11 @@ event_ids:
 			assert.Equal(t, test.expectedLines, linesRead)
 		}
 		to.Kill(nil)
-		to.Wait()
+		_ = to.Wait()
 	}
 }
 
-func TestOneShotAcquisition(t *testing.T) {
+func TestOneShot(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
@@ -285,11 +289,10 @@ func TestOneShotAcquisition(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			lineCount := 0
-			to := &tomb.Tomb{}
-			c := make(chan types.Event)
-			f := WinEventLogSource{}
+			c := make(chan pipeline.Event)
+			f := Source{}
 
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", ModuleName), "")
 			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
 				return
@@ -300,13 +303,13 @@ func TestOneShotAcquisition(t *testing.T) {
 					select {
 					case <-c:
 						lineCount++
-					case <-to.Dying():
+					case <-ctx.Done():
 						return
 					}
 				}
 			}()
 
-			err = f.OneShotAcquisition(ctx, c, to)
+			err = f.OneShot(ctx, c)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 
 			if test.expectedErr != "" {

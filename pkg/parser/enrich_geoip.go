@@ -9,10 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func IpToRange(field string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func IpToRange(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}
@@ -40,7 +40,7 @@ func IpToRange(field string, p *types.Event, plog *log.Entry) (map[string]string
 	return ret, nil
 }
 
-func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func GeoIpASN(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}
@@ -64,8 +64,11 @@ func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string,
 
 	ret := make(map[string]string)
 
-	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	// narrator: it was actually 16 bits
+	asnStr := strconv.FormatUint(uint64(record.AutonomousSystemNumber), 10)
+
+	ret["ASNNumber"] = asnStr
+	ret["ASNumber"] = asnStr // back-compat
 	ret["ASNOrg"] = record.AutonomousSystemOrganization
 
 	plog.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])
@@ -73,7 +76,7 @@ func GeoIpASN(field string, p *types.Event, plog *log.Entry) (map[string]string,
 	return ret, nil
 }
 
-func GeoIpCity(field string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func GeoIpCity(field string, _ *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	if field == "" {
 		return nil, nil
 	}

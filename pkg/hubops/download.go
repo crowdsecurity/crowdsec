@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/downloader"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 )
 
 // DownloadCommand handles the downloading of hub items.
@@ -94,7 +94,7 @@ func (c *DownloadCommand) Prepare(plan *ActionPlan) (bool, error) {
 
 // The DataSet is a list of data sources required by an item (built from the data: section in the yaml).
 type DataSet struct {
-	Data []types.DataSource `yaml:"data,omitempty"`
+	Data []enrichment.DataProvider `yaml:"data,omitempty"`
 }
 
 // downloadDataSet downloads all the data files for an item.
@@ -135,10 +135,11 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 			d := downloader.
 				New().
 				WithHTTPClient(cwhub.HubClient).
+				WithMakeDirs(true).
 				ToFile(destPath).
 				CompareContent().
 				BeforeRequest(func(req *http.Request) {
-					fmt.Printf("downloading %s\n", req.URL)
+					fmt.Fprintf(os.Stdout, "downloading %s\n", req.URL)
 				}).
 				WithLogger(log.WithField("url", dataS.SourceURL))
 
@@ -162,7 +163,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	i := c.Item
 
-	fmt.Printf("downloading %s\n", colorizeItemName(i.FQName()))
+	fmt.Fprintf(os.Stdout, "downloading %s\n", colorizeItemName(i.FQName()))
 
 	// ensure that target file is within target dir
 	finalPath, err := i.PathForDownload()
@@ -202,7 +203,7 @@ func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *DownloadCommand) OperationType() string {
+func (*DownloadCommand) OperationType() string {
 	return "download"
 }
 

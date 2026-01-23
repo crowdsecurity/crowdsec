@@ -176,6 +176,26 @@ func (bu *BouncerUpdate) ClearOsname() *BouncerUpdate {
 	return bu
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (bu *BouncerUpdate) SetOsfamily(s string) *BouncerUpdate {
+	bu.mutation.SetOsfamily(s)
+	return bu
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableOsfamily(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetOsfamily(*s)
+	}
+	return bu
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (bu *BouncerUpdate) ClearOsfamily() *BouncerUpdate {
+	bu.mutation.ClearOsfamily()
+	return bu
+}
+
 // SetOsversion sets the "osversion" field.
 func (bu *BouncerUpdate) SetOsversion(s string) *BouncerUpdate {
 	bu.mutation.SetOsversion(s)
@@ -307,6 +327,12 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if bu.mutation.OsnameCleared() {
 		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
+	}
+	if value, ok := bu.mutation.Osfamily(); ok {
+		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
+	}
+	if bu.mutation.OsfamilyCleared() {
+		_spec.ClearField(bouncer.FieldOsfamily, field.TypeString)
 	}
 	if value, ok := bu.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
@@ -488,6 +514,26 @@ func (buo *BouncerUpdateOne) ClearOsname() *BouncerUpdateOne {
 	return buo
 }
 
+// SetOsfamily sets the "osfamily" field.
+func (buo *BouncerUpdateOne) SetOsfamily(s string) *BouncerUpdateOne {
+	buo.mutation.SetOsfamily(s)
+	return buo
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableOsfamily(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetOsfamily(*s)
+	}
+	return buo
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (buo *BouncerUpdateOne) ClearOsfamily() *BouncerUpdateOne {
+	buo.mutation.ClearOsfamily()
+	return buo
+}
+
 // SetOsversion sets the "osversion" field.
 func (buo *BouncerUpdateOne) SetOsversion(s string) *BouncerUpdateOne {
 	buo.mutation.SetOsversion(s)
@@ -649,6 +695,12 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	if buo.mutation.OsnameCleared() {
 		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
+	}
+	if value, ok := buo.mutation.Osfamily(); ok {
+		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
+	}
+	if buo.mutation.OsfamilyCleared() {
+		_spec.ClearField(bouncer.FieldOsfamily, field.TypeString)
 	}
 	if value, ok := buo.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)

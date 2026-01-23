@@ -9,12 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func (cli *cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
+func (*cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
 	bouncerPrefix := strings.Split(bouncerName, "@")[0]
 	for _, bouncer := range bouncers {
 		if strings.HasPrefix(bouncer.Name, bouncerPrefix) && !bouncer.AutoCreated {

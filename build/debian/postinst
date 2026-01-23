@@ -1,0 +1,105 @@
+#!/bin/sh
+
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+if [ "$1" = configure ]; then
+    if [ ! -d /var/lib/crowdsec/data ]; then
+        mkdir -p /var/lib/crowdsec/data
+    fi
+
+    if [ -f /etc/crowdsec/local_api_credentials.yaml ] ; then
+        chmod 600 /etc/crowdsec/local_api_credentials.yaml
+    fi
+
+    if [ -f /etc/crowdsec/online_api_credentials.yaml ]; then
+        chmod 600 /etc/crowdsec/online_api_credentials.yaml
+    fi
+
+    if [ ! -f /etc/crowdsec/local_api_credentials.yaml ] || [ ! -f /etc/crowdsec/online_api_credentials.yaml ]; then
+        if [ ! -f /etc/crowdsec/local_api_credentials.yaml ] ; then
+            install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
+        fi
+        if [ ! -f /etc/crowdsec/online_api_credentials.yaml ] ; then
+            install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
+        fi
+
+        db_input medium crowdsec/lapi || true
+        db_go || true
+
+        db_get crowdsec/lapi
+        LAPI=$RET
+
+        if  [ "$LAPI" = true ]; then
+            db_input medium crowdsec/capi || true
+            db_go || true
+
+            db_get crowdsec/capi
+            CAPI=$RET
+
+            [ -s /etc/crowdsec/local_api_credentials.yaml ] || cscli machines add -a --force --error
+
+            if [ "$CAPI" = true ]; then
+                cscli capi register --error
+            fi
+
+        else
+            db_input medium crowdsec/lapi_host || true
+            db_go || true
+
+            db_get crowdsec/lapi_host
+            LAPI_HOST=$RET
+            sed -i "s/127.0.0.1:8080/$LAPI_HOST/g" /etc/crowdsec/config.yaml
+        fi
+    fi
+
+    echo Updating hub
+    /usr/bin/cscli hub update
+    /usr/bin/cscli hub upgrade
+
+    echo "Creating acquisition configuration"
+    cscli setup unattended
+
+    systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
+
+    systemctl enable --now crowdsec-hubupdate.timer >/dev/null 2>&1 || true
+
+    LAPI=true
+    API=$(cscli config show --key "Config.API.Server")
+    if [ "$API" = "nil" ] ; then
+        LAPI=false
+    else
+        # If API server is explicitly disabled, don't attempt port checks
+        ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+        if [ "$ENABLED" = "false" ]; then
+            LAPI=false
+        fi
+        # Extract port from ListenURI robustly (handles IPv6 like ::8080)
+        URI=$(cscli config show --key "Config.API.Server.ListenURI" 2>/dev/null || true)
+        PORT=${URI##*:}
+    fi
+    # Start if lapi disabled, or if port is unspecified, or if port is free.
+    if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
+        systemctl start crowdsec
+    else
+        echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
+        echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
+    fi
+
+    GREEN=$(printf '\033[0;32m')
+    BOLD=$(printf '\033[1m')
+    RESET=$(printf '\033[0m')
+
+    echo "${BOLD}Get started with CrowdSec:${RESET}"
+    echo " * Go further by following our ${BOLD}post installation steps${RESET} : ${GREEN}${BOLD}https://docs.crowdsec.net/u/getting_started/next_steps${RESET}"
+    echo "===================================================================================================================="
+    echo " * Install a ${BOLD}remediation component${RESET} to block attackers: ${GREEN}${BOLD}https://docs.crowdsec.net/u/bouncers/intro${RESET}"
+    echo "===================================================================================================================="
+    echo " * Find more ${BOLD}collections${RESET}, ${BOLD}parsers${RESET} and ${BOLD}scenarios${RESET} created by the community with the Hub: ${GREEN}${BOLD}https://hub.crowdsec.net${RESET}"
+    echo "===================================================================================================================="
+    echo " * Subscribe to ${BOLD}additional blocklists${RESET}, ${BOLD}visualize${RESET} your alerts and more with the console: ${GREEN}${BOLD}https://app.crowdsec.net${RESET}"
+fi
+
+echo "You can always run the configuration again interactively by using 'cscli setup'"

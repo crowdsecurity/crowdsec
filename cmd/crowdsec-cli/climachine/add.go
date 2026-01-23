@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/idgen"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/idgen"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -116,7 +116,7 @@ func (cli *cliMachines) add(ctx context.Context, args []string, machinePassword 
 
 		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
 	} else {
-		fmt.Print(string(apiConfigDump))
+		fmt.Fprint(os.Stderr, string(apiConfigDump))
 	}
 
 	return nil

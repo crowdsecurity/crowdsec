@@ -1,36 +1,39 @@
 package leakybucket
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func expectBucketCount(buckets *Buckets, expected int) error {
 	count := 0
-	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
+
+	buckets.Bucket_map.Range(func(_, _ any) bool {
 		count++
 		return true
 	})
+
 	if count != expected {
 		return fmt.Errorf("expected %d live buckets, got %d", expected, count)
 	}
+
 	return nil
 }
 
 func TestGCandDump(t *testing.T) {
 	var (
 		buckets = NewBuckets()
-		tomb    = &tomb.Tomb{}
+		ctx     = t.Context()
 	)
 
 	Holders := []BucketFactory{
-		//one overflowing soon + bh
+		// one overflowing soon + bh
 		{
 			Name:        "test_counter_fast",
 			Description: "test_counter_fast",
@@ -43,7 +46,7 @@ func TestGCandDump(t *testing.T) {
 			wgDumpState: buckets.wgDumpState,
 			wgPour:      buckets.wgPour,
 		},
-		//one long counter
+		// one long counter
 		{
 			Name:        "test_counter_slow",
 			Description: "test_counter_slow",
@@ -55,7 +58,7 @@ func TestGCandDump(t *testing.T) {
 			wgDumpState: buckets.wgDumpState,
 			wgPour:      buckets.wgPour,
 		},
-		//slow leaky
+		// slow leaky
 		{
 			Name:        "test_leaky_slow",
 			Description: "test_leaky_slow",
@@ -70,24 +73,26 @@ func TestGCandDump(t *testing.T) {
 	}
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx], tomb); err != nil {
+		if err := LoadBucket(&Holders[idx]); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
-		if err := ValidateFactory(&Holders[idx]); err != nil {
+
+		if err := Holders[idx].Validate(); err != nil {
 			t.Fatalf("while validating (%d/%d): %s", idx, len(Holders), err)
 		}
 	}
 
-	log.Printf("Pouring to bucket")
+	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
-	//pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(in, Holders, buckets)
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
+	// pour an item that will go to leaky + counter
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
 	if err != nil {
-		t.Fatalf("while pouring item : %s", err)
+		t.Fatalf("while pouring item: %s", err)
 	}
+
 	if !ok {
-		t.Fatalf("didn't pour item")
+		t.Fatal("didn't pour item")
 	}
 
 	time.Sleep(2 * time.Second)
@@ -95,12 +100,11 @@ func TestGCandDump(t *testing.T) {
 	if err := expectBucketCount(buckets, 3); err != nil {
 		t.Fatal(err)
 	}
-	log.Printf("Bucket GC")
 
-	//call garbage collector
-	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
-		t.Fatalf("failed to garbage collect buckets : %s", err)
-	}
+	log.Info("Bucket GC")
+
+	// call garbage collector
+	GarbageCollectBuckets(time.Now().UTC(), buckets)
 
 	if err := expectBucketCount(buckets, 1); err != nil {
 		t.Fatal(err)
@@ -111,7 +115,7 @@ func TestShutdownBuckets(t *testing.T) {
 	var (
 		buckets = NewBuckets()
 		Holders = []BucketFactory{
-			//one long counter
+			// one long counter
 			{
 				Name:        "test_counter_slow",
 				Description: "test_counter_slow",
@@ -123,7 +127,7 @@ func TestShutdownBuckets(t *testing.T) {
 				wgDumpState: buckets.wgDumpState,
 				wgPour:      buckets.wgPour,
 			},
-			//slow leaky
+			// slow leaky
 			{
 				Name:        "test_leaky_slow",
 				Description: "test_leaky_slow",
@@ -136,28 +140,30 @@ func TestShutdownBuckets(t *testing.T) {
 				wgPour:      buckets.wgPour,
 			},
 		}
-		tomb = &tomb.Tomb{}
 	)
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx], tomb); err != nil {
+		if err := LoadBucket(&Holders[idx]); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
-		if err := ValidateFactory(&Holders[idx]); err != nil {
+
+		if err := Holders[idx].Validate(); err != nil {
 			t.Fatalf("while validating (%d/%d): %s", idx, len(Holders), err)
 		}
 	}
 
-	log.Printf("Pouring to bucket")
+	log.Info("Pouring to bucket")
 
-	in := types.Event{Parsed: map[string]string{"something": "something"}}
-	//pour an item that will go to leaky + counter
-	ok, err := PourItemToHolders(in, Holders, buckets)
+	in := pipeline.Event{Parsed: map[string]string{"something": "something"}}
+	// pour an item that will go to leaky + counter
+	ctx, cancel := context.WithCancel(t.Context())
+	ok, err := PourItemToHolders(ctx, in, Holders, buckets, nil)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
 	}
+
 	if !ok {
-		t.Fatalf("didn't pour item")
+		t.Fatal("didn't pour item")
 	}
 
 	time.Sleep(1 * time.Second)
@@ -165,10 +171,11 @@ func TestShutdownBuckets(t *testing.T) {
 	if err := expectBucketCount(buckets, 2); err != nil {
 		t.Fatal(err)
 	}
-	if err := ShutdownAllBuckets(buckets); err != nil {
-		t.Fatalf("while shutting down buckets : %s", err)
-	}
+
+	cancel()
+
 	time.Sleep(2 * time.Second)
+
 	if err := expectBucketCount(buckets, 2); err != nil {
 		t.Fatal(err)
 	}

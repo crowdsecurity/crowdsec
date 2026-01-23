@@ -35,6 +35,8 @@ const (
 	FieldAuthType = "auth_type"
 	// FieldOsname holds the string denoting the osname field in the database.
 	FieldOsname = "osname"
+	// FieldOsfamily holds the string denoting the osfamily field in the database.
+	FieldOsfamily = "osfamily"
 	// FieldOsversion holds the string denoting the osversion field in the database.
 	FieldOsversion = "osversion"
 	// FieldFeatureflags holds the string denoting the featureflags field in the database.
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldLastPull,
 	FieldAuthType,
 	FieldOsname,
+	FieldOsfamily,
 	FieldOsversion,
 	FieldFeatureflags,
 	FieldAutoCreated,
@@ -150,6 +153,11 @@ func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
 // ByOsname orders the results by the osname field.
 func ByOsname(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOsname, opts...).ToFunc()
+}
+
+// ByOsfamily orders the results by the osfamily field.
+func ByOsfamily(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOsfamily, opts...).ToFunc()
 }
 
 // ByOsversion orders the results by the osversion field.

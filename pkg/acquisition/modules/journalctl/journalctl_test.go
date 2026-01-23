@@ -1,105 +1,70 @@
 package journalctlacquisition
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-func TestBadConfiguration(t *testing.T) {
-	cstest.SkipOnWindows(t)
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config:      `foobar: asd.log`,
-			expectedErr: `cannot parse JournalCtlSource configuration: [1:1] unknown field "foobar"`,
-		},
-		{
-			config: `
-mode: tail
-source: journalctl`,
-			expectedErr: "journalctl_filter is required",
-		},
-		{
-			config: `
-mode: cat
-source: journalctl
-journalctl_filter:
- - _UID=42`,
-			expectedErr: "",
-		},
-	}
-
-	subLogger := log.WithField("type", "journalctl")
-
-	for _, tc := range tests {
-		t.Run(tc.config, func(t *testing.T) {
-			f := JournalCtlSource{}
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		})
-	}
-}
 
 func TestConfigureDSN(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
+	ctx := t.Context()
+
 	tests := []struct {
-		dsn         string
-		expectedErr string
+		dsn     string
+		wantErr string
 	}{
 		{
-			dsn:         "asd://",
-			expectedErr: "invalid DSN asd:// for journalctl source, must start with journalctl://",
+			dsn:     "asd://",
+			wantErr: "invalid DSN asd:// for journalctl source, must start with journalctl://",
 		},
 		{
-			dsn:         "journalctl://",
-			expectedErr: "empty journalctl:// DSN",
+			dsn:     "journalctl://",
+			wantErr: "empty journalctl:// DSN",
 		},
 		{
-			dsn:         "journalctl://foobar=42",
-			expectedErr: "unsupported key foobar in journalctl DSN",
+			dsn:     "journalctl://foobar=42",
+			wantErr: "unsupported key foobar in journalctl DSN",
 		},
 		{
-			dsn:         "journalctl://filters=%ZZ",
-			expectedErr: "could not parse journalctl DSN: invalid URL escape \"%ZZ\"",
+			dsn:     "journalctl://filters=%ZZ",
+			wantErr: "could not parse journalctl DSN: invalid URL escape \"%ZZ\"",
 		},
 		{
-			dsn:         "journalctl://filters=_UID=42?log_level=warn",
-			expectedErr: "",
+			dsn: "journalctl://filters=_UID=42?log_level=warn",
 		},
 		{
-			dsn:         "journalctl://filters=_UID=1000&log_level=foobar",
-			expectedErr: "unknown level foobar: not a valid logrus Level:",
+			dsn:     "journalctl://filters=_UID=1000&log_level=foobar",
+			wantErr: `not a valid logrus Level: "foobar"`,
 		},
 		{
-			dsn:         "journalctl://filters=_UID=1000&log_level=warn&since=yesterday",
-			expectedErr: "",
+			dsn: "journalctl://filters=_UID=1000&log_level=warn&since=yesterday",
 		},
 	}
 
-	subLogger := log.WithField("type", "journalctl")
-
-	for _, test := range tests {
-		f := JournalCtlSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+	for _, tc := range tests {
+		t.Run(tc.dsn, func(t *testing.T) {
+			f := Source{}
+			logger, _ := logtest.NewNullLogger()
+			err := f.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "testtype"}, logrus.NewEntry(logger), "")
+			cstest.RequireErrorContains(t, err, tc.wantErr)
+		})
 	}
 }
 
@@ -109,11 +74,10 @@ func TestOneShot(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
-		config         string
-		expectedErr    string
-		expectedOutput string
-		expectedLines  int
-		logLevel       log.Level
+		config    string
+		wantErr   string
+		wantLines int
+		wantLog   []string
 	}{
 		{
 			config: `
@@ -121,10 +85,11 @@ source: journalctl
 mode: cat
 journalctl_filter:
  - "-_UID=42"`,
-			expectedErr:    "",
-			expectedOutput: "journalctl: invalid option",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			wantErr: "exit status 1",
+			wantLog: []string{
+				"Got stderr: journalctl: invalid option -- '_'",
+			},
+			wantLines: 0,
 		},
 		{
 			config: `
@@ -132,55 +97,32 @@ source: journalctl
 mode: cat
 journalctl_filter:
  - _SYSTEMD_UNIT=ssh.service`,
-			expectedErr:    "",
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  14,
+			wantLines: 14,
 		},
 	}
 	for _, ts := range tests {
-		var (
-			logger    *log.Logger
-			subLogger *log.Entry
-			hook      *test.Hook
-		)
+		t.Run(ts.config, func(t *testing.T) {
+			out := make(chan pipeline.Event, 100)
+			j := Source{}
 
-		if ts.expectedOutput != "" {
-			logger, hook = test.NewNullLogger()
-			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithField("type", "journalctl")
-		} else {
-			subLogger = log.WithField("type", "journalctl")
-		}
+			logger, hook := logtest.NewNullLogger()
 
-		tomb := tomb.Tomb{}
-		out := make(chan types.Event, 100)
-		j := JournalCtlSource{}
+			err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
 
-		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
+			err = j.OneShot(ctx, out)
+			cstest.RequireErrorContains(t, err, ts.wantErr)
 
-		err = j.OneShotAcquisition(ctx, out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
-
-		if err != nil {
-			continue
-		}
-
-		if ts.expectedLines != 0 {
-			assert.Len(t, out, ts.expectedLines)
-		}
-
-		if ts.expectedOutput != "" {
-			if hook.LastEntry() == nil {
-				t.Fatalf("Expected log output '%s' but got nothing !", ts.expectedOutput)
+			for _, wantMessage := range ts.wantLog {
+				cstest.RequireLogContains(t, hook, wantMessage)
 			}
 
-			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
-			hook.Reset()
-		}
+			if ts.wantErr != "" {
+				return
+			}
+
+			assert.Len(t, out, ts.wantLines)
+		})
 	}
 }
 
@@ -190,11 +132,9 @@ func TestStreaming(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
-		config         string
-		expectedErr    string
-		expectedOutput string
-		expectedLines  int
-		logLevel       log.Level
+		config    string
+		wantErr   string
+		wantLines int
 	}{
 		{
 			config: `
@@ -202,81 +142,55 @@ source: journalctl
 mode: cat
 journalctl_filter:
  - _SYSTEMD_UNIT=ssh.service`,
-			expectedErr:    "",
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  14,
+			wantLines: 14,
 		},
 	}
-	for _, ts := range tests {
-		var (
-			logger    *log.Logger
-			subLogger *log.Entry
-			hook      *test.Hook
-		)
+	for idx, ts := range tests {
+		t.Run(strconv.Itoa(idx), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			out := make(chan pipeline.Event)
+			j := Source{}
 
-		if ts.expectedOutput != "" {
-			logger, hook = test.NewNullLogger()
-			logger.SetLevel(ts.logLevel)
-			subLogger = logger.WithField("type", "journalctl")
-		} else {
-			subLogger = log.WithField("type", "journalctl")
-		}
+			logger, _ := logtest.NewNullLogger()
 
-		tomb := tomb.Tomb{}
-		out := make(chan types.Event)
-		j := JournalCtlSource{}
+			err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
 
-		err := j.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
+			gotLines := 0
+			var wg sync.WaitGroup
 
-		actualLines := 0
-
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
-						actualLines++
-					case <-time.After(1 * time.Second):
-						break READLOOP
+			if ts.wantLines != 0 {
+				wg.Go(func() {
+					for {
+						select {
+						case <-out:
+							gotLines++
+						case <-time.After(1 * time.Second):
+							cancel()
+							return
+						}
 					}
-				}
-			}()
-		}
-
-		err = j.StreamingAcquisition(ctx, out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
-
-		if err != nil {
-			continue
-		}
-
-		if ts.expectedLines != 0 {
-			time.Sleep(1 * time.Second)
-			assert.Equal(t, ts.expectedLines, actualLines)
-		}
-
-		tomb.Kill(nil)
-		err = tomb.Wait()
-		require.NoError(t, err)
-
-		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
-		if len(output) != 0 {
-			t.Fatalf("Found a journalctl process after killing the tomb !")
-		}
-
-		if ts.expectedOutput != "" {
-			if hook.LastEntry() == nil {
-				t.Fatalf("Expected log output '%s' but got nothing !", ts.expectedOutput)
+				})
 			}
 
-			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
-			hook.Reset()
-		}
+			err = j.Stream(ctx, out)
+			cstest.RequireErrorContains(t, err, ts.wantErr)
+
+			if ts.wantErr != "" {
+				cancel()
+				return
+			}
+
+			if ts.wantLines != 0 {
+				wg.Wait()
+				assert.Equal(t, ts.wantLines, gotLines)
+			}
+
+			cancel()
+
+			output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
+			assert.Empty(t, output, "zombie journalctl process detected!")
+		})
 	}
 }
 
@@ -286,5 +200,5 @@ func TestMain(m *testing.M) {
 		os.Setenv("PATH", fullPath+":"+os.Getenv("PATH"))
 	}
 
-	os.Exit(m.Run())
+	m.Run()
 }

@@ -2,14 +2,13 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -21,7 +20,7 @@ func (c *Client) AcquireLock(ctx context.Context, name string) error {
 	log.Debugf("acquiring lock %s", name)
 	_, err := c.Ent.Lock.Create().
 		SetName(name).
-		SetCreatedAt(types.UtcNow()).
+		SetCreatedAt(time.Now().UTC()).
 		Save(ctx)
 
 	if ent.IsConstraintError(err) {
@@ -29,7 +28,7 @@ func (c *Client) AcquireLock(ctx context.Context, name string) error {
 	}
 
 	if err != nil {
-		return errors.Wrapf(InsertFail, "insert lock: %s", err)
+		return fmt.Errorf("insert lock: %w: %w", err, InsertFail)
 	}
 
 	return nil
@@ -39,7 +38,7 @@ func (c *Client) ReleaseLock(ctx context.Context, name string) error {
 	log.Debugf("releasing lock %s", name)
 	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil
@@ -53,13 +52,13 @@ func (c *Client) ReleaseLockWithTimeout(ctx context.Context, name string, timeou
 		lock.CreatedAtLT(time.Now().UTC().Add(-time.Duration(timeout)*time.Minute)),
 	).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil
 }
 
-func (c *Client) IsLocked(err error) bool {
+func (*Client) IsLocked(err error) bool {
 	return ent.IsConstraintError(err)
 }
 
@@ -80,7 +79,7 @@ func (c *Client) ReleasePullCAPILock(ctx context.Context) error {
 		lock.NameEQ(CapiPullLockName),
 	).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil

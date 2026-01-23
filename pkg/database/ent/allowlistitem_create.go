@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
@@ -19,6 +20,7 @@ type AllowListItemCreate struct {
 	config
 	mutation *AllowListItemMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -250,6 +252,7 @@ func (alic *AllowListItemCreate) createSpec() (*AllowListItem, *sqlgraph.CreateS
 		_node = &AllowListItem{config: alic.config}
 		_spec = sqlgraph.NewCreateSpec(allowlistitem.Table, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = alic.conflict
 	if value, ok := alic.mutation.CreatedAt(); ok {
 		_spec.SetField(allowlistitem.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -309,11 +312,225 @@ func (alic *AllowListItemCreate) createSpec() (*AllowListItem, *sqlgraph.CreateS
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.AllowListItem.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AllowListItemUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (alic *AllowListItemCreate) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertOne {
+	alic.conflict = opts
+	return &AllowListItemUpsertOne{
+		create: alic,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (alic *AllowListItemCreate) OnConflictColumns(columns ...string) *AllowListItemUpsertOne {
+	alic.conflict = append(alic.conflict, sql.ConflictColumns(columns...))
+	return &AllowListItemUpsertOne{
+		create: alic,
+	}
+}
+
+type (
+	// AllowListItemUpsertOne is the builder for "upsert"-ing
+	//  one AllowListItem node.
+	AllowListItemUpsertOne struct {
+		create *AllowListItemCreate
+	}
+
+	// AllowListItemUpsert is the "OnConflict" setter.
+	AllowListItemUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListItemUpsert) SetUpdatedAt(v time.Time) *AllowListItemUpsert {
+	u.Set(allowlistitem.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListItemUpsert) UpdateUpdatedAt() *AllowListItemUpsert {
+	u.SetExcluded(allowlistitem.FieldUpdatedAt)
+	return u
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *AllowListItemUpsert) SetExpiresAt(v time.Time) *AllowListItemUpsert {
+	u.Set(allowlistitem.FieldExpiresAt, v)
+	return u
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *AllowListItemUpsert) UpdateExpiresAt() *AllowListItemUpsert {
+	u.SetExcluded(allowlistitem.FieldExpiresAt)
+	return u
+}
+
+// ClearExpiresAt clears the value of the "expires_at" field.
+func (u *AllowListItemUpsert) ClearExpiresAt() *AllowListItemUpsert {
+	u.SetNull(allowlistitem.FieldExpiresAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AllowListItemUpsertOne) UpdateNewValues() *AllowListItemUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(allowlistitem.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Comment(); exists {
+			s.SetIgnore(allowlistitem.FieldComment)
+		}
+		if _, exists := u.create.mutation.Value(); exists {
+			s.SetIgnore(allowlistitem.FieldValue)
+		}
+		if _, exists := u.create.mutation.StartIP(); exists {
+			s.SetIgnore(allowlistitem.FieldStartIP)
+		}
+		if _, exists := u.create.mutation.EndIP(); exists {
+			s.SetIgnore(allowlistitem.FieldEndIP)
+		}
+		if _, exists := u.create.mutation.StartSuffix(); exists {
+			s.SetIgnore(allowlistitem.FieldStartSuffix)
+		}
+		if _, exists := u.create.mutation.EndSuffix(); exists {
+			s.SetIgnore(allowlistitem.FieldEndSuffix)
+		}
+		if _, exists := u.create.mutation.IPSize(); exists {
+			s.SetIgnore(allowlistitem.FieldIPSize)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *AllowListItemUpsertOne) Ignore() *AllowListItemUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AllowListItemUpsertOne) DoNothing() *AllowListItemUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AllowListItemCreate.OnConflict
+// documentation for more info.
+func (u *AllowListItemUpsertOne) Update(set func(*AllowListItemUpsert)) *AllowListItemUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AllowListItemUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListItemUpsertOne) SetUpdatedAt(v time.Time) *AllowListItemUpsertOne {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListItemUpsertOne) UpdateUpdatedAt() *AllowListItemUpsertOne {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *AllowListItemUpsertOne) SetExpiresAt(v time.Time) *AllowListItemUpsertOne {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.SetExpiresAt(v)
+	})
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *AllowListItemUpsertOne) UpdateExpiresAt() *AllowListItemUpsertOne {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.UpdateExpiresAt()
+	})
+}
+
+// ClearExpiresAt clears the value of the "expires_at" field.
+func (u *AllowListItemUpsertOne) ClearExpiresAt() *AllowListItemUpsertOne {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.ClearExpiresAt()
+	})
+}
+
+// Exec executes the query.
+func (u *AllowListItemUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AllowListItemCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AllowListItemUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *AllowListItemUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *AllowListItemUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // AllowListItemCreateBulk is the builder for creating many AllowListItem entities in bulk.
 type AllowListItemCreateBulk struct {
 	config
 	err      error
 	builders []*AllowListItemCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the AllowListItem entities in the database.
@@ -343,6 +560,7 @@ func (alicb *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListIte
 					_, err = mutators[i+1].Mutate(root, alicb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = alicb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, alicb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -393,6 +611,173 @@ func (alicb *AllowListItemCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (alicb *AllowListItemCreateBulk) ExecX(ctx context.Context) {
 	if err := alicb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.AllowListItem.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AllowListItemUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (alicb *AllowListItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertBulk {
+	alicb.conflict = opts
+	return &AllowListItemUpsertBulk{
+		create: alicb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (alicb *AllowListItemCreateBulk) OnConflictColumns(columns ...string) *AllowListItemUpsertBulk {
+	alicb.conflict = append(alicb.conflict, sql.ConflictColumns(columns...))
+	return &AllowListItemUpsertBulk{
+		create: alicb,
+	}
+}
+
+// AllowListItemUpsertBulk is the builder for "upsert"-ing
+// a bulk of AllowListItem nodes.
+type AllowListItemUpsertBulk struct {
+	create *AllowListItemCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AllowListItemUpsertBulk) UpdateNewValues() *AllowListItemUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(allowlistitem.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.Comment(); exists {
+				s.SetIgnore(allowlistitem.FieldComment)
+			}
+			if _, exists := b.mutation.Value(); exists {
+				s.SetIgnore(allowlistitem.FieldValue)
+			}
+			if _, exists := b.mutation.StartIP(); exists {
+				s.SetIgnore(allowlistitem.FieldStartIP)
+			}
+			if _, exists := b.mutation.EndIP(); exists {
+				s.SetIgnore(allowlistitem.FieldEndIP)
+			}
+			if _, exists := b.mutation.StartSuffix(); exists {
+				s.SetIgnore(allowlistitem.FieldStartSuffix)
+			}
+			if _, exists := b.mutation.EndSuffix(); exists {
+				s.SetIgnore(allowlistitem.FieldEndSuffix)
+			}
+			if _, exists := b.mutation.IPSize(); exists {
+				s.SetIgnore(allowlistitem.FieldIPSize)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.AllowListItem.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *AllowListItemUpsertBulk) Ignore() *AllowListItemUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AllowListItemUpsertBulk) DoNothing() *AllowListItemUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AllowListItemCreateBulk.OnConflict
+// documentation for more info.
+func (u *AllowListItemUpsertBulk) Update(set func(*AllowListItemUpsert)) *AllowListItemUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AllowListItemUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListItemUpsertBulk) SetUpdatedAt(v time.Time) *AllowListItemUpsertBulk {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListItemUpsertBulk) UpdateUpdatedAt() *AllowListItemUpsertBulk {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *AllowListItemUpsertBulk) SetExpiresAt(v time.Time) *AllowListItemUpsertBulk {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.SetExpiresAt(v)
+	})
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *AllowListItemUpsertBulk) UpdateExpiresAt() *AllowListItemUpsertBulk {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.UpdateExpiresAt()
+	})
+}
+
+// ClearExpiresAt clears the value of the "expires_at" field.
+func (u *AllowListItemUpsertBulk) ClearExpiresAt() *AllowListItemUpsertBulk {
+	return u.Update(func(s *AllowListItemUpsert) {
+		s.ClearExpiresAt()
+	})
+}
+
+// Exec executes the query.
+func (u *AllowListItemUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the AllowListItemCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AllowListItemCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AllowListItemUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

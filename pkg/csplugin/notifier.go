@@ -24,7 +24,7 @@ func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notific
 	done := make(chan error)
 	go func() {
 		_, err := m.client.Notify(
-			ctx, &protobufs.Notification{Text: notification.Text, Name: notification.Name},
+			ctx, &protobufs.Notification{Text: notification.GetText(), Name: notification.GetName()},
 		)
 		done <- err
 	}()
@@ -51,6 +51,6 @@ func (p *NotifierPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) e
 	return nil
 }
 
-func (p *NotifierPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (*NotifierPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
 	return &GRPCClient{client: protobufs.NewNotifierClient(c)}, nil
 }

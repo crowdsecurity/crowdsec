@@ -9,7 +9,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestWhitelistCompile(t *testing.T) {
@@ -57,7 +57,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"evt.THISPROPERTYSHOULDERROR == true",
 				},
 			},
-			expectedErr: "types.Event has no field",
+			expectedErr: "pipeline.Event has no field",
 		},
 	}
 
@@ -77,7 +77,7 @@ func TestWhitelistCheck(t *testing.T) {
 	tests := []struct {
 		name      string
 		whitelist Whitelist
-		event     *types.Event
+		event     *pipeline.Event
 		expected  bool
 	}{
 		{
@@ -88,7 +88,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.1",
 				},
@@ -103,7 +103,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.2",
 				},
@@ -117,7 +117,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1/32",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.1",
 				},
@@ -132,7 +132,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1/32",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.2",
 				},
@@ -146,7 +146,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"evt.Meta.source_ip == '127.0.0.1'",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.1",
 				},
@@ -161,7 +161,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"evt.Meta.source_ip == '127.0.0.1'",
 				},
 			},
-			event: &types.Event{
+			event: &pipeline.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.2",
 				},
@@ -175,9 +175,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"192.168.1.1",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					Sources: map[string]models.Source{
 						"192.168.1.1": {},
 					},
@@ -193,9 +193,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"192.168.1.2",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					Sources: map[string]models.Source{
 						"192.168.1.1": {},
 					},
@@ -210,9 +210,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"192.168.1.1/32",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					Sources: map[string]models.Source{
 						"192.168.1.1": {},
 					},
@@ -228,9 +228,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"192.168.1.2/32",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					Sources: map[string]models.Source{
 						"192.168.1.1": {},
 					},
@@ -245,9 +245,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"evt.Overflow.APIAlerts[0].Source.Cn == 'test'",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					APIAlerts: []models.Alert{
 						{
 							Source: &models.Source{
@@ -267,9 +267,9 @@ func TestWhitelistCheck(t *testing.T) {
 					"evt.Overflow.APIAlerts[0].Source.Cn == 'test2'",
 				},
 			},
-			event: &types.Event{
-				Type: types.OVFLW,
-				Overflow: types.RuntimeAlert{
+			event: &pipeline.Event{
+				Type: pipeline.OVFLW,
+				Overflow: pipeline.RuntimeAlert{
 					APIAlerts: []models.Alert{
 						{
 							Source: &models.Source{

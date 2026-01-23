@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-ORANGE='\033[0;33m'
-NC='\033[0m'
+RED=$(printf '\033[0;31m')
+BLUE=$(printf '\033[0;34m')
+GREEN=$(printf '\033[0;32m')
+YELLOW=$(printf '\033[1;33m')
+ORANGE=$(printf '\033[0;33m')
+NC=$(printf '\033[0m')
 
 DOCKER_MODE="false"
 
@@ -45,33 +45,33 @@ PLUGINS="http slack splunk email sentinel file"
 log_info() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_fatal() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" >&2
     exit 1
 }
 
 log_warn() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_err() {
     msg=$1
     date=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
+    echo "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" >&2
 }
 
 log_dbg() {
     if [ "$DEBUG_MODE" = "true" ]; then
         msg=$1
         date=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
+        echo "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" >&2
     fi
 }
 
@@ -154,16 +154,18 @@ install_crowdsec() {
     [ ! -f "$CROWDSEC_CONFIG_DIR/$CLIENT_SECRETS" ] && install -v -m 600 -D "./config/$CLIENT_SECRETS" "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR/$LAPI_SECRETS" ]   && install -v -m 600 -D "./config/$LAPI_SECRETS"   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/config.yaml ]     && install -v -m 600 -D ./config/config.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
-    [ ! -f "$CROWDSEC_CONFIG_DIR"/detect.yaml ]     && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/dev.yaml ]        && install -v -m 644 -D ./config/dev.yaml          "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/user.yaml ]       && install -v -m 644 -D ./config/user.yaml         "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/acquis.yaml ]     && install -v -m 644 -D ./config/acquis.yaml       "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/profiles.yaml ]   && install -v -m 644 -D ./config/profiles.yaml     "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/simulation.yaml ] && install -v -m 644 -D ./config/simulation.yaml   "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
     [ ! -f "$CROWDSEC_CONFIG_DIR"/console.yaml ]    && install -v -m 644 -D ./config/console.yaml      "$CROWDSEC_CONFIG_DIR" >/dev/null || exit
+    [ ! -f "$CROWDSEC_DATA_DIR"/detect.yaml ]       && install -v -m 600 -D ./config/detect.yaml       "$CROWDSEC_DATA_DIR" >/dev/null || exit
 
+    # shellcheck disable=SC2016
     DATA="$CROWDSEC_DATA_DIR" CFG="$CROWDSEC_CONFIG_DIR" envsubst '$CFG $DATA' < ./config/user.yaml > "$CROWDSEC_CONFIG_DIR"/user.yaml || log_fatal "unable to generate user configuration file"
     if [ "$DOCKER_MODE" = "false" ]; then
+        # shellcheck disable=SC2016
         CFG="$CROWDSEC_CONFIG_DIR" BIN="$CROWDSEC_BIN_INSTALLED" envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins

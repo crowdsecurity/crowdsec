@@ -65,6 +65,9 @@ restore() {
     backup_file="${1?missing file to restore database from}"
     [[ -f "${backup_file}" ]] || die "Backup file ${backup_file} doesn't exist"
 
+    # clear global transaction identifiers before restore
+    exec_sql "RESET BINARY LOGS AND GTIDS;"
+
     silence_password_warning \
         mysql \
         "--host=${MYSQL_HOST}" \

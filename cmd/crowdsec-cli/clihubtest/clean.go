@@ -3,13 +3,14 @@ package clihubtest
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func (cli *cliHubTest) newCleanCmd() *cobra.Command {
+func (*cliHubTest) newCleanCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
@@ -21,7 +22,7 @@ func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 				return errors.New("please provide test to run or --all flag")
 			}
 
-			fmt.Println("Cleaning test data...")
+			fmt.Fprintln(os.Stdout, "Cleaning test data...")
 
 			tests := []*hubtest.HubTestItem{}
 
@@ -37,6 +38,7 @@ func (cli *cliHubTest) newCleanCmd() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("unable to load test '%s': %w", testName, err)
 					}
+
 					tests = append(tests, test)
 				}
 			}

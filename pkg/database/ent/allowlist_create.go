@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
@@ -19,6 +20,7 @@ type AllowListCreate struct {
 	config
 	mutation *AllowListMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -189,6 +191,7 @@ func (alc *AllowListCreate) createSpec() (*AllowList, *sqlgraph.CreateSpec) {
 		_node = &AllowList{config: alc.config}
 		_spec = sqlgraph.NewCreateSpec(allowlist.Table, sqlgraph.NewFieldSpec(allowlist.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = alc.conflict
 	if value, ok := alc.mutation.CreatedAt(); ok {
 		_spec.SetField(allowlist.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -232,11 +235,259 @@ func (alc *AllowListCreate) createSpec() (*AllowList, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.AllowList.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AllowListUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (alc *AllowListCreate) OnConflict(opts ...sql.ConflictOption) *AllowListUpsertOne {
+	alc.conflict = opts
+	return &AllowListUpsertOne{
+		create: alc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (alc *AllowListCreate) OnConflictColumns(columns ...string) *AllowListUpsertOne {
+	alc.conflict = append(alc.conflict, sql.ConflictColumns(columns...))
+	return &AllowListUpsertOne{
+		create: alc,
+	}
+}
+
+type (
+	// AllowListUpsertOne is the builder for "upsert"-ing
+	//  one AllowList node.
+	AllowListUpsertOne struct {
+		create *AllowListCreate
+	}
+
+	// AllowListUpsert is the "OnConflict" setter.
+	AllowListUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListUpsert) SetUpdatedAt(v time.Time) *AllowListUpsert {
+	u.Set(allowlist.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListUpsert) UpdateUpdatedAt() *AllowListUpsert {
+	u.SetExcluded(allowlist.FieldUpdatedAt)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *AllowListUpsert) SetName(v string) *AllowListUpsert {
+	u.Set(allowlist.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *AllowListUpsert) UpdateName() *AllowListUpsert {
+	u.SetExcluded(allowlist.FieldName)
+	return u
+}
+
+// SetFromConsole sets the "from_console" field.
+func (u *AllowListUpsert) SetFromConsole(v bool) *AllowListUpsert {
+	u.Set(allowlist.FieldFromConsole, v)
+	return u
+}
+
+// UpdateFromConsole sets the "from_console" field to the value that was provided on create.
+func (u *AllowListUpsert) UpdateFromConsole() *AllowListUpsert {
+	u.SetExcluded(allowlist.FieldFromConsole)
+	return u
+}
+
+// SetDescription sets the "description" field.
+func (u *AllowListUpsert) SetDescription(v string) *AllowListUpsert {
+	u.Set(allowlist.FieldDescription, v)
+	return u
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AllowListUpsert) UpdateDescription() *AllowListUpsert {
+	u.SetExcluded(allowlist.FieldDescription)
+	return u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *AllowListUpsert) ClearDescription() *AllowListUpsert {
+	u.SetNull(allowlist.FieldDescription)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AllowListUpsertOne) UpdateNewValues() *AllowListUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(allowlist.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.AllowlistID(); exists {
+			s.SetIgnore(allowlist.FieldAllowlistID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *AllowListUpsertOne) Ignore() *AllowListUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AllowListUpsertOne) DoNothing() *AllowListUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AllowListCreate.OnConflict
+// documentation for more info.
+func (u *AllowListUpsertOne) Update(set func(*AllowListUpsert)) *AllowListUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AllowListUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListUpsertOne) SetUpdatedAt(v time.Time) *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListUpsertOne) UpdateUpdatedAt() *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *AllowListUpsertOne) SetName(v string) *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *AllowListUpsertOne) UpdateName() *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetFromConsole sets the "from_console" field.
+func (u *AllowListUpsertOne) SetFromConsole(v bool) *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetFromConsole(v)
+	})
+}
+
+// UpdateFromConsole sets the "from_console" field to the value that was provided on create.
+func (u *AllowListUpsertOne) UpdateFromConsole() *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateFromConsole()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *AllowListUpsertOne) SetDescription(v string) *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AllowListUpsertOne) UpdateDescription() *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *AllowListUpsertOne) ClearDescription() *AllowListUpsertOne {
+	return u.Update(func(s *AllowListUpsert) {
+		s.ClearDescription()
+	})
+}
+
+// Exec executes the query.
+func (u *AllowListUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AllowListCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AllowListUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *AllowListUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *AllowListUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // AllowListCreateBulk is the builder for creating many AllowList entities in bulk.
 type AllowListCreateBulk struct {
 	config
 	err      error
 	builders []*AllowListCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the AllowList entities in the database.
@@ -266,6 +517,7 @@ func (alcb *AllowListCreateBulk) Save(ctx context.Context) ([]*AllowList, error)
 					_, err = mutators[i+1].Mutate(root, alcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = alcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, alcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -316,6 +568,183 @@ func (alcb *AllowListCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (alcb *AllowListCreateBulk) ExecX(ctx context.Context) {
 	if err := alcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.AllowList.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.AllowListUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (alcb *AllowListCreateBulk) OnConflict(opts ...sql.ConflictOption) *AllowListUpsertBulk {
+	alcb.conflict = opts
+	return &AllowListUpsertBulk{
+		create: alcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (alcb *AllowListCreateBulk) OnConflictColumns(columns ...string) *AllowListUpsertBulk {
+	alcb.conflict = append(alcb.conflict, sql.ConflictColumns(columns...))
+	return &AllowListUpsertBulk{
+		create: alcb,
+	}
+}
+
+// AllowListUpsertBulk is the builder for "upsert"-ing
+// a bulk of AllowList nodes.
+type AllowListUpsertBulk struct {
+	create *AllowListCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *AllowListUpsertBulk) UpdateNewValues() *AllowListUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(allowlist.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.AllowlistID(); exists {
+				s.SetIgnore(allowlist.FieldAllowlistID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.AllowList.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *AllowListUpsertBulk) Ignore() *AllowListUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *AllowListUpsertBulk) DoNothing() *AllowListUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the AllowListCreateBulk.OnConflict
+// documentation for more info.
+func (u *AllowListUpsertBulk) Update(set func(*AllowListUpsert)) *AllowListUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&AllowListUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *AllowListUpsertBulk) SetUpdatedAt(v time.Time) *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *AllowListUpsertBulk) UpdateUpdatedAt() *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *AllowListUpsertBulk) SetName(v string) *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *AllowListUpsertBulk) UpdateName() *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetFromConsole sets the "from_console" field.
+func (u *AllowListUpsertBulk) SetFromConsole(v bool) *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetFromConsole(v)
+	})
+}
+
+// UpdateFromConsole sets the "from_console" field to the value that was provided on create.
+func (u *AllowListUpsertBulk) UpdateFromConsole() *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateFromConsole()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *AllowListUpsertBulk) SetDescription(v string) *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AllowListUpsertBulk) UpdateDescription() *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *AllowListUpsertBulk) ClearDescription() *AllowListUpsertBulk {
+	return u.Update(func(s *AllowListUpsert) {
+		s.ClearDescription()
+	})
+}
+
+// Exec executes the query.
+func (u *AllowListUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the AllowListCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for AllowListCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *AllowListUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

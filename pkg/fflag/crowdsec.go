@@ -8,6 +8,7 @@ var (
 	PapiClient              = &Feature{Name: "papi_client", Description: "Enable Polling API client", State: DeprecatedState}
 	Re2GrokSupport          = &Feature{Name: "re2_grok_support", Description: "Enable RE2 support for GROK patterns"}
 	Re2RegexpInfileSupport  = &Feature{Name: "re2_regexp_in_file_support", Description: "Enable RE2 support for RegexpInFile expr helper"}
+	PProfBlockProfile       = &Feature{Name: "pprof_block_profile", Description: "Enable pprof block/mutex profiling. Do not use unless instructed by CrowdSec support"}
 )
 
 func RegisterAllFeatures() error {
@@ -32,6 +33,11 @@ func RegisterAllFeatures() error {
 	}
 
 	err = Crowdsec.RegisterFeature(Re2RegexpInfileSupport)
+	if err != nil {
+		return err
+	}
+
+	err = Crowdsec.RegisterFeature(PProfBlockProfile)
 	if err != nil {
 		return err
 	}

@@ -44,7 +44,7 @@ func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return dbClient
@@ -725,19 +725,19 @@ func TestAPICWhitelists(t *testing.T) {
 	assert.Equal(t, 1, decisionIP["6.2.3.4"], 1)
 
 	if _, ok := decisionIP["13.2.3.4"]; ok {
-		t.Errorf("13.2.3.4 is whitelisted")
+		t.Error("13.2.3.4 is whitelisted")
 	}
 
 	if _, ok := decisionIP["13.2.3.5"]; ok {
-		t.Errorf("13.2.3.5 is whitelisted")
+		t.Error("13.2.3.5 is whitelisted")
 	}
 
 	if _, ok := decisionIP["9.2.3.4"]; ok {
-		t.Errorf("9.2.3.4 is whitelisted")
+		t.Error("9.2.3.4 is whitelisted")
 	}
 
 	if _, ok := decisionIP["10.2.3.4"]; ok {
-		t.Errorf("10.2.3.4 is whitelisted")
+		t.Error("10.2.3.4 is whitelisted")
 	}
 
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)

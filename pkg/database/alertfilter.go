@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -26,7 +25,7 @@ func handleSimulatedFilter(filter map[string][]string, predicates *[]predicate.A
 	}
 }
 
-func handleOriginFilter(filter map[string][]string, predicates *[]predicate.Alert) {
+func handleOriginFilter(filter map[string][]string) {
 	if _, ok := filter["origin"]; ok {
 		filter["include_capi"] = []string{"true"}
 	}
@@ -148,7 +147,7 @@ func handleAlertIPPredicates(rng csnet.Range, contains bool, predicates *[]predi
 	case 0:
 		return nil
 	default:
-		return errors.Wrapf(InvalidFilter, "Unknown ip size %d", rng.Size())
+		return fmt.Errorf("unknown ip size %d: %w", rng.Size(), InvalidFilter)
 	}
 }
 
@@ -172,7 +171,7 @@ func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error 
 			),
 		))
 	} else if value != "true" {
-		log.Errorf("invalid bool '%s' for include_capi", value)
+		log.Errorf("invalid bool %q for include_capi", value)
 	}
 
 	return nil
@@ -189,25 +188,28 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 
 	contains := true
 
-	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)*/
+	// if contains is true, return bans that *contains* the given value (value is the inner)
+	// else, return bans that are *contained* by the given value (value is the outer)
 
 	handleSimulatedFilter(filter, &predicates)
-	handleOriginFilter(filter, &predicates)
+	handleOriginFilter(filter)
 
 	for param, value := range filter {
 		switch param {
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return nil, fmt.Errorf("invalid contains value: %w: %w", err, InvalidFilter)
 			}
 		case "scope":
 			handleScopeFilter(value[0], &predicates)
 		case "value":
 			predicates = append(predicates, alert.SourceValueEQ(value[0]))
 		case "scenario":
-			predicates = append(predicates, alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
+			predicates = append(predicates, alert.Or(
+				alert.ScenarioEQ(value[0]), // match alerts with no decisions
+				alert.HasDecisionsWith(decision.ScenarioEQ(value[0])),
+			))
 		case "ip", "range":
 			rng, err = csnet.NewRange(value[0])
 			if err != nil {
@@ -227,7 +229,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			}
 		case "has_active_decision":
 			if hasActiveDecision, err = strconv.ParseBool(value[0]); err != nil {
-				return nil, errors.Wrapf(ParseType, "'%s' is not a boolean: %s", value[0], err)
+				return nil, fmt.Errorf("'%s' is not a boolean: %w: %w", value[0], err, ParseType)
 			}
 
 			if hasActiveDecision {
@@ -244,7 +246,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "with_decisions":
 			continue
 		default:
-			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
+			return nil, fmt.Errorf("filter parameter '%s' is unknown (=%s): %w", param, value[0], InvalidFilter)
 		}
 	}
 

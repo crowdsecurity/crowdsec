@@ -9,7 +9,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statStash map[string]struct {
@@ -17,7 +17,7 @@ type statStash map[string]struct {
 	Count int
 }
 
-func (s statStash) Description() (string, string) {
+func (statStash) Description() (string, string) {
 	return "Parser Stash Metrics",
 		`Tracks the status of stashes that might be created by various parsers and scenarios.`
 }

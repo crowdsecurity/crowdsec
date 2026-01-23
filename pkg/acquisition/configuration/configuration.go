@@ -7,7 +7,7 @@ import (
 type DataSourceCommonCfg struct {
 	Mode           string            `yaml:"mode,omitempty"`
 	Labels         map[string]string `yaml:"labels,omitempty"`
-	LogLevel       *log.Level        `yaml:"log_level,omitempty"`
+	LogLevel       log.Level         `yaml:"log_level,omitempty"`
 	Source         string            `yaml:"source,omitempty"`
 	Name           string            `yaml:"name,omitempty"`
 	UseTimeMachine bool              `yaml:"use_time_machine,omitempty"`

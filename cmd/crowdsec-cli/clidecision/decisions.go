@@ -19,7 +19,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -27,11 +27,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliDecisions struct {
 	client *apiclient.ApiClient
-	cfg    configGetter
+	cfg    csconfig.Getter
 }
 
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
@@ -125,7 +123,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	return nil
 }
 
-func New(cfg configGetter) *cliDecisions {
+func New(cfg csconfig.Getter) *cliDecisions {
 	return &cliDecisions{
 		cfg: cfg,
 	}
@@ -150,15 +148,12 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			cli.client = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return nil
 		},
@@ -225,7 +220,7 @@ func (cli *cliDecisions) newListCmd() *cobra.Command {
 		Limit:          new(int),
 	}
 
-	NoSimu := new(bool)
+	noSimu := new(bool)
 	contained := new(bool)
 
 	var printMachine bool
@@ -241,11 +236,12 @@ cscli decisions list --origin lists --scenario list_name
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cli.list(cmd.Context(), filter, NoSimu, contained, printMachine)
+			return cli.list(cmd.Context(), filter, noSimu, contained, printMachine)
 		},
 	}
 
 	flags := cmd.Flags()
+
 	flags.SortFlags = false
 	flags.BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
 	flags.Var(&filter.Since, "since", "restrict to alerts newer than since (ie. 4h, 30d)")
@@ -258,14 +254,13 @@ cscli decisions list --origin lists --scenario list_name
 	flags.StringVarP(&filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	flags.StringVarP(&filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	flags.IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
-	flags.BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	flags.BoolVar(noSimu, "no-simu", false, "exclude decisions in simulation mode")
 	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
 	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmd
 }
 
-//nolint:revive // we'll reduce the number of args later
 func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, addValue, addScope, addReason, addType string, bypassAllowlist bool) error {
 	alerts := models.AddAlertsRequest{}
 	origin := types.CscliOrigin
@@ -342,6 +337,7 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 		CreatedAt:   createdAt,
 		Remediation: true,
 	}
+
 	alerts = append(alerts, &alert)
 
 	_, _, err = cli.client.Alerts.Add(ctx, alerts)
@@ -383,6 +379,7 @@ cscli decisions add --scope username --value foobar
 	}
 
 	flags := cmd.Flags()
+
 	flags.SortFlags = false
 	flags.StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	flags.StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
@@ -482,6 +479,7 @@ cscli decisions delete --origin lists  --scenario list_name
 	}
 
 	flags := cmd.Flags()
+
 	flags.SortFlags = false
 	flags.StringVarP(&delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	flags.StringVarP(&delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")

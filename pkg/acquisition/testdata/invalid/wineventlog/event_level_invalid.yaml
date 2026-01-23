@@ -1,0 +1,6 @@
+# wantErr: datasource of type wineventlog: buildXpathQuery failed: invalid log level
+source: wineventlog
+labels:
+  type: sometype
+event_channel: Security
+event_level: blabla

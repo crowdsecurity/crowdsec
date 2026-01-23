@@ -8,8 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
@@ -44,7 +44,7 @@ func (f *detectFlags) detectConfig() (*setup.DetectConfig, string, error) {
 func (f *detectFlags) bind(cmd *cobra.Command) {
 	defaultServiceDetect := os.Getenv("CROWDSEC_SETUP_DETECT_CONFIG")
 	if defaultServiceDetect == "" {
-		defaultServiceDetect = csconfig.DefaultConfigPath("detect.yaml")
+		defaultServiceDetect = csconfig.DefaultDataPath("detect.yaml")
 	}
 
 	flags := cmd.Flags()
@@ -76,7 +76,7 @@ func (f *detectFlags) toDetectOptions(logger *logrus.Logger) setup.DetectOptions
 	}
 }
 
-func (cli *cliSetup) newDetectCmd() *cobra.Command {
+func (*cliSetup) newDetectCmd() *cobra.Command {
 	f := detectFlags{}
 
 	var (
@@ -96,11 +96,11 @@ cscli setup detect
 cscli setup detect --yaml
 
 # detect and skip certain services
-cscli setup detect --skip-service whitelists
+cscli setup detect --ignore whitelists
 `,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
 			detectConfig, rulesFrom, err := f.detectConfig()

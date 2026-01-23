@@ -120,7 +120,7 @@ func TestEvaluateRules(t *testing.T) {
 			"",
 		},
 		{
-			"each expression must be a boolan",
+			"each expression must be a boolean",
 			[]string{"true", `"notabool"`},
 			false,
 			"",
@@ -129,7 +129,7 @@ func TestEvaluateRules(t *testing.T) {
 		{
 			// we keep evaluating expressions to ensure that the
 			// file is formally correct, even if it can some time.
-			"each expression must be a boolan (no short circuit)",
+			"each expression must be a boolean (no short circuit)",
 			[]string{"false", "3"},
 			false,
 			"",
@@ -258,7 +258,7 @@ detect:
 			require.NoError(t, err)
 			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
-				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
+				UnitMap{"crowdsec-setup-detect.service": UnitInfo{}},
 				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
@@ -346,29 +346,6 @@ detect:
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
 		}, {
-			name: "missing acquisition file name",
-			config: `
-detect:
-  wizard:
-    acquisition_spec:
-      filename: something.yaml
-      datasource:
-        labels:
-          type: something`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for wizard: source is empty",
-		}, {
-			name: "source is unknown",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: wombat.yaml
-      datasource:
-        source: wombat`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: unknown data source wombat",
-		}, {
 			name: "source is misplaced",
 			config: `
 detect:
@@ -379,131 +356,6 @@ detect:
       source: file`,
 			want:    nil,
 			wantErr: "yaml: unmarshal errors:\n  line 7: field source not found in type setup.AcquisitionSpec",
-		}, {
-			name: "source is mismatched",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: journalctl.yaml
-      datasource:
-        source: journalctl
-        filename: /path/to/file.log`,
-			want:    nil,
-			wantErr: `invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
-		}, {
-			name: "source file: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: file.yaml
-      datasource:
-        source: file`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: no filename or filenames configuration provided",
-		}, {
-			name: "source journalctl: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: foobar.yaml
-      datasource:
-        source: journalctl`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: journalctl_filter is required",
-		}, {
-			name: "source cloudwatch: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: cloudwatch.yaml
-      datasource:
-        source: cloudwatch`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: group_name is mandatory for CloudwatchSource",
-		}, {
-			name: "source syslog: all fields are optional",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: syslog.yaml
-      datasource:
-        source: syslog`,
-			want: &Setup{
-				Plans: []ServicePlan{
-					{
-						Name: "foobar",
-						InstallRecommendation: InstallRecommendation{
-							AcquisitionSpec: AcquisitionSpec{
-								Filename: "syslog.yaml",
-								Datasource: DatasourceConfig{
-									"source": "syslog",
-								},
-							},
-						},
-					},
-				},
-			},
-		}, {
-			name: "source docker: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: docker.yaml
-      datasource:
-        source: docker`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: no containers or services configuration provided",
-		}, {
-			name: "source kinesis: required fields (enhanced fanout=false)",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kinesis.yaml
-      datasource:
-        source: kinesis`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: stream_name is mandatory when use_enhanced_fanout is false",
-		}, {
-			name: "source kinesis: required fields (enhanced fanout=true)",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kinesis.yaml
-      datasource:
-        source: kinesis
-        use_enhanced_fanout: true`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
-		}, {
-			name: "source kafka: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kafka.yaml
-      datasource:
-        source: kafka`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: cannot create a kafka reader with an empty list of broker addresses",
-		}, {
-			name: "source loki: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: loki.yaml
-      datasource:
-        source: loki`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: loki query is mandatory",
 		},
 	}
 

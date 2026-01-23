@@ -17,8 +17,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -64,7 +64,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 
 		wantMetrics := !noMetrics && item.State.IsInstalled()
 
-		if err := inspectItem(hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
+		if err := inspectItem(ctx, hub, item, wantMetrics, cfg.Cscli.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Color); err != nil {
 			return err
 		}
 
@@ -79,7 +79,7 @@ func (cli *cliItem) inspect(ctx context.Context, args []string, url string, diff
 }
 
 // return the diff between the installed version and the latest version
-func (*cliItem) itemDiff(ctx context.Context, item *cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
+func (*cliItem) itemDiff(ctx context.Context, item cwhub.Item, contentProvider cwhub.ContentProvider, reverse bool) (string, error) {
 	if !item.State.IsInstalled() {
 		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
@@ -144,9 +144,10 @@ func (cli *cliItem) whyTainted(ctx context.Context, hub *cwhub.Hub, contentProvi
 		sub, err := hub.GetItemFQ(fqsub)
 		if err != nil {
 			ret = append(ret, err.Error())
+			continue
 		}
 
-		diff, err := cli.itemDiff(ctx, sub, contentProvider, reverse)
+		diff, err := cli.itemDiff(ctx, *sub, contentProvider, reverse)
 		if err != nil {
 			ret = append(ret, err.Error())
 		}
@@ -199,7 +200,7 @@ func (cli *cliItem) newInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
+func inspectItem(ctx context.Context, hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output string, prometheusURL string, wantColor string) error {
 	// This is dirty...
 	// We want to show current dependencies (from content), not latest (from index).
 	// The item is modifed but after this function the whole hub should be thrown away.
@@ -234,7 +235,7 @@ func inspectItem(hub *cwhub.Hub, item *cwhub.Item, wantMetrics bool, output stri
 	if wantMetrics {
 		fmt.Fprint(os.Stdout, "\nCurrent metrics: \n")
 
-		if err := showMetrics(prometheusURL, hub, item, wantColor); err != nil {
+		if err := showMetrics(ctx, prometheusURL, hub, item, wantColor); err != nil {
 			return err
 		}
 	}

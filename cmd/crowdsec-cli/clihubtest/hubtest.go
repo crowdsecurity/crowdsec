@@ -9,8 +9,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-type configGetter func() *csconfig.Config
-
 var (
 	HubTest        hubtest.HubTest
 	HubAppsecTests hubtest.HubTest
@@ -19,10 +17,10 @@ var (
 )
 
 type cliHubTest struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHubTest {
+func New(cfg csconfig.Getter) *cliHubTest {
 	return &cliHubTest{
 		cfg: cfg,
 	}
@@ -42,6 +40,7 @@ func (cli *cliHubTest) NewCommand() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
+
 			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false)
 			if err != nil {
 				return fmt.Errorf("unable to load hubtest: %+v", err)

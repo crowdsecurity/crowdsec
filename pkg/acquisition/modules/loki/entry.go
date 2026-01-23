@@ -2,6 +2,7 @@ package loki
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -13,16 +14,23 @@ type Entry struct {
 
 func (e *Entry) UnmarshalJSON(b []byte) error {
 	var values []string
-	err := json.Unmarshal(b, &values)
-	if err != nil {
+
+	if err := json.Unmarshal(b, &values); err != nil {
 		return err
 	}
+
+	if len(values) < 2 {
+		return fmt.Errorf("invalid Loki entry: expected [timestamp, line], got %v", values)
+	}
+
 	t, err := strconv.Atoi(values[0])
 	if err != nil {
 		return err
 	}
+
 	e.Timestamp = time.Unix(int64(t), 0)
 	e.Line = values[1]
+
 	return nil
 }
 
@@ -51,7 +59,7 @@ type LokiQuery struct {
 type Data struct {
 	ResultType string         `json:"resultType"`
 	Result     []StreamResult `json:"result"` // Warning, just stream value is handled
-	Stats      interface{}    `json:"stats"`  // Stats is boring, just ignore it
+	Stats      any            `json:"stats"`  // Stats is boring, just ignore it
 }
 
 type StreamResult struct {

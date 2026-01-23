@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # Codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+RED=$(printf '\033[0;31m')
+GREEN=$(printf '\033[0;32m')
+NC=$(printf '\033[0m')
 OK_STR="${GREEN}OK${NC}"
 FAIL_STR="${RED}FAIL${NC}"
 
@@ -147,9 +147,9 @@ function assert_equal
 {
   echo ""
   if [ "$1" = "$2" ]; then
-    echo -e "Status - ${GREEN}OK${NC}"
+    echo "Status - ${GREEN}OK${NC}"
   else
-    echo -e "Status - ${RED}FAIL${NC}"
+    echo "Status - ${RED}FAIL${NC}"
     echo "Details:"
     echo ""
     diff  <(echo "$1" ) <(echo "$2")
@@ -162,9 +162,9 @@ function assert_not_equal
 {
   echo ""
   if [ "$1" != "$2" ]; then
-    echo -e "Status - ${GREEN}OK${NC}"
+    echo "Status - ${GREEN}OK${NC}"
   else
-    echo -e "Status - ${RED}FAIL${NC}"
+    echo "Status - ${RED}FAIL${NC}"
     echo "Details:"
     echo ""
     diff  <(echo "$1" ) <(echo "$2")
@@ -178,9 +178,9 @@ function assert_folder_exists
   echo ""
   if [ -d "${BOUNCER_FOLDER}" ]
   then
-    echo -e "Status - ${GREEN}OK${NC}"
+    echo "Status - ${GREEN}OK${NC}"
   else
-    echo -e "Status - ${RED}FAIL${NC}"
+    echo "Status - ${RED}FAIL${NC}"
     echo "Folder '$1' doesn't exist, but should"
     MUST_FAIL=1
   fi

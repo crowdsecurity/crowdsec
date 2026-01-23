@@ -22,21 +22,18 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliConsole struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliConsole {
+func New(cfg csconfig.Getter) *cliConsole {
 	return &cliConsole{
 		cfg: cfg,
 	}
@@ -52,6 +49,7 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
+
 			if err := require.CAPI(cfg); err != nil {
 				return err
 			}
@@ -82,7 +80,7 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return err
 	}
 
-	c, _ := apiclient.NewClient(&apiclient.Config{
+	c := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cli.cfg().API.Server.OnlineClient.Credentials.Login,
 		Password:      password,
 		URL:           apiURL,
@@ -240,14 +238,17 @@ Enable given information push to the central API. Allows to empower the console`
 				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, true); err != nil {
 					return err
 				}
+
 				log.Infof("All features have been enabled successfully")
 			} else {
 				if len(args) == 0 {
 					return errors.New("you must specify at least one feature to enable")
 				}
+
 				if err := cli.setConsoleOpts(args, true); err != nil {
 					return err
 				}
+
 				log.Infof("%v have been enabled", args)
 			}
 
@@ -279,14 +280,17 @@ Disable given information push to the central API.`,
 				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, false); err != nil {
 					return err
 				}
+
 				log.Infof("All features have been disabled")
 			} else {
 				if len(args) == 0 {
 					return errors.New("you must specify at least one feature to disable")
 				}
+
 				if err := cli.setConsoleOpts(args, false); err != nil {
 					return err
 				}
+
 				log.Infof("%v have been disabled", args)
 			}
 
@@ -312,6 +316,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			consoleCfg := cfg.API.Server.ConsoleConfig
+
 			switch cfg.Cscli.Output {
 			case "human":
 				cmdConsoleStatusTable(color.Output, cfg.Cscli.Color, *consoleCfg)
@@ -323,13 +328,16 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
 					csconfig.CONSOLE_MANAGEMENT:     consoleCfg.ConsoleManagement,
 				}
+
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
 					return fmt.Errorf("failed to serialize configuration: %w", err)
 				}
+
 				fmt.Fprintln(os.Stdout, string(data))
 			case "raw":
 				csvwriter := csv.NewWriter(os.Stdout)
+
 				err := csvwriter.Write([]string{"option", "enabled"})
 				if err != nil {
 					return err
@@ -348,6 +356,7 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 						return err
 					}
 				}
+
 				csvwriter.Flush()
 			}
 
@@ -385,7 +394,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
 				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
@@ -397,7 +406,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				changed := false
 				if wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL == "" {
 					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = types.PAPIBaseURL
+					cfg.API.Server.OnlineClient.Credentials.PapiURL = csconfig.PAPIBaseURL
 				} else if !wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL != "" {
 					changed = true
 					cfg.API.Server.OnlineClient.Credentials.PapiURL = ""
@@ -418,7 +427,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				}
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
@@ -426,7 +435,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareTaintedScenarios != nil && *consoleCfg.ShareTaintedScenarios == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
@@ -434,7 +443,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareManualDecisions != nil && *consoleCfg.ShareManualDecisions == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
@@ -442,7 +451,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
-			/*for each flag check if it's already set before setting it*/
+			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareContext != nil && *consoleCfg.ShareContext == wanted {
 				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {

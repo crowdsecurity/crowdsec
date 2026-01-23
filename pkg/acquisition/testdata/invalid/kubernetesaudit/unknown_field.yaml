@@ -1,0 +1,6 @@
+# wantErr: datasource of type k8s-audit: cannot parse: [6:1] unknown field "foobar"
+# schemaErr: foo
+source: k8s-audit
+labels:
+  type: sometype
+foobar: asd.log
