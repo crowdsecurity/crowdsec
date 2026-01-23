@@ -128,14 +128,12 @@ func NewCrzLogger(logger *log.Entry) *crzLogger {
 	entry := logging.SubLogger(logger.Logger, "", log.TraceLevel)
 	// SubLogger doesn't copy ReportCaller
 	entry.Logger.SetReportCaller(logger.Logger.ReportCaller)
-
-	c := &crzLogger{logger: entry, logLevel: logger.Logger.GetLevel()}
-	// Preserve existing entry fields as default context
+	// Preserve existing entry fields on the entry itself (like master does)
 	if len(logger.Data) > 0 {
-		c.defaultFields = log.Fields{}
-		maps.Copy(c.defaultFields, logger.Data)
+		entry = entry.WithFields(logger.Data)
 	}
-	return c
+
+	return &crzLogger{logger: entry, logLevel: logger.Logger.GetLevel()}
 }
 
 func (c *crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
