@@ -5,6 +5,8 @@ import (
 	"io"
 	"maps"
 
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
+
 	dbg "github.com/corazawaf/coraza/v3/debuglog"
 	log "github.com/sirupsen/logrus"
 )
@@ -122,23 +124,14 @@ type crzLogger struct {
 
 func NewCrzLogger(logger *log.Entry) *crzLogger {
 	// Create an isolated logger to avoid mutating a shared one at runtime
-	base := logger.Logger
-	cloned := log.New()
-	cloned.SetOutput(base.Out)
-	cloned.SetFormatter(base.Formatter)
-	cloned.SetReportCaller(base.ReportCaller)
-	// Ensure the underlying logger does not drop lower-level records; filtering is handled by crzLogger logic
-	cloned.SetLevel(log.TraceLevel)
-	// Copy hooks if available (best-effort)
-	if base.Hooks != nil {
-		cloned.ReplaceHooks(base.Hooks)
-	}
+	// Use TraceLevel so filtering is handled by crzLogger logic (for per-rule debug)
+	entry := logging.SubLogger(logger.Logger, "", log.TraceLevel)
+	// SubLogger doesn't copy ReportCaller
+	entry.Logger.SetReportCaller(logger.Logger.ReportCaller)
 
-	// Preserve existing entry fields as default context
-	entry := log.NewEntry(cloned)
 	c := &crzLogger{logger: entry, logLevel: logger.Logger.GetLevel()}
+	// Preserve existing entry fields as default context
 	if len(logger.Data) > 0 {
-		// store as default fields to be applied to each event
 		c.defaultFields = log.Fields{}
 		maps.Copy(c.defaultFields, logger.Data)
 	}
