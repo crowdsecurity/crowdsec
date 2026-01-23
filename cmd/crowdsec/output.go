@@ -105,9 +105,8 @@ func runOutput(
 			}
 			return nil
 		case event := <-overflow:
-			ov := event.Overflow
 			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
-			if ov.Alert == nil && ov.Mapkey != "" {
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
 			}
@@ -118,6 +117,7 @@ func runOutput(
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 
+			ov := event.Overflow
 			log.Info(*ov.Alert.Message)
 
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
