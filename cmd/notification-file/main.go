@@ -21,7 +21,7 @@ import (
 
 var (
 	FileWriter     *os.File
-	FileWriteMutex *sync.Mutex
+	FileWriteMutex sync.Mutex
 	FileSize       int64
 )
 
@@ -230,8 +230,6 @@ func (s *FilePlugin) Configure(_ context.Context, config *protobufs.Config) (*pr
 		logger.Error("Failed to parse config", "error", err)
 		return &protobufs.Empty{}, err
 	}
-
-	FileWriteMutex = &sync.Mutex{}
 
 	FileWriter, err = os.OpenFile(d.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
