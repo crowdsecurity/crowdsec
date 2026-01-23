@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -208,6 +209,35 @@ func (c *Client) UpdateMachineScenarios(ctx context.Context, scenarios string, i
 	}
 
 	return nil
+}
+
+func (c *Client) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
+	scenarios := make([]string, 0)
+
+	machines, err := c.ListMachines(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("while listing machines: %w", err)
+	}
+
+	for _, v := range machines {
+		if v.Scenarios == "" {
+			continue
+		}
+
+		machineScenarios := strings.Split(v.Scenarios, ",")
+		c.Log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
+
+		for _, sv := range machineScenarios {
+			sv = strings.TrimSpace(sv)
+			if sv != "" && !slices.Contains(scenarios, sv) {
+				scenarios = append(scenarios, sv)
+			}
+		}
+	}
+
+	c.Log.Debugf("Returning list of scenarios: %+v", scenarios)
+
+	return scenarios, nil
 }
 
 func (c *Client) UpdateMachineIP(ctx context.Context, ipAddr string, id int) error {

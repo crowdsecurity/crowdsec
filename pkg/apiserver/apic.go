@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -89,27 +88,7 @@ func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 }
 
 func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
-	scenarios := make([]string, 0)
-
-	machines, err := a.dbClient.ListMachines(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("while listing machines: %w", err)
-	}
-	// merge all scenarios together
-	for _, v := range machines {
-		machineScenarios := strings.Split(v.Scenarios, ",")
-		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
-
-		for _, sv := range machineScenarios {
-			if !slices.Contains(scenarios, sv) && sv != "" {
-				scenarios = append(scenarios, sv)
-			}
-		}
-	}
-
-	log.Debugf("Returning list of scenarios : %+v", scenarios)
-
-	return scenarios, nil
+	return a.dbClient.FetchScenariosListFromDB(ctx)
 }
 
 func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
