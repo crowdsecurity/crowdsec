@@ -126,8 +126,6 @@ func NewCrzLogger(logger *log.Entry) *crzLogger {
 	// Create an isolated logger to avoid mutating a shared one at runtime
 	// Use TraceLevel so filtering is handled by crzLogger logic (for per-rule debug)
 	entry := logging.SubLogger(logger.Logger, "", log.TraceLevel)
-	// SubLogger doesn't copy ReportCaller
-	entry.Logger.SetReportCaller(logger.Logger.ReportCaller)
 	// Preserve existing entry fields on the entry itself (like master does)
 	if len(logger.Data) > 0 {
 		entry = entry.WithFields(logger.Data)
