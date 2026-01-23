@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           mkdir -p ./dist
           echo "version=${{ steps.pick_version.outputs.tag }}" > ./dist/latest
+          cat ./dist/latest
 
       # Deploy the build output directory (adjust ./dist to your framework output)
       - name: Publish to Cloudflare Pages
