@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -221,11 +222,15 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 
 	// This is a modsec rule match
 	if scenarioName == "" && len(sevRules) > 0 {
-		// If from CRS (TX scores are set), use that as the name
+		// If from CRS (TX scores are set and > 0), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
-		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
-			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
-		} else {
+		if val, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+			if score, err := strconv.Atoi(val); err == nil && score > 0 {
+				scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
+			}
+		}
+
+		if scenarioName == "" {
 			if msg, msgOk := sevRules[0]["msg"].(string); msgOk {
 				scenarioName = msg
 			}
