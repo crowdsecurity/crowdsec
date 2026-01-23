@@ -76,129 +76,25 @@ type BucketFactory struct {
 // we use one NameGenerator for all the future buckets
 var seed = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
-func validateLeakyType(bucketFactory *BucketFactory) error {
-	if bucketFactory.Capacity <= 0 { // capacity must be a positive int
-		return fmt.Errorf("bad capacity for leaky '%d'", bucketFactory.Capacity)
-	}
-
-	if bucketFactory.LeakSpeed == "" {
-		return errors.New("leakspeed can't be empty for leaky")
-	}
-
-	if bucketFactory.leakspeed == 0 {
-		return fmt.Errorf("bad leakspeed for leaky '%s'", bucketFactory.LeakSpeed)
-	}
-
-	return nil
-}
-
-func validateCounterType(bucketFactory *BucketFactory) error {
-	if bucketFactory.Duration == "" {
-		return errors.New("duration can't be empty for counter")
-	}
-
-	if bucketFactory.duration == 0 {
-		return fmt.Errorf("bad duration for counter bucket '%d'", bucketFactory.duration)
-	}
-
-	if bucketFactory.Capacity != -1 {
-		return errors.New("counter bucket must have -1 capacity")
-	}
-
-	return nil
-}
-
-func validateTriggerType(bucketFactory *BucketFactory) error {
-	if bucketFactory.Capacity != 0 {
-		return errors.New("trigger bucket must have 0 capacity")
-	}
-
-	return nil
-}
-
-func validateConditionalType(bucketFactory *BucketFactory) error {
-	if bucketFactory.ConditionalOverflow == "" {
-		return errors.New("conditional bucket must have a condition")
-	}
-
-	if bucketFactory.Capacity != -1 {
-		bucketFactory.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
-	}
-
-	if bucketFactory.LeakSpeed == "" {
-		return errors.New("leakspeed can't be empty for conditional bucket")
-	}
-
-	if bucketFactory.leakspeed == 0 {
-		return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
-	}
-
-	return nil
-}
-
-func validateBayesianType(bucketFactory *BucketFactory) error {
-	if bucketFactory.BayesianConditions == nil {
-		return errors.New("bayesian bucket must have bayesian conditions")
-	}
-
-	if bucketFactory.BayesianPrior == 0 {
-		return errors.New("bayesian bucket must have a valid, non-zero prior")
-	}
-
-	if bucketFactory.BayesianThreshold == 0 {
-		return errors.New("bayesian bucket must have a valid, non-zero threshold")
-	}
-
-	if bucketFactory.BayesianPrior > 1 {
-		return errors.New("bayesian bucket must have a valid, non-zero prior")
-	}
-
-	if bucketFactory.BayesianThreshold > 1 {
-		return errors.New("bayesian bucket must have a valid, non-zero threshold")
-	}
-
-	if bucketFactory.Capacity != -1 {
-		return errors.New("bayesian bucket must have capacity -1")
-	}
-
-	return nil
-}
-
-func ValidateFactory(bucketFactory *BucketFactory) error {
-	if bucketFactory.Name == "" {
+func (f *BucketFactory) Validate() error {
+	if f.Name == "" {
 		return errors.New("bucket must have name")
 	}
 
-	if bucketFactory.Description == "" {
+	if f.Description == "" {
 		return errors.New("description is mandatory")
 	}
 
-	switch bucketFactory.Type {
-	case "leaky":
-		if err := validateLeakyType(bucketFactory); err != nil {
-			return err
-		}
-	case "counter":
-		if err := validateCounterType(bucketFactory); err != nil {
-			return err
-		}
-	case "trigger":
-		if err := validateTriggerType(bucketFactory); err != nil {
-			return err
-		}
-	case "conditional":
-		if err := validateConditionalType(bucketFactory); err != nil {
-			return err
-		}
-	case "bayesian":
-		if err := validateBayesianType(bucketFactory); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
+	impl, ok := bucketTypes[f.Type]
+	if !ok {
+		return fmt.Errorf("unknown bucket type '%s'", f.Type)
 	}
 
-	return compileScopeFilter(bucketFactory)
+	if err := impl.Validate(f); err != nil {
+		return err
+	}
+
+	return compileScopeFilter(f)
 }
 
 func compileScopeFilter(bucketFactory *BucketFactory) error {
@@ -479,7 +375,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 		}
 	}
 
-	if err := ValidateFactory(bucketFactory); err != nil {
+	if err := bucketFactory.Validate(); err != nil {
 		return fmt.Errorf("invalid bucket from %s: %w", bucketFactory.Filename, err)
 	}
 

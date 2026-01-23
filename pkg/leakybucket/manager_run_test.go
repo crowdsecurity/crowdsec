@@ -77,7 +77,7 @@ func TestGCandDump(t *testing.T) {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
-		if err := ValidateFactory(&Holders[idx]); err != nil {
+		if err := Holders[idx].Validate(); err != nil {
 			t.Fatalf("while validating (%d/%d): %s", idx, len(Holders), err)
 		}
 	}
@@ -147,7 +147,7 @@ func TestShutdownBuckets(t *testing.T) {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 
-		if err := ValidateFactory(&Holders[idx]); err != nil {
+		if err := Holders[idx].Validate(); err != nil {
 			t.Fatalf("while validating (%d/%d): %s", idx, len(Holders), err)
 		}
 	}

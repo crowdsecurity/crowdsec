@@ -20,7 +20,7 @@ func runTest(tests []cfgTest) error {
 		if !cfg.loadable && err == nil {
 			return fmt.Errorf("expected unloadable result (%d/%d)", idx+1, len(tests))
 		}
-		err = ValidateFactory(&cfg.cfg)
+		err = cfg.cfg.Validate()
 		if cfg.valid && err != nil {
 			return fmt.Errorf("expected valid result (%d/%d), got: %s", idx+1, len(tests), err)
 		}
