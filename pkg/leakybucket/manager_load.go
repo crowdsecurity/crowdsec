@@ -313,7 +313,7 @@ func (f *BucketFactory) LoadBucket() error {
 	if f.OverflowFilter != "" {
 		f.logger.Tracef("Adding an overflow filter")
 
-		filovflw, err := NewOverflowFilter(f)
+		filovflw, err := NewOverflowProcessor(f)
 		if err != nil {
 			f.logger.Errorf("Error creating overflow_filter : %s", err)
 			return fmt.Errorf("error creating overflow_filter: %w", err)
