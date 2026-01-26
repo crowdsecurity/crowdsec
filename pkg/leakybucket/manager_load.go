@@ -23,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -94,38 +93,7 @@ func (f *BucketFactory) Validate() error {
 		return fmt.Errorf("%s bucket: %w", f.Type, err)
 	}
 
-	return compileScopeFilter(f)
-}
-
-func compileScopeFilter(f *BucketFactory) error {
-	if f.ScopeType.Scope == types.Undefined {
-		f.ScopeType.Scope = types.Ip
-	}
-
-	if f.ScopeType.Scope == types.Ip {
-		if f.ScopeType.Filter != "" {
-			return errors.New("filter is not allowed for IP scope")
-		}
-
-		return nil
-	}
-
-	if f.ScopeType.Scope == types.Range && f.ScopeType.Filter == "" {
-		return nil
-	}
-
-	if f.ScopeType.Filter == "" {
-		return errors.New("filter is mandatory for non-IP, non-Range scope")
-	}
-
-	runTimeFilter, err := expr.Compile(f.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
-	if err != nil {
-		return fmt.Errorf("error compiling the scope filter: %w", err)
-	}
-
-	f.ScopeType.RunTimeFilter = runTimeFilter
-
-	return nil
+	return f.ScopeType.CompileFilter()
 }
 
 func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, bucketStore *BucketStore, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
