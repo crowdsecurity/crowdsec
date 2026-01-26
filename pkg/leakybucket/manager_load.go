@@ -128,7 +128,7 @@ func compileScopeFilter(f *BucketFactory) error {
 	return nil
 }
 
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, bucketStore *BucketStore, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -190,8 +190,8 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 		f.ScenarioVersion = item.State.LocalVersion
 		f.hash = item.State.LocalHash
 
-		f.wgDumpState = buckets.wgDumpState
-		f.wgPour = buckets.wgPour
+		f.wgDumpState = bucketStore.wgDumpState
+		f.wgPour = bucketStore.wgPour
 
 		err = f.LoadBucket()
 		if err != nil {
@@ -206,14 +206,14 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 	return factories, nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, bucketStore *BucketStore, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
 	response := make(chan pipeline.Event, 1)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, response, orderEvent, cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, bucketStore, response, orderEvent, cscfg.SimulationConfig)
 		if err != nil {
 			return nil, nil, err
 		}
