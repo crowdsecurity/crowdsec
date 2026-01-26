@@ -91,7 +91,7 @@ func (f *BucketFactory) Validate() error {
 	}
 
 	if err := impl.Validate(f); err != nil {
-		return err
+		return fmt.Errorf("%s bucket: %w", f.Type, err)
 	}
 
 	return compileScopeFilter(f)
