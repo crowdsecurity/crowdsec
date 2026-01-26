@@ -23,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -91,44 +90,20 @@ func (f *BucketFactory) Validate() error {
 	}
 
 	if err := impl.Validate(f); err != nil {
-		return err
+		return fmt.Errorf("%s bucket: %w", f.Type, err)
 	}
 
-	return compileScopeFilter(f)
+	return f.ScopeType.CompileFilter()
 }
 
-func compileScopeFilter(bucketFactory *BucketFactory) error {
-	if bucketFactory.ScopeType.Scope == types.Undefined {
-		bucketFactory.ScopeType.Scope = types.Ip
-	}
-
-	if bucketFactory.ScopeType.Scope == types.Ip {
-		if bucketFactory.ScopeType.Filter != "" {
-			return errors.New("filter is not allowed for IP scope")
-		}
-
-		return nil
-	}
-
-	if bucketFactory.ScopeType.Scope == types.Range && bucketFactory.ScopeType.Filter == "" {
-		return nil
-	}
-
-	if bucketFactory.ScopeType.Filter == "" {
-		return errors.New("filter is mandatory for non-IP, non-Range scope")
-	}
-
-	runTimeFilter, err := expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
-	if err != nil {
-		return fmt.Errorf("error compiling the scope filter: %w", err)
-	}
-
-	bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
-
-	return nil
-}
-
-func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buckets, response chan pipeline.Event, orderEvent bool, simulationConfig csconfig.SimulationConfig) ([]BucketFactory, error) {
+func loadBucketFactoriesFromFile(
+	item *cwhub.Item,
+	hub *cwhub.Hub,
+	bucketStore *BucketStore,
+	response chan pipeline.Event,
+	orderEvent bool,
+	simulationConfig csconfig.SimulationConfig,
+) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
 	// process the yaml
@@ -145,9 +120,9 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 	factories := []BucketFactory{}
 
 	for {
-		bucketFactory := BucketFactory{}
+		f := BucketFactory{}
 
-		err = dec.Decode(&bucketFactory)
+		err = dec.Decode(&f)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Errorf("Bad yaml in %s: %v", itemPath, err)
@@ -159,61 +134,67 @@ func loadBucketFactoriesFromFile(item *cwhub.Item, hub *cwhub.Hub, buckets *Buck
 			break
 		}
 
-		bucketFactory.DataDir = hub.GetDataDir()
+		f.DataDir = hub.GetDataDir()
 		// check empty
-		if bucketFactory.Name == "" {
+		if f.Name == "" {
 			log.Errorf("Won't load nameless bucket")
 			return nil, errors.New("nameless bucket")
 		}
 		// check compat
-		if bucketFactory.FormatVersion == "" {
-			log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, itemPath)
-			bucketFactory.FormatVersion = "1.0"
+		if f.FormatVersion == "" {
+			log.Tracef("no version in %s : %s, assuming '1.0'", f.Name, itemPath)
+			f.FormatVersion = "1.0"
 		}
 
-		ok, err := constraint.Satisfies(bucketFactory.FormatVersion, constraint.Scenario)
+		ok, err := constraint.Satisfies(f.FormatVersion, constraint.Scenario)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check version: %w", err)
 		}
 
 		if !ok {
-			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, constraint.Scenario)
+			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", f.Name, f.FormatVersion, constraint.Scenario)
 			continue
 		}
 
-		bucketFactory.Filename = filepath.Clean(itemPath)
-		bucketFactory.BucketName = seed.Generate()
-		bucketFactory.ret = response
+		f.Filename = filepath.Clean(itemPath)
+		f.BucketName = seed.Generate()
+		f.ret = response
 
-		bucketFactory.Simulated = simulationConfig.IsSimulated(bucketFactory.Name)
+		f.Simulated = simulationConfig.IsSimulated(f.Name)
 
-		bucketFactory.ScenarioVersion = item.State.LocalVersion
-		bucketFactory.hash = item.State.LocalHash
+		f.ScenarioVersion = item.State.LocalVersion
+		f.hash = item.State.LocalHash
 
-		bucketFactory.wgDumpState = buckets.wgDumpState
-		bucketFactory.wgPour = buckets.wgPour
+		f.wgDumpState = bucketStore.wgDumpState
+		f.wgPour = bucketStore.wgPour
 
-		err = bucketFactory.LoadBucket()
+		err = f.LoadBucket()
 		if err != nil {
-			return nil, fmt.Errorf("bucket %s: %w", bucketFactory.Name, err)
+			return nil, fmt.Errorf("bucket %s: %w", f.Name, err)
 		}
 
-		bucketFactory.orderEvent = orderEvent
+		f.orderEvent = orderEvent
 
-		factories = append(factories, bucketFactory)
+		factories = append(factories, f)
 	}
 
 	return factories, nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, scenarios []*cwhub.Item, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan pipeline.Event, error) {
+func LoadBuckets(
+	cscfg *csconfig.CrowdsecServiceCfg,
+	hub *cwhub.Hub,
+	scenarios []*cwhub.Item,
+	bucketStore *BucketStore,
+	orderEvent bool,
+) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
 	response := make(chan pipeline.Event, 1)
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, buckets, response, orderEvent, cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, bucketStore, response, orderEvent, cscfg.SimulationConfig)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -313,7 +294,7 @@ func (f *BucketFactory) LoadBucket() error {
 	if f.OverflowFilter != "" {
 		f.logger.Tracef("Adding an overflow filter")
 
-		filovflw, err := NewOverflowFilter(f)
+		filovflw, err := NewOverflowProcessor(f)
 		if err != nil {
 			f.logger.Errorf("Error creating overflow_filter : %s", err)
 			return fmt.Errorf("error creating overflow_filter: %w", err)

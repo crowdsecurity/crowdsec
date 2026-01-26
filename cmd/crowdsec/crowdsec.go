@@ -87,7 +87,7 @@ func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runPour/"+strconv.Itoa(idx))
-			runPour(ctx, inEvents, holders, buckets, cConfig, pourCollector)
+			runPour(ctx, inEvents, holders, bucketStore, cConfig, pourCollector)
 			return nil
 		})
 	}
@@ -103,7 +103,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
 			defer trace.CatchPanic("crowdsec/runOutput/"+strconv.Itoa(idx))
-			return runOutput(ctx, inEvents, outEvents, buckets, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, sd)
+			return runOutput(ctx, inEvents, outEvents, bucketStore, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, sd)
 		})
 	}
 }

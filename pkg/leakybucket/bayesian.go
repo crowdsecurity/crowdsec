@@ -43,14 +43,14 @@ func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	bayesianEventArray := make([]*BayesianEvent, len(f.BayesianConditions))
 
 	for index, bcond := range f.BayesianConditions {
-		var bayesianEvent BayesianEvent
-		bayesianEvent.rawCondition = bcond
-		prog, err := bayesianEvent.compileCondition()
+		prog, err := compileCondition(bcond.ConditionalFilterName)
 		if err != nil {
 			return err
 		}
-		bayesianEvent.conditionalFilterRuntime = prog
-		bayesianEventArray[index] = &bayesianEvent
+		bayesianEventArray[index] = &BayesianEvent{
+			rawCondition:             bcond,
+			conditionalFilterRuntime: prog,
+		}
 	}
 	p.bayesianEventArray = bayesianEventArray
 
@@ -135,31 +135,29 @@ func (e *BayesianEvent) triggerGuillotine() {
 	e.guillotineState = true
 }
 
-func (e *BayesianEvent) compileCondition() (*vm.Program, error) {
-	name := e.rawCondition.ConditionalFilterName
-
+func compileCondition(filterName string) (*vm.Program, error) {
 	conditionalExprCacheLock.Lock()
-	prog, ok := conditionalExprCache[name]
+	prog, ok := conditionalExprCache[filterName]
 	conditionalExprCacheLock.Unlock()
 	if ok {
 		return prog, nil
 	}
 
 	// don't hold lock during compile
-	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+	compiled, err := expr.Compile(filterName, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
 	if err != nil {
 		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
 	}
 
 	// re-check under lock in case of race, avoid double compilation
 	conditionalExprCacheLock.Lock()
-	if prog2, ok := conditionalExprCache[name]; ok {
-		conditionalExprCacheLock.Unlock()
+	defer conditionalExprCacheLock.Unlock()
+
+	if prog2, ok := conditionalExprCache[filterName]; ok {
 		return prog2, nil
 	}
 
-	conditionalExprCache[name] = compiled
-	conditionalExprCacheLock.Unlock()
+	conditionalExprCache[filterName] = compiled
 
 	return compiled, nil
 }

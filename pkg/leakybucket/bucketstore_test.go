@@ -89,7 +89,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 		err        error
 	)
 
-	buckets := NewBuckets()
+	bucketStore := NewBucketStore()
 
 	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
@@ -131,19 +131,19 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, scenarios, buckets, false)
+	holders, response, err := LoadBuckets(cscfg, hub, scenarios, bucketStore, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
 
-	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, buckets) {
+	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
 
 	return nil
 }
 
-func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, buckets *Buckets) bool {
+func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
 	var results []pipeline.Event
 
 	/* now we can load the test files */
@@ -184,7 +184,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		in.ExpectMode = pipeline.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
-		ok, err := PourItemToHolders(ctx, in, holders, buckets, nil)
+		ok, err := PourItemToHolders(ctx, in, holders, bucketStore, nil)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
 		}
@@ -207,7 +207,7 @@ POLL_AGAIN:
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
-				ok, err := PourItemToHolders(ctx, ret, holders, buckets, nil)
+				ok, err := PourItemToHolders(ctx, ret, holders, bucketStore, nil)
 				if err != nil {
 					t.Fatalf("Failed to pour : %s", err)
 				}

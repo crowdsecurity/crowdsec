@@ -30,7 +30,12 @@ func NewBlackholeProcessor(f *BucketFactory) (*BlackholeProcessor, error) {
 	}, nil
 }
 
-func (p *BlackholeProcessor) OnBucketOverflow(_ *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (p *BlackholeProcessor) OnBucketOverflow(
+	_ *BucketFactory,
+	leaky *Leaky,
+	alert pipeline.RuntimeAlert,
+	queue *pipeline.Queue,
+) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	var blackholed = false
 	var tmp []hiddenKey
 	// search if we are blackholed and refresh the slice
@@ -56,7 +61,7 @@ func (p *BlackholeProcessor) OnBucketOverflow(_ *BucketFactory, leaky *Leaky, al
 			Mapkey: leaky.Mapkey,
 		}, nil
 	}
-	p.hiddenKeys = append(p.hiddenKeys, hiddenKey{key:leaky.Mapkey, expiration: leaky.Ovflw_ts.Add(p.duration)})
+	p.hiddenKeys = append(p.hiddenKeys, hiddenKey{key: leaky.Mapkey, expiration: leaky.Ovflw_ts.Add(p.duration)})
 	leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.First_ts)
 	return alert, queue
 }
