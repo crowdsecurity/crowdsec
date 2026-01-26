@@ -10,22 +10,17 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// Uniq creates three new functions that share the same initialisation and the same scope.
-// They are triggered respectively:
-// on pour
-// on overflow
-// on leak
-
-type OverflowFilter struct {
+type OverflowProcessor struct {
 	Filter        string
 	FilterRuntime *vm.Program
 	DumbProcessor
 }
 
-func NewOverflowFilter(f *BucketFactory) (*OverflowFilter, error) {
+func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 	var err error
 
-	u := OverflowFilter{}
+	u := OverflowProcessor{}
+
 	u.Filter = f.OverflowFilter
 
 	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
@@ -36,7 +31,7 @@ func NewOverflowFilter(f *BucketFactory) (*OverflowFilter, error) {
 	return &u, nil
 }
 
-func (u *OverflowFilter) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
 		"queue": q, "signal": s, "leaky": l}, l.logger, f.Debug)
 	if err != nil {
