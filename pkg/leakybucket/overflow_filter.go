@@ -22,23 +22,23 @@ type OverflowFilter struct {
 	DumbProcessor
 }
 
-func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
+func NewOverflowFilter(f *BucketFactory) (*OverflowFilter, error) {
 	var err error
 
 	u := OverflowFilter{}
-	u.Filter = g.OverflowFilter
+	u.Filter = f.OverflowFilter
 
 	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
 	if err != nil {
-		g.logger.Errorf("Unable to compile filter : %v", err)
+		f.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
 	}
 	return &u, nil
 }
 
-func (u *OverflowFilter) OnBucketOverflow(bucket *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (u *OverflowFilter) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
-		"queue": q, "signal": s, "leaky": l}, l.logger, bucket.Debug)
+		"queue": q, "signal": s, "leaky": l}, l.logger, f.Debug)
 	if err != nil {
 		l.logger.Errorf("Failed running overflow filter: %s", err)
 		return s, q
