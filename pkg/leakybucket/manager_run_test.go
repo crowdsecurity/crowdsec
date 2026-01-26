@@ -12,12 +12,7 @@ import (
 )
 
 func expectBucketCount(bucketStore *BucketStore, expected int) error {
-	count := 0
-
-	bucketStore.Bucket_map.Range(func(_, _ any) bool {
-		count++
-		return true
-	})
+	count := bucketStore.Len()
 
 	if count != expected {
 		return fmt.Errorf("expected %d live buckets, got %d", expected, count)
