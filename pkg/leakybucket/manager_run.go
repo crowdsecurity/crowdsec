@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	serialized      map[string]Leaky
+	serialized map[string]Leaky
 )
 
 /*
@@ -72,7 +72,14 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 	}
 }
 
-func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, bucketStore *BucketStore, parsed *pipeline.Event, collector *PourCollector) (bool, error) {
+func PourItemToBucket(
+	ctx context.Context,
+	bucket *Leaky,
+	holder *BucketFactory,
+	bucketStore *BucketStore,
+	parsed *pipeline.Event,
+	collector *PourCollector,
+) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -157,7 +164,13 @@ func PourItemToBucket(ctx context.Context, bucket *Leaky, holder BucketFactory, 
 	return sent, nil
 }
 
-func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, buckets *BucketStore, holder BucketFactory, expectMode int) (*Leaky, error) {
+func LoadOrStoreBucketFromHolder(
+	ctx context.Context,
+	partitionKey string,
+	buckets *BucketStore,
+	holder *BucketFactory,
+	expectMode int,
+) (*Leaky, error) {
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 	if ok {
 		return biface.(*Leaky), nil
@@ -199,7 +212,13 @@ func LoadOrStoreBucketFromHolder(ctx context.Context, partitionKey string, bucke
 
 var orderEvent map[string]*sync.WaitGroup
 
-func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []BucketFactory, buckets *BucketStore, collector *PourCollector) (bool, error) {
+func PourItemToHolders(
+	ctx context.Context,
+	parsed pipeline.Event,
+	holders []BucketFactory,
+	buckets *BucketStore,
+	collector *PourCollector,
+) (bool, error) {
 	var ok, condition, poured bool
 
 	if collector != nil {
@@ -245,10 +264,10 @@ func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []Buc
 				return false, errors.New("groupby wrong type")
 			}
 		}
-		buckey := GetKey(holders[idx], groupby)
+		buckey := GetKey(&holders[idx], groupby)
 
 		// we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
-		bucket, err := LoadOrStoreBucketFromHolder(ctx, buckey, buckets, holders[idx], parsed.ExpectMode)
+		bucket, err := LoadOrStoreBucketFromHolder(ctx, buckey, buckets, &holders[idx], parsed.ExpectMode)
 		if err != nil {
 			return false, fmt.Errorf("failed to load or store bucket: %w", err)
 		}
@@ -267,7 +286,7 @@ func PourItemToHolders(ctx context.Context, parsed pipeline.Event, holders []Buc
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(ctx, bucket, holders[idx], buckets, &parsed, collector)
+		ok, err := PourItemToBucket(ctx, bucket, &holders[idx], buckets, &parsed, collector)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()

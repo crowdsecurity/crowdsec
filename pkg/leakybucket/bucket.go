@@ -75,7 +75,7 @@ var LeakyRoutineCount int64
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
-func NewLeakyFromFactory(f BucketFactory) *Leaky {
+func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 	f.logger.Tracef("Instantiating live bucket %s", f.Name)
 
 	var limiter rate.RateLimiter
@@ -111,7 +111,7 @@ func NewLeakyFromFactory(f BucketFactory) *Leaky {
 		AllOut:          f.ret,
 		Capacity:        f.Capacity,
 		Leakspeed:       f.leakspeed,
-		BucketConfig:    &f,
+		BucketConfig:    f,
 		Pour:            Pour,
 		Reprocess:       f.Reprocess,
 		Profiling:       f.Profiling,
