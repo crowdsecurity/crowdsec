@@ -39,8 +39,10 @@ type Leaky struct {
 	CacheSize int
 	// the unique identifier of the bucket (a hash)
 	Mapkey string
-	// chan for signaling
-	Signal       chan bool `json:"-"`
+	ready        chan struct{} // closed when LeakRoutine is ready
+	readyOnce    sync.Once     // use to prevent double close
+	done         chan struct{} // closed when LeakRoutine has stopped processing
+	doneOnce     sync.Once     // use to prevent double close
 	Suicide      chan bool `json:"-"`
 	Reprocess    bool
 	Simulated    bool
@@ -146,6 +148,8 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
 		firstEvent         = true
 	)
 
+	defer l.markDone()
+
 	defer func() {
 		if durationTicker != nil {
 			durationTicker.Stop()
@@ -166,13 +170,12 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
 	// and preventing them from being destroyed
 	processors := deepcopy.Copy(l.BucketConfig.processors).([]Processor)
 
-	l.Signal <- true
+	l.markReady()
 
 	for _, f := range processors {
 		err := f.OnBucketInit(l.BucketConfig)
 		if err != nil {
 			l.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
-			close(l.Signal)
 			return
 		}
 	}
@@ -233,7 +236,8 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
 			return
 		// suiciiiide
 		case <-l.Suicide:
-			close(l.Signal)
+			// don't wait defer to close the channel, in case we are blocked before returning
+			l.markDone()
 			metrics.BucketsCanceled.With(prometheus.Labels{"name": l.Name}).Inc()
 			l.logger.Debugf("Suicide triggered")
 			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
@@ -246,7 +250,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
 				err   error
 			)
 			l.Ovflw_ts = time.Now().UTC()
-			close(l.Signal)
+			l.markDone()
 			ofw := l.Queue
 			alert = pipeline.RuntimeAlert{Mapkey: l.Mapkey}
 
@@ -316,7 +320,7 @@ func Pour(l *Leaky, g PourGate, msg pipeline.Event) {
 }
 
 func (l *Leaky) overflow(ofw *pipeline.Queue) {
-	close(l.Signal)
+	l.markDone()
 	alert, err := NewAlert(l, ofw)
 	if err != nil {
 		log.Errorf("%s", err)
@@ -338,4 +342,16 @@ func (l *Leaky) overflow(ofw *pipeline.Queue) {
 	metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 
 	l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)}
+}
+
+func (l *Leaky) markReady() {
+	l.readyOnce.Do(func() {
+		close(l.ready)
+	})
+}
+
+func (l *Leaky) markDone()  {
+	l.doneOnce.Do(func() {
+		close(l.done)
+	})
 }
