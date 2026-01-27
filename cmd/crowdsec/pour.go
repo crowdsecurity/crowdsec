@@ -18,7 +18,7 @@ func shouldTriggerGC(count int) bool {
 }
 
 func triggerGC(parsed pipeline.Event, buckets *leaky.BucketStore, cConfig *csconfig.Config) {
-	log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
+	log.Infof("%d existing buckets", buckets.Len())
 	// when in forensics mode, garbage collect buckets
 	if !cConfig.Crowdsec.BucketsGCEnabled || parsed.MarshaledTime == "" {
 		return

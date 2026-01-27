@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -68,8 +67,6 @@ type Leaky struct {
 	orderEvent          bool
 	cancel              context.CancelFunc
 }
-
-var LeakyRoutineCount int64
 
 // NewLeakyFromFactory creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
@@ -174,8 +171,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context) {
 	processors := deepcopy.Copy(l.BucketConfig.processors).([]Processor)
 
 	l.Signal <- true
-	atomic.AddInt64(&LeakyRoutineCount, 1)
-	defer atomic.AddInt64(&LeakyRoutineCount, -1)
 
 	for _, f := range processors {
 		err := f.OnBucketInit(l.BucketConfig)
