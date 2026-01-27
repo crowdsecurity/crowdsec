@@ -250,7 +250,7 @@ func PourItemToHolders(
 				return false, errors.New("groupby wrong type")
 			}
 		}
-		buckey := GetKey(&holders[idx], groupby)
+		buckey := holders[idx].BucketKey(groupby)
 
 		// we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(ctx, buckey, buckets, &holders[idx], parsed.ExpectMode)

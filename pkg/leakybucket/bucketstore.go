@@ -1,8 +1,6 @@
 package leakybucket
 
 import (
-	"crypto/sha1"
-	"fmt"
 	"maps"
 	"sync"
 )
@@ -23,11 +21,6 @@ func NewBucketStore() *BucketStore {
 		m:           make(map[string]*Leaky),
 	}
 }
-
-func GetKey(bucketCfg *BucketFactory, stackkey string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(bucketCfg.Filter+stackkey+bucketCfg.Name)))
-}
-
 
 func (b *BucketStore) Load(key string) (*Leaky, bool) {
 	b.mu.Lock()

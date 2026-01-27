@@ -1,6 +1,8 @@
 package leakybucket
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -353,4 +355,15 @@ func (f *BucketFactory) LoadBucket() error {
 	}
 
 	return nil
+}
+
+func (f *BucketFactory) BucketKey(stackkey string) string {
+	h := sha1.New()
+	h.Write([]byte(f.Filter))
+	// use zero byte separators to avoid conflicts, i.e. "ab"+"c" vs "a"+"bc"
+	h.Write([]byte{0})
+	h.Write([]byte(stackkey))
+	h.Write([]byte{0})
+	h.Write([]byte(f.Name))
+	return hex.EncodeToString(h.Sum(nil))
 }
