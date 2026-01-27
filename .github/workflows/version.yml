@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ./dist
-          echo '{"name":"${{ steps.pick_version.outputs.tag }}"' > ./dist/latest
+          echo '{"name":"${{ steps.pick_version.outputs.tag }}"}' > ./dist/latest
           cat ./dist/latest
 
       # Deploy the build output directory (adjust ./dist to your framework output)
