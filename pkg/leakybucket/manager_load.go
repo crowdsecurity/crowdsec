@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -67,8 +66,6 @@ type BucketFactory struct {
 	ScenarioVersion     string                     `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
-	wgPour              *sync.WaitGroup
-	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
 }
 
@@ -164,9 +161,6 @@ func loadBucketFactoriesFromFile(
 
 		f.ScenarioVersion = item.State.LocalVersion
 		f.hash = item.State.LocalHash
-
-		f.wgDumpState = bucketStore.wgDumpState
-		f.wgPour = bucketStore.wgPour
 
 		err = f.LoadBucket()
 		if err != nil {

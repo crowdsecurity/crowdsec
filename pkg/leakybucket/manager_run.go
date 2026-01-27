@@ -22,43 +22,43 @@ But when we are running in time-machine mode, the reference time is in logs and 
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
 func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
-	bucketStore.wgPour.Wait()
-	bucketStore.wgDumpState.Add(1)
-	defer bucketStore.wgDumpState.Done()
+	fn := func() {
+		snap := bucketStore.Snapshot()
 
-	snap := bucketStore.Snapshot()
+		toflush := []string{}
+		for key, val := range snap {
+			// bucket already overflowed, we can kill it
+			if !val.Ovflw_ts.IsZero() {
+				val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
+				toflush = append(toflush, key)
+				val.cancel()
+				continue
+			}
 
-	toflush := []string{}
-	for key, val := range snap {
-		// bucket already overflowed, we can kill it
-		if !val.Ovflw_ts.IsZero() {
-			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
-			toflush = append(toflush, key)
-			val.cancel()
-			continue
+			const eps = 1e-9
+
+			tokat := val.Limiter.GetTokensCountAt(deadline)
+			tokcapa := float64(val.Capacity)
+
+			// bucket actually underflowed based on log time, but no in real time
+			if tokat+eps >= tokcapa {
+				metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+				val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+				toflush = append(toflush, key)
+				val.cancel()
+				continue
+			}
+
+			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		}
 
-		const eps = 1e-9
-
-		tokat := val.Limiter.GetTokensCountAt(deadline)
-		tokcapa := float64(val.Capacity)
-
-		// bucket actually underflowed based on log time, but no in real time
-		if tokat+eps >= tokcapa {
-			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
-			toflush = append(toflush, key)
-			val.cancel()
-			continue
+		log.Infof("Cleaned %d buckets", len(toflush))
+		for _, flushkey := range toflush {
+			bucketStore.Delete(flushkey)
 		}
-
-		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 	}
 
-	log.Infof("Cleaned %d buckets", len(toflush))
-	for _, flushkey := range toflush {
-		bucketStore.Delete(flushkey)
-	}
+	bucketStore.WithPoursBlocked(fn)
 }
 
 func PourItemToBucket(
@@ -186,7 +186,7 @@ func LoadOrStoreBucketFromHolder(
 		go func() {
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
-			fresh_bucket.LeakRoutine(ctx)
+			fresh_bucket.LeakRoutine(ctx, buckets)
 		}()
 		leaky = fresh_bucket
 		// once the created goroutine is ready to process event, we can return it

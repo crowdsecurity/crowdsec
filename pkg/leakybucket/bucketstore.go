@@ -10,16 +10,14 @@ import (
 // BucketStore is the struct used to hold buckets during the lifecycle of the app
 // (i.e. between reloads).
 type BucketStore struct {
-	wgDumpState *sync.WaitGroup
-	wgPour      *sync.WaitGroup
 	mu sync.Mutex
 	m map[string]*Leaky
+
+	gate BucketGate
 }
 
 func NewBucketStore() *BucketStore {
 	return &BucketStore{
-		wgDumpState: &sync.WaitGroup{},
-		wgPour:      &sync.WaitGroup{},
 		m:           make(map[string]*Leaky),
 	}
 }
@@ -68,4 +66,12 @@ func (b *BucketStore) Len() int {
 	n := len(b.m)
 	b.mu.Unlock()
 	return n
+}
+
+func (b *BucketStore) BeginPour() func() {
+	return b.gate.BeginPour()
+}
+
+func (b *BucketStore) WithPoursBlocked(fn func()) {
+	b.gate.WithPoursBlocked(fn)
 }
