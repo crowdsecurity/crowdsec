@@ -11,14 +11,15 @@ import (
 type BucketStore struct {
 	wgDumpState *sync.WaitGroup
 	wgPour      *sync.WaitGroup
-	m *sync.Map
+	mu sync.Mutex
+	m map[string]*Leaky
 }
 
 func NewBucketStore() *BucketStore {
 	return &BucketStore{
 		wgDumpState: &sync.WaitGroup{},
 		wgPour:      &sync.WaitGroup{},
-		m:           &sync.Map{},
+		m:           make(map[string]*Leaky),
 	}
 }
 
@@ -28,33 +29,54 @@ func GetKey(bucketCfg *BucketFactory, stackkey string) string {
 
 
 func (b *BucketStore) Load(key string) (*Leaky, bool) {
-	v, ok := b.m.Load(key)
+	b.mu.Lock()
+	v, ok := b.m[key]
+	b.mu.Unlock()
 	if !ok {
 		return nil, false
 	}
-	return v.(*Leaky), true
+	return v, true
 }
 
 func (b *BucketStore) LoadOrStore(key string, val *Leaky) (*Leaky, bool) {
-	actual, loaded := b.m.LoadOrStore(key, val)
-	return actual.(*Leaky), loaded
+	b.mu.Lock()
+	if existing, ok := b.m[key]; ok {
+		b.mu.Unlock()
+		return existing, true
+	}
+	b.m[key] = val
+	b.mu.Unlock()
+	return val, false
 }
 
 func (b *BucketStore) Delete(key string) {
-	b.m.Delete(key)
+	b.mu.Lock()
+	delete(b.m, key)
+	b.mu.Unlock()
 }
 
 func (b *BucketStore) Range(fn func(string, *Leaky) bool) {
-	b.m.Range(func(k, v any) bool {
-		return fn(k.(string), v.(*Leaky))
-	})
+	b.mu.Lock()
+	type kv struct {
+		k string
+		v *Leaky
+	}
+	items := make([]kv, 0, len(b.m))
+	for k, v := range b.m {
+		items = append(items, kv{k: k, v: v})
+	}
+	b.mu.Unlock()
+
+	for _, it := range items {
+		if !fn(it.k, it.v) {
+			return
+		}
+	}
 }
 
 func (b *BucketStore) Len() int {
-	n := 0
-	b.m.Range(func(_ any, _ any) bool {
-		n++; return true
-	})
-
+	b.mu.Lock()
+	n := len(b.m)
+	b.mu.Unlock()
 	return n
 }
