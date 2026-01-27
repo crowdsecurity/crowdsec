@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"crypto/sha1"
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -55,23 +56,11 @@ func (b *BucketStore) Delete(key string) {
 	b.mu.Unlock()
 }
 
-func (b *BucketStore) Range(fn func(string, *Leaky) bool) {
+func (b *BucketStore) Snapshot() map[string]*Leaky {
 	b.mu.Lock()
-	type kv struct {
-		k string
-		v *Leaky
-	}
-	items := make([]kv, 0, len(b.m))
-	for k, v := range b.m {
-		items = append(items, kv{k: k, v: v})
-	}
+	snap := maps.Clone(b.m)
 	b.mu.Unlock()
-
-	for _, it := range items {
-		if !fn(it.k, it.v) {
-			return
-		}
-	}
+	return snap
 }
 
 func (b *BucketStore) Len() int {
