@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -39,15 +38,13 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 			continue
 		}
 
-		// FIXME : sometimes the gettokenscountat has some rounding issues when we try to
-		// match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals
+		const eps = 1e-9
+
 		tokat := val.Limiter.GetTokensCountAt(deadline)
 		tokcapa := float64(val.Capacity)
-		tokat = math.Round(tokat*100) / 100
-		tokcapa = math.Round(tokcapa*100) / 100
 
 		// bucket actually underflowed based on log time, but no in real time
-		if tokat >= tokcapa {
+		if tokat+eps >= tokcapa {
 			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
