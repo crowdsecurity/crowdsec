@@ -27,34 +27,37 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 	bucketStore.wgDumpState.Add(1)
 	defer bucketStore.wgDumpState.Done()
 
+	snap := bucketStore.Snapshot()
+
 	toflush := []string{}
-	bucketStore.Range(func(key string, val *Leaky) bool {
+	for key, val := range snap {
 		// bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
 			val.cancel()
-			return true
+			continue
 		}
+
 		// FIXME : sometimes the gettokenscountat has some rounding issues when we try to
 		// match it with bucket capacity, even if the bucket has long due underflow. Round to 2 decimals
 		tokat := val.Limiter.GetTokensCountAt(deadline)
 		tokcapa := float64(val.Capacity)
 		tokat = math.Round(tokat*100) / 100
 		tokcapa = math.Round(tokcapa*100) / 100
+
 		// bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
 			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.cancel()
-			return true
+			continue
 		}
 
 		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+	}
 
-		return true
-	})
 	log.Infof("Cleaned %d buckets", len(toflush))
 	for _, flushkey := range toflush {
 		bucketStore.Delete(flushkey)
