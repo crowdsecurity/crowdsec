@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -33,7 +32,7 @@ func (p *ConditionalProcessor) OnBucketInit(f *BucketFactory) error {
 	} else {
 		conditionalExprCacheLock.Unlock()
 		// release the lock during compile
-		compiledExpr, err = expr.Compile(f.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+		compiledExpr, err = compile(f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}

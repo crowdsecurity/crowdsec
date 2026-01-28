@@ -6,7 +6,6 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -65,7 +64,7 @@ func (p *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 	} else {
 		uniqExprCacheLock.Unlock()
 		// release the lock during compile
-		compiledExpr, err := expr.Compile(f.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		compiledExpr, err := compile(f.Distinct, nil)
 		if err != nil {
 			return err
 		}
