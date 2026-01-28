@@ -39,9 +39,9 @@ func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 
 func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	var err error
-	bayesianEventArray := make([]*BayesianEvent, len(f.BayesianConditions))
+	bayesianEventArray := make([]*BayesianEvent, len(f.Spec.BayesianConditions))
 
-	for index, bcond := range f.BayesianConditions {
+	for index, bcond := range f.Spec.BayesianConditions {
 		prog, err := compileCondition(bcond.ConditionalFilterName)
 		if err != nil {
 			return err
@@ -53,8 +53,8 @@ func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	}
 	p.bayesianEventArray = bayesianEventArray
 
-	p.prior = f.BayesianPrior
-	p.threshold = f.BayesianThreshold
+	p.prior = f.Spec.BayesianPrior
+	p.threshold = f.Spec.BayesianThreshold
 
 	return err
 }
@@ -100,7 +100,7 @@ func (e *BayesianEvent) bayesianUpdate(p *BayesianProcessor, msg pipeline.Event,
 	}
 
 	l.logger.Debugf("running condition expression: %s", e.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
+	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Spec.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}

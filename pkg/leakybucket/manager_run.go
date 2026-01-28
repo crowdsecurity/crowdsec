@@ -137,7 +137,7 @@ func PourItemToBucket(
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
 				collector.Add(bucket.Name, evt)
 			}
-			holder.logger.Debugf("bucket '%s' is poured", holder.Name)
+			holder.logger.Debugf("bucket '%s' is poured", holder.Spec.Name)
 			return nil
 		default:
 			failed_sent += 1
@@ -219,7 +219,7 @@ func PourItemToHolders(
 			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
 				map[string]any{"evt": &parsed},
 				holders[idx].logger,
-				holders[idx].Debug)
+				holders[idx].Spec.Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -238,7 +238,7 @@ func PourItemToHolders(
 		// groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]any{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]any{"evt": &parsed}, holders[idx].logger, holders[idx].Spec.Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

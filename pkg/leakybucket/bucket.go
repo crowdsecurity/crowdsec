@@ -77,67 +77,67 @@ type Leaky struct {
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
 func NewLeakyFromFactory(f *BucketFactory) *Leaky {
-	f.logger.Tracef("Instantiating live bucket %s", f.Name)
+	f.logger.Tracef("Instantiating live bucket %s", f.Spec.Name)
 
 	var limiter rate.RateLimiter
 	// golang rate limiter. It's mainly intended for http rate limiter
-	Qsize := f.Capacity
-	if f.CacheSize > 0 {
+	Qsize := f.Spec.Capacity
+	if f.Spec.CacheSize > 0 {
 		// cache is smaller than actual capacity
-		if f.CacheSize <= f.Capacity {
-			Qsize = f.CacheSize
+		if f.Spec.CacheSize <= f.Spec.Capacity {
+			Qsize = f.Spec.CacheSize
 			// bucket might be counter (infinite size), allow cache limitation
-		} else if f.Capacity == -1 {
-			Qsize = f.CacheSize
+		} else if f.Spec.Capacity == -1 {
+			Qsize = f.Spec.CacheSize
 		}
 	}
-	if f.Capacity == -1 {
+	if f.Spec.Capacity == -1 {
 		// In this case we allow all events to pass.
 		// maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
-		limiter = rate.NewLimiter(rate.Every(f.leakspeed), f.Capacity)
+		limiter = rate.NewLimiter(rate.Every(f.leakspeed), f.Spec.Capacity)
 	}
-	metrics.BucketsInstantiation.With(prometheus.Labels{"name": f.Name}).Inc()
+	metrics.BucketsInstantiation.With(prometheus.Labels{"name": f.Spec.Name}).Inc()
 
 	// create the leaky bucket per se
 	l := &Leaky{
-		Name:            f.Name,
+		Name:            f.Spec.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
 		Queue:           pipeline.NewQueue(Qsize),
-		CacheSize:       f.CacheSize,
+		CacheSize:       f.Spec.CacheSize,
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          f.ret,
-		Capacity:        f.Capacity,
+		Capacity:        f.Spec.Capacity,
 		Leakspeed:       f.leakspeed,
 		BucketConfig:    f,
 		Pour:            Pour,
-		Reprocess:       f.Reprocess,
+		Reprocess:       f.Spec.Reprocess,
 		Profiling:       f.Profiling,
 		Mode:            pipeline.LIVE,
-		scopeType:       f.ScopeType,
-		scenarioVersion: f.ScenarioVersion,
+		scopeType:       f.Spec.ScopeType,
+		scenarioVersion: f.Spec.ScenarioVersion,
 		hash:            f.hash,
 		Simulated:       f.Simulated,
 		mutex:           &sync.Mutex{},
 		orderEvent:      f.orderEvent,
 	}
-	if f.Capacity > 0 && f.leakspeed != time.Duration(0) {
-		l.Duration = time.Duration(f.Capacity+1) * f.leakspeed
+	if f.Spec.Capacity > 0 && f.leakspeed != time.Duration(0) {
+		l.Duration = time.Duration(f.Spec.Capacity+1) * f.leakspeed
 	}
 	if f.duration != time.Duration(0) {
 		l.Duration = f.duration
 		l.timedOverflow = true
 	}
 
-	if f.Type == "conditional" {
+	if f.Spec.Type == "conditional" {
 		l.conditionalOverflow = true
 		l.Duration = f.leakspeed
 	}
 
-	if f.Type == "bayesian" {
+	if f.Spec.Type == "bayesian" {
 		l.Duration = f.leakspeed
 	}
 	return l

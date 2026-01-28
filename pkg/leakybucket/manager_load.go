@@ -25,46 +25,51 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// BucketFactory struct holds all fields for any bucket configuration. This is to have a
-// generic struct for buckets. This can be seen as a bucket factory.
-type BucketFactory struct {
+type BucketSpec struct {
 	FormatVersion       string                     `yaml:"format"`
-	Author              string                     `yaml:"author"`
 	Description         string                     `yaml:"description"`
 	References          []string                   `yaml:"references"`
 	Type                string                     `yaml:"type"`                // Type can be : leaky, counter, trigger. It determines the main bucket characteristics
 	Name                string                     `yaml:"name"`                // Name of the bucket, used later in log and user-messages. Should be unique
 	Capacity            int                        `yaml:"capacity"`            // Capacity is applicable to leaky buckets and determines the "burst" capacity
 	LeakSpeed           string                     `yaml:"leakspeed"`           // Leakspeed is a float representing how many events per second leak out of the bucket
-	Duration            string                     `yaml:"duration"`            // Duration allows 'counter' buckets to have a fixed life-time
 	Filter              string                     `yaml:"filter"`              // Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
 	GroupBy             string                     `yaml:"groupby,omitempty"`   // groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
 	Distinct            string                     `yaml:"distinct"`            // Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
 	Debug               bool                       `yaml:"debug"`               // Debug, when set to true, will enable debugging for _this_ scenario specifically
 	Labels              map[string]any             `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                     `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry                 // logger is bucket-specific logger (used by Debug as well)
+	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
 	Reprocess           bool                       `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                        `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                       `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                     `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
 	ConditionalOverflow string                     `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
+	CacheSize           int                        `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	CancelOnFilter      string                     `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	BayesianPrior       float32                    `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                    `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition     `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
-	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
+	OverflowFilter      string                     `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	Duration            string                     `yaml:"duration"`            // Duration allows 'counter' buckets to have a fixed life-time
+	ScenarioVersion     string                     `yaml:"version,omitempty"`
+}
+
+// BucketFactory struct holds all fields for any bucket configuration. This is to have a
+// generic struct for buckets. This can be seen as a bucket factory.
+type BucketFactory struct {
+	Spec BucketSpec
+
+	Author              string                     `yaml:"author"`
+	logger              *log.Entry                 // logger is bucket-specific logger (used by Debug as well)
+	Profiling           bool                       `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
 	BucketName          string                     `yaml:"-"`
 	Filename            string                     `yaml:"-"`
 	RunTimeFilter       *vm.Program                `json:"-"`
 	RunTimeGroupBy      *vm.Program                `json:"-"`
-	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
 	DataDir             string                     `yaml:"-"`
-	CancelOnFilter      string                     `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	leakspeed           time.Duration              // internal representation of `Leakspeed`
 	duration            time.Duration              // internal representation of `Duration`
 	ret                 chan pipeline.Event        // the bucket-specific output chan for overflows
 	processors          []Processor                // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	ScenarioVersion     string                     `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
@@ -74,24 +79,24 @@ type BucketFactory struct {
 var seed = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 func (f *BucketFactory) Validate() error {
-	if f.Name == "" {
+	if f.Spec.Name == "" {
 		return errors.New("bucket must have name")
 	}
 
-	if f.Description == "" {
+	if f.Spec.Description == "" {
 		return errors.New("description is mandatory")
 	}
 
-	impl, ok := bucketTypes[f.Type]
+	impl, ok := bucketTypes[f.Spec.Type]
 	if !ok {
-		return fmt.Errorf("unknown bucket type '%s'", f.Type)
+		return fmt.Errorf("unknown bucket type '%s'", f.Spec.Type)
 	}
 
 	if err := impl.Validate(f); err != nil {
-		return fmt.Errorf("%s bucket: %w", f.Type, err)
+		return fmt.Errorf("%s bucket: %w", f.Spec.Type, err)
 	}
 
-	return f.ScopeType.CompileFilter()
+	return f.Spec.ScopeType.CompileFilter()
 }
 
 func loadBucketFactoriesFromFile(
@@ -120,7 +125,7 @@ func loadBucketFactoriesFromFile(
 	for {
 		f := BucketFactory{}
 
-		err = dec.Decode(&f)
+		err = dec.Decode(&f.Spec)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Errorf("Bad yaml in %s: %v", itemPath, err)
@@ -134,23 +139,23 @@ func loadBucketFactoriesFromFile(
 
 		f.DataDir = hub.GetDataDir()
 		// check empty
-		if f.Name == "" {
+		if f.Spec.Name == "" {
 			log.Errorf("Won't load nameless bucket")
 			return nil, errors.New("nameless bucket")
 		}
 		// check compat
-		if f.FormatVersion == "" {
-			log.Tracef("no version in %s : %s, assuming '1.0'", f.Name, itemPath)
-			f.FormatVersion = "1.0"
+		if f.Spec.FormatVersion == "" {
+			log.Tracef("no version in %s : %s, assuming '1.0'", f.Spec.Name, itemPath)
+			f.Spec.FormatVersion = "1.0"
 		}
 
-		ok, err := constraint.Satisfies(f.FormatVersion, constraint.Scenario)
+		ok, err := constraint.Satisfies(f.Spec.FormatVersion, constraint.Scenario)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check version: %w", err)
 		}
 
 		if !ok {
-			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", f.Name, f.FormatVersion, constraint.Scenario)
+			log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", f.Spec.Name, f.Spec.FormatVersion, constraint.Scenario)
 			continue
 		}
 
@@ -158,14 +163,14 @@ func loadBucketFactoriesFromFile(
 		f.BucketName = seed.Generate()
 		f.ret = response
 
-		f.Simulated = simulationConfig.IsSimulated(f.Name)
+		f.Simulated = simulationConfig.IsSimulated(f.Spec.Name)
 
-		f.ScenarioVersion = item.State.LocalVersion
+		f.Spec.ScenarioVersion = item.State.LocalVersion
 		f.hash = item.State.LocalHash
 
 		err = f.LoadBucket()
 		if err != nil {
-			return nil, fmt.Errorf("bucket %s: %w", f.Name, err)
+			return nil, fmt.Errorf("bucket %s: %w", f.Spec.Name, err)
 		}
 
 		f.orderEvent = orderEvent
@@ -207,9 +212,9 @@ func LoadBuckets(
 }
 
 func bucketLogger(f *BucketFactory) *log.Entry {
-	fields := log.Fields{"cfg": f.BucketName, "name": f.Name}
+	fields := log.Fields{"cfg": f.BucketName, "name": f.Spec.Name}
 
-	if f.Debug {
+	if f.Spec.Debug {
 		logger := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
 		return logger.WithFields(fields)
 	}
@@ -218,18 +223,18 @@ func bucketLogger(f *BucketFactory) *log.Entry {
 }
 
 func (f *BucketFactory) parseDurations() error {
-	if f.LeakSpeed != "" {
-		leakspeed, err := time.ParseDuration(f.LeakSpeed)
+	if f.Spec.LeakSpeed != "" {
+		leakspeed, err := time.ParseDuration(f.Spec.LeakSpeed)
 		if err != nil {
-			return fmt.Errorf("invalid leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
+			return fmt.Errorf("invalid leakspeed '%s' in %s: %w", f.Spec.LeakSpeed, f.Filename, err)
 		}
 		f.leakspeed = leakspeed
 	}
 
-	if f.Duration != "" {
-		duration, err := time.ParseDuration(f.Duration)
+	if f.Spec.Duration != "" {
+		duration, err := time.ParseDuration(f.Spec.Duration)
 		if err != nil {
-			return fmt.Errorf("invalid duration '%s' in %s: %w", f.Duration, f.Filename, err)
+			return fmt.Errorf("invalid duration '%s' in %s: %w", f.Spec.Duration, f.Filename, err)
 		}
 		f.duration = duration
 	}
@@ -238,21 +243,21 @@ func (f *BucketFactory) parseDurations() error {
 }
 
 func (f *BucketFactory) compileExpr() error {
-	if f.Filter == "" {
+	if f.Spec.Filter == "" {
 		f.logger.Warning("Bucket without filter, abort.")
 		return errors.New("missing filter directive")
 	}
 
-	runtimeFilter, err := compile(f.Filter, nil)
+	runtimeFilter, err := compile(f.Spec.Filter, nil)
 	if err != nil {
-		return fmt.Errorf("invalid filter '%s' in %s: %w", f.Filter, f.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s: %w", f.Spec.Filter, f.Filename, err)
 	}
 	f.RunTimeFilter = runtimeFilter
 
-	if f.GroupBy != "" {
-		runtimeGroupBy, err := compile(f.GroupBy, nil)
+	if f.Spec.GroupBy != "" {
+		runtimeGroupBy, err := compile(f.Spec.GroupBy, nil)
 		if err != nil {
-			return fmt.Errorf("invalid groupby '%s' in %s: %w", f.GroupBy, f.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s: %w", f.Spec.GroupBy, f.Filename, err)
 		}
 		f.RunTimeGroupBy = runtimeGroupBy
 	}
@@ -272,23 +277,23 @@ func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 
 	var procs []Processor
 
-	if f.Distinct != "" {
+	if f.Spec.Distinct != "" {
 		f.logger.Tracef("Adding a non duplicate filter")
 		procs = append(procs, &UniqProcessor{})
-		if err := check("distinct", f.Distinct, nil); err != nil {
+		if err := check("distinct", f.Spec.Distinct, nil); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.CancelOnFilter != "" {
+	if f.Spec.CancelOnFilter != "" {
 		f.logger.Tracef("Adding a cancel_on filter")
 		procs = append(procs, &CancelProcessor{})
-		if err := check("cancel_on", f.CancelOnFilter, nil); err != nil {
+		if err := check("cancel_on", f.Spec.CancelOnFilter, nil); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.OverflowFilter != "" {
+	if f.Spec.OverflowFilter != "" {
 		f.logger.Tracef("Adding an overflow filter")
 
 		filovflw, err := NewOverflowProcessor(f)
@@ -300,7 +305,7 @@ func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 		procs = append(procs, filovflw)
 	}
 
-	if f.Blackhole != "" {
+	if f.Spec.Blackhole != "" {
 		f.logger.Tracef("Adding blackhole.")
 
 		blackhole, err := NewBlackholeProcessor(f)
@@ -312,15 +317,15 @@ func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 		procs = append(procs, blackhole)
 	}
 
-	if f.ConditionalOverflow != "" {
+	if f.Spec.ConditionalOverflow != "" {
 		f.logger.Tracef("Adding conditional overflow")
 		procs = append(procs, &ConditionalProcessor{})
-		if err := check("condition", f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
+		if err := check("condition", f.Spec.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.BayesianThreshold != 0 {
+	if f.Spec.BayesianThreshold != 0 {
 		f.logger.Tracef("Adding bayesian processor")
 		procs = append(procs, &BayesianProcessor{})
 	}
@@ -329,9 +334,9 @@ func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 }
 
 func (f *BucketFactory) initDataFiles() {
-	for _, data := range f.Data {
+	for _, data := range f.Spec.Data {
 		if data.DestPath == "" {
-			f.logger.Errorf("no dest_file provided for '%s'", f.Name)
+			f.logger.Errorf("no dest_file provided for '%s'", f.Spec.Name)
 			continue
 		}
 
@@ -352,7 +357,7 @@ func (f *BucketFactory) LoadBucket() error {
 	var err error
 
 	f.logger = bucketLogger(f)
-	f.logger.Infof("Adding %s bucket", f.Type)
+	f.logger.Infof("Adding %s bucket", f.Spec.Type)
 
 	if err := f.parseDurations(); err != nil {
 		return err
@@ -362,9 +367,9 @@ func (f *BucketFactory) LoadBucket() error {
 		return err
 	}
 
-	impl, ok := bucketTypes[f.Type]
+	impl, ok := bucketTypes[f.Spec.Type]
 	if !ok {
-		return fmt.Errorf("invalid type '%s' in %s", f.Type, f.Filename)
+		return fmt.Errorf("invalid type '%s' in %s", f.Spec.Type, f.Filename)
 	}
 
 	procs := impl.BuildProcessors(f)
@@ -388,11 +393,11 @@ func (f *BucketFactory) LoadBucket() error {
 
 func (f *BucketFactory) BucketKey(stackkey string) string {
 	h := sha1.New()
-	h.Write([]byte(f.Filter))
+	h.Write([]byte(f.Spec.Filter))
 	// use zero byte separators to avoid conflicts, i.e. "ab"+"c" vs "a"+"bc"
 	h.Write([]byte{0})
 	h.Write([]byte(stackkey))
 	h.Write([]byte{0})
-	h.Write([]byte(f.Name))
+	h.Write([]byte(f.Spec.Name))
 	return hex.EncodeToString(h.Sum(nil))
 }
