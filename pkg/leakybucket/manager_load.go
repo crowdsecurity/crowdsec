@@ -218,24 +218,34 @@ func bucketLogger(f *BucketFactory) *log.Entry {
 	return log.WithFields(fields)
 }
 
+func (f *BucketFactory) parseDurations() error {
+	if f.LeakSpeed != "" {
+		leakspeed, err := time.ParseDuration(f.LeakSpeed)
+		if err != nil {
+			return fmt.Errorf("invalid leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
+		}
+		f.leakspeed = leakspeed
+	}
+
+	if f.Duration != "" {
+		duration, err := time.ParseDuration(f.Duration)
+		if err != nil {
+			return fmt.Errorf("invalid duration '%s' in %s: %w", f.Duration, f.Filename, err)
+		}
+		f.duration = duration
+	}
+
+	return nil
+}
+
 // LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
 func (f *BucketFactory) LoadBucket() error {
 	var err error
 
 	f.logger = bucketLogger(f)
 
-	if f.LeakSpeed != "" {
-		if f.leakspeed, err = time.ParseDuration(f.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
-		}
-	} else {
-		f.leakspeed = time.Duration(0)
-	}
-
-	if f.Duration != "" {
-		if f.duration, err = time.ParseDuration(f.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s: %w", f.Duration, f.Filename, err)
-		}
+	if err := f.parseDurations(); err != nil {
+		return err
 	}
 
 	if f.Filter == "" {
