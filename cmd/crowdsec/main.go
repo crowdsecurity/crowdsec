@@ -65,12 +65,6 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 		return err
 	}
 
-	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
-		for holderIndex := range holders {
-			holders[holderIndex].Profiling = true
-		}
-	}
-
 	return nil
 }
 

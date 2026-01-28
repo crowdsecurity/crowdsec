@@ -58,9 +58,7 @@ type BucketSpec struct {
 type BucketFactory struct {
 	Spec BucketSpec
 
-	Author              string                     `yaml:"author"`
 	logger              *log.Entry                 // logger is bucket-specific logger (used by Debug as well)
-	Profiling           bool                       `yaml:"profiling"`       // Profiling, if true, will make the bucket record pours/overflows/etc.
 	BucketName          string                     `yaml:"-"`
 	Filename            string                     `yaml:"-"`
 	RunTimeFilter       *vm.Program                `json:"-"`
