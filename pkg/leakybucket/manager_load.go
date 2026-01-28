@@ -260,47 +260,31 @@ func (f *BucketFactory) compileExpr() error {
 	return nil
 }
 
-// LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
-func (f *BucketFactory) LoadBucket() error {
-	var err error
-
-	f.logger = bucketLogger(f)
-
-	if err := f.parseDurations(); err != nil {
-		return err
+func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
+	// Some optional processors depend on expressions. We compile those expressions here
+	// during loading (and discard the compiled program) so misconfigurations fail fast.
+	check := func(bucketType, ex string, extra map[string]any) error {
+		if _, err := compile(ex, extra); err != nil {
+			return fmt.Errorf("invalid %s '%s' in %s: %w", bucketType, ex, f.Filename, err)
+		}
+		return nil
 	}
 
-	if err := f.compileExpr(); err != nil {
-		return err
-	}
-
-	f.logger.Infof("Adding %s bucket", f.Type)
-	// return the Holder corresponding to the type of bucket
-
-	impl, ok := bucketTypes[f.Type]
-	if !ok {
-		return fmt.Errorf("invalid type '%s' in %s", f.Type, f.Filename)
-	}
-
-	f.processors = impl.BuildProcessors(f)
+	var procs []Processor
 
 	if f.Distinct != "" {
 		f.logger.Tracef("Adding a non duplicate filter")
-		f.processors = append(f.processors, &UniqProcessor{})
-		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = compile(f.Distinct, nil)
-		if err != nil {
-			return fmt.Errorf("invalid distinct '%s' in %s: %w", f.Distinct, f.Filename, err)
+		procs = append(procs, &UniqProcessor{})
+		if err := check("distinct", f.Distinct, nil); err != nil {
+			return nil, err
 		}
 	}
 
 	if f.CancelOnFilter != "" {
 		f.logger.Tracef("Adding a cancel_on filter")
-		f.processors = append(f.processors, &CancelProcessor{})
-		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = compile(f.CancelOnFilter, nil)
-		if err != nil {
-			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", f.CancelOnFilter, f.Filename, err)
+		procs = append(procs, &CancelProcessor{})
+		if err := check("cancel_on", f.CancelOnFilter, nil); err != nil {
+			return nil, err
 		}
 	}
 
@@ -310,10 +294,10 @@ func (f *BucketFactory) LoadBucket() error {
 		filovflw, err := NewOverflowProcessor(f)
 		if err != nil {
 			f.logger.Errorf("Error creating overflow_filter : %s", err)
-			return fmt.Errorf("error creating overflow_filter: %w", err)
+			return nil, fmt.Errorf("error creating overflow_filter: %w", err)
 		}
 
-		f.processors = append(f.processors, filovflw)
+		procs = append(procs, filovflw)
 	}
 
 	if f.Blackhole != "" {
@@ -322,26 +306,57 @@ func (f *BucketFactory) LoadBucket() error {
 		blackhole, err := NewBlackholeProcessor(f)
 		if err != nil {
 			f.logger.Errorf("Error creating blackhole : %s", err)
-			return fmt.Errorf("error creating blackhole : %w", err)
+			return nil, fmt.Errorf("error creating blackhole : %w", err)
 		}
 
-		f.processors = append(f.processors, blackhole)
+		procs = append(procs, blackhole)
 	}
 
 	if f.ConditionalOverflow != "" {
 		f.logger.Tracef("Adding conditional overflow")
-		f.processors = append(f.processors, &ConditionalProcessor{})
-		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = compile(f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
-		if err != nil {
-			return fmt.Errorf("invalid condition '%s' in %s: %w", f.ConditionalOverflow, f.Filename, err)
+		procs = append(procs, &ConditionalProcessor{})
+		if err := check("condition", f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
+			return nil, err
 		}
 	}
 
 	if f.BayesianThreshold != 0 {
 		f.logger.Tracef("Adding bayesian processor")
-		f.processors = append(f.processors, &BayesianProcessor{})
+		procs = append(procs, &BayesianProcessor{})
 	}
+
+	return procs, nil
+}
+
+// LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
+func (f *BucketFactory) LoadBucket() error {
+	var err error
+
+	f.logger = bucketLogger(f)
+	f.logger.Infof("Adding %s bucket", f.Type)
+
+	if err := f.parseDurations(); err != nil {
+		return err
+	}
+
+	if err := f.compileExpr(); err != nil {
+		return err
+	}
+
+	impl, ok := bucketTypes[f.Type]
+	if !ok {
+		return fmt.Errorf("invalid type '%s' in %s", f.Type, f.Filename)
+	}
+
+	procs := impl.BuildProcessors(f)
+
+	optProcs, err := f.buildOptionalProcessors()
+	if err != nil {
+		return err
+	}
+
+	procs = append(procs, optProcs...)
+	f.processors = procs
 
 	for _, data := range f.Data {
 		if data.DestPath == "" {
