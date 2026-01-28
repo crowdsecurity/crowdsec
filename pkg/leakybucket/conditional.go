@@ -26,20 +26,20 @@ func (p *ConditionalProcessor) OnBucketInit(f *BucketFactory) error {
 	var compiledExpr *vm.Program
 
 	conditionalExprCacheLock.Lock()
-	if compiled, ok := conditionalExprCache[f.ConditionalOverflow]; ok {
+	if compiled, ok := conditionalExprCache[f.Spec.ConditionalOverflow]; ok {
 		conditionalExprCacheLock.Unlock()
 		p.ConditionalFilterRuntime = compiled
 	} else {
 		conditionalExprCacheLock.Unlock()
 		// release the lock during compile
-		compiledExpr, err = compile(f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
+		compiledExpr, err = compile(f.Spec.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
 		if err != nil {
 			return fmt.Errorf("conditional compile error : %w", err)
 		}
 
 		p.ConditionalFilterRuntime = compiledExpr
 		conditionalExprCacheLock.Lock()
-		conditionalExprCache[f.ConditionalOverflow] = compiledExpr
+		conditionalExprCache[f.Spec.ConditionalOverflow] = compiledExpr
 		conditionalExprCacheLock.Unlock()
 	}
 
@@ -54,7 +54,7 @@ func (p *ConditionalProcessor) AfterBucketPour(f *BucketFactory, msg pipeline.Ev
 
 		ret, err := exprhelpers.Run(p.ConditionalFilterRuntime,
 			map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l},
-			l.logger, f.Debug)
+			l.logger, f.Spec.Debug)
 		if err != nil {
 			l.logger.Errorf("unable to run conditional filter : %s", err)
 			return &msg

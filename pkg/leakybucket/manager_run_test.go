@@ -30,34 +30,40 @@ func TestGCandDump(t *testing.T) {
 	Holders := []BucketFactory{
 		// one overflowing soon + bh
 		{
-			Name:        "test_counter_fast",
-			Description: "test_counter_fast",
-			Debug:       true,
-			Type:        "counter",
-			Capacity:    -1,
-			Duration:    "0.5s",
-			Blackhole:   "1m",
-			Filter:      "true",
+			Spec: BucketSpec{
+				Name:        "test_counter_fast",
+				Description: "test_counter_fast",
+				Debug:       true,
+				Type:        "counter",
+				Capacity:    -1,
+				Duration:    "0.5s",
+				Blackhole:   "1m",
+				Filter:      "true",
+			},
 		},
 		// one long counter
 		{
-			Name:        "test_counter_slow",
-			Description: "test_counter_slow",
-			Debug:       true,
-			Type:        "counter",
-			Capacity:    -1,
-			Duration:    "10m",
-			Filter:      "true",
+			Spec: BucketSpec{
+				Name:        "test_counter_slow",
+				Description: "test_counter_slow",
+				Debug:       true,
+				Type:        "counter",
+				Capacity:    -1,
+				Duration:    "10m",
+				Filter:      "true",
+			},
 		},
 		// slow leaky
 		{
-			Name:        "test_leaky_slow",
-			Description: "test_leaky_slow",
-			Debug:       true,
-			Type:        "leaky",
-			Capacity:    5,
-			LeakSpeed:   "10m",
-			Filter:      "true",
+			Spec: BucketSpec{
+				Name:        "test_leaky_slow",
+				Description: "test_leaky_slow",
+				Debug:       true,
+				Type:        "leaky",
+				Capacity:    5,
+				LeakSpeed:   "10m",
+				Filter:      "true",
+			},
 		},
 	}
 
@@ -106,23 +112,27 @@ func TestShutdownBuckets(t *testing.T) {
 		Holders     = []BucketFactory{
 			// one long counter
 			{
-				Name:        "test_counter_slow",
-				Description: "test_counter_slow",
-				Debug:       true,
-				Type:        "counter",
-				Capacity:    -1,
-				Duration:    "10m",
-				Filter:      "true",
+				Spec: BucketSpec{
+					Name:        "test_counter_slow",
+					Description: "test_counter_slow",
+					Debug:       true,
+					Type:        "counter",
+					Capacity:    -1,
+					Duration:    "10m",
+					Filter:      "true",
+				},
 			},
 			// slow leaky
 			{
-				Name:        "test_leaky_slow",
-				Description: "test_leaky_slow",
-				Debug:       true,
-				Type:        "leaky",
-				Capacity:    5,
-				LeakSpeed:   "10m",
-				Filter:      "true",
+				Spec: BucketSpec{
+					Name:        "test_leaky_slow",
+					Description: "test_leaky_slow",
+					Debug:       true,
+					Type:        "leaky",
+					Capacity:    5,
+					LeakSpeed:   "10m",
+					Filter:      "true",
+				},
 			},
 		}
 	)

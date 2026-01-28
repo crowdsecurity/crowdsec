@@ -20,7 +20,7 @@ func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 
 	u := OverflowProcessor{}
 
-	u.Filter = f.OverflowFilter
+	u.Filter = f.Spec.OverflowFilter
 
 	u.FilterRuntime, err = compile(u.Filter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
 	if err != nil {
@@ -32,7 +32,7 @@ func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 
 func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
-		"queue": q, "signal": s, "leaky": l}, l.logger, f.Debug)
+		"queue": q, "signal": s, "leaky": l}, l.logger, f.Spec.Debug)
 	if err != nil {
 		l.logger.Errorf("Failed running overflow filter: %s", err)
 		return s, q
