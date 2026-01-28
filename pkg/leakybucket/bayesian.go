@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"fmt"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -144,7 +143,7 @@ func compileCondition(filterName string) (*vm.Program, error) {
 	}
 
 	// don't hold lock during compile
-	compiled, err := expr.Compile(filterName, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+	compiled, err := compile(filterName, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
 	if err != nil {
 		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
 	}

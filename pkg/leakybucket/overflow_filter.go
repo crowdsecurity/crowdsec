@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"fmt"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -23,7 +22,7 @@ func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 
 	u.Filter = f.OverflowFilter
 
-	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
+	u.FilterRuntime, err = compile(u.Filter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
 	if err != nil {
 		f.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)

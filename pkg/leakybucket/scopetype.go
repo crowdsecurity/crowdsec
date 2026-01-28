@@ -4,11 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -39,7 +36,7 @@ func (s *ScopeType) CompileFilter() error {
 		return errors.New("filter is mandatory for non-IP, non-Range scope")
 	}
 
-	runTimeFilter, err := expr.Compile(s.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	runTimeFilter, err := compile(s.Filter, nil)
 	if err != nil {
 		return fmt.Errorf("error compiling the scope filter: %w", err)
 	}
