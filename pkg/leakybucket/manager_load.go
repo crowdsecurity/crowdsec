@@ -207,24 +207,22 @@ func LoadBuckets(
 	return allFactories, response, nil
 }
 
-/* Init recursively process yaml files from a directory and loads them as BucketFactory */
+func bucketLogger(f *BucketFactory) *log.Entry {
+	fields := log.Fields{"cfg": f.BucketName, "name": f.Name}
+
+	if f.Debug {
+		logger := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
+		return logger.WithFields(fields)
+	}
+
+	return log.WithFields(fields)
+}
+
+// LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
 func (f *BucketFactory) LoadBucket() error {
 	var err error
 
-	if f.Debug {
-		clog := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
-
-		f.logger = clog.WithFields(log.Fields{
-			"cfg":  f.BucketName,
-			"name": f.Name,
-		})
-	} else {
-		/* else bind it to the default one (might find something more elegant here)*/
-		f.logger = log.WithFields(log.Fields{
-			"cfg":  f.BucketName,
-			"name": f.Name,
-		})
-	}
+	f.logger = bucketLogger(f)
 
 	if f.LeakSpeed != "" {
 		if f.leakspeed, err = time.ParseDuration(f.LeakSpeed); err != nil {
