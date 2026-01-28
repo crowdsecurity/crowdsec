@@ -55,8 +55,6 @@ type Leaky struct {
 	BucketConfig *BucketFactory
 	Duration     time.Duration
 	Pour         func(*Leaky, PourGate, pipeline.Event) `json:"-"`
-	// Profiling when set to true enables profiling of bucket
-	Profiling           bool
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
@@ -111,7 +109,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		BucketConfig:    f,
 		Pour:            Pour,
 		Reprocess:       f.Spec.Reprocess,
-		Profiling:       f.Profiling,
 		Mode:            pipeline.LIVE,
 		scopeType:       f.Spec.ScopeType,
 		scenarioVersion: f.Spec.ScenarioVersion,
