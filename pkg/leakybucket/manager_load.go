@@ -328,6 +328,25 @@ func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 	return procs, nil
 }
 
+func (f *BucketFactory) initDataFiles() {
+	for _, data := range f.Data {
+		if data.DestPath == "" {
+			f.logger.Errorf("no dest_file provided for '%s'", f.Name)
+			continue
+		}
+
+		if err := exprhelpers.FileInit(f.DataDir, data.DestPath, data.Type); err != nil {
+			f.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
+		}
+
+		if data.Type == "regexp" { // cache only makes sense for regexp
+			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
+				f.logger.Error(err.Error())
+			}
+		}
+	}
+}
+
 // LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
 func (f *BucketFactory) LoadBucket() error {
 	var err error
@@ -358,23 +377,7 @@ func (f *BucketFactory) LoadBucket() error {
 	procs = append(procs, optProcs...)
 	f.processors = procs
 
-	for _, data := range f.Data {
-		if data.DestPath == "" {
-			f.logger.Errorf("no dest_file provided for '%s'", f.Name)
-			continue
-		}
-
-		err = exprhelpers.FileInit(f.DataDir, data.DestPath, data.Type)
-		if err != nil {
-			f.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
-		}
-
-		if data.Type == "regexp" { // cache only makes sense for regexp
-			if err := exprhelpers.RegexpCacheInit(data.DestPath, *data); err != nil {
-				f.logger.Error(err.Error())
-			}
-		}
-	}
+	f.initDataFiles()
 
 	if err := f.Validate(); err != nil {
 		return fmt.Errorf("invalid bucket from %s: %w", f.Filename, err)
