@@ -3,7 +3,7 @@ name = "crowdsec-docker-tests"
 version = "0.1.0"
 description = "Docker tests for Crowdsec"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "pytest>=8.3.4",
     "pytest-cs>=0.7.24",

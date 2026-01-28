@@ -2,12 +2,15 @@
 Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 """
 
-import pathlib
 import uuid
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from pytest_cs import Status
+
+if TYPE_CHECKING:
+    import pathlib
+    from collections.abc import Callable
 
 pytestmark = pytest.mark.docker
 
