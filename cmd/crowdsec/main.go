@@ -60,7 +60,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, bucketStore, flags.OrderEvent)
+	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, flags.OrderEvent)
 	if err != nil {
 		return err
 	}
