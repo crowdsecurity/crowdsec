@@ -26,6 +26,10 @@ type UniqProcessor struct {
 	CacheMutex       sync.Mutex
 }
 
+func (*UniqProcessor) Description() string {
+	return "uniq"
+}
+
 func (p *UniqProcessor) OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 	element, err := getElement(msg, p.DistinctCompiled)
 	if err != nil {

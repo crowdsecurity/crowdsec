@@ -37,6 +37,10 @@ func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 	return numerator / denominator
 }
 
+func (*BayesianProcessor) Description() string {
+	return "bayesian"
+}
+
 func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	var err error
 	bayesianEventArray := make([]*BayesianEvent, len(f.Spec.BayesianConditions))
