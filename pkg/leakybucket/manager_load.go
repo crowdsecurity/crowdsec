@@ -264,68 +264,58 @@ func (f *BucketFactory) compileExpr() error {
 	return nil
 }
 
-func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
+func (s *BucketSpec) buildOptionalProcessors() ([]Processor, error) {
 	// Some optional processors depend on expressions. We compile those expressions here
 	// during loading (and discard the compiled program) so misconfigurations fail fast.
-	check := func(bucketType, ex string, extra map[string]any) error {
+	check := func(field, ex string, extra map[string]any) error {
 		if _, err := compile(ex, extra); err != nil {
-			return fmt.Errorf("invalid %s '%s' in %s: %w", bucketType, ex, f.Filename, err)
+			return fmt.Errorf("invalid %s '%s': %w", field, ex, err)
 		}
 		return nil
 	}
 
 	var procs []Processor
 
-	if f.Spec.Distinct != "" {
-		f.logger.Tracef("Adding a non duplicate filter")
+	if s.Distinct != "" {
 		procs = append(procs, &UniqProcessor{})
-		if err := check("distinct", f.Spec.Distinct, nil); err != nil {
+		if err := check("distinct", s.Distinct, nil); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.Spec.CancelOnFilter != "" {
-		f.logger.Tracef("Adding a cancel_on filter")
+	if s.CancelOnFilter != "" {
 		procs = append(procs, &CancelProcessor{})
-		if err := check("cancel_on", f.Spec.CancelOnFilter, nil); err != nil {
+		if err := check("cancel_on", s.CancelOnFilter, nil); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.Spec.OverflowFilter != "" {
-		f.logger.Tracef("Adding an overflow filter")
-
-		filovflw, err := NewOverflowProcessor(f)
+	if s.OverflowFilter != "" {
+		filovflw, err := NewOverflowProcessor(s)
 		if err != nil {
-			f.logger.Errorf("Error creating overflow_filter : %s", err)
 			return nil, fmt.Errorf("error creating overflow_filter: %w", err)
 		}
 
 		procs = append(procs, filovflw)
 	}
 
-	if f.Spec.Blackhole != "" {
-		f.logger.Tracef("Adding blackhole.")
-
-		blackhole, err := NewBlackholeProcessor(f)
+	if s.Blackhole != "" {
+		blackhole, err := NewBlackholeProcessor(s)
 		if err != nil {
-			f.logger.Errorf("Error creating blackhole : %s", err)
-			return nil, fmt.Errorf("error creating blackhole : %w", err)
+			return nil, fmt.Errorf("error creating blackhole: %w", err)
 		}
 
 		procs = append(procs, blackhole)
 	}
 
-	if f.Spec.ConditionalOverflow != "" {
-		f.logger.Tracef("Adding conditional overflow")
+	if s.ConditionalOverflow != "" {
 		procs = append(procs, &ConditionalProcessor{})
-		if err := check("condition", f.Spec.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
+		if err := check("condition", s.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
 			return nil, err
 		}
 	}
 
-	if f.Spec.BayesianThreshold != 0 {
-		f.logger.Tracef("Adding bayesian processor")
+	if s.BayesianThreshold != 0 {
 		procs = append(procs, &BayesianProcessor{})
 	}
 
@@ -356,7 +346,7 @@ func (f *BucketFactory) LoadBucket() error {
 	var err error
 
 	f.logger = bucketLogger(f)
-	f.logger.Infof("Adding %s bucket", f.Spec.Type)
+	f.logger.WithField("buckettype", f.Spec.Type).Info("Adding bucket")
 
 	if err := f.parseDurations(); err != nil {
 		return err
@@ -371,11 +361,15 @@ func (f *BucketFactory) LoadBucket() error {
 		return fmt.Errorf("invalid type '%s' in %s", f.Spec.Type, f.Filename)
 	}
 
-	procs := impl.BuildProcessors(f)
+	procs := impl.CoreProcessors(f)
 
-	optProcs, err := f.buildOptionalProcessors()
+	optProcs, err := f.Spec.buildOptionalProcessors()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", f.Filename, err)
+	}
+
+	for _, p := range optProcs {
+		f.logger.WithField("processor", p.Description()).Trace("Added processor")
 	}
 
 	procs = append(procs, optProcs...)

@@ -29,6 +29,10 @@ var (
 	}
 )
 
+func (*CancelProcessor) Description() string {
+	return "cancel_on"
+}
+
 func (p *CancelProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
 	var condition, ok bool
 	if p.CancelOnFilter != nil {
