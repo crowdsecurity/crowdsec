@@ -43,7 +43,6 @@ var (
 	dataSources []acquisitionTypes.DataSource
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
-	bucketStore *leakybucket.BucketStore
 
 	logLines   chan pipeline.Event
 	inEvents  chan pipeline.Event
@@ -53,8 +52,6 @@ var (
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var err error
-
-	bucketStore = leakybucket.NewBucketStore()
 
 	scenarios := hub.GetInstalledByType(cwhub.SCENARIOS, false)
 
