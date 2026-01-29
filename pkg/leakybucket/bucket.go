@@ -45,7 +45,6 @@ type Leaky struct {
 	doneOnce     sync.Once     // use to prevent double close
 	Suicide      chan bool `json:"-"`
 	Reprocess    bool
-	Simulated    bool
 	Uuid         string
 	First_ts     time.Time
 	Last_ts      time.Time
@@ -113,7 +112,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		scopeType:       f.Spec.ScopeType,
 		scenarioVersion: f.Spec.ScenarioVersion,
 		hash:            f.hash,
-		Simulated:       f.Simulated,
 		mutex:           &sync.Mutex{},
 		orderEvent:      f.orderEvent,
 	}

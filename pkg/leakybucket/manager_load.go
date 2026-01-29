@@ -97,13 +97,17 @@ func (f *BucketFactory) Validate() error {
 	return f.Spec.ScopeType.CompileFilter()
 }
 
+type SimulationChecker interface {
+	IsSimulated(scenario string) bool
+}
+
 func loadBucketFactoriesFromFile(
 	item *cwhub.Item,
 	hub *cwhub.Hub,
 	bucketStore *BucketStore,
 	response chan pipeline.Event,
 	orderEvent bool,
-	simulationConfig csconfig.SimulationConfig,
+	simcheck SimulationChecker,
 ) ([]BucketFactory, error) {
 	itemPath := item.State.LocalPath
 
@@ -160,8 +164,7 @@ func loadBucketFactoriesFromFile(
 		f.Filename = filepath.Clean(itemPath)
 		f.BucketName = seed.Generate()
 		f.ret = response
-
-		f.Simulated = simulationConfig.IsSimulated(f.Spec.Name)
+		f.Simulated = simcheck.IsSimulated(f.Spec.Name)
 
 		f.Spec.ScenarioVersion = item.State.LocalVersion
 		f.hash = item.State.LocalHash
@@ -192,7 +195,7 @@ func LoadBuckets(
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, bucketStore, response, orderEvent, cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, bucketStore, response, orderEvent, &cscfg.SimulationConfig)
 		if err != nil {
 			return nil, nil, err
 		}
