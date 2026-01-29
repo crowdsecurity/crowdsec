@@ -67,6 +67,7 @@ type BucketFactory struct {
 	RunTimeCondition    *vm.Program
 	RunTimeCancelOnFilter    *vm.Program
 	RunTimeOverflowFilter    *vm.Program
+	RunTimeBayesianConditions []*vm.Program
 	DataDir             string
 	leakspeed           time.Duration       // internal representation of `Leakspeed`
 	duration            time.Duration       // internal representation of `Duration`
@@ -295,6 +296,18 @@ func (f *BucketFactory) compileExpr() error {
 			return fmt.Errorf("invalid overflow_filter '%s' in %s: %w", f.Spec.OverflowFilter, f.Filename, err)
 		}
 		f.RunTimeOverflowFilter = runtimeOverflowFilter
+	}
+
+	if f.Spec.BayesianThreshold != 0 {
+		f.RunTimeBayesianConditions = make([]*vm.Program, len(f.Spec.BayesianConditions))
+		for i, bcond := range f.Spec.BayesianConditions {
+			prog, err := compile(bcond.ConditionalFilterName, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
+			if err != nil {
+				return fmt.Errorf("invalid bayesian condition[%d] '%s' in %s: %w",
+					i, bcond.ConditionalFilterName, f.Filename, err)
+			}
+			f.RunTimeBayesianConditions[i] = prog
+		}
 	}
 
 	return nil

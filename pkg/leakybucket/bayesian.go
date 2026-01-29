@@ -1,8 +1,8 @@
 package leakybucket
 
 import (
+	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/expr-lang/expr/vm"
 
@@ -45,20 +45,24 @@ func (*BayesianProcessor) Description() string {
 func NewBayesianProcessor(f *BucketFactory) (*BayesianProcessor, error) {
 	p := BayesianProcessor{}
 
+	if len(f.Spec.BayesianConditions) == 0 {
+		return nil, errors.New("bayesian bucket: no bayesian_conditions")
+	}
+	if len(f.RunTimeBayesianConditions) != len(f.Spec.BayesianConditions) {
+		return nil, fmt.Errorf("bayesian bucket: runtime conditions not compiled (got %d, want %d)",
+			len(f.RunTimeBayesianConditions), len(f.Spec.BayesianConditions))
+	}
+
 	bayesianEventArray := make([]*BayesianEvent, len(f.Spec.BayesianConditions))
 
-	for index, bcond := range f.Spec.BayesianConditions {
-		prog, err := compileCondition(bcond.ConditionalFilterName)
-		if err != nil {
-			return nil, err
-		}
-		bayesianEventArray[index] = &BayesianEvent{
+	for i, bcond := range f.Spec.BayesianConditions {
+		bayesianEventArray[i] = &BayesianEvent{
 			rawCondition:             bcond,
-			conditionalFilterRuntime: prog,
+			conditionalFilterRuntime: f.RunTimeBayesianConditions[i],
 		}
 	}
-	p.bayesianEventArray = bayesianEventArray
 
+	p.bayesianEventArray = bayesianEventArray
 	p.prior = f.Spec.BayesianPrior
 	p.threshold = f.Spec.BayesianThreshold
 
@@ -138,36 +142,4 @@ func (e *BayesianEvent) getGuillotineState() bool {
 
 func (e *BayesianEvent) triggerGuillotine() {
 	e.guillotineState = true
-}
-
-var (
-	conditionalExprCache = make(map[string]*vm.Program)
-	conditionalExprCacheLock sync.Mutex
-)
-
-func compileCondition(filterName string) (*vm.Program, error) {
-	conditionalExprCacheLock.Lock()
-	prog, ok := conditionalExprCache[filterName]
-	conditionalExprCacheLock.Unlock()
-	if ok {
-		return prog, nil
-	}
-
-	// don't hold lock during compile
-	compiled, err := compile(filterName, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
-	if err != nil {
-		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
-	}
-
-	// re-check under lock in case of race, avoid double compilation
-	conditionalExprCacheLock.Lock()
-	defer conditionalExprCacheLock.Unlock()
-
-	if prog2, ok := conditionalExprCache[filterName]; ok {
-		return prog2, nil
-	}
-
-	conditionalExprCache[filterName] = compiled
-
-	return compiled, nil
 }
