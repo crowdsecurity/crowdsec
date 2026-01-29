@@ -83,7 +83,7 @@ func (ConditionalType) Validate(f *BucketFactory) error {
 		f.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
 	}
 
-	if f.Spec.ConditionalOverflow == "" {
+	if f.Spec.Condition == "" {
 		return errors.New("a condition is required")
 	}
 

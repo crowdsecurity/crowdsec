@@ -1,8 +1,6 @@
 package leakybucket
 
 import (
-	"fmt"
-
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -15,26 +13,19 @@ type OverflowProcessor struct {
 	DumbProcessor
 }
 
-func NewOverflowProcessor(s *BucketSpec) (*OverflowProcessor, error) {
-	var err error
-
-	u := OverflowProcessor{}
-
-	u.Filter = s.OverflowFilter
-
-	u.FilterRuntime, err = compile(u.Filter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
-	if err != nil {
-		return nil, fmt.Errorf("unable to compile filter : %v", err)
-	}
-	return &u, nil
-}
-
 func (*OverflowProcessor) Description() string {
 	return "overflow"
 }
 
-func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
-	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
+func NewOverflowProcessor(f *BucketFactory) *OverflowProcessor {
+	p := OverflowProcessor{}
+	p.Filter = f.Spec.OverflowFilter
+	p.FilterRuntime = f.RunTimeOverflowFilter
+	return &p
+}
+
+func (p *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	el, err := exprhelpers.Run(p.FilterRuntime, map[string]any{
 		"queue": q, "signal": s, "leaky": l}, l.logger, f.Spec.Debug)
 	if err != nil {
 		l.logger.Errorf("Failed running overflow filter: %s", err)
@@ -47,11 +38,11 @@ func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipel
 	}
 	// filter returned false, event is blackholded
 	if !element {
-		l.logger.Infof("Event is discarded by overflow filter (%s)", u.Filter)
+		l.logger.Infof("Event is discarded by overflow filter (%s)", p.Filter)
 		return pipeline.RuntimeAlert{
 			Mapkey: l.Mapkey,
 		}, nil
 	}
-	l.logger.Tracef("Event is not discarded by overflow filter (%s)", u.Filter)
+	l.logger.Tracef("Event is not discarded by overflow filter (%s)", p.Filter)
 	return s, q
 }

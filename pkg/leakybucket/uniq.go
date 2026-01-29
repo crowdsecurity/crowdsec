@@ -15,15 +15,17 @@ import (
 // on overflow
 // on leak
 
-var (
-	uniqExprCache     map[string]vm.Program
-	uniqExprCacheLock sync.Mutex
-)
-
 type UniqProcessor struct {
 	DistinctCompiled *vm.Program
 	KeyCache         map[string]bool
 	CacheMutex       sync.Mutex
+}
+
+func NewUniqProcessor(f *BucketFactory) *UniqProcessor {
+	p := UniqProcessor{}
+	p.DistinctCompiled = f.RunTimeDistinct
+	p.KeyCache = make(map[string]bool)
+	return &p
 }
 
 func (*UniqProcessor) Description() string {
@@ -54,31 +56,6 @@ func (*UniqProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipelin
 
 func (*UniqProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
 	return &msg
-}
-
-func (p *UniqProcessor) OnBucketInit(f *BucketFactory) error {
-	if uniqExprCache == nil {
-		uniqExprCache = make(map[string]vm.Program)
-	}
-
-	uniqExprCacheLock.Lock()
-	if compiled, ok := uniqExprCache[f.Spec.Distinct]; ok {
-		uniqExprCacheLock.Unlock()
-		p.DistinctCompiled = &compiled
-	} else {
-		uniqExprCacheLock.Unlock()
-		// release the lock during compile
-		compiledExpr, err := compile(f.Spec.Distinct, nil)
-		if err != nil {
-			return err
-		}
-		p.DistinctCompiled = compiledExpr
-		uniqExprCacheLock.Lock()
-		uniqExprCache[f.Spec.Distinct] = *compiledExpr
-		uniqExprCacheLock.Unlock()
-	}
-	p.KeyCache = make(map[string]bool)
-	return nil
 }
 
 // getElement computes a string from an event and a filter

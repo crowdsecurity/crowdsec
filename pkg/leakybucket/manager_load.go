@@ -42,7 +42,7 @@ type BucketSpec struct {
 	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
 	Reprocess           bool                       `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
 	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
-	ConditionalOverflow string                     `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
+	Condition           string                     `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
 	CacheSize           int                        `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
 	CancelOnFilter      string                     `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	BayesianPrior       float32                    `yaml:"bayesian_prior"`
@@ -61,8 +61,12 @@ type BucketFactory struct {
 	logger              *log.Entry          // logger is bucket-specific logger (used by Debug as well)
 	BucketName          string
 	Filename            string
-	RunTimeFilter       *vm.Program         `json:"-"`
-	RunTimeGroupBy      *vm.Program         `json:"-"`
+	RunTimeFilter       *vm.Program
+	RunTimeGroupBy      *vm.Program
+	RunTimeDistinct     *vm.Program
+	RunTimeCondition    *vm.Program
+	RunTimeCancelOnFilter    *vm.Program
+	RunTimeOverflowFilter    *vm.Program
 	DataDir             string
 	leakspeed           time.Duration       // internal representation of `Leakspeed`
 	duration            time.Duration       // internal representation of `Duration`
@@ -261,62 +265,75 @@ func (f *BucketFactory) compileExpr() error {
 		f.RunTimeGroupBy = runtimeGroupBy
 	}
 
+	if f.Spec.Distinct != "" {
+		runtimeDistinct, err := compile(f.Spec.Distinct, nil)
+		if err != nil {
+			return fmt.Errorf("invalid distinct '%s' in %s: %w", f.Spec.Distinct, f.Filename, err)
+		}
+		f.RunTimeDistinct = runtimeDistinct
+	}
+
+	if f.Spec.Condition != "" {
+		runtimeCondition, err := compile(f.Spec.Condition, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
+		if err != nil {
+			return fmt.Errorf("invalid condition '%s' in %s: %w", f.Spec.Condition, f.Filename, err)
+		}
+		f.RunTimeCondition = runtimeCondition
+	}
+
+	if f.Spec.CancelOnFilter != "" {
+		runtimeCancelOnFilter, err := compile(f.Spec.CancelOnFilter, nil)
+		if err != nil {
+			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", f.Spec.CancelOnFilter, f.Filename, err)
+		}
+		f.RunTimeCancelOnFilter = runtimeCancelOnFilter
+	}
+
+	if f.Spec.OverflowFilter != "" {
+		runtimeOverflowFilter, err := compile(f.Spec.OverflowFilter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
+		if err != nil {
+			return fmt.Errorf("invalid overflow_filter '%s' in %s: %w", f.Spec.OverflowFilter, f.Filename, err)
+		}
+		f.RunTimeOverflowFilter = runtimeOverflowFilter
+	}
+
 	return nil
 }
 
-func (s *BucketSpec) buildOptionalProcessors() ([]Processor, error) {
-	// Some optional processors depend on expressions. We compile those expressions here
-	// during loading (and discard the compiled program) so misconfigurations fail fast.
-	check := func(field, ex string, extra map[string]any) error {
-		if _, err := compile(ex, extra); err != nil {
-			return fmt.Errorf("invalid %s '%s': %w", field, ex, err)
-		}
-		return nil
-	}
-
+func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
 	var procs []Processor
 
-	if s.Distinct != "" {
-		procs = append(procs, &UniqProcessor{})
-		if err := check("distinct", s.Distinct, nil); err != nil {
-			return nil, err
-		}
+	if f.Spec.Distinct != "" {
+		procs = append(procs, NewUniqProcessor(f))
 	}
 
-	if s.CancelOnFilter != "" {
-		procs = append(procs, &CancelProcessor{})
-		if err := check("cancel_on", s.CancelOnFilter, nil); err != nil {
-			return nil, err
-		}
+	if f.Spec.CancelOnFilter != "" {
+		procs = append(procs, NewCancelProcessor(f))
 	}
 
-	if s.OverflowFilter != "" {
-		filovflw, err := NewOverflowProcessor(s)
-		if err != nil {
-			return nil, fmt.Errorf("error creating overflow_filter: %w", err)
-		}
-
-		procs = append(procs, filovflw)
+	if f.Spec.OverflowFilter != "" {
+		procs = append(procs, NewOverflowProcessor(f))
 	}
 
-	if s.Blackhole != "" {
-		blackhole, err := NewBlackholeProcessor(s)
+	if f.Spec.Blackhole != "" {
+		p, err := NewBlackholeProcessor(&f.Spec)
 		if err != nil {
 			return nil, fmt.Errorf("error creating blackhole: %w", err)
 		}
 
-		procs = append(procs, blackhole)
+		procs = append(procs, p)
 	}
 
-	if s.ConditionalOverflow != "" {
-		procs = append(procs, &ConditionalProcessor{})
-		if err := check("condition", s.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}}); err != nil {
-			return nil, err
+	if f.Spec.Condition != "" {
+		procs = append(procs, NewConditionalProcessor(f))
+	}
+
+	if f.Spec.BayesianThreshold != 0 {
+		p, err := NewBayesianProcessor(f)
+		if err != nil {
+			return nil, fmt.Errorf("error creating bayesian processor: %w", err)
 		}
-	}
-
-	if s.BayesianThreshold != 0 {
-		procs = append(procs, &BayesianProcessor{})
+		procs = append(procs, p)
 	}
 
 	return procs, nil
@@ -363,7 +380,7 @@ func (f *BucketFactory) LoadBucket() error {
 
 	procs := impl.CoreProcessors(f)
 
-	optProcs, err := f.Spec.buildOptionalProcessors()
+	optProcs, err := f.buildOptionalProcessors()
 	if err != nil {
 		return fmt.Errorf("%s: %w", f.Filename, err)
 	}

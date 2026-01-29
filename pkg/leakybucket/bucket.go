@@ -171,14 +171,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 
 	l.markReady()
 
-	for _, f := range processors {
-		err := f.OnBucketInit(l.BucketConfig)
-		if err != nil {
-			l.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
-			return
-		}
-	}
-
 	l.logger.Debugf("Leaky routine starting, lifetime : %s", l.Duration)
 	for {
 		select {

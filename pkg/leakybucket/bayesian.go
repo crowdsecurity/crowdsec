@@ -2,6 +2,7 @@ package leakybucket
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/expr-lang/expr/vm"
 
@@ -41,14 +42,15 @@ func (*BayesianProcessor) Description() string {
 	return "bayesian"
 }
 
-func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
-	var err error
+func NewBayesianProcessor(f *BucketFactory) (*BayesianProcessor, error) {
+	p := BayesianProcessor{}
+
 	bayesianEventArray := make([]*BayesianEvent, len(f.Spec.BayesianConditions))
 
 	for index, bcond := range f.Spec.BayesianConditions {
 		prog, err := compileCondition(bcond.ConditionalFilterName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		bayesianEventArray[index] = &BayesianEvent{
 			rawCondition:             bcond,
@@ -60,7 +62,7 @@ func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	p.prior = f.Spec.BayesianPrior
 	p.threshold = f.Spec.BayesianThreshold
 
-	return err
+	return &p, nil
 }
 
 func (p *BayesianProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
@@ -137,6 +139,11 @@ func (e *BayesianEvent) getGuillotineState() bool {
 func (e *BayesianEvent) triggerGuillotine() {
 	e.guillotineState = true
 }
+
+var (
+	conditionalExprCache = make(map[string]*vm.Program)
+	conditionalExprCacheLock sync.Mutex
+)
 
 func compileCondition(filterName string) (*vm.Program, error) {
 	conditionalExprCacheLock.Lock()

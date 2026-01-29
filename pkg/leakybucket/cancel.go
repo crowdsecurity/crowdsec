@@ -1,8 +1,6 @@
 package leakybucket
 
 import (
-	"sync"
-
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -22,15 +20,17 @@ type CancelProcessor struct {
 	Debug          bool
 }
 
-var (
-	cancelExprCacheLock sync.Mutex
-	cancelExprCache     map[string]struct {
-		CancelOnFilter *vm.Program
-	}
-)
-
 func (*CancelProcessor) Description() string {
 	return "cancel_on"
+}
+
+func NewCancelProcessor(f *BucketFactory) *CancelProcessor {
+	p := CancelProcessor{}
+	p.CancelOnFilter = f.RunTimeCancelOnFilter
+	if f.Spec.Debug {
+		p.Debug = true
+	}
+	return &p
 }
 
 func (p *CancelProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
@@ -62,41 +62,4 @@ func (*CancelProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipel
 
 func (*CancelProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
 	return &msg
-}
-
-func (p *CancelProcessor) OnBucketInit(f *BucketFactory) error {
-	var err error
-	var compiledExpr struct {
-		CancelOnFilter *vm.Program
-	}
-
-	if cancelExprCache == nil {
-		cancelExprCache = make(map[string]struct {
-			CancelOnFilter *vm.Program
-		})
-	}
-
-	cancelExprCacheLock.Lock()
-	if compiled, ok := cancelExprCache[f.Spec.CancelOnFilter]; ok {
-		cancelExprCacheLock.Unlock()
-		p.CancelOnFilter = compiled.CancelOnFilter
-		return nil
-	}
-
-	cancelExprCacheLock.Unlock()
-	// release the lock during compile
-
-	compiledExpr.CancelOnFilter, err = compile(f.Spec.CancelOnFilter, nil)
-	if err != nil {
-		f.logger.Errorf("reset_filter compile error : %s", err)
-		return err
-	}
-	p.CancelOnFilter = compiledExpr.CancelOnFilter
-	if f.Spec.Debug {
-		p.Debug = true
-	}
-	cancelExprCacheLock.Lock()
-	cancelExprCache[f.Spec.CancelOnFilter] = compiledExpr
-	cancelExprCacheLock.Unlock()
-	return nil
 }

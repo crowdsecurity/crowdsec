@@ -1,23 +1,15 @@
 package leakybucket
 
 import (
-	"fmt"
-	"sync"
-
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-var (
-	conditionalExprCache     = make(map[string]*vm.Program)
-	conditionalExprCacheLock sync.Mutex
-)
-
 type ConditionalProcessor struct {
-	ConditionalFilter        string
-	ConditionalFilterRuntime *vm.Program
+	Condition        string
+	ConditionRuntime *vm.Program
 	DumbProcessor
 }
 
@@ -25,38 +17,19 @@ func (*ConditionalProcessor) Description() string {
 	return "conditional filter"
 }
 
-func (p *ConditionalProcessor) OnBucketInit(f *BucketFactory) error {
-	var err error
-	var compiledExpr *vm.Program
-
-	conditionalExprCacheLock.Lock()
-	if compiled, ok := conditionalExprCache[f.Spec.ConditionalOverflow]; ok {
-		conditionalExprCacheLock.Unlock()
-		p.ConditionalFilterRuntime = compiled
-	} else {
-		conditionalExprCacheLock.Unlock()
-		// release the lock during compile
-		compiledExpr, err = compile(f.Spec.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
-		if err != nil {
-			return fmt.Errorf("conditional compile error : %w", err)
-		}
-
-		p.ConditionalFilterRuntime = compiledExpr
-		conditionalExprCacheLock.Lock()
-		conditionalExprCache[f.Spec.ConditionalOverflow] = compiledExpr
-		conditionalExprCacheLock.Unlock()
-	}
-
-	return err
+func NewConditionalProcessor(f *BucketFactory) *ConditionalProcessor {
+	p := ConditionalProcessor{}
+	p.ConditionRuntime = f.RunTimeCondition
+	return &p
 }
 
 func (p *ConditionalProcessor) AfterBucketPour(f *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
 	var condition, ok bool
 
-	if p.ConditionalFilterRuntime != nil {
-		l.logger.Debugf("Running condition expression : %s", p.ConditionalFilter)
+	if p.ConditionRuntime != nil {
+		l.logger.Debugf("Running condition expression : %s", p.Condition)
 
-		ret, err := exprhelpers.Run(p.ConditionalFilterRuntime,
+		ret, err := exprhelpers.Run(p.ConditionRuntime,
 			map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l},
 			l.logger, f.Spec.Debug)
 		if err != nil {

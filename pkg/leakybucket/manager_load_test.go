@@ -76,9 +76,9 @@ func TestLeakyBucketsConfig(t *testing.T) {
 		// leaky with valid cancel_on filter
 		{BucketFactory{Spec: BucketSpec{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", CancelOnFilter: "true"}}, true, true},
 		// leaky with invalid conditional overflow filter
-		{BucketFactory{Spec: BucketSpec{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", ConditionalOverflow: "xu"}}, false, true},
+		{BucketFactory{Spec: BucketSpec{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", Condition: "xu"}}, false, true},
 		// leaky with valid conditional overflow filter
-		{BucketFactory{Spec: BucketSpec{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", ConditionalOverflow: "true"}}, true, true},
+		{BucketFactory{Spec: BucketSpec{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", Condition: "true"}}, true, true},
 	}
 
 	if err := runTest(CfgTests); err != nil {

@@ -112,7 +112,7 @@ func TestBucketTypes_Validate(t *testing.T) {
 			name: "conditional/ok",
 			typ:  ConditionalType{},
 			f: BucketFactory{
-				Spec:      BucketSpec{Capacity: -1, ConditionalOverflow: "evt.Meta.foo == 'bar'", LeakSpeed: "1s"},
+				Spec:      BucketSpec{Capacity: -1, Condition: "evt.Meta.foo == 'bar'", LeakSpeed: "1s"},
 				leakspeed: time.Second,
 			},
 		},
@@ -120,7 +120,7 @@ func TestBucketTypes_Validate(t *testing.T) {
 			name: "conditional/missing condition",
 			typ:  ConditionalType{},
 			f: BucketFactory{
-				Spec:      BucketSpec{Capacity: -1, ConditionalOverflow: "", LeakSpeed: "1s"},
+				Spec:      BucketSpec{Capacity: -1, Condition: "", LeakSpeed: "1s"},
 				leakspeed: time.Second,
 			},
 			wantErr: "a condition is required",
@@ -129,7 +129,7 @@ func TestBucketTypes_Validate(t *testing.T) {
 			name: "conditional/missing leakspeed",
 			typ:  ConditionalType{},
 			f: BucketFactory{
-				Spec:      BucketSpec{Capacity: -1, ConditionalOverflow: "x", LeakSpeed: ""},
+				Spec:      BucketSpec{Capacity: -1, Condition: "x", LeakSpeed: ""},
 				leakspeed: time.Second,
 			},
 			wantErr: "leakspeed is required",
@@ -138,7 +138,7 @@ func TestBucketTypes_Validate(t *testing.T) {
 			name: "conditional/invalid parsed leakspeed (<= 0)",
 			typ:  ConditionalType{},
 			f: BucketFactory{
-				Spec:      BucketSpec{Capacity: -1, ConditionalOverflow: "x", LeakSpeed: "1s"},
+				Spec:      BucketSpec{Capacity: -1, Condition: "x", LeakSpeed: "1s"},
 				leakspeed: 0,
 			},
 			wantErr: "invalid leakspeed '1s': must be > 0",
