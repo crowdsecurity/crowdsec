@@ -18,6 +18,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+type pourGate interface {
+	BeginPour() func()
+}
+
 // Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
@@ -53,7 +57,7 @@ type Leaky struct {
 	Leakspeed    time.Duration
 	BucketConfig *BucketFactory
 	Duration     time.Duration
-	Pour         func(*Leaky, PourGate, pipeline.Event) `json:"-"`
+	Pour         func(*Leaky, pourGate, pipeline.Event) `json:"-"`
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
@@ -136,7 +140,7 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 
 // for now mimic a leak routine
 // LeakRoutine is the life of a bucket. It dies when the bucket underflows or overflows
-func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
+func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
@@ -289,14 +293,10 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate PourGate) {
 	}
 }
 
-type PourGate interface {
-	BeginPour() func()
-}
-
 // TODO: can't be method, a field has the same name
-func Pour(l *Leaky, g PourGate, msg pipeline.Event) {
-	done := g.BeginPour()
-	defer done()
+func Pour(l *Leaky, gate pourGate, msg pipeline.Event) {
+	end := gate.BeginPour()
+	defer end()
 
 	l.Total_count += 1
 	if l.First_ts.IsZero() {

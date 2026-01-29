@@ -22,43 +22,43 @@ But when we are running in time-machine mode, the reference time is in logs and 
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
 func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
-	fn := func() {
-		snap := bucketStore.Snapshot()
+	resume := bucketStore.FreezePours()
+	// to be on the safe side, keep the freeze lock for the whole function
+	defer resume()
 
-		toflush := []string{}
-		for key, val := range snap {
-			// bucket already overflowed, we can kill it
-			if !val.Ovflw_ts.IsZero() {
-				val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
-				toflush = append(toflush, key)
-				val.cancel()
-				continue
-			}
+	snap := bucketStore.Snapshot()
 
-			const eps = 1e-9
-
-			tokat := val.Limiter.GetTokensCountAt(deadline)
-			tokcapa := float64(val.Capacity)
-
-			// bucket actually underflowed based on log time, but no in real time
-			if tokat+eps >= tokcapa {
-				metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-				val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
-				toflush = append(toflush, key)
-				val.cancel()
-				continue
-			}
-
-			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+	toflush := []string{}
+	for key, val := range snap {
+		// bucket already overflowed, we can kill it
+		if !val.Ovflw_ts.IsZero() {
+			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
+			toflush = append(toflush, key)
+			val.cancel()
+			continue
 		}
 
-		log.Infof("Cleaned %d buckets", len(toflush))
-		for _, flushkey := range toflush {
-			bucketStore.Delete(flushkey)
+		const eps = 1e-9
+
+		tokat := val.Limiter.GetTokensCountAt(deadline)
+		tokcapa := float64(val.Capacity)
+
+		// bucket actually underflowed based on log time, but no in real time
+		if tokat+eps >= tokcapa {
+			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+			toflush = append(toflush, key)
+			val.cancel()
+			continue
 		}
+
+		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 	}
 
-	bucketStore.WithPoursBlocked(fn)
+	log.Infof("Cleaned %d buckets", len(toflush))
+	for _, flushkey := range toflush {
+		bucketStore.Delete(flushkey)
+	}
 }
 
 func PourItemToBucket(
