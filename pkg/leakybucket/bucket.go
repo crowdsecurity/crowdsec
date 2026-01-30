@@ -213,7 +213,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			// if durationTicker isn't initialized, then we're pouring our first event
 
 			// reinitialize the durationTicker when it's not a counter bucket
-			if !l.timedOverflow || firstEvent {
+			if l.Duration > 0 && (!l.timedOverflow || firstEvent) {
 				if firstEvent {
 					durationTicker = time.NewTicker(l.Duration)
 					durationTickerChan = durationTicker.C
