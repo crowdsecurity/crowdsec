@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"html/template"
 	"io"
 	"os"
@@ -138,24 +137,23 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
 	var results []pipeline.Event
 
-	/* now we can load the test files */
-	// process the yaml
 	yamlFile, err := os.Open(file)
-	if err != nil {
-		t.Errorf("yamlFile.Get err   #%v ", err)
-	}
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = yamlFile.Close() })
+
 	dec := json.NewDecoder(yamlFile)
 	dec.DisallowUnknownFields()
+
 	// dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
-			return false
-		}
-		log.Warning("end of test file")
-	}
+	require.NotErrorIs(t, err, io.EOF)
+	require.NoError(t, err, "failed to decode test file %q", file)
+
+	var extra json.RawMessage
+	err = dec.Decode(&extra)
+	require.ErrorIs(t, err, io.EOF, "test file %q has trailing content after the first JSON value", file)
+
 	var latest_ts time.Time
 	ctx := t.Context()
 	for _, in := range tf.Lines {
