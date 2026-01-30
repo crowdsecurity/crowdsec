@@ -78,19 +78,19 @@ func TestAppsecAllowlist(t *testing.T) {
 
 	res, reason = allowlistClient.IsAllowlisted("5.4.3.2")
 	assert.True(t, res)
-	assert.Equal(t, "5.4.3.2 from list1 (desc_ip)", reason)
+	// IPs are now stored as /32 CIDR prefixes
+	assert.Equal(t, "5.4.3.2/32 from list1 (desc_ip)", reason)
 
 	res, reason = allowlistClient.IsAllowlisted("5.4.4.42")
 	assert.True(t, res)
 	assert.Equal(t, "5.4.4.0/24 from list1 (desc_range)", reason)
 
-	assert.Len(t, allowlistClient.ips, 1)
-	assert.Len(t, allowlistClient.ranges, 1)
+	// Check that trie has 2 entries (1 IP + 1 CIDR range)
+	assert.Equal(t, 2, allowlistClient.trie.Size())
 
 	err = allowlistClient.FetchAllowlists(ctx)
 	require.NoError(t, err)
 
-	// No duplicates should be added
-	assert.Len(t, allowlistClient.ips, 1)
-	assert.Len(t, allowlistClient.ranges, 1)
+	// No duplicates should be added (same size)
+	assert.Equal(t, 2, allowlistClient.trie.Size())
 }
