@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -19,12 +18,8 @@ type BlackholeProcessor struct {
 }
 
 func NewBlackholeProcessor(f *BucketFactory) (*BlackholeProcessor, error) {
-	duration, err := time.ParseDuration(f.Spec.Blackhole)
-	if err != nil {
-		return nil, fmt.Errorf("blackhole duration not valid '%s'", f.Spec.Blackhole)
-	}
 	return &BlackholeProcessor{
-		duration:      duration,
+		duration:      f.duration,
 		hiddenKeys:    []hiddenKey{},
 		DumbProcessor: DumbProcessor{},
 	}, nil

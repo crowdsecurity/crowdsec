@@ -70,6 +70,7 @@ type BucketFactory struct {
 	RunTimeBayesianConditions []*vm.Program
 	DataDir             string
 	leakspeed           time.Duration       // internal representation of `Leakspeed`
+	blackholeDuration   time.Duration
 	duration            time.Duration       // internal representation of `Duration`
 	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
 	processorFactories  []ProcessorFactory  // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
@@ -243,6 +244,14 @@ func (f *BucketFactory) parseDurations() error {
 		f.duration = duration
 	}
 
+	if f.Spec.Blackhole != "" {
+		d, err := time.ParseDuration(f.Spec.Blackhole)
+		if err != nil {
+			return fmt.Errorf("invalid duration blackhole '%s' in %s: %w", f.Spec.Blackhole, f.Filename, err)
+		}
+		f.blackholeDuration = d
+	}
+
 	return nil
 }
 
@@ -396,6 +405,15 @@ func (f *BucketFactory) LoadBucket() error {
 	}
 
 	procs = append(procs, optProcs...)
+
+	// fail-fast by dry-running the constructors
+	for _, pf := range procs {
+		_, err := pf(f)
+		if err != nil {
+			return err
+		}
+	}
+
 	f.processorFactories = procs
 
 	f.initDataFiles()
