@@ -13,14 +13,10 @@ type ConditionalProcessor struct {
 	DumbProcessor
 }
 
-func (*ConditionalProcessor) Description() string {
-	return "conditional filter"
-}
-
-func NewConditionalProcessor(f *BucketFactory) *ConditionalProcessor {
+func NewConditionalProcessor(f *BucketFactory) (*ConditionalProcessor, error) {
 	p := ConditionalProcessor{}
 	p.ConditionRuntime = f.RunTimeCondition
-	return &p
+	return &p, nil
 }
 
 func (p *ConditionalProcessor) AfterBucketPour(f *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {

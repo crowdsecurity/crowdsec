@@ -21,15 +21,11 @@ type UniqProcessor struct {
 	CacheMutex       sync.Mutex
 }
 
-func NewUniqProcessor(f *BucketFactory) *UniqProcessor {
+func NewUniqProcessor(f *BucketFactory) (*UniqProcessor, error) {
 	p := UniqProcessor{}
 	p.DistinctCompiled = f.RunTimeDistinct
 	p.KeyCache = make(map[string]bool)
-	return &p
-}
-
-func (*UniqProcessor) Description() string {
-	return "uniq"
+	return &p, nil
 }
 
 func (p *UniqProcessor) OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {

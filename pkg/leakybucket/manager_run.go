@@ -163,12 +163,20 @@ func LoadOrStoreBucketFromHolder(
 	/* the bucket doesn't exist, create it !*/
 	var fresh_bucket *Leaky
 
+	var err error
+
 	switch expectMode {
 	case pipeline.TIMEMACHINE:
-		fresh_bucket = NewTimeMachine(holder)
+		fresh_bucket, err = NewTimeMachine(holder)
+		if err != nil {
+			return nil, err
+		}
 		holder.logger.Debugf("Creating TimeMachine bucket")
 	case pipeline.LIVE:
-		fresh_bucket = NewLeakyFromFactory(holder)
+		fresh_bucket, err = NewLeakyFromFactory(holder)
+		if err != nil {
+			return nil, err
+		}
 		holder.logger.Debugf("Creating Live bucket")
 	default:
 		return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)

@@ -5,9 +5,16 @@ import (
 	"fmt"
 )
 
+type ProcessorFactory func (*BucketFactory) (Processor, error)
+
+// generic function to avoid returning interfaces from the constructors
+func asFactory[T Processor](fn func(*BucketFactory) (T, error)) ProcessorFactory {
+	return func(f *BucketFactory) (Processor, error) { return fn(f) }
+}
+
 type BucketType interface {
 	Validate(f *BucketFactory) error
-	CoreProcessors(f *BucketFactory) []Processor
+	CoreProcessors(f *BucketFactory) []ProcessorFactory
 }
 
 var bucketTypes = map[string]BucketType{
@@ -36,8 +43,8 @@ func (LeakyType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (LeakyType) CoreProcessors(_ *BucketFactory) []Processor {
-	return []Processor{&DumbProcessor{}}
+func (LeakyType) CoreProcessors(_ *BucketFactory) []ProcessorFactory {
+	return []ProcessorFactory{asFactory(NewDumbProcessor)}
 }
 
 type TriggerType struct{}
@@ -50,8 +57,8 @@ func (TriggerType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (TriggerType) CoreProcessors(_ *BucketFactory) []Processor {
-	return []Processor{&TriggerProcessor{}}
+func (TriggerType) CoreProcessors(_ *BucketFactory) []ProcessorFactory {
+	return []ProcessorFactory{asFactory(NewDumbProcessor)}
 }
 
 type CounterType struct{}
@@ -72,8 +79,8 @@ func (CounterType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (CounterType) CoreProcessors(_ *BucketFactory) []Processor {
-	return []Processor{&DumbProcessor{}}
+func (CounterType) CoreProcessors(_ *BucketFactory) []ProcessorFactory {
+	return []ProcessorFactory{asFactory(NewDumbProcessor)}
 }
 
 type ConditionalType struct{}
@@ -98,8 +105,8 @@ func (ConditionalType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (ConditionalType) CoreProcessors(_ *BucketFactory) []Processor {
-	return []Processor{&DumbProcessor{}}
+func (ConditionalType) CoreProcessors(_ *BucketFactory) []ProcessorFactory {
+	return []ProcessorFactory{asFactory(NewDumbProcessor)}
 }
 
 type BayesianType struct{}
@@ -124,6 +131,6 @@ func (BayesianType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (BayesianType) CoreProcessors(_ *BucketFactory) []Processor {
-	return []Processor{&DumbProcessor{}}
+func (BayesianType) CoreProcessors(_ *BucketFactory) []ProcessorFactory {
+	return []ProcessorFactory{asFactory(NewDumbProcessor)}
 }

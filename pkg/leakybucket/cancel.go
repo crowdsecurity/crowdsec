@@ -20,17 +20,13 @@ type CancelProcessor struct {
 	Debug          bool
 }
 
-func (*CancelProcessor) Description() string {
-	return "cancel_on"
-}
-
-func NewCancelProcessor(f *BucketFactory) *CancelProcessor {
+func NewCancelProcessor(f *BucketFactory) (*CancelProcessor, error) {
 	p := CancelProcessor{}
 	p.CancelOnFilter = f.RunTimeCancelOnFilter
 	if f.Spec.Debug {
 		p.Debug = true
 	}
-	return &p
+	return &p, nil
 }
 
 func (p *CancelProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {

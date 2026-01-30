@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
@@ -67,13 +66,14 @@ type Leaky struct {
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
 	cancel              context.CancelFunc
+	processors          []Processor
 }
 
 // NewLeakyFromFactory creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
-func NewLeakyFromFactory(f *BucketFactory) *Leaky {
+func NewLeakyFromFactory(f *BucketFactory) (*Leaky, error) {
 	f.logger.Tracef("Instantiating live bucket %s", f.Spec.Name)
 
 	var limiter rate.RateLimiter
@@ -97,6 +97,15 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 	}
 	metrics.BucketsInstantiation.With(prometheus.Labels{"name": f.Spec.Name}).Inc()
 
+	processors := make([]Processor, len(f.processorFactories))
+	for i := range f.processorFactories {
+		p, err := f.processorFactories[i](f)
+		if err != nil {
+			return nil, err
+		}
+		processors[i] = p
+	}
+
 	// create the leaky bucket per se
 	l := &Leaky{
 		Name:            f.Spec.Name,
@@ -118,6 +127,7 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		hash:            f.hash,
 		mutex:           &sync.Mutex{},
 		orderEvent:      f.orderEvent,
+		processors:	 processors,
 	}
 	if f.Spec.Capacity > 0 && f.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(f.Spec.Capacity+1) * f.leakspeed
@@ -135,7 +145,7 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 	if f.Spec.Type == "bayesian" {
 		l.Duration = f.leakspeed
 	}
-	return l
+	return l, nil
 }
 
 // for now mimic a leak routine
@@ -163,12 +173,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 	// TODO: we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea
 	l.logger = l.BucketConfig.logger.WithFields(log.Fields{"partition": l.Mapkey, "bucket_id": l.Uuid})
 
-	// We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
-	// If we don't copy, processors using local cache (such as Uniq) are subject to race conditions
-	// This can lead to creating buckets that will discard their first events, preventing the underflow ticker from being initialized
-	// and preventing them from being destroyed
-	processors := deepcopy.Copy(l.BucketConfig.processors).([]Processor)
-
 	l.markReady()
 
 	l.logger.Debugf("Leaky routine starting, lifetime : %s", l.Duration)
@@ -177,7 +181,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 		// receiving an event
 		case msg := <-l.In:
 			// the msg var use is confusing and is redeclared in a different type :/
-			for _, processor := range processors {
+			for _, processor := range l.processors {
 				msg = processor.OnBucketPour(l.BucketConfig, *msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
@@ -194,7 +198,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 
 			l.Pour(l, gate, *msg) // glue for now
 
-			for _, processor := range processors {
+			for _, processor := range l.processors {
 				msg = processor.AfterBucketPour(l.BucketConfig, *msg, l)
 				if msg == nil {
 					if l.orderEvent {
@@ -252,7 +256,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 				if err != nil {
 					log.Error(err)
 				}
-				for _, f := range l.BucketConfig.processors {
+				for _, f := range l.processors {
 					alert, ofw = f.OnBucketOverflow(l.BucketConfig, l, alert, ofw)
 					if ofw == nil {
 						l.logger.Debugf("Overflow has been discarded (%T)", f)
@@ -312,8 +316,8 @@ func (l *Leaky) overflow(ofw *pipeline.Queue) {
 	if err != nil {
 		log.Errorf("%s", err)
 	}
-	l.logger.Tracef("Overflow hooks time : %v", l.BucketConfig.processors)
-	for _, f := range l.BucketConfig.processors {
+	l.logger.Tracef("Overflow hooks time : %v", l.processors)
+	for _, f := range l.processors {
 		alert, ofw = f.OnBucketOverflow(l.BucketConfig, l, alert, ofw)
 		if ofw == nil {
 			l.logger.Debugf("Overflow has been discarded (%T)", f)

@@ -72,7 +72,7 @@ type BucketFactory struct {
 	leakspeed           time.Duration       // internal representation of `Leakspeed`
 	duration            time.Duration       // internal representation of `Duration`
 	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
-	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	processorFactories  []ProcessorFactory  // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	hash                string
 	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
@@ -313,40 +313,37 @@ func (f *BucketFactory) compileExpr() error {
 	return nil
 }
 
-func (f *BucketFactory) buildOptionalProcessors() ([]Processor, error) {
-	var procs []Processor
+func (f *BucketFactory) buildOptionalProcessors() ([]ProcessorFactory, error) {
+	var procs []ProcessorFactory
 
 	if f.Spec.Distinct != "" {
-		procs = append(procs, NewUniqProcessor(f))
+		procs = append(procs, asFactory(NewUniqProcessor))
+		f.logger.WithField("processor", "uniq").Trace("Adding processor")
 	}
 
 	if f.Spec.CancelOnFilter != "" {
-		procs = append(procs, NewCancelProcessor(f))
+		procs = append(procs, asFactory(NewCancelProcessor))
+		f.logger.WithField("processor", "cancel_on").Trace("Adding processor")
 	}
 
 	if f.Spec.OverflowFilter != "" {
-		procs = append(procs, NewOverflowProcessor(f))
+		procs = append(procs, asFactory(NewOverflowProcessor))
+		f.logger.WithField("processor", "overflow filter").Trace("Adding processor")
 	}
 
 	if f.Spec.Blackhole != "" {
-		p, err := NewBlackholeProcessor(&f.Spec)
-		if err != nil {
-			return nil, fmt.Errorf("error creating blackhole: %w", err)
-		}
-
-		procs = append(procs, p)
+		procs = append(procs, asFactory(NewBlackholeProcessor))
+		f.logger.WithField("processor", "blackhole").Trace("Adding processor")
 	}
 
 	if f.Spec.Condition != "" {
-		procs = append(procs, NewConditionalProcessor(f))
+		procs = append(procs, asFactory(NewConditionalProcessor))
+		f.logger.WithField("processor", "conditional filter").Trace("Adding processor")
 	}
 
 	if f.Spec.BayesianThreshold != 0 {
-		p, err := NewBayesianProcessor(f)
-		if err != nil {
-			return nil, fmt.Errorf("error creating bayesian processor: %w", err)
-		}
-		procs = append(procs, p)
+		procs = append(procs, asFactory(NewBayesianProcessor))
+		f.logger.WithField("processor", "bayesian").Trace("Adding processor")
 	}
 
 	return procs, nil
@@ -398,12 +395,8 @@ func (f *BucketFactory) LoadBucket() error {
 		return fmt.Errorf("%s: %w", f.Filename, err)
 	}
 
-	for _, p := range optProcs {
-		f.logger.WithField("processor", p.Description()).Trace("Added processor")
-	}
-
 	procs = append(procs, optProcs...)
-	f.processors = procs
+	f.processorFactories = procs
 
 	f.initDataFiles()
 

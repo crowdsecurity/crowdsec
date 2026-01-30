@@ -13,15 +13,11 @@ type OverflowProcessor struct {
 	DumbProcessor
 }
 
-func (*OverflowProcessor) Description() string {
-	return "overflow"
-}
-
-func NewOverflowProcessor(f *BucketFactory) *OverflowProcessor {
+func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 	p := OverflowProcessor{}
 	p.Filter = f.Spec.OverflowFilter
 	p.FilterRuntime = f.RunTimeOverflowFilter
-	return &p
+	return &p, nil
 }
 
 func (p *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {

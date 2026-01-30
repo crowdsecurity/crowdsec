@@ -38,10 +38,6 @@ func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 	return numerator / denominator
 }
 
-func (*BayesianProcessor) Description() string {
-	return "bayesian"
-}
-
 func NewBayesianProcessor(f *BucketFactory) (*BayesianProcessor, error) {
 	p := BayesianProcessor{}
 

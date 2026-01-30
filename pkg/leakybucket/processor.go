@@ -5,7 +5,6 @@ import (
 )
 
 type Processor interface {
-	Description() string
 	OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
 	OnBucketOverflow(f *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
@@ -14,8 +13,8 @@ type Processor interface {
 
 type DumbProcessor struct{}
 
-func (*DumbProcessor) Description() string {
-	return ""
+func NewDumbProcessor (f *BucketFactory) (*DumbProcessor, error) {
+	return &DumbProcessor{}, nil
 }
 
 func (*DumbProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
