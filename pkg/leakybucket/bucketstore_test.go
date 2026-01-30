@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"os"
@@ -16,7 +15,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -49,37 +47,33 @@ func TestBucket(t *testing.T) {
 	require.NoError(t, err)
 
 	err = exprhelpers.Init(nil)
-	if err != nil {
-		t.Fatalf("exprhelpers init failed: %s", err)
-	}
+	require.NoError(t, err)
 
 	if envSetting != "" {
-		if err := testOneBucket(t, hub, envSetting); err != nil {
-			t.Fatalf("Test '%s' failed : %s", envSetting, err)
-		}
-	} else {
-		var eg errgroup.Group
+		t.Run(filepath.Base(envSetting), func(t *testing.T) {
+			testOneBucket(t, hub, envSetting)
+		})
+		return
+	}
 
-		fds, err := os.ReadDir(testdata)
-		require.NoError(t, err)
+	fds, err := os.ReadDir(testdata)
+	require.NoError(t, err)
 
-		for _, fd := range fds {
-			if fd.Name() == "hub" {
-				continue
-			}
-
-			fname := filepath.Join(testdata, fd.Name())
-			log.Infof("Running test on %s", fname)
-			eg.Go(func() error {
-				return testOneBucket(t, hub, fname)
-			})
+	for _, fd := range fds {
+		if fd.Name() == "hub" {
+			continue
 		}
 
-		require.NoError(t, eg.Wait())
+		fname := filepath.Join(testdata, fd.Name())
+		log.Infof("Running test on %s", fname)
+
+		t.Run(fd.Name(), func(t *testing.T) {
+			testOneBucket(t, hub, fname)
+		})
 	}
 }
 
-func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 	var (
 		holders []BucketFactory
 
@@ -99,7 +93,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
 	if err != nil {
-		return fmt.Errorf("failed to parse template %s: %w", stagefiles, err)
+		t.Fatalf("failed to parse template %s: %v", stagefiles, err)
 	}
 
 	var out bytes.Buffer
@@ -137,10 +131,8 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 	}
 
 	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
-		return fmt.Errorf("tests from %s failed", dir)
+		t.Fatalf("tests from %s failed", dir)
 	}
-
-	return nil
 }
 
 func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
