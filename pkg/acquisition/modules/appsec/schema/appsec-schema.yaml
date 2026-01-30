@@ -1,0 +1,18 @@
+allOf:
+  - oneOf:
+      - required: [appsec_config]  # Configuration provided directly
+        not:
+          anyOf:
+            - required: [appsec_config_path]  # Cannot use path and inline config together
+            - required: [appsec_configs]
+      - required: [appsec_config_path]  # Path to external configuration
+        not:
+          required: [appsec_configs]  # Cannot use multiple configurations
+      - required: [appsec_configs]  # Multiple configurations
+        not:
+          anyOf:
+            - required: [appsec_config]  # Cannot use inline config with multiple configs
+            - required: [appsec_config_path]
+  - anyOf:
+      - required: [listen_addr]  # Address to listen on
+      - required: [listen_socket]  # Socket to listen on
