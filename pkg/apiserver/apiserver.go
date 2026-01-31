@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +28,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/rawlogstore"
 )
 
 const keyLength = 32
@@ -179,6 +180,18 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	})
 	router.Use(CustomRecoveryWithWriter)
 
+	// Scarecrow: initialize raw log reader for access logs export
+	var rawLogReader *rawlogstore.Reader
+	if config.RawLogCfg != nil && config.RawLogCfg.Enabled != nil && *config.RawLogCfg.Enabled {
+		rawLogReader, err = rawlogstore.NewReader(config.RawLogCfg.DbPath, log.WithField("service", "rawlog-reader"))
+		if err != nil {
+			log.WithError(err).Warn("failed to initialize raw log reader, access-logs endpoint will be unavailable")
+			rawLogReader = nil
+		} else {
+			log.Info("Raw log reader initialized for access-logs export")
+		}
+	}
+
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
 		Router:                        router,
@@ -187,6 +200,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
+		RawLogReader:                  rawLogReader,
 	}
 
 	var (
@@ -233,7 +247,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		cfg:		config,
+		cfg:            config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -462,6 +476,13 @@ func (s *APIServer) Close() {
 
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()
+	}
+
+	// Scarecrow: close raw log reader
+	if s.controller != nil && s.controller.RawLogReader != nil {
+		if err := s.controller.RawLogReader.Close(); err != nil {
+			log.WithError(err).Warn("failed to close raw log reader")
+		}
 	}
 }
 

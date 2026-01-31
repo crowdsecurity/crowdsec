@@ -23,11 +23,12 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	srv := &syslogserver.SyslogServer{
 		Logger:        s.logger.WithField("syslog", "internal"),
 		MaxMessageLen: s.config.MaxMessageLen,
+		Proto:         s.config.Proto,
 	}
 
 	msgChan := make(chan syslogserver.SyslogMessage)
 
-	if err := srv.Listen(s.config.Addr, s.config.Port); err != nil {
+	if err := srv.Listen(s.config.Addr, s.config.Port, s.config.Proto); err != nil {
 		return fmt.Errorf("could not start syslog server: %w", err)
 	}
 
@@ -206,6 +207,9 @@ func (s *Source) parseLine(syslogLine syslogserver.SyslogMessage) (string, error
 	if s.config.DisableRFCParser {
 		rest, err := stripPRI(syslogLine.Message)
 		if err != nil {
+			if s.config.AllowRawNoPRI {
+				return strings.TrimSuffix(string(syslogLine.Message), "\n"), nil
+			}
 			return "", err
 		}
 

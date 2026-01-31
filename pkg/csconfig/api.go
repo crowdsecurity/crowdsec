@@ -243,6 +243,8 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+	// Scarecrow: reference to raw log store config for access logs export
+	RawLogCfg *RawLogCfg `yaml:"-"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -435,6 +437,11 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		if err := c.API.CTI.Load(); err != nil {
 			return fmt.Errorf("loading CTI configuration: %w", err)
 		}
+	}
+
+	// Scarecrow: pass raw log config reference to API server for access logs export
+	if c.Crowdsec != nil && c.Crowdsec.RawLog != nil {
+		c.API.Server.RawLogCfg = c.Crowdsec.RawLog
 	}
 
 	return nil

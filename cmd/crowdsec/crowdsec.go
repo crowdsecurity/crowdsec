@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"os"
+	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+	"github.com/crowdsecurity/crowdsec/pkg/rawlogstore"
 )
 
 // initCrowdsec prepares the log processor service
@@ -75,7 +76,7 @@ func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 	for idx := range cConfig.Crowdsec.ParserRoutinesCount {
 		log.WithField("idx", idx).Info("Starting parser routine")
 		g.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runParse/"+strconv.Itoa(idx))
+			defer trace.CatchPanic("crowdsec/runParse/" + strconv.Itoa(idx))
 			runParse(ctx, logLines, inEvents, *parsers.Ctx, parsers.Nodes, stageCollector)
 			return nil
 		})
@@ -86,7 +87,7 @@ func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 	for idx := range cConfig.Crowdsec.BucketsRoutinesCount {
 		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runPour/"+strconv.Itoa(idx))
+			defer trace.CatchPanic("crowdsec/runPour/" + strconv.Itoa(idx))
 			runPour(ctx, inEvents, holders, bucketStore, cConfig, pourCollector)
 			return nil
 		})
@@ -102,7 +103,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 	for idx := range cConfig.Crowdsec.OutputRoutinesCount {
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runOutput/"+strconv.Itoa(idx))
+			defer trace.CatchPanic("crowdsec/runOutput/" + strconv.Itoa(idx))
 			return runOutput(ctx, inEvents, outEvents, bucketStore, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, sd)
 		})
 	}
@@ -166,11 +167,36 @@ func runCrowdsec(
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, dataSources, logLines, &acquisTomb); err != nil {
+	rawStore, err := rawlogstore.Start(ctx, cConfig.Crowdsec.RawLog, log.WithField("service", "rawlogstore"))
+	if err != nil {
+		return fmt.Errorf("starting rawlogstore: %w", err)
+	}
+
+	acqLines := make(chan pipeline.Event)
+	go teeAcquisition(ctx, acqLines, logLines, rawStore)
+
+	if err := acquisition.StartAcquisition(ctx, dataSources, acqLines, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
 	return nil
+}
+
+func teeAcquisition(ctx context.Context, input <-chan pipeline.Event, output chan<- pipeline.Event, rawStore *rawlogstore.Store) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case evt, ok := <-input:
+			if !ok {
+				return
+			}
+			if rawStore != nil {
+				rawStore.Ingest(evt)
+			}
+			output <- evt
+		}
+	}
 }
 
 // serveCrowdsec wraps the log processor service

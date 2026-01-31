@@ -28,6 +28,7 @@ type CrowdsecServiceCfg struct {
 	BucketStateFile           string           `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string           `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool             `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	RawLog                    *RawLogCfg       `yaml:"rawlog_store,omitempty"`
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
@@ -134,6 +135,10 @@ func (c *Config) LoadCrowdsec() error {
 
 	if err = c.LoadSimulation(); err != nil {
 		return fmt.Errorf("load error (simulation): %w", err)
+	}
+
+	if err = c.LoadRawLogStore(); err != nil {
+		return fmt.Errorf("load error (rawlog_store): %w", err)
 	}
 
 	if c.Crowdsec.ParserRoutinesCount <= 0 {

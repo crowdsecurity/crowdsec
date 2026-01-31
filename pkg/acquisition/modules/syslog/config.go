@@ -18,6 +18,7 @@ type Configuration struct {
 	Addr                              string `yaml:"listen_addr,omitempty"`
 	MaxMessageLen                     int    `yaml:"max_message_len,omitempty"`
 	DisableRFCParser                  bool   `yaml:"disable_rfc_parser,omitempty"` // if true, we don't try to be smart and just remove the PRI
+	AllowRawNoPRI                     bool   `yaml:"allow_raw_no_pri,omitempty"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -40,6 +41,10 @@ func ConfigurationFromYAML(y []byte) (Configuration, error) {
 func (c *Configuration) SetDefaults() {
 	if c.Mode == "" {
 		c.Mode = configuration.TAIL_MODE
+	}
+
+	if c.Proto == "" {
+		c.Proto = "udp"
 	}
 
 	if c.Addr == "" {

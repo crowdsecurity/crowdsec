@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/rawlogstore"
 )
 
 type Controller struct {
@@ -29,6 +30,8 @@ type Controller struct {
 	HandlerV1                     *v1.Controller
 	AutoRegisterCfg               *csconfig.LocalAPIAutoRegisterCfg
 	DisableRemoteLapiRegistration bool
+	// Scarecrow extensions
+	RawLogReader *rawlogstore.Reader
 }
 
 func (c *Controller) Init() error {
@@ -88,6 +91,7 @@ func (c *Controller) NewV1() error {
 		ConsoleConfig:      *c.ConsoleConfig,
 		TrustedIPs:         c.TrustedIPs,
 		AutoRegisterCfg:    c.AutoRegisterCfg,
+		RawLogReader:       c.RawLogReader,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)
@@ -119,8 +123,7 @@ func (c *Controller) NewV1() error {
 	jwtAuth.Use(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware)
 	{
 		jwtAuth.POST("/alerts", c.HandlerV1.CreateAlert)
-		jwtAuth.GET("/alerts", c.HandlerV1.FindAlerts)
-		jwtAuth.HEAD("/alerts", c.HandlerV1.FindAlerts)
+		// Scarecrow: GET/HEAD /alerts moved to eitherAuth to support API Key auth
 		jwtAuth.GET("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
 		jwtAuth.HEAD("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
 		jwtAuth.DELETE("/alerts/:alert_id", c.HandlerV1.DeleteAlertByID)
@@ -143,13 +146,21 @@ func (c *Controller) NewV1() error {
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
 		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
+		// Scarecrow: access logs export endpoint
+		apiKeyAuth.GET("/access-logs", c.HandlerV1.AccessLogs.GetAccessLogs)
 	}
 
 	eitherAuth := groupV1.Group("")
 	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.Middleware))
 	{
 		eitherAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
+		// Scarecrow: allow alerts to be queried by bouncer API key
+		eitherAuth.GET("/alerts", c.HandlerV1.FindAlerts)
+		eitherAuth.HEAD("/alerts", c.HandlerV1.FindAlerts)
 	}
+
+	// Scarecrow: public health endpoint (no auth required)
+	groupV1.GET("/health", c.HandlerV1.Health.GetHealth)
 
 	return nil
 }

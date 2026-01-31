@@ -9,6 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/rawlogstore"
 )
 
 type Controller struct {
@@ -24,6 +25,10 @@ type Controller struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	// Scarecrow extensions
+	AccessLogs *AccessLogsController
+	Health     *HealthController
 }
 
 type ControllerV1Config struct {
@@ -37,6 +42,9 @@ type ControllerV1Config struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	// Scarecrow extensions
+	RawLogReader *rawlogstore.Reader
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -57,6 +65,9 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
+		// Scarecrow extensions
+		AccessLogs: NewAccessLogsController(cfg.RawLogReader),
+		Health:     NewHealthController(),
 	}
 
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
