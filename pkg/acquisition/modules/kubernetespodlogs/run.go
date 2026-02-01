@@ -31,7 +31,7 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 	d.logger.Info("Starting Kubernetes Pod Logs acquisition")
 
-	cfg, err := buildConfig()
+	cfg, err := d.buildConfig()
 	if err != nil {
 		log.Fatal(err)
 	}

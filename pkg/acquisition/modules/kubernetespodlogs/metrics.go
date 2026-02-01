@@ -8,12 +8,12 @@ import (
 
 func (*Source) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{
-		metrics.DockerDatasourceLinesRead,
+		metrics.KubernetesPodLogsDataSourceLinesRead,
 	}
 }
 
 func (*Source) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{
-		metrics.DockerDatasourceLinesRead,
+		metrics.KubernetesPodLogsDataSourceLinesRead,
 	}
 }
