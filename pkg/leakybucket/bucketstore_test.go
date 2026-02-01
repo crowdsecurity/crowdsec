@@ -29,6 +29,8 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
+	t.Parallel()
+
 	var envSetting = os.Getenv("TEST_ONLY")
 
 	testdata := "./testdata"
@@ -50,6 +52,7 @@ func TestBucket(t *testing.T) {
 
 	if envSetting != "" {
 		t.Run(filepath.Base(envSetting), func(t *testing.T) {
+			t.Parallel()
 			testOneBucket(t, hub, envSetting)
 		})
 		return
@@ -67,6 +70,7 @@ func TestBucket(t *testing.T) {
 		log.Infof("Running test on %s", fname)
 
 		t.Run(fd.Name(), func(t *testing.T) {
+			t.Parallel()
 			testOneBucket(t, hub, fname)
 		})
 	}
