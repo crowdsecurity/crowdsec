@@ -419,6 +419,9 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- state.Response
 
+	// TODO: what should we do with challenge remediation for OOB matches ?
+	// (captcha has no special treatment, but is also useless for OOB)
+
 	//Now let's process the out of band rules
 
 	request.IsInBand = false
