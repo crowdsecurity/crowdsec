@@ -68,8 +68,7 @@ func PourItemToBucket(
 	bucketStore *BucketStore,
 	parsed *pipeline.Event,
 	collector *PourCollector,
-) (bool, error) {
-	var sent bool
+) error {
 	var buckey = bucket.Mapkey
 	var err error
 
@@ -78,7 +77,7 @@ func PourItemToBucket(
 	attempts := 0
 	start := time.Now().UTC()
 
-	for !sent {
+	for {
 		attempts += 1
 		/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 		if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now().UTC()) {
@@ -96,7 +95,7 @@ func PourItemToBucket(
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
 				if err != nil {
-					return false, err
+					return err
 				}
 				continue
 			}
@@ -126,7 +125,7 @@ func PourItemToBucket(
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
 					if err != nil {
-						return false, err
+						return err
 					}
 					continue
 				}
@@ -140,8 +139,8 @@ func PourItemToBucket(
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
 				collector.Add(bucket.Name, evt)
 			}
-			sent = true
-			continue
+			holder.logger.Debugf("bucket '%s' is poured", holder.Name)
+			return nil
 		default:
 			failed_sent += 1
 			// holder.logger.Tracef("Failed to send, try again")
@@ -149,8 +148,6 @@ func PourItemToBucket(
 
 		}
 	}
-	holder.logger.Debugf("bucket '%s' is poured", holder.Name)
-	return sent, nil
 }
 
 func LoadOrStoreBucketFromHolder(
@@ -275,7 +272,7 @@ func PourItemToHolders(
 			orderEvent[buckey].Add(1)
 		}
 
-		ok, err := PourItemToBucket(ctx, bucket, &holders[idx], buckets, &parsed, collector)
+		err = PourItemToBucket(ctx, bucket, &holders[idx], buckets, &parsed, collector)
 
 		if bucket.orderEvent {
 			orderEvent[buckey].Wait()
@@ -284,9 +281,7 @@ func PourItemToHolders(
 		if err != nil {
 			return false, fmt.Errorf("failed to pour bucket: %w", err)
 		}
-		if ok {
-			poured = true
-		}
+		poured = true
 	}
 	return poured, nil
 }
