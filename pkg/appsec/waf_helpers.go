@@ -46,6 +46,9 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"AppsecCookie": func(name string) *AppsecCookie {
 			return NewAppsecCookie(name)
 		},
+		"RequireValidChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
+			return w.RequireValidChallenge(state, request)
+		},
 	}
 }
 

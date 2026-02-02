@@ -156,6 +156,13 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		//FIXME: should we abort here ?
 	}
 
+	// User has requested valid challenge, but we did not find a valid cookie
+	// Immediately return, everything has been set already
+	if state.RequireChallenge {
+		r.logger.Debugf("valid challenge required, skipping WAF evaluation")
+		return nil
+	}
+
 	if state.DropInfo(request) != nil {
 		r.logger.Debug("drop helper triggered during pre_eval, skipping WAF evaluation")
 		return nil

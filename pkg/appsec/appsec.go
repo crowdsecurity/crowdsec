@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -41,6 +42,8 @@ const (
 	AllowRemediation     = "allow"
 	ChallengeRemediation = "challenge"
 )
+
+const ChallengeCookieName = "__crowdsec_challenge"
 
 type phase int
 
@@ -112,6 +115,8 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	RequireChallenge bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -130,6 +135,7 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPCookies = nil
 	s.PendingAction = nil
 	s.PendingHTTPCode = nil
+	s.RequireChallenge = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -863,6 +869,29 @@ func (w *AppsecRuntimeConfig) SetChallengeBody(state *AppsecRequestState, conten
 func (w *AppsecRuntimeConfig) SetChallengeCookie(state *AppsecRequestState, cookie AppsecCookie) error {
 	w.Logger.Debugf("adding challenge cookie")
 	state.Response.UserHTTPCookies = append(state.Response.UserHTTPCookies, cookie)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	w.Logger.Debugf("requiring valid challenge")
+
+	cookie, err := request.HTTPRequest.Cookie(ChallengeCookieName)
+	if err != nil || cookie.Value == "" {
+		w.Logger.Debugf("no valid challenge cookie found")
+		challengePage, err := challenge.GetChallengePage()
+		if err != nil {
+			return fmt.Errorf("unable to get challenge page: %w", err)
+		}
+		w.SetAction(state, ChallengeRemediation)
+		w.SetHTTPCode(state, http.StatusOK)
+
+		// FIXME: don't do this here, should be handled the same way as a block
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+
+		w.SetChallengeBody(state, challengePage)
+		state.RequireChallenge = true
+		return nil
+	}
 	return nil
 }
 
