@@ -3,8 +3,6 @@ package leakybucket
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"os"
@@ -16,7 +14,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -32,6 +29,8 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
+	t.Parallel()
+
 	var envSetting = os.Getenv("TEST_ONLY")
 
 	testdata := "./testdata"
@@ -49,37 +48,35 @@ func TestBucket(t *testing.T) {
 	require.NoError(t, err)
 
 	err = exprhelpers.Init(nil)
-	if err != nil {
-		t.Fatalf("exprhelpers init failed: %s", err)
-	}
+	require.NoError(t, err)
 
 	if envSetting != "" {
-		if err := testOneBucket(t, hub, envSetting); err != nil {
-			t.Fatalf("Test '%s' failed : %s", envSetting, err)
-		}
-	} else {
-		var eg errgroup.Group
+		t.Run(filepath.Base(envSetting), func(t *testing.T) {
+			t.Parallel()
+			testOneBucket(t, hub, envSetting)
+		})
+		return
+	}
 
-		fds, err := os.ReadDir(testdata)
-		require.NoError(t, err)
+	fds, err := os.ReadDir(testdata)
+	require.NoError(t, err)
 
-		for _, fd := range fds {
-			if fd.Name() == "hub" {
-				continue
-			}
-
-			fname := filepath.Join(testdata, fd.Name())
-			log.Infof("Running test on %s", fname)
-			eg.Go(func() error {
-				return testOneBucket(t, hub, fname)
-			})
+	for _, fd := range fds {
+		if fd.Name() == "hub" {
+			continue
 		}
 
-		require.NoError(t, eg.Wait())
+		fname := filepath.Join(testdata, fd.Name())
+		log.Infof("Running test on %s", fname)
+
+		t.Run(fd.Name(), func(t *testing.T) {
+			t.Parallel()
+			testOneBucket(t, hub, fname)
+		})
 	}
 }
 
-func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 	var (
 		holders []BucketFactory
 
@@ -93,25 +90,19 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
-		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
-	}
+	stagefiles, err = os.ReadFile(stagecfg)
+	require.NoError(t, err)
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
-	if err != nil {
-		return fmt.Errorf("failed to parse template %s: %w", stagefiles, err)
-	}
+	require.NoError(t, err)
 
 	var out bytes.Buffer
 
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		t.Fatalf("failed to parse %s : %s", stagecfg, err)
-	}
+	err = yaml.UnmarshalStrict(out.Bytes(), &stages)
+	require.NoError(t, err)
 
 	scenarios := []*cwhub.Item{}
 
@@ -132,38 +123,33 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
 	holders, response, err := LoadBuckets(cscfg, hub, scenarios, bucketStore, false)
-	if err != nil {
-		t.Fatalf("failed loading bucket : %s", err)
-	}
+	require.NoError(t, err)
 
 	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
-		return fmt.Errorf("tests from %s failed", dir)
+		t.Fatalf("tests from %s failed", dir)
 	}
-
-	return nil
 }
 
 func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
 	var results []pipeline.Event
 
-	/* now we can load the test files */
-	// process the yaml
 	yamlFile, err := os.Open(file)
-	if err != nil {
-		t.Errorf("yamlFile.Get err   #%v ", err)
-	}
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = yamlFile.Close() })
+
 	dec := json.NewDecoder(yamlFile)
 	dec.DisallowUnknownFields()
+
 	// dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
-			return false
-		}
-		log.Warning("end of test file")
-	}
+	require.NotErrorIs(t, err, io.EOF)
+	require.NoError(t, err, "failed to decode test file %q", file)
+
+	var extra json.RawMessage
+	err = dec.Decode(&extra)
+	require.ErrorIs(t, err, io.EOF, "test file %q has trailing content after the first JSON value", file)
+
 	var latest_ts time.Time
 	ctx := t.Context()
 	for _, in := range tf.Lines {
@@ -171,9 +157,8 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
 
-		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
-			t.Fatalf("Failed to parse time from input event : %s", err)
-		}
+		err := ts.UnmarshalText([]byte(in.MarshaledTime))
+		require.NoError(t, err)
 
 		if latest_ts.IsZero() {
 			latest_ts = ts
@@ -185,9 +170,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
 		ok, err := PourItemToHolders(ctx, in, holders, bucketStore, nil)
-		if err != nil {
-			t.Fatalf("Failed to pour : %s", err)
-		}
+		require.NoError(t, err)
 
 		if !ok {
 			log.Warning("Event wasn't poured")
@@ -208,9 +191,7 @@ POLL_AGAIN:
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
 				ok, err := PourItemToHolders(ctx, ret, holders, bucketStore, nil)
-				if err != nil {
-					t.Fatalf("Failed to pour : %s", err)
-				}
+				require.NoError(t, err)
 				if !ok {
 					log.Warning("Event wasn't poured")
 				}
