@@ -43,6 +43,22 @@ func ParseQueryIntoValues(m url.Values, query string) {
 	}
 }
 
+// ParseURL is a permissive URL parser that handles edge cases like
+// authority-form URIs (host:port) used in CONNECT requests.
+// It never returns an error - malformed URLs are parsed best-effort.
+func ParseURL(rawURL string) *url.URL {
+	// Try standard parsing first
+	if u, err := url.Parse(rawURL); err == nil {
+		return u
+	}
+
+	// Fallback: store raw value in Opaque to preserve original request-target
+	// This handles cases like CONNECT authority-form (host:port)
+	return &url.URL{
+		Opaque: rawURL,
+	}
+}
+
 func hexDigitToByte(digit byte) (byte, bool) {
 	switch {
 	case digit >= '0' && digit <= '9':
