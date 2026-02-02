@@ -8,16 +8,13 @@ import (
 // BucketStore is the struct used to hold buckets during the lifecycle of the app
 // (i.e. between reloads).
 type BucketStore struct {
-	wgDumpState *sync.WaitGroup
-	wgPour      *sync.WaitGroup
-	mu sync.Mutex
+	mu sync.Mutex        // lock to mutate m
 	m map[string]*Leaky
+	muFlow sync.RWMutex // read lock for pours, write lock for dump/snapshot/GC
 }
 
 func NewBucketStore() *BucketStore {
 	return &BucketStore{
-		wgDumpState: &sync.WaitGroup{},
-		wgPour:      &sync.WaitGroup{},
 		m:           make(map[string]*Leaky),
 	}
 }
@@ -61,4 +58,20 @@ func (b *BucketStore) Len() int {
 	n := len(b.m)
 	b.mu.Unlock()
 	return n
+}
+
+// BeginPour blocks while a dump/snapshot is in progress.
+//
+// The returned function *must* be called exactly once, usually deferred, after the event has been poured.
+func (b *BucketStore) BeginPour() (end func()) {
+	b.muFlow.RLock()
+	return b.muFlow.RUnlock
+}
+
+// FreezePours prevents new pours to start and waits for in-flight pours to finish.
+//
+// The returned function *must* be called exactly once, usually deferred, to allow pouring again.
+func (b *BucketStore) FreezePours() (resume func()) {
+	b.muFlow.Lock()
+	return b.muFlow.Unlock
 }

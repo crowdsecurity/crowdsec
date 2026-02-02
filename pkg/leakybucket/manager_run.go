@@ -22,9 +22,9 @@ But when we are running in time-machine mode, the reference time is in logs and 
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.
 */
 func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
-	bucketStore.wgPour.Wait()
-	bucketStore.wgDumpState.Add(1)
-	defer bucketStore.wgDumpState.Done()
+	resume := bucketStore.FreezePours()
+	// to be on the safe side, keep the freeze lock for the whole function
+	defer resume()
 
 	snap := bucketStore.Snapshot()
 
@@ -183,7 +183,7 @@ func LoadOrStoreBucketFromHolder(
 		go func() {
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
-			fresh_bucket.LeakRoutine(ctx)
+			fresh_bucket.LeakRoutine(ctx, buckets)
 		}()
 		leaky = fresh_bucket
 		// once the created goroutine is ready to process event, we can return it

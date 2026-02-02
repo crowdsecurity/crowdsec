@@ -18,6 +18,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+type pourGate interface {
+	BeginPour() func()
+}
+
 // Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
@@ -52,7 +56,7 @@ type Leaky struct {
 	Leakspeed    time.Duration
 	BucketConfig *BucketFactory
 	Duration     time.Duration
-	Pour         func(*Leaky, pipeline.Event) `json:"-"`
+	Pour         func(*Leaky, pourGate, pipeline.Event) `json:"-"`
 	// Profiling when set to true enables profiling of bucket
 	Profiling           bool
 	timedOverflow       bool
@@ -61,8 +65,6 @@ type Leaky struct {
 	scopeType           ScopeType
 	hash                string
 	scenarioVersion     string
-	wgPour              *sync.WaitGroup
-	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
 	cancel              context.CancelFunc
@@ -117,8 +119,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		scenarioVersion: f.ScenarioVersion,
 		hash:            f.hash,
 		Simulated:       f.Simulated,
-		wgPour:          f.wgPour,
-		wgDumpState:     f.wgDumpState,
 		mutex:           &sync.Mutex{},
 		orderEvent:      f.orderEvent,
 	}
@@ -143,7 +143,7 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 
 // for now mimic a leak routine
 // LeakRoutine is the life of a bucket. It dies when the bucket underflows or overflows
-func (l *Leaky) LeakRoutine(ctx context.Context) {
+func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
@@ -202,7 +202,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context) {
 			}
 			metrics.BucketsPour.With(prometheus.Labels{"name": l.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			l.Pour(l, *msg) // glue for now
+			l.Pour(l, gate, *msg) // glue for now
 
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(l.BucketConfig, *msg, l)
@@ -295,10 +295,9 @@ func (l *Leaky) LeakRoutine(ctx context.Context) {
 }
 
 // TODO: can't be method, a field has the same name
-func Pour(l *Leaky, msg pipeline.Event) {
-	l.wgDumpState.Wait()
-	l.wgPour.Add(1)
-	defer l.wgPour.Done()
+func Pour(l *Leaky, gate pourGate, msg pipeline.Event) {
+	end := gate.BeginPour()
+	defer end()
 
 	l.Total_count += 1
 	if l.First_ts.IsZero() {

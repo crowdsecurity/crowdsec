@@ -8,7 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TimeMachinePour(l *Leaky, msg pipeline.Event) {
+func TimeMachinePour(l *Leaky, _ pourGate, msg pipeline.Event) {
 	var (
 		d   time.Time
 		err error
