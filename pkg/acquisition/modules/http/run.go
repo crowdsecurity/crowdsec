@@ -37,7 +37,7 @@ func authorizeRequest(r *http.Request, hc *Configuration) error {
 	}
 
 	if hc.AuthType == "headers" {
-		for key, value := range *hc.Headers {
+		for key, value := range hc.Headers {
 			if r.Header.Get(key) != value {
 				return errors.New("invalid headers")
 			}
@@ -115,9 +115,9 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 
 		switch s.metricsLevel {
 		case metrics.AcquisitionMetricsLevelAggregated:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": "", "datasource_type": ModuleName, "acquis_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelFull:
-			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": "http", "acquis_type": hc.Labels["type"]}).Inc()
+			metrics.HTTPDataSourceLinesRead.With(prometheus.Labels{"path": hc.Path, "src": srcHost, "datasource_type": ModuleName, "acquis_type": hc.Labels["type"]}).Inc()
 		case metrics.AcquisitionMetricsLevelNone:
 			// No metrics for this level
 		}
@@ -169,7 +169,7 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 		}
 
 		if s.Config.CustomHeaders != nil {
-			for key, value := range *s.Config.CustomHeaders {
+			for key, value := range s.Config.CustomHeaders {
 				w.Header().Set(key, value)
 			}
 		}

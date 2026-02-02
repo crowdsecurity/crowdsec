@@ -52,16 +52,15 @@ func PushAlerts(ctx context.Context, alerts []pipeline.RuntimeAlert, client *api
 	return nil
 }
 
-var bucketOverflows []pipeline.Event
-
 func runOutput(
 	ctx context.Context,
 	input chan pipeline.Event,
 	overflow chan pipeline.Event,
-	buckets *leaky.Buckets,
+	bucketStore *leaky.BucketStore,
 	postOverflowCTX parser.UnixParserCtx,
 	postOverflowNodes []parser.Node,
 	client *apiclient.ApiClient,
+	sd *StateDumper,
 ) error {
 	var (
 		cache      []pipeline.RuntimeAlert
@@ -106,25 +105,25 @@ func runOutput(
 			}
 			return nil
 		case event := <-overflow:
-			ov := event.Overflow
 			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
-			if ov.Alert == nil && ov.Mapkey != "" {
-				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+				bucketStore.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
 			}
 
 			/* process post overflow parser nodes */
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, sd.StageParse)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 
+			ov := event.Overflow
 			log.Info(*ov.Alert.Message)
 
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			// dump after postoveflow processing to avoid missing whitelist info
 			if flags.DumpDir != "" && ov.Alert != nil {
-				bucketOverflows = append(bucketOverflows, event)
+				sd.BucketOverflows = append(sd.BucketOverflows, event)
 			}
 
 			if ov.Whitelisted {

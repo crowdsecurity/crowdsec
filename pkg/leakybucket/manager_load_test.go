@@ -13,14 +13,14 @@ type cfgTest struct {
 
 func runTest(tests []cfgTest) error {
 	for idx, cfg := range tests {
-		err := LoadBucket(&cfg.cfg)
+		err := cfg.cfg.LoadBucket()
 		if cfg.loadable && err != nil {
 			return fmt.Errorf("expected loadable result (%d/%d), got: %s", idx+1, len(tests), err)
 		}
 		if !cfg.loadable && err == nil {
 			return fmt.Errorf("expected unloadable result (%d/%d)", idx+1, len(tests))
 		}
-		err = ValidateFactory(&cfg.cfg)
+		err = cfg.cfg.Validate()
 		if cfg.valid && err != nil {
 			return fmt.Errorf("expected valid result (%d/%d), got: %s", idx+1, len(tests), err)
 		}

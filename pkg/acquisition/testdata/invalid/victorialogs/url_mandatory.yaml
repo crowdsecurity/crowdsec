@@ -1,0 +1,4 @@
+# wantErr: datasource of type victorialogs: VictoriaLogs url is mandatory
+source: victorialogs
+labels:
+  type: sometype

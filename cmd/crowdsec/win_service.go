@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -22,6 +21,7 @@ import (
 
 type crowdsec_winservice struct {
 	config *csconfig.Config
+	stateDumper *StateDumper
 }
 
 func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
@@ -61,7 +61,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 		log.Fatal(err)
 	}
 
-	err = WindowsRun(ctx, cConfig)
+	err = WindowsRun(ctx, cConfig, m.stateDumper)
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
 		log.Fatal(err)
@@ -70,13 +70,13 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	return false, 0
 }
 
-func runService(name string) error {
+func runService(name string, sd *StateDumper) error {
 	// All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
 	err := eventlog.InstallAsEventCreate("CrowdSec", eventlog.Error|eventlog.Warning|eventlog.Info)
 	if err != nil {
-		if errno, ok := err.(syscall.Errno); ok {   //nolint:errorlint
+		if errno, ok := err.(windows.Errno); ok {   //nolint:errorlint
 			if errno == windows.ERROR_ACCESS_DENIED {
-				log.Warnf("Access denied when installing event source, running as non-admin ?")
+				log.Warnf("Access denied when installing event source, running as non-admin?")
 			} else {
 				log.Warnf("Failed to install event log: %s (%d)", err, errno)
 			}
@@ -110,7 +110,7 @@ func runService(name string) error {
 	}
 
 	log.Infof("starting %s service", name)
-	winsvc := crowdsec_winservice{config: cConfig}
+	winsvc := crowdsec_winservice{config: cConfig, stateDumper: sd}
 
 	if err := svc.Run(name, &winsvc); err != nil {
 		return fmt.Errorf("%s service failed: %w", name, err)

@@ -111,7 +111,6 @@ we use in this test suite:
 - [bats-assert](https://github.com/bats-core/bats-assert)
 - [bats-support](https://github.com/bats-core/bats-support)
 - [bats-file](https://github.com/bats-core/bats-file)
-- [bats-mock](https://github.com/grayhemp/bats-mock)
 
 # setup and teardown
 
@@ -304,12 +303,6 @@ See the `lib/*.sh` and `bats/*.bats` files for other tricks we employ.
 We included the [bats-file](https://github.com/bats-core/bats-file) plugin to
 check the result of file system operations: existence, type/size/ownership checks
 on files, symlinks, directories, sockets.
-
-## mocking external commands
-
-The [bats-mock](https://github.com/grayhemp/bats-mock) plugin allows you to define
-a "fake" behavior for the external commands called by a package under test, and
-to record and assert which parameters are passed to it.
 
 ## gotchas
 

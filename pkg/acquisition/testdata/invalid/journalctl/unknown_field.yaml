@@ -1,0 +1,5 @@
+# wantErr: datasource of type journalctl: cannot parse: [3:1] unknown field "filename"
+source: journalctl
+filename: /path/to/file.log
+labels:
+  type: sometype

@@ -26,115 +26,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestConfiguration(t *testing.T) {
-	log.Infof("Test 'TestConfigure'")
-
-	ctx := t.Context()
-
-	tests := []struct {
-		config       string
-		expectedErr  string
-		password     string
-		waitForReady time.Duration
-		testName     string
-	}{
-		{
-			config:      `foobar: asd`,
-			expectedErr: `[1:1] unknown field "foobar"`,
-			testName:    "Unknown field",
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs`,
-			expectedErr: "url is mandatory",
-			testName:    "Missing url",
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs
-url: http://localhost:9428/
-`,
-			expectedErr: "query is mandatory",
-			testName:    "Missing query",
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs
-url: http://localhost:9428/
-query: >
-        {server="demo"}
-limit: true
-`,
-			expectedErr: "[7:8] cannot unmarshal bool into Go struct field Configuration.Limit of type int",
-			testName:    "mismatched type",
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs
-url: http://localhost:9428/
-query: >
-        {server="demo"}
-`,
-			expectedErr: "",
-			testName:    "Correct config",
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs
-url: http://localhost:9428/
-wait_for_ready: 5s
-query: >
-        {server="demo"}
-`,
-			expectedErr:  "",
-			testName:     "Correct config with wait_for_ready",
-			waitForReady: 5 * time.Second,
-		},
-		{
-			config: `
-mode: tail
-source: victorialogs
-url: http://localhost:9428/
-auth:
-  username: foo
-  password: bar
-query: >
-        {server="demo"}
-`,
-			expectedErr: "",
-			password:    "bar",
-			testName:    "Correct config with password",
-		},
-	}
-	subLogger := log.WithField("type", "victorialogs")
-
-	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			vlSource := victorialogs.Source{}
-			err := vlSource.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
-
-			if test.password != "" {
-				p := vlSource.Config.Auth.Password
-				if test.password != p {
-					t.Fatalf("Password mismatch : %s != %s", test.password, p)
-				}
-			}
-
-			if test.waitForReady != 0 {
-				if vlSource.Config.WaitForReady != test.waitForReady {
-					t.Fatalf("Wrong WaitForReady %v != %v", vlSource.Config.WaitForReady, test.waitForReady)
-				}
-			}
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
 
@@ -194,7 +85,7 @@ func TestConfigureDSN(t *testing.T) {
 
 	for _, test := range tests {
 		subLogger := log.WithFields(log.Fields{
-			"type": "victorialogs",
+			"type": victorialogs.ModuleName,
 			"name": test.name,
 		})
 
@@ -296,7 +187,7 @@ since: 1h
 
 	for _, ts := range tests {
 		logger := log.New()
-		subLogger := logger.WithField("type", "victorialogs")
+		subLogger := logger.WithField("type", victorialogs.ModuleName)
 		vlSource := victorialogs.Source{}
 
 		err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -377,7 +268,7 @@ query: >
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
 			subLogger := logger.WithFields(log.Fields{
-				"type": "victorialogs",
+				"type": victorialogs.ModuleName,
 				"name": ts.name,
 			})
 
@@ -455,7 +346,7 @@ query: >
   server:"demo"
 `
 	logger := log.New()
-	subLogger := logger.WithField("type", "victorialogs")
+	subLogger := logger.WithField("type", victorialogs.ModuleName)
 	title := time.Now().String()
 	vlSource := victorialogs.Source{}
 

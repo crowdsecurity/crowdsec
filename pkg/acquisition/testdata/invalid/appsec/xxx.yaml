@@ -1,0 +1,5 @@
+# wantErr: datasource of type appsec: missing lapi client credentials
+source: appsec
+labels:
+  type: sometype
+appsec_config: something

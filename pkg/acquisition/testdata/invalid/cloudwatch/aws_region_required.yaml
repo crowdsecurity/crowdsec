@@ -1,0 +1,6 @@
+# wantErr: datasource of type cloudwatch: aws_region is not specified, specify it or aws_config_dir
+source: cloudwatch
+labels:
+  type: sometype
+group_name: testgroup
+

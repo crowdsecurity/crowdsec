@@ -31,6 +31,7 @@ linters:
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - unparam      # Reports unused function parameters
     - errchkjson   # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
+    - unqueryvet   # Detects SELECT * in SQL queries and SQL builders, preventing performance issues and encouraging explicit column selection.
 
     # we allow named returns (to improve readability, in the function signatures)
     # but disallow implicit (or "naked") returns, to improve readability in the actual code.
@@ -111,8 +112,6 @@ linters:
     depguard:
       rules:
         wrap:
-          files:
-            - '!**/pkg/database/*.go'
           deny:
             - pkg: github.com/pkg/errors
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
@@ -122,7 +121,7 @@ linters:
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
-            - '!**/pkg/leakybucket/buckets_test.go'
+            - '!**/pkg/leakybucket/bucketstore_test.go'
             - '!**/pkg/leakybucket/manager_load.go'
             - '!**/pkg/parser/node.go'
             - '!**/pkg/parser/node_test.go'
@@ -144,7 +143,7 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - syscall.FreeLibrary
+        - golang.org/x/sys/windows.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
         - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
@@ -522,11 +521,6 @@ linters:
       - linters:
           - govet
         text: 'shadow: declaration of "(err|ctx)" shadows declaration'
-
-      # https://github.com/timakin/bodyclose
-      - linters:
-          - bodyclose
-        text: response body must be closed
 
       - linters:
           - revive

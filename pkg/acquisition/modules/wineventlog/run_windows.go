@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"syscall"
 	"time"
 
 	"github.com/google/winops/winlog"
@@ -88,7 +87,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 				s.logger.Errorf("WaitForSingleObject failed: %s", err)
 				return err
 			}
-			if status == syscall.WAIT_OBJECT_0 {
+			if status == windows.WAIT_OBJECT_0 {
 				renderedEvents, err := s.getXMLEvents(s.evtConfig, publisherCache, subscription, 500)
 				if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 					windows.ResetEvent(s.evtConfig.SignalEvent)
@@ -98,7 +97,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 				}
 				for _, event := range renderedEvents {
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+						metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 					}
 					l := pipeline.Line{}
 					l.Raw = event
@@ -152,7 +151,7 @@ OUTER_LOOP:
 			for _, evt := range evts {
 				s.logger.Tracef("Event: %s", evt)
 				if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": "wineventlog", "acquis_type": s.config.Labels["type"]}).Inc()
+					metrics.WineventlogDataSourceLinesRead.With(prometheus.Labels{"source": s.name, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 				}
 				l := pipeline.Line{}
 				l.Raw = evt
