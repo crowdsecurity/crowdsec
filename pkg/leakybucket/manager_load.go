@@ -1,12 +1,13 @@
 package leakybucket
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -67,8 +68,6 @@ type BucketFactory struct {
 	ScenarioVersion     string                     `yaml:"version,omitempty"`
 	hash                string
 	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
-	wgPour              *sync.WaitGroup
-	wgDumpState         *sync.WaitGroup
 	orderEvent          bool
 }
 
@@ -164,9 +163,6 @@ func loadBucketFactoriesFromFile(
 
 		f.ScenarioVersion = item.State.LocalVersion
 		f.hash = item.State.LocalHash
-
-		f.wgDumpState = bucketStore.wgDumpState
-		f.wgPour = bucketStore.wgPour
 
 		err = f.LoadBucket()
 		if err != nil {
@@ -353,4 +349,15 @@ func (f *BucketFactory) LoadBucket() error {
 	}
 
 	return nil
+}
+
+func (f *BucketFactory) BucketKey(stackkey string) string {
+	h := sha1.New()
+	h.Write([]byte(f.Filter))
+	// use zero byte separators to avoid conflicts, i.e. "ab"+"c" vs "a"+"bc"
+	h.Write([]byte{0})
+	h.Write([]byte(stackkey))
+	h.Write([]byte{0})
+	h.Write([]byte(f.Name))
+	return hex.EncodeToString(h.Sum(nil))
 }

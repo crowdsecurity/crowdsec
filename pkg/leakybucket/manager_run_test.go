@@ -38,8 +38,6 @@ func TestGCandDump(t *testing.T) {
 			Duration:    "0.5s",
 			Blackhole:   "1m",
 			Filter:      "true",
-			wgDumpState: bucketStore.wgDumpState,
-			wgPour:      bucketStore.wgPour,
 		},
 		// one long counter
 		{
@@ -50,8 +48,6 @@ func TestGCandDump(t *testing.T) {
 			Capacity:    -1,
 			Duration:    "10m",
 			Filter:      "true",
-			wgDumpState: bucketStore.wgDumpState,
-			wgPour:      bucketStore.wgPour,
 		},
 		// slow leaky
 		{
@@ -62,8 +58,6 @@ func TestGCandDump(t *testing.T) {
 			Capacity:    5,
 			LeakSpeed:   "10m",
 			Filter:      "true",
-			wgDumpState: bucketStore.wgDumpState,
-			wgPour:      bucketStore.wgPour,
 		},
 	}
 
@@ -119,8 +113,6 @@ func TestShutdownBuckets(t *testing.T) {
 				Capacity:    -1,
 				Duration:    "10m",
 				Filter:      "true",
-				wgDumpState: bucketStore.wgDumpState,
-				wgPour:      bucketStore.wgPour,
 			},
 			// slow leaky
 			{
@@ -131,8 +123,6 @@ func TestShutdownBuckets(t *testing.T) {
 				Capacity:    5,
 				LeakSpeed:   "10m",
 				Filter:      "true",
-				wgDumpState: bucketStore.wgDumpState,
-				wgPour:      bucketStore.wgPour,
 			},
 		}
 	)
