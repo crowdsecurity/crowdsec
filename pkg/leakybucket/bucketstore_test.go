@@ -90,25 +90,19 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 
 	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
-		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
-	}
+	stagefiles, err = os.ReadFile(stagecfg)
+	require.NoError(t, err)
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
-	if err != nil {
-		t.Fatalf("failed to parse template %s: %v", stagefiles, err)
-	}
+	require.NoError(t, err)
 
 	var out bytes.Buffer
 
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		t.Fatalf("failed to parse %s : %s", stagecfg, err)
-	}
+	err = yaml.UnmarshalStrict(out.Bytes(), &stages)
+	require.NoError(t, err)
 
 	scenarios := []*cwhub.Item{}
 
@@ -129,9 +123,7 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
 	holders, response, err := LoadBuckets(cscfg, hub, scenarios, bucketStore, false)
-	if err != nil {
-		t.Fatalf("failed loading bucket : %s", err)
-	}
+	require.NoError(t, err)
 
 	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
 		t.Fatalf("tests from %s failed", dir)
@@ -165,9 +157,8 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
 
-		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
-			t.Fatalf("Failed to parse time from input event : %s", err)
-		}
+		err := ts.UnmarshalText([]byte(in.MarshaledTime))
+		require.NoError(t, err)
 
 		if latest_ts.IsZero() {
 			latest_ts = ts
@@ -179,9 +170,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
 		ok, err := PourItemToHolders(ctx, in, holders, bucketStore, nil)
-		if err != nil {
-			t.Fatalf("Failed to pour : %s", err)
-		}
+		require.NoError(t, err)
 
 		if !ok {
 			log.Warning("Event wasn't poured")
@@ -202,9 +191,7 @@ POLL_AGAIN:
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
 				ok, err := PourItemToHolders(ctx, ret, holders, bucketStore, nil)
-				if err != nil {
-					t.Fatalf("Failed to pour : %s", err)
-				}
+				require.NoError(t, err)
 				if !ok {
 					log.Warning("Event wasn't poured")
 				}
