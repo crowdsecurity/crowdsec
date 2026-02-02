@@ -1,4 +1,4 @@
-package appsec
+package cookie
 
 import (
 	"net/http"

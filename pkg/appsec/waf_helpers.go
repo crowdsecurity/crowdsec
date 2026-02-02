@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -31,7 +32,7 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"RemoveOutBandRuleByName": func(name string) error { return w.RemoveOutbandRuleByName(state, name) },
 		"DropRequest":             func(reason string) error { return w.DropRequest(state, request, reason) },
 		"SetChallengeBody":        func(body string) error { return w.SetChallengeBody(state, body) },
-		"SetChallengeCookie":      func(cookie AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
+		"SetChallengeCookie":      func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
@@ -43,8 +44,8 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"AppsecCookie": func(name string) *AppsecCookie {
-			return NewAppsecCookie(name)
+		"AppsecCookie": func(name string) *cookie.AppsecCookie {
+			return cookie.NewAppsecCookie(name)
 		},
 		"RequireValidChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
 			return w.RequireValidChallenge(state, request)
@@ -75,7 +76,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"SendAlert":          func() error { return w.SendAlert(state) },
 		"DumpRequest":        request.DumpRequest,
 		"SetChallengeBody":   func(body string) error { return w.SetChallengeBody(state, body) },
-		"SetChallengeCookie": func(cookie AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
-		"AppsecCookie":       func(name string) *AppsecCookie { return NewAppsecCookie(name) },
+		"SetChallengeCookie": func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
+		"AppsecCookie":       func(name string) *cookie.AppsecCookie { return cookie.NewAppsecCookie(name) },
 	}
 }

@@ -4,14 +4,21 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"text/template"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/davecgh/go-spew/spew"
 	esbuildapi "github.com/evanw/esbuild/pkg/api"
 )
+
+const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
+const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
+const ChallengeCookieName = "__crowdsec_challenge"
 
 //go:embed js/src/*
 var jsFS embed.FS
@@ -21,7 +28,7 @@ var htmlTemplate string
 
 const encryptionKey = "foobarlol42"
 
-func buildFingerprintScript() (map[string]string, error) {
+func BuildFingerprintScript() (string, error) {
 	embeddedFSPlugin := esbuildapi.Plugin{
 		Name: "embedded-fs",
 		Setup: func(build esbuildapi.PluginBuild) {
@@ -70,14 +77,8 @@ func buildFingerprintScript() (map[string]string, error) {
 	}
 
 	result := esbuildapi.Build(esbuildapi.BuildOptions{
-
-		/*Stdin: &esbuildapi.StdinOptions{
-			Contents: "",
-		},*/
-
-		EntryPoints: []string{"js/src/index.ts"},
-		//Bundle:      true,
-		//Outdir:            "/", // Output directory
+		EntryPoints:       []string{"js/src/index.ts"},
+		Bundle:            true,
 		Write:             false,
 		MinifyWhitespace:  true,
 		MinifyIdentifiers: true,
@@ -86,21 +87,17 @@ func buildFingerprintScript() (map[string]string, error) {
 		Define: map[string]string{
 			"__FP_ENCRYPTION_KEY__": fmt.Sprintf("\"%s\"", encryptionKey),
 		},
-		Plugins: []esbuildapi.Plugin{embeddedFSPlugin},
-		//Format:   esbuildapi.FormatESModule,
+		Plugins:  []esbuildapi.Plugin{embeddedFSPlugin},
+		Format:   esbuildapi.FormatESModule,
 		Target:   esbuildapi.ES2015,
 		Platform: esbuildapi.PlatformBrowser,
 	})
 
 	if len(result.Errors) > 0 {
-		return nil, fmt.Errorf("build failed with errors: %v", result.Errors)
+		return "", fmt.Errorf("build failed with errors: %v", result.Errors)
 	}
 
-	ret := make(map[string]string)
-	for _, f := range result.OutputFiles {
-		ret[f.Path] = string(f.Contents)
-	}
-	return ret, nil
+	return string(result.OutputFiles[0].Contents), nil
 }
 
 // resolveEmbeddedPath emulates esbuild's relative resolution inside the embedded FS.
@@ -172,7 +169,7 @@ func fileExistsInEmbed(p string) bool {
 }
 
 func GetChallengePage() (string, error) {
-	scripts, err := buildFingerprintScript()
+	/*scripts, err := buildFingerprintScript()
 	if err != nil {
 		return "", fmt.Errorf("failed to build fingerprinting script: %w", err)
 	}
@@ -182,7 +179,7 @@ func GetChallengePage() (string, error) {
 	scriptContent := ""
 	for _, content := range scripts {
 		scriptContent += content
-	}
+	}*/
 
 	// We are using text/template instead of html/template because the data we send is pretty much hardcoded and trusted.
 	// Using html/template would escape the JS code we are adding, making it unusable.
@@ -194,7 +191,18 @@ func GetChallengePage() (string, error) {
 	var renderedPage strings.Builder
 
 	templateObj.Execute(&renderedPage, map[string]string{
-		"FPScript": scriptContent,
+		//"FPScript": scriptContent,
 	})
 	return renderedPage.String(), nil
+}
+
+func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, error) {
+
+	spew.Dump(string(body))
+
+	c := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite("Lax").ExpiresIn(time.Hour).Value("test")
+	if request.URL.Scheme == "https" {
+		c = c.Secure()
+	}
+	return c, nil
 }

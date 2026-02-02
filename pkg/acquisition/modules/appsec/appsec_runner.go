@@ -159,7 +159,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	// User has requested valid challenge, but we did not find a valid cookie
 	// Immediately return, everything has been set already
 	if state.RequireChallenge {
-		r.logger.Debugf("valid challenge required, skipping WAF evaluation")
+		r.logger.Infof("valid challenge required, skipping WAF evaluation")
 		return nil
 	}
 
