@@ -2,14 +2,13 @@ package tailwrapper
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"sync"
 	"time"
-
-	"gopkg.in/tomb.v2"
 )
 
 // statTail implements Tailer using stat-based polling that doesn't keep file handles open
@@ -18,15 +17,18 @@ type statTail struct {
 	config     Config
 	lines      chan *Line
 	dying      chan struct{}
-	tomb       *tomb.Tomb
+	ctx        context.Context
+	cancel     context.CancelFunc
 	mu         sync.Mutex
 	lastOffset int64
 	lastSize   int64
 	stopped    bool
+	err        error // stores any error that occurred
+	wg         sync.WaitGroup
 }
 
 // newStatTail creates a new stat-based tailer
-func newStatTail(filename string, config Config) (Tailer, error) {
+func newStatTail(ctx context.Context, filename string, config Config) (Tailer, error) {
 	// Initialize file state
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -42,18 +44,23 @@ func newStatTail(filename string, config Config) (Tailer, error) {
 		}
 	}
 
+	// Create a child context so we can cancel independently
+	childCtx, cancel := context.WithCancel(ctx)
+
 	st := &statTail{
 		filename:   filename,
 		config:     config,
 		lines:      make(chan *Line, 100), // buffered channel
 		dying:      make(chan struct{}),
-		tomb:       &tomb.Tomb{},
+		ctx:        childCtx,
+		cancel:     cancel,
 		lastOffset: initialOffset,
 		lastSize:   0, // Start with 0 so first ForceRead() will process the file
 	}
 
 	// Start polling goroutine
-	st.tomb.Go(st.pollLoop)
+	st.wg.Add(1)
+	go st.pollLoop()
 
 	return st, nil
 }
@@ -75,7 +82,19 @@ func (s *statTail) Dying() <-chan struct{} {
 
 // Err returns any error that occurred during tailing
 func (s *statTail) Err() error {
-	return s.tomb.Err()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.err
+}
+
+// setError stores an error and triggers shutdown
+func (s *statTail) setError(err error) {
+	s.mu.Lock()
+	if s.err == nil { // only store first error
+		s.err = err
+	}
+	s.mu.Unlock()
+	s.cancel() // trigger shutdown
 }
 
 // Stop stops the tailer
@@ -88,16 +107,23 @@ func (s *statTail) Stop() error {
 	s.stopped = true
 	s.mu.Unlock()
 
-	// Don't overwrite any existing error in tomb
-	s.tomb.Kill(nil)
-	err := s.tomb.Wait()
+	// Cancel context to stop goroutine
+	s.cancel()
+
+	// Wait for goroutine to finish
+	s.wg.Wait()
+
+	// Close channels
 	close(s.dying)
 	close(s.lines)
-	return err
+
+	return s.Err()
 }
 
 // pollLoop is the main polling loop that checks for file changes
-func (s *statTail) pollLoop() error {
+func (s *statTail) pollLoop() {
+	defer s.wg.Done()
+
 	pollInterval := s.config.StatPollInterval
 	if pollInterval == 0 {
 		pollInterval = 1 * time.Second // default
@@ -109,9 +135,9 @@ func (s *statTail) pollLoop() error {
 
 	// If pollInterval is -1, don't poll automatically (manual mode for testing)
 	if pollInterval < 0 {
-		// Just wait for tomb to die, no automatic polling
-		<-s.tomb.Dying()
-		return nil
+		// Just wait for context to be done, no automatic polling
+		<-s.ctx.Done()
+		return
 	}
 
 	ticker := time.NewTicker(pollInterval)
@@ -119,8 +145,8 @@ func (s *statTail) pollLoop() error {
 
 	for {
 		select {
-		case <-s.tomb.Dying():
-			return nil
+		case <-s.ctx.Done():
+			return
 		case <-ticker.C:
 			s.readNewLines()
 		}
@@ -148,11 +174,11 @@ func (s *statTail) readNewLines() {
 		// File might be deleted or inaccessible
 		if os.IsNotExist(err) {
 			// File deleted, mark as dying so CrowdSec can recover
-			s.tomb.Kill(fmt.Errorf("file %s no longer exists", s.filename))
+			s.setErrorLocked(fmt.Errorf("file %s no longer exists", s.filename))
 			return
 		}
 		// Other error - propagate so CrowdSec can recover
-		s.tomb.Kill(fmt.Errorf("error statting file %s: %w", s.filename, err))
+		s.setErrorLocked(fmt.Errorf("error statting file %s: %w", s.filename, err))
 		return
 	}
 
@@ -181,7 +207,7 @@ func (s *statTail) readNewLines() {
 	fd, err := os.Open(s.filename)
 	if err != nil {
 		// File might be locked or permission denied - propagate error
-		s.tomb.Kill(fmt.Errorf("error opening file %s: %w", s.filename, err))
+		s.setErrorLocked(fmt.Errorf("error opening file %s: %w", s.filename, err))
 		return
 	}
 	defer fd.Close()
@@ -190,7 +216,7 @@ func (s *statTail) readNewLines() {
 	_, err = fd.Seek(s.lastOffset, io.SeekStart)
 	if err != nil {
 		// Seek error - propagate so CrowdSec can recover
-		s.tomb.Kill(fmt.Errorf("error seeking in file %s: %w", s.filename, err))
+		s.setErrorLocked(fmt.Errorf("error seeking in file %s: %w", s.filename, err))
 		return
 	}
 
@@ -213,14 +239,14 @@ func (s *statTail) readNewLines() {
 			lineBytes := len(line)
 			bytesRead += int64(lineBytes)
 
-			// Send line to channel (non-blocking)
+			// Send line to channel (non-blocking with context check)
 			select {
 			case s.lines <- &Line{
 				Text: lineText,
 				Time: time.Now(),
 				Err:  nil,
 			}:
-			case <-s.tomb.Dying():
+			case <-s.ctx.Done():
 				return
 			}
 		}
@@ -232,7 +258,7 @@ func (s *statTail) readNewLines() {
 				break
 			}
 			// Other error - propagate upstream
-			s.tomb.Kill(fmt.Errorf("error reading file %s: %w", s.filename, err))
+			s.setErrorLocked(fmt.Errorf("error reading file %s: %w", s.filename, err))
 			return
 		}
 	}
@@ -251,4 +277,16 @@ func (s *statTail) readNewLines() {
 	// Always update lastSize from stat() result to track file size accurately
 	// This is important for Azure metadata cache where size and offset may differ
 	s.lastSize = fi.Size()
+}
+
+// setErrorLocked stores an error (caller must hold s.mu)
+// Note: we need to release lock before calling cancel() to avoid deadlock
+func (s *statTail) setErrorLocked(err error) {
+	if s.err == nil { // only store first error
+		s.err = err
+	}
+	// Release lock before cancel to avoid potential deadlock
+	s.mu.Unlock()
+	s.cancel()
+	s.mu.Lock()
 }

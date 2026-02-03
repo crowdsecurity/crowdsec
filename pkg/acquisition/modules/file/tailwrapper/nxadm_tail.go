@@ -1,6 +1,7 @@
 package tailwrapper
 
 import (
+	"context"
 	"sync"
 
 	"github.com/nxadm/tail"
@@ -58,7 +59,9 @@ func (a *nxadmTailAdapter) Stop() error {
 }
 
 // newNxadmTail creates a new nxadm tail adapter from the original tail library
-func newNxadmTail(filename string, config Config) (Tailer, error) {
+// Note: The nxadm/tail library uses tomb internally. We accept context for API
+// consistency but the actual cancellation happens via Stop() called by the parent.
+func newNxadmTail(ctx context.Context, filename string, config Config) (Tailer, error) {
 	// Convert our Config to tail.Config
 	seekInfo := &tail.SeekInfo{
 		Offset: config.Location.Offset,
@@ -79,5 +82,14 @@ func newNxadmTail(filename string, config Config) (Tailer, error) {
 		return nil, err
 	}
 
-	return &nxadmTailAdapter{tail: t}, nil
+	adapter := &nxadmTailAdapter{tail: t}
+
+	// Watch for context cancellation and stop the tailer
+	// This provides context-based shutdown even though nxadm/tail uses tomb internally
+	go func() {
+		<-ctx.Done()
+		_ = adapter.Stop()
+	}()
+
+	return adapter, nil
 }

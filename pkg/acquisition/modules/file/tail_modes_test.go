@@ -1,6 +1,7 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -33,10 +33,9 @@ var tailModes = []struct {
 }
 
 func TestTailModes_BasicTailing(t *testing.T) {
-	ctx := t.Context()
-
 	for _, mode := range tailModes {
 		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
 			tmpDir := t.TempDir()
 			testFile := filepath.Join(tmpDir, "test.log")
 
@@ -57,10 +56,15 @@ filenames:
 			require.NoError(t, err)
 
 			out := make(chan pipeline.Event, 10)
-			tomb := tomb.Tomb{}
 
-			err = f.StreamingAcquisition(ctx, out, &tomb)
-			require.NoError(t, err)
+			// Create cancellable context for Stream
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			// Stream now blocks, so run in goroutine
+			go func() {
+				_ = f.Stream(streamCtx, out)
+			}()
 
 			// Wait for tailing to start
 			time.Sleep(300 * time.Millisecond)
@@ -87,9 +91,8 @@ filenames:
 				}
 			}
 
-			// Cleanup
-			tomb.Kill(nil)
-			_ = tomb.Wait()
+			// Cleanup - cancel context to stop Stream
+			cancel()
 
 			// Should have read at least one new line (timing-dependent on Windows)
 			assert.GreaterOrEqual(t, len(lines), 1, "Should have read at least 1 line")
@@ -107,10 +110,9 @@ filenames:
 }
 
 func TestTailModes_Truncation(t *testing.T) {
-	ctx := t.Context()
-
 	for _, mode := range tailModes {
 		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
 			tmpDir := t.TempDir()
 			testFile := filepath.Join(tmpDir, "test.log")
 
@@ -131,10 +133,15 @@ filenames:
 			require.NoError(t, err)
 
 			out := make(chan pipeline.Event, 20)
-			tomb := tomb.Tomb{}
 
-			err = f.StreamingAcquisition(ctx, out, &tomb)
-			require.NoError(t, err)
+			// Create cancellable context for Stream
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			// Stream now blocks, so run in goroutine
+			go func() {
+				_ = f.Stream(streamCtx, out)
+			}()
 
 			// Wait for tailing to start
 			time.Sleep(200 * time.Millisecond)
@@ -165,9 +172,8 @@ filenames:
 				}
 			}
 
-			// Cleanup
-			tomb.Kill(nil)
-			_ = tomb.Wait()
+			// Cleanup - cancel context to stop Stream
+			cancel()
 
 			// Should have detected truncation and read new content
 			hasNew := false
@@ -238,10 +244,15 @@ stat_poll_interval: 100ms
 			require.NoError(t, err)
 
 			out := make(chan pipeline.Event, 10)
-			tomb := tomb.Tomb{}
 
-			err = f.StreamingAcquisition(ctx, out, &tomb)
-			require.NoError(t, err)
+			// Create cancellable context for Stream
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			// Stream now blocks, so run in goroutine
+			go func() {
+				_ = f.Stream(streamCtx, out)
+			}()
 
 			// Wait for tailing to start
 			time.Sleep(200 * time.Millisecond)
@@ -256,9 +267,8 @@ stat_poll_interval: 100ms
 			// Verify file is being tailed (both modes should work)
 			assert.True(t, f.IsTailing(testFile), "File should be tailed")
 
-			// Cleanup
-			tomb.Kill(nil)
-			_ = tomb.Wait()
+			// Cleanup - cancel context to stop Stream
+			cancel()
 
 			// Both modes should successfully tail the file
 			// The actual implementation difference is tested in tailwrapper tests
