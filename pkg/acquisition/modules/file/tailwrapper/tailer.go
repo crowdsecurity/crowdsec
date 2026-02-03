@@ -438,16 +438,15 @@ func (t *tailer) reopenFile(offset int64) {
 
 // handleFileRemoved handles file removal in KeepFileOpen mode
 func (t *tailer) handleFileRemoved() {
+	// Close current file handle (with lock)
 	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	// Close current file
 	if t.file != nil {
 		t.file.Close()
 		t.file = nil
 	}
+	t.mu.Unlock()
 
-	// Wait for file to reappear
+	// Wait for file to reappear (without holding lock)
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -455,7 +454,8 @@ func (t *tailer) handleFileRemoved() {
 		case <-time.After(100 * time.Millisecond):
 			fi, err := os.Stat(t.filename)
 			if err == nil {
-				// File exists again, reopen
+				// File exists again, reopen (with lock)
+				t.mu.Lock()
 				t.reopenFile(0)
 				t.lastSize = fi.Size()
 
@@ -463,6 +463,7 @@ func (t *tailer) handleFileRemoved() {
 				if t.watcher != nil {
 					_ = t.watcher.Add(t.filename)
 				}
+				t.mu.Unlock()
 				return
 			}
 		}

@@ -198,7 +198,6 @@ func TestTailer_FileMustExist(t *testing.T) {
 
 	// Should fail when file doesn't exist
 	config := Config{
-		Follow:       true,
 		Poll:         true,
 		PollInterval: 100 * time.Millisecond,
 		KeepFileOpen: false,
@@ -217,7 +216,6 @@ func TestTailer_FileExists(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1,
 		KeepFileOpen: false,
@@ -243,7 +241,6 @@ func TestTailer_Stop(t *testing.T) {
 
 			config := Config{
 				ReOpen:       true,
-				Follow:       true,
 				Poll:         true,
 				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -304,7 +301,6 @@ func TestTailer_ContextCancellation(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				KeepFileOpen: mode.keepFileOpen,
@@ -344,7 +340,6 @@ func TestTailer_LocationFull(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     nil, // nil means start from beginning
@@ -369,7 +364,6 @@ func TestTailer_LocationEnd(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -400,7 +394,6 @@ func TestTailer_LocationMiddle(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 6, Whence: io.SeekStart}, // Start at "world\n"
@@ -432,7 +425,6 @@ func TestTailer_ReSeek(t *testing.T) {
 			tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
 
 			config := Config{
-				Follow:       true,
 				ReOpen:       false,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
@@ -469,7 +461,6 @@ func TestTailer_TruncationDetection(t *testing.T) {
 
 			config := Config{
 				ReOpen:       true,
-				Follow:       true,
 				Poll:         true,
 				PollInterval: -1, // Manual polling
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -532,7 +523,6 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 
 			config := Config{
 				ReOpen:       true,
-				Follow:       true,
 				Poll:         true,
 				PollInterval: -1, // Manual polling
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -604,7 +594,6 @@ func TestTailer_Over4096ByteLine(t *testing.T) {
 			tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     nil,
@@ -637,7 +626,6 @@ func TestTailer_LargeLines(t *testing.T) {
 
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -684,7 +672,6 @@ func TestTailer_BasicTailing(t *testing.T) {
 			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -712,7 +699,6 @@ func TestTailer_Filename(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1,
 		KeepFileOpen: false,
@@ -739,7 +725,6 @@ func TestTailer_FileDeleted(t *testing.T) {
 
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -792,7 +777,6 @@ func TestTailer_ErrorHandling(t *testing.T) {
 
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -837,7 +821,6 @@ func TestTailer_PollInterval(t *testing.T) {
 	pollInterval := 200 * time.Millisecond
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         true,
 		PollInterval: pollInterval,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -892,7 +875,6 @@ func TestTailer_KeepOpenWithPolling(t *testing.T) {
 
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         true, // Use polling, not fsnotify
 		PollInterval: 100 * time.Millisecond,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -931,7 +913,6 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 
 	config := Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         false, // Use fsnotify
 		PollInterval: 1 * time.Second,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
@@ -971,7 +952,6 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -1033,7 +1013,6 @@ func TestTailer_SeekStart(t *testing.T) {
 
 			config := Config{
 				ReOpen:       true,
-				Follow:       true,
 				Poll:         true,
 				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -1097,7 +1076,6 @@ func TestTailer_FileRotation(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Follow:       true,
 				ReOpen:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
@@ -1155,7 +1133,6 @@ func TestTailer_EmptyFile(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -1197,7 +1174,6 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -1246,7 +1222,6 @@ func TestTailer_RapidWrites(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Follow:       true,
 				Poll:         true,
 				PollInterval: 20 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
@@ -1302,7 +1277,6 @@ func TestTailer_ForceRead(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Follow:       true,
 		Poll:         true,
 		PollInterval: -1, // Manual mode
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},

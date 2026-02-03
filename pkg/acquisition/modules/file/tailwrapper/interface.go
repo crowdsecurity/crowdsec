@@ -29,8 +29,7 @@ type SeekInfo struct {
 // Config holds configuration for tailing a file
 type Config struct {
 	// File behavior
-	ReOpen   bool      // Reopen file if it's rotated/recreated
-	Follow   bool      // Keep following the file for new content
+	ReOpen   bool      // Reopen file if it's rotated/truncated (always recommended for log files)
 	Location *SeekInfo // Where to start reading from
 
 	// Change detection
@@ -41,7 +40,4 @@ type Config struct {
 	// When true: keeps file handle open between reads (better performance, uses inotify/polling for changes)
 	// When false: opens file, reads new content, closes immediately (works better on network shares like Azure SMB)
 	KeepFileOpen bool
-
-	// Logging (optional)
-	Logger interface{} // *log.Entry, but we use interface{} to avoid circular deps
 }

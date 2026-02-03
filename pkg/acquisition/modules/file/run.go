@@ -283,12 +283,10 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 
 	tail, err := tailwrapper.TailFile(ctx, file, tailwrapper.Config{
 		ReOpen:       true,
-		Follow:       true,
 		Poll:         pollFile,
 		PollInterval: s.config.StatPollInterval,
 		Location:     seekInfo,
 		KeepFileOpen: keepFileOpen,
-		Logger:       log.NewEntry(log.StandardLogger()),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
