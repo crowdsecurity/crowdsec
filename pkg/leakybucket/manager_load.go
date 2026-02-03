@@ -58,18 +58,18 @@ type BucketSpec struct {
 type BucketFactory struct {
 	Spec BucketSpec
 
-	logger              *log.Entry                 // logger is bucket-specific logger (used by Debug as well)
-	BucketName          string                     `yaml:"-"`
-	Filename            string                     `yaml:"-"`
-	RunTimeFilter       *vm.Program                `json:"-"`
-	RunTimeGroupBy      *vm.Program                `json:"-"`
-	DataDir             string                     `yaml:"-"`
-	leakspeed           time.Duration              // internal representation of `Leakspeed`
-	duration            time.Duration              // internal representation of `Duration`
-	ret                 chan pipeline.Event        // the bucket-specific output chan for overflows
-	processors          []Processor                // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	logger              *log.Entry          // logger is bucket-specific logger (used by Debug as well)
+	BucketName          string
+	Filename            string
+	RunTimeFilter       *vm.Program         `json:"-"`
+	RunTimeGroupBy      *vm.Program         `json:"-"`
+	DataDir             string
+	leakspeed           time.Duration       // internal representation of `Leakspeed`
+	duration            time.Duration       // internal representation of `Duration`
+	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
+	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	hash                string
-	Simulated           bool `yaml:"simulated"` // Set to true if the scenario instantiating the bucket was in the exclusion list
+	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
 }
 
@@ -104,7 +104,6 @@ type SimulationChecker interface {
 func loadBucketFactoriesFromFile(
 	item *cwhub.Item,
 	hub *cwhub.Hub,
-	bucketStore *BucketStore,
 	response chan pipeline.Event,
 	orderEvent bool,
 	simcheck SimulationChecker,
@@ -186,7 +185,6 @@ func LoadBuckets(
 	cscfg *csconfig.CrowdsecServiceCfg,
 	hub *cwhub.Hub,
 	scenarios []*cwhub.Item,
-	bucketStore *BucketStore,
 	orderEvent bool,
 ) ([]BucketFactory, chan pipeline.Event, error) {
 	allFactories := []BucketFactory{}
@@ -195,7 +193,7 @@ func LoadBuckets(
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, bucketStore, response, orderEvent, &cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, response, orderEvent, &cscfg.SimulationConfig)
 		if err != nil {
 			return nil, nil, err
 		}
