@@ -109,19 +109,21 @@ func (tt *TailTest) StartTailWithContext(ctx context.Context, name string, confi
 	return tail
 }
 
-// VerifyTailOutput reads lines from tail and verifies they match expected
+// VerifyTailOutput reads lines from tail and verifies they match expected.
+// Note: Uses Errorf instead of Fatalf because this may be called from a goroutine.
 func (tt *TailTest) VerifyTailOutput(tail Tailer, lines []string, expectEOF bool) {
 	defer close(tt.done)
 	tt.ReadLines(tail, lines)
 	if expectEOF {
 		line, ok := <-tail.Lines()
 		if ok && line != nil {
-			tt.t.Fatalf("more content from tail: %+v", line)
+			tt.t.Errorf("more content from tail: %+v", line)
 		}
 	}
 }
 
-// ReadLines reads expected lines from tail
+// ReadLines reads expected lines from tail.
+// Note: Uses Errorf instead of Fatalf because this may be called from a goroutine.
 func (tt *TailTest) ReadLines(tail Tailer, lines []string) {
 	for _, expectedLine := range lines {
 		select {
@@ -129,25 +131,30 @@ func (tt *TailTest) ReadLines(tail Tailer, lines []string) {
 			if !ok {
 				err := tail.Err()
 				if err != nil {
-					tt.t.Fatalf("tail ended with error: %v", err)
+					tt.t.Errorf("tail ended with error: %v", err)
+					return
 				}
-				tt.t.Fatalf("tail ended early; expecting more lines")
+				tt.t.Errorf("tail ended early; expecting more lines")
+				return
 			}
 			if tailedLine == nil {
-				tt.t.Fatalf("tail.Lines returned nil")
+				tt.t.Errorf("tail.Lines returned nil")
+				return
 			}
 			if tailedLine.Text != expectedLine {
-				tt.t.Fatalf("unexpected line from tail: expecting <<%s>>, got <<%s>>",
+				tt.t.Errorf("unexpected line from tail: expecting <<%s>>, got <<%s>>",
 					expectedLine, tailedLine.Text)
+				return
 			}
 		case <-time.After(5 * time.Second):
-			tt.t.Fatalf("timeout waiting for line: %s", expectedLine)
+			tt.t.Errorf("timeout waiting for line: %s", expectedLine)
+			return
 		}
 	}
 }
 
 // CollectLines collects all lines until tail stops
-func (tt *TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
+func (*TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
 	var lines []string
 	timer := time.After(timeout)
 	for {
