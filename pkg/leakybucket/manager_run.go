@@ -87,18 +87,16 @@ func PourItemToBucket(
 
 		/* check if leak routine is up */
 		select {
-		case _, ok := <-bucket.Signal:
-			if !ok {
-				// the bucket was found and dead, get a new one and continue
-				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
-				bucketStore.Delete(buckey)
-				sigclosed += 1
-				bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
-				if err != nil {
-					return err
-				}
-				continue
+		case <-bucket.done:
+			// the bucket was found and dead, get a new one and continue
+			bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
+			bucketStore.Delete(buckey)
+			sigclosed += 1
+			bucket, err = LoadOrStoreBucketFromHolder(ctx, buckey, bucketStore, holder, parsed.ExpectMode)
+			if err != nil {
+				return err
 			}
+			continue
 			// holder.logger.Tracef("Signal exists, try to pour :)")
 		default:
 			// nothing to read, but not closed, try to pour
@@ -177,7 +175,8 @@ func LoadOrStoreBucketFromHolder(
 	}
 	fresh_bucket.In = make(chan *pipeline.Event)
 	fresh_bucket.Mapkey = partitionKey
-	fresh_bucket.Signal = make(chan bool, 1)
+	fresh_bucket.ready = make(chan struct{})
+	fresh_bucket.done = make(chan struct{})
 	actual, stored := buckets.LoadOrStore(partitionKey, fresh_bucket)
 	if !stored {
 		go func() {
@@ -187,7 +186,7 @@ func LoadOrStoreBucketFromHolder(
 		}()
 		leaky = fresh_bucket
 		// once the created goroutine is ready to process event, we can return it
-		<-fresh_bucket.Signal
+		<-fresh_bucket.ready
 	} else {
 		holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
 		leaky = actual

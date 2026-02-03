@@ -262,7 +262,7 @@ func (f *BucketFactory) LoadBucket() error {
 
 	impl, ok := bucketTypes[f.Type]
 	if !ok {
-		return fmt.Errorf("invalid type '%s' in %s: %w", f.Type, f.Filename, err)
+		return fmt.Errorf("invalid type '%s' in %s", f.Type, f.Filename)
 	}
 
 	f.processors = impl.BuildProcessors(f)
