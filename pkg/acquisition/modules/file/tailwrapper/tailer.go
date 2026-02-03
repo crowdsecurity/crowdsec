@@ -47,8 +47,12 @@ type tailer struct {
 	lastSize   int64
 }
 
-// newTailer creates a new tailer with the specified configuration
-func newTailer(ctx context.Context, filename string, config Config) (Tailer, error) {
+// TailFile creates a new Tailer with the specified configuration.
+//
+// The behavior depends on config.KeepFileOpen:
+//   - true:  keeps file handle open, uses fsnotify for change detection (better for local files)
+//   - false: opens/reads/closes on each poll cycle (better for network shares like Azure SMB)
+func TailFile(ctx context.Context, filename string, config Config) (Tailer, error) {
 	// Validate file exists
 	fi, err := os.Stat(filename)
 	if err != nil {

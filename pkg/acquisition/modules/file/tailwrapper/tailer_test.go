@@ -94,7 +94,7 @@ func (tt *TailTest) TruncateFile(name string, contents string) {
 }
 
 func (tt *TailTest) StartTail(name string, config Config) Tailer {
-	tail, err := newTailer(context.Background(), filepath.Join(tt.path, name), config)
+	tail, err := TailFile(context.Background(), filepath.Join(tt.path, name), config)
 	if err != nil {
 		tt.t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func (tt *TailTest) StartTail(name string, config Config) Tailer {
 }
 
 func (tt *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) Tailer {
-	tail, err := newTailer(ctx, filepath.Join(tt.path, name), config)
+	tail, err := TailFile(ctx, filepath.Join(tt.path, name), config)
 	if err != nil {
 		tt.t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestTailer_FileMustExist(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	_, err := newTailer(context.Background(), nonExistentFile, config)
+	_, err := TailFile(context.Background(), nonExistentFile, config)
 	require.Error(t, err, "Should error when file doesn't exist")
 	assert.Contains(t, err.Error(), "could not stat file")
 }
@@ -223,7 +223,7 @@ func TestTailer_FileExists(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err, "Should succeed when file exists")
 	_ = tail.Stop()
 }
@@ -250,7 +250,7 @@ func TestTailer_Stop(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 
 			// Stop should not error
@@ -310,7 +310,7 @@ func TestTailer_ContextCancellation(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(ctx, testFile, config)
+			tail, err := TailFile(ctx, testFile, config)
 			require.NoError(t, err)
 
 			// Cancel context
@@ -476,7 +476,7 @@ func TestTailer_TruncationDetection(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -539,7 +539,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -644,7 +644,7 @@ func TestTailer_LargeLines(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -718,7 +718,7 @@ func TestTailer_Filename(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -746,7 +746,7 @@ func TestTailer_FileDeleted(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -799,7 +799,7 @@ func TestTailer_ErrorHandling(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -844,7 +844,7 @@ func TestTailer_PollInterval(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -899,7 +899,7 @@ func TestTailer_KeepOpenWithPolling(t *testing.T) {
 		KeepFileOpen: true,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -938,7 +938,7 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 		KeepFileOpen: true,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -978,7 +978,7 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1040,7 +1040,7 @@ func TestTailer_SeekStart(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1105,7 +1105,7 @@ func TestTailer_FileRotation(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1162,7 +1162,7 @@ func TestTailer_EmptyFile(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1204,7 +1204,7 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1253,7 +1253,7 @@ func TestTailer_RapidWrites(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := newTailer(context.Background(), testFile, config)
+			tail, err := TailFile(context.Background(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1309,7 +1309,7 @@ func TestTailer_ForceRead(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := newTailer(context.Background(), testFile, config)
+	tail, err := TailFile(context.Background(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
