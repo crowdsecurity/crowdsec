@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
@@ -207,54 +206,72 @@ func LoadBuckets(
 	return allFactories, response, nil
 }
 
-/* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func (f *BucketFactory) LoadBucket() error {
-	var err error
+func bucketLogger(f *BucketFactory) *log.Entry {
+	fields := log.Fields{"cfg": f.BucketName, "name": f.Name}
 
 	if f.Debug {
-		clog := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
-
-		f.logger = clog.WithFields(log.Fields{
-			"cfg":  f.BucketName,
-			"name": f.Name,
-		})
-	} else {
-		/* else bind it to the default one (might find something more elegant here)*/
-		f.logger = log.WithFields(log.Fields{
-			"cfg":  f.BucketName,
-			"name": f.Name,
-		})
+		logger := logging.SubLogger(log.StandardLogger(), "scenario", log.DebugLevel)
+		return logger.WithFields(fields)
 	}
 
+	return log.WithFields(fields)
+}
+
+func (f *BucketFactory) parseDurations() error {
 	if f.LeakSpeed != "" {
-		if f.leakspeed, err = time.ParseDuration(f.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
+		leakspeed, err := time.ParseDuration(f.LeakSpeed)
+		if err != nil {
+			return fmt.Errorf("invalid leakspeed '%s' in %s: %w", f.LeakSpeed, f.Filename, err)
 		}
-	} else {
-		f.leakspeed = time.Duration(0)
+		f.leakspeed = leakspeed
 	}
 
 	if f.Duration != "" {
-		if f.duration, err = time.ParseDuration(f.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s: %w", f.Duration, f.Filename, err)
+		duration, err := time.ParseDuration(f.Duration)
+		if err != nil {
+			return fmt.Errorf("invalid duration '%s' in %s: %w", f.Duration, f.Filename, err)
 		}
+		f.duration = duration
 	}
 
+	return nil
+}
+
+func (f *BucketFactory) compileExpr() error {
 	if f.Filter == "" {
 		f.logger.Warning("Bucket without filter, abort.")
 		return errors.New("missing filter directive")
 	}
 
-	f.RunTimeFilter, err = expr.Compile(f.Filter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	runtimeFilter, err := compile(f.Filter, nil)
 	if err != nil {
 		return fmt.Errorf("invalid filter '%s' in %s: %w", f.Filter, f.Filename, err)
 	}
+	f.RunTimeFilter = runtimeFilter
 
 	if f.GroupBy != "" {
-		f.RunTimeGroupBy, err = expr.Compile(f.GroupBy, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		runtimeGroupBy, err := compile(f.GroupBy, nil)
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s: %w", f.GroupBy, f.Filename, err)
 		}
+		f.RunTimeGroupBy = runtimeGroupBy
+	}
+
+	return nil
+}
+
+// LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
+func (f *BucketFactory) LoadBucket() error {
+	var err error
+
+	f.logger = bucketLogger(f)
+
+	if err := f.parseDurations(); err != nil {
+		return err
+	}
+
+	if err := f.compileExpr(); err != nil {
+		return err
 	}
 
 	f.logger.Infof("Adding %s bucket", f.Type)
@@ -271,7 +288,7 @@ func (f *BucketFactory) LoadBucket() error {
 		f.logger.Tracef("Adding a non duplicate filter")
 		f.processors = append(f.processors, &UniqProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(f.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		_, err = compile(f.Distinct, nil)
 		if err != nil {
 			return fmt.Errorf("invalid distinct '%s' in %s: %w", f.Distinct, f.Filename, err)
 		}
@@ -281,7 +298,7 @@ func (f *BucketFactory) LoadBucket() error {
 		f.logger.Tracef("Adding a cancel_on filter")
 		f.processors = append(f.processors, &CancelProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(f.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		_, err = compile(f.CancelOnFilter, nil)
 		if err != nil {
 			return fmt.Errorf("invalid cancel_on '%s' in %s: %w", f.CancelOnFilter, f.Filename, err)
 		}
@@ -315,7 +332,7 @@ func (f *BucketFactory) LoadBucket() error {
 		f.logger.Tracef("Adding conditional overflow")
 		f.processors = append(f.processors, &ConditionalProcessor{})
 		// we're compiling and discarding the expression to be able to detect it during loading
-		_, err = expr.Compile(f.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+		_, err = compile(f.ConditionalOverflow, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
 		if err != nil {
 			return fmt.Errorf("invalid condition '%s' in %s: %w", f.ConditionalOverflow, f.Filename, err)
 		}
