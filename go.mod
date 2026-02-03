@@ -81,12 +81,12 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.10.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.42.0
-	golang.org/x/mod v0.28.0
-	golang.org/x/net v0.44.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.37.0
-	golang.org/x/text v0.29.0
+	golang.org/x/crypto v0.47.0
+	golang.org/x/mod v0.31.0
+	golang.org/x/net v0.48.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/sys v0.40.0
+	golang.org/x/text v0.33.0
 	golang.org/x/time v0.13.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.8
@@ -236,8 +236,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/arch v0.15.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/term v0.35.0 // indirect
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/term v0.39.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
