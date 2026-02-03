@@ -21,54 +21,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		name        string
-		config      string
-		expectedErr string
-	}{
-		{
-			name:        "extra configuration key",
-			config:      "foobar: asd.log",
-			expectedErr: `cannot parse FileAcquisition configuration: [1:1] unknown field "foobar"`,
-		},
-		{
-			name:        "missing filenames",
-			config:      "mode: tail",
-			expectedErr: "no filename or filenames configuration provided",
-		},
-		{
-			name:        "glob syntax error",
-			config:      `filename: "[asd-.log"`,
-			expectedErr: "glob failure: syntax error in pattern",
-		},
-		{
-			name: "bad exclude regexp",
-			config: `filenames: ["asd.log"]
-exclude_regexps: ["as[a-$d"]`,
-			expectedErr: "could not compile regexp as",
-		},
-		{
-			name: "duplicate keys",
-			config: `filenames: ["asd.log"]
-filenames: ["ase.log"]`,
-			expectedErr: `cannot parse FileAcquisition configuration: [2:1] mapping key "filenames" already defined at [1:1]`,
-		},
-	}
-
-	subLogger := log.WithField("type", "file")
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := fileacquisition.Source{}
-			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
 	ctx := t.Context()
 
@@ -99,7 +51,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithField("type", "file")
+	subLogger := log.WithField("type", fileacquisition.ModuleName)
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
@@ -219,9 +171,8 @@ filename: %s`, deletedFile),
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithField("type", "file")
+			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
-			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event, 100)
 			f := fileacquisition.Source{}
 
@@ -240,7 +191,7 @@ filename: %s`, deletedFile),
 				tc.afterConfigure()
 			}
 
-			err = f.OneShotAcquisition(ctx, out, &tomb)
+			err = f.OneShot(ctx, out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
@@ -386,7 +337,7 @@ force_inotify: true`, testPattern),
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithField("type", "file")
+			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
 			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
@@ -494,7 +445,7 @@ func TestExclusion(t *testing.T) {
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
 	// logger.SetLevel(ts.logLevel)
-	subLogger := logger.WithField("type", "file")
+	subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
 	f := fileacquisition.Source{}
 	err := f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -504,57 +455,6 @@ exclude_regexps: ["\\.gz$"]`
 	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
 	assert.Equal(t, filepath.Join("testdata", "test.log.gz"), hook.LastEntry().Data["file"])
 	hook.Reset()
-}
-
-func TestDiscoveryPollConfiguration(t *testing.T) {
-	ctx := t.Context()
-
-	tests := []struct {
-		name    string
-		config  string
-		wantErr string
-	}{
-		{
-			name: "valid discovery poll config",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "30s"
-mode: tail
-`,
-			wantErr: "",
-		},
-		{
-			name: "invalid poll interval",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "invalid"
-mode: tail
-`,
-			wantErr: `cannot parse FileAcquisition configuration: time: invalid duration "invalid"`,
-		},
-		{
-			name: "polling disabled",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: false
-mode: tail
-`,
-			wantErr: "",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := &fileacquisition.Source{}
-			err := f.Configure(ctx, []byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-		})
-	}
 }
 
 func TestDiscoveryPolling(t *testing.T) {

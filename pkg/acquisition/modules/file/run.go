@@ -28,8 +28,7 @@ import (
 
 const defaultPollInterval = 30 * time.Second
 
-// OneShotAcquisition reads a set of file and returns when done
-func (s *Source) OneShotAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("In oneshot")
 
 	for _, file := range s.files {
@@ -45,7 +44,7 @@ func (s *Source) OneShotAcquisition(_ context.Context, out chan pipeline.Event, 
 
 		s.logger.Infof("reading %s at once", file)
 
-		err = s.readFile(file, out, t)
+		err = s.readFile(ctx, file, out)
 		if err != nil {
 			return err
 		}
@@ -342,7 +341,7 @@ func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail tailwrappe
 			}
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename(), "datasource_type": "file", "acquis_type": s.config.Labels["type"]}).Inc()
+				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename(), "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 			}
 
 			src := tail.Filename()
@@ -369,7 +368,7 @@ func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail tailwrappe
 	}
 }
 
-func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) readFile(ctx context.Context, filename string, out chan pipeline.Event) error {
 	var scanner *bufio.Scanner
 
 	logger := s.logger.WithField("oneshot", filename)
@@ -404,7 +403,7 @@ func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb
 
 	for scanner.Scan() {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			logger.Info("File datasource stopping")
 			return nil
 		default:
@@ -421,7 +420,7 @@ func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb
 				Module:  s.GetName(),
 			}
 			logger.Debugf("line %s", l.Raw)
-			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": "file", "acquis_type": l.Labels["type"]}).Inc()
+			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
 
 			// we're reading logs at once, it must be time-machine buckets
 			out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)}
@@ -430,12 +429,8 @@ func (s *Source) readFile(filename string, out chan pipeline.Event, t *tomb.Tomb
 
 	if err := scanner.Err(); err != nil {
 		logger.Errorf("Error while reading file: %s", err)
-		t.Kill(err)
-
 		return err
 	}
-
-	t.Kill(nil)
 
 	return nil
 }

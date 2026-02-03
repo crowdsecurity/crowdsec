@@ -31,6 +31,7 @@ linters:
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
     - unparam      # Reports unused function parameters
     - errchkjson   # Checks types passed to the json encoding functions. Reports unsupported types and reports occasions, where the check for the returned error can be omitted.
+    - unqueryvet   # Detects SELECT * in SQL queries and SQL builders, preventing performance issues and encouraging explicit column selection.
 
     # we allow named returns (to improve readability, in the function signatures)
     # but disallow implicit (or "naked") returns, to improve readability in the actual code.
@@ -58,7 +59,6 @@ linters:
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
     - exhaustruct           # Checks if all structure fields are initialized
-    - forbidigo             # Forbids identifiers
     - gochecknoglobals      # Check that no global variables exist.
     - goconst               # Finds repeated strings that could be replaced by a constant
     - tagliatelle           # Checks the struct tags.
@@ -72,18 +72,46 @@ linters:
     # Formatting only, useful in IDE but should not be forced on CI
     #
 
-    - godot                 # Check if comments end in a period
-    - nlreturn              # nlreturn checks for a new line before return and branch statements to increase code clarity
-    - whitespace            # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
-    - wsl_v5                # add or remove empty lines
+    - godot      # Check if comments end in a period
+    - nlreturn   # nlreturn checks for a new line before return and branch statements to increase code clarity
+    - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
+    - wsl_v5     # add or remove empty lines
 
   settings:
+
+    decorder:
+      # Required order of `type`, `const`, `var` and `func` declarations inside a file.
+      # Default: types before constants before variables before functions.
+      dec-order:
+        - type
+        - const
+        - var
+        - func
+      # If true, underscore vars (vars with "_" as the name) will be ignored at all checks.
+      # Default: false (underscore vars are not ignored)
+      ignore-underscore-vars: false
+      # If true, order of declarations is not checked at all.
+      # Default: true (disabled)
+      disable-dec-order-check: true
+      # If true, `init` func can be anywhere in file (does not have to be declared before all other functions).
+      # Default: true (disabled)
+      disable-init-func-first-check: true
+      # If true, multiple global `type`, `const` and `var` declarations are allowed.
+      # Default: true (disabled)
+      disable-dec-num-check: true
+      # If true, type declarations will be ignored for dec num check.
+      # Default: false (type statements are not ignored)
+      disable-type-dec-num-check: false
+      # If true, const declarations will be ignored for dec num check.
+      # Default: false (const statements are not ignored)
+      disable-const-dec-num-check: false
+      # If true, var declarations will be ignored for dec num check.
+      # Default: false (var statements are not ignored)
+      disable-var-dec-num-check: false
 
     depguard:
       rules:
         wrap:
-          files:
-            - '!**/pkg/database/*.go'
           deny:
             - pkg: github.com/pkg/errors
               desc: errors.Wrap() is deprecated in favor of fmt.Errorf()
@@ -93,7 +121,7 @@ linters:
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
-            - '!**/pkg/leakybucket/buckets_test.go'
+            - '!**/pkg/leakybucket/bucketstore_test.go'
             - '!**/pkg/leakybucket/manager_load.go'
             - '!**/pkg/parser/node.go'
             - '!**/pkg/parser/node_test.go'
@@ -103,6 +131,10 @@ linters:
             - pkg: gopkg.in/yaml.v2
               desc: yaml.v2 is deprecated for new code in favor of yaml.v3
 
+    embeddedstructfieldcheck:
+      empty-line: false
+      forbid-mutex: true
+
     errcheck:
       # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
       # Such cases aren't reported by default.
@@ -111,7 +143,7 @@ linters:
       # See https://github.com/kisielk/errcheck#excluding-functions for details.
       exclude-functions:
         - (*bytes.Buffer).ReadFrom          # TODO
-        - syscall.FreeLibrary
+        - golang.org/x/sys/windows.FreeLibrary
         - golang.org/x/sys/windows.CloseHandle
         - golang.org/x/sys/windows.ResetEvent
         - (*golang.org/x/sys/windows/svc/eventlog.Log).Info
@@ -134,6 +166,45 @@ linters:
       errorf-multi: true
       asserts: true
       comparison: true
+
+    exhaustive:
+      # Program elements to check for exhaustiveness.
+      # Default: [ switch ]
+      check:
+        - switch
+        - map
+      # Presence of "default" case in switch statements satisfies exhaustiveness,
+      # even if all enum members are not listed.
+      # Default: false
+      default-signifies-exhaustive: true
+      # Enum members matching the supplied regex do not have to be listed in
+      # switch statements to satisfy exhaustiveness.
+      # Default: ""
+      ignore-enum-members: "Example.+"
+      # Enum types matching the supplied regex do not have to be listed in
+      # switch statements to satisfy exhaustiveness.
+      # Default: ""
+      ignore-enum-types: "Example.+"
+      # Consider enums only in package scopes, not in inner scopes.
+      # Default: false
+      package-scope-only: true
+      # Only run exhaustive check on switches with "//exhaustive:enforce" comment.
+      # Default: false
+      explicit-exhaustive-switch: true
+      # Only run exhaustive check on map literals with "//exhaustive:enforce" comment.
+      # Default: false
+      explicit-exhaustive-map: true
+      # Switch statement requires default case even if exhaustive.
+      # Default: false
+      default-case-required: true
+
+    forbidigo:
+      forbid:
+      # prefer fprint to print calls, keep the latter for debugging
+      # so they're not comitted by mistake.
+      - pattern: ^print(ln)?$
+      - pattern: ^fmt\.Print.*$
+        msg: use the Fprint equivalent in production code
 
     gocritic:
       enable-all: true
@@ -158,46 +229,6 @@ linters:
         ifElseChain:
           minThreshold: 4
 
-    modernize:
-      disable:
-        - any
-        - fmtappendf
-        - forvar
-        - omitzero
-        - slicessort
-        - stringsbuilder
-        - stringsseq
-        - waitgroup
-
-    perfsprint:
-      concat-loop: false
-      hex-format: false
-      integer-format: false
-      string-format: false
-
-    unused:
-      # Mark all struct fields that have been written to as used.
-      # Default: true
-      field-writes-are-uses: false
-      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
-      # Default: false
-      post-statements-are-reads: false
-      # Mark all exported identifiers as used.
-      # Default: true
-      # exported-is-used: false
-      # Mark all exported fields as used.
-      # default: true
-      exported-fields-are-used: false
-      # Mark all function parameters as used.
-      # default: true
-      parameters-are-used: true
-      # Mark all local variables as used.
-      # default: true
-      local-variables-are-used: false
-      # Mark all identifiers inside generated files as used.
-      # Default: true
-      generated-is-used: false
-
     gomoddirectives:
       replace-allow-list:
         - golang.org/x/time
@@ -208,6 +239,17 @@ linters:
         - fieldalignment
       enable-all: true
 
+    iface:
+      enable:
+        # Identifies interfaces in the same package that have identical method sets.
+        - identical
+        # Identifies interfaces that are not used anywhere in the same package where the interface is defined.
+        # - unused
+        # Identifies functions that return interfaces, but the actual returned value is always a single concrete implementation.
+        - opaque
+        # Identifies interfaces that are not exported but are used in exported functions or methods.
+        # - unexported
+
     interfacebloat:
       max: 7
 
@@ -217,6 +259,15 @@ linters:
 
     misspell:
       locale: US
+
+    modernize:
+      disable:
+        - any
+        - fmtappendf
+        - forvar
+        - omitzero
+        - stringsbuilder
+        - waitgroup
 
     nestif:
       # lower this after refactoring
@@ -233,10 +284,65 @@ linters:
       # report any unused nolint directives
       allow-unused: false
 
+    perfsprint:
+      # Enable/disable optimization of integer formatting.
+      # Default: true
+      integer-format: false
+      # Optimizes even if it requires an int or uint type cast.
+      # Default: true
+      int-conversion: false
+      # Enable/disable optimization of error formatting.
+      # Default: true
+      error-format: true
+      # Optimizes into `err.Error()` even if it is only equivalent for non-nil errors.
+      # Default: false
+      err-error: true
+      # Optimizes `fmt.Errorf`.
+      # Default: true
+      errorf: true
+      # Enable/disable optimization of string formatting.
+      # Default: true
+      string-format: false
+      # Optimizes `fmt.Sprintf` with only one argument.
+      # Default: true
+      sprintf1: true
+      # Optimizes into strings concatenation.
+      # Default: true
+      strconcat: false
+      # Enable/disable optimization of bool formatting.
+      # Default: true
+      bool-format: true
+      # Enable/disable optimization of hex formatting.
+      # Default: true
+      hex-format: false
+      # Enable/disable optimization of concat loop.
+      # Default: true
+      concat-loop: false
+      # Optimization of `concat-loop` even with other operations.
+      # Default: false
+      loop-other-ops: false
+
+    recvcheck:
+      # Disables the built-in method exclusions:
+      # - `MarshalText`
+      # - `MarshalJSON`
+      # - `MarshalYAML`
+      # - `MarshalXML`
+      # - `MarshalBinary`
+      # - `GobEncode`
+      disable-builtin: false
+      # User-defined method exclusions.
+      # The format is `struct_name.method_name` (ex: `Foo.MethodName`).
+      # A wildcard `*` can use as a struct name (ex: `*.MethodName`).
+      exclusions:
+        - "HCLogAdapter.SetLevel"
+
     revive:
       severity: error
       enable-all-rules: true
       rules:
+        - name: argument-limit
+          arguments: [9]
         - name: add-constant
           disabled: true
         - name: cognitive-complexity
@@ -250,7 +356,7 @@ linters:
         - name: cyclomatic
           arguments:
             # lower this after refactoring
-            - 37
+            - 36
         - name: empty-block
           disabled: true
         - name: empty-lines
@@ -339,6 +445,64 @@ linters:
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
 
+    unused:
+      # Mark all struct fields that have been written to as used.
+      # Default: true
+      field-writes-are-uses: false
+      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
+      # Default: false
+      post-statements-are-reads: false
+      # Mark all exported identifiers as used.
+      # Default: true
+      # exported-is-used: false
+      # Mark all exported fields as used.
+      # default: true
+      exported-fields-are-used: false
+      # Mark all function parameters as used.
+      # default: true
+      parameters-are-used: true
+      # Mark all local variables as used.
+      # default: true
+      local-variables-are-used: false
+      # Mark all identifiers inside generated files as used.
+      # Default: true
+      generated-is-used: false
+
+    usestdlibvars:
+      # Suggest the use of http.MethodXX.
+      # Default: true
+      http-method: true
+      # Suggest the use of http.StatusXX.
+      # Default: true
+      http-status-code: true
+      # Suggest the use of time.Month in time.Date.
+      # Default: false
+      time-date-month: false
+      # Suggest the use of time.Weekday.String().
+      # Default: true
+      time-weekday: false
+      # Suggest the use of time.Month.String().
+      # Default: false
+      time-month: false
+      # Suggest the use of time.Layout.
+      # Default: false
+      time-layout: false
+      # Suggest the use of crypto.Hash.String().
+      # Default: false
+      crypto-hash: true
+      # Suggest the use of rpc.DefaultXXPath.
+      # Default: false
+      default-rpc-path: true
+      # Suggest the use of sql.LevelXX.String().
+      # Default: false
+      sql-isolation-level: true
+      # Suggest the use of tls.SignatureScheme.String().
+      # Default: false
+      tls-signature-scheme: true
+      # Suggest the use of constant.Kind.String().
+      # Default: false
+      constant-kind: true
+
     usetesting:
       os-temp-dir: false
       context-background: true
@@ -357,11 +521,6 @@ linters:
       - linters:
           - govet
         text: 'shadow: declaration of "(err|ctx)" shadows declaration'
-
-      # https://github.com/timakin/bodyclose
-      - linters:
-          - bodyclose
-        text: response body must be closed
 
       - linters:
           - revive
@@ -392,6 +551,12 @@ linters:
       - linters:
           - maintidx
         path: (.+)_test.go
+
+      # tolerate print in tests for now
+      - linters:
+          - forbidigo
+        path: (.+)_test.go
+        text: 'use the Fprint equivalent in production code'
 
       # tolerate long functions in tests
       - linters:
@@ -433,15 +598,9 @@ linters:
         text: 'deep-exit: .*'
 
       - linters:
-          - recvcheck
-        path: pkg/csplugin/hclog_adapter.go
-        text: the methods of "HCLogAdapter" use pointer receiver and non-pointer receiver.
-
-      # encoding to json/yaml requires value receivers
-      - linters:
-          - recvcheck
-        path: pkg/cwhub/item.go
-        text: the methods of "Item" use pointer receiver and non-pointer receiver.
+          - revive
+        path: cmd/crowdsec-cli/clisetup/setup/systemd_test.go
+        text: 'deep-exit: .*'
 
       - linters:
           - gocritic
@@ -462,11 +621,6 @@ linters:
           - gocritic
         path: pkg/(appsec|acquisition|dumps|alertcontext|leakybucket|exprhelpers)
         text: 'rangeValCopy: .*'
-
-      - linters:
-          - revive
-        path: pkg/logging/configure.go
-        text: 'argument-limit: .*'
 
       - linters:
           - usetesting
@@ -499,6 +653,10 @@ linters:
           - noctx
         path: pkg/exprhelpers/helpers.go
         text: "net.LookupHost must not be called"
+
+      - linters:
+          - embeddedstructfieldcheck
+        text: "embedded fields should be listed before regular fields"
 
     paths:
       - third_party$

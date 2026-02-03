@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/corazawaf/coraza/v3/collection"
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/corazawaf/coraza/v3/types/variables"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
@@ -202,6 +203,9 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	sev := inEvt.Appsec.GetHighestSeverity().String()
 
 	sevRules := inEvt.Appsec.BySeverity(sev)
+	if len(sevRules) == 0 {
+		sevRules = inEvt.Appsec.MatchedRules
+	}
 
 	for _, rule := range sevRules {
 		name, ok := rule["name"].(string)
@@ -216,18 +220,22 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	}
 
 	// This is a modsec rule match
-	if scenarioName == "" {
-		// If from CRS (TX scores are set), use that as the name
+	if scenarioName == "" && len(sevRules) > 0 {
+		// If from CRS (TX scores are set, and the global score is not 0), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
-		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+		if score, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok && score != "0" {
 			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
 		} else {
-			scenarioName, ok = sevRules[0]["msg"].(string)
-			//Not sure if this can happen
-			//Default to native_rule:XXX if msg is empty
-			if scenarioName == "" || !ok {
-				scenarioName = inEvt.Appsec.GetName()
+			if msg, msgOk := sevRules[0]["msg"].(string); msgOk {
+				scenarioName = msg
 			}
+		}
+	}
+
+	if scenarioName == "" {
+		scenarioName = inEvt.Appsec.GetName()
+		if scenarioName == "" {
+			scenarioName = "crowdsec.appsec-event"
 		}
 	}
 
@@ -297,8 +305,8 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
 		Process: true,
-		Module:  "appsec",
-		Src:     "appsec",
+		Module:  ModuleName,
+		Src:     ModuleName,
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
 	evt.Appsec = pipeline.AppsecEvent{}
@@ -314,45 +322,123 @@ func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
 
 	if evt.Meta["appsec_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else if evt.Parsed["outofband_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else {
 		logger.WithFields(log.Fields{
-			"module":     "appsec",
+			"module":     ModuleName,
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	}
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
-	if evt == nil {
-		return
+type ruleData struct {
+	ID           int
+	Name         string
+	Hash         string
+	Version      string
+	Message      string
+	URI          string
+	Method       string
+	Disruptive   bool
+	Tags         []string
+	File         string
+	FileLine     int
+	Revision     string
+	SecMark      string
+	Accuracy     int
+	Severity     string
+	SeverityInt  int
+	MatchedZones []string
+	LogData      string
+	IsInternal   bool
+}
+
+func determineRuleKind(isInBand bool, evt *pipeline.Event) string {
+	if isInBand {
+		evt.Appsec.HasInBandMatches = true
+		return "inband"
+	}
+	evt.Appsec.HasOutBandMatches = true
+	return "outofband"
+}
+
+func extractMatchedZones(matchDatas []corazatypes.MatchData, logger *log.Entry, ruleID int) (matchedZones []string, matchedCollections []string, isInternal bool) {
+	matchedZones = make([]string, 0)
+	matchedCollections = make([]string, 0)
+
+	for _, matchData := range matchDatas {
+		zone := matchData.Variable().Name()
+		matchedCollections = append(matchedCollections, zone)
+		varName := matchData.Key()
+		if varName != "" {
+			zone += "." + varName
+		}
+		matchedZones = append(matchedZones, zone)
 	}
 
-	if !state.Tx.IsInterrupted() {
-		// if the phase didn't generate an interruption, we don't have anything to add to the event
-		return
+	if containsAll(excludedMatchCollections, matchedCollections) {
+		isInternal = true
+		if logger != nil {
+			logger.Debugf("ignoring rule %d match on zone %+v", ruleID, matchedZones)
+		}
 	}
-	// if one interruption was generated, event is good for processing :)
-	evt.Process = true
 
+	return matchedZones, matchedCollections, isInternal
+}
+
+func buildRuleMap(data ruleData, kind string) map[string]any {
+	ruleMap := map[string]any{
+		"id":            data.ID,
+		"uri":           data.URI,
+		"rule_type":     kind,
+		"method":        data.Method,
+		"disruptive":    data.Disruptive,
+		"tags":          data.Tags,
+		"file":          data.File,
+		"file_line":     data.FileLine,
+		"revision":      data.Revision,
+		"secmark":       data.SecMark,
+		"accuracy":      data.Accuracy,
+		"msg":           data.Message,
+		"severity":      data.Severity,
+		"severity_int":  data.SeverityInt,
+		"name":          data.Name,
+		"hash":          data.Hash,
+		"version":       data.Version,
+		"matched_zones": data.MatchedZones,
+		"logdata":       data.LogData,
+	}
+
+	if data.IsInternal {
+		ruleMap["internal"] = true
+	}
+
+	return ruleMap
+}
+
+func initializeEventMaps(evt *pipeline.Event) {
 	if evt.Meta == nil {
 		evt.Meta = map[string]string{}
 	}
-
 	if evt.Parsed == nil {
 		evt.Parsed = map[string]string{}
 	}
+	if evt.Appsec.Vars == nil {
+		evt.Appsec.Vars = map[string]string{}
+	}
+}
 
+func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.AppsecDropInfo) {
 	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
@@ -363,12 +449,14 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		evt.Parsed["outofband_action"] = state.Tx.Interruption().Action
 	}
 
-	if evt.Appsec.Vars == nil {
-		evt.Appsec.Vars = map[string]string{}
+	if dropInfo != nil && dropInfo.Reason != "" {
+		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
+		evt.Parsed["appsec_drop_reason"] = dropInfo.Reason
 	}
+}
 
+func collectTXAnomalyScores(state *appsec.AppsecRequestState, evt *pipeline.Event) {
 	txCollection := state.Tx.Variables().TX()
-
 	txMatchedData := txCollection.FindAll()
 
 	for _, match := range txMatchedData {
@@ -376,113 +464,190 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 			evt.Appsec.Vars["TX."+match.Key()] = match.Value()
 		}
 	}
+}
 
-	if len(r.AppsecRuntime.CompiledVariablesTracking) > 0 {
-		state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
-			for _, variable := range col.FindAll() {
-				r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
-				key := variable.Variable().Name()
-				if variable.Key() != "" {
-					key += "." + variable.Key()
-				}
-
-				if variable.Value() == "" {
-					continue
-				}
-
-				for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
-					match := collectionToKeep.MatchString(key)
-					if match {
-						evt.Appsec.Vars[key] = variable.Value()
-						r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
-					} else {
-						r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
-					}
-				}
-			}
-
-			return true
-		})
+func (r *AppsecRunner) collectTrackedVariables(state *appsec.AppsecRequestState, evt *pipeline.Event) {
+	if len(r.AppsecRuntime.CompiledVariablesTracking) == 0 {
+		return
 	}
 
+	state.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+		for _, variable := range col.FindAll() {
+			r.logger.Tracef("variable: %s.%s = %s\n", variable.Variable().Name(), variable.Key(), variable.Value())
+			key := variable.Variable().Name()
+			if variable.Key() != "" {
+				key += "." + variable.Key()
+			}
+
+			if variable.Value() == "" {
+				continue
+			}
+
+			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
+				match := collectionToKeep.MatchString(key)
+				if match {
+					evt.Appsec.Vars[key] = variable.Value()
+					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+				} else {
+					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+				}
+			}
+		}
+
+		return true
+	})
+}
+
+func getRuleNameAndMetrics(rule corazatypes.MatchedRule, logger *log.Entry) (name, version, hash, ruleNameProm string) {
+	version = ""
+	hash = ""
+	ruleNameProm = fmt.Sprintf("%d", rule.Rule().ID())
+
+	if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
+		// Only set them for custom rules, not for rules written in seclang
+		name = details.Name
+		version = details.Version
+		hash = details.Hash
+		ruleNameProm = details.Name
+
+		logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
+	} else {
+		name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
+	}
+
+	return name, version, hash, ruleNameProm
+}
+
+func (r *AppsecRunner) processMatchedRules(state *appsec.AppsecRequestState, evt *pipeline.Event, req *appsec.ParsedRequest) {
 	for _, rule := range state.Tx.MatchedRules() {
 		// Drop the rule if it has no message (it's likely a CRS setup rule)
 		if rule.Message() == "" {
 			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
-		kind := "outofband"
-		if state.CurrentPhase == appsec.PhaseInBand {
-			kind = "inband"
-			evt.Appsec.HasInBandMatches = true
-		} else {
-			evt.Appsec.HasOutBandMatches = true
-		}
 
-		var name string
-		version := ""
-		hash := ""
-		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
-
-		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
-			// Only set them for custom rules, not for rules written in seclang
-			name = details.Name
-			version = details.Version
-			hash = details.Hash
-			ruleNameProm = details.Name
-
-			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
-		} else {
-			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
-		}
+		kind := determineRuleKind(state.CurrentPhase == appsec.PhaseInBand, evt)
+		name, version, hash, ruleNameProm := getRuleNameAndMetrics(rule, r.logger)
 
 		metrics.AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
-		matchedZones := make([]string, 0)
-		matchedCollections := make([]string, 0)
+		matchedZones, _, isInternal := extractMatchedZones(rule.MatchedDatas(), r.logger, rule.Rule().ID())
 
-		// Get matched zones
-		internalRule := false
-		for _, matchData := range rule.MatchedDatas() {
-			zone := matchData.Variable().Name()
-			matchedCollections = append(matchedCollections, zone)
-			varName := matchData.Key()
-			if varName != "" {
-				zone += "." + varName
-			}
-			matchedZones = append(matchedZones, zone)
+		data := ruleData{
+			ID:           rule.Rule().ID(),
+			Name:         name,
+			Hash:         hash,
+			Version:      version,
+			Message:      rule.Message(),
+			URI:          evt.Parsed["target_uri"],
+			Method:       evt.Parsed["method"],
+			Disruptive:   rule.Disruptive(),
+			Tags:         rule.Rule().Tags(),
+			File:         rule.Rule().File(),
+			FileLine:     rule.Rule().Line(),
+			Revision:     rule.Rule().Revision(),
+			SecMark:      rule.Rule().SecMark(),
+			Accuracy:     rule.Rule().Accuracy(),
+			Severity:     rule.Rule().Severity().String(),
+			SeverityInt:  rule.Rule().Severity().Int(),
+			MatchedZones: matchedZones,
+			LogData:      rule.Data(),
+			IsInternal:   isInternal,
 		}
 
-		if containsAll(excludedMatchCollections, matchedCollections) {
-			internalRule = true
-			r.logger.Debugf("ignoring rule %d match on zone %+v", rule.Rule().ID(), matchedZones)
-		}
+		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, buildRuleMap(data, kind))
+	}
+}
 
-		corazaRule := map[string]any{
-			"id":            rule.Rule().ID(),
-			"uri":           evt.Parsed["target_uri"],
-			"rule_type":     kind,
-			"method":        evt.Parsed["method"],
-			"disruptive":    rule.Disruptive(),
-			"tags":          rule.Rule().Tags(),
-			"file":          rule.Rule().File(),
-			"file_line":     rule.Rule().Line(),
-			"revision":      rule.Rule().Revision(),
-			"secmark":       rule.Rule().SecMark(),
-			"accuracy":      rule.Rule().Accuracy(),
-			"msg":           rule.Message(),
-			"severity":      rule.Rule().Severity().String(),
-			"severity_int":  rule.Rule().Severity().Int(),
-			"name":          name,
-			"hash":          hash,
-			"version":       version,
-			"matched_zones": matchedZones,
-			"logdata":       rule.Data(),
-		}
-		if internalRule {
-			corazaRule["internal"] = true
-		}
+func getURIWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) string {
+	uri := evt.Parsed["target_uri"]
+	if uri == "" && req != nil {
+		uri = req.URI
+	}
+	return uri
+}
 
-		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
+func getMethodWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) string {
+	method := evt.Parsed["method"]
+	if method == "" && req != nil {
+		method = req.Method
+	}
+	return method
+}
+
+func processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
+	kind := determineRuleKind(req.IsInBand, evt)
+
+	if evt.Appsec.MatchedRules == nil {
+		evt.Appsec.MatchedRules = pipeline.MatchedRules{}
+	}
+
+	tags := dropInfo.Interruption.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
+	uri := getURIWithFallback(evt, req)
+	method := getMethodWithFallback(evt, req)
+	severity := corazatypes.RuleSeverityNotice
+
+	ruleName := "crowdsec.drop-request"
+	if dropInfo.Reason != "" {
+		ruleName = dropInfo.Reason
+	}
+
+	data := ruleData{
+		ID:           dropInfo.Interruption.RuleID,
+		Name:         ruleName,
+		Hash:         "",
+		Version:      "",
+		Message:      dropInfo.Reason,
+		URI:          uri,
+		Method:       method,
+		Disruptive:   true,
+		Tags:         tags,
+		File:         "crowdsec:drop_request",
+		FileLine:     0,
+		Revision:     "",
+		SecMark:      "",
+		Accuracy:     0,
+		Severity:     severity.String(),
+		SeverityInt:  severity.Int(),
+		MatchedZones: []string{"PRE_EVAL"},
+		LogData:      dropInfo.Reason,
+		IsInternal:   false,
+	}
+
+	syntheticRule := buildRuleMap(data, kind)
+	evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, syntheticRule)
+}
+
+func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.AppsecRequestState, req *appsec.ParsedRequest) {
+	if evt == nil {
+		return
+	}
+
+	var dropInfo *appsec.AppsecDropInfo
+	if state != nil {
+		dropInfo = state.DropInfo(req)
+	}
+
+	if !state.Tx.IsInterrupted() && dropInfo == nil {
+		// if the phase didn't generate an interruption, we don't have anything to add to the event
+		return
+	}
+
+	// if one interruption was generated, event is good for processing :)
+	evt.Process = true
+
+	initializeEventMaps(evt)
+	updateEventPhaseMetadata(evt, state, dropInfo)
+
+	collectTXAnomalyScores(state, evt)
+	r.collectTrackedVariables(state, evt)
+	r.processMatchedRules(state, evt, req)
+
+	if dropInfo != nil {
+		processDropInfo(dropInfo, evt, req)
 	}
 }

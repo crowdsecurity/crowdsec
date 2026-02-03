@@ -108,8 +108,10 @@ func GetConfig() Config {
 
 func NewDefaultConfig() *Config {
 	commonCfg := CommonCfg{
-		LogMedia: "stdout",
 		LogLevel: log.InfoLevel,
+		LogConfig: LogConfig{
+			LogMedia: "stdout",
+		},
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,

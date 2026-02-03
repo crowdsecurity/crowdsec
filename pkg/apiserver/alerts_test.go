@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -239,7 +240,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", alertContent, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// get without filters
 
@@ -417,7 +418,7 @@ func TestListAlert(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", emptyBody, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// List Alert
 
@@ -509,7 +510,9 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
 	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}
 	cfg.API.Server.ListenURI = "::8080"
-	server, err := NewServer(ctx, cfg.API.Server)
+
+	logger, _ := logtest.NewNullLogger()
+	server, err := NewServer(ctx, cfg.API.Server, logger.WithFields(nil))
 	require.NoError(t, err)
 
 	err = server.InitController()

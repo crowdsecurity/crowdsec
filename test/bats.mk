@@ -67,8 +67,8 @@ bats-check-requirements:  ## Check dependencies for functional tests
 	@$(TEST_DIR)/bin/check-requirements
 
 bats-tools:  ## Install/update tools required for functional tests
-	# yq v4.44.3
-	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@bbdd97482f2d439126582a59689eb1c855944955
+	# yq v4.50.1
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@065b200af9851db0d5132f50bc10b1406ea5c0a8
 	# cfssl v1.6.5
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@96259aa29c9cc9b2f4e04bad7d4bc152e5405dda
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@96259aa29c9cc9b2f4e04bad7d4bc152e5405dda

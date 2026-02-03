@@ -1,11 +1,14 @@
 package appsec
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
@@ -91,10 +94,21 @@ type AppsecTempResponse struct {
 	SendAlert               bool   // do we send an alert on rule match
 }
 
+type AppsecDropInfo struct {
+	Reason       string
+	Interruption *corazatypes.Interruption
+}
+
 type AppsecRequestState struct {
 	Tx           ExtendedTransaction
-	Response     AppsecTempResponse
 	CurrentPhase phase
+	Response     AppsecTempResponse
+
+	InBandDrop    *AppsecDropInfo
+	OutOfBandDrop *AppsecDropInfo
+
+	PendingAction   *string
+	PendingHTTPCode *int
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -109,6 +123,31 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
 	s.Response.SendEvent = true
 	s.Response.SendAlert = true
+	s.PendingAction = nil
+	s.PendingHTTPCode = nil
+}
+
+func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
+	switch {
+	case request != nil && request.IsInBand:
+		return s.InBandDrop
+	case request != nil && request.IsOutBand:
+		return s.OutOfBandDrop
+	default:
+		return nil
+	}
+}
+
+func (s *AppsecRequestState) ApplyPendingResponse() {
+	if s.PendingAction != nil {
+		s.Response.Action = *s.PendingAction
+		s.PendingAction = nil
+	}
+
+	if s.PendingHTTPCode != nil {
+		s.Response.UserHTTPResponseCode = *s.PendingHTTPCode
+		s.PendingHTTPCode = nil
+	}
 }
 
 type AppsecSubEngineOpts struct {
@@ -175,6 +214,49 @@ func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
 
 func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 	state.ResetResponse(w.Config)
+}
+
+func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "request dropped by drop helper"
+	}
+
+	interrupt := &corazatypes.Interruption{
+		RuleID: 0,
+		Action: "deny",
+		Status: w.Config.UserBlockedHTTPCode,
+		Data:   reason,
+		Tags:   []string{"crowdsec:drop-request"},
+	}
+
+	switch {
+	case request.IsInBand:
+		if state.Tx.Tx == nil {
+			return errors.New("inband transaction not initialized")
+		}
+		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:inband")
+		state.InBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+		state.Response.InBandInterrupt = true
+		state.Response.Action = w.DefaultRemediation
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+		state.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
+		state.Tx.Interrupt(interrupt)
+		w.Logger.Debugf("drop request helper triggered for inband phase: %s", reason)
+	case request.IsOutBand:
+		if state.Tx.Tx == nil {
+			return errors.New("outofband transaction not initialized")
+		}
+		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:outofband")
+		state.OutOfBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+		state.Response.OutOfBandInterrupt = true
+		state.Tx.Interrupt(interrupt)
+		w.Logger.Debugf("drop request helper triggered for out-of-band phase: %s", reason)
+	default:
+		return errors.New("unable to determine request band for drop helper")
+	}
+
+	return nil
 }
 
 func (wc *AppsecConfig) SetUpLogger() {
@@ -266,7 +348,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	return nil
 }
 
-func (wc *AppsecConfig) Load(configName string) error {
+func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
 	if item != nil && item.State.IsInstalled() {
@@ -283,11 +365,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (*AppsecConfig) GetDataDir() string {
-	return hub.GetDataDir()
-}
-
-func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
+func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
 	if wc.BouncerBlockedHTTPCode == 0 {
@@ -331,7 +409,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
 
-		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"), hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
 		}
@@ -344,7 +422,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	for _, rule := range wc.InBandRules {
 		wc.Logger.Infof("loading inband rule %s", rule)
 
-		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"), hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}
@@ -613,6 +691,7 @@ func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id
 		w.Logger.Warnf("cannot remove inband rule %d when not in inband phase", id)
 		return nil
 	}
+
 	w.Logger.Debugf("removing inband rule %d", id)
 	return state.Tx.RemoveRuleByIDWithError(id)
 }
@@ -622,6 +701,7 @@ func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, i
 		w.Logger.Warnf("cannot remove outband rule %d when not in outband phase", id)
 		return nil
 	}
+
 	w.Logger.Debugf("removing outband rule %d", id)
 	return state.Tx.RemoveRuleByIDWithError(id)
 }

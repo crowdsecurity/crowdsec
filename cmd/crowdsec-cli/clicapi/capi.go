@@ -26,13 +26,11 @@ import (
 
 var CAPIBaseURL = "https://api.crowdsec.net/"
 
-type configGetter = func() *csconfig.Config
-
 type cliCapi struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliCapi {
+func New(cfg csconfig.Getter) *cliCapi {
 	return &cliCapi{
 		cfg: cfg,
 	}
@@ -198,7 +196,7 @@ func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 		return capiStatus{}, err
 	}
 
-	if err := db.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token); err != nil {
+	if err := db.SaveAPICToken(ctx, authResp.Token); err != nil {
 		return capiStatus{}, err
 	}
 

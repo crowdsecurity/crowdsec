@@ -63,7 +63,7 @@ event_ids: true`,
 		},
 	}
 
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 	for _, test := range tests {
 		f := Source{}
 		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -122,7 +122,7 @@ event_level: bla`,
 			expectedErr:   "invalid log level",
 		},
 	}
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 	for _, test := range tests {
 		t.Run(test.config, func(t *testing.T) {
 			f := Source{}
@@ -190,7 +190,7 @@ event_ids:
 			expectedLines: nil,
 		},
 	}
-	subLogger := log.WithField("type", "windowseventlog")
+	subLogger := log.WithField("type", ModuleName)
 
 	evthandler, err := eventlog.Open("Application")
 	if err != nil {
@@ -243,7 +243,7 @@ event_ids:
 	}
 }
 
-func TestOneShotAcquisition(t *testing.T) {
+func TestOneShot(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
@@ -289,11 +289,10 @@ func TestOneShotAcquisition(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			lineCount := 0
-			to := &tomb.Tomb{}
 			c := make(chan pipeline.Event)
 			f := Source{}
 
-			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", "windowseventlog"), "")
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "wineventlog"}, log.WithField("type", ModuleName), "")
 			cstest.RequireErrorContains(t, err, test.expectedConfigureErr)
 			if test.expectedConfigureErr != "" {
 				return
@@ -304,13 +303,13 @@ func TestOneShotAcquisition(t *testing.T) {
 					select {
 					case <-c:
 						lineCount++
-					case <-to.Dying():
+					case <-ctx.Done():
 						return
 					}
 				}
 			}()
 
-			err = f.OneShotAcquisition(ctx, c, to)
+			err = f.OneShot(ctx, c)
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 
 			if test.expectedErr != "" {

@@ -1,10 +1,11 @@
 package cliitem
 
 import (
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewParser(cfg configGetter) *cliItem {
+func NewParser(cfg csconfig.Getter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.PARSERS,

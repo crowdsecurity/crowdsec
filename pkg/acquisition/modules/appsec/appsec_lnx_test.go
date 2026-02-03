@@ -69,9 +69,6 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

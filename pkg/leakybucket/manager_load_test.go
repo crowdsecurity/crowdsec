@@ -3,8 +3,6 @@ package leakybucket
 import (
 	"fmt"
 	"testing"
-
-	"gopkg.in/tomb.v2"
 )
 
 type cfgTest struct {
@@ -14,16 +12,15 @@ type cfgTest struct {
 }
 
 func runTest(tests []cfgTest) error {
-	var tomb = &tomb.Tomb{}
 	for idx, cfg := range tests {
-		err := LoadBucket(&cfg.cfg, tomb)
+		err := cfg.cfg.LoadBucket()
 		if cfg.loadable && err != nil {
 			return fmt.Errorf("expected loadable result (%d/%d), got: %s", idx+1, len(tests), err)
 		}
 		if !cfg.loadable && err == nil {
 			return fmt.Errorf("expected unloadable result (%d/%d)", idx+1, len(tests))
 		}
-		err = ValidateFactory(&cfg.cfg)
+		err = cfg.cfg.Validate()
 		if cfg.valid && err != nil {
 			return fmt.Errorf("expected valid result (%d/%d), got: %s", idx+1, len(tests), err)
 		}
@@ -36,13 +33,13 @@ func runTest(tests []cfgTest) error {
 
 func TestBadBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//empty
+		// empty
 		{BucketFactory{}, false, false},
-		//missing description
+		// missing description
 		{BucketFactory{Name: "test"}, false, false},
-		//missing type
+		// missing type
 		{BucketFactory{Name: "test", Description: "test1"}, false, false},
-		//bad type
+		// bad type
 		{BucketFactory{Name: "test", Description: "test1", Type: "ratata"}, false, false},
 	}
 	if err := runTest(CfgTests); err != nil {

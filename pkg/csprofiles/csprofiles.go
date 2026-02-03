@@ -35,10 +35,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		runtime := &Runtime{}
 
-		xlog := log.New()
-		if err := logging.ConfigureLogger(xlog, log.InfoLevel); err != nil {
-			return nil, fmt.Errorf("while configuring profiles-specific logger: %w", err)
-		}
+		xlog := logging.SubLogger(log.StandardLogger(), "profile", log.InfoLevel)
 
 		runtime.Logger = xlog.WithFields(log.Fields{
 			"type": "profile",

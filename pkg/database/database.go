@@ -17,7 +17,7 @@ import (
 
 type Client struct {
 	Ent              *ent.Client
-	Log              *log.Logger
+	Log              logging.ExtLogger
 	CanFlush         bool
 	Type             string
 	WalMode          *bool
@@ -40,19 +40,18 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	return drv, nil
 }
 
-func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, error) {
+func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.Entry) (*Client, error) {
 	var client *ent.Client
+
+	if logger == nil {
+		logger = log.StandardLogger().WithFields(nil)
+	}
 
 	if config == nil {
 		return nil, errors.New("DB config is empty")
 	}
-	/*The logger that will be used by db operations*/
-	clog := log.New()
-	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
-		return nil, fmt.Errorf("while configuring db logger: %w", err)
-	}
 
-	entLogger := clog.WithField("context", "ent")
+	entLogger := logger.WithField("context", "ent")
 	entOpt := ent.Log(entLogger.Debug)
 
 	typ, dia, err := config.ConnectionDialect()
@@ -91,7 +90,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 	client = ent.NewClient(ent.Driver(drv), entOpt)
 
 	if config.LogLevel >= log.DebugLevel {
-		clog.Debugf("Enabling request debug")
+		logger.Debugf("Enabling request debug")
 
 		client = client.Debug()
 	}
@@ -102,7 +101,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg) (*Client, erro
 
 	return &Client{
 		Ent:              client,
-		Log:              clog,
+		Log:              logger,
 		CanFlush:         true,
 		Type:             config.Type,
 		WalMode:          config.UseWal,

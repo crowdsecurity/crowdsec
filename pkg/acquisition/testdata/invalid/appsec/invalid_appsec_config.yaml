@@ -1,0 +1,6 @@
+# wantErr: datasource of type appsec: unable to parse appsec configuration: cannot parse appsec configuration: [6:6] cannot unmarshal map[string]interface {} into Go struct field Configuration.AppsecConfig of type string
+source: appsec
+labels:
+  type: sometype
+appsec_config:
+  foo: bar

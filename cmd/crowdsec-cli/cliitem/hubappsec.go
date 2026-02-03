@@ -10,10 +10,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewAppsecConfig(cfg configGetter) *cliItem {
+func NewAppsecConfig(cfg csconfig.Getter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.APPSEC_CONFIGS,
@@ -111,7 +112,7 @@ cscli appsec-configs list crowdsecurity/virtual-patching crowdsecurity/generic-r
 	}
 }
 
-func NewAppsecRule(cfg configGetter) *cliItem {
+func NewAppsecRule(cfg csconfig.Getter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
 		if cfg().Cscli.Output != "human" {

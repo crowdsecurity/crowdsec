@@ -21,7 +21,7 @@ func isWindowsService() (bool, error) {
 	return svc.IsWindowsService()
 }
 
-func StartRunSvc(ctx context.Context) error {
+func StartRunSvc(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
@@ -36,7 +36,7 @@ func StartRunSvc(ctx context.Context) error {
 		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
 	}
 	if isRunninginService {
-		return runService(svcName)
+		return runService(svcName, sd)
 	}
 
 	switch flags.WinSvc {
@@ -61,7 +61,7 @@ func StartRunSvc(ctx context.Context) error {
 			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	case "":
-		return WindowsRun(ctx)
+		return WindowsRun(ctx, cConfig, sd)
 	default:
 		return fmt.Errorf("Invalid value for winsvc parameter: %s", flags.WinSvc)
 	}
@@ -69,17 +69,7 @@ func StartRunSvc(ctx context.Context) error {
 	return nil
 }
 
-func WindowsRun(ctx context.Context) error {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
-
-	cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
-	if err != nil {
-		return err
-	}
-
+func WindowsRun(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) error {
 	if fflag.PProfBlockProfile.IsEnabled() {
 		runtime.SetBlockProfileRate(1)
 		runtime.SetMutexProfileFraction(1)
@@ -96,7 +86,8 @@ func WindowsRun(ctx context.Context) error {
 		var err error
 
 		if cConfig.DbConfig != nil {
-			dbClient, err = database.NewClient(ctx, cConfig.DbConfig)
+			dbCfg := cConfig.DbConfig
+			dbClient, err = database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
 
 			if err != nil {
 				return fmt.Errorf("unable to create database client: %w", err)
@@ -105,5 +96,5 @@ func WindowsRun(ctx context.Context) error {
 		registerPrometheus(cConfig.Prometheus)
 		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(ctx, cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady, sd)
 }

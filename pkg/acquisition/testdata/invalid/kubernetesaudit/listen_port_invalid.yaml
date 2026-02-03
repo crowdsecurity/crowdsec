@@ -1,0 +1,6 @@
+# wantErr: datasource of type k8s-audit: cannot parse: [6:14] cannot unmarshal bool into Go struct field Configuration.ListenPort of type int
+source: k8s-audit
+labels:
+  type: sometype
+listen_addr: 0.0.0.0
+listen_port: true

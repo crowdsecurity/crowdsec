@@ -17,7 +17,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -72,15 +76,19 @@ func (*MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") 
 func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
 // appendMockSource is only used to add mock source for tests.
-func appendMockSource() {
-	AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
-	AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
+func appendMockSource(t *testing.T) {
+	t.Helper()
+
+	restore := registry.RegisterTestFactory("mock", func() types.DataSource { return &MockSource{} })
+	t.Cleanup(restore)
+	restore = registry.RegisterTestFactory("mock_cant_run", func() types.DataSource { return &MockSourceCantRun{} })
+	t.Cleanup(restore)
 }
 
 func TestDataSourceConfigure(t *testing.T) {
 	ctx := t.Context()
 
-	appendMockSource()
+	appendMockSource(t)
 
 	tests := []struct {
 		TestName      string
@@ -181,7 +189,8 @@ filename: foo.log
 			common := configuration.DataSourceCommonCfg{}
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
-			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone)
+			hub := cwhub.Hub{}
+			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone, &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -213,7 +222,7 @@ filename: foo.log
 }
 
 func TestLoadAcquisitionFromFiles(t *testing.T) {
-	appendMockSource()
+	appendMockSource(t)
 	t.Setenv("TEST_ENV", "test_value2")
 
 	ctx := t.Context()
@@ -259,7 +268,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/missing_labels.yaml"},
 			},
-			ExpectedError: "missing labels in testdata/missing_labels.yaml",
+			ExpectedError: "testdata/missing_labels.yaml: missing labels",
 		},
 		{
 			TestName: "backward_compat",
@@ -273,14 +282,14 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_source.yaml"},
 			},
-			ExpectedError: "in file testdata/bad_source.yaml (position 0) - unknown data source does_not_exist",
+			ExpectedError: "testdata/bad_source.yaml: unknown data source does_not_exist",
 		},
 		{
 			TestName: "invalid_filetype_config",
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"testdata/bad_filetype.yaml"},
 			},
-			ExpectedError: "configuring datasource of type file from testdata/bad_filetype.yaml",
+			ExpectedError: "testdata/bad_filetype.yaml: datasource of type file: cannot parse FileAcquisition configuration: [2:12] string was used where sequence is expected",
 		},
 		{
 			TestName: "from_env",
@@ -292,7 +301,8 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
-			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil)
+			hub := cwhub.Hub{}
+			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil, &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -392,7 +402,7 @@ func (*MockTail) GetUuid() string { return "" }
 
 func TestStartAcquisitionCat(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockCat{},
 	}
 	out := make(chan pipeline.Event)
@@ -420,7 +430,7 @@ READLOOP:
 
 func TestStartAcquisitionTail(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTail{},
 	}
 	out := make(chan pipeline.Event)
@@ -469,7 +479,7 @@ func (*MockTailError) StreamingAcquisition(_ context.Context, out chan pipeline.
 
 func TestStartAcquisitionTailError(t *testing.T) {
 	ctx := t.Context()
-	sources := []DataSource{
+	sources := []types.DataSource{
 		&MockTailError{},
 	}
 	out := make(chan pipeline.Event)
@@ -548,11 +558,13 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
+	restore := registry.RegisterTestFactory("mockdsn", func() types.DataSource { return &MockSourceByDSN{} })
+	t.Cleanup(restore)
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "")
+			hub := cwhub.Hub{}
+			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "", &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -583,7 +595,7 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&TailModeNoTailer{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&TailModeNoTailer{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
@@ -606,7 +618,7 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&CatModeNoFetcher{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }

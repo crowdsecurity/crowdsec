@@ -98,58 +98,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestBadConfiguration(t *testing.T) {
-	cstest.SkipOnWindows(t)
-	
-	ctx := t.Context()
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config:      `source: kinesis`,
-			expectedErr: "stream_name is mandatory when use_enhanced_fanout is false",
-		},
-		{
-			config: `
-source: kinesis
-max_retries: whatev`,
-			expectedErr: "[3:14] cannot unmarshal string into Go struct field Configuration.MaxRetries of type int",
-		},
-		{
-			config: `
-source: kinesis
-use_enhanced_fanout: true`,
-			expectedErr: "stream_arn is mandatory when use_enhanced_fanout is true",
-		},
-		{
-			config: `
-source: kinesis
-use_enhanced_fanout: true
-stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
-			expectedErr: "consumer_name is mandatory when use_enhanced_fanout is true",
-		},
-		{
-			config: `
-source: kinesis
-stream_name: foobar
-stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
-			expectedErr: "stream_arn and stream_name are mutually exclusive",
-		},
-	}
-
-	subLogger := log.WithField("type", "kinesis")
-
-	for _, test := range tests {
-		t.Run(test.config, func(t *testing.T) {
-			f := Source{}
-			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
-		})
-	}
-}
-
 func TestReadFromStream(t *testing.T) {
 	endpoint := cstest.SetAWSTestEnv(t)
 
@@ -172,7 +120,7 @@ stream_name: stream-1-shard`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -217,7 +165,7 @@ stream_name: stream-2-shards`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -266,7 +214,7 @@ from_subscription: true`,
 	for _, test := range tests {
 		f := Source{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure(ctx, []byte(config), log.WithField("type", "kinesis"), metrics.AcquisitionMetricsLevelNone)
+		err := f.Configure(ctx, []byte(config), log.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
 		tomb := &tomb.Tomb{}
@@ -310,7 +258,7 @@ use_enhanced_fanout: true`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		config := fmt.Sprintf(test.config, endpoint)
-		err := f.Configure([]byte(config), log.WithField("type", "kinesis"))
+		err := f.Configure([]byte(config), log.WithField("type", ModuleName))
 		require.NoError(t, err)
 		tomb := &tomb.Tomb{}
 		out := make(chan types.Event)

@@ -1,0 +1,5 @@
+source: journalctl
+labels:
+  type: sometype
+journalctl_filter:
+  - _UID=42

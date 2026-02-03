@@ -41,8 +41,8 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 
 		/*The bucket requires a decision on scope Range */
 		if leaky.scopeType.Scope != types.Range {
-				log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
-					leaky.Name, *v.Scope, *v.Value)
+			log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
+				leaky.Name, *v.Scope, *v.Value)
 			continue
 		}
 
@@ -361,7 +361,8 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true { //nolint:revive
+		//revive:disable-next-line:bool-literal-in-expr
+		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
 			newApiAlert.Remediation = true
 		}
 

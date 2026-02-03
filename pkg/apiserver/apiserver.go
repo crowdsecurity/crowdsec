@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -55,7 +54,8 @@ func isBrokenConnection(maybeError any) bool {
 	if errors.As(err, &netOpError) {
 		var syscallError *os.SyscallError
 		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
+			s := strings.ToLower(syscallError.Error())
+			if strings.Contains(s, "broken pipe") || strings.Contains(s, "connection reset by peer") {
 				return true
 			}
 		}
@@ -82,7 +82,8 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover() //nolint:revive
+	//revive:disable-next-line:defer
+	err := recover()
 	if err == nil {
 		return
 	}
@@ -92,79 +93,36 @@ func recoverFromPanic(c *gin.Context) {
 	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
+
+	log.Warningf("client %s error: %s", c.ClientIP(), err)
+
+	filename, err := trace.WriteStackTrace(err)
+	if err != nil {
+		log.Errorf("also while writing stacktrace: %s", err)
+	}
+
+	log.Warningf("stacktrace written to %s, please join to your issue", filename)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
-func CustomRecoveryWithWriter() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer recoverFromPanic(c)
-		c.Next()
-	}
-}
-
-// XXX: could be a method of LocalApiServerCfg
-func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
-	clog := log.New()
-
-	if err := logging.ConfigureLogger(clog, config.LogLevel); err != nil {
-		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
-	}
-
-	if config.LogMedia != "file" {
-		return clog, "", nil
-	}
-
-	// Log rotation
-
-	logFile := filepath.Join(config.LogDir, "crowdsec_api.log")
-	log.Debugf("starting router, logging to %s", logFile)
-
-	logger := &lumberjack.Logger{
-		Filename:   logFile,
-		MaxSize:    500, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28,   // days
-		Compress:   true, // disabled by default
-	}
-
-	if config.LogMaxSize != 0 {
-		logger.MaxSize = config.LogMaxSize
-	}
-
-	if config.LogMaxFiles != 0 {
-		logger.MaxBackups = config.LogMaxFiles
-	}
-
-	if config.LogMaxAge != 0 {
-		logger.MaxAge = config.LogMaxAge
-	}
-
-	if config.CompressLogs != nil {
-		logger.Compress = *config.CompressLogs
-	}
-
-	clog.SetOutput(logger)
-
-	return clog, logFile, nil
+func CustomRecoveryWithWriter(c *gin.Context) {
+	defer recoverFromPanic(c)
+	c.Next()
 }
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
-	dbClient, err := database.NewClient(ctx, config.DbConfig)
+	if accessLogger == nil {
+		accessLogger = log.StandardLogger().WithFields(nil)
+	}
+
+	dbClient, err := database.NewClient(ctx, config.DbConfig, config.DbConfig.NewLogger())
 	if err != nil {
 		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}
@@ -199,14 +157,8 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		router.ForwardedByClientIP = true
 	}
 
-	// The logger that will be used by handlers
-	clog, _, err := newGinLogger(config)
-	if err != nil {
-		return nil, err
-	}
-
-	gin.DefaultErrorWriter = clog.WriterLevel(log.ErrorLevel)
-	gin.DefaultWriter = clog.Writer()
+	gin.DefaultErrorWriter = accessLogger.WriterLevel(log.ErrorLevel)
+	gin.DefaultWriter = accessLogger.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
@@ -225,13 +177,13 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 	})
-	router.Use(CustomRecoveryWithWriter())
+	router.Use(CustomRecoveryWithWriter)
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
 		Router:                        router,
 		Profiles:                      config.Profiles,
-		Log:                           clog,
+		Log:                           accessLogger,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
@@ -260,7 +212,9 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		if apiClient.apiClient.IsEnrolled() {
 			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, config.PapiLogLevel)
+			logLevel := cmp.Or(config.PapiLogLevel, config.LogLevel)
+			papiLogger := logging.SubLogger(log.StandardLogger(), "papi", logLevel)
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, papiLogger)
 			if err != nil {
 				return nil, err
 			}

@@ -30,113 +30,6 @@ import (
 const testContainerName = "docker_test"
 const testServiceName = "test_service"
 
-func TestConfigure(t *testing.T) {
-	log.Infof("Test 'TestConfigure'")
-
-	ctx := t.Context()
-
-	tests := []struct {
-		config      string
-		expectedErr string
-	}{
-		{
-			config:      `foobar: asd`,
-			expectedErr: `while parsing DockerAcquisition configuration: [1:1] unknown field "foobar"`,
-		},
-		{
-			config: `
-mode: tail
-source: docker`,
-			expectedErr: "no containers or services configuration provided",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-container_name:
- - toto`,
-			expectedErr: "",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-check_interval: 10s
-container_name:
- - toto`,
-			expectedErr: "",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-service_name:
- - web-service`,
-			expectedErr: "",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-use_container_labels: true
-container_name:
- - toto`,
-			expectedErr: "use_container_labels and container_name, container_id, container_id_regexp, container_name_regexp are mutually exclusive",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-use_service_labels: true
-service_name:
- - web-service`,
-			expectedErr: "use_service_labels and service_name, service_id, service_id_regexp, service_name_regexp are mutually exclusive",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-container_name_regexp:
- - "[invalid"`,
-			expectedErr: "container_name_regexp: error parsing regexp: missing closing ]: `[invalid`",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-container_id_regexp:
- - "*invalid"`,
-			expectedErr: "container_id_regexp: error parsing regexp: missing argument to repetition operator: `*`",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-service_name_regexp:
- - "(?P<invalid"`,
-			expectedErr: "service_name_regexp: error parsing regexp: invalid named capture: `(?P<invalid`",
-		},
-		{
-			config: `
-mode: cat
-source: docker
-service_id_regexp:
- - "+invalid"`,
-			expectedErr: "service_id_regexp: error parsing regexp: missing argument to repetition operator: `+`",
-		},
-	}
-
-	subLogger := log.WithField("type", "docker")
-
-	for _, tc := range tests {
-		t.Run(tc.config, func(t *testing.T) {
-			f := DockerSource{}
-			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
 
@@ -186,11 +79,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "",
 		},
 	}
-	subLogger := log.WithField("type", "docker")
+	subLogger := log.WithField("type", ModuleName)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := DockerSource{}
+			f := Source{}
 			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 		})
@@ -335,11 +228,11 @@ service_name_regexp:
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			subLogger := log.WithField("type", "docker")
+			subLogger := log.WithField("type", ModuleName)
 
 			dockerTomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
-			dockerSource := DockerSource{}
+			dockerSource := Source{}
 			err := dockerSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -486,11 +379,11 @@ use_service_labels: true`,
 		},
 	}
 
-	subLogger := log.WithField("type", "docker")
+	subLogger := log.WithField("type", ModuleName)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f := DockerSource{}
+			f := Source{}
 			err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
@@ -563,8 +456,8 @@ service_name:
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			subLogger := log.WithField("type", "docker")
-			f := DockerSource{
+			subLogger := log.WithField("type", ModuleName)
+			f := Source{
 				Client: &mockDockerCli{},
 			}
 
@@ -690,9 +583,9 @@ func TestOneShot(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.dsn, func(t *testing.T) {
-			subLogger := log.WithField("type", "docker")
+			subLogger := log.WithField("type", ModuleName)
 
-			dockerClient := &DockerSource{}
+			dockerClient := &Source{}
 			labels := make(map[string]string)
 			labels["type"] = ts.logType
 
