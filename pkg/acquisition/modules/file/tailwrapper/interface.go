@@ -28,11 +28,20 @@ type SeekInfo struct {
 
 // Config holds configuration for tailing a file
 type Config struct {
-	ReOpen           bool
-	Follow           bool
-	Poll             bool
-	Location         *SeekInfo
-	Logger           interface{}   // *log.Entry, but we use interface{} to avoid circular deps
-	TailMode         string        // "default" or "stat" (defaults to "default" if empty)
-	StatPollInterval time.Duration // for stat mode: default 1s, 0 = 1s, -1 = no automatic polling (manual/test mode)
+	// File behavior
+	ReOpen   bool      // Reopen file if it's rotated/recreated
+	Follow   bool      // Keep following the file for new content
+	Location *SeekInfo // Where to start reading from
+
+	// Change detection
+	Poll         bool          // Use polling instead of inotify for change detection
+	PollInterval time.Duration // Polling interval (default 1s, 0 = 1s, -1 = manual/test mode)
+
+	// File handle mode
+	// When true: keeps file handle open between reads (better performance, uses inotify/polling for changes)
+	// When false: opens file, reads new content, closes immediately (works better on network shares like Azure SMB)
+	KeepFileOpen bool
+
+	// Logging (optional)
+	Logger interface{} // *log.Entry, but we use interface{} to avoid circular deps
 }

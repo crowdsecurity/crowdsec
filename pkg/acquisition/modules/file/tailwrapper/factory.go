@@ -2,24 +2,13 @@ package tailwrapper
 
 import (
 	"context"
-	"fmt"
 )
 
-// TailFile creates a new Tailer based on the configuration
-// It returns either a native tail adapter or a stat-based tailer
+// TailFile creates a new Tailer with the specified configuration.
+//
+// The behavior depends on config.KeepFileOpen:
+//   - true:  keeps file handle open, uses fsnotify for change detection (better for local files)
+//   - false: opens/reads/closes on each poll cycle (better for network shares like Azure SMB)
 func TailFile(ctx context.Context, filename string, config Config) (Tailer, error) {
-	// Determine which implementation to use
-	tailMode := config.TailMode
-	if tailMode == "" {
-		tailMode = "default"
-	}
-
-	switch tailMode {
-	case "stat":
-		return newStatTail(ctx, filename, config)
-	case "default":
-		return newNxadmTail(ctx, filename, config)
-	default:
-		return nil, fmt.Errorf("unknown tail mode: %s (supported: default, stat)", tailMode)
-	}
+	return newTailer(ctx, filename, config)
 }
