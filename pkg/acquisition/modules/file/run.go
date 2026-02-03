@@ -276,14 +276,19 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
+	// Determine file handle mode based on tail_mode config
+	// "stat" mode: close file after each read (works better on network shares like Azure SMB)
+	// "default" mode: keep file handle open (better performance on local files)
+	keepFileOpen := s.config.TailMode != "stat"
+
 	tail, err := tailwrapper.TailFile(ctx, file, tailwrapper.Config{
-		ReOpen:           true,
-		Follow:           true,
-		Poll:             pollFile,
-		Location:         seekInfo,
-		Logger:           log.NewEntry(log.StandardLogger()),
-		TailMode:         s.config.TailMode,
-		StatPollInterval: s.config.StatPollInterval,
+		ReOpen:       true,
+		Follow:       true,
+		Poll:         pollFile,
+		PollInterval: s.config.StatPollInterval,
+		Location:     seekInfo,
+		KeepFileOpen: keepFileOpen,
+		Logger:       log.NewEntry(log.StandardLogger()),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
