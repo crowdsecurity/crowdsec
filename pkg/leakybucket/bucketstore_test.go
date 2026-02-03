@@ -125,12 +125,10 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 	holders, response, err := LoadBuckets(cscfg, hub, scenarios, bucketStore, false)
 	require.NoError(t, err)
 
-	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
-		t.Fatalf("tests from %s failed", dir)
-	}
+	testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore)
 }
 
-func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
+func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) {
 	var results []pipeline.Event
 
 	yamlFile, err := os.Open(file)
@@ -212,13 +210,9 @@ POLL_AGAIN:
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
 			log.Warning("Test is successful")
-			return true
+			return
 		}
-		log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
-		if len(tf.Results) != len(results) {
-			log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
-			return false
-		}
+		require.Len(t, results, len(tf.Results))
 	checkresultsloop:
 		for eidx, out := range results {
 			for ridx, expected := range tf.Results {
@@ -275,10 +269,8 @@ POLL_AGAIN:
 			}
 		}
 		if len(results) != 0 && len(tf.Results) != 0 {
-			log.Errorf("mismatching entries left")
-			log.Errorf("we got: %s", spew.Sdump(results))
-			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
-			return false
+			require.Failf(t, "mismatching entries left",
+				"we got: %s\nwe expected: %s", spew.Sdump(results), spew.Sdump(tf.Results))
 		}
 		log.Warning("entry valid at end of loop")
 	}
