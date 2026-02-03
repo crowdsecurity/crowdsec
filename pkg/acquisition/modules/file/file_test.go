@@ -333,6 +333,11 @@ force_inotify: true`, testPattern),
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Skip tests that don't work on Windows due to chmod/file locking differences
+			if runtime.GOOS == "windows" && tc.name == "GlobInotifyChmod" {
+				t.Skip("Skipping on Windows: chmod 0o000 doesn't prevent file access")
+			}
+
 			ctx := t.Context()
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
@@ -429,29 +434,31 @@ force_inotify: true`, testPattern),
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
-			if tc.expectedOutput != "" {
-				if hook.LastEntry() == nil {
-					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
-				}
-
-				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
-				hook.Reset()
+		if tc.expectedOutput != "" {
+			if hook.LastEntry() == nil {
+				t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
 			}
 
-			if tc.teardown != nil {
-				tc.teardown()
-			}
+			assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
+			hook.Reset()
+		}
 
-			// Cancel context to stop Stream
-			cancel()
+		// Cancel context to stop Stream BEFORE teardown
+		// This ensures file handles are released before cleanup
+		cancel()
 
-			// Wait for Stream to finish
-			select {
-			case err := <-streamDone:
-				cstest.RequireErrorContains(t, err, tc.expectedErr)
-			case <-time.After(5 * time.Second):
-				t.Fatal("Timeout waiting for Stream to finish")
-			}
+		// Wait for Stream to finish
+		select {
+		case err := <-streamDone:
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Timeout waiting for Stream to finish")
+		}
+
+		// Run teardown AFTER Stream has stopped (files are closed)
+		if tc.teardown != nil {
+			tc.teardown()
+		}
 		})
 	}
 }

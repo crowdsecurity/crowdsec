@@ -71,7 +71,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		}
 	}
 
-	// Block until all goroutines complete or context is cancelled
+	// Block until all goroutines complete or context is canceled
 	return g.Wait()
 }
 

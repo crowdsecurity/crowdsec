@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -27,8 +26,8 @@ type tailer struct {
 	lines    chan *Line
 	dying    chan struct{}
 
-	// Context for cancellation
-	ctx    context.Context
+	// Cancellation
+	done   <-chan struct{}
 	cancel context.CancelFunc
 
 	// Synchronization
@@ -52,6 +51,7 @@ type tailer struct {
 // The behavior depends on config.KeepFileOpen:
 //   - true:  keeps file handle open, uses fsnotify for change detection (better for local files)
 //   - false: opens/reads/closes on each poll cycle (better for network shares like Azure SMB)
+//nolint:iface // interface is intentional for abstraction
 func TailFile(ctx context.Context, filename string, config Config) (Tailer, error) {
 	// Validate file exists
 	fi, err := os.Stat(filename)
@@ -76,7 +76,7 @@ func TailFile(ctx context.Context, filename string, config Config) (Tailer, erro
 		config:     config,
 		lines:      make(chan *Line, 100),
 		dying:      make(chan struct{}),
-		ctx:        childCtx,
+		done:       childCtx.Done(),
 		cancel:     cancel,
 		lastOffset: initialOffset,
 		lastSize:   fi.Size(),
@@ -214,7 +214,7 @@ func (t *tailer) mainLoop() {
 
 	// Manual mode for testing (-1 interval)
 	if pollInterval < 0 {
-		<-t.ctx.Done()
+		<-t.done
 		return
 	}
 
@@ -231,7 +231,7 @@ func (t *tailer) mainLoop() {
 
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-t.done:
 			return
 
 		case <-ticker.C:
@@ -246,12 +246,11 @@ func (t *tailer) mainLoop() {
 			}
 			if event.Op&fsnotify.Remove != 0 {
 				// File was removed
-				if t.config.ReOpen {
-					t.handleFileRemoved()
-				} else {
+				if !t.config.ReOpen {
 					t.setError(fmt.Errorf("file %s was removed", t.filename))
 					return
 				}
+				t.handleFileRemoved()
 			}
 
 		case err, ok := <-fsErrors:
@@ -360,7 +359,7 @@ func (t *tailer) readStatMode() {
 				Time: time.Now(),
 				Err:  nil,
 			}:
-			case <-t.ctx.Done():
+			case <-t.done:
 				return
 			}
 		}
@@ -389,15 +388,15 @@ func (t *tailer) readLines() {
 		if line != "" {
 			lineText := strings.TrimRight(line, "\n\r")
 
-			select {
-			case t.lines <- &Line{
-				Text: lineText,
-				Time: time.Now(),
-				Err:  nil,
-			}:
-			case <-t.ctx.Done():
-				return
-			}
+		select {
+		case t.lines <- &Line{
+			Text: lineText,
+			Time: time.Now(),
+			Err:  nil,
+		}:
+		case <-t.done:
+			return
+		}
 		}
 
 		if err != nil {
@@ -449,7 +448,7 @@ func (t *tailer) handleFileRemoved() {
 	// Wait for file to reappear (without holding lock)
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-t.done:
 			return
 		case <-time.After(100 * time.Millisecond):
 			fi, err := os.Stat(t.filename)
@@ -488,9 +487,10 @@ func (t *tailer) ForceRead() {
 
 // openFile opens a file for reading, handling OS-specific requirements
 func openFile(filename string) (*os.File, error) {
-	if runtime.GOOS == "windows" {
-		// On Windows, open with shared read access to allow other processes to write
-		return os.OpenFile(filename, os.O_RDONLY, 0)
-	}
+	// On all platforms, use standard open - it allows shared read access
+	// On Windows, this allows other processes to write to the file
+	// Note: Windows file deletion while open requires syscall.FILE_SHARE_DELETE
+	// which isn't directly supported by os.Open, but the file will be deleted
+	// when the last handle is closed
 	return os.Open(filename)
 }

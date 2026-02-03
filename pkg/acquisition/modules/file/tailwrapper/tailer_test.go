@@ -94,7 +94,7 @@ func (tt *TailTest) TruncateFile(name string, contents string) {
 }
 
 func (tt *TailTest) StartTail(name string, config Config) Tailer {
-	tail, err := TailFile(context.Background(), filepath.Join(tt.path, name), config)
+	tail, err := TailFile(tt.t.Context(), filepath.Join(tt.path, name), config)
 	if err != nil {
 		tt.t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestTailer_FileMustExist(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	_, err := TailFile(context.Background(), nonExistentFile, config)
+	_, err := TailFile(t.Context(), nonExistentFile, config)
 	require.Error(t, err, "Should error when file doesn't exist")
 	assert.Contains(t, err.Error(), "could not stat file")
 }
@@ -221,7 +221,7 @@ func TestTailer_FileExists(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err, "Should succeed when file exists")
 	_ = tail.Stop()
 }
@@ -247,7 +247,7 @@ func TestTailer_Stop(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 
 			// Stop should not error
@@ -298,7 +298,7 @@ func TestTailer_ContextCancellation(t *testing.T) {
 			err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 
 			config := Config{
 				Poll:         true,
@@ -467,7 +467,7 @@ func TestTailer_TruncationDetection(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -475,7 +475,7 @@ func TestTailer_TruncationDetection(t *testing.T) {
 
 			// Add more content
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("line6\n")
+			_, _ = f.WriteString("line6\n")
 			f.Close()
 			tl.ForceRead()
 
@@ -486,7 +486,7 @@ func TestTailer_TruncationDetection(t *testing.T) {
 
 			// Add more to truncated file
 			f, _ = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("new3\n")
+			_, _ = f.WriteString("new3\n")
 			f.Close()
 			tl.ForceRead()
 
@@ -529,7 +529,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -561,7 +561,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 
 			// Add to batch3
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("batch3_line2\n")
+			_, _ = f.WriteString("batch3_line2\n")
 			f.Close()
 			tl.ForceRead()
 
@@ -632,7 +632,7 @@ func TestTailer_LargeLines(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -704,7 +704,7 @@ func TestTailer_Filename(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -731,7 +731,7 @@ func TestTailer_FileDeleted(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -783,7 +783,7 @@ func TestTailer_ErrorHandling(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
@@ -827,13 +827,13 @@ func TestTailer_PollInterval(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
 	start := time.Now()
 	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	f.WriteString("line2\n")
+	_, _ = f.WriteString("line2\n")
 	f.Close()
 
 	var lineReadTime time.Time
@@ -881,13 +881,13 @@ func TestTailer_KeepOpenWithPolling(t *testing.T) {
 		KeepFileOpen: true,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
 	time.Sleep(50 * time.Millisecond)
 	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	f.WriteString("line2\n")
+	_, _ = f.WriteString("line2\n")
 	f.Close()
 
 	var line *Line
@@ -919,13 +919,13 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 		KeepFileOpen: true,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
 	time.Sleep(50 * time.Millisecond)
 	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	f.WriteString("line2\n")
+	_, _ = f.WriteString("line2\n")
 	f.Close()
 
 	var line *Line
@@ -958,7 +958,7 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -967,7 +967,7 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 				for i := 1; i <= 5; i++ {
 					time.Sleep(100 * time.Millisecond)
 					f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-					f.WriteString(strings.Repeat("x", i) + "\n")
+					_, _ = f.WriteString(strings.Repeat("x", i) + "\n")
 					f.Close()
 				}
 			}()
@@ -1019,7 +1019,7 @@ func TestTailer_SeekStart(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1027,7 +1027,7 @@ func TestTailer_SeekStart(t *testing.T) {
 			tl.ForceRead()
 
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("line4\n")
+			_, _ = f.WriteString("line4\n")
 			f.Close()
 			tl.ForceRead()
 
@@ -1083,7 +1083,7 @@ func TestTailer_FileRotation(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1091,7 +1091,7 @@ func TestTailer_FileRotation(t *testing.T) {
 
 			// Append before rotation
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("line3\n")
+			_, _ = f.WriteString("line3\n")
 			f.Close()
 
 			time.Sleep(100 * time.Millisecond)
@@ -1139,14 +1139,14 @@ func TestTailer_EmptyFile(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
 			// Append to empty file
 			time.Sleep(50 * time.Millisecond)
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString("first\n")
+			_, _ = f.WriteString("first\n")
 			f.Close()
 
 			var line *Line
@@ -1180,7 +1180,7 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1196,7 +1196,7 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 			// Complete the partial line
 			time.Sleep(50 * time.Millisecond)
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			f.WriteString(" more\n")
+			_, _ = f.WriteString(" more\n")
 			f.Close()
 
 			// Should get "partial more" now
@@ -1228,7 +1228,7 @@ func TestTailer_RapidWrites(t *testing.T) {
 				KeepFileOpen: mode.keepFileOpen,
 			}
 
-			tail, err := TailFile(context.Background(), testFile, config)
+			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 			defer func() { _ = tail.Stop() }()
 
@@ -1237,8 +1237,8 @@ func TestTailer_RapidWrites(t *testing.T) {
 			go func() {
 				f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 				defer f.Close()
-				for i := 0; i < numLines; i++ {
-					f.WriteString(strings.Repeat("x", 50) + "\n")
+				for range numLines {
+					_, _ = f.WriteString(strings.Repeat("x", 50) + "\n")
 				}
 			}()
 
@@ -1283,7 +1283,7 @@ func TestTailer_ForceRead(t *testing.T) {
 		KeepFileOpen: false,
 	}
 
-	tail, err := TailFile(context.Background(), testFile, config)
+	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
