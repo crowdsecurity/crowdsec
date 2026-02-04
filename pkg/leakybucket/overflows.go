@@ -34,13 +34,13 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 
 	for k, v := range evt.Overflow.Sources {
 		/*the scopes are already similar, nothing to do*/
-		if leaky.scopeType.Scope == *v.Scope {
+		if leaky.Factory.Spec.ScopeType.Scope == *v.Scope {
 			srcs[k] = v
 			continue
 		}
 
 		/*The bucket requires a decision on scope Range */
-		if leaky.scopeType.Scope != types.Range {
+		if leaky.Factory.Spec.ScopeType.Scope != types.Range {
 			log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
 				leaky.Factory.Spec.Name, *v.Scope, *v.Value)
 			continue
@@ -57,15 +57,15 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 			src.Range = v.Range
 			src.Value = new(string)
 			src.Scope = new(string)
-			*src.Scope = leaky.scopeType.Scope
+			*src.Scope = leaky.Factory.Spec.ScopeType.Scope
 			*src.Value = ""
 
 			if v.Range != "" {
 				*src.Value = v.Range
 			}
 
-			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
+			if leaky.Factory.Spec.ScopeType.RunTimeFilter != nil {
+				retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -95,19 +95,19 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 	src := models.Source{}
 
-	switch leaky.scopeType.Scope {
+	switch leaky.Factory.Spec.ScopeType.Scope {
 	case types.Range, types.Ip:
 		v, ok := evt.Meta["source_ip"]
 		if !ok {
-			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.scopeType.Scope)
+			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.Factory.Spec.ScopeType.Scope)
 		}
 
 		if net.ParseIP(v) == nil {
-			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
+			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.Factory.Spec.ScopeType.Scope, v)
 		}
 
 		src.IP = v
-		src.Scope = &leaky.scopeType.Scope
+		src.Scope = &leaky.Factory.Spec.ScopeType.Scope
 
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
@@ -153,13 +153,13 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 			}
 		}
 
-		if leaky.scopeType.Scope == types.Ip {
+		if leaky.Factory.Spec.ScopeType.Scope == types.Ip {
 			src.Value = &src.IP
-		} else if leaky.scopeType.Scope == types.Range {
+		} else if leaky.Factory.Spec.ScopeType.Scope == types.Range {
 			src.Value = &src.Range
 
-			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
+			if leaky.Factory.Spec.ScopeType.RunTimeFilter != nil {
+				retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -175,11 +175,11 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 		srcs[*src.Value] = src
 	default:
-		if leaky.scopeType.RunTimeFilter == nil {
+		if leaky.Factory.Spec.ScopeType.RunTimeFilter == nil {
 			return srcs, errors.New("empty scope information")
 		}
 
-		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
+		retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 		if err != nil {
 			return srcs, fmt.Errorf("while running scope filter: %w", err)
 		}
@@ -191,7 +191,7 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 		src.Value = &value
 		src.Scope = new(string)
-		*src.Scope = leaky.scopeType.Scope
+		*src.Scope = leaky.Factory.Spec.ScopeType.Scope
 		srcs[*src.Value] = src
 	}
 
@@ -257,7 +257,7 @@ func alertFormatSource(leaky *Leaky, queue *pipeline.Queue) (map[string]models.S
 
 	sources := make(map[string]models.Source)
 
-	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Factory.Spec.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
+	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Factory.Spec.Name, leaky.Factory.Spec.ScopeType.Scope, leaky.Factory.Spec.ScopeType.Filter)
 
 	qEvents := queue.GetQueue()
 	for idx := range qEvents {
