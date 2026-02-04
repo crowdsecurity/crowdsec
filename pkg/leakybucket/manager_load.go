@@ -68,7 +68,7 @@ type BucketFactory struct {
 	duration            time.Duration       // internal representation of `Duration`
 	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
 	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	hash                string
+	scenarioHash        string
 	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
 }
@@ -166,7 +166,7 @@ func loadBucketFactoriesFromFile(
 		f.Simulated = simcheck.IsSimulated(f.Spec.Name)
 
 		f.Spec.ScenarioVersion = item.State.LocalVersion
-		f.hash = item.State.LocalHash
+		f.scenarioHash = item.State.LocalHash
 
 		err = f.LoadBucket()
 		if err != nil {
