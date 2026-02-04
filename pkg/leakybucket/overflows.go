@@ -301,7 +301,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		log.Warningf("failed to serialize ovflw ts %s : %s", leaky.First_ts.String(), err)
 	}
 
-	capacity := int32(leaky.Capacity)
+	capacity := int32(leaky.Factory.Spec.Capacity)
 	EventsCount := int32(leaky.Total_count)
 	leakSpeed := leaky.Leakspeed.String()
 	startAt := string(start_at)

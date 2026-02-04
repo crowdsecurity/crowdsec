@@ -41,7 +41,7 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 		const eps = 1e-9
 
 		tokat := val.Limiter.GetTokensCountAt(deadline)
-		tokcapa := float64(val.Capacity)
+		tokcapa := float64(val.Factory.Spec.Capacity)
 
 		// bucket actually underflowed based on log time, but no in real time
 		if tokat+eps >= tokcapa {

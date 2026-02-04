@@ -36,8 +36,6 @@ type Leaky struct {
 	Out chan *pipeline.Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan pipeline.Event `json:"-"`
-	// max capacity (for burst)
-	Capacity int
 	// the unique identifier of the bucket (a hash)
 	Mapkey string
 	ready        chan struct{} // closed when LeakRoutine is ready
@@ -102,7 +100,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          f.ret,
-		Capacity:        f.Spec.Capacity,
 		Leakspeed:       f.leakspeed,
 		Factory:         f,
 		Pour:            Pour,
