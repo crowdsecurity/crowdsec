@@ -258,7 +258,7 @@ func PourItemToHolders(
 		}
 		// finally, pour the even into the bucket
 
-		if bucket.orderEvent {
+		if bucket.Factory.orderEvent {
 			if orderEvent == nil {
 				orderEvent = make(map[string]*sync.WaitGroup)
 			}
@@ -273,7 +273,7 @@ func PourItemToHolders(
 
 		err = PourItemToBucket(ctx, bucket, &holders[idx], buckets, &parsed, collector)
 
-		if bucket.orderEvent {
+		if bucket.Factory.orderEvent {
 			orderEvent[buckey].Wait()
 		}
 

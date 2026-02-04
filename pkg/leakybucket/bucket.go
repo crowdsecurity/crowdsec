@@ -56,7 +56,6 @@ type Leaky struct {
 	logger              *log.Entry
 	hash                string
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
-	orderEvent          bool
 	cancel              context.CancelFunc
 }
 
@@ -101,7 +100,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Mode:            pipeline.LIVE,
 		hash:            f.hash,
 		mutex:           &sync.Mutex{},
-		orderEvent:      f.orderEvent,
 	}
 	if f.Spec.Capacity > 0 && f.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(f.Spec.Capacity+1) * f.leakspeed
@@ -173,7 +171,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 				msg = processor.OnBucketPour(l.Factory, *msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
-					if l.orderEvent {
+					if l.Factory.orderEvent {
 						orderEvent[l.Mapkey].Done()
 					}
 					goto End
@@ -189,7 +187,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(l.Factory, *msg, l)
 				if msg == nil {
-					if l.orderEvent {
+					if l.Factory.orderEvent {
 						orderEvent[l.Mapkey].Done()
 					}
 					goto End
@@ -211,7 +209,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			}
 			firstEvent = false
 			// we overflowed
-			if l.orderEvent {
+			if l.Factory.orderEvent {
 				orderEvent[l.Mapkey].Done()
 			}
 		case ofw := <-l.Out:
