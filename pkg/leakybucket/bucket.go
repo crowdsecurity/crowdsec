@@ -43,7 +43,6 @@ type Leaky struct {
 	done         chan struct{} // closed when LeakRoutine has stopped processing
 	doneOnce     sync.Once     // use to prevent double close
 	Suicide      chan bool `json:"-"`
-	Reprocess    bool
 	Uuid         string
 	First_ts     time.Time
 	Last_ts      time.Time
@@ -101,7 +100,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		AllOut:          f.ret,
 		Factory:         f,
 		Pour:            Pour,
-		Reprocess:       f.Spec.Reprocess,
 		Mode:            pipeline.LIVE,
 		scopeType:       f.Spec.ScopeType,
 		scenarioVersion: f.Spec.ScenarioVersion,

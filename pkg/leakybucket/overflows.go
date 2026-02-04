@@ -377,7 +377,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
 	}
 
-	if leaky.Reprocess {
+	if leaky.Factory.Spec.Reprocess {
 		runtimeAlert.Reprocess = true
 	}
 
