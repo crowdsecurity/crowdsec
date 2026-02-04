@@ -38,8 +38,6 @@ type Leaky struct {
 	AllOut chan pipeline.Event `json:"-"`
 	// max capacity (for burst)
 	Capacity int
-	// CacheRatio is the number of elements that should be kept in memory (compared to capacity)
-	CacheSize int
 	// the unique identifier of the bucket (a hash)
 	Mapkey string
 	ready        chan struct{} // closed when LeakRoutine is ready
@@ -101,7 +99,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
 		Queue:           pipeline.NewQueue(Qsize),
-		CacheSize:       f.Spec.CacheSize,
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          f.ret,
