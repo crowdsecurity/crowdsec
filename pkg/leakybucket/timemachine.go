@@ -47,9 +47,9 @@ func TimeMachinePour(l *Leaky, msg pipeline.Event) {
 	}
 }
 
-func NewTimeMachine(g BucketFactory) *Leaky {
-	l := NewLeaky(g)
-	g.logger.Tracef("Instantiating timeMachine bucket")
+func NewTimeMachine(f *BucketFactory) *Leaky {
+	l := NewLeakyFromFactory(f)
+	f.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
 	l.Mode = pipeline.TIMEMACHINE
 	return l
