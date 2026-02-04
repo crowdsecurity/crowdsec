@@ -308,7 +308,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 	stopAt := string(stop_at)
 	apiAlert := models.Alert{
 		Scenario:        &leaky.Factory.Spec.Name,
-		ScenarioHash:    &leaky.hash,
+		ScenarioHash:    &leaky.Factory.scenarioHash,
 		ScenarioVersion: &leaky.Factory.Spec.ScenarioVersion,
 		Capacity:        &capacity,
 		EventsCount:     &EventsCount,
