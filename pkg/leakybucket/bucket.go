@@ -55,7 +55,6 @@ type Leaky struct {
 	conditionalOverflow bool
 	logger              *log.Entry
 	hash                string
-	scenarioVersion     string
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 	orderEvent          bool
 	cancel              context.CancelFunc
@@ -100,7 +99,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Factory:         f,
 		Pour:            Pour,
 		Mode:            pipeline.LIVE,
-		scenarioVersion: f.Spec.ScenarioVersion,
 		hash:            f.hash,
 		mutex:           &sync.Mutex{},
 		orderEvent:      f.orderEvent,

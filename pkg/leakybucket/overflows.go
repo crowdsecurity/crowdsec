@@ -309,7 +309,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 	apiAlert := models.Alert{
 		Scenario:        &leaky.Factory.Spec.Name,
 		ScenarioHash:    &leaky.hash,
-		ScenarioVersion: &leaky.scenarioVersion,
+		ScenarioVersion: &leaky.Factory.Spec.ScenarioVersion,
 		Capacity:        &capacity,
 		EventsCount:     &EventsCount,
 		Leakspeed:       &leakSpeed,
