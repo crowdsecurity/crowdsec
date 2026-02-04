@@ -42,7 +42,7 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 		/*The bucket requires a decision on scope Range */
 		if leaky.scopeType.Scope != types.Range {
 			log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
-				leaky.Name, *v.Scope, *v.Value)
+				leaky.Factory.Spec.Name, *v.Scope, *v.Value)
 			continue
 		}
 
@@ -79,7 +79,7 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 			}
 
 			if *src.Value == "" {
-				log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
+				log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Factory.Spec.Name, *v.Value)
 				continue
 			}
 
@@ -257,13 +257,13 @@ func alertFormatSource(leaky *Leaky, queue *pipeline.Queue) (map[string]models.S
 
 	sources := make(map[string]models.Source)
 
-	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
+	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Factory.Spec.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
 	qEvents := queue.GetQueue()
 	for idx := range qEvents {
 		srcs, err := SourceFromEvent(qEvents[idx], leaky)
 		if err != nil {
-			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Name, err)
+			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Factory.Spec.Name, err)
 		}
 
 		for key, src := range srcs {
@@ -307,7 +307,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 	startAt := string(start_at)
 	stopAt := string(stop_at)
 	apiAlert := models.Alert{
-		Scenario:        &leaky.Name,
+		Scenario:        &leaky.Factory.Spec.Name,
 		ScenarioHash:    &leaky.hash,
 		ScenarioVersion: &leaky.scenarioVersion,
 		Capacity:        &capacity,
@@ -344,7 +344,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		}
 	}
 
-	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
+	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Factory.Spec.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	// Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
 
@@ -352,7 +352,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 
 	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue())
 	for _, w := range warnings {
-		log.Warningf("while extracting context from bucket %s : %s", leaky.Name, w)
+		log.Warningf("while extracting context from bucket %s : %s", leaky.Factory.Spec.Name, w)
 	}
 
 	// Loop over the Sources and generate appropriate number of ApiAlerts
