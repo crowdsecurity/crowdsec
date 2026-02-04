@@ -65,7 +65,7 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 			}
 
 			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Spec.Debug)
+				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -159,7 +159,7 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 			src.Value = &src.Range
 
 			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Spec.Debug)
+				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -179,7 +179,7 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 			return srcs, errors.New("empty scope information")
 		}
 
-		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Spec.Debug)
+		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 		if err != nil {
 			return srcs, fmt.Errorf("while running scope filter: %w", err)
 		}
@@ -316,10 +316,10 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		Message:         new(string),
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
-		Simulated:       &leaky.BucketConfig.Simulated,
+		Simulated:       &leaky.Factory.Simulated,
 	}
 
-	if leaky.BucketConfig == nil {
+	if leaky.Factory == nil {
 		return runtimeAlert, errors.New("leaky.BucketConfig is nil")
 	}
 
@@ -362,7 +362,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		newApiAlert.Source = &srcCopy
 
 		//revive:disable-next-line:bool-literal-in-expr
-		if v, ok := leaky.BucketConfig.Spec.Labels["remediation"]; ok && v == true {
+		if v, ok := leaky.Factory.Spec.Labels["remediation"]; ok && v == true {
 			newApiAlert.Remediation = true
 		}
 
