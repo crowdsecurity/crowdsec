@@ -49,7 +49,6 @@ type Leaky struct {
 	Last_ts      time.Time
 	Ovflw_ts     time.Time
 	Total_count  int
-	Leakspeed    time.Duration
 	Factory      *BucketFactory
 	Duration     time.Duration
 	Pour         func(*Leaky, pourGate, pipeline.Event) `json:"-"`
@@ -100,7 +99,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          f.ret,
-		Leakspeed:       f.leakspeed,
 		Factory:         f,
 		Pour:            Pour,
 		Reprocess:       f.Spec.Reprocess,

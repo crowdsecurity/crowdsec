@@ -303,7 +303,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 
 	capacity := int32(leaky.Factory.Spec.Capacity)
 	EventsCount := int32(leaky.Total_count)
-	leakSpeed := leaky.Leakspeed.String()
+	leakSpeed := leaky.Factory.leakspeed.String()
 	startAt := string(start_at)
 	stopAt := string(stop_at)
 	apiAlert := models.Alert{
