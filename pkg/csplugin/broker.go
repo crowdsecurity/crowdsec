@@ -21,13 +21,12 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var pluginMutex sync.Mutex
@@ -37,7 +36,7 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-// The broker is responsible for running the plugins and dispatching events
+// PluginBroker is responsible for running the plugins and dispatching events
 // It receives all the events from the main process and stacks them up
 // It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
@@ -46,12 +45,12 @@ type PluginBroker struct {
 	profileConfigs                  []*csconfig.ProfileCfg
 	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
-	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
 	notificationPluginByName        map[string]protobufs.NotifierServer
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
 	pluginProcConfig                *csconfig.PluginCfg
 	pluginsTypesToDispatch          map[string]struct{}
+	newBackoff                      backoffFactory
 }
 
 // holder to determine where to dispatch config and how to format messages
@@ -60,7 +59,7 @@ type PluginConfig struct {
 	Name           string        `yaml:"name"`
 	GroupWait      time.Duration `yaml:"group_wait,omitempty"`
 	GroupThreshold int           `yaml:"group_threshold,omitempty"`
-	MaxRetry       int           `yaml:"max_retry,omitempty"`
+	MaxRetry       uint          `yaml:"max_retry,omitempty"`
 	TimeOut        time.Duration `yaml:"timeout,omitempty"`
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
@@ -81,10 +80,6 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 		return errors.New("missing required field 'type'")
 	}
 
-	if aux.MaxRetry == 0 {
-		aux.MaxRetry = 1
-	}
-
 	if aux.TimeOut == 0 {
 		aux.TimeOut = time.Second * 5
 	}
@@ -95,10 +90,8 @@ func (pc *PluginConfig) UnmarshalYAML(unmarshal func(any) error) error {
 
 type PluginConfigList []PluginConfig
 
-
 func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan models.ProfileAlert)
-	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]protobufs.NotifierServer)
 	pb.pluginMap = make(map[string]plugin.Plugin)
 	pb.pluginConfigByName = make(map[string]PluginConfig)
@@ -119,6 +112,13 @@ func (pb *PluginBroker) Init(ctx context.Context, pluginCfg *csconfig.PluginCfg,
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 
 	return nil
+}
+
+func (pb *PluginBroker) ensureBackoff() backoffFactory {
+	if pb.newBackoff == nil {
+		pb.newBackoff = defaultBackoffFactory
+	}
+	return pb.newBackoff
 }
 
 func (pb *PluginBroker) Kill() {
@@ -300,7 +300,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 			continue
 		}
 
-		pluginClient, err := pb.loadNotificationPlugin(pSubtype, binaryPath)
+		pluginClient, err := pb.loadNotificationPlugin(ctx, pSubtype, binaryPath)
 		if err != nil {
 			return err
 		}
@@ -331,7 +331,7 @@ func (pb *PluginBroker) loadPlugins(ctx context.Context, path string) error {
 	return pb.verifyPluginBinaryWithProfile()
 }
 
-func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (protobufs.NotifierServer, error) {
+func (pb *PluginBroker) loadNotificationPlugin(ctx context.Context, name string, binaryPath string) (protobufs.NotifierServer, error) {
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
@@ -339,18 +339,13 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 
 	log.Debugf("Executing plugin %s", binaryPath)
 
-	cmd, err := pb.CreateCmd(binaryPath)
+	cmd, err := pb.CreateCmd(ctx, binaryPath)
 	if err != nil {
 		return nil, err
 	}
 
 	pb.pluginMap[name] = &NotifierPlugin{}
-	l := log.New()
-
-	err = types.ConfigureLogger(l, ptr.Of(log.TraceLevel))
-	if err != nil {
-		return nil, err
-	}
+	l := logging.SubLogger(log.StandardLogger(), "plugin", log.TraceLevel)
 	// We set the highest level to permit plugins to set their own log level
 	// without that, crowdsec log level is controlling plugins level
 	logger := NewHCLogAdapter(l, "")
@@ -378,12 +373,22 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 }
 
 func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message string) error {
-	timeout := pb.pluginConfigByName[pluginName].TimeOut
+	// config guard
+	pc, ok := pb.pluginConfigByName[pluginName]
+	if !ok {
+		return fmt.Errorf("plugin %q: config not found", pluginName)
+	}
+
+	timeout := pc.TimeOut
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeout)
 
 	defer cancel()
 
-	plugin := pb.notificationPluginByName[pluginName]
+	// plugin guard
+	plugin, ok := pb.notificationPluginByName[pluginName]
+	if !ok || plugin == nil {
+		return fmt.Errorf("plugin %q: notifier not registered", pluginName)
+	}
 
 	_, err := plugin.Notify(
 		ctxTimeout,
@@ -397,27 +402,33 @@ func (pb *PluginBroker) tryNotify(ctx context.Context, pluginName, message strin
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(ctx context.Context, pluginName string, alerts []*models.Alert) error {
-	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
+	logger := log.WithField("plugin", pluginName)
+
+	logger.Debugf("pushing %d alerts to plugin", len(alerts))
 
 	if len(alerts) == 0 {
 		return nil
 	}
 
-	message, err := FormatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
+	pluginCfg := pb.pluginConfigByName[pluginName]
+
+	message, err := FormatAlerts(pluginCfg.Format, alerts)
 	if err != nil {
-		return err
+		return fmt.Errorf("format alerts for notification: %w", err)
 	}
 
-	backoffDuration := time.Second
+	// make sure we have a default or custom backoff
+	pb.ensureBackoff()
 
-	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
-		if err = pb.tryNotify(ctx, pluginName, message); err == nil {
-			return nil
+	err = retryWithBackoff(ctx, pluginCfg, logger, func(ctx context.Context) error {
+		return pb.tryNotify(ctx, pluginName, message)
+	}, pb.newBackoff)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			logger.Warn("delivery canceled during shutdown")
+		} else {
+			logger.Errorf("delivery failed after retries: %v", err)
 		}
-
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
-		time.Sleep(backoffDuration)
-		backoffDuration *= 2
 	}
 
 	return err

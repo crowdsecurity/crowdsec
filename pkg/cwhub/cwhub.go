@@ -19,6 +19,6 @@ func (t *hubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // HubClient is the HTTP client used to communicate with the CrowdSec Hub.
 var HubClient = &http.Client{
-	Timeout:   120 * time.Second,
+	Timeout:   10 * time.Minute,
 	Transport: &hubTransport{http.DefaultTransport},
 }

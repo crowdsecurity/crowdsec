@@ -61,16 +61,16 @@ teardown() {
 
 @test "cscli allowlists create" {
     rune -1 cscli allowlist create
-    assert_stderr 'Error: accepts 1 arg(s), received 0'
+    assert_stderr 'Error: cscli allowlists create: accepts 1 arg(s), received 0'
 
     rune -1 cscli allowlist create foo
-    assert_stderr 'Error: required flag(s) "description" not set'
+    assert_stderr 'Error: cscli allowlists create: required flag(s) "description" not set'
 
     rune -0 cscli allowlist create foo -d "A Foo"
     assert_output "allowlist 'foo' created successfully"
 
     rune -1 cscli allowlist create foo -d "Another Foo"
-    assert_stderr "Error: allowlist 'foo' already exists"
+    assert_stderr "Error: cscli allowlists create: allowlist 'foo' already exists"
 
     rune -0 cscli allowlists list -o json
     rune -0 jq 'del(.[].created_at) | del(.[].updated_at)' <(output)
@@ -82,13 +82,13 @@ teardown() {
 
 @test "cscli allowlists add" {
     rune -1 cscli allowlist add
-    assert_stderr 'Error: requires at least 2 arg(s), only received 0'
+    assert_stderr 'Error: cscli allowlists add: requires at least 2 arg(s), only received 0'
 
     rune -1 cscli allowlist add foo
-    assert_stderr 'Error: requires at least 2 arg(s), only received 1'
+    assert_stderr 'Error: cscli allowlists add: requires at least 2 arg(s), only received 1'
 
     rune -1 cscli allowlist add foo bar
-    assert_stderr "Error: allowlist 'foo' not found"
+    assert_stderr "Error: cscli allowlists add: allowlist 'foo' not found"
 
     rune -0 cscli allowlist create foo -d 'a foo'
 
@@ -119,12 +119,12 @@ teardown() {
 
     # comment and expiration are applied to all values
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e toto
-    assert_stderr 'Error: invalid argument "toto" for "-e, --expiration" flag: time: invalid duration "toto"'
+    assert_stderr 'Error: cscli allowlists add: invalid argument "toto" for "-e, --expiration" flag: time: invalid duration "toto"'
     refute_output
 
     rune -1 cscli allowlist add foo 10.10.10.10 10.20.30.40 -d comment -e '1 day'
     refute_output
-    assert_stderr 'Error: invalid argument "1 day" for "-e, --expiration" flag: invalid day value in duration "1 day"'
+    assert_stderr 'Error: cscli allowlists add: invalid argument "1 day" for "-e, --expiration" flag: invalid day value in duration "1 day"'
 
     rune -0 cscli allowlist add foo 10.10.10.10 -d comment -e '1d12h'
     assert_output 'added 1 values to allowlist foo'
@@ -139,7 +139,7 @@ teardown() {
     rune -0 cscli allowlist create foo -d 'a foo'
     rune -0 cscli allowlist add foo 192.168.0.0/16
     rune -1 cscli decisions add -i 192.168.1.1
-    assert_stderr 'Error: 192.168.1.1 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
+    assert_stderr 'Error: cscli decisions add: 192.168.1.1 is allowlisted by item 192.168.0.0/16 from foo, use --bypass-allowlist to add the decision anyway'
     refute_output
     rune -0 cscli decisions add -i 192.168.1.1 --bypass-allowlist
     assert_stderr --partial 'Decision successfully added'
@@ -167,6 +167,18 @@ teardown() {
     assert_stderr --partial 'Decision successfully added'
 }
 
+@test "cscli allowlist: check lowercase range decisions import" {
+    rune -0 cscli allowlist create foo -d 'a foo'
+    rune -0 cscli allowlist add foo 192.168.0.0/16
+    rune -0 cscli decisions import -i - <<<'192.168.0.0/24' --format values --scope range 
+    assert_output - <<-EOT
+	Parsing values
+	Value 192.168.0.0/24 is allowlisted by [192.168.0.0/16 from foo]
+	Imported 0 decisions
+	EOT
+    refute_stderr
+}
+
 @test "cscli allowlists check" {
     rune -0 cscli allowlist create foo -d 'a foo'
     rune -0 cscli allowlist add foo 192.168.0.0/16
@@ -185,10 +197,10 @@ teardown() {
 }
 @test "cscli allowlists delete" {
     rune -1 cscli allowlist delete
-    assert_stderr 'Error: accepts 1 arg(s), received 0'
+    assert_stderr 'Error: cscli allowlists delete: accepts 1 arg(s), received 0'
 
     rune -1 cscli allowlist delete does-not-exist
-    assert_stderr "Error: allowlist 'does-not-exist' not found"
+    assert_stderr "Error: cscli allowlists delete: allowlist 'does-not-exist' not found"
 
     rune -0 cscli allowlist create foo -d "A Foo"
     rune -0 cscli allowlist add foo 1.2.3.4
@@ -200,7 +212,7 @@ teardown() {
 
 @test "cscli allowlists inspect" {
     rune -1 cscli allowlist inspect
-    assert_stderr 'Error: accepts 1 arg(s), received 0'
+    assert_stderr 'Error: cscli allowlists inspect: accepts 1 arg(s), received 0'
 
     rune -0 cscli allowlist create foo -d "A Foo"
     assert_output "allowlist 'foo' created successfully"
@@ -238,13 +250,13 @@ teardown() {
 
 @test "cscli allowlists remove" {
     rune -1 cscli allowlist remove
-    assert_stderr 'Error: requires at least 2 arg(s), only received 0'
+    assert_stderr 'Error: cscli allowlists remove: requires at least 2 arg(s), only received 0'
 
     rune -1 cscli allowlist remove foo
-    assert_stderr 'Error: requires at least 2 arg(s), only received 1'
+    assert_stderr 'Error: cscli allowlists remove: requires at least 2 arg(s), only received 1'
 
     rune -1 cscli allowlist remove foo 1.2.3.4
-    assert_stderr "Error: allowlist 'foo' not found"
+    assert_stderr "Error: cscli allowlists remove: allowlist 'foo' not found"
 
     rune -0 cscli allowlist create foo -d 'a foo'
     # no error, should be ok

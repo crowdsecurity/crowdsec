@@ -13,12 +13,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+const accessLogFilename = "crowdsec_api.log"
+
 func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 		log.Info("push and pull to Central API disabled")
 	}
 
-	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server)
+	accessLogger := cConfig.API.Server.NewAccessLogger(cConfig.Common.LogConfig, accessLogFilename)
+
+	apiServer, err := apiserver.NewServer(ctx, cConfig.API.Server, accessLogger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %w", err)
 	}
@@ -36,7 +40,7 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 	return apiServer, nil
 }
 
-func serveAPIServer(apiServer *apiserver.APIServer) {
+func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 	apiReady := make(chan bool, 1)
 
 	apiTomb.Go(func() error {
@@ -44,9 +48,10 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 
 		go func() {
 			defer trace.CatchPanic("crowdsec/runAPIServer")
+
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 
-			if err := apiServer.Run(apiReady); err != nil {
+			if err := apiServer.Run(ctx, apiReady); err != nil {
 				log.Fatal(err)
 			}
 		}()
@@ -60,7 +65,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		pluginTomb.Kill(nil)
 		log.Infof("serve: shutting down api server")
 
-		return apiServer.Shutdown()
+		return apiServer.Shutdown(ctx)
 	})
 	<-apiReady
 }

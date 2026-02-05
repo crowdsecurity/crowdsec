@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily CrowdSec Hub update
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

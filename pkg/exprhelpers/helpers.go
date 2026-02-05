@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -34,8 +36,9 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 var (
@@ -46,15 +49,6 @@ var (
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
-
-/*prometheus*/
-var RegexpCacheMetrics = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Name: "cs_regexp_cache_size",
-		Help: "Entries per regexp cache.",
-	},
-	[]string{"name"},
-)
 
 var dbClient *database.Client
 
@@ -68,6 +62,7 @@ func init() { //nolint:gochecknoinits
 }
 
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
+var keyStart = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_.-]*)=`) // More restrictive key pattern for loose parsing
 
 var (
 	geoIPCityReader  *geoip2.Reader
@@ -142,13 +137,13 @@ func ResetDataFiles() {
 	dataFileRegexCache = make(map[string]gcache.Cache)
 }
 
-func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
+func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
 	// cache is explicitly disabled
 	if cacheCfg.Cache != nil && !*cacheCfg.Cache {
 		return nil
 	}
 	// cache is implicitly disabled if no cache config is provided
-	if cacheCfg.Strategy == nil && cacheCfg.TTL == nil && cacheCfg.Size == nil {
+	if cacheCfg.Strategy == "" && cacheCfg.TTL == nil && cacheCfg.Size == nil {
 		return nil
 	}
 	// cache is enabled
@@ -161,8 +156,8 @@ func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 	gc := gcache.New(size)
 
 	strategy := "LRU"
-	if cacheCfg.Strategy != nil {
-		strategy = *cacheCfg.Strategy
+	if cacheCfg.Strategy != "" {
+		strategy = cacheCfg.Strategy
 	}
 
 	switch strategy {
@@ -188,10 +183,10 @@ func RegexpCacheInit(filename string, cacheCfg types.DataSource) error {
 
 // UpdateCacheMetrics is called directly by the prom handler
 func UpdateRegexpCacheMetrics() {
-	RegexpCacheMetrics.Reset()
+	metrics.RegexpCacheMetrics.Reset()
 
 	for name := range dataFileRegexCache {
-		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
+		metrics.RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
 }
 
@@ -630,6 +625,99 @@ func ParseUri(params ...any) (any, error) {
 	return ret, nil
 }
 
+// func AverageInterval(times []time.Time) time.Duration
+func AverageInterval(params ...any) (any, error) {
+	if len(params) != 1 {
+		return 0, errors.New("AverageInterval expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("AverageInterval expects a slice of times")
+	}
+
+	if len(times) < 2 {
+		return 0, errors.New("need at least two times to calculate an average interval")
+	}
+
+	// Sort times in ascending order
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
+	})
+
+	var total time.Duration
+	for i := 1; i < len(times); i++ {
+		total += times[i].Sub(times[i-1])
+	}
+
+	average := time.Duration(int64(total) / int64(len(times)-1))
+	return average, nil
+}
+
+// func MedianInterval(times []time.Time) (time.Duration, error)
+func MedianInterval(params ...any) (any, error) {
+	if len(params) != 1 {
+		return 0, errors.New("MedianInterval expects exactly one parameter: a slice of times")
+	}
+
+	var times []time.Time
+
+	// Handle both []time.Time and []interface{} (from expr map function)
+	switch v := params[0].(type) {
+	case []time.Time:
+		times = v
+	case []interface{}:
+		times = make([]time.Time, len(v))
+		for i, item := range v {
+			t, ok := item.(time.Time)
+			if !ok {
+				return 0, fmt.Errorf("element at index %d is not a time.Time", i)
+			}
+			times[i] = t
+		}
+	default:
+		return 0, errors.New("MedianInterval expects a slice of times")
+	}
+
+	if len(times) < 2 {
+		return 0, errors.New("need at least two times to calculate a median")
+	}
+
+	// Sort times
+	sort.Slice(times, func(i, j int) bool {
+		return times[i].Before(times[j])
+	})
+
+	// Compute intervals
+	intervals := make([]time.Duration, len(times)-1)
+	for i := 1; i < len(times); i++ {
+		intervals[i-1] = times[i].Sub(times[i-1])
+	}
+
+	// Sort intervals for median calculation
+	slices.Sort(intervals)
+
+	n := len(intervals)
+	if n%2 == 1 {
+		return intervals[n/2], nil
+	}
+	return (intervals[n/2-1] + intervals[n/2]) / 2, nil
+}
+
 // func KeyExists(key string, dict map[string]interface{}) bool {
 func KeyExists(params ...any) (any, error) {
 	key := params[0].(string)
@@ -899,6 +987,112 @@ func ParseKV(params ...any) (any, error) {
 	log.Tracef("unmarshaled KV: %+v", target[prefix])
 
 	return nil, nil
+}
+
+// ParseKVLax parses key-value pairs with lax matching, supporting unquoted multi-word values
+// by using a scanner approach instead of regex.
+func ParseKVLax(params ...any) (any, error) {
+	blob := params[0].(string)
+	target := params[1].(map[string]any)
+	prefix := params[2].(string)
+
+	if _, ok := target[prefix]; !ok {
+		target[prefix] = make(map[string]string)
+	} else if _, ok := target[prefix].(map[string]string); !ok {
+		log.Errorf("ParseKVLax: target is not a map[string]string")
+		return nil, errors.New("target is not a map[string]string")
+	}
+
+	km := target[prefix].(map[string]string)
+
+	// Find all key= occurrences and slice values between them.
+	idxs := keyStart.FindAllStringSubmatchIndex(blob, -1)
+	if len(idxs) == 0 {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, errors.New("invalid input format")
+	}
+
+	// Filter out matches that are inside quoted values
+	validIdxs := make([][]int, 0, len(idxs))
+	for _, m := range idxs {
+		keyStartPos := m[0]
+		// Check if this key= is inside a quoted value by looking backwards
+		if !isInsideQuotedValue(blob, keyStartPos) {
+			validIdxs = append(validIdxs, m)
+		}
+	}
+
+	if len(validIdxs) == 0 {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, errors.New("invalid input format")
+	}
+
+	for i, m := range validIdxs {
+		// m layout: [ fullStart, fullEnd, group1Start, group1End ]
+		key := blob[m[2]:m[3]]
+		valStart := m[1] // right after '='
+
+		var valEnd int
+		if i+1 < len(validIdxs) {
+			valEnd = validIdxs[i+1][0] // start of next key
+		} else {
+			valEnd = len(blob)
+		}
+
+		raw := strings.TrimSpace(blob[valStart:valEnd])
+		val := parseValueLax(raw)
+		km[key] = val
+	}
+
+	log.Tracef("unmarshaled KV (lax): %+v", target[prefix])
+	return nil, nil
+}
+
+// parseValueLax handles quoted and unquoted values for lax parsing.
+//   - If it begins with a quote, it removes the surrounding quotes
+//     if the closing one is present and unescapes \" and \\.
+//   - For unquoted values, returns the entire trimmed value as-is
+func parseValueLax(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	if s[0] != '"' {
+		return s
+	}
+
+	if len(s) >= 2 && s[len(s)-1] == '"' {
+		body := s[1 : len(s)-1]
+		body = strings.ReplaceAll(body, `\\`, `\`)
+		body = strings.ReplaceAll(body, `\"`, `"`)
+		return body
+	}
+
+	return strings.TrimPrefix(s, `"`)
+}
+
+// isInsideQuotedValue checks if a position in the string is inside a quoted value
+// by counting unescaped quotes before the position
+func isInsideQuotedValue(s string, pos int) bool {
+	inQuote := false
+
+	for i := 0; i <= pos && i < len(s); i++ {
+		if s[i] != '"' {
+			continue
+		}
+
+		// Check if this quote is escaped
+		backslashCount := 0
+		for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+			backslashCount++
+		}
+
+		if backslashCount%2 == 0 {
+			inQuote = !inQuote
+		}
+	}
+
+	return inQuote
 }
 
 func Hostname(params ...any) (any, error) {

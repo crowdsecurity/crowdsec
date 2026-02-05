@@ -102,16 +102,16 @@ get_latest_version() {
 
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
-    assert_output 'Nothing to do.'
+    assert_output 'Nothing to install or remove.'
     refute_stderr
 }
 
 @test "upgrade an item (up-to-date)" {
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --dry-run
-    assert_output 'Nothing to do.'
+    assert_output 'Nothing to install or remove.'
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
-    assert_output 'Nothing to do.'
+    assert_output 'Nothing to install or remove.'
 }
 
 @test "upgrade an item (dry run)" {
@@ -165,13 +165,13 @@ get_latest_version() {
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists --dry-run
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 
     rune -0 cscli parsers upgrade crowdsecurity/whitelists
     assert_output - <<-EOT
-	Nothing to do.
+	Nothing to install or remove.
 	EOT
     assert_stderr --partial "parsers:crowdsecurity/whitelists is tainted, use '--force' to overwrite"
 

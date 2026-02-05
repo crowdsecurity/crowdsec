@@ -65,6 +65,8 @@ func TestApiAuth(t *testing.T) {
 
 	log.Infof("--> %s", err)
 
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Response)
 	assert.Equal(t, http.StatusForbidden, resp.Response.StatusCode)
 
 	cstest.RequireErrorMessage(t, err, "API error: access forbidden")

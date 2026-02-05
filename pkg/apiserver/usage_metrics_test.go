@@ -188,7 +188,7 @@ func TestLPMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig, nil)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}
@@ -199,7 +199,7 @@ func TestLPMetrics(t *testing.T) {
 			assert.Contains(t, w.Body.String(), tt.expectedResponse)
 
 			machine, _ := dbClient.QueryMachineByID(ctx, "test")
-			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test")
+			metrics, _ := dbClient.GetLPUsageMetricsByMachineID(ctx, "test", true)
 
 			assert.Len(t, metrics, tt.expectedMetricsCount)
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
@@ -360,7 +360,7 @@ func TestRCMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lapi := SetupLAPITest(t, ctx)
 
-			dbClient, err := database.NewClient(ctx, lapi.DBConfig)
+			dbClient, err := database.NewClient(ctx, lapi.DBConfig, nil)
 			if err != nil {
 				t.Fatalf("unable to create database client: %s", err)
 			}

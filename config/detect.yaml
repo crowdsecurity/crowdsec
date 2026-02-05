@@ -1,482 +1,728 @@
 ---
-version: 1.0
-
-# TODO: This file must be reviewed before the `cscli setup` command becomes GA
-
+# Main block defining all service detection rules
+# Since it's a map, the order of evaluation is not guaranteed.
 detect:
 
+  # Detect apache2, or detect log files directly (deb-based systems)
   #
-  # crowdsecurity/apache2
-  #
-
-  # XXX some distro is using this path?
-  #      - /var/log/*http*/*.log
-
-  apache2-systemd-deb:
+  # By default Systemd collects only service related messages, access logs are on file.
+  apache2-file-apache2:
     when:
-      - UnitFound("apache2.service")
-      - PathExists("/etc/debian_version")
-    install:
+      # Check if apache2 is installed (enabled or not) or the log files exist
+      - Systemd.UnitInstalled("apache2.service") or len(Path.Glob("/var/log/apache2/*.log")) > 0
+      # A direct way to detect distribution family, usually not necessary.
+      # full list at https://github.com/shirou/gopsutil/blob/master/host/host_linux.go
+      # Use Host.Platform to disambiguate "ubuntu" from "debian"
+      # - Host.PlatformFamily == "debian"
+    hub_spec:
+      # If the rules match, install the following items
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/apache2/*.log
-      labels:
-        type: apache2
+    acquisition_spec:
+      # If the rules match, generate an acquisition file named "setup.apache2.yaml"
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/apache2/*.log
+        labels:
+          type: apache2
 
-  apache2-systemd-rpm:
+  # Detect apache2, or detect log files directly (rpm-based systems)
+  apache2-file-httpd:
     when:
-      - UnitFound("httpd.service")
-      - PathExists("/etc/redhat-release")
-    install:
+      - Systemd.UnitInstalled("httpd.service") or len(Path.Glob("/var/log/httpd/*.log")) > 0
+      # a direct way to detect distribution family (usually not necessary)
+      # - Host.PlatformFamily in ['rhel', 'fedora', 'suse']
+    hub_spec:
       collections:
         - crowdsecurity/apache2
-    datasource:
-      source: file
-      filenames:
-        - /var/log/httpd/*.log
-        # XXX /var/log/*http*/*.log
-      labels:
-        type: apache2
+    acquisition_spec:
+      filename: apache2.yaml
+      datasource:
+        source: file
+        filenames:
+          - /var/log/httpd/*.log
+        labels:
+          type: apache2
 
-  #
-  # crowdsecurity/asterisk
-  #
-
-  asterisk-systemd:
+  # Asterisk PBX
+  # By default Systemd collects only service related messages, access logs are on file.
+  asterisk:
     when:
-      - UnitFound("asterisk.service")
-    install:
+      - Systemd.UnitInstalled("asterisk.service") or len(Path.Glob("/var/log/asterisk/*.log")) > 0
+    hub_spec:
       collections:
         - crowdsecurity/asterisk
-    datasource:
-      source: file
-      labels:
-        type: asterisk
-      filenames:
-        - /var/log/asterisk/*.log
+    acquisition_spec:
+      filename: asterisk.yaml
+      datasource:
+        source: file
+        labels:
+          type: asterisk
+        filenames:
+          - /var/log/asterisk/*.log
 
+  # Caddy web server
   #
-  # crowdsecurity/caddy
+  # By default the caddy packages don't contain a "log" directive in the Caddyfile,
+  # but the deb package has an empty /var/log/caddy directory so we look for files there
+  # (the rpm doesn't have it).
+  # If no log file is found, there could be a bare "log" directive which means
+  # logs go to stderr and are captured by systemd.
+  # It is possible that logs would go to file but no access has been logged yet.
   #
-
-  caddy-systemd:
+  # Caddy configuration can be retrieved at http://localhost:2019/config/
+  caddy-journal:
     when:
-      - UnitFound("caddy.service")
-    install:
+      - Systemd.UnitInstalled("caddy.service")
+      - len(Path.Glob("/var/log/caddy/*.log")) == 0
+    hub_spec:
       collections:
         - crowdsecurity/caddy
-    datasource:
-      source: file
-      labels:
-        type: caddy
-      filenames:
-        - /var/log/caddy/*.log
+    acquisition_spec:
+      filename: caddy.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: caddy
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=caddy.service"
 
-  #
-  # crowdsecurity/dovecot
-  #
-
-  dovecot-systemd:
+  caddy-file:
     when:
-      - UnitFound("dovecot.service")
-    install:
+      - len(Path.Glob("/var/log/caddy/*.log")) > 0
+    hub_spec:
+      collections:
+        - crowdsecurity/caddy
+    acquisition_spec:
+      filename: caddy.yaml
+      datasource:
+        source: file
+        labels:
+          type: caddy
+        filenames:
+          - /var/log/caddy/*.log
+
+  # Dovecot IMAP/POP3 server
+  #
+  # Dovecot configuration can be retrieved with "doveconf -n"
+  # and "doveadm log find"
+  #
+  # On deb, this includes /var/log/syslog which is already monitored by the linux collection,
+  # so we don't need an additional acquisition.
+  # Reading from mail.log and mail.err would process the same events twice.
+  #
+  # On rpm, we have to monitor maillog or mail.log but we can't use them to detect the program,
+  # because it could be from postfix.
+  dovecot:
+    when:
+      - Systemd.UnitInstalled("dovecot.service")
+    hub_spec:
       collections:
         - crowdsecurity/dovecot
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition_spec:
+      filename: dovecot.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/maillog
 
-  #
-  # LePresidente/emby
-  #
-
-  emby-systemd:
+  # Nginx
+  nginx:
     when:
-      - UnitFound("emby-server.service")
-    install:
-      collections:
-        - LePresidente/emby
-    datasource:
-      source: file
-      labels:
-        type: emby
-      filenames:
-        - /var/log/embyserver.txt
-
-  #
-  # crowdsecurity/endlessh
-  #
-
-  endlessh-systemd:
-    when:
-      - UnitFound("endlessh.service")
-    install:
-      collections:
-        - crowdsecurity/endlessh
-    datasource:
-      source: journalctl
-      labels:
-        type: syslog
-      # XXX this? or /var/log/syslog?
-      journalctl_filter:
-        - "_SYSTEMD_UNIT=endlessh.service"
-
-  #
-  # crowdsecurity/gitea
-  #
-
-  # XXX untested
-
-  gitea-systemd:
-    when:
-      - UnitFound("gitea.service")
-    install:
-      collections:
-        - crowdsecurity/gitea
-    datasource:
-      source: file
-      labels:
-        type: gitea
-      filenames:
-        - /var/log/gitea.log
-
-  #
-  # crowdsecurity/haproxy
-  #
-
-  haproxy-systemd:
-    when:
-      - UnitFound("haproxy.service")
-    install:
-      collections:
-        - crowdsecurity/haproxy
-    datasource:
-      source: file
-      labels:
-        type: haproxy
-      filenames:
-        - /var/log/haproxy/*.log
-
-  #
-  # firewallservices/lemonldap-ng
-  #
-
-  lemonldap-ng-systemd:
-    when:
-      - UnitFound("lemonldap-ng-fastcgi-server.service")
-    install:
-      collections:
-        - firewallservices/lemonldap-ng
-    #datasource:
-    #  # XXX todo where are the logs?
-    #  labels:
-    #    type: syslog
-
-  #
-  # crowdsecurity/mariadb
-  #
-
-  mariadb-systemd:
-    when:
-      - UnitFound("mariadb.service")
-    install:
-      collections:
-        - crowdsecurity/mariadb
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
-
-  #
-  # crowdsecurity/mysql
-  #
-
-  mysql-systemd:
-    when:
-      - UnitFound("mysql.service")
-    install:
-      collections:
-        - crowdsecurity/mysql
-    datasource:
-      source: file
-      labels:
-        type: mysql
-      filenames:
-        - /var/log/mysql/error.log
-
-  #
-  # crowdsecurity/nginx
-  #
-
-  nginx-systemd:
-    when:
-      - UnitFound("nginx.service")
-    install:
+      # if nginx is still detected after removing the "nginx" package,
+      # remove the nginx-common package too.
+      - Systemd.UnitInstalled("nginx.service") or len(Path.Glob("/var/log/nginx/*.log")) > 0
+    hub_spec:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /var/log/nginx/*.log
+    acquisition_spec:
+      filename: nginx.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /var/log/nginx/*.log
 
-  openresty-systemd:
+  # OpenResty (nginx distribution)
+  openresty:
     when:
-      - UnitFound("openresty.service")
-    install:
+      - Systemd.UnitInstalled("openresty.service") or len(Path.Glob("/usr/local/openresty/nginx/logs/*.log")) > 0
+    hub_spec:
       collections:
         - crowdsecurity/nginx
-    datasource:
-      source: file
-      labels:
-        type: nginx
-      filenames:
-        - /usr/local/openresty/nginx/logs/*.log
+    acquisition_spec:
+      filename: openresty.yaml
+      datasource:
+        source: file
+        labels:
+          type: nginx
+        filenames:
+          - /usr/local/openresty/nginx/logs/*.log
 
-  #
-  # crowdsecurity/odoo
-  #
-
-  odoo-systemd:
+  # PostgreSQL
+  postgres:
     when:
-      - UnitFound("odoo.service")
-    install:
-      collections:
-        - crowdsecurity/odoo
-    datasource:
-      source: file
-      labels:
-        type: odoo
-      filenames:
-        - /var/log/odoo/*.log
-
-  #
-  # LePresidente/ombi
-  #
-
-  # This only works on deb-based systems. On other distributions, the
-  # application is run from the release tarball and the log location depends on
-  # the location it's run from.
-
-  ombi-systemd:
-    when:
-      - UnitFound("ombi.service")
-      - PathExists("/etc/debian_version")
-    install:
-      collections:
-        - LePresidente/ombi
-    datasource:
-      source: file
-      labels:
-        type: ombi
-      filenames:
-        - /var/log/ombi/log-*.txt
-
-  #
-  # crowdsecurity/pgsql
-  #
-
-  pgsql-systemd-deb:
-    when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/debian_version")
-    install:
+      - Systemd.UnitInstalled("postgresql.service") or (len(Path.Glob("/var/log/postgresql/*.log")) > 0) or (len(Path.Glob("/var/lib/pgsql/data/log/*.log")) > 0)
+    hub_spec:
       collections:
         - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/log/postgresql/*.log
+    acquisition_spec:
+      filename: pgsql.yaml
+      datasource:
+        source: file
+        labels:
+          type: postgres
+        filenames:
+          # deb uses /var/log
+          - /var/log/postgresql/*.log
+          # rpm uses /var/lib
+          - /var/lib/pgsql/data/log/*.log
 
-  pgsql-systemd-rpm:
-    when:
-      - UnitFound("postgresql.service")
-      - PathExists("/etc/redhat-release")
-    install:
-      collections:
-        - crowdsecurity/pgsql
-    datasource:
-      source: file
-      labels:
-        type: postgres
-      filenames:
-        - /var/lib/pgsql/data/log/*.log
-
+  # Postfix mail server
   #
-  # crowdsecurity/postfix
+  # Postfix configuration can be queried with
+  # "postconf maillog_file syslog_facility syslog_name"
   #
-
-  postfix-systemd:
+  # By default maillog_file = "" and syslog_facility="mail" which
+  # goes to either /var/log/maillog or /var/log/mail.log
+  postfix:
     when:
-      - UnitFound("postfix.service")
-    install:
+      - Systemd.UnitInstalled("postfix.service")
+    hub_spec:
       collections:
         - crowdsecurity/postfix
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/mail.log
+    acquisition_spec:
+      filename: postfix.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/mail.log
+          - /var/log/maillog
 
   #
-  # crowdsecurity/proftpd
+  # Openssh
   #
 
-  proftpd-systemd:
+  # on deb-based systems: the name of the unit is ssh.service,
+  # while sshd.service is an alias that can't be used to read the journal
+  openssh-journal-ssh:
     when:
-      - UnitFound("proftpd.service")
-    install:
+      # ubuntu-minimal and recent debians don't install rsyslog by default
+      - Systemd.UnitInstalled("ssh.service")
+      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/secure")
+      - not Path.Exists("/var/log/messages")
+    hub_spec:
       collections:
-        - crowdsecurity/proftpd
-    datasource:
-      source: file
-      labels:
-        type: proftpd
-      filenames:
-        - /var/log/proftpd/*.log
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=ssh.service"
 
-  #
-  # fulljackz/pureftpd
-  #
-
-  pureftpd-systemd:
+  # on rpm-based systems and others: the name of the unit is sshd.service
+  # and we have to skip this if ssh.service also exists
+  openssh-journal-sshd:
     when:
-      - UnitFound("pure-ftpd.service")
-    install:
+      - Systemd.UnitInstalled("sshd.service")
+      - not Systemd.UnitInstalled("ssh.service")
+      - not Path.Exists("/var/log/auth.log")
+      - not Path.Exists("/var/log/secure")
+      - not Path.Exists("/var/log/messages")
+    hub_spec:
       collections:
-        - fulljackz/pureftpd
-    # XXX ?
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/pure-ftpd/*.log
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: journalctl
+        labels:
+          type: syslog
+        journalctl_filter:
+          - "_SYSTEMD_UNIT=sshd.service"
 
-  #
-  # crowdsecurity/smb
-  #
+  # Acquire rsyslog files if they exist (some distributions have them in /var/log/messages,
+  # already acquired by the linux service below)
+  openssh-file:
+    when:
+      - Path.Exists("/var/log/auth.log") or Path.Exists("/var/log/secure")
+    hub_spec:
+      collections:
+        - crowdsecurity/sshd
+    acquisition_spec:
+      filename: sshd.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          - /var/log/auth.log
+          - /var/log/secure
 
-  smb-systemd:
+  # HAProxy load balancer
+  #
+  # Logs go to syslog, then
+  # - on deb, they are dispatched to /var/log/haproxy.log (via /etc/rsyslog.d/49-haproxy.conf)
+  # - on rpm, the dispatch is missing (default -> /var/log/messages), but can be added with,
+  #   assuming rsyslog:
+  #
+  # # /etc/rsyslog.d/10-haproxy.conf
+  # module(load="imudp")
+  # input(type="imudp" port="514")
+  # local2.*    /var/log/haproxy.log
+  # & stop
+
+  haproxy:
+    when:
+      - Systemd.UnitInstalled("haproxy.service") or len(Path.Glob("/var/log/haproxy.log")) > 0
+    hub_spec:
+      collections:
+        - crowdsecurity/haproxy
+    acquisition_spec:
+      filename: haproxy.yaml
+      datasource:
+        source: file
+        labels:
+          type: haproxy
+        filenames:
+          - /var/log/haproxy.log
+
+  # Suricata IDS/IPS
+  suricata:
+    when:
+      - Systemd.UnitInstalled("suricata.service") or Path.Exists("/var/log/suricata/eve.json")
+    hub_spec:
+      collections:
+        - crowdsecurity/suricata
+    acquisition_spec:
+      filename: suricata.yaml
+      datasource:
+        source: file
+        labels:
+          type: suricata-evelogs
+        filenames:
+          - /var/log/suricata/eve.json
+
+  # Samba server
+  samba:
     when:
       # deb -> smbd.service
       # rpm -> smb.service
-      - UnitFound("smbd.service") or UnitFound("smb.service")
-    install:
+      - Systemd.UnitInstalled("smbd.service") or Systemd.UnitInstalled("smb.service") or Systemd.UnitInstalled("smb.service") or len(Path.Glob("/var/log/samba/*.log")) > 0 or len(Path.Glob("/var/log/samba/log.*")) > 0
+    hub_spec:
       collections:
         - crowdsecurity/smb
-    datasource:
-      source: file
-      labels:
-        type: smb
-      filenames:
-        - /var/log/samba*.log
+    acquisition_spec:
+      filename: smb.yaml
+      datasource:
+        source: file
+        labels:
+          type: smb
+        filenames:
+          # authentication failures go to syslog (/var/log/syslog, /var/log/messages,
+          # already acquired by linux collection)
+          - /var/log/samba/*.log
+          - /var/log/samba/log.*
 
-  #
-  # crowdsecurity/sshd
-  #
-
-  sshd-systemd:
+  # MariaDB server
+  mariadb:
     when:
-      # deb -> ssh.service
-      # rpm -> sshd.service
-      - UnitFound("ssh.service") or UnitFound("sshd.service") or UnitFound("ssh.socket") or UnitFound("sshd.socket")
-    install:
+      - Systemd.UnitInstalled("mariadb.service") or Path.Exists("/var/log/mariadb/mariadb.log")
+      # We can't detect error.log directly because it could come from mysql
+    hub_spec:
       collections:
-        - crowdsecurity/sshd
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/auth.log
-        - /var/log/sshd.log
-        - /var/log/secure
+        - crowdsecurity/mariadb
+    acquisition_spec:
+      filename: mariadb.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          # deb: by default, errors go to syslog and are acquired by the linux collection.
+          # They also go to the systemd journal (not acquired here to avoid redundancy).
+          # We add file acquisition just in case, with the location referenced in /etc/mysql/mariadb.conf.d/50-server.cnf
+          - /var/log/mysql/error.log
+          # rpm: errors go to file by default
+          - /var/log/mariadb/mariadb.log
 
-  #
-  # crowdsecurity/suricata
-  #
-
-  suricata-systemd:
+  # MySQL server
+  mysql:
     when:
-      - UnitFound("suricata.service")
-    install:
+      # deb: mysql.service
+      # rpm: mysqld.service
+      - Systemd.UnitInstalled("mysql.service") or Systemd.UnitInstalled("mysqld.service") or Path.Exists("/var/log/mysql/mysqld.log")
+      # We can't detect error.log directly because it could come from mariadb
+    hub_spec:
       collections:
-        - crowdsecurity/suricata
-    datasource:
-      source: file
-      labels:
-        type: suricata-evelogs
-      filenames:
-        - /var/log/suricata/eve.json
+        - crowdsecurity/mysql
+    acquisition_spec:
+      filename: mysql.yaml
+      datasource:
+        source: file
+        labels:
+          type: mysql
+        filenames:
+          # deb
+          - /var/log/mysql/error.log
+          # rpm
+          - /var/log/mysql/mysqld.log
 
+  # Audit daemon
   #
-  # crowdsecurity/vsftpd
-  #
-
-  vsftpd-systemd:
+  # This should be the same for deb and rpm.
+  # Does not go through syslog.
+  auditd:
     when:
-      - UnitFound("vsftpd.service")
-    install:
+      - Systemd.UnitInstalled("auditd.service") or len(Path.Glob("/var/log/audit/*.log")) > 0
+    hub_spec:
       collections:
-        - crowdsecurity/vsftpd
-    datasource:
-      source: file
-      labels:
-        type: vsftpd
-      filenames:
-        - /var/log/vsftpd/*.log
+        - crowdsecurity/auditd
+    acquisition_spec:
+      filename: auditd.yaml
+      datasource:
+        source: file
+        labels:
+          type: auditd
+        filenames:
+          - /var/log/audit/*.log
+
+  # There is no standard systemd unit for telnetd, so
+  # we rely on file detection only.
+  telnet:
+    when:
+      - len(Path.Glob("/var/log/telnetd*.log")) > 0
+    hub_spec:
+      scenarios:
+        - crowdsecurity/telnet-bf
+    acquisition_spec:
+      filename: telnet.yaml
+      datasource:
+        source: file
+        labels:
+          type: telnet
+        filenames:
+          - /var/log/telnetd*.log
+
+  windows_iis:
+    when:
+      - Windows.ServiceEnabled("W3SVC")
+    hub_spec:
+      collections:
+        - crowdsecurity/iis
+    acquisition_spec:
+      filename: iis.yaml
+      datasource:
+        source: file
+        use_time_machine: true
+        filenames:
+          - C:\inetpub\logs\LogFiles\*\*.log
+        labels:
+          type: iis
+
+  windows_sqlserver:
+    when:
+      - Windows.ServiceEnabled("MSSQLSERVER")
+    hub_spec:
+      collections:
+        - crowdsecurity/mssql
+    acquisition_spec:
+      filename: mssql.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Application
+        event_ids:
+          - 18456
+        event_level: information
+        labels:
+          type: eventlog
 
   #
-  # Operating Systems
+  # Operating System detection
   #
 
   linux:
     when:
-      - OS.Family == "linux"
-    install:
+      - Host.OS == "linux"
+    hub_spec:
       collections:
         - crowdsecurity/linux
-    datasource:
-      source: file
-      labels:
-        type: syslog
-      filenames:
-        - /var/log/syslog
-        - /var/log/kern.log
-        - /var/log/messages
+    acquisition_spec:
+      filename: linux.yaml
+      datasource:
+        source: file
+        labels:
+          type: syslog
+        filenames:
+          # collect events that were not dispatched by facility
+          # (syslog or messages depending on the distribution)
+          # rpm
+          - /var/log/messages
+          # deb
+          - /var/log/syslog
+          - /var/log/kern.log
 
   freebsd:
     when:
-      - OS.Family == "freebsd"
-    install:
+      - Host.OS == "freebsd"
+    hub_spec:
       collections:
         - crowdsecurity/freebsd
 
   windows:
     when:
-      - OS.Family == "windows"
-    install:
+      - Host.OS == "windows"
+    hub_spec:
       collections:
         - crowdsecurity/windows
+    acquisition_spec:
+      filename: windows_auth.yaml
+      datasource:
+        source: wineventlog
+        event_channel: Security
+        event_ids:
+          - 4625
+          - 4623
+        event_level: information
+        labels:
+          type: eventlog
 
-  #
   # anti-lockout
-  #
-
   whitelists:
-    install:
+    hub_spec:
       parsers:
         - crowdsecurity/whitelists
+
+# ------------------------------------------------
+# The following have not been extensively tested.
+# Feedback is welcome.
+# ------------------------------------------------
+
+## Emby media server
+#emby-systemd:
+#  when:
+#    - Systemd.UnitInstalled("emby-server.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/emby
+#  acquisition_spec:
+#    filename: emby.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: emby
+#      filenames:
+#        - /var/log/embyserver.txt
+
+## Endlessh SSH tarpit
+#endlessh-systemd:
+#  when:
+#    - Systemd.UnitInstalled("endlessh.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/endlessh
+#  acquisition_spec:
+#    filename: endlessh.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: endlessh
+#      # XXX this? or /var/log/syslog?
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=endlessh.service"
+
+## Odoo ERP
+#odoo-systemd:
+#  when:
+#    - Systemd.UnitInstalled("odoo.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/odoo
+#  acquisition_spec:
+#    filename: odoo.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: odoo
+#      filenames:
+#        - /var/log/odoo/*.log
+
+## This only works on deb-based systems. On other distributions, the
+## application is run from the release tarball and the log location depends on
+## the location it's run from.
+#
+## Ombi media request system
+#ombi-systemd:
+#  when:
+#    - Systemd.UnitInstalled("ombi.service")
+#    - Host.PlatformFamily == "debian"
+#  hub_spec:
+#    collections:
+#      - LePresidente/ombi
+#  acquisition_spec:
+#    filename: ombi.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: ombi
+#      filenames:
+#        - /var/log/ombi/log-*.txt
+        #
+## Gitea Git server
+#gitea-snap:
+#  when:
+#    - Systemd.UnitInstalled("snap.gitea.web.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/gitea
+#  acquisition_spec:
+#    filename: gitea.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: gitea
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=gitea.service"
+#
+#gitea-journal:
+#  when:
+#    - Systemd.UnitInstalled("gitea.service")
+#    - Systemd.UnitLogsToJournal("gitea.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/gitea
+#  acquisition_spec:
+#    filename: gitea.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: gitea
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=gitea.service"
+#
+#gitea-file:
+#  when:
+#    - Systemd.UnitInstalled("gitea.service") or Path.Exists("/var/log/gitea.log") or len(Path.Glob("/var/log/gitea/*.log")) > 0
+#    - not Systemd.UnitLogsToJournal("gitea.service")
+#  hub_spec:
+#    collections:
+#      - LePresidente/gitea
+#  acquisition_spec:
+#    filename: gitea.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: gitea
+#      filenames:
+#        - /var/log/gitea.log
+#        - /var/log/gitea/*.log
+#
+## ProFTPD FTP server
+#proftpd-journal:
+#  when:
+#    - Systemd.UnitInstalled("proftpd.service")
+#    - Systemd.UnitLogsToJournal("proftpd.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/proftpd
+#  acquisition_spec:
+#    filename: proftpd.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: proftpd
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=proftpd.service"
+#
+#proftpd-file:
+#  when:
+#    - Systemd.UnitInstalled("proftpd.service") or len(Path.Glob("/var/log/proftpd/*.log")) > 0
+#    - not Systemd.UnitLogsToJournal("proftpd.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/proftpd
+#  acquisition_spec:
+#    filename: proftpd.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: proftpd
+#      filenames:
+#        - /var/log/proftpd/*.log
+#
+## Pure-FTPd server
+#pureftpd-journal:
+#  when:
+#    - Systemd.UnitInstalled("pure-ftpd.service")
+#    - Systemd.UnitLogsToJournal("pure-ftpd.service")
+#  hub_spec:
+#    collections:
+#      - fulljackz/pureftpd
+#  acquisition_spec:
+#    filename: pureftpd.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: pure-ftpd
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=pure-ftpd.service"
+#
+#pureftpd-file:
+#  when:
+#    - Systemd.UnitInstalled("pure-ftpd.service") or len(Path.Glob("/var/log/pure-ftpd/*.log")) > 0
+#    - not Systemd.UnitLogsToJournal("pure-ftpd.service")
+#  hub_spec:
+#    collections:
+#      - fulljackz/pureftpd
+#  acquisition_spec:
+#    filename: pureftpd.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: pure-ftpd
+#      filenames:
+#        - /var/log/pure-ftpd/*.log
+#
+## vsftpd FTP server
+#vsftpd-journal:
+#  when:
+#    - Systemd.UnitInstalled("vsftpd.service")
+#    - Systemd.UnitLogsToJournal("vsftpd.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/vsftpd
+#  acquisition_spec:
+#    filename: vsftpd.yaml
+#    datasource:
+#      source: journalctl
+#      labels:
+#        type: vsftpd
+#      journalctl_filter:
+#        - "_SYSTEMD_UNIT=vsftpd.service"
+#
+#vsftpd-file:
+#  when:
+#    - Systemd.UnitInstalled("vsftpd.service") or len(Path.Glob("/var/log/vsftpd/*.log")) > 0
+#    - not Systemd.UnitLogsToJournal("vsftpd.service")
+#  hub_spec:
+#    collections:
+#      - crowdsecurity/vsftpd
+#  acquisition_spec:
+#    filename: vsftpd.yaml
+#    datasource:
+#      source: file
+#      labels:
+#        type: vsftpd
+#      filenames:
+#        - /var/log/vsftpd/*.log

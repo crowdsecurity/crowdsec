@@ -22,22 +22,20 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliAllowLists struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliAllowLists {
+func New(cfg csconfig.Getter) *cliAllowLists {
 	return &cliAllowLists{
 		cfg: cfg,
 	}
@@ -115,7 +113,7 @@ func (cli *cliAllowLists) validAllowlistsWithConsole(cmd *cobra.Command, args []
 	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
+func (*cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlistsResponse) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "created_at", "updated_at", "console_managed", "size"})
@@ -140,7 +138,7 @@ func (cli *cliAllowLists) listCSV(out io.Writer, allowlists *models.GetAllowlist
 	return nil
 }
 
-func (cli *cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAllowlistResponse) error {
+func (*cliAllowLists) listCSVContent(out io.Writer, allowlist *models.GetAllowlistResponse) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"name", "description", "value", "comment", "expiration", "created_at", "console_managed"})
@@ -280,7 +278,7 @@ func (cli *cliAllowLists) newCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) create(ctx context.Context, db *database.Client, name string, description string) error {
+func (*cliAllowLists) create(ctx context.Context, db *database.Client, name string, description string) error {
 	_, err := db.CreateAllowList(ctx, name, description, "", false)
 	if err != nil {
 		return err
@@ -308,15 +306,12 @@ func (cli *cliAllowLists) newListCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			client, err := apiclient.NewClient(&apiclient.Config{
+			client := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return cli.list(cmd.Context(), client, color.Output)
 		},
@@ -380,7 +375,7 @@ func (cli *cliAllowLists) newDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) delete(ctx context.Context, db *database.Client, name string) error {
+func (*cliAllowLists) delete(ctx context.Context, db *database.Client, name string) error {
 	list, err := db.GetAllowList(ctx, name, false)
 	if err != nil {
 		return err
@@ -456,7 +451,7 @@ func (cli *cliAllowLists) newCheckCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
+func (*cliAllowLists) add(ctx context.Context, db *database.Client, name string, values []string, expiration time.Duration, comment string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err
@@ -510,7 +505,7 @@ func (cli *cliAllowLists) add(ctx context.Context, db *database.Client, name str
 		return fmt.Errorf("unable to apply allowlists to existing decisions: %w", err)
 	}
 	if deleted > 0 {
-		fmt.Printf("%d decisions deleted by allowlists\n", deleted)
+		fmt.Fprintf(os.Stdout, "%d decisions deleted by allowlists\n", deleted)
 	}
 
 	return nil
@@ -534,15 +529,12 @@ func (cli *cliAllowLists) newInspectCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			client, err := apiclient.NewClient(&apiclient.Config{
+			client := apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			name := args[0]
 
@@ -611,7 +603,7 @@ func (cli *cliAllowLists) newRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
+func (*cliAllowLists) remove(ctx context.Context, db *database.Client, name string, values []string) error {
 	allowlist, err := db.GetAllowList(ctx, name, true)
 	if err != nil {
 		return err
@@ -671,15 +663,12 @@ func (cli *cliAllowLists) check(ctx context.Context, ips []string) error {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	client, err := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		return fmt.Errorf("creating api client: %w", err)
-	}
 
 	for _, ip := range ips {
 		resp, _, err := client.Allowlists.CheckIfAllowlistedWithReason(ctx, ip)

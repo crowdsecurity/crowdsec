@@ -2,6 +2,7 @@ package cliexplain
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,14 +13,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func getLineCountForFile(filepath string) (int, error) {
-	f, err := os.Open(filepath)
+func getLineCountForFile(pth string) (int, error) {
+	f, err := os.Open(pth)
 	if err != nil {
 		return 0, err
 	}
@@ -42,10 +42,7 @@ func getLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
-type configGetter func() *csconfig.Config
-
 type cliExplain struct {
-	cfg            configGetter
 	configFilePath string
 	flags          struct {
 		logFile               string
@@ -61,9 +58,8 @@ type cliExplain struct {
 	}
 }
 
-func New(cfg configGetter, configFilePath string) *cliExplain {
+func New(configFilePath string) *cliExplain {
 	return &cliExplain{
-		cfg:            cfg,
 		configFilePath: configFilePath,
 	}
 }
@@ -83,8 +79,8 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return cli.run()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cli.run(cmd.Context())
 		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			fileInfo, _ := os.Stdin.Stat()
@@ -115,7 +111,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	return cmd
 }
 
-func (cli *cliExplain) run() error {
+func (cli *cliExplain) run(ctx context.Context) error {
 	logFile := cli.flags.logFile
 	logLine := cli.flags.logLine
 	logType := cli.flags.logType
@@ -139,6 +135,7 @@ func (cli *cliExplain) run() error {
 
 	defer func() {
 		if cli.flags.noClean {
+			fmt.Fprintf(os.Stdout, "Not removing dump directory: %s\n", dir)
 			return
 		}
 
@@ -227,11 +224,11 @@ func (cli *cliExplain) run() error {
 		cmdArgs = append(cmdArgs, "-label", labels)
 	}
 
-	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
+	crowdsecCmd := exec.CommandContext(ctx, crowdsec, cmdArgs...)
 
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
+		fmt.Fprintln(os.Stdout, string(output))
 
 		return fmt.Errorf("fail to run crowdsec for test: %w", err)
 	}

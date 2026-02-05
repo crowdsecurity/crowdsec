@@ -5,13 +5,13 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 /* All plugins must export a list of function pointers for exported symbols */
 //var ExportedFuncs = []string{"reverse_dns"}
 
-func reverse_dns(field string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func reverse_dns(field string, p *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	ret := make(map[string]string)
 	if field == "" {
 		return nil, nil

@@ -24,7 +24,7 @@ teardown() {
 
 #----------
 
-@test "malformed acqusition file" {
+@test "malformed acquisition file" {
     cat >"$ACQUIS_DIR/file.yaml" <<-EOT
 	filename:
 	- /path/to/file.log
@@ -33,7 +33,36 @@ teardown() {
 	EOT
 
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "crowdsec init: while loading acquisition config: while configuring datasource of type file from $ACQUIS_DIR/file.yaml (position 0): cannot parse FileAcquisition configuration: yaml: unmarshal errors:"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: datasource of type file: cannot parse FileAcquisition configuration: [2:1] cannot unmarshal []interface {} into Go struct field Configuration.Filename of type string"
+}
+
+@test "empty acquisition file" {
+    cat >"$ACQUIS_DIR/file.yaml" <<-EOT
+	EOT
+
+    rune -0 "$CROWDSEC" -t
+}
+
+@test "malformed acquisition file (missing keys)" {
+    cat >"$ACQUIS_DIR/file.yaml" <<-EOT
+	labels:
+	  type: syslog
+	EOT
+
+    rune -1 "$CROWDSEC" -t
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: missing 'source' field"
+}
+
+@test "malformed acquisition file (duplicate key)" {
+    cat >"$ACQUIS_DIR/file.yaml" <<-EOT
+	filename:
+	- /path/to/file.log
+	filename:
+	- /path/to/file.log
+	EOT
+
+    rune -1 "$CROWDSEC" -t
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/file.yaml: position 0: [3:1] mapping key \"filename\" already defined at [1:1]"
 }
 
 @test "datasource type detection" {
@@ -52,12 +81,24 @@ teardown() {
 	  type: syslog
 	EOT
 
+    rune -0 "$CROWDSEC" -t
+    assert_stderr --partial "$ACQUIS_DIR/file.yaml (position 0): datasource type missing, detected 'source=file'"
+    assert_stderr --partial "$ACQUIS_DIR/file.yaml (position 1): datasource type missing, detected 'source=file'"
+
+    rm -f  "$ACQUIS_DIR/file.yaml"
+
     cat >"$ACQUIS_DIR"/journal.yaml <<-EOT
 	journalctl_filter:
 	 - "_SYSTEMD_UNIT=ssh.service"
 	labels:
 	  type: syslog
 	EOT
+
+    rune -0 "$CROWDSEC" -t
+
+    assert_stderr --partial "$ACQUIS_DIR/journal.yaml: datasource type missing, detected 'source=journalctl'"
+
+    rm -f  "$ACQUIS_DIR/journal.yaml"
 
     # However, a wrong source type will raise a brow.
     # This is currently not a fatal error because it has been tolerated in the past.
@@ -70,11 +111,22 @@ teardown() {
 	  type: syslog
 	EOT
 
-    rune -0 "$CROWDSEC" -t
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/file.yaml (position 0): detected 'source=file'"
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/file.yaml (position 1): detected 'source=file'"
-    assert_stderr --partial "datasource type missing in $ACQUIS_DIR/journal.yaml (position 0): detected 'source=journalctl'"
-    assert_stderr --partial "datasource type mismatch in $ACQUIS_DIR/bad.yaml (position 0): found 'docker' but should probably be 'journalctl'"
+    rune -1 "$CROWDSEC" -t
+
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/bad.yaml: datasource of type docker: while parsing DockerAcquisition configuration: [2:1] unknown field \\\"journalctl_filter\\\""
+}
+
+@test "datasource docker (regexp)" {
+    cat >"$ACQUIS_DIR"/bad.yaml <<-EOT
+	source: docker
+	container_name_regexp:
+	  - "[abc"
+	labels:
+	  type: syslog
+	EOT
+
+    rune -1 "$CROWDSEC" -t
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/bad.yaml: datasource of type docker: container_name_regexp: error parsing regexp: missing closing ]: \`[abc\`"
 }
 
 @test "test mode does not fail because of appsec and allowlists" {
@@ -86,7 +138,7 @@ teardown() {
 	  type: appsec
 	EOT
 
-    config_set '.common.log_level="debug" | .common.log_media="stdout"'
+    config_set '.common.log_media="stdout"'
 
     rune -0 "$CROWDSEC" -t --trace
 

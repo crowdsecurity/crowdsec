@@ -9,11 +9,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 type AppsecCollection struct {
-	collectionName string
 	Rules          []string
 	NativeRules    []string
 }
@@ -29,6 +29,7 @@ type AppsecCollectionConfig struct {
 	SecLangFilesRules []string                 `yaml:"seclang_files_rules"`
 	SecLangRules      []string                 `yaml:"seclang_rules"`
 	Rules             []appsec_rule.CustomRule `yaml:"rules"`
+	Severity          string                   `yaml:"severity"`
 
 	Labels map[string]any `yaml:"labels"` // Labels is K:V list aiming at providing context the overflow
 
@@ -48,7 +49,7 @@ type RulesDetails struct {
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
 var AppsecRulesDetails = make(map[int]RulesDetails)
 
-func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, error) {
+func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]AppsecCollection, error) {
 	ret := make([]AppsecCollection, 0)
 
 	for _, appsecRule := range appsecRules {
@@ -69,31 +70,43 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			continue
 		}
 
-		appsecCol := AppsecCollection{
-			collectionName: appsecRule.Name,
-		}
+		appsecCol := AppsecCollection{}
 
 		if appsecRule.SecLangFilesRules != nil {
 			for _, rulesFile := range appsecRule.SecLangFilesRules {
 				logger.Debugf("Adding rules from %s", rulesFile)
-				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
+				globPattern := filepath.Join(hub.GetDataDir(), rulesFile)
 
-				c, err := os.ReadFile(fullPath)
+				matches, err := filepath.Glob(globPattern)
+
 				if err != nil {
-					logger.Errorf("unable to read file %s : %s", rulesFile, err)
+					logger.Errorf("unable to glob %s : %s", rulesFile, err)
 					continue
 				}
 
-				for line := range strings.SplitSeq(string(c), "\n") {
-					if strings.HasPrefix(line, "#") {
+				if len(matches) == 0 {
+					logger.Warnf("no file matched pattern %s", globPattern)
+					continue
+				}
+
+				for _, fullPath := range matches {
+					c, err := os.ReadFile(fullPath)
+					if err != nil {
+						logger.Errorf("unable to read file %s : %s", rulesFile, err)
 						continue
 					}
 
-					if strings.TrimSpace(line) == "" {
-						continue
-					}
+					for line := range strings.SplitSeq(string(c), "\n") {
+						if strings.HasPrefix(line, "#") {
+							continue
+						}
 
-					appsecCol.NativeRules = append(appsecCol.NativeRules, line)
+						if strings.TrimSpace(line) == "" {
+							continue
+						}
+
+						appsecCol.NativeRules = append(appsecCol.NativeRules, line)
+					}
 				}
 			}
 		}
@@ -105,7 +118,8 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 
 		if appsecRule.Rules != nil {
 			for _, rule := range appsecRule.Rules {
-				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name)
+				rule.Severity = appsecRule.Severity
+				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description)
 				if err != nil {
 					logger.Errorf("unable to convert rule %s : %s", appsecRule.Name, err)
 					return nil, err

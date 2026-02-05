@@ -3,6 +3,7 @@ package clihub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,21 +13,19 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliHub struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHub {
+func New(cfg csconfig.Getter) *cliHub {
 	return &cliHub{
 		cfg: cfg,
 	}
@@ -44,6 +43,10 @@ The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](htt
 cscli hub update
 cscli hub upgrade`,
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newBranchCmd())
@@ -95,8 +98,12 @@ func (cli *cliHub) newBranchCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			branch := require.HubBranch(cmd.Context(), cli.cfg())
-			fmt.Println(branch)
+			branch, err := require.HubBranch(cmd.Context(), cli.cfg())
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(os.Stdout, branch)
 			return nil
 		},
 	}
@@ -139,7 +146,10 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 		return err
 	}
 
-	indexProvider := require.HubDownloader(ctx, cli.cfg())
+	indexProvider, err := require.HubDownloader(ctx, cli.cfg())
+	if err != nil {
+		return err
+	}
 
 	updated, err := hub.Update(ctx, indexProvider, withContent)
 	if err != nil {
@@ -147,7 +157,7 @@ func (cli *cliHub) update(ctx context.Context, withContent bool) error {
 	}
 
 	if !updated && (log.StandardLogger().Level >= log.InfoLevel) {
-		fmt.Println("Nothing to do, the hub index is up to date.")
+		fmt.Fprintln(os.Stdout, "Nothing to do, the hub index is up to date.")
 	}
 
 	if err := hub.Load(); err != nil {
@@ -201,7 +211,10 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 
 	plan := hubops.NewActionPlan(hub)
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range hub.GetInstalledByType(itemType, true) {
@@ -218,12 +231,17 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
-		return err
+	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	if err != nil {
+		if !errors.Is(err, hubops.ErrUserCanceled) {
+			return err
+		}
+		// not a real error, and we'll want to print the reload message anyway
+		fmt.Fprintln(os.Stdout, err.Error())
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
-		fmt.Println("\n" + msg)
+		fmt.Fprintln(os.Stdout, "\n"+msg)
 	}
 
 	return nil
@@ -275,17 +293,17 @@ func (cli *cliHub) types() error {
 			return err
 		}
 
-		fmt.Print(string(s))
+		fmt.Fprint(os.Stdout, string(s))
 	case "json":
 		jsonStr, err := json.Marshal(cwhub.ItemTypes)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(string(jsonStr))
+		fmt.Fprintln(os.Stdout, string(jsonStr))
 	case "raw":
 		for _, itemType := range cwhub.ItemTypes {
-			fmt.Println(itemType)
+			fmt.Fprintln(os.Stdout, itemType)
 		}
 	}
 

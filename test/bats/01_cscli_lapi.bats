@@ -113,7 +113,7 @@ teardown() {
     config_set "$LOCAL_API_CREDENTIALS" '.url="http://127.0.0.1:-80"'
 
     rune -1 cscli lapi status
-    assert_stderr 'Error: failed to authenticate to Local API (LAPI): parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
+    assert_stderr 'Error: cscli lapi status: failed to authenticate to Local API (LAPI): parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
 }
 
 @test "cscli - bad LAPI password" {
@@ -122,7 +122,7 @@ teardown() {
     config_set "$LOCAL_API_CREDENTIALS" '.password="meh"'
 
     rune -1 cscli lapi status
-    assert_stderr 'Error: failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
+    assert_stderr 'Error: cscli lapi status: failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
 
 @test "cscli lapi register / machines validate" {
@@ -189,7 +189,7 @@ teardown() {
     rune -1 cscli machines inspect malicious
     # XXX: we may want to remove this warning
     assert_stderr --partial 'QueryMachineByID : ent: machine not found'
-    assert_stderr --partial "Error: unable to read machine data 'malicious': user 'malicious': user doesn't exist"
+    assert_stderr --partial "Error: cscli machines inspect: unable to read machine data 'malicious': user 'malicious': user doesn't exist"
 
     rune -0 cscli lapi register --machine newmachine --token 12345678901234567890123456789012
     assert_stderr --partial "Successfully registered to Local API"

@@ -1,0 +1,6 @@
+# wantErr: datasource of type kinesis: consumer_name is mandatory when use_enhanced_fanout is true
+source: kinesis
+labels:
+  type: sometype
+use_enhanced_fanout: true
+stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream

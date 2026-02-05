@@ -2,13 +2,14 @@ package clihubtest
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
-func (cli *cliHubTest) newEvalCmd() *cobra.Command {
+func (*cliHubTest) newEvalCmd() *cobra.Command {
 	var evalExpression string
 
 	cmd := &cobra.Command{
@@ -33,7 +34,7 @@ func (cli *cliHubTest) newEvalCmd() *cobra.Command {
 					return err
 				}
 
-				fmt.Print(output)
+				fmt.Fprint(os.Stdout, output)
 			}
 
 			return nil

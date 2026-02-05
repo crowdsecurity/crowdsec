@@ -25,6 +25,7 @@ const (
 	APIKeyHeaderName      = "X-Crowdsec-Appsec-Api-Key"
 	UserAgentHeaderName   = "X-Crowdsec-Appsec-User-Agent"
 	HTTPVersionHeaderName = "X-Crowdsec-Appsec-Http-Version"
+	TransactionIDHeaderName = "X-Crowdsec-Appsec-Transaction-Id"
 )
 
 type ParsedRequest struct {
@@ -41,7 +42,6 @@ type ParsedRequest struct {
 	Body                 []byte                  `json:"body,omitempty"`
 	TransferEncoding     []string                `json:"transfer_encoding,omitempty"`
 	UUID                 string                  `json:"uuid,omitempty"`
-	Tx                   ExtendedTransaction     `json:"-"`
 	ResponseChannel      chan AppsecTempResponse `json:"-"`
 	IsInBand             bool                    `json:"-"`
 	IsOutBand            bool                    `json:"-"`
@@ -321,6 +321,12 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 
 	userAgent := r.Header.Get(UserAgentHeaderName) //This one is optional
 
+	// Extract transaction ID from header if present, otherwise generate a new UUID
+	transactionID := r.Header.Get(TransactionIDHeaderName)
+	if transactionID == "" {
+		transactionID = uuid.New().String()
+	}
+
 	httpVersion := r.Header.Get(HTTPVersionHeaderName)
 	if httpVersion == "" {
 		logger.Debugf("missing '%s' header", HTTPVersionHeaderName)
@@ -351,6 +357,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 	delete(r.Header, UserAgentHeaderName)
 	delete(r.Header, APIKeyHeaderName)
 	delete(r.Header, HTTPVersionHeaderName)
+	delete(r.Header, TransactionIDHeaderName)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -371,6 +378,8 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 	if err != nil {
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
+
+	originalHTTPRequest.URL = parsedURL
 
 	var remoteAddrNormalized string
 	if r.RemoteAddr == "@" {
@@ -393,7 +402,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 
 	return ParsedRequest{
 		RemoteAddr:           r.RemoteAddr,
-		UUID:                 uuid.New().String(),
+		UUID:                 transactionID,
 		ClientHost:           clientHost,
 		ClientIP:             clientIP,
 		URI:                  clientURI,

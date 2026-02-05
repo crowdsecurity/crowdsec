@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
 func (cli *cliMachines) validate(ctx context.Context, machineID string) error {

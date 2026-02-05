@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadHub(t *testing.T) {
@@ -36,12 +34,7 @@ func TestLoadHub(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.input.loadHub()
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			if tc.expectedErr != "" {
-				return
-			}
-
+			tc.input.loadHub()
 			assert.Equal(t, tc.expected, tc.input.Hub)
 		})
 	}

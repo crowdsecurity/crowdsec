@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -24,10 +24,8 @@ type cliHelp struct {
 	example string
 }
 
-type configGetter func() *csconfig.Config
-
 type cliItem struct {
-	cfg           configGetter
+	cfg           csconfig.Getter
 	name          string // plural, as used in the hub index
 	singular      string
 	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
@@ -97,7 +95,7 @@ func (cli *cliItem) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func compInstalledItems(itemType string, _ []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+func compInstalledItems(itemType string, _ []string, toComplete string, cfg csconfig.Getter) ([]string, cobra.ShellCompDirective) {
 	hub, err := require.Hub(cfg(), nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

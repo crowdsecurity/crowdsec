@@ -1,8 +1,10 @@
 package clilapi
 
 func removeFromSlice(val string, slice []string) []string {
-	var i int
-	var value string
+	var (
+		i int
+		value string
+	)
 
 	valueFound := false
 

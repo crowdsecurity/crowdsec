@@ -37,9 +37,7 @@ type allowlistUnsubscribe struct {
 	Id   string `json:"id"`
 }
 
-func DecisionCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func DecisionCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "delete":
 		data, err := json.Marshal(message.Data)
@@ -91,9 +89,7 @@ func DecisionCmd(message *Message, p *Papi, sync bool) error {
 	return nil
 }
 
-func AlertCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "add":
 		data, err := json.Marshal(message.Data)
@@ -108,6 +104,30 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		}
 
 		log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
+		decisionsToKeep := make([]*models.Decision, 0)
+		for _, decision := range alert.Decisions {
+			if decision.Value == nil {
+				continue
+			}
+			isAllowlisted, reason, err := p.DBClient.IsAllowlisted(ctx, *decision.Value)
+			if err != nil {
+				log.Errorf("Failed to check if decision '%s' is allowlisted: %s", *decision.Value, err)
+				// keep the decision in case of error during allowlist check
+				decisionsToKeep = append(decisionsToKeep, decision)
+				continue
+			}
+			if isAllowlisted {
+				log.Infof("Decision '%s' is allowlisted, removing it (%s)", *decision.Value, reason)
+				continue
+			}
+			decisionsToKeep = append(decisionsToKeep, decision)
+		}
+		alert.Decisions = decisionsToKeep
+
+		if len(alert.Decisions) == 0 {
+			log.Infof("All decisions are allowlisted for alert %s, skipping alert creation", alert.UUID)
+			return nil
+		}
 
 		/*Fix the alert with missing mandatory items*/
 		if alert.StartAt == nil || *alert.StartAt == "" {
@@ -166,9 +186,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 	return nil
 }
 
-func ManagementCmd(message *Message, p *Papi, sync bool) error {
-	ctx := context.TODO()
-
+func ManagementCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 	if sync {
 		p.Logger.Infof("Ignoring management command from PAPI in sync mode")
 		return nil
@@ -217,8 +235,6 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
-
-		ctx := context.TODO()
 
 		if forcePullMsg.Blocklist == nil && forcePullMsg.Allowlist == nil {
 			p.Logger.Infof("Received force_pull command from PAPI, pulling community, 3rd-party blocklists and allowlists")

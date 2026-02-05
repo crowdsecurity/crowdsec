@@ -6,12 +6,13 @@ import (
 	"strings"
 
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -22,7 +23,7 @@ type Controller struct {
 	AlertsAddChan                 chan []*models.Alert
 	DecisionDeleteChan            chan []*models.Decision
 	PluginChannel                 chan models.ProfileAlert
-	Log                           *log.Logger
+	Log                           logging.ExtLogger
 	ConsoleConfig                 *csconfig.ConsoleConfig
 	TrustedIPs                    []net.IPNet
 	HandlerV1                     *v1.Controller
@@ -95,7 +96,10 @@ func (c *Controller) NewV1() error {
 	}
 
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
-	c.Router.Use(v1.PrometheusMiddleware())
+	c.Router.Use(v1.PrometheusMiddleware)
+	// We don't want to compress the response body as it would likely break some existing bouncers
+	// But we do want to automatically uncompress incoming requests
+	c.Router.Use(gzip.Gzip(gzip.NoCompression, gzip.WithDecompressOnly(), gzip.WithDecompressFn(gzip.DefaultDecompressHandle)))
 	c.Router.HandleMethodNotAllowed = true
 	c.Router.UnescapePathValues = true
 	c.Router.UseRawPath = true
@@ -112,7 +116,7 @@ func (c *Controller) NewV1() error {
 
 	jwtAuth := groupV1.Group("")
 	jwtAuth.GET("/refresh_token", c.HandlerV1.Middlewares.JWT.Middleware.RefreshHandler)
-	jwtAuth.Use(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware())
+	jwtAuth.Use(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware)
 	{
 		jwtAuth.POST("/alerts", c.HandlerV1.CreateAlert)
 		jwtAuth.GET("/alerts", c.HandlerV1.FindAlerts)
@@ -133,7 +137,7 @@ func (c *Controller) NewV1() error {
 	}
 
 	apiKeyAuth := groupV1.Group("")
-	apiKeyAuth.Use(c.HandlerV1.Middlewares.APIKey.MiddlewareFunc(), v1.PrometheusBouncersMiddleware())
+	apiKeyAuth.Use(c.HandlerV1.Middlewares.APIKey.Middleware, v1.PrometheusBouncersMiddleware)
 	{
 		apiKeyAuth.GET("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
@@ -142,7 +146,7 @@ func (c *Controller) NewV1() error {
 	}
 
 	eitherAuth := groupV1.Group("")
-	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.MiddlewareFunc()))
+	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.Middleware))
 	{
 		eitherAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}

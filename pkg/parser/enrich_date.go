@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	expr "github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func parseDateWithFormat(date, format string) (string, time.Time) {
@@ -57,7 +57,7 @@ func GenDateParse(date string) (string, time.Time) {
 	return "", time.Time{}
 }
 
-func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func ParseDate(in string, p *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 
 	var ret = make(map[string]string)
 	var strDate string
@@ -68,7 +68,7 @@ func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, e
 			if !parsedDate.IsZero() {
 				ret["MarshaledTime"] = strDate
 				//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
-				if p.ExpectMode == types.TIMEMACHINE {
+				if p.ExpectMode == pipeline.TIMEMACHINE {
 					p.Time = parsedDate
 				}
 				return ret, nil
@@ -79,7 +79,7 @@ func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, e
 		if !parsedDate.IsZero() {
 			ret["MarshaledTime"] = strDate
 			//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
-			if p.ExpectMode == types.TIMEMACHINE {
+			if p.ExpectMode == pipeline.TIMEMACHINE {
 				p.Time = parsedDate
 			}
 			return ret, nil
@@ -88,7 +88,7 @@ func ParseDate(in string, p *types.Event, plog *log.Entry) (map[string]string, e
 		if err == nil {
 			ret["MarshaledTime"] = timeobj.(time.Time).Format(time.RFC3339)
 			//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
-			if p.ExpectMode == types.TIMEMACHINE {
+			if p.ExpectMode == pipeline.TIMEMACHINE {
 				p.Time = timeobj.(time.Time)
 			}
 			return ret, nil

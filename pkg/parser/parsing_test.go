@@ -19,12 +19,12 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type TestFile struct {
-	Lines   []types.Event `yaml:"lines,omitempty"`
-	Results []types.Event `yaml:"results,omitempty"`
+	Lines   []pipeline.Event `yaml:"lines,omitempty"`
+	Results []pipeline.Event `yaml:"results,omitempty"`
 }
 
 var debug = false
@@ -65,7 +65,7 @@ func TestParser(t *testing.T) {
 }
 
 func BenchmarkParser(t *testing.B) {
-	log.Printf("start bench !!!!")
+	log.Print("start bench !!!!")
 
 	debug = false
 
@@ -98,18 +98,17 @@ func BenchmarkParser(t *testing.B) {
 
 func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 	var (
-		err            error
-		pnodes         []Node
-		parser_configs []Stagefile
+		pnodes        []Node
+		parserConfigs []Stagefile
 	)
 
 	log.Warningf("testing %s", dir)
 
-	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
+	parserCfgFile := filepath.Join(dir, "parsers.yaml")
 
-	cfg, err := os.ReadFile(parser_cfg_file)
+	cfg, err := os.ReadFile(parserCfgFile)
 	if err != nil {
-		return fmt.Errorf("failed opening %s: %w", parser_cfg_file, err)
+		return fmt.Errorf("failed opening %s: %w", parserCfgFile, err)
 	}
 
 	tmpl, err := template.New("test").Parse(string(cfg))
@@ -124,19 +123,19 @@ func testOneParser(t require.TestingT, pctx *UnixParserCtx, ectx EnricherCtx, di
 		panic(err)
 	}
 
-	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
-		return fmt.Errorf("failed to parse %s: %w", parser_cfg_file, err)
+	if err = yaml.UnmarshalStrict(out.Bytes(), &parserConfigs); err != nil {
+		return fmt.Errorf("failed to parse %s: %w", parserCfgFile, err)
 	}
 
-	pnodes, err = LoadStages(parser_configs, pctx, ectx)
+	pnodes, err = LoadStages(parserConfigs, pctx, ectx)
 	if err != nil {
 		return fmt.Errorf("unable to load parser config: %w", err)
 	}
 
 	// TBD: Load post overflows
 	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
-	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
-	tests := loadTestFile(t, parser_test_file)
+	parserTestFile := filepath.Join(dir, "test.yaml")
+	tests := loadTestFile(t, parserTestFile)
 	count := 1
 
 	if b != nil {
@@ -215,7 +214,7 @@ func loadTestFile(t require.TestingT, file string) []TestFile {
 	return testSet
 }
 
-func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
+func matchEvent(expected pipeline.Event, out pipeline.Event, debug bool) ([]string, bool) {
 	var retInfo []string
 
 	valid := false
@@ -268,7 +267,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 
 	valid = true
 
-	for mapIdx := range len(expectMaps) {
+	for mapIdx := range expectMaps {
 		for expKey, expVal := range expectMaps[mapIdx] {
 			outVal, ok := outMaps[mapIdx][expKey]
 			if !ok {
@@ -298,6 +297,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			valid = true
 		}
 	}
+
 checkFinished:
 	if valid {
 		if debug {
@@ -313,10 +313,10 @@ checkFinished:
 }
 
 func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
-	var results []types.Event
+	var results []pipeline.Event
 
 	for _, in := range testSet.Lines {
-		out, err := Parse(pctx, in, nodes)
+		out, err := Parse(pctx, in, nodes, nil)
 		if err != nil {
 			log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
 		}

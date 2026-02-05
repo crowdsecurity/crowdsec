@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
 type cliDoc struct{}
@@ -28,12 +29,12 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 		Args:              args.NoArgs,
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, target, cli.filePrepender, cli.linkHandler); err != nil {
 				return fmt.Errorf("failed to generate cscli documentation: %w", err)
 			}
 
-			fmt.Println("Documentation generated in", target)
+			fmt.Fprintln(os.Stdout, "Documentation generated in", target)
 
 			return nil
 		},
@@ -45,7 +46,7 @@ func (cli cliDoc) NewCommand(rootCmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func (cli cliDoc) filePrepender(filename string) string {
+func (cliDoc) filePrepender(filename string) string {
 	const header = `---
 id: %s
 title: %s
@@ -58,6 +59,6 @@ title: %s
 	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
-func (cli cliDoc) linkHandler(name string) string {
+func (cliDoc) linkHandler(name string) string {
 	return fmt.Sprintf("/cscli/%s", name)
 }

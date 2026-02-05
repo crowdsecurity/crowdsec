@@ -11,7 +11,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestNewAlertContext(t *testing.T) {
@@ -43,7 +43,7 @@ func TestEventToContext(t *testing.T) {
 		name           string
 		contextToSend  map[string][]string
 		valueLength    int
-		events         []types.Event
+		events         []pipeline.Event
 		expectedResult models.Meta
 	}{
 		{
@@ -53,7 +53,7 @@ func TestEventToContext(t *testing.T) {
 				"nonexistent_field": {"evt.Parsed.nonexist"},
 			},
 			valueLength: 100,
-			events: []types.Event{
+			events: []pipeline.Event{
 				{
 					Parsed: map[string]string{
 						"source_ip":      "1.2.3.4",
@@ -76,7 +76,7 @@ func TestEventToContext(t *testing.T) {
 				"cve":            {"evt.Parsed.cve"},
 			},
 			valueLength: 100,
-			events: []types.Event{
+			events: []pipeline.Event{
 				{
 					Parsed: map[string]string{
 						"source_ip":      "1.2.3.4",
@@ -122,7 +122,7 @@ func TestEventToContext(t *testing.T) {
 				"uri":            {"evt.Parsed.uri"},
 			},
 			valueLength: 100,
-			events: []types.Event{
+			events: []pipeline.Event{
 				{
 					Parsed: map[string]string{
 						"source_ip":      "1.2.3.4",
@@ -168,7 +168,7 @@ func TestEventToContext(t *testing.T) {
 				"uri":            {"evt.Parsed.uri"},
 			},
 			valueLength: 100,
-			events: []types.Event{
+			events: []pipeline.Event{
 				{
 					Parsed: map[string]string{
 						"source_ip":      "1.2.3.4",
@@ -225,7 +225,7 @@ func TestValidateContextExpr(t *testing.T) {
 			exprs: []string{
 				"evt.invalid.source_ip",
 			},
-			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type types.Event has no field invalid"),
+			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type pipeline.Event has no field invalid"),
 		},
 	}
 	for _, test := range tests {
@@ -244,7 +244,7 @@ func TestAppsecEventToContext(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextToSend  map[string][]string
-		match          types.AppsecEvent
+		match          pipeline.AppsecEvent
 		req            *http.Request
 		expectedResult models.Meta
 		expectedErrLen int
@@ -254,8 +254,8 @@ func TestAppsecEventToContext(t *testing.T) {
 			contextToSend: map[string][]string{
 				"id": {"match.id"},
 			},
-			match: types.AppsecEvent{
-				MatchedRules: types.MatchedRules{
+			match: pipeline.AppsecEvent{
+				MatchedRules: pipeline.MatchedRules{
 					{
 						"id": "test",
 					},
@@ -275,8 +275,8 @@ func TestAppsecEventToContext(t *testing.T) {
 			contextToSend: map[string][]string{
 				"ua": {"req.UserAgent()"},
 			},
-			match: types.AppsecEvent{
-				MatchedRules: types.MatchedRules{
+			match: pipeline.AppsecEvent{
+				MatchedRules: pipeline.MatchedRules{
 					{
 						"id": "test",
 					},
@@ -300,8 +300,8 @@ func TestAppsecEventToContext(t *testing.T) {
 			contextToSend: map[string][]string{
 				"foobarxx": {"req.Header.Values('Foobar')"},
 			},
-			match: types.AppsecEvent{
-				MatchedRules: types.MatchedRules{
+			match: pipeline.AppsecEvent{
+				MatchedRules: pipeline.MatchedRules{
 					{
 						"id": "test",
 					},
@@ -326,8 +326,8 @@ func TestAppsecEventToContext(t *testing.T) {
 			contextToSend: map[string][]string{
 				"foobarxx": {"len(req.Header.Values('Foobar'))"},
 			},
-			match: types.AppsecEvent{
-				MatchedRules: types.MatchedRules{
+			match: pipeline.AppsecEvent{
+				MatchedRules: pipeline.MatchedRules{
 					{
 						"id": "test",
 					},
@@ -352,8 +352,8 @@ func TestAppsecEventToContext(t *testing.T) {
 			contextToSend: map[string][]string{
 				"ja4h": {"JA4H(req)"},
 			},
-			match: types.AppsecEvent{
-				MatchedRules: types.MatchedRules{
+			match: pipeline.AppsecEvent{
+				MatchedRules: pipeline.MatchedRules{
 					{
 						"id": "test",
 					},
@@ -404,8 +404,8 @@ func TestEvalAlertContextRules(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextToSend  map[string][]string
-		event          types.Event
-		match          types.MatchedRule
+		event          pipeline.Event
+		match          pipeline.MatchedRule
 		req            *http.Request
 		expectedResult map[string][]string
 		expectedErrLen int
@@ -416,7 +416,7 @@ func TestEvalAlertContextRules(t *testing.T) {
 				"source_ip": {"evt.Parsed.source_ip"},
 				"id":        {"match.id"},
 			},
-			event: types.Event{
+			event: pipeline.Event{
 				Parsed: map[string]string{
 					"source_ip":      "1.2.3.4",
 					"source_machine": "mymachine",

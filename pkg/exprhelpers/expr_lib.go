@@ -462,6 +462,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "ParseKVLax",
+		function: ParseKVLax,
+		signature: []any{
+			new(func(string, map[string]any, string) error),
+		},
+	},
+	{
 		name:     "Hostname",
 		function: Hostname,
 		signature: []any{
@@ -515,6 +522,22 @@ var exprFuncs = []exprCustomFunc{
 		function: JA4H,
 		signature: []any{
 			new(func(*http.Request) string),
+		},
+	},
+	{
+		name:     "AverageInterval",
+		function: AverageInterval,
+		signature: []any{
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
+		},
+	},
+	{
+		name:     "MedianInterval",
+		function: MedianInterval,
+		signature: []any{
+			new(func([]time.Time) time.Duration),
+			new(func([]interface{}) time.Duration),
 		},
 	},
 }

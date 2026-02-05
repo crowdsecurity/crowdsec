@@ -7,7 +7,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
@@ -30,8 +29,8 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 	return true, resp, nil
 }
 
-func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
-	t.Go(func() error {
+func (h *HeartBeatService) StartHeartBeat(ctx context.Context) {
+	go func() {
 		defer trace.CatchPanic("crowdsec/apiClient/heartbeat")
 
 		hbTimer := time.NewTicker(1 * time.Minute)
@@ -58,12 +57,11 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 					log.Errorf("heartbeat returned false")
 					continue
 				}
-			case <-t.Dying():
-				log.Debugf("heartbeat: stopping")
+			case <-ctx.Done():
+				log.Debug("heartbeat: stopping")
 				hbTimer.Stop()
-
-				return nil
+				return
 			}
 		}
-	})
+	}()
 }

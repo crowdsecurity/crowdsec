@@ -33,30 +33,29 @@ on:
 jobs:
   push_to_registry:
     name: Push Docker image to registries
-    runs-on: ubuntu-latest
+    runs-on: crowdsec-large-runner
     steps:
-
       - name: Check out the repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           buildkitd-config: .github/buildkit.toml
 
       - name: Login to DockerHub
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -96,7 +95,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
           push: ${{ inputs.push }}
           tags: ${{ steps.slim.outputs.tags }}
           target: slim
@@ -112,7 +111,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
           push: ${{ inputs.push }}
           tags: ${{ steps.full.outputs.tags }}
           target: full

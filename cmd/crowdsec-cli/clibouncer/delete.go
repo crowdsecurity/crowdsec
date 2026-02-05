@@ -9,12 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func (cli *cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
+func (*cliBouncers) findParentBouncer(bouncerName string, bouncers []*ent.Bouncer) (string, error) {
 	bouncerPrefix := strings.Split(bouncerName, "@")[0]
 	for _, bouncer := range bouncers {
 		if strings.HasPrefix(bouncer.Name, bouncerPrefix) && !bouncer.AutoCreated {
@@ -57,7 +57,7 @@ func (cli *cliBouncers) delete(ctx context.Context, bouncers []string, ignoreMis
 			log.Warnf("bouncer '%s' is auto-created and cannot be deleted, delete parent bouncer %s instead", bouncerName, parentBouncer)
 			continue
 		}
-		//Try to find all child bouncers and delete them
+		// Try to find all child bouncers and delete them
 		for _, childBouncer := range allBouncers {
 			if strings.HasPrefix(childBouncer.Name, bouncerName+"@") && childBouncer.AutoCreated {
 				if err := cli.db.DeleteBouncer(ctx, childBouncer.Name); err != nil {

@@ -20,11 +20,11 @@ import (
 )
 
 type PluginConfig struct {
-	Name       string  `yaml:"name"`
-	CustomerID string  `yaml:"customer_id"`
-	SharedKey  string  `yaml:"shared_key"`
-	LogType    string  `yaml:"log_type"`
-	LogLevel   *string `yaml:"log_level"`
+	Name       string `yaml:"name"`
+	CustomerID string `yaml:"customer_id"`
+	SharedKey  string `yaml:"shared_key"`
+	LogType    string `yaml:"log_type"`
+	LogLevel   string `yaml:"log_level"`
 }
 
 type SentinelPlugin struct {
@@ -39,17 +39,19 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginName string) (string, error) {
+func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, name string) (string, error) {
 	xHeaders := "X-Ms-Date:" + now
 
+	cfg := s.PluginConfigByName[name]
+
 	stringToHash := fmt.Sprintf("POST\n%d\napplication/json\n%s\n/api/logs", length, xHeaders)
-	decodedKey, _ := base64.StdEncoding.DecodeString(s.PluginConfigByName[pluginName].SharedKey)
+	decodedKey, _ := base64.StdEncoding.DecodeString(cfg.SharedKey)
 
 	h := hmac.New(sha256.New, decodedKey)
 	h.Write([]byte(stringToHash))
 
 	encodedHash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-	authorization := "SharedKey " + s.PluginConfigByName[pluginName].CustomerID + ":" + encodedHash
+	authorization := "SharedKey " + cfg.CustomerID + ":" + encodedHash
 
 	logger.Trace("authorization header", "header", authorization)
 
@@ -57,24 +59,28 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 }
 
 func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
-	}
-	cfg := s.PluginConfigByName[notification.Name]
+	name := notification.GetName()
+	cfg, ok := s.PluginConfigByName[name]
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	logger.Info("received notification for sentinel config", "name", notification.Name)
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
+	}
 
-	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", s.PluginConfigByName[notification.Name].CustomerID)
-	body := strings.NewReader(notification.Text)
+	logger.Info("received notification for sentinel config", "name", name)
 
-	//Cannot use time.RFC1123 as azure wants GMT, not UTC
+	text := notification.GetText()
+
+	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", cfg.CustomerID)
+	body := strings.NewReader(text)
+
+	// Cannot use time.RFC1123 as azure wants GMT, not UTC
 	now := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 
-	authorization, err := s.getAuthorizationHeader(now, len(notification.Text), notification.Name)
+	authorization, err := s.getAuthorizationHeader(now, len(text), name)
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -86,17 +92,19 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Log-Type", s.PluginConfigByName[notification.Name].LogType)
+	req.Header.Set("Log-Type", cfg.LogType)
 	req.Header.Set("Authorization", authorization)
 	req.Header.Set("X-Ms-Date", now)
 
 	client := &http.Client{}
+
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		logger.Error("failed to send request", "error", err)
 		return &protobufs.Empty{}, err
 	}
 	defer resp.Body.Close()
+
 	logger.Debug("sent notification to sentinel", "status", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
@@ -106,10 +114,11 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	return &protobufs.Empty{}, nil
 }
 
-func (s *SentinelPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *SentinelPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d
+
 	return &protobufs.Empty{}, err
 }
 

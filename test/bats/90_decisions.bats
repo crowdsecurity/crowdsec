@@ -30,7 +30,7 @@ teardown() {
 
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
-    assert_stderr "Error: missing arguments, a value is required (--ip, --range or --scope and --value)"
+    assert_stderr "Error: cscli decisions add: missing arguments, a value is required (--ip, --range or --scope and --value)"
 }
 
 @test "cscli decisions list, with and without --machine" {
@@ -56,7 +56,7 @@ teardown() {
 
 @test "cscli decisions list, accept duration parameters with days" {
     rune -1 cscli decisions list --until toto
-    assert_stderr 'Error: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
+    assert_stderr 'Error: cscli decisions list: invalid argument "toto" for "--until" flag: time: invalid duration "toto"'
     rune -0 cscli decisions list --until 2d12h --debug
     assert_stderr --partial "until=60h0m0s"
     rune -0 cscli decisions list --since 2d12h --debug
@@ -66,7 +66,7 @@ teardown() {
 @test "cscli decisions import" {
     # required input
     rune -1 cscli decisions import
-    assert_stderr 'Error: required flag(s) "input" not set'
+    assert_stderr 'Error: cscli decisions import: required flag(s) "input" not set'
 
     # unsupported format
     rune -1 cscli decisions import -i - <<<'value\n5.6.7.8' --format xml
@@ -134,7 +134,7 @@ teardown() {
     # XXX: improve validation
     rune -1 cscli decisions import -i - <<<'value\n1.2.3.4,5.6.7.8' --format csv
     assert_output "Parsing csv"
-    assert_stderr "Error: no decisions found"
+    assert_stderr "Error: cscli decisions import: no decisions found"
 
     #----------
     # VALUES
@@ -182,7 +182,7 @@ teardown() {
         1.2.3.5
 	EOT
     assert_output "Parsing values"
-    assert_stderr "Error: API error: invalid ip address 'bad-apple'"
+    assert_stderr "Error: cscli decisions import: API error: invalid ip address 'bad-apple'"
 
     rune -0 cscli decisions list -a -o json
     rune -0 jq -r '.[0].decisions | length' <(output)

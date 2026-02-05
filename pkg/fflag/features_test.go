@@ -306,7 +306,7 @@ func TestSetFromYaml(t *testing.T) {
 		}, {
 			name:        "invalid yaml",
 			yml:         "bad! content, bad!",
-			expectedErr: "failed to parse feature flags: [1:1] string was used where sequence is expected\n    >  1 | bad! content, bad!\n           ^",
+			expectedErr: "failed to parse feature flags: [1:1] string was used where sequence is expected\n>  1 | bad! content, bad!\n       ^\n",
 		}, {
 			name:        "invalid feature flag name",
 			yml:         "- not_a_feature",
@@ -314,7 +314,7 @@ func TestSetFromYaml(t *testing.T) {
 		}, {
 			name:        "invalid value (must be a list)",
 			yml:         "experimental1: true",
-			expectedErr: "failed to parse feature flags: [1:14] value was used where sequence is expected\n    >  1 | experimental1: true\n                        ^",
+			expectedErr: "failed to parse feature flags: [1:14] mapping was used where sequence is expected\n>  1 | experimental1: true\n                    ^\n",
 		}, {
 			name:        "enable a feature flag",
 			yml:         "- experimental1",

@@ -85,10 +85,10 @@ func (c *DisableCommand) Prepare(plan *ActionPlan) (bool, error) {
 	return true, nil
 }
 
-func (c *DisableCommand) Run(ctx context.Context, plan *ActionPlan) error {
+func (c *DisableCommand) Run(_ context.Context, plan *ActionPlan) error {
 	i := c.Item
 
-	fmt.Println("disabling " + colorizeItemName(i.FQName()))
+	fmt.Fprintln(os.Stdout, "disabling " + colorizeItemName(i.FQName()))
 
 	if err := RemoveInstallLink(i); err != nil {
 		return fmt.Errorf("while disabling %s: %w", i.FQName(), err)
@@ -101,7 +101,7 @@ func (c *DisableCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *DisableCommand) OperationType() string {
+func (*DisableCommand) OperationType() string {
 	return "disable"
 }
 

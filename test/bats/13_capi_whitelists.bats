@@ -63,16 +63,14 @@ teardown() {
 
 @test "capi_whitelists: bad ip" {
     echo '{"ips": ["blahblah"], "cidrs": []}' > "$CAPI_WHITELISTS_YAML"
-    rune -0 wait-for \
-        --err "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid IP address: blahblah" \
-        "$CROWDSEC"
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --regexp "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': ParseAddr.*blahblah.*: unable to parse IP"
 }
 
 @test "capi_whitelists: bad cidr" {
     echo '{"ips": [], "cidrs": ["blahblah"]}' > "$CAPI_WHITELISTS_YAML"
-    rune -0 wait-for \
-        --err "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid CIDR address: blahblah" \
-        "$CROWDSEC"
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --regexp "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': netip.ParsePrefix.*blahblah.*: no '/'"
 }
 
 @test "capi_whitelists: file with ip and cidr values" {

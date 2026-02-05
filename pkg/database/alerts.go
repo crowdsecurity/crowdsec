@@ -3,14 +3,13 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -58,6 +57,11 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 		alertIDs, err := c.CreateAlert(ctx, machineID, []*models.Alert{alertItem})
 		if err != nil {
 			return "", fmt.Errorf("unable to create alert: %w", err)
+		}
+
+		// happy nilaway
+		if len(alertIDs) == 0 {
+			return "", fmt.Errorf("unable to create alert: no IDs returned for alert %s", alertItem.UUID)
 		}
 
 		return alertIDs[0], nil
@@ -121,7 +125,7 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 	var rng csnet.Range
 
 	for _, decisionItem := range missingDecisions {
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -159,33 +163,24 @@ func (c *Client) CreateOrUpdateAlert(ctx context.Context, machineID string, aler
 			SetScope(*decisionItem.Scope).
 			SetOrigin(*decisionItem.Origin).
 			SetSimulated(*alertItem.Simulated).
-			SetUUID(decisionItem.UUID)
+			SetUUID(decisionItem.UUID).
+			SetOwnerID(foundAlert.ID)
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
 	}
 
-	decisions := []*ent.Decision{}
+	// create missing decisions in batches
 
-	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
-
-	for _, builderChunk := range builderChunks {
-		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(ctx)
+	decisions := make([]*ent.Decision, 0, len(decisionBuilders))
+	if err := slicetools.Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+		ret, err := c.Ent.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
-			return "", fmt.Errorf("creating alert decisions: %w", err)
+			return fmt.Errorf("creating alert decisions: %w", err)
 		}
-
-		decisions = append(decisions, decisionsCreateRet...)
-	}
-
-	// now that we bulk created missing decisions, let's update the alert
-
-	decisionChunks := slicetools.Chunks(decisions, c.decisionBulkSize)
-
-	for _, decisionChunk := range decisionChunks {
-		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(ctx)
-		if err != nil {
-			return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
-		}
+		decisions = append(decisions, ret...)
+		return nil
+	}); err != nil {
+		return "", err
 	}
 
 	return "", nil
@@ -206,7 +201,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+		return 0, 0, 0, fmt.Errorf("start_at field time '%s': %w: %w", *alertItem.StartAt, err, ParseTimeFail)
 	}
 
 	if alertItem.StopAt == nil {
@@ -215,7 +210,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+		return 0, 0, 0, fmt.Errorf("stop_at field time '%s': %w: %w", *alertItem.StopAt, err, ParseTimeFail)
 	}
 
 	ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
@@ -250,7 +245,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	alertRef, err := alertB.Save(ctx)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(BulkError, "error creating alert : %s", err)
+		return 0, 0, 0, fmt.Errorf("error creating alert: %w: %w", err, BulkError)
 	}
 
 	if len(alertItem.Decisions) == 0 {
@@ -259,7 +254,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	txClient, err := c.Ent.Tx(ctx)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
+		return 0, 0, 0, fmt.Errorf("error creating transaction: %w: %w", err, BulkError)
 	}
 
 	decOrigin := CapiMachineID
@@ -294,7 +289,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		var rng csnet.Range
 
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -302,7 +297,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 			}
 		}
 
-		/*bulk insert some new decisions*/
+		// bulk insert some new decisions
 		decisionBuilder := c.Ent.Decision.Create().
 			SetUntil(ts.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
@@ -320,7 +315,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 		decisionBuilders = append(decisionBuilders, decisionBuilder)
 
-		/*for bulk delete of duplicate decisions*/
+		// for bulk delete of duplicate decisions
 		if decisionItem.Value == nil {
 			log.Warning("nil value in community decision")
 			continue
@@ -329,32 +324,35 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		valueList = append(valueList, *decisionItem.Value)
 	}
 
-	deleteChunks := slicetools.Chunks(valueList, c.decisionBulkSize)
+	// Delete older decisions from capi
 
-	for _, deleteChunk := range deleteChunks {
-		// Deleting older decisions from capi
+	if err := slicetools.Batch(ctx, valueList, c.decisionBulkSize, func(ctx context.Context, vals []string) error {
 		deletedDecisions, err := txClient.Decision.Delete().
 			Where(decision.And(
 				decision.OriginEQ(decOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
-				decision.ValueIn(deleteChunk...),
-			)).Exec(ctx)
+				decision.ValueIn(vals...),
+				)).Exec(ctx)
 		if err != nil {
-			return 0, 0, 0, rollbackOnError(txClient, err, "deleting older community blocklist decisions")
+			return err
 		}
-
 		deleted += deletedDecisions
+		return nil
+	}); err != nil {
+		return 0, 0, 0, rollbackOnError(txClient, err, "deleting older community blocklist decisions")
 	}
 
-	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
+	// Insert new decisions
 
-	for _, builderChunk := range builderChunks {
-		insertedDecisions, err := txClient.Decision.CreateBulk(builderChunk...).Save(ctx)
+	if err := slicetools.Batch(ctx, decisionBuilders, c.decisionBulkSize, func(ctx context.Context, b []*ent.DecisionCreate) error {
+		insertedDecisions, err := txClient.Decision.CreateBulk(b...).Save(ctx)
 		if err != nil {
-			return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
+			return err
 		}
-
 		inserted += len(insertedDecisions)
+		return nil
+	}); err != nil {
+		return 0, 0, 0, rollbackOnError(txClient, err, "bulk creating decisions")
 	}
 
 	log.Debugf("deleted %d decisions for %s vs %s", deleted, decOrigin, *alertItem.Decisions[0].Origin)
@@ -367,7 +365,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
+func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
@@ -375,10 +373,10 @@ func (c *Client) createDecisionChunk(ctx context.Context, simulated bool, stopAt
 
 		duration, err := cstime.ParseDurationWithDays(*decisionItem.Duration)
 		if err != nil {
-			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+			return nil, fmt.Errorf("decision duration '%+v': %w: %w", *decisionItem.Duration, err, ParseDurationFail)
 		}
 
-		/*if the scope is IP or Range, convert the value to integers */
+		// if the scope is IP or Range, convert the value to integers
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
@@ -458,7 +456,7 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 
 		marshallMetas, err := json.Marshal(eventItem.Meta)
 		if err != nil {
-			return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+			return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
 		}
 
 		// the serialized field is too big, let's try to progressively strip it
@@ -477,7 +475,7 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 
 				marshallMetas, err = json.Marshal(eventItem.Meta)
 				if err != nil {
-					return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+					return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
 				}
 
 				if event.SerializedValidator(string(marshallMetas)) == nil {
@@ -544,15 +542,15 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 
 func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
 	decisions := []*ent.Decision{}
-
-	decisionChunks := slicetools.Chunks(alertItem.Decisions, client.decisionBulkSize)
-	for _, decisionChunk := range decisionChunks {
-		decisionRet, err := client.createDecisionChunk(ctx, *alertItem.Simulated, stopAtTime, decisionChunk)
+	if err := slicetools.Batch(ctx, alertItem.Decisions, client.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
+		ret, err := client.createDecisionBatch(ctx, *alertItem.Simulated, stopAtTime, part)
 		if err != nil {
-			return nil, 0, fmt.Errorf("creating alert decisions: %w", err)
+			return fmt.Errorf("creating alert decisions: %w", err)
 		}
-
-		decisions = append(decisions, decisionRet...)
+		decisions = append(decisions, ret...)
+		return nil
+	}); err != nil {
+		return nil, 0, err
 	}
 
 	discarded := len(alertItem.Decisions) - len(decisions)
@@ -570,14 +568,7 @@ func retryOnBusy(fn func() error) error {
 			return nil
 		}
 
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy {
-			// sqlite3.Error{
-			//   Code:         5,
-			//   ExtendedCode: 5,
-			//   SystemErrno:  0,
-			//   err:          "database is locked",
-			// }
+		if IsSqliteBusyError(err) {
 			log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
 			time.Sleep(1 * time.Second)
 
@@ -590,42 +581,63 @@ func retryOnBusy(fn func() error) error {
 	return fmt.Errorf("exceeded %d busy retries", maxLockRetries)
 }
 
-func saveAlerts(ctx context.Context, c *Client, alertBuilders []*ent.AlertCreate, alertDecisions [][]*ent.Decision) ([]string, error) {
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(ctx)
+func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]string, error) {
+	if len(batch) == 0 {
+		log.Warningf("no alerts to create, discarded?")
+		return nil, nil
+	}
+
+	// extract builders in the same order
+	builders := make([]*ent.AlertCreate, len(batch))
+	for i := range batch {
+		if batch[i].builder == nil {
+			return nil, fmt.Errorf("nil alert builder at index %d", i)
+		}
+
+		builders[i] = batch[i].builder
+	}
+
+	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(builders...).Save(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+		return nil, fmt.Errorf("bulk creating alert: %w: %w", err, BulkError)
 	}
 
 	ret := make([]string, len(alertsCreateBulk))
 	for i, a := range alertsCreateBulk {
 		ret[i] = strconv.Itoa(a.ID)
 
-		d := alertDecisions[i]
-		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
+		d := batch[i].decisions
+		if len(d) == 0 {
+			continue
+		}
 
-		for _, d2 := range decisionsChunk {
-			if err := retryOnBusy(func() error {
+		if err := slicetools.Batch(ctx, d, c.decisionBulkSize, func(ctx context.Context, d2 []*ent.Decision) error {
+			return retryOnBusy(func() error {
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				return err
-			}); err != nil {
-				return nil, fmt.Errorf("attach decisions to alert %d: %w", a.ID, err)
-			}
+			})
+		}); err != nil {
+			return nil, fmt.Errorf("attach decisions to alert %d: %w", a.ID, err)
 		}
 	}
 
 	return ret, nil
 }
 
-func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
-	alertBuilders := []*ent.AlertCreate{}
-	alertDecisions := [][]*ent.Decision{}
+type alertCreatePlan struct {
+	builder *ent.AlertCreate
+	decisions []*ent.Decision
+}
+
+func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
+	batch := make([]alertCreatePlan, 0, len(alerts))
 
 	for _, alertItem := range alerts {
 		var err error
 
 		startAtTime, stopAtTime := parseAlertTimes(alertItem, c.Log)
 
-		/*display proper alert in logs*/
+		// display proper alert in logs
 		for _, disp := range alertItem.FormatAsStrings(machineID, log.StandardLogger()) {
 			c.Log.Info(disp)
 		}
@@ -651,7 +663,7 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			continue
 		}
 
-		alertBuilder := c.Ent.Alert.
+		builder := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
 			SetMessage(*alertItem.Message).
@@ -678,20 +690,17 @@ func (c *Client) createAlertChunk(ctx context.Context, machineID string, owner *
 			AddMetas(metas...)
 
 		if owner != nil {
-			alertBuilder.SetOwner(owner)
+			builder.SetOwner(owner)
 		}
 
-		alertBuilders = append(alertBuilders, alertBuilder)
-		alertDecisions = append(alertDecisions, decisions)
-	}
-
-	if len(alertBuilders) == 0 {
-		log.Warningf("no alerts to create, discarded?")
-		return nil, nil
+		batch = append(batch, alertCreatePlan{
+			builder: builder,
+			decisions: decisions,
+		})
 	}
 
 	// Save alerts, then attach decisions with retry logic
-	ids, err := saveAlerts(ctx, c, alertBuilders, alertDecisions)
+	ids, err := saveAlerts(ctx, c, batch)
 	if err != nil {
 		return nil, err
 	}
@@ -720,16 +729,16 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 
 	c.Log.Debugf("writing %d items", len(alertList))
 
-	alertChunks := slicetools.Chunks(alertList, alertCreateBulkSize)
 	alertIDs := []string{}
-
-	for _, alertChunk := range alertChunks {
-		ids, err := c.createAlertChunk(ctx, machineID, owner, alertChunk)
+	if err := slicetools.Batch(ctx, alertList, alertCreateBulkSize, func(ctx context.Context, part []*models.Alert) error {
+		ids, err := c.createAlertBatch(ctx, machineID, owner, part)
 		if err != nil {
-			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
+			return fmt.Errorf("machine %q: %w", machineID, err)
 		}
-
 		alertIDs = append(alertIDs, ids...)
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	if owner != nil {
@@ -742,7 +751,7 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 	return alertIDs, nil
 }
 
-func (c *Client) AlertsCountPerScenario(ctx context.Context, filters map[string][]string) (map[string]int, error) {
+func (c *Client) AlertsCountPerScenario(ctx context.Context, filter map[string][]string) (map[string]int, error) {
 	var res []struct {
 		Scenario string
 		Count    int
@@ -750,7 +759,7 @@ func (c *Client) AlertsCountPerScenario(ctx context.Context, filters map[string]
 
 	query := c.Ent.Alert.Query()
 
-	query, err := BuildAlertRequestFromFilter(query, filters)
+	query, err := applyAlertFilter(query, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build alert request: %w", err)
 	}
@@ -789,7 +798,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
 		if err != nil {
-			return nil, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
+			return nil, fmt.Errorf("bad limit in parameters: %s: %w", val, QueryFail)
 		}
 
 		limit = limitConv
@@ -801,7 +810,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 	for {
 		alerts := c.Ent.Alert.Query()
 
-		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
+		alerts, err := applyAlertFilter(alerts, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -834,7 +843,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
+			return nil, fmt.Errorf("pagination size: %d, offset: %d: %w: %w", paginationSize, offset, err, QueryFail)
 		}
 
 		if len(result) == 0 { // no results, no need to try to paginate further
@@ -879,28 +888,28 @@ func (c *Client) DeleteAlertGraphBatch(ctx context.Context, alertItems []*ent.Al
 		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+		return 0, fmt.Errorf("alert graph delete batch events: %w", DeleteFail)
 	}
 
 	_, err = c.Ent.Meta.Delete().
 		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
+		return 0, fmt.Errorf("alert graph delete batch meta: %w", DeleteFail)
 	}
 
 	_, err = c.Ent.Decision.Delete().
 		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
+		return 0, fmt.Errorf("alert graph delete batch decisions: %w", DeleteFail)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
 		Where(alert.IDIn(idList...)).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
+		return deleted, fmt.Errorf("alert graph delete batch: %w", DeleteFail)
 	}
 
 	c.Log.Debug("Done batch delete alerts")
@@ -914,7 +923,7 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("event with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the associated meta
@@ -922,7 +931,7 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("meta with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the associated decisions
@@ -930,14 +939,14 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("decision with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the alert
 	err = c.Ent.Alert.DeleteOne(alertItem).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
+		return fmt.Errorf("alert with ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	return nil
@@ -964,15 +973,15 @@ func (c *Client) DeleteAlertWithFilter(ctx context.Context, filter map[string][]
 func (c *Client) GetAlertByID(ctx context.Context, alertID int) (*ent.Alert, error) {
 	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(ctx)
 	if err != nil {
-		/*record not found, 404*/
+		// record not found, 404
 		if ent.IsNotFound(err) {
 			log.Warningf("GetAlertByID (not found): %s", err)
-			return &ent.Alert{}, ItemNotFound
+			return nil, ItemNotFound
 		}
 
 		c.Log.Warningf("GetAlertByID : %s", err)
 
-		return &ent.Alert{}, QueryFail
+		return nil, QueryFail
 	}
 
 	return alert, nil

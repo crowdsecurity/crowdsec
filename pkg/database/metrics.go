@@ -25,14 +25,18 @@ func (c *Client) CreateMetric(ctx context.Context, generatedType metric.Generate
 	return metric, nil
 }
 
-func (c *Client) GetLPUsageMetricsByMachineID(ctx context.Context, machineId string) ([]*ent.Metric, error) {
-	metrics, err := c.Ent.Metric.Query().
+func (c *Client) GetLPUsageMetricsByMachineID(ctx context.Context, machineId string, toSend bool) ([]*ent.Metric, error) {
+	query := c.Ent.Metric.Query().
 		Where(
 			metric.GeneratedTypeEQ(metric.GeneratedTypeLP),
 			metric.GeneratedByEQ(machineId),
-			metric.PushedAtIsNil(),
-		).
-		All(ctx)
+		)
+
+	if toSend {
+		query = query.Where(metric.PushedAtIsNil())
+	}
+
+	metrics, err := query.All(ctx)
 	if err != nil {
 		c.Log.Warningf("GetLPUsageMetricsByOrigin: %s", err)
 		return nil, fmt.Errorf("getting LP usage metrics by origin %s: %w", machineId, err)

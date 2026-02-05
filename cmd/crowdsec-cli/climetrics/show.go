@@ -13,7 +13,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 )
 
 var (

@@ -7,6 +7,9 @@ die() {
     exit 1
 }
 
+# export BATSLIB_TEMP_PRESERVE=1
+# export BATSLIB_TEMP_PRESERVE_ON_FAILURE=1
+
 # shellcheck disable=SC1007
 TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=./.environment.sh

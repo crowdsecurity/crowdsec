@@ -4,8 +4,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/field"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // ConfigItem holds the schema definition for the ConfigItem entity.
@@ -16,12 +14,12 @@ type ConfigItem struct {
 func (ConfigItem) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			Immutable().
 			StructTag(`json:"created_at"`),
 		field.Time("updated_at").
-			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).StructTag(`json:"updated_at"`),
+			Default(UtcNow).
+			UpdateDefault(UtcNow).StructTag(`json:"updated_at"`),
 		field.String("name").Unique().StructTag(`json:"name"`).Immutable(),
 		field.String("value").SchemaType(map[string]string{
 			dialect.MySQL:    "longtext",

@@ -61,7 +61,7 @@ config_generate() {
        "${CONFIG_DIR}/"
 
     cp ../config/detect.yaml \
-       "${HUB_DIR}"
+       "${DATA_DIR}/"
 
     # the default acquis file contains files that are not readable by everyone
     touch "$LOG_DIR/empty.log"

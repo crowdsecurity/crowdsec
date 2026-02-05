@@ -1,10 +1,13 @@
 package csplugin
 
-import "os/exec"
+import (
+	"context"
+	"os/exec"
+)
 
 //All functions are empty, just to make the code compile when targeting js/wasm
 
-func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	return nil, nil
 }
 

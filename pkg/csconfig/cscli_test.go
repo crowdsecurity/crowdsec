@@ -4,16 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadCSCLI(t *testing.T) {
 	tests := []struct {
-		name        string
-		input       *Config
-		expected    *CscliCfg
-		expectedErr string
+		name     string
+		input    *Config
+		expected *CscliCfg
 	}{
 		{
 			name: "basic valid configuration",
@@ -40,12 +37,7 @@ func TestLoadCSCLI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.input.loadCSCLI()
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			if tc.expectedErr != "" {
-				return
-			}
-
+			tc.input.loadCSCLI()
 			assert.Equal(t, tc.expected, tc.input.Cscli)
 		})
 	}

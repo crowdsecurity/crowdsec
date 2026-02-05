@@ -1,0 +1,5 @@
+# wantErr: datasource of type file: glob failure: syntax error in pattern
+source: file
+labels:
+  type: sometype
+filename: "[asd-.log"

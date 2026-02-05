@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   localstack:
     container_name: localstack_main
@@ -14,7 +12,7 @@ services:
     environment:
       AWS_HOST: localstack
       DEBUG: ""
-      KINESYS_ERROR_PROBABILITY: ""
+      KINESIS_ERROR_PROBABILITY: ""
       LOCALSTACK_HOST: "localstack"
       AWS_REGION: "us-east-1"
 
@@ -78,3 +76,9 @@ services:
     image: grafana/loki:2.9.1
     ports:
       - "127.0.0.1:3100:3100"
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.5.0-victorialogs
+    ports:
+      - "9428:9428"
+

@@ -6,13 +6,15 @@ on:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   pull_request:
     branches:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
+env:
+  CROWDSEC_BYPASS_DB_VOLUME_CHECK: "TRUE" # to avoid the db volume check in the docker_start.sh script
 
 jobs:
   test_flavor:
@@ -24,16 +26,15 @@ jobs:
         flavor: ["slim", "debian"]
 
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-
       - name: Check out the repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
           buildkitd-config: .github/buildkit.toml
 
@@ -41,7 +42,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
+          file: ./build/docker/Dockerfile${{ matrix.flavor == 'debian' && '.debian' || '' }}
           tags: crowdsecurity/crowdsec:test${{ matrix.flavor == 'full' && '' || '-' }}${{ matrix.flavor == 'full' && '' || matrix.flavor }}
           target: ${{ matrix.flavor == 'debian' && 'full' || matrix.flavor }}
           platforms: linux/amd64
@@ -53,21 +54,21 @@ jobs:
         run: docker network create net-test
 
       - name: Install uv
-        uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba # v6.3.1
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # v7.2.1
         with:
           version: 0.5.24
           enable-cache: true
-          working-directory: "./docker/test"
+          working-directory: "./build/docker/test"
 
       - name: "Set up Python"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version-file: "./docker/test/.python-version"
+          python-version-file: "./build/docker/test/.python-version"
 
       # running serially to reduce test flakiness
       - name: Lint and run the tests
         run: |
-          cd docker/test
+          cd build/docker/test
           uv sync --all-extras --dev --locked
           uv run ruff check
           uv run basedpyright

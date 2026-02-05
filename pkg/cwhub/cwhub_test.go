@@ -99,7 +99,7 @@ func newMockTransport() http.RoundTripper {
 }
 
 // Implement http.RoundTripper.
-func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (*mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Create mocked http.Response
 	response := &http.Response{
 		Header:     make(http.Header),

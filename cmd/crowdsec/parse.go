@@ -1,57 +1,73 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func runParse(input chan types.Event, output chan types.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node) error {
+func parseEvent(
+	event pipeline.Event,
+	parserCTX parser.UnixParserCtx,
+	nodes []parser.Node,
+	stageCollector *parser.StageParseCollector,
+) *pipeline.Event {
+	if !event.Process {
+		return nil
+	}
+	/*Application security engine is going to generate 2 events:
+	- one that is treated as a log and can go to scenarios
+	- another one that will go directly to LAPI*/
+	if event.Type == pipeline.APPSEC {
+		outEvents <- event
+		return nil
+	}
+	if event.Line.Module == "" {
+		log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
+		return nil
+	}
+	metrics.GlobalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+
+	startParsing := time.Now()
+	/* parse the log using magic */
+	parsed, err := parser.Parse(parserCTX, event, nodes, stageCollector)
+	if err != nil {
+		log.Errorf("failed parsing: %v", err)
+	}
+	elapsed := time.Since(startParsing)
+	metrics.GlobalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
+	if !parsed.Process {
+		metrics.GlobalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module, "acquis_type": event.Line.Labels["type"]}).Inc()
+		log.Debugf("Discarding line %+v", parsed)
+		return nil
+	}
+	metrics.GlobalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module, "acquis_type": event.Line.Labels["type"]}).Inc()
+	if parsed.Whitelisted {
+		log.Debugf("event whitelisted, discard")
+		return nil
+	}
+
+	return &parsed
+}
+
+func runParse(ctx context.Context, input chan pipeline.Event, output chan pipeline.Event, parserCTX parser.UnixParserCtx, nodes []parser.Node, stageCollector *parser.StageParseCollector) {
 	for {
 		select {
-		case <-parsersTomb.Dying():
+		case <-ctx.Done():
 			log.Infof("Killing parser routines")
-			return nil
+			return
 		case event := <-input:
-			if !event.Process {
+			parsed := parseEvent(event, parserCTX, nodes, stageCollector)
+			if parsed == nil {
 				continue
 			}
-			/*Application security engine is going to generate 2 events:
-			- one that is treated as a log and can go to scenarios
-			- another one that will go directly to LAPI*/
-			if event.Type == types.APPSEC {
-				outputEventChan <- event
-				continue
-			}
-			if event.Line.Module == "" {
-				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
-				continue
-			}
-			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
-
-			startParsing := time.Now()
-			/* parse the log using magic */
-			parsed, err := parser.Parse(parserCTX, event, nodes)
-			if err != nil {
-				log.Errorf("failed parsing: %v", err)
-			}
-			elapsed := time.Since(startParsing)
-			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
-			if !parsed.Process {
-				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
-				log.Debugf("Discarding line %+v", parsed)
-				continue
-			}
-			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
-			if parsed.Whitelisted {
-				log.Debugf("event whitelisted, discard")
-				continue
-			}
-			output <- parsed
+			output <- *parsed
 		}
 	}
 }

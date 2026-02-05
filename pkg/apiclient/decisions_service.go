@@ -112,7 +112,7 @@ func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*m
 	return &decisions, resp, nil
 }
 
-func (s *DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.GetDecisionsStreamResponseNewItem) []*models.Decision {
+func (*DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.GetDecisionsStreamResponseNewItem) []*models.Decision {
 	decisions := make([]*models.Decision, 0)
 
 	for _, decisionsGroup := range decisionsGroups {
@@ -174,7 +174,7 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 	return &v2Decisions, resp, nil
 }
 
-func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, lastPullTimestamp string) ([]*models.Decision, bool, error) {
+func (*DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, lastPullTimestamp string) ([]*models.Decision, bool, error) {
 	if blocklist.URL == nil {
 		return nil, false, errors.New("blocklist URL is nil")
 	}

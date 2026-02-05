@@ -26,10 +26,10 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 type PluginConfig struct {
-	Name     string  `yaml:"name"`
-	URL      string  `yaml:"url"`
-	Token    string  `yaml:"token"`
-	LogLevel *string `yaml:"log_level"`
+	Name     string `yaml:"name"`
+	URL      string `yaml:"url"`
+	Token    string `yaml:"token"`
+	LogLevel string `yaml:"log_level"`
 }
 
 type Splunk struct {
@@ -43,19 +43,20 @@ type Payload struct {
 }
 
 func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
-		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", notification.Name)
+	name := notification.GetName()
+	cfg, ok := s.PluginConfigByName[name]
+
+	if !ok {
+		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", name)
 	}
 
-	cfg := s.PluginConfigByName[notification.Name]
-
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
+	logger.Info(fmt.Sprintf("received notify signal for %s config", name))
 
-	p := Payload{Event: notification.Text}
+	p := Payload{Event: notification.GetText()}
 
 	data, err := json.Marshal(p)
 	if err != nil {
@@ -74,6 +75,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		content, err := io.ReadAll(resp.Body)
@@ -94,9 +96,9 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	return &protobufs.Empty{}, nil
 }
 
-func (s *Splunk) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (s *Splunk) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.Config, &d)
+	err := yaml.Unmarshal(config.GetConfig(), &d)
 	s.PluginConfigByName[d.Name] = d
 	logger.Debug(fmt.Sprintf("Splunk plugin '%s' use URL '%s'", d.Name, d.URL))
 

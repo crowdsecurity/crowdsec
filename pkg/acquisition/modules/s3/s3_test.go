@@ -3,133 +3,30 @@ package s3acquisition
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	tests := []struct {
-		name        string
-		config      string
-		expectedErr string
-	}{
-		{
-			name: "no bucket",
-			config: `
-source: s3
-`,
-			expectedErr: "bucket_name is required",
-		},
-		{
-			name: "invalid polling method",
-			config: `
-source: s3
-bucket_name: foobar
-polling_method: foobar
-`,
-			expectedErr: "invalid polling method foobar",
-		},
-		{
-			name: "no sqs name",
-			config: `
-source: s3
-bucket_name: foobar
-polling_method: sqs
-`,
-			expectedErr: "sqs_name is required when using sqs polling method",
-		},
-		{
-			name: "both bucket and sqs",
-			config: `
-source: s3
-bucket_name: foobar
-polling_method: sqs
-sqs_name: foobar
-`,
-			expectedErr: "bucket_name and sqs_name are mutually exclusive",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := S3Source{}
-
-			err := f.Configure([]byte(test.config), nil, configuration.METRICS_NONE)
-			if err == nil {
-				t.Fatalf("expected error, got none")
-			}
-
-			if err.Error() != test.expectedErr {
-				t.Fatalf("expected error %s, got %s", test.expectedErr, err.Error())
-			}
-		})
-	}
-}
-
-func TestGoodConfiguration(t *testing.T) {
-	tests := []struct {
-		name   string
-		config string
-	}{
-		{
-			name: "basic",
-			config: `
-source: s3
-bucket_name: foobar
-`,
-		},
-		{
-			name: "polling method",
-			config: `
-source: s3
-polling_method: sqs
-sqs_name: foobar
-`,
-		},
-		{
-			name: "list method",
-			config: `
-source: s3
-bucket_name: foobar
-polling_method: list
-`,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := S3Source{}
-			logger := log.NewEntry(log.New())
-
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
-		})
-	}
-}
-
-type mockS3Client struct {
-	s3iface.S3API
-}
+type mockS3Client struct{}
 
 // We add one hour to trick the listing goroutine into thinking the files are new
-var mockListOutput map[string][]*s3.Object = map[string][]*s3.Object{
+var mockListOutput map[string][]s3types.Object = map[string][]s3types.Object{
 	"bucket_no_prefix": {
 		{
 			Key:          aws.String("foo.log"),
@@ -148,32 +45,32 @@ var mockListOutput map[string][]*s3.Object = map[string][]*s3.Object{
 	},
 }
 
-func (m mockS3Client) ListObjectsV2WithContext(ctx context.Context, input *s3.ListObjectsV2Input, options ...request.Option) (*s3.ListObjectsV2Output, error) {
+func (mockS3Client) ListObjectsV2(_ context.Context, input *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
 	log.Infof("returning mock list output for %s, %v", *input.Bucket, mockListOutput[*input.Bucket])
+
 	return &s3.ListObjectsV2Output{
 		Contents: mockListOutput[*input.Bucket],
 	}, nil
 }
 
-func (m mockS3Client) GetObjectWithContext(ctx context.Context, input *s3.GetObjectInput, options ...request.Option) (*s3.GetObjectOutput, error) {
+func (mockS3Client) GetObject(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 	r := strings.NewReader("foo\nbar")
-	return &s3.GetObjectOutput{
-		Body: aws.ReadSeekCloser(r),
-	}, nil
+	return &s3.GetObjectOutput{Body: io.NopCloser(r)}, nil
 }
 
 type mockSQSClient struct {
-	sqsiface.SQSAPI
 	counter *int32
 }
 
-func (msqs mockSQSClient) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClient) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
-		Messages: []*sqs.Message{
+		Messages: []sqstypes.Message{
 			{
 				Body: aws.String(`
 {"version":"0","id":"af1ce7ea-bdb4-5bb7-3af2-c6cb32f9aac9","detail-type":"Object Created","source":"aws.s3","account":"1234","time":"2023-03-17T07:45:04Z","region":"eu-west-1","resources":["arn:aws:s3:::my_bucket"],"detail":{"version":"0","bucket":{"name":"my_bucket"},"object":{"key":"foo.log","size":663,"etag":"f2d5268a0776d6cdd6e14fcfba96d1cd","sequencer":"0064141A8022966874"},"request-id":"MBWX2P6FWA3S1YH5","requester":"156460612806","source-ip-address":"42.42.42.42","reason":"PutObject"}}`),
@@ -182,22 +79,23 @@ func (msqs mockSQSClient) ReceiveMessageWithContext(ctx context.Context, input *
 	}, nil
 }
 
-func (msqs mockSQSClient) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClient) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
 type mockSQSClientNotif struct {
-	sqsiface.SQSAPI
 	counter *int32
 }
 
-func (msqs mockSQSClientNotif) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClientNotif) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
-		Messages: []*sqs.Message{
+		Messages: []sqstypes.Message{
 			{
 				Body: aws.String(`
 				{"Records":[{"eventVersion":"2.1","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2023-03-20T19:30:02.536Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"AWS:XXXXX"},"requestParameters":{"sourceIPAddress":"42.42.42.42"},"responseElements":{"x-amz-request-id":"FM0TAV2WE5AXXW42","x-amz-id-2":"LCfQt1aSBtD1G5wdXjB5ANdPxLEXJxA89Ev+/rRAsCGFNJGI/1+HMlKI59S92lqvzfViWh7B74leGKWB8/nNbsbKbK7WXKz2"},"s3":{"s3SchemaVersion":"1.0","configurationId":"test-acquis","bucket":{"name":"my_bucket","ownerIdentity":{"principalId":"A1F2PSER1FB8MY"},"arn":"arn:aws:s3:::my_bucket"},"object":{"key":"foo.log","size":3097,"eTag":"ab6889744611c77991cbc6ca12d1ddc7","sequencer":"006418B43A76BC0257"}}}]}`),
@@ -206,22 +104,23 @@ func (msqs mockSQSClientNotif) ReceiveMessageWithContext(ctx context.Context, in
 	}, nil
 }
 
-func (msqs mockSQSClientNotif) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClientNotif) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
 type mockSQSClientSNS struct {
-	sqsiface.SQSAPI
 	counter *int32
 }
 
-func (msqs mockSQSClientSNS) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+func (msqs mockSQSClientSNS) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	if atomic.LoadInt32(msqs.counter) == 1 {
 		return &sqs.ReceiveMessageOutput{}, nil
 	}
+
 	atomic.AddInt32(msqs.counter, 1)
+
 	return &sqs.ReceiveMessageOutput{
-		Messages: []*sqs.Message{
+		Messages: []sqstypes.Message{
 			{
 				Body: aws.String(`
 				{"Type":"Notification","MessageId":"95f3b5d2-c347-577e-b07d-d535ff80d9c4","TopicArn":"arn:aws:sns:eu-west-1:309081560286:s3-notif","Subject":"Amazon S3 Notification","Message":"{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-west-1\",\"eventTime\":\"2025-07-08T15:34:31.272Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:xxx:xxx@crowdsec.net\"},\"requestParameters\":{\"sourceIPAddress\":\"1.1.1.1\"},\"responseElements\":{\"x-amz-request-id\":\"F8PK5SP9MC5R76F5\",\"x-amz-id-2\":\"dEZVAhJ9ufBn3ufcJH8wzRw2bfiwGzqaq4iQ9rYKkScQ3o4fGjbqe4dWCAPNwc1khCVKRSbfRwD9HXgDElOHcZazOIBxVY1l\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"test\",\"bucket\":{\"name\":\"my_bucket\",\"ownerIdentity\":{\"principalId\":\"A2BHZN7P6G2N16\"},\"arn\":\"arn:aws:s3:::my_bucket\"},\"object\":{\"key\":\"foo.log\",\"size\":3,\"eTag\":\"50a2fabfdd276f573ff97ace8b11c5f4\",\"sequencer\":\"00686D3A8738EE3CA0\"}}}]}","Timestamp":"2025-07-08T15:34:31.803Z","SignatureVersion":"1","Signature":"lkkFr7lYAUEBl6CPPDUDg1D1/zRToR2a9M1MnAmzC8pN33VQf1m+lUQJAgAOKUNxHfIUx1grFyxFQa+84/+edpE4tdhwr0bJ3QELlmJd0xot2pdoc2syrBC1Yq/3IsGc3ZIIIyyG9FXW0Q60aQeZAkx9XQC0tUQDwc8d3kef8CzN5i+ys3QXtX+7KUzj1tNoWQSCcjzqid3JSSyJzRZRD1/0Zkvnd3XVBXaM/QTtin1/Ja8uEObHw9AOy+oi/CygjREBaRzYUBdQHY7/kiA1sdDiSqkyEZ0uSu36aA8A4LO1O6ltP/h4avN8LARmgkdcVbGoPKZIu6Xe5tYvOdJKeA==","SigningCertURL":"https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-9c6465fa7f48f5cacd23014631ec1136.pem","UnsubscribeURL":"https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:309081560286:s3-notif:acfdadc0-43d0-48ba-81c9-052bd253febe"}
@@ -231,7 +130,7 @@ func (msqs mockSQSClientSNS) ReceiveMessageWithContext(ctx context.Context, inpu
 	}, nil
 }
 
-func (msqs mockSQSClientSNS) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+func (mockSQSClientSNS) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
@@ -263,16 +162,17 @@ func TestDSNAcquis(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger, "")
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			err := f.ConfigureByDSN(ctx, test.dsn, map[string]string{"foo": "bar"}, logger, "")
+			require.NoError(t, err)
+
+			f.s3Client = mockS3Client{}
+
 			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
 			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
-			out := make(chan types.Event)
 
+			out := make(chan pipeline.Event)
 			done := make(chan bool)
 
 			go func() {
@@ -287,14 +187,13 @@ func TestDSNAcquis(t *testing.T) {
 				}
 			}()
 
-			f.s3Client = mockS3Client{}
 			tmb := tomb.Tomb{}
 			err = f.OneShotAcquisition(ctx, out, &tmb)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			time.Sleep(2 * time.Second)
+
 			done <- true
+
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
@@ -333,20 +232,20 @@ prefix: foo/
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
 			logger.Logger.SetLevel(log.TraceLevel)
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+
+			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			f.s3Client = mockS3Client{}
+
 			if f.Config.PollingMethod != PollMethodList {
 				t.Fatalf("expected list polling, got %s", f.Config.PollingMethod)
 			}
 
-			f.s3Client = mockS3Client{}
-
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := tomb.Tomb{}
 
 			go func() {
@@ -369,9 +268,7 @@ prefix: foo/
 			time.Sleep(2 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
@@ -379,6 +276,7 @@ prefix: foo/
 
 func TestSQSPoll(t *testing.T) {
 	ctx := t.Context()
+
 	tests := []struct {
 		name          string
 		config        string
@@ -419,18 +317,19 @@ sqs_name: test
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			linesRead := 0
-			f := S3Source{}
+			f := Source{}
 			logger := log.NewEntry(log.New())
-			err := f.Configure([]byte(test.config), logger, configuration.METRICS_NONE)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			err := f.Configure(ctx, []byte(test.config), logger, metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			f.s3Client = mockS3Client{}
+
 			if f.Config.PollingMethod != PollMethodSQS {
 				t.Fatalf("expected sqs polling, got %s", f.Config.PollingMethod)
 			}
 
 			counter := int32(0)
-			f.s3Client = mockS3Client{}
+
 			switch test.notifType {
 			case SQSFormatEventBridge:
 				f.sqsClient = mockSQSClient{counter: &counter}
@@ -442,7 +341,7 @@ sqs_name: test
 				t.Fatalf("unknown notification type %s", test.notifType)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tb := tomb.Tomb{}
 
 			go func() {
@@ -464,10 +363,9 @@ sqs_name: test
 
 			time.Sleep(2 * time.Second)
 			tb.Kill(nil)
+
 			err = tb.Wait()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}

@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"reflect"
@@ -44,7 +44,7 @@ func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return dbClient
@@ -57,12 +57,12 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
 		// DecisionDeleteChan: make(chan []*models.Decision),
-		dbClient:     dbClient,
-		mu:           sync.Mutex{},
-		startup:      true,
-		pullTomb:     tomb.Tomb{},
-		pushTomb:     tomb.Tomb{},
-		metricsTomb:  tomb.Tomb{},
+		dbClient:    dbClient,
+		mu:          sync.Mutex{},
+		startup:     true,
+		pullTomb:    tomb.Tomb{},
+		pushTomb:    tomb.Tomb{},
+		metricsTomb: tomb.Tomb{},
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  ptr.Of(false),
 			ShareTaintedScenarios: ptr.Of(false),
@@ -528,14 +528,14 @@ func TestAPICWhitelists(t *testing.T) {
 	api := getAPIC(t, ctx)
 	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
-	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
+	api.whitelists.Ips = append(api.whitelists.Ips, netip.MustParseAddr("9.2.3.4"), netip.MustParseAddr("7.2.3.4"))
 
-	_, tnet, err := net.ParseCIDR("13.2.3.0/24")
+	tnet, err := netip.ParsePrefix("13.2.3.0/24")
 	require.NoError(t, err)
 
 	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
 
-	_, tnet, err = net.ParseCIDR("11.2.3.0/24")
+	tnet, err = netip.ParsePrefix("11.2.3.0/24")
 	require.NoError(t, err)
 
 	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
@@ -725,19 +725,19 @@ func TestAPICWhitelists(t *testing.T) {
 	assert.Equal(t, 1, decisionIP["6.2.3.4"], 1)
 
 	if _, ok := decisionIP["13.2.3.4"]; ok {
-		t.Errorf("13.2.3.4 is whitelisted")
+		t.Error("13.2.3.4 is whitelisted")
 	}
 
 	if _, ok := decisionIP["13.2.3.5"]; ok {
-		t.Errorf("13.2.3.5 is whitelisted")
+		t.Error("13.2.3.5 is whitelisted")
 	}
 
 	if _, ok := decisionIP["9.2.3.4"]; ok {
-		t.Errorf("9.2.3.4 is whitelisted")
+		t.Error("9.2.3.4 is whitelisted")
 	}
 
 	if _, ok := decisionIP["10.2.3.4"]; ok {
-		t.Errorf("10.2.3.4 is whitelisted")
+		t.Error("10.2.3.4 is whitelisted")
 	}
 
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)

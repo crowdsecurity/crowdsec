@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -32,18 +33,18 @@ func (cli *cliBouncers) add(ctx context.Context, bouncerName string, key string)
 
 	switch cli.cfg().Cscli.Output {
 	case "human":
-		fmt.Printf("API key for '%s':\n\n", bouncerName)
-		fmt.Printf("   %s\n\n", key)
-		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
+		fmt.Fprintf(os.Stdout, "API key for '%s':\n\n", bouncerName)
+		fmt.Fprintf(os.Stdout, "   %s\n\n", key)
+		fmt.Fprintln(os.Stdout, "Please keep this key since you will not be able to retrieve it!")
 	case "raw":
-		fmt.Print(key)
+		fmt.Fprint(os.Stdout, key)
 	case "json":
 		j, err := json.Marshal(key)
 		if err != nil {
 			return errors.New("unable to serialize api key")
 		}
 
-		fmt.Print(string(j))
+		fmt.Fprint(os.Stdout, string(j))
 	}
 
 	return nil

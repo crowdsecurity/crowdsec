@@ -9,7 +9,7 @@ import (
 func (cli *cliConfig) newRestoreCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "restore",
-		Short: "This command has been removed. You can backup/restore the configuration by other means.",
+		Short:             "This command has been removed. You can backup/restore the configuration by other means.",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			configDir := cli.cfg().ConfigPaths.ConfigDir

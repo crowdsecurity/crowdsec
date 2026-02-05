@@ -16,6 +16,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+var ErrUserCanceled = errors.New("operation canceled")
+
 // Command represents an operation that can be performed on a CrowdSec hub item.
 //
 // Each concrete implementation defines a Prepare() method to check for errors and preconditions,
@@ -182,7 +184,7 @@ func (p *ActionPlan) compactDescription() string {
 }
 
 func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
-	fmt.Println("The following actions will be performed:\n" + p.Description(verbose))
+	fmt.Fprintln(os.Stdout, "The following actions will be performed:\n"+p.Description(verbose))
 
 	var answer bool
 
@@ -207,38 +209,35 @@ func (p *ActionPlan) Confirm(verbose bool) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println()
-
 	return answer, nil
 }
 
-func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, alwaysShowPlan bool, verbosePlan bool) error {
+func (p *ActionPlan) Execute(ctx context.Context, interactive bool, dryRun bool, alwaysShowPlan bool, verbose bool) error {
 	// interactive: show action plan, ask for confirm
 	// dry-run: show action plan, no prompt, no action
 	// alwaysShowPlan: print plan even if interactive and dry-run are false
 	// verbosePlan: plan summary is displaying each step in order
 	if len(p.commands) == 0 {
-		fmt.Println("Nothing to do.")
+		fmt.Fprintln(os.Stdout, "Nothing to install or remove.")
 		return nil
 	}
 
-	if interactive {
-		answer, err := p.Confirm(verbosePlan)
+	if interactive && !dryRun {
+		answer, err := p.Confirm(dryRun)
 		if err != nil {
 			return err
 		}
 
 		if !answer {
-			fmt.Println("Operation canceled.")
-			return nil
+			return ErrUserCanceled
 		}
 	} else {
 		if dryRun || alwaysShowPlan {
-			fmt.Println("Action plan:\n" + p.Description(verbosePlan))
+			fmt.Fprintln(os.Stdout, "Action plan:\n"+p.Description(verbose))
 		}
 
 		if dryRun {
-			fmt.Println("Dry run, no action taken.")
+			fmt.Fprintln(os.Stdout, "Dry run, no action taken.")
 			return nil
 		}
 	}

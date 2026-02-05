@@ -11,8 +11,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/ask"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/ask"
 )
 
 const defaultPruneDuration = 60 * time.Minute
@@ -24,7 +24,7 @@ func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force
 				"This may remove active bouncers. Continue?", false); err != nil {
 			return err
 		} else if !yes {
-			fmt.Println("User aborted prune. No changes were made.")
+			fmt.Fprintln(os.Stdout, "User aborted prune. No changes were made.")
 			return nil
 		}
 	}
@@ -35,7 +35,7 @@ func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force
 	}
 
 	if len(bouncers) == 0 {
-		fmt.Println("No bouncers to prune.")
+		fmt.Fprintln(os.Stdout, "No bouncers to prune.")
 		return nil
 	}
 
@@ -47,7 +47,7 @@ func (cli *cliBouncers) prune(ctx context.Context, duration time.Duration, force
 				"These will NOT be recoverable. Continue?", false); err != nil {
 			return err
 		} else if !yes {
-			fmt.Println("User aborted prune. No changes were made.")
+			fmt.Fprintln(os.Stdout, "User aborted prune. No changes were made.")
 			return nil
 		}
 	}

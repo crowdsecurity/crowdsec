@@ -1,35 +1,31 @@
 package leakybucket
 
-import "github.com/crowdsecurity/crowdsec/pkg/types"
+import (
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+)
 
 type Processor interface {
-	OnBucketInit(Bucket *BucketFactory) error
-	OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
-	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue)
+	OnBucketInit(f *BucketFactory) error
+	OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
+	OnBucketOverflow(f *BucketFactory, leaky *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue)
 
-	AfterBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
+	AfterBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event
 }
 
 type DumbProcessor struct{}
 
-func (d *DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
+func (*DumbProcessor) OnBucketInit(_ *BucketFactory) error {
 	return nil
 }
 
-func (d *DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
-		return &msg
-	}
+func (*DumbProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }
 
-func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
-		return alert, queue
-	}
+func (*DumbProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+	return alert, queue
 }
 
-func (d *DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, leaky *Leaky) *types.Event {
-		return &msg
-	}
+func (*DumbProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+	return &msg
 }

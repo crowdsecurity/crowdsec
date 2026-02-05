@@ -1,0 +1,8 @@
+# wantErr: datasource of type victorialogs: cannot parse VictoriaLogs acquisition configuration: [8:8] cannot unmarshal bool into Go struct field Configuration.Limit of type int
+source: victorialogs
+labels:
+  type: sometype
+url: http://localhost:9428/
+query: >
+        {server="demo"}
+limit: true

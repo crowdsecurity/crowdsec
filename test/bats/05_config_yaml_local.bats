@@ -33,22 +33,22 @@ teardown() {
 @test "config.yaml.local - cscli (log_level)" {
     config_set '.common.log_level="warning"'
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "&3"
+    assert_output "3"
 
     echo "{'common':{'log_level':'debug'}}" >"${CONFIG_YAML}.local"
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "&5"
+    assert_output "5"
 }
 
 @test "config.yaml.local - cscli (log_level - with envvar)" {
     config_set '.common.log_level="warning"'
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "&3"
+    assert_output "3"
 
     export CROWDSEC_LOG_LEVEL=debug
     echo "{'common':{'log_level':'${CROWDSEC_LOG_LEVEL}'}}" >"${CONFIG_YAML}.local"
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "&5"
+    assert_output "5"
 }
 
 @test "config.yaml.local - crowdsec (listen_url)" {
@@ -91,19 +91,19 @@ teardown() {
 
     echo "simulation: off" >"$SIMULATION"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
+    assert_output "global simulation: disabled"
 
     echo "simulation: on" >"$SIMULATION"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
+    assert_output "global simulation: enabled"
 
     echo "simulation: off" >"${SIMULATION}.local"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: disabled"
+    assert_output "global simulation: disabled"
 
     rm -f "${SIMULATION}.local"
     rune -0 cscli simulation status -o human
-    assert_stderr --partial "global simulation: enabled"
+    assert_output "global simulation: enabled"
 }
 
 @test "profiles.yaml.local" {

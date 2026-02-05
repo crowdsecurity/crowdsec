@@ -213,12 +213,13 @@ teardown() {
 
 # TODO: move acquisition tests to test/bats/crowdsec-acquisition.bats
 
-@test "crowdsec (error if the acquisition_path file is defined but missing)" {
+@test "crowdsec (no error if acquis.yaml is missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
 
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "acquis.yaml: no such file or directory"
+    refute_stderr --partial "no such file or directory"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (error if acquisition_path is not defined and acquisition_dir is empty)" {
@@ -231,9 +232,31 @@ teardown() {
 
     config_set '.common.log_media="stdout"'
     rune -1 wait-for "$CROWDSEC"
-    # check warning
-    assert_stderr --partial "no acquisition file found"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
+}
+
+@test "crowdsec (error if the acquisition files are empty or contain only comments)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    echo "# comment" >"$ACQUIS_YAML"
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    echo "# another comment" >"$ACQUIS_DIR"/foo.yaml
+    touch "$ACQUIS_DIR"/empty.yaml
+
+    config_set '.common.log_media="stdout"'
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
+}
+
+@test "crowdsec (invalid acquisition file)" {
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    echo "foo: bar" >"$ACQUIS_DIR"/foo.yaml
+
+    config_set '.common.log_media="stdout"'
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/foo.yaml: missing 'source' field"
 }
 
 @test "crowdsec (error if acquisition_path and acquisition_dir are not defined)" {
@@ -353,10 +376,55 @@ teardown() {
     # if filenames are missing, it won't be able to detect source type
     config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "while configuring datasource of type file from $ACQUIS_YAML (position 0): no filename or filenames configuration provided"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_YAML: datasource of type file: no filename or filenames configuration provided"
 
     config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
     config_set "$ACQUIS_YAML" '.meh=3'
     rune -1 wait-for "$CROWDSEC"
-    assert_stderr --partial "field meh not found in type fileacquisition.FileConfiguration"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_YAML: datasource of type file: cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
+}
+
+@test "crowdsec --dump-data" {
+    fake_log() {
+        for _ in $(seq 1 6); do
+            echo "$(LC_ALL=C date '+%b %d %H:%M:%S ')"'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424'
+        done
+    }
+
+    DUMP_DIR="$BATS_FILE_TMPDIR"
+
+    rune -0 cscli collections install crowdsecurity/sshd --error >/dev/null
+    rune -0 cscli parsers install crowdsecurity/syslog-logs --error >/dev/null
+
+    rune -0 ./instance-crowdsec start
+    rune -0 "$CROWDSEC" -dsn file://<(fake_log) -type syslog -no-api --dump-data="$DUMP_DIR"
+    rune -0 ./instance-crowdsec stop
+
+    #shellcheck disable=SC2016
+    rune -0 yq -e '
+      . as $doc
+      | ["OK",
+         "crowdsecurity/ssh-bf",
+         "crowdsecurity/ssh-bf_user-enum",
+         "crowdsecurity/ssh-slow-bf",
+         "crowdsecurity/ssh-slow-bf_user-enum",
+         "crowdsecurity/ssh-time-based-bf",
+         "crowdsecurity/ssh-time-based-bf_user-enum"] as $wanted
+      | (($doc | keys) - $wanted) | length == 0
+    ' "$DUMP_DIR/bucketpour-dump.yaml"
+
+    rune -0 yq -e '
+      has("s00-raw") and has("s01-parse")
+      and .s00-raw | has("crowdsecurity/syslog-logs")
+      and .s01-parse | has("crowdsecurity/sshd-logs")
+    ' "$DUMP_DIR/parser-dump.yaml"
+
+    rune -0 yq -e '
+      (.s00-raw."crowdsecurity/syslog-logs" | length) == 6
+      and
+      (.s01-parse."crowdsecurity/sshd-logs" | length) == 6
+    ' "$DUMP_DIR/parser-dump.yaml"
+
+#    rune -0 yq -e '.[] | .Overflow.Alert.scenario == "crowdsecurity/ssh-bf"' "$DUMP_DIR/bucket-dump.yaml"
+#    rune -0 yq -e '.[] | .Overflow.Alert.eventscount == 6' "$DUMP_DIR/bucket-dump.yaml"
 }

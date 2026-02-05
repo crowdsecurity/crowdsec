@@ -53,5 +53,3 @@ rpm-remove() {
     fi
 }
 export -f rpm-remove
-
-export CROWDSEC_FEATURE_CSCLI_SETUP="true"

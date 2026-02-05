@@ -174,7 +174,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	os.Remove(s.outFile)
 
 	// and another one
-	log.Printf("second send")
+	log.Info("second send")
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(200 * time.Millisecond)

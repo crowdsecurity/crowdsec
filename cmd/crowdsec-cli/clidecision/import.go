@@ -20,7 +20,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -199,7 +199,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		decisionsStr := make([]string, 0, len(chunk))
 
 		for _, d := range chunk {
-			if *d.Scope != types.Ip && *d.Scope != types.Range {
+			if normalizedScope := types.NormalizeScope(*d.Scope); normalizedScope != types.Ip && normalizedScope != types.Range {
 				continue
 			}
 
@@ -212,7 +212,6 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 
 		allowlistResp, _, err := cli.client.Allowlists.CheckIfAllowlistedBulk(ctx, decisionsStr)
-
 		if err != nil {
 			return err
 		}
@@ -293,7 +292,7 @@ Raw values, standard input:
 
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format)
 		},
 	}

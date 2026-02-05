@@ -118,7 +118,7 @@ teardown() {
     rune -0 cscli bouncers add ciTestBouncer
     rune -1 cscli bouncers add ciTestBouncer
 
-    assert_stderr 'Error: unable to create bouncer: bouncer ciTestBouncer already exists'
+    assert_stderr 'Error: cscli bouncers add: unable to create bouncer: bouncer ciTestBouncer already exists'
 
     rune -0 cscli bouncers list -o json
     rune -0 jq '. | length' <(output)
@@ -134,7 +134,7 @@ teardown() {
 
 @test "cscli bouncers prune" {
     rune -1 cscli bouncers prune --duration foobar
-    assert_stderr 'Error: invalid argument "foobar" for "-d, --duration" flag: time: invalid duration "foobar"'
+    assert_stderr 'Error: cscli bouncers prune: invalid argument "foobar" for "-d, --duration" flag: time: invalid duration "foobar"'
 
     # duration takes days as well
     rune -0 cscli bouncers prune --duration 1d30m

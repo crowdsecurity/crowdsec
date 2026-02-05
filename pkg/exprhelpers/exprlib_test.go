@@ -17,8 +17,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getDBClient(t *testing.T) *database.Client {
@@ -30,7 +30,7 @@ func getDBClient(t *testing.T) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: ":memory:",
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return testDBClient
@@ -276,7 +276,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// cache with no TTL
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(1)})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(1)})
 	require.NoError(t, err)
 
 	ret, _ := RegexpInFile("crowdsec", filename)
@@ -289,7 +289,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 
 	// cache with TTL
 	ttl := 500 * time.Millisecond
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
 	require.NoError(t, err)
 
 	ret, _ = RegexpInFile("crowdsec", filename)
@@ -709,6 +709,426 @@ func TestTimeNow(t *testing.T) {
 	}
 
 	log.Print("test 'TimeNow()' : OK")
+}
+
+func TestAverageInterval(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use a fixed base time to eliminate execution time variance
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		env  map[string]any
+		code string
+		want time.Duration
+	}{
+		{
+			name: "AverageInterval() test: two times with 1 second difference",
+			env: map[string]any{
+				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
+			},
+			code: "AverageInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "AverageInterval() test: two times with 1 second difference (reverse order)",
+			env: map[string]any{
+				"times": []time.Time{baseTime.Add(time.Second), baseTime},
+			},
+			code: "AverageInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "AverageInterval() test: three times with varying intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(2 * time.Second), // 2s gap
+					baseTime.Add(6 * time.Second), // 4s gap
+				},
+			},
+			code: "AverageInterval(times)",
+			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+		},
+		{
+			name: "AverageInterval() test: four times with equal intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(time.Hour),
+					baseTime.Add(2 * time.Hour),
+					baseTime.Add(3 * time.Hour),
+				},
+			},
+			code: "AverageInterval(times)",
+			want: time.Hour, // all intervals are 1 hour
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
+func TestMedianInterval(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use a fixed base time to eliminate execution time variance
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		env         map[string]any
+		code        string
+		want        time.Duration
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "MedianInterval() test: two times with 1 second difference",
+			env: map[string]any{
+				"times": []time.Time{baseTime, baseTime.Add(time.Second)},
+			},
+			code: "MedianInterval(times)",
+			want: time.Second,
+		},
+		{
+			name: "MedianInterval() test: three times - odd number of intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(2 * time.Second),  // 2s gap
+					baseTime.Add(5 * time.Second),  // 3s gap
+					baseTime.Add(11 * time.Second), // 6s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+		{
+			name: "MedianInterval() test: four times - even number of intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(1 * time.Second),  // 1s gap
+					baseTime.Add(3 * time.Second),  // 2s gap
+					baseTime.Add(7 * time.Second),  // 4s gap
+					baseTime.Add(15 * time.Second), // 8s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // median of [1s, 2s, 4s, 8s] = (2s + 4s) / 2 = 3s
+		},
+		{
+			name: "MedianInterval() test: reverse order times",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime.Add(11 * time.Second),
+					baseTime.Add(5 * time.Second),
+					baseTime.Add(2 * time.Second),
+					baseTime,
+				},
+			},
+			code: "MedianInterval(times)",
+			want: 3 * time.Second, // should sort first, then calculate median
+		},
+		{
+			name: "MedianInterval() test: equal intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(time.Hour),
+					baseTime.Add(2 * time.Hour),
+					baseTime.Add(3 * time.Hour),
+					baseTime.Add(4 * time.Hour),
+				},
+			},
+			code: "MedianInterval(times)",
+			want: time.Hour, // all intervals are 1 hour, median = 1 hour
+		},
+		{
+			name: "MedianInterval() test: mixed small and large intervals",
+			env: map[string]any{
+				"times": []time.Time{
+					baseTime,
+					baseTime.Add(1 * time.Millisecond),    // 1ms gap
+					baseTime.Add(1001 * time.Millisecond), // 1000ms = 1s gap
+					baseTime.Add(2001 * time.Millisecond), // 1000ms = 1s gap
+				},
+			},
+			code: "MedianInterval(times)",
+			want: time.Second, // median of [1ms, 1s, 1s] = 1s
+		},
+		{
+			name: "MedianInterval() test: only one time (error case)",
+			env: map[string]any{
+				"times": []time.Time{baseTime},
+			},
+			code:        "MedianInterval(times)",
+			wantErr:     true,
+			errContains: "need at least two times",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+			require.NoError(t, err)
+
+			got, err := expr.Run(program, test.env)
+
+			if test.wantErr {
+				require.Error(t, err)
+				if test.errContains != "" {
+					assert.Contains(t, err.Error(), test.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
+func TestAverageMedianWithQueues(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Use fixed base time for stability
+	baseTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	type mockQueue struct {
+		Time    time.Time
+		StrTime string
+	}
+
+	tests := []struct {
+		name        string
+		env         map[string]any
+		code        string
+		want        time.Duration
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "AverageInterval() test mockQueue: two times with 1 second difference",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(time.Second)},
+				},
+			},
+			code: "AverageInterval(map(queue,{ #.Time }))",
+			want: time.Second,
+		},
+		{
+			name: "MedianInterval() test mockQueue: three times with varying intervals",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(2 * time.Second)},  // 2s gap
+					{Time: baseTime.Add(5 * time.Second)},  // 3s gap
+					{Time: baseTime.Add(11 * time.Second)}, // 6s gap
+				},
+			},
+			code: "MedianInterval(map(queue,{ #.Time }))",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+		{
+			name: "AverageInterval() test slicing: last 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -3
+					{Time: baseTime.Add(12 * time.Second)}, // +2s gap
+					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
+				},
+			},
+			code: "AverageInterval(map(queue[-3:],{ #.Time }))",
+			want: 3 * time.Second, // (2s + 4s) / 2 = 3s average
+		},
+		{
+			name: "MedianInterval() test slicing: last 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -3
+					{Time: baseTime.Add(12 * time.Second)}, // +2s gap
+					{Time: baseTime.Add(16 * time.Second)}, // +4s gap
+				},
+			},
+			code: "MedianInterval(map(queue[-3:],{ #.Time }))",
+			want: 3 * time.Second, // median of [2s, 4s] = (2s + 4s) / 2 = 3s
+		},
+		{
+			name: "AverageInterval() test slicing: first 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // start
+					{Time: baseTime.Add(3 * time.Second)},  // +3s gap
+					{Time: baseTime.Add(8 * time.Second)},  // +5s gap
+					{Time: baseTime.Add(20 * time.Second)}, // ignored
+					{Time: baseTime.Add(30 * time.Second)}, // ignored
+				},
+			},
+			code: "AverageInterval(map(queue[:3],{ #.Time }))",
+			want: 4 * time.Second, // (3s + 5s) / 2 = 4s average
+		},
+		{
+			name: "MedianInterval() test slicing: middle 3 items from 5-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(5 * time.Second)},  // start: index 1
+					{Time: baseTime.Add(7 * time.Second)},  // +2s gap
+					{Time: baseTime.Add(12 * time.Second)}, // +5s gap
+					{Time: baseTime.Add(25 * time.Second)}, // ignored
+				},
+			},
+			code: "MedianInterval(map(queue[1:4],{ #.Time }))",
+			want: 3*time.Second + 500*time.Millisecond, // median of [2s, 5s] = (2s + 5s) / 2 = 3.5s
+		},
+		{
+			name: "AverageInterval() test slicing: last 2 items from 6-item queue",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},                       // ignored
+					{Time: baseTime.Add(1 * time.Second)},  // ignored
+					{Time: baseTime.Add(2 * time.Second)},  // ignored
+					{Time: baseTime.Add(3 * time.Second)},  // ignored
+					{Time: baseTime.Add(10 * time.Second)}, // start: index -2
+					{Time: baseTime.Add(15 * time.Second)}, // +5s gap
+				},
+			},
+			code: "AverageInterval(map(queue[-2:],{ #.Time }))",
+			want: 5 * time.Second, // only one interval: 5s
+		},
+		{
+			name: "MedianInterval() test slicing: single item slice (error case)",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime},
+					{Time: baseTime.Add(5 * time.Second)},
+					{Time: baseTime.Add(10 * time.Second)},
+				},
+			},
+			code:        "MedianInterval(map(queue[1:2],{ #.Time }))",
+			wantErr:     true,
+			errContains: "need at least two times",
+		},
+		{
+			name: "AverageInterval() test error: slice of strings instead of times",
+			env: map[string]any{
+				"stringQueue": []string{"hello", "world", "test"},
+			},
+			code:        "AverageInterval(stringQueue)",
+			wantErr:     true,
+			errContains: "cannot use []string as argument",
+		},
+		{
+			name: "MedianInterval() test error: mixed types in slice",
+			env: map[string]any{
+				"mixedQueue": []mockQueue{
+					{Time: baseTime},
+				},
+				"stringValue": "not a time",
+			},
+			code:        "MedianInterval([mixedQueue[0].Time, stringValue])",
+			wantErr:     true,
+			errContains: "element at index 1 is not a time.Time",
+		},
+		{
+			name: "AverageInterval() test error: mapping string time field instead of Time field",
+			env: map[string]any{
+				"queue": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code:        "AverageInterval(map(queue, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "MedianInterval() test error: accidentally mapping wrong field type",
+			env: map[string]any{
+				"queueWithStrings": []mockQueue{
+					{Time: baseTime, StrTime: "not-a-time-format"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "also-not-time"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "still-not-time"},
+				},
+			},
+			code:        "MedianInterval(map(queueWithStrings, { #.StrTime }))",
+			wantErr:     true,
+			errContains: "element at index 0 is not a time.Time",
+		},
+		{
+			name: "AverageInterval() test success: converting string timestamps with date() function",
+			env: map[string]any{
+				"queueWithValidStrings": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(time.Second), StrTime: "2023-01-01T12:00:01Z"},
+					{Time: baseTime.Add(3 * time.Second), StrTime: "2023-01-01T12:00:03Z"},
+				},
+			},
+			code: "AverageInterval(map(queueWithValidStrings, { date(#.StrTime) }))",
+			want: time.Second + 500*time.Millisecond, // (1s + 2s) / 2 = 1.5s
+		},
+		{
+			name: "MedianInterval() test success: converting RFC3339 string timestamps",
+			env: map[string]any{
+				"queueWithRFC3339": []mockQueue{
+					{Time: baseTime, StrTime: "2023-01-01T12:00:00Z"},
+					{Time: baseTime.Add(2 * time.Second), StrTime: "2023-01-01T12:00:02Z"},
+					{Time: baseTime.Add(5 * time.Second), StrTime: "2023-01-01T12:00:05Z"},
+					{Time: baseTime.Add(11 * time.Second), StrTime: "2023-01-01T12:00:11Z"},
+				},
+			},
+			code: "MedianInterval(map(queueWithRFC3339, { date(#.StrTime) }))",
+			want: 3 * time.Second, // median of [2s, 3s, 6s] = 3s
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+
+			if test.wantErr {
+				if err != nil {
+					// Compile-time error (type checking)
+					if test.errContains != "" {
+						assert.Contains(t, err.Error(), test.errContains)
+					}
+					return
+				}
+				// Runtime error
+				_, err := expr.Run(program, test.env)
+				require.Error(t, err)
+				if test.errContains != "" {
+					assert.Contains(t, err.Error(), test.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			got, err := expr.Run(program, test.env)
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
 }
 
 func TestParseUri(t *testing.T) {
@@ -1776,6 +2196,149 @@ func TestParseKv(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
 			require.NoError(t, err)
 			_, err = expr.Run(vm, env)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
+
+func TestParseKvLax(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		value          string
+		want           map[string]string
+		expr           string
+		wantBuildErr   bool
+		wantRuntimeErr bool
+	}{
+		{
+			name:  "ParseKVLax() test: valid string",
+			value: "foo=bar",
+			want:  map[string]string{"foo": "bar"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: valid string multiple",
+			value: "foo=bar bar=foo",
+			want:  map[string]string{"foo": "bar", "bar": "foo"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: quoted string",
+			value: `foo="bar=toto"`,
+			want:  map[string]string{"foo": "bar=toto"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted string",
+			value: `foo= bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty quoted string",
+			value: `foo="" bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: unquoted value with spaces",
+			value: `UNIFIhost=Express 7 port=443`,
+			want:  map[string]string{"UNIFIhost": "Express 7", "port": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: mixed quoted and unquoted with spaces",
+			value: `msg="Hello World" host=My Server name=test`,
+			want:  map[string]string{"msg": "Hello World", "host": "My Server", "name": "test"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped quotes in quoted value",
+			value: `msg="He said \"Hello\"" status=ok`,
+			want:  map[string]string{"msg": `He said "Hello"`, "status": "ok"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslashes in quoted value",
+			value: `path="C:\\Program Files\\App" status=running`,
+			want:  map[string]string{"path": `C:\Program Files\App`, "status": "running"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted value at end",
+			value: `host=server port=443 debug=`,
+			want:  map[string]string{"host": "server", "port": "443", "debug": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: complex CEF-like log extension",
+			value: `src=192.168.1.100 duser=admin msg=User login successful UNIFIhost=Express 7 UNIFIport=443`,
+			want:  map[string]string{"src": "192.168.1.100", "duser": "admin", "msg": "User login successful", "UNIFIhost": "Express 7", "UNIFIport": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: iptables-style values with flags",
+			value: `RES=0x00 SYN URGP=0 ID=25029 DF PROTO=TCP`,
+			want:  map[string]string{"RES": "0x00 SYN", "URGP": "0", "ID": "25029 DF", "PROTO": "TCP"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: keycloak-style JSON values",
+			value: `error=user_not_found, code_id=e44d80b4-058d-4b45-b2ee-fac3d174e10c, userId=null, type=LOGIN_ERROR`,
+			want:  map[string]string{"error": "user_not_found,", "code_id": "e44d80b4-058d-4b45-b2ee-fac3d174e10c,", "userId": "null,", "type": "LOGIN_ERROR"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: key= after escaped quotes inside quoted value",
+			value: `msg="say \"fake=val\" here" real=value`,
+			want:  map[string]string{"msg": `say "fake=val" here`, "real": "value"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslash before closing quote",
+			value: `path="C:\\" next=val`,
+			want:  map[string]string{"path": `C:\`, "next": "val"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:         "ParseKVLax() test: invalid type for first argument",
+			value:        "",
+			expr:         `ParseKVLax(42, out, "a")`,
+			wantBuildErr: true,
+		},
+		{
+			name:           "ParseKVLax() test: no key=value pairs",
+			value:          "no pairs here",
+			expr:           `ParseKVLax(value, out, "a")`,
+			wantRuntimeErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			outMap := make(map[string]any)
+			env := map[string]any{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.wantBuildErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			_, err = expr.Run(vm, env)
+			if tc.wantRuntimeErr {
+				require.Error(t, err)
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, outMap["a"])
 		})

@@ -1,11 +1,14 @@
 package cloudwatchacquisition
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwTypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -13,8 +16,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 /*
@@ -25,28 +28,28 @@ import (
 	- check shutdown/restart
 */
 
-func createLogGroup(t *testing.T, cw *CloudwatchSource, group string) {
-	_, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+func createLogGroup(t *testing.T, ctx context.Context, cw *Source, group string) {
+	_, err := cw.cwClient.CreateLogGroup(ctx, &cloudwatchlogs.CreateLogGroupInput{
 		LogGroupName: aws.String(group),
 	})
 	require.NoError(t, err)
 }
 
-func createLogStream(t *testing.T, cw *CloudwatchSource, group string, stream string) {
-	_, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+func createLogStream(t *testing.T, ctx context.Context, cw *Source, group string, stream string) {
+	_, err := cw.cwClient.CreateLogStream(ctx, &cloudwatchlogs.CreateLogStreamInput{
 		LogGroupName:  aws.String(group),
 		LogStreamName: aws.String(stream),
 	})
 	require.NoError(t, err)
 }
 
-func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
+func deleteAllLogGroups(t *testing.T, ctx context.Context, cw *Source) {
 	input := &cloudwatchlogs.DescribeLogGroupsInput{}
-	result, err := cw.cwClient.DescribeLogGroups(input)
+	result, err := cw.cwClient.DescribeLogGroups(ctx, input)
 	require.NoError(t, err)
 
 	for _, group := range result.LogGroups {
-		_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+		_, err := cw.cwClient.DeleteLogGroup(ctx, &cloudwatchlogs.DeleteLogGroupInput{
 			LogGroupName: group.LogGroupName,
 		})
 		require.NoError(t, err)
@@ -73,14 +76,16 @@ func TestCloudwatchSuite(t *testing.T) {
 func (s *CloudwatchSuite) TestWatchLogGroupForStreams() {
 	logrus.SetLevel(logrus.DebugLevel)
 
+	ctx := s.T().Context()
+
 	tests := []struct {
 		config              string
 		expectedCfgErr      string
 		expectedStartErr    string
 		name                string
-		setup               func(*testing.T, *CloudwatchSource)
-		run                 func(*testing.T, *CloudwatchSource)
-		teardown            func(*testing.T, *CloudwatchSource)
+		setup               func(*testing.T, *Source)
+		run                 func(*testing.T, *Source)
+		teardown            func(*testing.T, *Source)
 		expectedResMessages []string
 	}{
 		// require a group name that doesn't exist
@@ -94,9 +99,9 @@ labels:
 group_name: b
 stream_name: test_stream`,
 			expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_group_not_used_1")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_group_not_used_1")
 			},
 		},
 		// test stream mismatch
@@ -109,16 +114,16 @@ labels:
   type: test_source
 group_name: test_group1
 stream_name: test_stream_bad`,
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_group1")
-				createLogStream(t, cw, "test_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_group1")
+				createLogStream(t, ctx, cw, "test_group1", "test_stream")
 
 				// have a message before we start - won't be popped, but will trigger stream monitoring
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -139,16 +144,16 @@ labels:
   type: test_source
 group_name: test_group1
 stream_regexp: test_bad[0-9]+`,
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_group1")
-				createLogStream(t, cw, "test_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_group1")
+				createLogStream(t, ctx, cw, "test_group1", "test_stream")
 
 				// have a message before we start - won't be popped, but will trigger stream monitoring
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -171,16 +176,16 @@ group_name: test_log_group1
 log_level: trace
 stream_name: test_stream`,
 			// expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_log_group1")
-				createLogStream(t, cw, "test_log_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_log_group1")
+				createLogStream(t, ctx, cw, "test_log_group1", "test_stream")
 
 				// have a message before we start - won't be popped, but will trigger stream monitoring
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -189,14 +194,14 @@ stream_name: test_stream`,
 				})
 				require.NoError(t, err)
 			},
-			run: func(t *testing.T, cw *CloudwatchSource) {
+			run: func(t *testing.T, cw *Source) {
 				// wait for new stream pickup + stream poll interval
 				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(t.Context(), &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_4"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -224,16 +229,16 @@ group_name: test_log_group1
 log_level: trace
 stream_name: test_stream`,
 			// expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_log_group1")
-				createLogStream(t, cw, "test_log_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_log_group1")
+				createLogStream(t, ctx, cw, "test_log_group1", "test_stream")
 
 				// have a message before we start - won't be popped, but will trigger stream monitoring
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -242,15 +247,15 @@ stream_name: test_stream`,
 				})
 				require.NoError(t, err)
 			},
-			run: func(t *testing.T, cw *CloudwatchSource) {
+			run: func(t *testing.T, cw *Source) {
 				// wait for new stream pickup + stream poll interval
 				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
 				// send some events
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(t.Context(), &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_41"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -261,10 +266,10 @@ stream_name: test_stream`,
 				// wait for the stream to time-out
 				time.Sleep(def_StreamReadTimeout + (1 * time.Second))
 				// and send events again
-				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(t.Context(), &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_51"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -290,16 +295,16 @@ group_name: test_log_group1
 log_level: trace
 stream_name: test_stream`,
 			// expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_log_group1")
-				createLogStream(t, cw, "test_log_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_log_group1")
+				createLogStream(t, ctx, cw, "test_log_group1", "test_stream")
 
 				// have a message before we start - won't be popped, but will trigger stream monitoring
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -308,7 +313,7 @@ stream_name: test_stream`,
 				})
 				require.NoError(t, err)
 			},
-			run: func(_ *testing.T, _ *CloudwatchSource) {
+			run: func(_ *testing.T, _ *Source) {
 				// wait for new stream pickup + stream poll interval
 				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
@@ -324,8 +329,8 @@ stream_name: test_stream`,
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 			dbgLogger.Infof("starting test")
 
-			cw := CloudwatchSource{}
-			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
+			cw := Source{}
+			err := cw.Configure(ctx, []byte(tc.config), dbgLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -337,14 +342,14 @@ stream_name: test_stream`,
 				tc.setup(s.T(), &cw)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tmb := tomb.Tomb{}
 
 			dbgLogger.Infof("running StreamingAcquisition")
 
 			actmb := tomb.Tomb{}
 			actmb.Go(func() error {
-				err := cw.StreamingAcquisition(s.T().Context(), out, &actmb)
+				err := cw.StreamingAcquisition(ctx, out, &actmb)
 
 				dbgLogger.Infof("acquis done")
 				cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
@@ -398,6 +403,8 @@ stream_name: test_stream`,
 func (s *CloudwatchSuite) TestConfiguration() {
 	logrus.SetLevel(logrus.DebugLevel)
 
+	ctx := s.T().Context()
+
 	tests := []struct {
 		config           string
 		expectedCfgErr   string
@@ -415,25 +422,6 @@ group_name: test_group
 stream_name: test_stream`,
 			expectedStartErr: "The specified log group does not exist",
 		},
-		{
-			config: `
-xxx: cloudwatch
-labels:
-  type: test_source
-group_name: test_group
-stream_name: test_stream`,
-			expectedCfgErr: "field xxx not found in type",
-		},
-		{
-			name: "missing_group_name",
-			config: `
-source: cloudwatch
-aws_region: us-east-1
-labels:
-  type: test_source
-stream_name: test_stream`,
-			expectedCfgErr: "group_name is mandatory for CloudwatchSource",
-		},
 	}
 
 	for _, tc := range tests {
@@ -441,22 +429,22 @@ stream_name: test_stream`,
 			dbgLogger := logrus.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 
-			cw := CloudwatchSource{}
-			err := cw.Configure([]byte(tc.config), dbgLogger, configuration.METRICS_NONE)
+			cw := Source{}
+			err := cw.Configure(ctx, []byte(tc.config), dbgLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
 				return
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			tmb := tomb.Tomb{}
 
 			switch cw.GetMode() {
 			case "tail":
-				err = cw.StreamingAcquisition(s.T().Context(), out, &tmb)
+				err = cw.StreamingAcquisition(ctx, out, &tmb)
 			case "cat":
-				err = cw.OneShotAcquisition(s.T().Context(), out, &tmb)
+				err = cw.OneShotAcquisition(ctx, out, &tmb)
 			}
 
 			cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
@@ -471,6 +459,8 @@ stream_name: test_stream`,
 
 func (s *CloudwatchSuite) TestConfigureByDSN() {
 	logrus.SetLevel(logrus.DebugLevel)
+
+	ctx := s.T().Context()
 
 	tests := []struct {
 		dsn            string
@@ -505,8 +495,8 @@ func (s *CloudwatchSuite) TestConfigureByDSN() {
 			dbgLogger := logrus.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 
-			cw := CloudwatchSource{}
-			err := cw.ConfigureByDSN(tc.dsn, tc.labels, dbgLogger, "")
+			cw := Source{}
+			err := cw.ConfigureByDSN(ctx, tc.dsn, tc.labels, dbgLogger, "")
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 		})
 	}
@@ -515,14 +505,16 @@ func (s *CloudwatchSuite) TestConfigureByDSN() {
 func (s *CloudwatchSuite) TestOneShotAcquisition() {
 	logrus.SetLevel(logrus.DebugLevel)
 
+	ctx := s.T().Context()
+
 	tests := []struct {
 		dsn                 string
 		expectedCfgErr      string
 		expectedStartErr    string
 		name                string
-		setup               func(*testing.T, *CloudwatchSource)
-		run                 func(*testing.T, *CloudwatchSource)
-		teardown            func(*testing.T, *CloudwatchSource)
+		setup               func(*testing.T, *Source)
+		run                 func(*testing.T, *Source)
+		teardown            func(*testing.T, *Source)
 		expectedResMessages []string
 	}{
 		// stream with no data
@@ -530,10 +522,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 			name: "empty_stream",
 			dsn:  "cloudwatch://test_log_group1:test_stream?backlog=1h",
 			// expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_log_group1")
-				createLogStream(t, cw, "test_log_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_log_group1")
+				createLogStream(t, ctx, cw, "test_log_group1", "test_stream")
 			},
 			expectedResMessages: []string{},
 		},
@@ -542,16 +534,16 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 			name: "get_one_event",
 			dsn:  "cloudwatch://test_log_group1:test_stream?backlog=1h",
 			// expectedStartErr: "The specified log group does not exist",
-			setup: func(t *testing.T, cw *CloudwatchSource) {
-				deleteAllLogGroups(t, cw)
-				createLogGroup(t, cw, "test_log_group1")
-				createLogStream(t, cw, "test_log_group1", "test_stream")
+			setup: func(t *testing.T, cw *Source) {
+				deleteAllLogGroups(t, ctx, cw)
+				createLogGroup(t, ctx, cw, "test_log_group1")
+				createLogStream(t, ctx, cw, "test_log_group1", "test_stream")
 
 				// this one is too much in the back
-				_, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err := cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_1"),
 							Timestamp: aws.Int64(time.Now().UTC().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
@@ -561,10 +553,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				require.NoError(t, err)
 
 				// this one can be read
-				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_2"),
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
@@ -574,10 +566,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				require.NoError(t, err)
 
 				// this one is in the past
-				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-					LogEvents: []*cloudwatchlogs.InputLogEvent{
+					LogEvents: []cwTypes.InputLogEvent{
 						{
 							Message:   aws.String("test_message_3"),
 							Timestamp: aws.Int64(time.Now().UTC().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
@@ -585,6 +577,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 					},
 				})
 				require.NoError(t, err)
+
+				// prevent flaky test due to slow CI
+				end := time.Now().UTC().Add(5 * time.Second)
+				cw.Config.EndTime = &end
 			},
 			expectedResMessages: []string{"test_message_2"},
 		},
@@ -596,8 +592,8 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 			dbgLogger.Logger.SetLevel(logrus.DebugLevel)
 			dbgLogger.Infof("starting test")
 
-			cw := CloudwatchSource{}
-			err := cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger, "")
+			cw := Source{}
+			err := cw.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "test"}, dbgLogger, "")
 			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
@@ -610,12 +606,12 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				tc.setup(s.T(), &cw)
 			}
 
-			out := make(chan types.Event, 100)
+			out := make(chan pipeline.Event, 100)
 			tmb := tomb.Tomb{}
 
 			dbgLogger.Infof("running OneShotAcquisition")
 
-			err = cw.OneShotAcquisition(s.T().Context(), out, &tmb)
+			err = cw.OneShotAcquisition(ctx, out, &tmb)
 			cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
 			dbgLogger.Infof("acquis done")
 

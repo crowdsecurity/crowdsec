@@ -10,7 +10,7 @@ trigger:
 pr: none
 
 pool:
-  vmImage: windows-latest
+  vmImage: windows-2022
 
 stages:
   - stage: Build
@@ -21,7 +21,7 @@ stages:
           - task: GoTool@0
             displayName: "Install Go"
             inputs:
-                version: '1.24.4'
+                version: '1.25.1'
 
           - pwsh: |
               choco install -y make
@@ -114,11 +114,11 @@ stages:
               --azure-key-vault-url "$(KeyVaultUrl)"
             displayName: "Sign crowdsec binaries"
           - pwsh: |
-              .\make_installer.ps1 -version '$(BuildVersion)'
+              .\build\windows\make_installer.ps1 -version '$(BuildVersion)'
             displayName: "Build Crowdsec MSI"
             name: BuildMSI
           - pwsh: |
-              .\make_chocolatey.ps1 -version '$(BuildVersion)'
+              .\build\windows\make_chocolatey.ps1 -version '$(BuildVersion)'
             displayName: "Build Chocolatey nupkg"
           - pwsh: |
               sign code azure-key-vault `

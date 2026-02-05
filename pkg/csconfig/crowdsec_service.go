@@ -1,7 +1,9 @@
 package csconfig
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -13,22 +15,75 @@ import (
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
-	Enable                    *bool             `yaml:"enable"`
-	AcquisitionFilePath       string            `yaml:"acquisition_path,omitempty"`
-	AcquisitionDirPath        string            `yaml:"acquisition_dir,omitempty"`
-	ConsoleContextPath        string            `yaml:"console_context_path"`
-	ConsoleContextValueLength int               `yaml:"console_context_value_length"`
-	AcquisitionFiles          []string          `yaml:"-"`
-	ParserRoutinesCount       int               `yaml:"parser_routines"`
-	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
-	OutputRoutinesCount       int               `yaml:"output_routines"`
-	SimulationConfig          *SimulationConfig `yaml:"-"`
-	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
-	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
-	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	Enable                    *bool            `yaml:"enable"`
+	AcquisitionFilePath       string           `yaml:"acquisition_path,omitempty"`
+	AcquisitionDirPath        string           `yaml:"acquisition_dir,omitempty"`
+	ConsoleContextPath        string           `yaml:"console_context_path"`
+	ConsoleContextValueLength int              `yaml:"console_context_value_length"`
+	AcquisitionFiles          []string         `yaml:"-"`
+	ParserRoutinesCount       int              `yaml:"parser_routines"`
+	BucketsRoutinesCount      int              `yaml:"buckets_routines"`
+	OutputRoutinesCount       int              `yaml:"output_routines"`
+	SimulationConfig          SimulationConfig `yaml:"-"`
+	BucketStateFile           string           `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
+	BucketStateDumpDir        string           `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
+	BucketsGCEnabled          bool             `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
+}
+
+var ErrNoAcquisitionDefined = errors.New("no acquisition_path or acquisition_dir specified")
+
+func (c *CrowdsecServiceCfg) CollectAcquisitionFiles() ([]string, error) {
+	ret := []string{}
+
+	// agent section missing in the configuration file.
+	// likely a lapi-only setup, not much we can do here
+	if c == nil {
+		return nil, nil
+	}
+
+	if c.AcquisitionFilePath != "" {
+		log.Debugf("non-empty acquisition_path %s", c.AcquisitionFilePath)
+
+		_, err := os.Stat(c.AcquisitionFilePath)
+
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			log.Debugf("acquisition_path: %s does not exist, skipping", c.AcquisitionFilePath)
+		case err != nil:
+			return nil, fmt.Errorf("while checking acquisition_path: %w", err)
+		default:
+			ret = append(ret, c.AcquisitionFilePath)
+		}
+	}
+
+	// XXX: TODO: set default AcquisitionDirPath
+
+	if c.AcquisitionDirPath != "" {
+		dirFiles, err := filepath.Glob(c.AcquisitionDirPath + "/*.yaml")
+		if err != nil {
+			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
+		}
+
+		ret = append(ret, dirFiles...)
+
+		dirFiles, err = filepath.Glob(c.AcquisitionDirPath + "/*.yml")
+		if err != nil {
+			return nil, fmt.Errorf("while globbing acquis_dir: %w", err)
+		}
+
+		ret = append(ret, dirFiles...)
+	}
+
+	if c.AcquisitionDirPath == "" && c.AcquisitionFilePath == "" {
+		return nil, ErrNoAcquisitionDefined
+	}
+
+	// files in 'ret' are already absolute
+
+	return ret, nil
 }
 
 func (c *Config) LoadCrowdsec() error {
@@ -36,7 +91,9 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec == nil {
 		log.Warning("crowdsec agent is disabled")
+
 		c.DisableAgent = true
+
 		return nil
 	}
 
@@ -51,45 +108,28 @@ func (c *Config) LoadCrowdsec() error {
 		return nil
 	}
 
-	if c.Crowdsec.AcquisitionFiles == nil {
+	cleanup := []*string{
+		&c.Crowdsec.AcquisitionDirPath,
+		&c.Crowdsec.AcquisitionFilePath,
+		&c.Crowdsec.ConsoleContextPath,
+	}
+
+	for _, p := range cleanup {
+		if err := ensureAbsolutePath(p); err != nil {
+			return err
+		}
+	}
+
+	acquisitionFiles, err := c.Crowdsec.CollectAcquisitionFiles()
+
+	switch {
+	case errors.Is(err, ErrNoAcquisitionDefined):
+		log.Warning(err)
 		c.Crowdsec.AcquisitionFiles = []string{}
-	}
-
-	if c.Crowdsec.AcquisitionFilePath != "" {
-		log.Debugf("non-empty acquisition_path %s", c.Crowdsec.AcquisitionFilePath)
-		if _, err = os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
-			return fmt.Errorf("while checking acquisition_path: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
-	}
-
-	if c.Crowdsec.AcquisitionDirPath != "" {
-		c.Crowdsec.AcquisitionDirPath, err = filepath.Abs(c.Crowdsec.AcquisitionDirPath)
-		if err != nil {
-			return fmt.Errorf("can't get absolute path of '%s': %w", c.Crowdsec.AcquisitionDirPath, err)
-		}
-
-		var files []string
-
-		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
-		if err != nil {
-			return fmt.Errorf("while globbing acquis_dir: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
-
-		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yml")
-		if err != nil {
-			return fmt.Errorf("while globbing acquis_dir: %w", err)
-		}
-		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
-	}
-
-	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
-		log.Warning("no acquisition_path or acquisition_dir specified")
-	}
-
-	if len(c.Crowdsec.AcquisitionFiles) == 0 {
-		log.Warning("no acquisition file found")
+	case err != nil:
+		return err
+	default:
+		c.Crowdsec.AcquisitionFiles = acquisitionFiles
 	}
 
 	if err = c.LoadSimulation(); err != nil {
@@ -106,30 +146,6 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec.OutputRoutinesCount <= 0 {
 		c.Crowdsec.OutputRoutinesCount = 1
-	}
-
-	crowdsecCleanup := []*string{
-		&c.Crowdsec.AcquisitionFilePath,
-		&c.Crowdsec.ConsoleContextPath,
-	}
-
-	for _, k := range crowdsecCleanup {
-		if *k == "" {
-			continue
-		}
-		*k, err = filepath.Abs(*k)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
-		}
-	}
-
-	// Convert relative paths to absolute paths
-	for i, file := range c.Crowdsec.AcquisitionFiles {
-		f, err := filepath.Abs(file)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
-		}
-		c.Crowdsec.AcquisitionFiles[i] = f
 	}
 
 	if err = c.LoadAPIClient(); err != nil {

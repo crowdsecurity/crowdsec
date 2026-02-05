@@ -37,8 +37,8 @@ var EncryptionStringToType map[string]mail.Encryption = map[string]mail.Encrypti
 }
 
 type PluginConfig struct {
-	Name     string  `yaml:"name"`
-	LogLevel *string `yaml:"log_level"`
+	Name     string `yaml:"name"`
+	LogLevel string `yaml:"log_level"`
 
 	SMTPHost       string   `yaml:"smtp_host"`
 	SMTPPort       int      `yaml:"smtp_port"`
@@ -60,7 +60,7 @@ type EmailPlugin struct {
 	ConfigByName map[string]PluginConfig
 }
 
-func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (n *EmailPlugin) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{
 		SMTPPort:       25,
 		SenderName:     "Crowdsec",
@@ -71,7 +71,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		HeloHost:       "localhost",
 	}
 
-	if err := yaml.Unmarshal(config.Config, &d); err != nil {
+	if err := yaml.Unmarshal(config.GetConfig(), &d); err != nil {
 		return nil, err
 	}
 
@@ -93,17 +93,18 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	return &protobufs.Empty{}, nil
 }
 
-func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
-	}
+func (n *EmailPlugin) Notify(_ context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
+	name := notification.GetName()
+	cfg, ok := n.ConfigByName[name]
 
-	cfg := n.ConfigByName[notification.Name]
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
+	}
 
 	logger := baseLogger.Named(cfg.Name)
 
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
 	logger.Debug("got notification")
@@ -150,7 +151,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	email.SetFrom(fmt.Sprintf("%s <%s>", cfg.SenderName, cfg.SenderEmail)).
 		AddTo(cfg.ReceiverEmails...).
 		SetSubject(cfg.EmailSubject)
-	email.SetBody(mail.TextHTML, notification.Text)
+	email.SetBody(mail.TextHTML, notification.GetText())
 
 	err = email.Send(smtpClient)
 	if err != nil {

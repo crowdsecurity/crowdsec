@@ -5,19 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type metricSection interface {
@@ -51,47 +46,18 @@ func (ms metricStore) Fetch(ctx context.Context, url string, db *database.Client
 		return err
 	}
 
-	return ms.fetchPrometheusMetrics(url)
-}
-
-func (ms metricStore) fetchPrometheusMetrics(url string) error {
-	mfChan := make(chan *dto.MetricFamily, 1024)
-	errChan := make(chan error, 1)
-
-	// Start with the DefaultTransport for sane defaults.
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	// Conservatively disable HTTP keep-alives as this program will only
-	// ever need a single HTTP request.
-	transport.DisableKeepAlives = true
-	// Timeout early if the server doesn't even return the headers.
-	transport.ResponseHeaderTimeout = time.Minute
-	go func() {
-		defer trace.CatchPanic("crowdsec/ShowPrometheus")
-
-		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
-		if err != nil {
-			errChan <- fmt.Errorf("while fetching metrics: %w", err)
-			return
-		}
-		errChan <- nil
-	}()
-
-	result := []*prom2json.Family{}
-	for mf := range mfChan {
-		result = append(result, prom2json.NewFamily(mf))
-	}
-
-	if err := <-errChan; err != nil {
+	points, err := ScrapeMetrics(ctx, url)
+	if err != nil {
 		return err
 	}
 
-	log.Debugf("Finished reading metrics output, %d entries", len(result))
-	ms.processPrometheusMetrics(result)
+	log.Debugf("Finished reading metrics output, %d entries", len(points))
+	ms.processPrometheusMetrics(points)
 
 	return nil
 }
 
-func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
+func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 	mAcquis := ms["acquisition"].(statAcquis)
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
@@ -106,132 +72,116 @@ func (ms metricStore) processPrometheusMetrics(result []*prom2json.Family) {
 	mStash := ms["stash"].(statStash)
 	mWhitelist := ms["whitelists"].(statWhitelist)
 
-	for idx, fam := range result {
-		if !strings.HasPrefix(fam.Name, "cs_") {
+	for _, p := range result {
+		if !strings.HasPrefix(p.Name, "cs_") {
 			continue
 		}
 
-		log.Tracef("round %d", idx)
+		name, ok := p.Labels["name"]
+		if !ok {
+			log.Debugf("no name in Metric %v", p.Labels)
+	}
 
-		for _, m := range fam.Metrics {
-			metric, ok := m.(prom2json.Metric)
-			if !ok {
-				log.Debugf("failed to convert metric to prom2json.Metric")
-				continue
-			}
+	source, ok := p.Labels["source"]
+	if !ok {
+		log.Debugf("no source in Metric %v for %s", p.Labels, p.Name)
+	} else {
+		if srctype, ok := p.Labels["type"]; ok {
+			source = srctype + ":" + source
+		}
+	}
 
-			name, ok := metric.Labels["name"]
-			if !ok {
-				log.Debugf("no name in Metric %v", metric.Labels)
-			}
+	machine := p.Labels["machine"]
+	bouncer := p.Labels["bouncer"]
 
-			source, ok := metric.Labels["source"]
-			if !ok {
-				log.Debugf("no source in Metric %v for %s", metric.Labels, fam.Name)
-			} else {
-				if srctype, ok := metric.Labels["type"]; ok {
-					source = srctype + ":" + source
-				}
-			}
+	route := p.Labels["route"]
+	method := p.Labels["method"]
 
-			value := m.(prom2json.Metric).Value
-			machine := metric.Labels["machine"]
-			bouncer := metric.Labels["bouncer"]
+	reason := p.Labels["reason"]
+	origin := p.Labels["origin"]
+	action := p.Labels["action"]
 
-			route := metric.Labels["route"]
-			method := metric.Labels["method"]
+	appsecEngine := p.Labels["appsec_engine"]
+	appsecRule := p.Labels["rule_name"]
 
-			reason := metric.Labels["reason"]
-			origin := metric.Labels["origin"]
-			action := metric.Labels["action"]
+	mtype := p.Labels["type"]
 
-			appsecEngine := metric.Labels["appsec_engine"]
-			appsecRule := metric.Labels["rule_name"]
+	ival := int(p.Value)
 
-			mtype := metric.Labels["type"]
-
-			fval, err := strconv.ParseFloat(value, 32)
-			if err != nil {
-				log.Errorf("Unexpected int value %s : %s", value, err)
-			}
-
-			ival := int(fval)
-
-			switch fam.Name {
-			//
-			// buckets
-			//
-			case "cs_bucket_created_total":
-				mBucket.Process(name, "instantiation", ival)
-			case "cs_buckets":
-				mBucket.Process(name, "curr_count", ival)
-			case "cs_bucket_overflowed_total":
-				mBucket.Process(name, "overflow", ival)
-			case "cs_bucket_poured_total":
-				mBucket.Process(name, "pour", ival)
-				mAcquis.Process(source, "pour", ival)
-			case "cs_bucket_underflowed_total":
-				mBucket.Process(name, "underflow", ival)
-			//
-			// parsers
-			//
-			case "cs_parser_hits_total":
-				mAcquis.Process(source, "reads", ival)
-			case "cs_parser_hits_ok_total":
-				mAcquis.Process(source, "parsed", ival)
-			case "cs_parser_hits_ko_total":
-				mAcquis.Process(source, "unparsed", ival)
-			case "cs_node_hits_total":
-				mParser.Process(name, "hits", ival)
-			case "cs_node_hits_ok_total":
-				mParser.Process(name, "parsed", ival)
-			case "cs_node_hits_ko_total":
-				mParser.Process(name, "unparsed", ival)
-			//
-			// whitelists
-			//
-			case "cs_node_wl_hits_total":
-				mWhitelist.Process(name, reason, "hits", ival)
-			case "cs_node_wl_hits_ok_total":
-				mWhitelist.Process(name, reason, "whitelisted", ival)
-				// track as well whitelisted lines at acquis level
-				mAcquis.Process(source, "whitelisted", ival)
-			//
-			// lapi
-			//
-			case "cs_lapi_route_requests_total":
-				mLapi.Process(route, method, ival)
-			case "cs_lapi_machine_requests_total":
-				mLapiMachine.Process(machine, route, method, ival)
-			case "cs_lapi_bouncer_requests_total":
-				mLapiBouncer.Process(bouncer, route, method, ival)
-			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
-				mLapiDecision.Process(bouncer, fam.Name, ival)
-			//
-			// decisions
-			//
-			case "cs_active_decisions":
-				mDecision.Process(reason, origin, action, ival)
-			case "cs_alerts":
-				mAlert.Process(reason, ival)
-			//
-			// stash
-			//
-			case "cs_cache_size":
-				mStash.Process(name, mtype, ival)
-			//
-			// appsec
-			//
-			case "cs_appsec_reqs_total":
-				mAppsecEngine.Process(appsecEngine, "processed", ival)
-			case "cs_appsec_block_total":
-				mAppsecEngine.Process(appsecEngine, "blocked", ival)
-			case "cs_appsec_rule_hits":
-				mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
-			default:
-				log.Debugf("unknown: %+v", fam.Name)
-				continue
-			}
+	switch p.Name {
+		//
+		// buckets
+		//
+		case metrics.BucketsInstantiationMetricName:
+			mBucket.Process(name, "instantiation", ival)
+		case metrics.BucketsCurrentCountMetricName:
+			mBucket.Process(name, "curr_count", ival)
+		case metrics.BucketsOverflowMetricName:
+			mBucket.Process(name, "overflow", ival)
+		case metrics.BucketPouredMetricName:
+			mBucket.Process(name, "pour", ival)
+			mAcquis.Process(source, "pour", ival)
+		case metrics.BucketsUnderflowMetricName:
+			mBucket.Process(name, "underflow", ival)
+		//
+		// parsers
+		//
+		case metrics.GlobalParserHitsMetricName:
+			mAcquis.Process(source, "reads", ival)
+		case metrics.GlobalParserHitsOkMetricName:
+			mAcquis.Process(source, "parsed", ival)
+		case metrics.GlobalParserHitsKoMetricName:
+			mAcquis.Process(source, "unparsed", ival)
+		case metrics.NodesHitsMetricName:
+			mParser.Process(name, "hits", ival)
+		case metrics.NodesHitsOkMetricName:
+			mParser.Process(name, "parsed", ival)
+		case metrics.NodesHitsKoMetricName:
+			mParser.Process(name, "unparsed", ival)
+		//
+		// whitelists
+		//
+		case metrics.NodesWlHitsMetricName:
+			mWhitelist.Process(name, reason, "hits", ival)
+		case metrics.NodesWlHitsOkMetricName:
+			mWhitelist.Process(name, reason, "whitelisted", ival)
+			// track as well whitelisted lines at acquis level
+			mAcquis.Process(source, "whitelisted", ival)
+		//
+		// lapi
+		//
+		case metrics.LapiRouteHitsMetricName:
+			mLapi.Process(route, method, ival)
+		case metrics.LapiMachineHitsMetricName:
+			mLapiMachine.Process(machine, route, method, ival)
+		case metrics.LapiBouncerHitsMetricName:
+			mLapiBouncer.Process(bouncer, route, method, ival)
+		case metrics.LapiNilDecisionsMetricName, metrics.LapiNonNilDecisionsMetricName:
+			mLapiDecision.Process(bouncer, p.Name, ival)
+		//
+		// decisions
+		//
+		case metrics.GlobalActiveDecisionsMetricName:
+			mDecision.Process(reason, origin, action, ival)
+		case metrics.GlobalAlertsMetricName:
+			mAlert.Process(reason, ival)
+		//
+		// stash
+		//
+		case metrics.CacheMetricName:
+			mStash.Process(name, mtype, ival)
+		//
+		// appsec
+		//
+		case "cs_appsec_reqs_total":
+			mAppsecEngine.Process(appsecEngine, "processed", ival)
+		case "cs_appsec_block_total":
+			mAppsecEngine.Process(appsecEngine, "blocked", ival)
+		case "cs_appsec_rule_hits":
+			mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
+		default:
+			log.Debugf("unknown: %+v", p.Name)
+			continue
 		}
 	}
 }
@@ -255,7 +205,10 @@ func (ms metricStore) Format(out io.Writer, wantColor string, sections []string,
 	switch outputFormat {
 	case "human":
 		for _, section := range maptools.SortedKeys(want) {
-			want[section].Table(out, wantColor, noUnit, showEmpty)
+			// always ok, but keep nilaway happy
+			if sec, ok := want[section]; ok && sec != nil {
+				sec.Table(out, wantColor, noUnit, showEmpty)
+			}
 		}
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")

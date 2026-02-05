@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogin(t *testing.T) {
@@ -17,7 +18,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with machine not validated yet
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -26,7 +28,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with machine not exist
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test1", "password": "test1"}`))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test1", "password": "test1"}`))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -35,7 +38,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid body
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader("test"))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader("test"))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -44,7 +48,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid format
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test1"}`))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test1"}`))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -56,7 +61,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid password
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test", "password": "test1"}`))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test", "password": "test1"}`))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -65,7 +71,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with valid machine
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -75,7 +82,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with valid machine + scenarios
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test", "password": "test", "scenarios": ["crowdsecurity/test", "crowdsecurity/test2"]}`))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers/login", strings.NewReader(`{"machine_id": "test", "password": "test", "scenarios": ["crowdsecurity/test", "crowdsecurity/test2"]}`))
+	require.NoError(t, err)
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 

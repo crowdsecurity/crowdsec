@@ -52,7 +52,8 @@ func (rc *RevocationCache) purgeExpired() {
 	}
 }
 
-func (rc *RevocationCache) Get(cert *x509.Certificate) (error, bool) { //nolint:revive
+//revive:disable-next-line:error-return
+func (rc *RevocationCache) Get(cert *x509.Certificate) (error, bool) {
 	rc.purgeExpired()
 	key := rc.generateKey(cert)
 	rc.mu.RLock()

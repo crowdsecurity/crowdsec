@@ -13,13 +13,6 @@ function create_tree() {
 	$null = New-Item -ItemType Directory $data_dir
 	$null = New-Item -ItemType Directory $log_dir
 	$null = New-Item -ItemType Directory $config_dir
-	$null = New-Item -ItemType Directory $parser_dir
-	$null = New-Item -ItemType Directory $parser_s00
-	$null = New-Item -ItemType Directory $parser_s01
-	$null = New-Item -ItemType Directory $parser_s02
-	$null = New-Item -ItemType Directory $scenarios_dir
-	$null = New-Item -ItemType Directory $postoverflows_dir
-	$null = New-Item -ItemType Directory $cscli_dir
 	$null = New-Item -ItemType Directory $hub_dir
     $null = New-Item -ItemType Directory $config_dir\$notif_dir
 	$null = New-Item -ItemType Directory $base\$plugins_dir
@@ -27,15 +20,18 @@ function create_tree() {
 
 function copy_file() {
     $null = Copy-Item ".\config\profiles.yaml" $config_dir
-	$null = Copy-Item  ".\config\simulation.yaml" $config_dir
-	$null = Copy-Item ".\cmd\crowdsec\crowdsec.exe" $base
-	$null = Copy-Item ".\cmd\crowdsec-cli\cscli.exe" $base
-	$null = Copy-Item -Recurse ".\config\patterns" $config_dir
-	$null = Copy-Item ".\config\acquis.yaml" $config_dir
-	$null = New-Item -ItemType File $config_dir\local_api_credentials.yaml
-	$null = New-Item -ItemType File $config_dir\online_api_credentials.yaml
-	#envsubst < "./config/dev.yaml" > $BASE/dev.yaml
-    Copy-Item .\config\dev.yaml $base\dev.yaml
+    $null = Copy-Item  ".\config\simulation.yaml" $config_dir
+    $null = Copy-Item ".\cmd\crowdsec\crowdsec.exe" $base
+    $null = Copy-Item ".\cmd\crowdsec-cli\cscli.exe" $base
+    $null = Copy-Item -Recurse ".\config\patterns" $config_dir
+    $null = Copy-Item ".\config\acquis.yaml" $config_dir
+    $null = New-Item -ItemType File $config_dir\local_api_credentials.yaml
+    $null = New-Item -ItemType File $config_dir\online_api_credentials.yaml
+
+    #envsubst < "./config/dev.yaml" > $BASE/dev.yaml
+    $raw = Get-Content .\config\dev.yaml -Raw
+    [Environment]::ExpandEnvironmentVariables($raw) | Set-Content $base\dev.yaml
+
     $plugins | ForEach-Object {
         Copy-Item .\cmd\notification-$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
 		Copy-Item .\cmd\notification-$_\$_.yaml $config_dir\$notif_dir\$_.yaml
@@ -62,14 +58,7 @@ $base=(Resolve-Path $base).Path
 $data_dir="$base\data"
 $log_dir="$base\logs\"
 $config_dir="$base\config"
-$config_file="$base\dev.yaml"
-$cscli_dir="$config_dir\crowdsec-cli"
-$parser_dir="$config_dir\parsers"
-$parser_s00="$parser_dir\s00-raw"
-$parser_s01="$parser_dir\s01-parse"
-$parser_s02="$parser_dir\s02-enrich"
-$scenarios_dir="$config_dir\scenarios"
-$postoverflows_dir="$config_dir\postoverflows"
+$config_file="$base\windows-dev.yaml"
 $hub_dir="$config_dir\hub"
 $plugins=@("http", "slack", "splunk", "email", "sentinel")
 $plugins_dir="plugins"

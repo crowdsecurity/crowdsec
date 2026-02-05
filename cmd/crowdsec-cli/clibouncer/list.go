@@ -13,8 +13,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
@@ -41,7 +41,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
+func (*cliBouncers) listCSV(out io.Writer, bouncers ent.Bouncers) error {
 	csvwriter := csv.NewWriter(out)
 
 	if err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"}); err != nil {

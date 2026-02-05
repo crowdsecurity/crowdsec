@@ -7,9 +7,9 @@ This security policy applies to :
  - Crowdsec Local API
  - Crowdsec bouncers **developed and maintained** by the Crowdsec team [1]
 
-Reports regarding developements of community members that are not part of the crowdsecurity organization will be thoroughly investigated nonetheless.
+Reports regarding developments of community members that are not part of the crowdsecurity organization will be thoroughly investigated nonetheless.
 
-[1] Projects developed and maintained by the Crowdsec team are under the **crowdsecurity** github organization. Bouncers developed by community members that are not part of the Crowdsec organization are explictely excluded.
+[1] Projects developed and maintained by the Crowdsec team are under the **crowdsecurity** github organization. Bouncers developed by community members that are not part of the Crowdsec organization are explicitly excluded.
 
 ## Reporting a Vulnerability
 

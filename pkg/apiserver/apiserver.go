@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -28,17 +27,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 const keyLength = 32
 
 type APIServer struct {
-	URL            string
-	UnixSocket     string
-	TLS            *csconfig.TLSCfg
+	cfg            *csconfig.LocalApiServerCfg
 	dbClient       *database.Client
-	logFile        string
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
@@ -46,7 +42,6 @@ type APIServer struct {
 	apic           *apic
 	papi           *Papi
 	httpServerTomb tomb.Tomb
-	consoleConfig  *csconfig.ConsoleConfig
 }
 
 func isBrokenConnection(maybeError any) bool {
@@ -59,7 +54,8 @@ func isBrokenConnection(maybeError any) bool {
 	if errors.As(err, &netOpError) {
 		var syscallError *os.SyscallError
 		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
+			s := strings.ToLower(syscallError.Error())
+			if strings.Contains(s, "broken pipe") || strings.Contains(s, "connection reset by peer") {
 				return true
 			}
 		}
@@ -86,6 +82,7 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
+	//revive:disable-next-line:defer
 	err := recover()
 	if err == nil {
 		return
@@ -96,79 +93,36 @@ func recoverFromPanic(c *gin.Context) {
 	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
+
+	log.Warningf("client %s error: %s", c.ClientIP(), err)
+
+	filename, err := trace.WriteStackTrace(err)
+	if err != nil {
+		log.Errorf("also while writing stacktrace: %s", err)
+	}
+
+	log.Warningf("stacktrace written to %s, please join to your issue", filename)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
-func CustomRecoveryWithWriter() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer recoverFromPanic(c)
-		c.Next()
-	}
-}
-
-// XXX: could be a method of LocalApiServerCfg
-func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
-	clog := log.New()
-
-	if err := types.ConfigureLogger(clog, config.LogLevel); err != nil {
-		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
-	}
-
-	if config.LogMedia != "file" {
-		return clog, "", nil
-	}
-
-	// Log rotation
-
-	logFile := filepath.Join(config.LogDir, "crowdsec_api.log")
-	log.Debugf("starting router, logging to %s", logFile)
-
-	logger := &lumberjack.Logger{
-		Filename:   logFile,
-		MaxSize:    500, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28,   // days
-		Compress:   true, // disabled by default
-	}
-
-	if config.LogMaxSize != 0 {
-		logger.MaxSize = config.LogMaxSize
-	}
-
-	if config.LogMaxFiles != 0 {
-		logger.MaxBackups = config.LogMaxFiles
-	}
-
-	if config.LogMaxAge != 0 {
-		logger.MaxAge = config.LogMaxAge
-	}
-
-	if config.CompressLogs != nil {
-		logger.Compress = *config.CompressLogs
-	}
-
-	clog.SetOutput(logger)
-
-	return clog, logFile, nil
+func CustomRecoveryWithWriter(c *gin.Context) {
+	defer recoverFromPanic(c)
+	c.Next()
 }
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
-func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 
-	dbClient, err := database.NewClient(ctx, config.DbConfig)
+	if accessLogger == nil {
+		accessLogger = log.StandardLogger().WithFields(nil)
+	}
+
+	dbClient, err := database.NewClient(ctx, config.DbConfig, config.DbConfig.NewLogger())
 	if err != nil {
 		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}
@@ -203,14 +157,8 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		router.ForwardedByClientIP = true
 	}
 
-	// The logger that will be used by handlers
-	clog, logFile, err := newGinLogger(config)
-	if err != nil {
-		return nil, err
-	}
-
-	gin.DefaultErrorWriter = clog.WriterLevel(log.ErrorLevel)
-	gin.DefaultWriter = clog.Writer()
+	gin.DefaultErrorWriter = accessLogger.WriterLevel(log.ErrorLevel)
+	gin.DefaultWriter = accessLogger.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s %q %s\"\n",
@@ -229,13 +177,13 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 	})
-	router.Use(CustomRecoveryWithWriter())
+	router.Use(CustomRecoveryWithWriter)
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
 		Router:                        router,
 		Profiles:                      config.Profiles,
-		Log:                           clog,
+		Log:                           accessLogger,
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
@@ -250,7 +198,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	controller.DecisionDeleteChan = nil
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
-		log.Printf("Loading CAPI manager")
+		log.Info("Loading CAPI manager")
 
 		apiClient, err = NewAPIC(ctx, config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
@@ -264,7 +212,9 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		if apiClient.apiClient.IsEnrolled() {
 			log.Info("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			logLevel := cmp.Or(config.PapiLogLevel, config.LogLevel)
+			papiLogger := logging.SubLogger(log.StandardLogger(), "papi", logLevel)
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, papiLogger)
 			if err != nil {
 				return nil, err
 			}
@@ -283,10 +233,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		URL:            config.ListenURI,
-		UnixSocket:     config.ListenSocket,
-		TLS:            config.TLS,
-		logFile:        logFile,
+		cfg:		config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -294,7 +241,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg) (*APISer
 		apic:           apiClient,
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
-		consoleConfig:  config.ConsoleConfig,
 	}, nil
 }
 
@@ -361,22 +307,24 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 		return nil
 	})
 
-	s.apic.metricsTomb.Go(func() error {
-		s.apic.SendUsageMetrics(ctx)
-		return nil
-	})
+	if !s.cfg.DisableUsageMetricsExport {
+		s.apic.metricsTomb.Go(func() error {
+			s.apic.SendUsageMetrics(ctx)
+			return nil
+		})
+	}
 }
 
-func (s *APIServer) Run(apiReady chan bool) error {
+func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 
-	tlsCfg, err := s.TLS.GetTLSConfig()
+	tlsCfg, err := s.cfg.TLS.GetTLSConfig()
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
 	}
 
 	s.httpServer = &http.Server{
-		Addr:      s.URL,
+		Addr:      s.cfg.ListenURI,
 		Handler:   s.router,
 		TLSConfig: tlsCfg,
 		Protocols: &http.Protocols{},
@@ -386,14 +334,12 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	s.httpServer.Protocols.SetUnencryptedHTTP2(true)
 	s.httpServer.Protocols.SetHTTP2(true)
 
-	ctx := context.TODO()
-
 	if s.apic != nil {
 		s.initAPIC(ctx)
 	}
 
 	s.httpServerTomb.Go(func() error {
-		return s.listenAndServeLAPI(apiReady)
+		return s.listenAndServeLAPI(ctx, apiReady)
 	})
 
 	if err := s.httpServerTomb.Wait(); err != nil {
@@ -406,24 +352,26 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // listenAndServeLAPI starts the http server and blocks until it's closed
 // it also updates the URL field with the actual address the server is listening on
 // it's meant to be run in a separate goroutine
-func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
+func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) error {
 	serverError := make(chan error, 2)
+
+	listenConfig := &net.ListenConfig{}
 
 	startServer := func(listener net.Listener, canTLS bool) {
 		var err error
 
-		if canTLS && s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
-			if s.TLS.KeyFilePath == "" {
+		if canTLS && s.cfg.TLS != nil && (s.cfg.TLS.CertFilePath != "" || s.cfg.TLS.KeyFilePath != "") {
+			if s.cfg.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
 			}
 
-			if s.TLS.CertFilePath == "" {
+			if s.cfg.TLS.CertFilePath == "" {
 				serverError <- errors.New("missing TLS cert file")
 				return
 			}
 
-			err = s.httpServer.ServeTLS(listener, s.TLS.CertFilePath, s.TLS.KeyFilePath)
+			err = s.httpServer.ServeTLS(listener, s.cfg.TLS.CertFilePath, s.cfg.TLS.KeyFilePath)
 		} else {
 			err = s.httpServer.Serve(listener)
 		}
@@ -442,7 +390,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			return
 		}
 
-		listener, err := net.Listen("tcp", url)
+		listener, err := listenConfig.Listen(ctx, "tcp", url)
 		if err != nil {
 			serverError <- fmt.Errorf("listening on %s: %w", url, err)
 			return
@@ -450,7 +398,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 		log.Infof("CrowdSec Local API listening on %s", url)
 		startServer(listener, true)
-	}(s.URL)
+	}(s.cfg.ListenURI)
 
 	// Starting Unix socket listener
 	go func(socket string) {
@@ -464,7 +412,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			}
 		}
 
-		listener, err := net.Listen("unix", socket)
+		listener, err := listenConfig.Listen(ctx, "unix", socket)
 		if err != nil {
 			serverError <- csnet.WrapSockErr(err, socket)
 			return
@@ -472,7 +420,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 
 		log.Infof("CrowdSec Local API listening on Unix socket %s", socket)
 		startServer(listener, false)
-	}(s.UnixSocket)
+	}(s.cfg.ListenSocket)
 
 	apiReady <- true
 
@@ -482,17 +430,17 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 	case <-s.httpServerTomb.Dying():
 		log.Info("Shutting down API server")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.Errorf("while shutting down http server: %v", err)
 		}
 
-		if s.UnixSocket != "" {
-			if err := os.Remove(s.UnixSocket); err != nil {
+		if s.cfg.ListenSocket != "" {
+			if err := os.Remove(s.cfg.ListenSocket); err != nil {
 				if !errors.Is(err, fs.ErrNotExist) {
-					log.Errorf("can't remove socket %s: %s", s.UnixSocket, err)
+					log.Errorf("can't remove socket %s: %s", s.cfg.ListenSocket, err)
 				}
 			}
 		}
@@ -517,11 +465,11 @@ func (s *APIServer) Close() {
 	}
 }
 
-func (s *APIServer) Shutdown() error {
+func (s *APIServer) Shutdown(ctx context.Context) error {
 	s.Close()
 
 	if s.httpServer != nil {
-		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
+		if err := s.httpServer.Shutdown(ctx); err != nil {
 			return err
 		}
 	}
@@ -559,7 +507,7 @@ func hasPlugins(profiles []*csconfig.ProfileCfg) bool {
 }
 
 func (s *APIServer) InitPlugins(ctx context.Context, cConfig *csconfig.Config, pluginBroker *csplugin.PluginBroker) error {
-	if hasPlugins(cConfig.API.Server.Profiles) {
+	if hasPlugins(s.cfg.Profiles) {
 		log.Info("initiating plugin broker")
 		// On windows, the plugins are always run as medium-integrity processes, so we don't care about plugin_config
 		if cConfig.PluginConfig == nil && runtime.GOOS != "windows" {
@@ -570,7 +518,7 @@ func (s *APIServer) InitPlugins(ctx context.Context, cConfig *csconfig.Config, p
 			return errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
 		}
 
-		err := pluginBroker.Init(ctx, cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		err := pluginBroker.Init(ctx, cConfig.PluginConfig, s.cfg.Profiles, cConfig.ConfigPaths)
 		if err != nil {
 			return fmt.Errorf("plugin broker: %w", err)
 		}
@@ -588,18 +536,18 @@ func (s *APIServer) InitController() error {
 		return fmt.Errorf("controller init: %w", err)
 	}
 
-	if s.TLS == nil {
+	if s.cfg.TLS == nil {
 		return nil
 	}
 
 	// TLS is configured: create the TLSAuth middleware for agents and bouncers
 
 	cacheExpiration := time.Hour
-	if s.TLS.CacheExpiration != nil {
-		cacheExpiration = *s.TLS.CacheExpiration
+	if s.cfg.TLS.CacheExpiration != nil {
+		cacheExpiration = *s.cfg.TLS.CacheExpiration
 	}
 
-	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
+	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedAgentsOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",
@@ -609,7 +557,7 @@ func (s *APIServer) InitController() error {
 		return fmt.Errorf("while creating TLS auth for agents: %w", err)
 	}
 
-	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
+	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedBouncersOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",

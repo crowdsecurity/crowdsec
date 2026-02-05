@@ -13,9 +13,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
@@ -54,7 +55,10 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 
 	plan := hubops.NewActionPlan(hub)
 
-	contentProvider := require.HubDownloader(ctx, cfg)
+	contentProvider, err := require.HubDownloader(ctx, cfg)
+	if err != nil {
+		return err
+	}
 
 	for _, name := range args {
 		item := hub.GetItem(cli.name, name)
@@ -83,12 +87,15 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 	showPlan := (log.StandardLogger().Level >= log.InfoLevel)
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
-	if err := plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan); err != nil {
-		if !ignoreError {
-			return err
-		}
-
+	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
+	switch {
+	case errors.Is(err, hubops.ErrUserCanceled) && err != nil:
+		// not a real error, and we'll want to print the reload message anyway
+		fmt.Fprintln(os.Stdout, err.Error())
+	case ignoreError:
 		log.Error(err)
+	case err != nil:
+		return err
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {
@@ -98,7 +105,7 @@ func (cli *cliItem) install(ctx context.Context, args []string, interactive bool
 	return nil
 }
 
-func compAllItems(itemType string, args []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+func compAllItems(itemType string, args []string, toComplete string, cfg csconfig.Getter) ([]string, cobra.ShellCompDirective) {
 	hub, err := require.Hub(cfg(), nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

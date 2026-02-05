@@ -5,30 +5,18 @@ import (
 )
 
 type DataSourceCommonCfg struct {
-	Mode           string                 `yaml:"mode,omitempty"`
-	Labels         map[string]string      `yaml:"labels,omitempty"`
-	LogLevel       *log.Level             `yaml:"log_level,omitempty"`
-	Source         string                 `yaml:"source,omitempty"`
-	Name           string                 `yaml:"name,omitempty"`
-	UseTimeMachine bool                   `yaml:"use_time_machine,omitempty"`
-	UniqueId       string                 `yaml:"unique_id,omitempty"`
-	TransformExpr  string                 `yaml:"transform,omitempty"`
-	Config         map[string]interface{} `yaml:",inline"` // to keep the datasource-specific configuration directives
+	Mode           string            `yaml:"mode,omitempty"`
+	Labels         map[string]string `yaml:"labels,omitempty"`
+	LogLevel       log.Level         `yaml:"log_level,omitempty"`
+	Source         string            `yaml:"source,omitempty"`
+	Name           string            `yaml:"name,omitempty"`
+	UseTimeMachine bool              `yaml:"use_time_machine,omitempty"`
+	UniqueId       string            `yaml:"unique_id,omitempty"`
+	TransformExpr  string            `yaml:"transform,omitempty"`
 }
 
 const (
 	TAIL_MODE   = "tail"
 	CAT_MODE    = "cat"
 	SERVER_MODE = "server" // No difference with tail, just a bit more verbose
-)
-
-const (
-	METRICS_NONE = iota
-	METRICS_AGGREGATE
-	METRICS_FULL
-)
-
-const (
-	CFG_METRICS_AGGREGATE = "aggregated"
-	CFG_METRICS_FULL      = "full"
 )

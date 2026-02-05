@@ -10,10 +10,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewAppsecConfig(cfg configGetter) *cliItem {
+func NewAppsecConfig(cfg csconfig.Getter) *cliItem {
 	return &cliItem{
 		cfg:       cfg,
 		name:      cwhub.APPSEC_CONFIGS,
@@ -111,7 +112,7 @@ cscli appsec-configs list crowdsecurity/virtual-patching crowdsecurity/generic-r
 	}
 }
 
-func NewAppsecRule(cfg configGetter) *cliItem {
+func NewAppsecRule(cfg csconfig.Getter) *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		// Only show the converted rules in human mode
 		if cfg().Cscli.Output != "human" {
@@ -137,7 +138,7 @@ func NewAppsecRule(cfg configGetter) *cliItem {
 			fmt.Fprintf(os.Stdout, "\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
 
 			for _, rule := range appsecRule.Rules {
-				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
+				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name, appsecRule.Description)
 				if err != nil {
 					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}
