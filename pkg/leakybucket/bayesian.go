@@ -100,7 +100,7 @@ func (e *BayesianEvent) bayesianUpdate(p *BayesianProcessor, msg pipeline.Event,
 	}
 
 	l.logger.Debugf("running condition expression: %s", e.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Spec.Debug)
+	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.Factory.Spec.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}

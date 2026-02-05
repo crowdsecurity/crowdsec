@@ -25,6 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+// BucketSpec is the declarative YAML config for a scenario bucket. It holds all the possible user-provided fields.
 type BucketSpec struct {
 	FormatVersion       string                     `yaml:"format"`
 	Description         string                     `yaml:"description"`
@@ -53,8 +54,7 @@ type BucketSpec struct {
 	ScenarioVersion     string                     `yaml:"version,omitempty"`
 }
 
-// BucketFactory struct holds all fields for any bucket configuration. This is to have a
-// generic struct for buckets. This can be seen as a bucket factory.
+// BucketFactory is the compiled/validated, reusable template produced from a BucketSpec.
 type BucketFactory struct {
 	Spec BucketSpec
 
@@ -68,7 +68,7 @@ type BucketFactory struct {
 	duration            time.Duration       // internal representation of `Duration`
 	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
 	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	hash                string
+	scenarioHash        string
 	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
 }
@@ -166,7 +166,7 @@ func loadBucketFactoriesFromFile(
 		f.Simulated = simcheck.IsSimulated(f.Spec.Name)
 
 		f.Spec.ScenarioVersion = item.State.LocalVersion
-		f.hash = item.State.LocalHash
+		f.scenarioHash = item.State.LocalHash
 
 		err = f.LoadBucket()
 		if err != nil {
@@ -353,8 +353,6 @@ func (f *BucketFactory) initDataFiles() {
 
 // LoadBucket validates and prepares a BucketFactory for runtime use (compile expressions, init processors, init data).
 func (f *BucketFactory) LoadBucket() error {
-	var err error
-
 	f.logger = bucketLogger(f)
 	f.logger.Infof("Adding %s bucket", f.Spec.Type)
 
