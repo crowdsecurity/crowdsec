@@ -26,6 +26,9 @@ var jsFS embed.FS
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
+//go:embed challenge.js
+var jsChallenge string
+
 const encryptionKey = "foobarlol42"
 
 func BuildFingerprintScript() (string, error) {
@@ -191,7 +194,7 @@ func GetChallengePage() (string, error) {
 	var renderedPage strings.Builder
 
 	templateObj.Execute(&renderedPage, map[string]string{
-		//"FPScript": scriptContent,
+		"JSChallenge": jsChallenge,
 	})
 	return renderedPage.String(), nil
 }
