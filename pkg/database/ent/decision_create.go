@@ -476,12 +476,6 @@ func (u *DecisionUpsert) UpdateUntil() *DecisionUpsert {
 	return u
 }
 
-// ClearUntil clears the value of the "until" field.
-func (u *DecisionUpsert) ClearUntil() *DecisionUpsert {
-	u.SetNull(decision.FieldUntil)
-	return u
-}
-
 // SetAlertDecisions sets the "alert_decisions" field.
 func (u *DecisionUpsert) SetAlertDecisions(v int) *DecisionUpsert {
 	u.Set(decision.FieldAlertDecisions, v)
@@ -606,13 +600,6 @@ func (u *DecisionUpsertOne) SetUntil(v time.Time) *DecisionUpsertOne {
 func (u *DecisionUpsertOne) UpdateUntil() *DecisionUpsertOne {
 	return u.Update(func(s *DecisionUpsert) {
 		s.UpdateUntil()
-	})
-}
-
-// ClearUntil clears the value of the "until" field.
-func (u *DecisionUpsertOne) ClearUntil() *DecisionUpsertOne {
-	return u.Update(func(s *DecisionUpsert) {
-		s.ClearUntil()
 	})
 }
 
@@ -909,13 +896,6 @@ func (u *DecisionUpsertBulk) SetUntil(v time.Time) *DecisionUpsertBulk {
 func (u *DecisionUpsertBulk) UpdateUntil() *DecisionUpsertBulk {
 	return u.Update(func(s *DecisionUpsert) {
 		s.UpdateUntil()
-	})
-}
-
-// ClearUntil clears the value of the "until" field.
-func (u *DecisionUpsertBulk) ClearUntil() *DecisionUpsertBulk {
-	return u.Update(func(s *DecisionUpsert) {
-		s.ClearUntil()
 	})
 }
 
