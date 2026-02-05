@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/expr-lang/expr/vm"
-	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/namegenerator"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -72,9 +72,6 @@ type BucketFactory struct {
 	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
 	orderEvent          bool
 }
-
-// we use one NameGenerator for all the future buckets
-var seed = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 func (f *BucketFactory) Validate() error {
 	if f.Spec.Name == "" {
@@ -161,7 +158,7 @@ func loadBucketFactoriesFromFile(
 		}
 
 		f.Filename = filepath.Clean(itemPath)
-		f.BucketName = seed.Generate()
+		f.BucketName = namegenerator.GetRandomName()
 		f.ret = response
 		f.Simulated = simcheck.IsSimulated(f.Spec.Name)
 
