@@ -21,6 +21,10 @@ type ConditionalProcessor struct {
 	DumbProcessor
 }
 
+func (*ConditionalProcessor) Description() string {
+	return "conditional filter"
+}
+
 func (p *ConditionalProcessor) OnBucketInit(f *BucketFactory) error {
 	var err error
 	var compiledExpr *vm.Program

@@ -7,7 +7,7 @@ import (
 
 type BucketType interface {
 	Validate(f *BucketFactory) error
-	BuildProcessors(f *BucketFactory) []Processor
+	CoreProcessors(f *BucketFactory) []Processor
 }
 
 var bucketTypes = map[string]BucketType{
@@ -36,7 +36,7 @@ func (LeakyType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (LeakyType) BuildProcessors(_ *BucketFactory) []Processor {
+func (LeakyType) CoreProcessors(_ *BucketFactory) []Processor {
 	return []Processor{&DumbProcessor{}}
 }
 
@@ -50,7 +50,7 @@ func (TriggerType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (TriggerType) BuildProcessors(_ *BucketFactory) []Processor {
+func (TriggerType) CoreProcessors(_ *BucketFactory) []Processor {
 	return []Processor{&TriggerProcessor{}}
 }
 
@@ -72,7 +72,7 @@ func (CounterType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (CounterType) BuildProcessors(_ *BucketFactory) []Processor {
+func (CounterType) CoreProcessors(_ *BucketFactory) []Processor {
 	return []Processor{&DumbProcessor{}}
 }
 
@@ -98,7 +98,7 @@ func (ConditionalType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (ConditionalType) BuildProcessors(_ *BucketFactory) []Processor {
+func (ConditionalType) CoreProcessors(_ *BucketFactory) []Processor {
 	return []Processor{&DumbProcessor{}}
 }
 
@@ -124,6 +124,6 @@ func (BayesianType) Validate(f *BucketFactory) error {
 	return nil
 }
 
-func (BayesianType) BuildProcessors(_ *BucketFactory) []Processor {
+func (BayesianType) CoreProcessors(_ *BucketFactory) []Processor {
 	return []Processor{&DumbProcessor{}}
 }

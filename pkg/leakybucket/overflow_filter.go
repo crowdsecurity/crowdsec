@@ -15,19 +15,22 @@ type OverflowProcessor struct {
 	DumbProcessor
 }
 
-func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
+func NewOverflowProcessor(s *BucketSpec) (*OverflowProcessor, error) {
 	var err error
 
 	u := OverflowProcessor{}
 
-	u.Filter = f.Spec.OverflowFilter
+	u.Filter = s.OverflowFilter
 
 	u.FilterRuntime, err = compile(u.Filter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
 	if err != nil {
-		f.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
 	}
 	return &u, nil
+}
+
+func (*OverflowProcessor) Description() string {
+	return "overflow"
 }
 
 func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
