@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
@@ -117,14 +117,14 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 
 func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 	cfg := cli.cfg()
-	t := tomb.Tomb{}
 
 	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	t.Go(func() error { return apic.Push(ctx) })
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return apic.Push(ctx) })
 
 	papiLogger := cfg.API.Server.NewPAPILogger()
 	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
@@ -132,7 +132,7 @@ func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
 
-	t.Go(func() error { return papi.SyncDecisions(ctx) })
+	g.Go(func() error { return papi.SyncDecisions(ctx) })
 
 	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {
@@ -143,7 +143,7 @@ func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 
 	apic.Shutdown()
 	papi.Shutdown()
-	_ = t.Wait()
+	_ = g.Wait()
 	time.Sleep(5 * time.Second) // FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
 	return nil
