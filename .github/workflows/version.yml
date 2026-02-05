@@ -10,7 +10,7 @@ on:
         required: false
         type: string
       date:
-        description: "Deployment date (YYYY-MM-DDTHH:MM:SSZ). Cannot be empty if version is empty."
+        description: "Deployment date (YYYY-MM-DDTHH:MM:SSZ). Cannot be empty if version is not empty."
         required: false
         type: string
 
