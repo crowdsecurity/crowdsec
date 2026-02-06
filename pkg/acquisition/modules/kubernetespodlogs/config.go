@@ -17,7 +17,7 @@ import (
 type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 
-	Label          string `yaml:"label"`
+	Selector       string `yaml:"selector"`
 	Namespace      string `yaml:"namespace"`
 	Auth           *Auth  `yaml:"auth,omitempty"`
 	KubeConfigFile string `yaml:"kube_config,omitempty"`
@@ -30,7 +30,7 @@ type Auth struct {
 
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	s.Config = Configuration{
-		Label:     "",
+		Selector:  "",
 		Namespace: "default",
 	}
 
@@ -72,7 +72,7 @@ func (c *Configuration) SetDefaults() {
 }
 
 func (s *Source) Validate() error {
-	if s.Config.Label == "" {
+	if s.Config.Selector == "" {
 		return fmt.Errorf("label must be set in kubernetespodlogs acquisition")
 	}
 	if s.Config.Auth != nil && s.Config.KubeConfigFile != "" {

@@ -40,14 +40,11 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 		log.Fatal(err)
 	}
 
-	ns := "ingress-nginx"
-	labels := "app.kubernetes.io/component=controller"
-
 	cancels := map[string]context.CancelFunc{}
 
 	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
-		informers.WithNamespace(ns),
-		informers.WithTweakListOptions(func(o *metav1.ListOptions) { o.LabelSelector = labels }),
+		informers.WithNamespace(d.Config.Namespace),
+		informers.WithTweakListOptions(func(o *metav1.ListOptions) { o.LabelSelector = d.Config.Selector }),
 	)
 	inf := f.Core().V1().Pods().Informer()
 
