@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -19,9 +18,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+type pourGate interface {
+	BeginPour() func()
+}
+
 // Leaky represents one instance of a bucket
 type Leaky struct {
-	Name string
 	Mode int // LIVE or TIMEMACHINE
 	// the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
@@ -34,127 +36,98 @@ type Leaky struct {
 	Out chan *pipeline.Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan pipeline.Event `json:"-"`
-	// max capacity (for burst)
-	Capacity int
-	// CacheRatio is the number of elements that should be kept in memory (compared to capacity)
-	CacheSize int
 	// the unique identifier of the bucket (a hash)
 	Mapkey string
-	// chan for signaling
-	Signal       chan bool `json:"-"`
+	ready        chan struct{} // closed when LeakRoutine is ready
+	readyOnce    sync.Once     // use to prevent double close
+	done         chan struct{} // closed when LeakRoutine has stopped processing
+	doneOnce     sync.Once     // use to prevent double close
 	Suicide      chan bool `json:"-"`
-	Reprocess    bool
-	Simulated    bool
 	Uuid         string
 	First_ts     time.Time
 	Last_ts      time.Time
 	Ovflw_ts     time.Time
 	Total_count  int
-	Leakspeed    time.Duration
-	BucketConfig *BucketFactory
+	Factory      *BucketFactory
 	Duration     time.Duration
-	Pour         func(*Leaky, pipeline.Event) `json:"-"`
-	// Profiling when set to true enables profiling of bucket
-	Profiling           bool
+	Pour         func(*Leaky, pourGate, pipeline.Event) `json:"-"`
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
-	scopeType           ScopeType
-	hash                string
-	scenarioVersion     string
-	wgPour              *sync.WaitGroup
-	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
-	orderEvent          bool
 	cancel              context.CancelFunc
 }
 
-var LeakyRoutineCount int64
-
-// NewLeaky creates a new leaky bucket from a BucketFactory
+// NewLeakyFromFactory creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
-func NewLeaky(bucketFactory BucketFactory) *Leaky {
-	bucketFactory.logger.Tracef("Instantiating live bucket %s", bucketFactory.Name)
-	return FromFactory(bucketFactory)
-}
+func NewLeakyFromFactory(f *BucketFactory) *Leaky {
+	f.logger.Tracef("Instantiating live bucket %s", f.Spec.Name)
 
-func FromFactory(bucketFactory BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
 	// golang rate limiter. It's mainly intended for http rate limiter
-	Qsize := bucketFactory.Capacity
-	if bucketFactory.CacheSize > 0 {
+	Qsize := f.Spec.Capacity
+	if f.Spec.CacheSize > 0 {
 		// cache is smaller than actual capacity
-		if bucketFactory.CacheSize <= bucketFactory.Capacity {
-			Qsize = bucketFactory.CacheSize
+		if f.Spec.CacheSize <= f.Spec.Capacity {
+			Qsize = f.Spec.CacheSize
 			// bucket might be counter (infinite size), allow cache limitation
-		} else if bucketFactory.Capacity == -1 {
-			Qsize = bucketFactory.CacheSize
+		} else if f.Spec.Capacity == -1 {
+			Qsize = f.Spec.CacheSize
 		}
 	}
-	if bucketFactory.Capacity == -1 {
+	if f.Spec.Capacity == -1 {
 		// In this case we allow all events to pass.
 		// maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
-		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
+		limiter = rate.NewLimiter(rate.Every(f.leakspeed), f.Spec.Capacity)
 	}
-	metrics.BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
+	metrics.BucketsInstantiation.With(prometheus.Labels{"name": f.Spec.Name}).Inc()
 
 	// create the leaky bucket per se
 	l := &Leaky{
-		Name:            bucketFactory.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
 		Queue:           pipeline.NewQueue(Qsize),
-		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *pipeline.Queue, 1),
 		Suicide:         make(chan bool, 1),
-		AllOut:          bucketFactory.ret,
-		Capacity:        bucketFactory.Capacity,
-		Leakspeed:       bucketFactory.leakspeed,
-		BucketConfig:    &bucketFactory,
+		AllOut:          f.ret,
+		Factory:         f,
 		Pour:            Pour,
-		Reprocess:       bucketFactory.Reprocess,
-		Profiling:       bucketFactory.Profiling,
 		Mode:            pipeline.LIVE,
-		scopeType:       bucketFactory.ScopeType,
-		scenarioVersion: bucketFactory.ScenarioVersion,
-		hash:            bucketFactory.hash,
-		Simulated:       bucketFactory.Simulated,
-		wgPour:          bucketFactory.wgPour,
-		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
-		orderEvent:      bucketFactory.orderEvent,
 	}
-	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
-		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
+	if f.Spec.Capacity > 0 && f.leakspeed != time.Duration(0) {
+		l.Duration = time.Duration(f.Spec.Capacity+1) * f.leakspeed
 	}
-	if l.BucketConfig.duration != time.Duration(0) {
-		l.Duration = l.BucketConfig.duration
+	if f.duration != time.Duration(0) {
+		l.Duration = f.duration
 		l.timedOverflow = true
 	}
 
-	if l.BucketConfig.Type == "conditional" {
+	if f.Spec.Type == "conditional" {
 		l.conditionalOverflow = true
-		l.Duration = l.BucketConfig.leakspeed
+		l.Duration = f.leakspeed
 	}
 
-	if l.BucketConfig.Type == "bayesian" {
-		l.Duration = l.BucketConfig.leakspeed
+	if f.Spec.Type == "bayesian" {
+		l.Duration = f.leakspeed
 	}
 	return l
 }
 
 // for now mimic a leak routine
 // LeakRoutine is the life of a bucket. It dies when the bucket underflows or overflows
-func LeakRoutine(ctx context.Context, leaky *Leaky) {
+func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 	var (
 		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
 		firstEvent         = true
 	)
+
+	defer l.markDone()
 
 	defer func() {
 		if durationTicker != nil {
@@ -162,61 +135,58 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 		}
 	}()
 
-	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
+	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", l.Factory.Spec.Name))
 
-	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
-	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
+	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
+	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Dec()
 
 	// TODO: we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea
-	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
+	l.logger = l.Factory.logger.WithFields(log.Fields{"partition": l.Mapkey, "bucket_id": l.Uuid})
 
 	// We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
 	// If we don't copy, processors using local cache (such as Uniq) are subject to race conditions
 	// This can lead to creating buckets that will discard their first events, preventing the underflow ticker from being initialized
 	// and preventing them from being destroyed
-	processors := deepcopy.Copy(leaky.BucketConfig.processors).([]Processor)
+	processors := deepcopy.Copy(l.Factory.processors).([]Processor)
 
-	leaky.Signal <- true
-	atomic.AddInt64(&LeakyRoutineCount, 1)
-	defer atomic.AddInt64(&LeakyRoutineCount, -1)
+	l.markReady()
 
 	for _, f := range processors {
-		err := f.OnBucketInit(leaky.BucketConfig)
+		err := f.OnBucketInit(l.Factory)
 		if err != nil {
-			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
-			close(leaky.Signal)
+			l.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 			return
 		}
 	}
 
-	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
+	l.logger.Debugf("Leaky routine starting, lifetime : %s", l.Duration)
 	for {
 		select {
 		// receiving an event
-		case msg := <-leaky.In:
+		case msg := <-l.In:
 			// the msg var use is confusing and is redeclared in a different type :/
 			for _, processor := range processors {
-				msg = processor.OnBucketPour(leaky.BucketConfig, *msg, leaky)
+				msg = processor.OnBucketPour(l.Factory, *msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
-					if leaky.orderEvent {
-						orderEvent[leaky.Mapkey].Done()
+					if l.Factory.orderEvent {
+						orderEvent[l.Mapkey].Done()
 					}
 					goto End
 				}
 			}
-			if leaky.logger.Level >= log.TraceLevel {
-				leaky.logger.Tracef("Pour event: %s", spew.Sdump(msg))
+			if l.logger.Level >= log.TraceLevel {
+				l.logger.Tracef("Pour event: %s", spew.Sdump(msg))
 			}
-			metrics.BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
+			metrics.BucketsPour.With(prometheus.Labels{"name": l.Factory.Spec.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			leaky.Pour(leaky, *msg) // glue for now
+			l.Pour(l, gate, *msg) // glue for now
 
 			for _, processor := range processors {
-				msg = processor.AfterBucketPour(leaky.BucketConfig, *msg, leaky)
+				msg = processor.AfterBucketPour(l.Factory, *msg, l)
 				if msg == nil {
-					if leaky.orderEvent {
-						orderEvent[leaky.Mapkey].Done()
+					if l.Factory.orderEvent {
+						orderEvent[l.Mapkey].Done()
 					}
 					goto End
 				}
@@ -227,29 +197,30 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 			// if durationTicker isn't initialized, then we're pouring our first event
 
 			// reinitialize the durationTicker when it's not a counter bucket
-			if !leaky.timedOverflow || firstEvent {
+			if !l.timedOverflow || firstEvent {
 				if firstEvent {
-					durationTicker = time.NewTicker(leaky.Duration)
+					durationTicker = time.NewTicker(l.Duration)
 					durationTickerChan = durationTicker.C
 				} else {
-					durationTicker.Reset(leaky.Duration)
+					durationTicker.Reset(l.Duration)
 				}
 			}
 			firstEvent = false
 			// we overflowed
-			if leaky.orderEvent {
-				orderEvent[leaky.Mapkey].Done()
+			if l.Factory.orderEvent {
+				orderEvent[l.Mapkey].Done()
 			}
-		case ofw := <-leaky.Out:
-			leaky.overflow(ofw)
+		case ofw := <-l.Out:
+			l.overflow(ofw)
 			return
 		// suiciiiide
-		case <-leaky.Suicide:
-			close(leaky.Signal)
-			metrics.BucketsCanceled.With(prometheus.Labels{"name": leaky.Name}).Inc()
-			leaky.logger.Debugf("Suicide triggered")
-			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
-			leaky.logger.Tracef("Returning from leaky routine.")
+		case <-l.Suicide:
+			// don't wait defer to close the channel, in case we are blocked before returning
+			l.markDone()
+			metrics.BucketsCanceled.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
+			l.logger.Debugf("Suicide triggered")
+			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
+			l.logger.Tracef("Returning from leaky routine.")
 			return
 		// we underflow or reach bucket deadline (timers)
 		case <-durationTickerChan:
@@ -257,93 +228,106 @@ func LeakRoutine(ctx context.Context, leaky *Leaky) {
 				alert pipeline.RuntimeAlert
 				err   error
 			)
-			leaky.Ovflw_ts = time.Now().UTC()
-			close(leaky.Signal)
-			ofw := leaky.Queue
-			alert = pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}
+			l.Ovflw_ts = time.Now().UTC()
+			l.markDone()
+			ofw := l.Queue
+			alert = pipeline.RuntimeAlert{Mapkey: l.Mapkey}
 
-			if leaky.timedOverflow {
-				metrics.BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+			if l.timedOverflow {
+				metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 
-				alert, err = NewAlert(leaky, ofw)
+				alert, err = NewAlert(l, ofw)
 				if err != nil {
 					log.Error(err)
 				}
-				for _, f := range leaky.BucketConfig.processors {
-					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig, leaky, alert, ofw)
+				for _, f := range l.Factory.processors {
+					alert, ofw = f.OnBucketOverflow(l.Factory, l, alert, ofw)
 					if ofw == nil {
-						leaky.logger.Debugf("Overflow has been discarded (%T)", f)
+						l.logger.Debugf("Overflow has been discarded (%T)", f)
 						break
 					}
 				}
-				leaky.logger.Infof("Timed Overflow")
+				l.logger.Infof("Timed Overflow")
 			} else {
-				leaky.logger.Debugf("bucket underflow, destroy")
-				metrics.BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+				l.logger.Debugf("bucket underflow, destroy")
+				metrics.BucketsUnderflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 			}
-			if leaky.logger.Level >= log.TraceLevel {
+			if l.logger.Level >= log.TraceLevel {
 				// don't sdump if it's not going to be printed, it's expensive
-				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
+				l.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
 			}
 
-			leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
-			leaky.logger.Tracef("Returning from leaky routine.")
+			l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
+			l.logger.Tracef("Returning from leaky routine.")
 			return
 		case <-ctx.Done():
-			leaky.logger.Debugf("Bucket externally killed, return")
-			for len(leaky.Out) > 0 {
-				ofw := <-leaky.Out
-				leaky.overflow(ofw)
+			l.logger.Debugf("Bucket externally killed, return")
+			for len(l.Out) > 0 {
+				ofw := <-l.Out
+				l.overflow(ofw)
 			}
-			leaky.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: leaky.Mapkey}}
+			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
 			return
 		}
 	End:
 	}
 }
 
-func Pour(leaky *Leaky, msg pipeline.Event) {
-	leaky.wgDumpState.Wait()
-	leaky.wgPour.Add(1)
-	defer leaky.wgPour.Done()
+// TODO: can't be method, a field has the same name
+func Pour(l *Leaky, gate pourGate, msg pipeline.Event) {
+	end := gate.BeginPour()
+	defer end()
 
-	leaky.Total_count += 1
-	if leaky.First_ts.IsZero() {
-		leaky.First_ts = time.Now().UTC()
+	l.Total_count += 1
+	if l.First_ts.IsZero() {
+		l.First_ts = time.Now().UTC()
 	}
-	leaky.Last_ts = time.Now().UTC()
+	l.Last_ts = time.Now().UTC()
 
-	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
-		leaky.Queue.Add(msg)
+	if l.Limiter.Allow() || l.conditionalOverflow {
+		l.Queue.Add(msg)
 	} else {
-		leaky.Ovflw_ts = time.Now().UTC()
-		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
-		leaky.Queue.Add(msg)
-		leaky.Out <- leaky.Queue
+		l.Ovflw_ts = time.Now().UTC()
+		l.logger.Debugf("Last event to be poured, bucket overflow.")
+		l.Queue.Add(msg)
+		l.Out <- l.Queue
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *pipeline.Queue) {
-	close(leaky.Signal)
-	alert, err := NewAlert(leaky, ofw)
+func (l *Leaky) overflow(ofw *pipeline.Queue) {
+	l.markDone()
+	alert, err := NewAlert(l, ofw)
 	if err != nil {
 		log.Errorf("%s", err)
 	}
-	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
-	for _, f := range leaky.BucketConfig.processors {
-		alert, ofw = f.OnBucketOverflow(leaky.BucketConfig, leaky, alert, ofw)
+	l.logger.Tracef("Overflow hooks time : %v", l.Factory.processors)
+	for _, f := range l.Factory.processors {
+		alert, ofw = f.OnBucketOverflow(l.Factory, l, alert, ofw)
 		if ofw == nil {
-			leaky.logger.Debugf("Overflow has been discarded (%T)", f)
+			l.logger.Debugf("Overflow has been discarded (%T)", f)
 			break
 		}
 	}
-	if leaky.logger.Level >= log.TraceLevel {
-		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
+	if l.logger.Level >= log.TraceLevel {
+		l.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}
-	mt, _ := leaky.Ovflw_ts.MarshalText()
-	leaky.logger.Tracef("overflow time : %s", mt)
+	mt, _ := l.Ovflw_ts.MarshalText()
+	l.logger.Tracef("overflow time : %s", mt)
 
-	metrics.BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+	metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 
-	leaky.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)}
+	l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)}
 }
+
+func (l *Leaky) markReady() {
+	l.readyOnce.Do(func() {
+		close(l.ready)
+	})
+}
+
+func (l *Leaky) markDone() {
+	l.doneOnce.Do(func() {
+		close(l.done)
+	})
+}
+

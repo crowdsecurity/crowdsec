@@ -8,11 +8,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-type Trigger struct {
+type TriggerProcessor struct {
 	DumbProcessor
 }
 
-func (*Trigger) OnBucketPour(_ *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
+func (*TriggerProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, l *Leaky) *pipeline.Event {
 	// Pour makes the bucket overflow all the time
 	// TriggerPour unconditionally overflows
 	// default if cannot parse

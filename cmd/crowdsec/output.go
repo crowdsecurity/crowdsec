@@ -56,7 +56,7 @@ func runOutput(
 	ctx context.Context,
 	input chan pipeline.Event,
 	overflow chan pipeline.Event,
-	buckets *leaky.Buckets,
+	bucketStore *leaky.BucketStore,
 	postOverflowCTX parser.UnixParserCtx,
 	postOverflowNodes []parser.Node,
 	client *apiclient.ApiClient,
@@ -105,10 +105,9 @@ func runOutput(
 			}
 			return nil
 		case event := <-overflow:
-			ov := event.Overflow
 			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
-			if ov.Alert == nil && ov.Mapkey != "" {
-				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+				bucketStore.Delete(event.Overflow.Mapkey)
 				break
 			}
 
@@ -118,6 +117,7 @@ func runOutput(
 				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 
+			ov := event.Overflow
 			log.Info(*ov.Alert.Message)
 
 			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this

@@ -121,7 +121,7 @@ linters:
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
-            - '!**/pkg/leakybucket/buckets_test.go'
+            - '!**/pkg/leakybucket/bucketstore_test.go'
             - '!**/pkg/leakybucket/manager_load.go'
             - '!**/pkg/parser/node.go'
             - '!**/pkg/parser/node_test.go'
@@ -595,11 +595,6 @@ linters:
       - linters:
           - revive
         path: cmd/crowdsec/win_service.go
-        text: 'deep-exit: .*'
-
-      - linters:
-          - revive
-        path: cmd/crowdsec/flags.go
         text: 'deep-exit: .*'
 
       - linters:
