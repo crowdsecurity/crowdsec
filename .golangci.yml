@@ -599,11 +599,6 @@ linters:
 
       - linters:
           - revive
-        path: cmd/crowdsec/flags.go
-        text: 'deep-exit: .*'
-
-      - linters:
-          - revive
         path: cmd/crowdsec-cli/clisetup/setup/systemd_test.go
         text: 'deep-exit: .*'
 

@@ -19,9 +19,9 @@ type BlackholeProcessor struct {
 }
 
 func NewBlackholeProcessor(f *BucketFactory) (*BlackholeProcessor, error) {
-	duration, err := time.ParseDuration(f.Blackhole)
+	duration, err := time.ParseDuration(f.Spec.Blackhole)
 	if err != nil {
-		return nil, fmt.Errorf("blackhole duration not valid '%s'", f.Blackhole)
+		return nil, fmt.Errorf("blackhole duration not valid '%s'", f.Spec.Blackhole)
 	}
 	return &BlackholeProcessor{
 		duration:      duration,
