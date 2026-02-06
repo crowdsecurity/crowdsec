@@ -48,7 +48,7 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	)
 	inf := f.Core().V1().Pods().Informer()
 
-	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { d.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
 		UpdateFunc: func(_, newObj interface{}) {
 			d.startPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
@@ -65,6 +65,9 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 		},
 	})
 
+	if err != nil {
+		return fmt.Errorf("while adding event handler: %w", err)
+	}
 	f.Start(ctx.Done())
 	if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
 		log.Fatal("cache sync failed")
@@ -169,19 +172,5 @@ func (*Source) stopPod(p *corev1.Pod, mu *sync.Mutex, cancels map[string]context
 	mu.Unlock()
 	if ok {
 		cancel()
-	}
-}
-
-func printer(ctx context.Context, in <-chan string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case line, ok := <-in:
-			if !ok {
-				return
-			}
-			fmt.Println(line)
-		}
 	}
 }
