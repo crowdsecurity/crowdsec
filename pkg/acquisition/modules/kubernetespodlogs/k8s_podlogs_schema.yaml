@@ -1,0 +1,109 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: CrowdSec Kubernetes pod logs datasource configuration
+type: object
+required:
+  - type
+  - node_name
+properties:
+  type:
+    const: k8s-podlogs
+  api_server:
+    type: string
+    description: Base URL of the Kubernetes API server.
+    default: https://kubernetes.default.svc
+  token_file:
+    type: string
+    description: Path to the service account token used to authenticate against the API server; at least one of token_file or bearer_token must be provided.
+    default: /var/run/secrets/kubernetes.io/serviceaccount/token
+  bearer_token:
+    type: string
+    description: Raw bearer token to use instead of reading token_file; at least one of bearer_token or token_file must be provided.
+  ca_cert:
+    type: string
+    description: Path to the CA bundle validating the API server certificate.
+    default: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  insecure_skip_verify:
+    type: boolean
+    description: Disable TLS verification when connecting to the API server.
+    default: false
+  node_name:
+    type: string
+    description: Name of the node whose pods should be tailed; typically set via the NODE_NAME environment variable.
+  namespaces:
+    type: array
+    description: Optional allow-list of namespaces to watch (defaults to all namespaces).
+    items:
+      type: string
+  label_selector:
+    type: string
+    description: Kubernetes label selector applied when listing pods.
+  containers:
+    type: array
+    description: Optional list of container names to include; defaults to all containers.
+    items:
+      type: string
+  since_seconds:
+    type: integer
+    minimum: 0
+    description: Start log streaming from events newer than the provided age.
+  tail_lines:
+    type: integer
+    minimum: 0
+    description: Number of most-recent log lines to read before following.
+  limit_bytes:
+    type: integer
+    minimum: 0
+    description: Maximum number of bytes returned by the Kubernetes log endpoint for each request.
+  timestamps:
+    type: boolean
+    description: Request Kubernetes to prefix every log line with a timestamp.
+    default: false
+  follow:
+    type: boolean
+    description: Keep the log stream open to follow new entries.
+    default: true
+  resync_period:
+    type: string
+    pattern: '^([0-9]+(ns|us|ms|s|m|h))+$'
+    description: Interval between reconciliation cycles where new pod streams are created and stale ones are stopped.
+    default: 30s
+  request_timeout:
+    type: string
+    pattern: '^([0-9]+(ns|us|ms|s|m|h))+$'
+    description: Timeout applied to Kubernetes API list calls.
+    default: 10s
+  max_line_bytes:
+    type: integer
+    minimum: 1024
+    description: Maximum accepted log line size before failing the stream.
+    default: 1048576
+  mode:
+    type: string
+    enum: [tail]
+    description: Acquisition mode; kubernetes pod logs only support tail.
+    default: tail
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Optional labels attached to every emitted event.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, info, debug, trace]
+    description: Overrides datasource logger level.
+  source:
+    type: string
+    description: Custom source string stamped on events.
+  name:
+    type: string
+    description: Datasource name used in metrics and logs.
+  use_time_machine:
+    type: boolean
+    description: Enable acquisition time-machine mode.
+  unique_id:
+    type: string
+    description: Stable identifier used for deduplication.
+  transform:
+    type: string
+    description: ExprLang transform applied to events.
+additionalProperties: false
