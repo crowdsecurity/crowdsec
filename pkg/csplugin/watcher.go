@@ -82,66 +82,67 @@ func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
 }
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
-	var watchTime time.Duration
-	watchCount := -1
-	// Threshold can be set : by time, by count, or both
-	// if only time is set, honor it
-	// if only count is set, put timer to 1 second and just check size
-	// if both are set, set timer to 1 second, but check size && time
-	interval := pw.PluginConfigByName[pluginName].GroupWait
-	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
+	cfg := pw.PluginConfigByName[pluginName]
+	interval := cfg.GroupWait
+	threshold := cfg.GroupThreshold
 
-	//only size is set
-	switch {
-	case threshold > 0 && interval == 0:
-		watchCount = threshold
-		watchTime = DefaultEmptyTicker
-	case interval != 0 && threshold == 0:
-		//only time is set
-		watchTime = interval
-	case interval != 0 && threshold != 0:
-		//both are set
-		watchTime = DefaultEmptyTicker
-		watchCount = threshold
-	default:
-		//none are set, we sent every event we receive
-		watchTime = DefaultEmptyTicker
-		watchCount = 1
+	// Alert flush (notification) can be triggered: by interval, by threshold (alert count), or both
+	//
+	// if only interval is set:
+	//  - check with tick=interval
+	//  - flush at every tick (if there's anything to notify, ofc)
+	//
+	// if only threshold is set:
+	//  - check with tick=1 second
+	//  - flush if threshold is met
+	//
+	// if both are set:
+	//  - check with tick=1 second
+	//  - flush on either threshold met or interval elapsed
+
+	tick := DefaultEmptyTicker
+	if interval != 0 && threshold == 0 {
+		tick = interval
 	}
 
-	ticker := time.NewTicker(watchTime)
+	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
+
 	lastSend := time.Now()
+
 	for {
 		select {
 		case <-ticker.C:
-			send := false
-			//if count threshold was set, honor no matter what
-			if pc, _ := pw.AlertCountByPluginName.Get(pluginName); watchCount > 0 && pc >= watchCount {
-				log.Tracef("[%s] %d alerts received, sending\n", pluginName, pc)
-				send = true
-				pw.AlertCountByPluginName.Set(pluginName, 0)
-			}
-			//if time threshold only was set
-			if watchTime > 0 && watchTime == interval {
-				log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
-				send = true
+			pc, _ := pw.AlertCountByPluginName.Get(pluginName)
+			if pc == 0 {
+				// don't send empty notification
+				continue
 			}
 
-			//if we hit timer because it was set low to honor count, check if we should trigger
-			if watchTime == DefaultEmptyTicker && watchTime != interval && interval != 0 {
-				if lastSend.Add(interval).Before(time.Now()) {
-					log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
-					send = true
-					lastSend = time.Now()
-				}
+			now := time.Now()
+
+			// See whether to flush, and why
+
+			noneConfigure := interval == 0 && threshold == 0
+			byCount := threshold > 0 && pc >= threshold
+			byTime := interval != 0 && now.Sub(lastSend) >= interval
+
+			if !noneConfigure && !byCount && !byTime {
+				continue
 			}
-			if send {
+
+			if byCount {
+				log.Tracef("[%s] %d alerts received, sending\n", pluginName, pc)
+			} else if byTime {
+				log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
+			} else {
 				log.Tracef("sending alerts to %s", pluginName)
-				pw.PluginEvents <- pluginName
 			}
+
+			lastSend = now
+			pw.AlertCountByPluginName.Set(pluginName, 0)
+			pw.PluginEvents <- pluginName
 		case <-pw.tomb.Dying():
-			ticker.Stop()
-			// emptying
 			// no lock here because we have the broker still listening even in dying state before killing us
 			pw.PluginEvents <- pluginName
 			return
@@ -153,11 +154,12 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 	for {
 		select {
 		case pluginName := <-pw.Inserts:
-			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
-			if _, ok := pw.PluginConfigByName[pluginName]; ok {
-				curr, _ := pw.AlertCountByPluginName.Get(pluginName)
-				pw.AlertCountByPluginName.Set(pluginName, curr+1)
+			// we only "count" pending alerts, and watchPluginTicker is actually going to send it
+			curr, ok := pw.AlertCountByPluginName.Get(pluginName)
+			if !ok {
+				curr = 0
 			}
+			pw.AlertCountByPluginName.Set(pluginName, curr+1)
 		case <-pw.tomb.Dying():
 			return
 		}
