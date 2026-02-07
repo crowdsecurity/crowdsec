@@ -9,11 +9,14 @@ import (
 	"strings"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -36,9 +39,10 @@ const (
 )
 
 const (
-	BanRemediation     = "ban"
-	CaptchaRemediation = "captcha"
-	AllowRemediation   = "allow"
+	BanRemediation       = "ban"
+	CaptchaRemediation   = "captcha"
+	AllowRemediation     = "allow"
+	ChallengeRemediation = "challenge"
 )
 
 type phase int
@@ -87,11 +91,14 @@ func (h *Hook) Build(hookStage int) error {
 type AppsecTempResponse struct {
 	InBandInterrupt         bool
 	OutOfBandInterrupt      bool
-	Action                  string // allow, deny, captcha, log
-	UserHTTPResponseCode    int    // The response code to send to the user
-	BouncerHTTPResponseCode int    // The response code to send to the remediation component
-	SendEvent               bool   // do we send an internal event on rule match
-	SendAlert               bool   // do we send an alert on rule match
+	Action                  string                // allow, deny, captcha, challenge, log
+	UserHTTPResponseCode    int                   // The response code to send to the user
+	UserHTTPBodyContent     string                // The body content to send to the user, only for challenge response
+	UserHTTPCookies         []cookie.AppsecCookie // Raw Set-Cookie headers to send to the user.
+	UserHeaders             map[string][]string   // Headers to send to the user
+	BouncerHTTPResponseCode int                   // The response code to send to the remediation component
+	SendEvent               bool                  // do we send an internal event on rule match
+	SendAlert               bool                  // do we send an alert on rule match
 }
 
 type AppsecDropInfo struct {
@@ -109,6 +116,8 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	RequireChallenge bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -123,8 +132,11 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
 	s.Response.SendEvent = true
 	s.Response.SendAlert = true
+	s.Response.UserHTTPBodyContent = ""
+	s.Response.UserHTTPCookies = nil
 	s.PendingAction = nil
 	s.PendingHTTPCode = nil
+	s.RequireChallenge = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -394,10 +406,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	// set the defaults
 	switch wc.DefaultRemediation {
-	case BanRemediation, CaptchaRemediation, AllowRemediation:
+	case BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation:
 		// those are the officially supported remediation(s)
 	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation)
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation)
 	}
 
 	ret.Name = wc.Name
@@ -849,19 +861,125 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) e
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) SetChallengeBody(state *AppsecRequestState, content string) error {
+	w.Logger.Debugf("setting challenge body content")
+	state.Response.UserHTTPBodyContent = content
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeCookie(state *AppsecRequestState, cookie cookie.AppsecCookie) error {
+	w.Logger.Debugf("adding challenge cookie")
+	state.Response.UserHTTPCookies = append(state.Response.UserHTTPCookies, cookie)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name string, value string) error {
+	w.Logger.Debugf("adding challenge headers")
+	if state.Response.UserHeaders == nil {
+		state.Response.UserHeaders = make(map[string][]string)
+	}
+	state.Response.UserHeaders[name] = append(state.Response.UserHeaders[name], value)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	w.Logger.Debugf("requiring valid challenge")
+
+	// If the page requests is /crowdsec-internal/challenge/challenge.js, just return it, don't validate anything
+	// Then check if the request has a challenge response
+	// If there's a challenge response, validate it
+	// If ok, generate cookie + return it (challenge remediation + meta refresh + cookie)
+	// If bad, return challenge page
+	// Finally, check for the challenge cookie
+	// If it's valid, just return
+	// If not, return the challenge HTML page
+
+	if request.HTTPRequest.URL.Path == challenge.ChallengeJSPath && request.HTTPRequest.Method == http.MethodGet {
+		w.Logger.Infof("Serving challenge.js")
+		script, err := challenge.BuildFingerprintScript()
+		if err != nil {
+			return fmt.Errorf("unable to build challenge.js: %w", err)
+		}
+		w.SetAction(state, ChallengeRemediation)
+		w.SetHTTPCode(state, http.StatusOK)
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+		state.RequireChallenge = true
+		w.SetChallengeBody(state, script)
+		w.SetChallengeHeader(state, "Content-Type", "application/javascript")
+		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
+		return nil
+	}
+
+	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
+		w.Logger.Debugf("Validating challenge response")
+		cookie, err := challenge.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		if err != nil {
+			return fmt.Errorf("unable to validate challenge response: %w", err)
+		}
+		w.SetAction(state, ChallengeRemediation)
+		w.SetHTTPCode(state, http.StatusOK)
+		// Empty response, we just set the cookie, the refresh is handled in the challenge page
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+		w.SetChallengeCookie(state, *cookie)
+		w.SetChallengeBody(state, "")
+		w.SetChallengeHeader(state, "Content-Type", "text/html")
+		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
+		state.RequireChallenge = true
+		return nil
+	}
+
+	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	if err != nil || cookie.Value == "" {
+		w.Logger.Debugf("no valid challenge cookie found")
+		challengePage, err := challenge.GetChallengePage()
+		if err != nil {
+			return fmt.Errorf("unable to get challenge page: %w", err)
+		}
+		w.SetAction(state, ChallengeRemediation)
+		w.SetHTTPCode(state, http.StatusOK)
+
+		// FIXME: don't do this here, should be handled the same way as a block
+		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+
+		w.SetChallengeBody(state, challengePage)
+		w.SetChallengeHeader(state, "Content-Type", "text/html")
+		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
+		state.RequireChallenge = true
+		return nil
+	}
+	return nil
+}
+
 type BodyResponse struct {
-	Action     string `json:"action"`
-	HTTPStatus int    `json:"http_status"`
+	Action          string              `json:"action"`
+	HTTPStatus      int                 `json:"http_status"`
+	UserBodyContent string              `json:"user_body_content,omitempty"`
+	UserCookies     []string            `json:"user_cookies,omitempty"`
+	UserHeaders     map[string][]string `json:"user_headers,omitempty"`
 }
 
 func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) (int, BodyResponse) {
 	var bouncerStatusCode int
 
 	resp := BodyResponse{Action: response.Action}
-	if response.Action == AllowRemediation {
+
+	spew.Dump("Generating response", response)
+
+	switch response.Action {
+	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
-	} else { // ban, captcha and anything else
+	case ChallengeRemediation:
+		resp.UserBodyContent = response.UserHTTPBodyContent
+		resp.UserCookies = make([]string, 0, len(response.UserHTTPCookies))
+		for _, cookie := range response.UserHTTPCookies {
+			resp.UserCookies = append(resp.UserCookies, cookie.String())
+		}
+		resp.UserHeaders = response.UserHeaders
+		// Return code are handled the same way for challenge/ban/captcha
+		// There's probably a less brittle way to do this, but falltrhough is easier
+		fallthrough
+	case BanRemediation, CaptchaRemediation:
 		resp.HTTPStatus = response.UserHTTPResponseCode
 		if resp.HTTPStatus == 0 {
 			resp.HTTPStatus = w.Config.UserBlockedHTTPCode
