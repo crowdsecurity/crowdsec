@@ -48,7 +48,10 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	)
 	inf := f.Core().V1().Pods().Informer()
 
-	err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// We ignore the ResourceEventHandlerRegistration returned by
+	// AddEventHandler since we don't need to remove the handlers until shutdown,
+	// and we will stop the entire informer at that time.
+	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { d.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
 		UpdateFunc: func(_, newObj interface{}) {
 			d.startPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
@@ -70,7 +73,7 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	}
 	f.Start(ctx.Done())
 	if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
-		log.Fatal("cache sync failed")
+		return fmt.Errorf("cache sync failed")
 	}
 
 	<-ctx.Done()
