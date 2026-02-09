@@ -1,4 +1,4 @@
-package kubernetespodlogs
+package kubernetes
 
 import (
 	log "github.com/sirupsen/logrus"

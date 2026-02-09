@@ -1,4 +1,4 @@
-//go:build !no_datasource_kubernetespodlogs
+//go:build !no_datasource_kubernetes
 
 package metrics
 
@@ -6,16 +6,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const KubernetesPodLogsDataSourceLinesReadMetricName = "cs_kubernetespodlogssource_hits_total"
+const KubernetesDataSourceLinesReadMetricName = "cs_kubernetessource_hits_total"
 
-var KubernetesPodLogsDataSourceLinesRead = prometheus.NewCounterVec(
+var KubernetesDataSourceLinesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: KubernetesPodLogsDataSourceLinesReadMetricName,
+		Name: KubernetesDataSourceLinesReadMetricName,
 		Help: "Total lines that were read.",
 	},
 	[]string{"source", "datasource_type", "acquis_type"})
 
 //nolint:gochecknoinits
 func init() {
-	RegisterAcquisitionMetric(KubernetesPodLogsDataSourceLinesReadMetricName)
+	RegisterAcquisitionMetric(KubernetesDataSourceLinesReadMetricName)
 }

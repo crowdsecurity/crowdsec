@@ -1,4 +1,4 @@
-package kubernetespodlogs
+package kubernetes
 
 import (
 	"github.com/prometheus/client_golang/prometheus"

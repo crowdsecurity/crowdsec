@@ -1,4 +1,4 @@
-package kubernetespodlogs
+package kubernetes
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"

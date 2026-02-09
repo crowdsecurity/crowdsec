@@ -1,4 +1,4 @@
-package kubernetespodlogs
+package kubernetes
 
 import (
 	"context"
@@ -40,7 +40,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.logger != nil {
-		s.logger.Tracef("DockerAcquisition configuration: %+v", s.Config)
+		s.logger.Tracef("Kubernetes configuration: %+v", s.Config)
 	}
 
 	return nil

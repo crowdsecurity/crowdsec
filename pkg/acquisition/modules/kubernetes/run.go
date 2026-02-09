@@ -1,4 +1,4 @@
-package kubernetespodlogs
+package kubernetes
 
 import (
 	"bufio"
@@ -134,7 +134,7 @@ func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *
 					l.Process = true
 					l.Module = s.GetName()
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
+						metrics.KubernetesDatasourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 					}
 					evt := pipeline.MakeEvent(true, pipeline.LOG, true)
 					evt.Line = l
