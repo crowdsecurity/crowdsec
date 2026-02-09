@@ -18,7 +18,7 @@ func (*Source) GetName() string {
 }
 
 func (s *Source) GetMode() string {
-	return d.Config.Mode
+	return s.Config.Mode
 }
 
 func (*Source) CanRun() error {
@@ -26,5 +26,5 @@ func (*Source) CanRun() error {
 }
 
 func (s *Source) GetUuid() string {
-	return d.Config.UniqueId
+	return s.Config.UniqueId
 }
