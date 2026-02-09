@@ -1,7 +1,7 @@
 package kubernetespodlogs
 
 import (
-	"fmt"
+	"errors"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -27,5 +27,5 @@ func (s *Source) buildConfig() (*rest.Config, error) {
 		return kubeConfig.ClientConfig()
 	}
 	// This should never happen, but just in case...
-	return nil, fmt.Errorf("could not create kubernetes client configuration")
+	return nil, errors.New("could not create kubernetes client configuration")
 }

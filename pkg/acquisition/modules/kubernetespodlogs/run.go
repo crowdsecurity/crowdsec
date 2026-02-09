@@ -3,6 +3,7 @@ package kubernetespodlogs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -73,7 +74,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	}
 	f.Start(ctx.Done())
 	if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
-		return fmt.Errorf("cache sync failed")
+		return errors.New("cache sync failed")
 	}
 
 	<-ctx.Done()

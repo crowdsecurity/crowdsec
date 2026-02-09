@@ -2,6 +2,7 @@ package kubernetespodlogs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,10 +74,10 @@ func (c *Configuration) SetDefaults() {
 
 func (s *Source) Validate() error {
 	if s.Config.Selector == "" {
-		return fmt.Errorf("label must be set in kubernetespodlogs acquisition")
+		return errors.New("label must be set in kubernetespodlogs acquisition")
 	}
 	if s.Config.Auth != nil && s.Config.KubeConfigFile != "" {
-		return fmt.Errorf("cannot use both auth and kube_config options")
+		return errors.New("cannot use both auth and kube_config options")
 
 	}
 	return nil
