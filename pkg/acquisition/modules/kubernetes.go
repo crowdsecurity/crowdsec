@@ -1,4 +1,4 @@
-//go:build !no_datasource_kubernetespodlogs
+//go:build !no_datasource_kubernetes
 
 package modules
 

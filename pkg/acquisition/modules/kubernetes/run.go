@@ -30,7 +30,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	s.logger.Info("Starting Kubernetes Pod Logs acquisition")
+	s.logger.Info("Starting Kubernetes acquisition")
 
 	cfg, err := s.buildConfig()
 	if err != nil {
@@ -134,7 +134,7 @@ func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *
 					l.Process = true
 					l.Module = s.GetName()
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.KubernetesDatasourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
+						metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 					}
 					evt := pipeline.MakeEvent(true, pipeline.LOG, true)
 					evt.Line = l
