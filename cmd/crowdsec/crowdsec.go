@@ -127,7 +127,7 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 			aggregated = true
 		}
 
-		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
+		if err := acquisition.GetMetrics(datasources, aggregated); err != nil {
 			return fmt.Errorf("while fetching prometheus metrics for datasources: %w", err)
 		}
 	}
@@ -167,7 +167,7 @@ func runCrowdsec(
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, dataSources, logLines, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(ctx, datasources, logLines, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
@@ -212,7 +212,7 @@ func serveCrowdsec(
 		waitOnTomb()
 		log.Debugf("Shutting down crowdsec routines")
 
-		if err := ShutdownCrowdsecRoutines(cancel, &g); err != nil {
+		if err := ShutdownCrowdsecRoutines(cancel, &g, datasources); err != nil {
 			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 
