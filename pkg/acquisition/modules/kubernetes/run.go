@@ -34,11 +34,11 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 	cfg, err := s.buildConfig()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("can't create a kubernetes client: %s", err)
 	}
 
 	cancels := map[string]context.CancelFunc{}
