@@ -8,7 +8,6 @@ import (
 var (
 	// verify interface compliance
 	_ types.DataSource      = (*Source)(nil)
-	_ types.Fetcher         = (*Source)(nil)
 	_ types.Tailer          = (*Source)(nil)
 	_ types.MetricsProvider = (*Source)(nil)
 )
