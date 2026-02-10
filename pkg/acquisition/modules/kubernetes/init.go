@@ -13,7 +13,7 @@ var (
 	_ types.MetricsProvider = (*Source)(nil)
 )
 
-const ModuleName = "kubernetespodlogs"
+const ModuleName = "kubernetes"
 
 //nolint:gochecknoinits
 func init() {

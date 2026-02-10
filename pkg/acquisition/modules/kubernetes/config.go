@@ -74,7 +74,7 @@ func (c *Configuration) SetDefaults() {
 
 func (s *Source) Validate() error {
 	if s.Config.Selector == "" {
-		return errors.New("label must be set in kubernetespodlogs acquisition")
+		return errors.New("label must be set in kubernetes acquisition")
 	}
 	if s.Config.Auth != nil && s.Config.KubeConfigFile != "" {
 		return errors.New("cannot use both auth and kube_config options")
