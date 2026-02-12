@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <style>
         * {
@@ -642,6 +643,138 @@
         .mono {
             font-family: 'Courier New', monospace;
         }
+
+        /* Progress bar styles */
+        .progress-bar {
+            height: 8px;
+            background: var(--border-default);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+            transition: width 0.3s ease;
+        }
+
+        /* Top 3 grid layout */
+        .top3-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .top3-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .top3-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .top3-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .top3-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .top3-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .top3-item-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .top3-item-count {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .top3-item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        /* Chart containers */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 16px;
+        }
+
+        .chart-small {
+            height: 250px;
+        }
+
+        /* Metrics page specific styles */
+        .metrics-section {
+            margin-bottom: 32px;
+        }
+
+        .metrics-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-unit {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -654,6 +787,7 @@
                     <li><a href="#/" class="nav-link">📊 Vue d'ensemble</a></li>
                     <li><a href="#/alerts" class="nav-link">🚨 Alertes</a></li>
                     <li><a href="#/decisions" class="nav-link">⚖️ Décisions</a></li>
+                    <li><a href="#/metrics" class="nav-link">📈 Métriques</a></li>
                     <li><a href="#/machines" class="nav-link">🖥️ Machines</a></li>
                     <li><a href="#/bouncers" class="nav-link">🛡️ Bouncers</a></li>
                 </ul>
@@ -680,7 +814,9 @@
             bouncers: [],
             metrics: null,
             hostnames: {},
-            currentMachineId: null
+            currentMachineId: null,
+            alertsStats: {},
+            metricsStats: {}
         };
 
         // API calls
@@ -726,10 +862,14 @@
         }
 
         async function loadAlertsData() {
-            state.alerts = await fetchAPI('alerts') || [];
-            if (Object.keys(state.hostnames).length === 0) {
-                state.hostnames = await fetchAPI('config/hostnames') || {};
-            }
+            const [alerts, hostnames, stats] = await Promise.all([
+                fetchAPI('alerts'),
+                fetchAPI('config/hostnames'),
+                fetchAPI('stats/alerts')
+            ]);
+            state.alerts = alerts || [];
+            state.hostnames = hostnames || {};
+            state.alertsStats = stats || {};
             renderAlerts();
         }
 
@@ -774,6 +914,24 @@
         function getMachineName(machine) {
             const machineId = machine.machineId || machine.machine_id || machine.name;
             return state.hostnames[machineId] || machineId;
+        }
+
+        // Helper function to convert country code to flag emoji
+        function getCountryFlag(countryCode) {
+            if (!countryCode || countryCode === 'N/A' || countryCode.length !== 2) return '🏴';
+            const codePoints = countryCode
+                .toUpperCase()
+                .split('')
+                .map(char => 127397 + char.charCodeAt());
+            return String.fromCodePoint(...codePoints);
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Render functions
@@ -916,10 +1074,189 @@
         }
 
         function renderAlerts() {
+            const stats = state.alertsStats || {};
+            
+            // Statistiques pour les compteurs
+            const uniqueIps = stats.unique_ips || 0;
+            const uniqueAs = stats.unique_as || 0;
+            const uniqueCountries = stats.unique_countries || 0;
+            const uniqueScenarios = stats.unique_scenarios || 0;
+            const uniqueMachines = stats.unique_machines || 0;
+            const noiseCanceling = stats.noise_canceling || 0;
+            
+            // Top 3 data
+            const topIps = stats.top_ips || [];
+            const topAs = stats.top_as || [];
+            const topCountries = stats.top_countries || [];
+            const topScenarios = stats.top_scenarios || [];
+            const topMachines = stats.top_machines || [];
+            
             document.getElementById('app').innerHTML = `
                 <div class="page-header">
                     <h1 class="page-title">Alertes</h1>
                     <p class="page-subtitle">Gestion des alertes de sécurité</p>
+                </div>
+
+                <!-- Visibility Counters -->
+                <div class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="card stat-card">
+                        <div class="stat-label">Noise Canceling</div>
+                        <div class="stat-value">${noiseCanceling}%</div>
+                        <div class="stat-change">Alertes filtrées</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Source IPs</div>
+                        <div class="stat-value">${uniqueIps}</div>
+                        <div class="stat-change">IPs distinctes</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Source AS</div>
+                        <div class="stat-value">${uniqueAs}</div>
+                        <div class="stat-change">AS distincts</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Pays</div>
+                        <div class="stat-value">${uniqueCountries}</div>
+                        <div class="stat-change">Pays distincts</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Scénarios</div>
+                        <div class="stat-value">${uniqueScenarios}</div>
+                        <div class="stat-change">Types d'attaques</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Security Engines</div>
+                        <div class="stat-value">${uniqueMachines}</div>
+                        <div class="stat-change">Machines actives</div>
+                    </div>
+                </div>
+
+                <!-- Top 3 Source IPs -->
+                ${topIps.length > 0 ? `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source IP</h3>
+                    <div class="top3-grid">
+                        ${topIps.slice(0, 3).map((item, index) => `
+                            <div class="top3-card">
+                                <div class="top3-title">#${index + 1} IP Source</div>
+                                <div class="top3-item">
+                                    <div class="top3-item-header">
+                                        <span class="top3-item-label mono">${escapeHtml(item.ip)}</span>
+                                        <span class="top3-item-count">${item.count} alertes</span>
+                                    </div>
+                                    <div class="top3-item-meta">${escapeHtml(item.as_name)} | ${item.country_flag} ${escapeHtml(item.country)}</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Top 3 Source AS -->
+                ${topAs.length > 0 ? `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source AS</h3>
+                    <div class="top3-grid">
+                        ${topAs.slice(0, 3).map((item, index) => `
+                            <div class="top3-card">
+                                <div class="top3-title">#${index + 1} Autonomous System</div>
+                                <div class="top3-item">
+                                    <div class="top3-item-header">
+                                        <span class="top3-item-label">${escapeHtml(item.as_name)}</span>
+                                        <span class="top3-item-count">${item.count} alertes</span>
+                                    </div>
+                                    <div class="top3-item-meta">${escapeHtml(item.as_number)} | ${item.country_flag} ${escapeHtml(item.country)}</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Top 3 Countries -->
+                ${topCountries.length > 0 ? `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source Countries</h3>
+                    <div class="top3-grid">
+                        ${topCountries.slice(0, 3).map((item, index) => `
+                            <div class="top3-card">
+                                <div class="top3-title">#${index + 1} Pays Source</div>
+                                <div class="top3-item">
+                                    <div class="top3-item-header">
+                                        <span class="top3-item-label">${item.country_flag} ${escapeHtml(item.country_name)}</span>
+                                        <span class="top3-item-count">${item.count} alertes</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Top Scenarios -->
+                ${topScenarios.length > 0 ? `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">🛡️ Top Scénarios</h3>
+                    <div class="top3-grid">
+                        ${topScenarios.slice(0, 6).map((item, index) => `
+                            <div class="top3-card">
+                                <div class="top3-item">
+                                    <div class="top3-item-header">
+                                        <span class="top3-item-label" style="font-size: 12px;">${escapeHtml(item.scenario)}</span>
+                                        <span class="top3-item-count">${item.count}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Top Security Engines -->
+                ${topMachines.length > 0 ? `
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">🖥️ Top Security Engines</h3>
+                    <div class="top3-grid">
+                        ${topMachines.slice(0, 6).map((item, index) => `
+                            <div class="top3-card">
+                                <div class="top3-item">
+                                    <div class="top3-item-header">
+                                        <span class="top3-item-label">${escapeHtml(item.hostname)}</span>
+                                        <span class="top3-item-count">${item.count}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Timeline Chart -->
+                <div class="card" style="margin-bottom: 24px; padding: 24px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">📊 Timeline des alertes</h3>
+                    <div class="chart-container">
+                        <canvas id="alertsTimelineChart"></canvas>
+                    </div>
                 </div>
 
                 <div class="search-container">
@@ -935,22 +1272,34 @@
                     ${state.alerts.length > 0 ? `
                         <table>
                             <thead>
-                                <tr>
+                                <tr id="alertsTableHeader">
                                     <th>ID</th>
                                     <th>Date</th>
                                     <th>Scénario</th>
-                                    <th>Source</th>
+                                    <th>Source IP</th>
+                                    <th>AS</th>
+                                    <th>Pays</th>
+                                    <th>Security Engine</th>
                                     <th>Événements</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="alertsTableBody">
-                                ${state.alerts.map(alert => `
+                                ${state.alerts.map(alert => {
+                                    const geoip = alert.geoip || {};
+                                    const machineId = alert.machine_id;
+                                    const machineName = machineId && state.hostnames[machineId] ? state.hostnames[machineId] : (machineId || 'N/A');
+                                    // Calculate colspan dynamically from header row
+                                    const numColumns = document.querySelectorAll('#alertsTableHeader th').length || 9;
+                                    return `
                                     <tr data-alert-id="${alert.id}">
                                         <td>#${alert.id}</td>
                                         <td>${formatDate(alert.created_at)}</td>
-                                        <td>${alert.scenario || 'N/A'}</td>
-                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
+                                        <td>${escapeHtml(alert.scenario) || 'N/A'}</td>
+                                        <td class="mono">${escapeHtml(alert.source?.value) || 'N/A'}</td>
+                                        <td>${escapeHtml(geoip.as_name) || 'N/A'}</td>
+                                        <td>${geoip.country_flag || '🏴'} ${escapeHtml(geoip.country_name) || 'N/A'}</td>
+                                        <td>${escapeHtml(machineName)}</td>
                                         <td>${alert.events_count || 0}</td>
                                         <td>
                                             <button class="btn btn-secondary btn-details" data-alert-id="${alert.id}">Détails</button>
@@ -958,22 +1307,28 @@
                                         </td>
                                     </tr>
                                     <tr id="alert-details-${alert.id}" class="hidden">
-                                        <td colspan="6">
+                                        <td colspan="${numColumns}">
                                             <div class="alert-details">
                                                 <div class="detail-section">
                                                     <div class="detail-title">Machine</div>
-                                                    <div class="detail-content">${alert.machine_id || 'N/A'}</div>
+                                                    <div class="detail-content">${escapeHtml(alert.machine_id) || 'N/A'}</div>
                                                 </div>
                                                 <div class="detail-section">
                                                     <div class="detail-title">Message</div>
-                                                    <div class="detail-content">${alert.message || 'N/A'}</div>
+                                                    <div class="detail-content">${escapeHtml(alert.message) || 'N/A'}</div>
                                                 </div>
+                                                ${geoip.as_number ? `
+                                                <div class="detail-section">
+                                                    <div class="detail-title">AS Info</div>
+                                                    <div class="detail-content">${escapeHtml(geoip.as_number)} - ${escapeHtml(geoip.as_name)}</div>
+                                                </div>
+                                                ` : ''}
                                                 ${alert.decisions && alert.decisions.length > 0 ? `
                                                 <div class="detail-section">
                                                     <div class="detail-title">Décisions (${alert.decisions.length})</div>
                                                     <div class="detail-content">
                                                         ${alert.decisions.map(d => `
-                                                            <span class="badge badge-${d.type}">${d.type}: ${d.value}</span>
+                                                            <span class="badge badge-${d.type}">${escapeHtml(d.type)}: ${escapeHtml(d.value)}</span>
                                                         `).join(' ')}
                                                     </div>
                                                 </div>
@@ -981,12 +1336,15 @@
                                             </div>
                                         </td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte</div><div class="empty-state-subtext">Les alertes apparaîtront ici lorsqu\'elles seront détectées</div></div>'}
                 </div>
             `;
+            
+            // Create timeline chart
+            createAlertsTimelineChart();
             
             // Add event listeners for alert buttons
             document.querySelectorAll('.btn-details').forEach(btn => {
@@ -1378,6 +1736,269 @@
             });
         }
 
+        // Chart.js functions
+        async function createAlertsTimelineChart() {
+            const timeline = await fetchAPI('stats/timeline') || [];
+            
+            const ctx = document.getElementById('alertsTimelineChart');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeline.map(t => t.time),
+                    datasets: [{
+                        label: 'Alertes',
+                        data: timeline.map(t => t.count),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e5e5e5' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#999' },
+                            grid: { color: '#2a2a2a' }
+                        },
+                        y: {
+                            ticks: { color: '#999' },
+                            grid: { color: '#2a2a2a' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createAttackDistributionChart(data) {
+            const ctx = document.getElementById('attackDistributionChart');
+            if (!ctx) return;
+            
+            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d.type),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: colors,
+                        borderColor: '#1a1a1a',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#e5e5e5', padding: 15 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTrafficBreakdownChart(data) {
+            const ctx = document.getElementById('trafficBreakdownChart');
+            if (!ctx) return;
+            
+            const colors = ['#3b82f6', '#10b981', '#f59e0b'];
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.map(d => d.origin),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: colors,
+                        borderColor: '#1a1a1a',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#e5e5e5', padding: 15 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createResourcesSavedChart(data) {
+            const ctx = document.getElementById('resourcesSavedChart');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Trafic sortant (MB)', 'Lignes de log', 'Stockage (KB)'],
+                    datasets: [{
+                        label: 'Ressources économisées',
+                        data: [data.outgoing_traffic_mb, data.log_lines, data.storage_kb],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                        borderColor: '#1a1a1a',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#999' },
+                            grid: { color: '#2a2a2a' }
+                        },
+                        y: {
+                            ticks: { color: '#999' },
+                            grid: { color: '#2a2a2a' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Render Metrics Page
+        async function renderMetrics() {
+            document.getElementById('app').innerHTML = '<div class="loading">Chargement des métriques...</div>';
+            
+            const stats = await fetchAPI('stats/metrics') || {};
+            state.metricsStats = stats;
+            
+            const traffic = stats.traffic || {};
+            const attackDist = stats.attack_distribution || [];
+            const resources = stats.resources_saved || {};
+            const originBreakdown = traffic.origin_breakdown || [];
+            
+            // Note: Les métriques de ressources économisées sont des estimations
+            // basées sur des formules arbitraires (voir backend pour détails)
+            
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Métriques</h1>
+                    <p class="page-subtitle">Analyse du trafic bloqué et ressources économisées</p>
+                </div>
+
+                <!-- Distribution of Malicious Intents -->
+                <div class="metrics-section">
+                    <h2 class="metrics-section-title">🎯 Distribution des types d'attaque</h2>
+                    <div class="card" style="padding: 24px;">
+                        <div class="chart-container">
+                            <canvas id="attackDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Malicious Traffic Discarded -->
+                <div class="metrics-section">
+                    <h2 class="metrics-section-title">🚫 Trafic malveillant bloqué</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${(traffic.bytes_dropped / 1024).toFixed(2)}</div>
+                            <div class="metric-unit">KB</div>
+                            <div class="metric-label">Bytes Dropped</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${traffic.packets_dropped || 0}</div>
+                            <div class="metric-label">Packets Dropped</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${traffic.requests_dropped || 0}</div>
+                            <div class="metric-label">Requests Dropped</div>
+                        </div>
+                    </div>
+                    
+                    ${originBreakdown.length > 0 ? `
+                    <div class="card" style="padding: 24px; margin-top: 16px;">
+                        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">Breakdown par origine</h3>
+                        <div class="chart-container chart-small">
+                            <canvas id="trafficBreakdownChart"></canvas>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <!-- Prevented Attacks -->
+                ${attackDist.length > 0 ? `
+                <div class="metrics-section">
+                    <h2 class="metrics-section-title">🛡️ Attaques prévenues</h2>
+                    <div class="card" style="padding: 24px;">
+                        ${attackDist.map(attack => `
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-size: 14px; font-weight: 500; text-transform: capitalize;">${escapeHtml(attack.type)}</span>
+                                    <span style="font-size: 14px; font-weight: 600; color: var(--accent-blue);">${attack.count} (${attack.percentage}%)</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-fill" style="width: ${attack.percentage}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Projected Resources Saved -->
+                <div class="metrics-section">
+                    <h2 class="metrics-section-title">💰 Ressources économisées (estimations)</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${resources.outgoing_traffic_mb || 0}</div>
+                            <div class="metric-unit">MB</div>
+                            <div class="metric-label">Trafic sortant bloqué</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${resources.log_lines || 0}</div>
+                            <div class="metric-label">Lignes de log économisées</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${resources.storage_kb || 0}</div>
+                            <div class="metric-unit">KB</div>
+                            <div class="metric-label">Stockage économisé</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="padding: 24px; margin-top: 16px;">
+                        <div class="chart-container chart-small">
+                            <canvas id="resourcesSavedChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Create charts
+            if (attackDist.length > 0) {
+                createAttackDistributionChart(attackDist);
+            }
+            if (originBreakdown.length > 0) {
+                createTrafficBreakdownChart(originBreakdown);
+            }
+            if (resources.outgoing_traffic_mb || resources.log_lines || resources.storage_kb) {
+                createResourcesSavedChart(resources);
+            }
+        }
+
+        async function loadMetricsData() {
+            await renderMetrics();
+        }
+
         // Router
         function navigate(page) {
             state.currentPage = page;
@@ -1419,6 +2040,10 @@
                 case 'decisions':
                     loadDecisionsData();
                     refreshTimer = setInterval(loadDecisionsData, REFRESH_INTERVAL);
+                    break;
+                case 'metrics':
+                    loadMetricsData();
+                    refreshTimer = setInterval(loadMetricsData, REFRESH_INTERVAL);
                     break;
                 case 'machines':
                     if (parts.length > 1) {

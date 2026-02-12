@@ -29,3 +29,17 @@ dashboard:
 machines_hostnames:
   # "votre-machine-id-long": "MonServeur"
   # "TEST-CROWDSEC": "TEST-CROWDSEC"
+
+# API d'enrichissement GeoIP/ASN (optionnel)
+geoip:
+  # Activer l'enrichissement GeoIP/ASN pour les IPs
+  enabled: true
+  
+  # Fournisseur : "ip-api" (gratuit, 45 req/min) ou "ipapi" (gratuit, 1000 req/jour)
+  provider: "ip-api"
+  
+  # Clé API (optionnel, pour ipapi premium uniquement)
+  api_key: ""
+  
+  # Durée du cache en secondes (24h par défaut)
+  cache_duration: 86400
