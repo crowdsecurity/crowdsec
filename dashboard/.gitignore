@@ -1,0 +1,17 @@
+# Configuration avec identifiants sensibles
+config.yaml
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Test files
+test_*.yaml
+*.log

@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrowdSec Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111;
+            --bg-card: #1a1a1a;
+            --bg-card-hover: #1e1e1e;
+            --border-default: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #999;
+            --text-muted: #666;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            padding: 32px 0;
+            position: fixed;
+            height: 100vh;
+            border-right: 1px solid var(--border-default);
+        }
+
+        .sidebar-logo {
+            padding: 0 24px 32px;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-logo::before {
+            content: '🛡️';
+            font-size: 32px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+        }
+
+        .sidebar-nav li {
+            margin: 4px 0;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .sidebar-nav a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: transparent;
+            transition: background 0.2s ease;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-nav a.active::before {
+            background: linear-gradient(180deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff);
+        }
+
+        /* Main content */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 32px 48px;
+            max-width: calc(100vw - 260px);
+        }
+
+        /* Page header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Search bar with RGB band */
+        .search-container {
+            margin-bottom: 32px;
+        }
+
+        .search-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 2px;
+        }
+
+        .search-bar input {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            flex: 1;
+            font-size: 15px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Animated RGB band */
+        .rgb-band {
+            height: 2px;
+            background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000, #ff0000);
+            background-size: 200% 100%;
+            animation: rgb-flow 3s linear infinite;
+            border-radius: 1px;
+        }
+
+        @keyframes rgb-flow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        /* Card with rainbow border hover effect */
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        .card {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 13px;
+            padding: 1px;
+            background: conic-gradient(from var(--angle), #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+            animation: rotate-border 3s linear infinite;
+        }
+
+        @keyframes rotate-border {
+            to { --angle: 360deg; }
+        }
+
+        .stat-card {
+            cursor: default;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-default);
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        th {
+            text-align: left;
+            padding: 16px 24px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-default);
+            font-size: 14px;
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-ban {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .badge-captcha {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+        }
+
+        .badge-throttle {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .badge-online {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .badge-offline {
+            background: rgba(153, 153, 153, 0.15);
+            color: var(--text-muted);
+        }
+
+        /* Machine/Bouncer grid */
+        .entity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .entity-card {
+            cursor: pointer;
+        }
+
+        .entity-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .entity-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .entity-info {
+            flex: 1;
+        }
+
+        .entity-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .entity-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .entity-details {
+            display: grid;
+            gap: 12px;
+        }
+
+        .entity-detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .entity-detail-label {
+            color: var(--text-secondary);
+        }
+
+        .entity-detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Loading & Empty states */
+        .loading {
+            text-align: center;
+            padding: 64px;
+            color: var(--text-secondary);
+        }
+
+        .loading::before {
+            content: '⟳';
+            display: block;
+            font-size: 48px;
+            margin-bottom: 16px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 64px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-subtext {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Alert details */
+        .alert-details {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-default);
+        }
+
+        .detail-section {
+            margin-bottom: 16px;
+        }
+
+        .detail-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .detail-content {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 220px;
+            }
+            .main-content {
+                margin-left: 220px;
+                padding: 24px 32px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Utility classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .mono {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">CrowdSec</div>
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="#/" class="nav-link">📊 Vue d'ensemble</a></li>
+                    <li><a href="#/alerts" class="nav-link">🚨 Alertes</a></li>
+                    <li><a href="#/decisions" class="nav-link">⚖️ Décisions</a></li>
+                    <li><a href="#/machines" class="nav-link">🖥️ Machines</a></li>
+                    <li><a href="#/bouncers" class="nav-link">🛡️ Bouncers</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <div id="app"></div>
+        </main>
+    </div>
+
+    <script>
+        // Configuration
+        const REFRESH_INTERVAL = {{ refresh_interval }} * 1000; // Convertir en ms
+        let refreshTimer = null;
+
+        // State management
+        const state = {
+            currentPage: 'overview',
+            alerts: [],
+            decisions: [],
+            machines: [],
+            bouncers: [],
+            metrics: null
+        };
+
+        // API calls
+        async function fetchAPI(endpoint) {
+            try {
+                const response = await fetch(`/api/${endpoint}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Erreur API ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        async function deleteAPI(endpoint) {
+            try {
+                const response = await fetch(`/api/${endpoint}`, { method: 'DELETE' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Erreur DELETE ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        // Data loading
+        async function loadOverviewData() {
+            const [alerts, decisions, machines, bouncers] = await Promise.all([
+                fetchAPI('alerts?limit=20'),
+                fetchAPI('decisions'),
+                fetchAPI('machines'),
+                fetchAPI('bouncers')
+            ]);
+            
+            state.alerts = alerts || [];
+            state.decisions = decisions || [];
+            state.machines = machines || [];
+            state.bouncers = bouncers || [];
+            
+            renderOverview();
+        }
+
+        async function loadAlertsData() {
+            state.alerts = await fetchAPI('alerts') || [];
+            renderAlerts();
+        }
+
+        async function loadDecisionsData() {
+            state.decisions = await fetchAPI('decisions') || [];
+            renderDecisions();
+        }
+
+        async function loadMachinesData() {
+            state.machines = await fetchAPI('machines') || [];
+            renderMachines();
+        }
+
+        async function loadBouncersData() {
+            state.bouncers = await fetchAPI('bouncers') || [];
+            renderBouncers();
+        }
+
+        // Render functions
+        function renderOverview() {
+            const alertsCount = state.alerts.length || 0;
+            const decisionsCount = state.decisions.length || 0;
+            const machinesOnline = (state.machines || []).filter(m => m.isValidated).length;
+            const bouncersActive = (state.bouncers || []).length;
+            
+            const recentAlerts = (state.alerts || []).slice(0, 20);
+            const activeDecisions = (state.decisions || []).filter(d => d.type === 'ban').slice(0, 20);
+            
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Vue d'ensemble</h1>
+                    <p class="page-subtitle">Tableau de bord CrowdSec en temps réel</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div class="stat-label">Total des alertes</div>
+                        <div class="stat-value">${alertsCount}</div>
+                        <div class="stat-change">Dernières 24h</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Décisions actives</div>
+                        <div class="stat-value">${decisionsCount}</div>
+                        <div class="stat-change">Bans en cours</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Machines en ligne</div>
+                        <div class="stat-value">${machinesOnline}</div>
+                        <div class="stat-change">Validées</div>
+                    </div>
+                    <div class="card stat-card">
+                        <div class="stat-label">Bouncers actifs</div>
+                        <div class="stat-value">${bouncersActive}</div>
+                        <div class="stat-change">Connectés</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Alertes récentes</div>
+                    ${recentAlerts.length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Scénario</th>
+                                    <th>Source</th>
+                                    <th>Événements</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recentAlerts.map(alert => `
+                                    <tr>
+                                        <td>${formatDate(alert.created_at)}</td>
+                                        <td>${alert.scenario || 'N/A'}</td>
+                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
+                                        <td>${alert.events_count || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte récente</div></div>'}
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Décisions actives</div>
+                    ${activeDecisions.length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP / Range</th>
+                                    <th>Type</th>
+                                    <th>Scénario</th>
+                                    <th>Durée restante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${activeDecisions.map(decision => `
+                                    <tr>
+                                        <td class="mono">${decision.value || 'N/A'}</td>
+                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
+                                        <td>${decision.scenario || 'N/A'}</td>
+                                        <td>${decision.duration || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision active</div></div>'}
+                </div>
+            `;
+        }
+
+        function renderAlerts() {
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Alertes</h1>
+                    <p class="page-subtitle">Gestion des alertes de sécurité</p>
+                </div>
+
+                <div class="search-container">
+                    <div class="search-bar">
+                        <span>🔍</span>
+                        <input type="text" placeholder="Rechercher par IP, scénario..." id="alertSearch" onkeyup="filterAlerts()">
+                    </div>
+                    <div class="rgb-band"></div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Liste des alertes</div>
+                    ${state.alerts.length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Scénario</th>
+                                    <th>Source</th>
+                                    <th>Événements</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsTableBody">
+                                ${state.alerts.map(alert => `
+                                    <tr data-alert-id="${alert.id}">
+                                        <td>#${alert.id}</td>
+                                        <td>${formatDate(alert.created_at)}</td>
+                                        <td>${alert.scenario || 'N/A'}</td>
+                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
+                                        <td>${alert.events_count || 0}</td>
+                                        <td>
+                                            <button class="btn btn-secondary btn-details" data-alert-id="${alert.id}">Détails</button>
+                                            <button class="btn btn-danger btn-delete-alert" data-alert-id="${alert.id}">Supprimer</button>
+                                        </td>
+                                    </tr>
+                                    <tr id="alert-details-${alert.id}" class="hidden">
+                                        <td colspan="6">
+                                            <div class="alert-details">
+                                                <div class="detail-section">
+                                                    <div class="detail-title">Machine</div>
+                                                    <div class="detail-content">${alert.machine_id || 'N/A'}</div>
+                                                </div>
+                                                <div class="detail-section">
+                                                    <div class="detail-title">Message</div>
+                                                    <div class="detail-content">${alert.message || 'N/A'}</div>
+                                                </div>
+                                                ${alert.decisions && alert.decisions.length > 0 ? `
+                                                <div class="detail-section">
+                                                    <div class="detail-title">Décisions (${alert.decisions.length})</div>
+                                                    <div class="detail-content">
+                                                        ${alert.decisions.map(d => `
+                                                            <span class="badge badge-${d.type}">${d.type}: ${d.value}</span>
+                                                        `).join(' ')}
+                                                    </div>
+                                                </div>
+                                                ` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte</div><div class="empty-state-subtext">Les alertes apparaîtront ici lorsqu\'elles seront détectées</div></div>'}
+                </div>
+            `;
+            
+            // Add event listeners for alert buttons
+            document.querySelectorAll('.btn-details').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    toggleAlertDetails(alertId);
+                });
+            });
+            
+            document.querySelectorAll('.btn-delete-alert').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    deleteAlert(alertId);
+                });
+            });
+        }
+
+        function renderDecisions() {
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Décisions</h1>
+                    <p class="page-subtitle">Gestion des décisions actives</p>
+                </div>
+
+                <div class="search-container">
+                    <div class="search-bar">
+                        <span>🔍</span>
+                        <input type="text" placeholder="Rechercher par IP, scénario..." id="decisionSearch" onkeyup="filterDecisions()">
+                    </div>
+                    <div class="rgb-band"></div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Liste des décisions</div>
+                    ${state.decisions.length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>IP / Range</th>
+                                    <th>Type</th>
+                                    <th>Scénario</th>
+                                    <th>Origine</th>
+                                    <th>Durée restante</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="decisionsTableBody">
+                                ${state.decisions.map(decision => `
+                                    <tr>
+                                        <td>#${decision.id}</td>
+                                        <td class="mono">${decision.value || 'N/A'}</td>
+                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
+                                        <td>${decision.scenario || 'N/A'}</td>
+                                        <td>${decision.origin || 'N/A'}</td>
+                                        <td>${decision.duration || 'N/A'}</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-delete-decision" data-decision-id="${decision.id}">Supprimer</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision active</div><div class="empty-state-subtext">Les décisions apparaîtront ici lorsqu\'elles seront prises</div></div>'}
+                </div>
+            `;
+            
+            // Add event listeners for decision delete buttons
+            document.querySelectorAll('.btn-delete-decision').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const decisionId = e.target.getAttribute('data-decision-id');
+                    deleteDecision(decisionId);
+                });
+            });
+        }
+
+        function renderMachines() {
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Machines</h1>
+                    <p class="page-subtitle">Machines connectées au LAPI</p>
+                </div>
+
+                ${state.machines.length > 0 ? `
+                    <div class="entity-grid">
+                        ${state.machines.map(machine => `
+                            <div class="card entity-card">
+                                <div class="entity-header">
+                                    <div class="entity-icon">🖥️</div>
+                                    <div class="entity-info">
+                                        <div class="entity-name">${machine.machine_id || machine.name || 'N/A'}</div>
+                                        <div class="entity-meta">
+                                            <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
+                                                ${machine.isValidated ? 'Validée' : 'En attente'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="entity-details">
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">IP</span>
+                                        <span class="entity-detail-value mono">${machine.ipAddress || 'N/A'}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Dernière mise à jour</span>
+                                        <span class="entity-detail-value">${formatDate(machine.updated_at)}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Version</span>
+                                        <span class="entity-detail-value">${machine.version || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<div class="empty-state"><div class="empty-state-icon">🖥️</div><div class="empty-state-text">Aucune machine</div><div class="empty-state-subtext">Les machines apparaîtront ici lorsqu\'elles seront connectées</div></div>'}
+            `;
+        }
+
+        function renderBouncers() {
+            document.getElementById('app').innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Bouncers</h1>
+                    <p class="page-subtitle">Bouncers actifs</p>
+                </div>
+
+                ${state.bouncers.length > 0 ? `
+                    <div class="entity-grid">
+                        ${state.bouncers.map(bouncer => `
+                            <div class="card entity-card">
+                                <div class="entity-header">
+                                    <div class="entity-icon">🛡️</div>
+                                    <div class="entity-info">
+                                        <div class="entity-name">${bouncer.name || 'N/A'}</div>
+                                        <div class="entity-meta"><span class="badge badge-online">Actif</span></div>
+                                    </div>
+                                </div>
+                                <div class="entity-details">
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">IP</span>
+                                        <span class="entity-detail-value mono">${bouncer.ip_address || 'N/A'}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Type</span>
+                                        <span class="entity-detail-value">${bouncer.type || 'N/A'}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Dernière activité</span>
+                                        <span class="entity-detail-value">${formatDate(bouncer.last_pull)}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Version</span>
+                                        <span class="entity-detail-value">${bouncer.version || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">Aucun bouncer</div><div class="empty-state-subtext">Les bouncers apparaîtront ici lorsqu\'ils seront connectés</div></div>'}
+            `;
+        }
+
+        // Action handlers
+        async function deleteAlert(alertId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) return;
+            
+            const result = await deleteAPI(`alerts/${alertId}`);
+            if (result) {
+                await loadAlertsData();
+            }
+        }
+
+        async function deleteDecision(decisionId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette décision ?')) return;
+            
+            const result = await deleteAPI(`decisions/${decisionId}`);
+            if (result) {
+                await loadDecisionsData();
+            }
+        }
+
+        function toggleAlertDetails(alertId) {
+            const detailsRow = document.getElementById(`alert-details-${alertId}`);
+            if (detailsRow) {
+                detailsRow.classList.toggle('hidden');
+            }
+        }
+
+        function filterAlerts() {
+            const search = document.getElementById('alertSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#alertsTableBody tr[data-alert-id]');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(search);
+                row.style.display = isVisible ? '' : 'none';
+                
+                // Hide detail row if parent is hidden
+                const alertId = row.getAttribute('data-alert-id');
+                const detailRow = document.getElementById(`alert-details-${alertId}`);
+                if (detailRow && !isVisible) {
+                    detailRow.style.display = 'none';
+                }
+            });
+        }
+
+        function filterDecisions() {
+            const search = document.getElementById('decisionSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#decisionsTableBody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return 'N/A';
+            
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000); // secondes
+            
+            if (diff < 60) return 'Il y a quelques secondes';
+            if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
+            if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
+            
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Router
+        function navigate(page) {
+            state.currentPage = page;
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#/${page}`) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Clear auto-refresh
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+            
+            // Show loading
+            document.getElementById('app').innerHTML = '<div class="loading">Chargement...</div>';
+            
+            // Load page data
+            switch (page) {
+                case '':
+                case 'overview':
+                    loadOverviewData();
+                    refreshTimer = setInterval(loadOverviewData, REFRESH_INTERVAL);
+                    break;
+                case 'alerts':
+                    loadAlertsData();
+                    refreshTimer = setInterval(loadAlertsData, REFRESH_INTERVAL);
+                    break;
+                case 'decisions':
+                    loadDecisionsData();
+                    refreshTimer = setInterval(loadDecisionsData, REFRESH_INTERVAL);
+                    break;
+                case 'machines':
+                    loadMachinesData();
+                    refreshTimer = setInterval(loadMachinesData, REFRESH_INTERVAL);
+                    break;
+                case 'bouncers':
+                    loadBouncersData();
+                    refreshTimer = setInterval(loadBouncersData, REFRESH_INTERVAL);
+                    break;
+                default:
+                    loadOverviewData();
+            }
+        }
+
+        // Hash change handler
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.slice(2); // Remove '#/'
+            navigate(hash);
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash.slice(2) || 'overview';
+            navigate(hash);
+        });
+    </script>
+</body>
+</html>

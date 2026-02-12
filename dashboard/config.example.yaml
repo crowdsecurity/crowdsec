@@ -1,0 +1,25 @@
+# Configuration du tableau de bord CrowdSec
+# Copiez ce fichier vers config.yaml et remplissez vos identifiants
+
+lapi:
+  # URL de l'API locale CrowdSec
+  url: "http://127.0.0.1:8080"
+  
+  # Identifiants de la machine pour l'authentification JWT
+  # Pour créer une machine : cscli machines add dashboard-machine
+  machine_id: "your-machine-id"
+  machine_password: "your-machine-password"
+  
+  # Clé API du bouncer pour interroger les décisions
+  # Pour créer un bouncer : cscli bouncers add dashboard-bouncer
+  bouncer_api_key: "your-bouncer-api-key"
+
+dashboard:
+  # Adresse d'écoute du serveur du tableau de bord
+  host: "0.0.0.0"
+  
+  # Port d'écoute
+  port: 3000
+  
+  # Intervalle de rafraîchissement automatique (en secondes)
+  refresh_interval: 30
