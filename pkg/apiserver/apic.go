@@ -471,48 +471,6 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 	return nbDeleted, nil
 }
 
-func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
-	newAlerts := make([]*models.Alert, 0)
-
-	for _, decision := range decisions {
-		found := false
-
-		for _, sub := range newAlerts {
-			if sub.Source.Scope == nil {
-				log.Warningf("nil scope in %+v", sub)
-				continue
-			}
-
-			if *decision.Origin == types.CAPIOrigin {
-				if *sub.Source.Scope == types.CAPIOrigin {
-					found = true
-					break
-				}
-			} else if *decision.Origin == types.ListOrigin {
-				if *sub.Source.Scope == *decision.Origin {
-					if sub.Scenario == nil {
-						log.Warningf("nil scenario in %+v", sub)
-					}
-
-					if *sub.Scenario == *decision.Scenario {
-						found = true
-						break
-					}
-				}
-			} else {
-				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
-			}
-		}
-
-		if !found {
-			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
-			newAlerts = append(newAlerts, createAlertForDecision(decision))
-		}
-	}
-
-	return newAlerts
-}
-
 func createAlertForDecision(decision *models.Decision) *models.Alert {
 	var (
 		scenario string
