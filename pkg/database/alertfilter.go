@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
@@ -171,7 +169,7 @@ func handleIncludeCapiFilter(value string, predicates *[]predicate.Alert) error 
 			),
 		))
 	} else if value != "true" {
-		log.Errorf("invalid bool %q for include_capi", value)
+		return fmt.Errorf("invalid bool %q for include_capi", value)
 	}
 
 	return nil
