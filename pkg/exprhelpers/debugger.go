@@ -309,7 +309,7 @@ func opCallN(out OpOutput, _ *OpOutput, ip int, parts []string, vm *vm.VM, progr
 	stack := vm.Stack
 
 	// for OpCallN, we get the number of args
-	if len(program.Arguments) >= ip {
+	if len(program.Arguments) > ip {
 		nb_args := program.Arguments[ip]
 		if nb_args > 0 {
 			// we need to skip the top item on stack
@@ -463,73 +463,125 @@ func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry
 	}
 }
 
+func finalizeDebugOutputs(program *vm.Program, outputs []OpOutput, ret any) []OpOutput {
+	// Constant/optimized expressions (ex. 'true') produce no trace rows, so we create one.
+	if len(outputs) == 0 {
+		out := OpOutput{
+			Code:      cleanTextForDebug(program.Source().String()),
+			CodeDepth: 0,
+			Finalized: true,
+		}
+
+		switch v := ret.(type) {
+		case bool:
+			out.Condition = true
+			out.ConditionResult = new(bool)
+			*out.ConditionResult = v
+			out.StrConditionResult = strconv.FormatBool(v)
+		default:
+			out.StrConditionResult = fmt.Sprintf("%v", ret)
+		}
+
+		return append(outputs, out)
+	}
+
+	// Finalize last output with overall result.
+	last := len(outputs) - 1
+	switch v := ret.(type) {
+	case bool:
+		outputs[last].StrConditionResult = strconv.FormatBool(v)
+		outputs[last].ConditionResult = new(bool)
+		*outputs[last].ConditionResult = v
+		outputs[last].Finalized = true
+	default:
+		outputs[last].StrConditionResult = fmt.Sprintf("%v", ret)
+		outputs[last].Finalized = true
+	}
+
+	return outputs
+}
+
 // TBD: Based on the level of the logger (ie. trace vs debug) we could decide to add more low level instructions (pop, push, etc.)
 func RunWithDebug(program *vm.Program, env any, logger *log.Entry) ([]OpOutput, any, error) {
-	outputs := []OpOutput{}
 	erp := ExprRuntimeDebug{
 		Logger: logger,
 	}
+
 	vm := vm.Debug()
 	opcodes := program.Disassemble()
 	lines := strings.Split(opcodes, "\n")
 	erp.Lines = lines
 
+	type runRes struct {
+		ret any
+		err error
+	}
+
+	// Run the VM in its own goroutine.
+	runCh := make(chan runRes, 1)
+	done := make(chan struct{})
 	go func() {
-		// We must never return until the execution of the program is done
-		erp.Logger.Tracef("[START] ip 0")
+		ret, err := vm.Run(program, env)
+		runCh <- runRes{ret: ret, err: err}
+		close(done)
+	}()
 
-		ops := erp.ipSeek(0)
-		if ops == nil {
-			log.Warningf("error while debugging expr: failed getting ops for ip 0")
-		}
-
-		outputs = erp.ipDebug(0, vm, program, ops, outputs)
-
-		vm.Step()
-
-		for ip := range vm.Position() {
-			ops := erp.ipSeek(ip)
-			if ops == nil {
-				erp.Logger.Tracef("[DONE] ip %d", ip)
-				break
-			}
-
-			outputs = erp.ipDebug(ip, vm, program, ops, outputs)
-
+	// Step requests are handled in a dedicated goroutine.
+	// This prevents deadlocks if v.Step() blocks while the VM is trying to emit positions.
+	stepReq := make(chan struct{}, 1) // small buffer helps startup ordering
+	stepStop := make(chan struct{})
+	go func() {
+		defer close(stepStop)
+		for range stepReq {
 			vm.Step()
 		}
 	}()
 
-	var return_error error
+	outputs := make([]OpOutput, 0, 64)
 
-	ret, err := vm.Run(program, env)
-	// if the expr runtime failed, we don't need to wait for the debug to finish
-	if err != nil {
-		return_error = err
-	}
-	// the overall result of expression is the result of last op ?
-	if len(outputs) > 0 {
-		lastOutIdx := len(outputs)
-		if lastOutIdx > 0 {
-			lastOutIdx -= 1
+	erp.Logger.Tracef("[START]")
+
+	// Prime execution: request the first step *after* Run goroutine is started.
+	stepReq <- struct{}{}
+
+	posCh := vm.Position()
+	for {
+		select {
+		case <-done:
+			// VM finished (or errored). Stop stepping goroutine.
+			close(stepReq)
+			<-stepStop
+
+			res := <-runCh
+
+			outputs = finalizeDebugOutputs(program, outputs, res.ret)
+
+			return outputs, res.ret, res.err
+		case ip, ok := <-posCh:
+			if !ok {
+				// Positions channel closed; wait for done then return.
+				// (Should normally be followed quickly by <-done)
+				continue
+			}
+
+			ops := erp.ipSeek(ip)
+			if ops == nil {
+				erp.Logger.Tracef("[DONE] ip %d", ip)
+				// request one more step? no: if ops nil, we’re done with debug output;
+				// let the VM finish naturally.
+				continue
+			}
+
+			// CRITICAL: we only inspect v.Stack when we have an ip from Position(),
+			// and we do it before requesting the next Step().
+			outputs = erp.ipDebug(ip, vm, program, ops, outputs)
+
+			// Resume to next stop point.
+			// Non-blocking if buffer is empty; if buffer full, it just means we already requested a step.
+			select {
+			case stepReq <- struct{}{}:
+			default:
+			}
 		}
-
-		switch val := ret.(type) {
-		case bool:
-			log.Tracef("completing with bool %t", ret)
-			// if outputs[lastOutIdx].Comparison {
-			outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
-			outputs[lastOutIdx].ConditionResult = new(bool)
-			*outputs[lastOutIdx].ConditionResult = val
-			outputs[lastOutIdx].Finalized = true
-		default:
-			log.Tracef("completing with type %T -> %v", ret, ret)
-			outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
-			outputs[lastOutIdx].Finalized = true
-		}
-	} else {
-		log.Tracef("no output from expr runtime")
 	}
-
-	return outputs, ret, return_error
 }
