@@ -832,6 +832,145 @@ def fetchAPI_internal(endpoint):
         return None
 
 
+
+@app.route('/api/logs')
+@jwt_required
+def get_logs():
+    """Récupère les logs de sécurité extraits des alertes CrowdSec.
+    
+    Extrait les événements individuels des alertes LAPI et les présente
+    comme des lignes de log structurées avec métadonnées.
+    Supporte la pagination et le filtrage par type/machine/IP.
+    """
+    lapi_url = config['lapi']['url']
+    token = get_jwt_token()
+    
+    # Paramètres de filtrage
+    log_type = request.args.get('type', '')
+    source_ip = request.args.get('ip', '')
+    machine_filter = request.args.get('machine', '')
+    service_filter = request.args.get('service', '')
+    limit = min(int(request.args.get('limit', 500)), 2000)
+    
+    try:
+        headers = {'Authorization': f'Bearer {token}'}
+        response = requests.get(
+            f"{lapi_url}/v1/alerts",
+            headers=headers,
+            timeout=15
+        )
+        response.raise_for_status()
+        alerts = response.json()
+        
+        if not isinstance(alerts, list):
+            alerts = []
+        
+        logs = []
+        for alert in alerts:
+            alert_id = alert.get('id')
+            scenario = alert.get('scenario', '')
+            machine_id = alert.get('machine_id', '')
+            alert_source = alert.get('source', {})
+            alert_created = alert.get('created_at', '')
+            
+            events = alert.get('events', [])
+            for event in events:
+                meta = {}
+                for m in event.get('meta', []):
+                    meta[m['key']] = m['value']
+                
+                log_entry = {
+                    'timestamp': meta.get('timestamp', event.get('timestamp', alert_created)),
+                    'source_ip': meta.get('source_ip', alert_source.get('ip', '')),
+                    'log_type': meta.get('log_type', ''),
+                    'service': meta.get('service', ''),
+                    'machine': meta.get('machine', machine_id),
+                    'target_user': meta.get('target_user', ''),
+                    'scenario': scenario,
+                    'alert_id': alert_id,
+                    'datasource': meta.get('datasource_path', ''),
+                    'datasource_type': meta.get('datasource_type', ''),
+                }
+                
+                # Filtrage
+                if log_type and log_type not in log_entry['log_type']:
+                    continue
+                if source_ip and source_ip != log_entry['source_ip']:
+                    continue
+                if machine_filter and machine_filter not in log_entry['machine']:
+                    continue
+                if service_filter and service_filter not in log_entry['service']:
+                    continue
+                
+                logs.append(log_entry)
+        
+        # Trier par timestamp décroissant
+        logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # Limiter
+        logs = logs[:limit]
+        
+        # Extraire les filtres disponibles
+        all_types = list(set(l['log_type'] for l in logs if l['log_type']))
+        all_services = list(set(l['service'] for l in logs if l['service']))
+        all_machines = list(set(l['machine'] for l in logs if l['machine']))
+        all_ips = list(set(l['source_ip'] for l in logs if l['source_ip']))
+        
+        return jsonify({
+            'logs': logs,
+            'total': len(logs),
+            'filters': {
+                'types': sorted(all_types),
+                'services': sorted(all_services),
+                'machines': sorted(all_machines),
+                'ips': sorted(all_ips)
+            }
+        }), 200
+    
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/logs/live')
+def get_live_logs():
+    """Récupère les dernières lignes des fichiers de log du système local.
+    Utile pour voir les logs en temps réel de la machine dashboard.
+    """
+    log_files = {
+        'auth': '/var/log/auth.log',
+        'syslog': '/var/log/syslog',
+        'crowdsec': '/var/log/crowdsec.log'
+    }
+    
+    source = request.args.get('source', 'auth')
+    lines_count = min(int(request.args.get('lines', 50)), 200)
+    
+    log_file = log_files.get(source)
+    if not log_file:
+        return jsonify({'error': 'Source invalide'}), 400
+    
+    try:
+        result = subprocess.run(
+            ['tail', '-n', str(lines_count), log_file],
+            shell=False,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        
+        return jsonify({
+            'source': source,
+            'file': log_file,
+            'lines': lines,
+            'count': len(lines)
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("=" * 60)
     print("🛡️  Tableau de bord CrowdSec")

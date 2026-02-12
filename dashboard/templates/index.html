@@ -790,6 +790,7 @@
                     <li><a href="#/metrics" class="nav-link">📈 Métriques</a></li>
                     <li><a href="#/machines" class="nav-link">🖥️ Machines</a></li>
                     <li><a href="#/bouncers" class="nav-link">🛡️ Bouncers</a></li>
+                    <li><a href="#/logs" class="nav-link">📋 Logs</a></li>
                 </ul>
             </nav>
         </aside>
@@ -816,7 +817,9 @@
             hostnames: {},
             currentMachineId: null,
             alertsStats: {},
-            metricsStats: {}
+            metricsStats: {},
+            logs: { logs: [], filters: {} },
+            liveLogs: { lines: [] }
         };
 
         // API calls
@@ -891,6 +894,17 @@
         async function loadBouncersData() {
             state.bouncers = await fetchAPI('bouncers') || [];
             renderBouncers();
+        }
+
+        async function loadLogsData() {
+            const data = await fetchAPI('logs');
+            state.logs = data || { logs: [], filters: {} };
+            renderLogs();
+        }
+
+        async function loadLiveLogsData(source = 'auth', lines = 100) {
+            const data = await fetchAPI(`logs/live?source=${source}&lines=${lines}`);
+            state.liveLogs = data || { lines: [] };
         }
 
         async function loadMachineDetail(machineId) {
@@ -1995,6 +2009,214 @@
             }
         }
 
+
+        function renderLogs() {
+            const logs = state.logs.logs || [];
+            const filters = state.logs.filters || {};
+            
+            const getLogTypeColor = (type) => {
+                if (!type) return 'var(--text-muted)';
+                const t = type.toLowerCase();
+                if (t.includes('failed') || t.includes('error') || t.includes('denied')) return 'var(--accent-red)';
+                if (t.includes('success') || t.includes('accepted')) return 'var(--accent-green)';
+                if (t.includes('scan') || t.includes('enum')) return 'var(--accent-amber)';
+                return 'var(--accent-blue)';
+            };
+
+            const getServiceIcon = (service) => {
+                if (!service) return '📄';
+                const s = service.toLowerCase();
+                if (s.includes('ssh')) return '🔑';
+                if (s.includes('http') || s.includes('web')) return '🌐';
+                if (s.includes('ftp')) return '📂';
+                if (s.includes('smtp') || s.includes('mail')) return '📧';
+                if (s.includes('dns')) return '🔍';
+                return '��';
+            };
+
+            // Stats
+            const totalLogs = logs.length;
+            const failedCount = logs.filter(l => l.log_type && l.log_type.toLowerCase().includes('failed')).length;
+            const successCount = logs.filter(l => l.log_type && l.log_type.toLowerCase().includes('success')).length;
+            const uniqueIPs = new Set(logs.map(l => l.source_ip).filter(Boolean)).size;
+            const uniqueUsers = new Set(logs.map(l => l.target_user).filter(Boolean)).size;
+            
+            let html = `
+                <div class="page-header">
+                    <h1 class="page-title">📋 Logs de sécurité</h1>
+                    <p class="page-subtitle">Événements détectés par les scénarios CrowdSec</p>
+                </div>
+
+                <!-- Stats cards -->
+                <div class="stats-grid" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:16px; margin-bottom:24px;">
+                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
+                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">Total événements</div>
+                        <div style="font-size:28px; font-weight:700;">${totalLogs}</div>
+                    </div>
+                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
+                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🔴 Échecs</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-red);">${failedCount}</div>
+                    </div>
+                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
+                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🟢 Succès</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-green);">${successCount}</div>
+                    </div>
+                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
+                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🌐 IPs uniques</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-blue);">${uniqueIPs}</div>
+                    </div>
+                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
+                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">👤 Users ciblés</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-amber);">${uniqueUsers}</div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:16px; margin-bottom:24px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                    <span style="color:var(--text-secondary); font-size:13px; font-weight:600;">Filtres :</span>
+                    <select id="filter-type" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
+                        <option value="">Tous les types</option>
+                        ${(filters.types || []).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
+                    </select>
+                    <select id="filter-service" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
+                        <option value="">Tous les services</option>
+                        ${(filters.services || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                    </select>
+                    <select id="filter-ip" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
+                        <option value="">Toutes les IPs</option>
+                        ${(filters.ips || []).map(ip => `<option value="${escapeHtml(ip)}">${escapeHtml(ip)}</option>`).join('')}
+                    </select>
+                    <select id="filter-machine" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
+                        <option value="">Toutes les machines</option>
+                        ${(filters.machines || []).map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}
+                    </select>
+                    <button id="btn-apply-filter" style="background:var(--accent-blue); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; font-weight:600;">Appliquer</button>
+                    <button id="btn-reset-filter" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Reset</button>
+                    
+                    <!-- Live logs toggle -->
+                    <div style="margin-left:auto; display:flex; gap:8px;">
+                        <button class="btn-live-log" data-source="auth" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">📄 auth.log</button>
+                        <button class="btn-live-log" data-source="crowdsec" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">🛡️ crowdsec.log</button>
+                        <button class="btn-live-log" data-source="syslog" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">📋 syslog</button>
+                    </div>
+                </div>
+
+                <!-- Live log panel (hidden by default) -->
+                <div id="live-log-panel" style="display:none; background:#0c0c0c; border:1px solid var(--border-default); border-radius:12px; padding:16px; margin-bottom:24px; max-height:300px; overflow-y:auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span id="live-log-title" style="color:var(--accent-green); font-family:monospace; font-size:13px; font-weight:600;">📄 Live Log</span>
+                        <button id="btn-close-live" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;">✕</button>
+                    </div>
+                    <pre id="live-log-content" style="color:#00ff41; font-family:'Courier New', monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0;"></pre>
+                </div>
+
+                <!-- Logs table -->
+                <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:var(--bg-secondary); border-bottom:1px solid var(--border-default);">
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Timestamp</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Service</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Type</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">IP Source</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">User ciblé</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Machine</th>
+                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Scénario</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            if (logs.length === 0) {
+                html += `
+                            <tr>
+                                <td colspan="7" style="padding:48px; text-align:center; color:var(--text-muted);">
+                                    <div style="font-size:48px; margin-bottom:16px;">📋</div>
+                                    <div>Aucun log de sécurité disponible</div>
+                                    <div style="font-size:13px; margin-top:8px;">Les logs apparaîtront lorsque des scénarios seront déclenchés</div>
+                                </td>
+                            </tr>`;
+            } else {
+                for (const log of logs) {
+                    const ts = log.timestamp ? new Date(log.timestamp).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '-';
+                    const typeColor = getLogTypeColor(log.log_type);
+                    const serviceIcon = getServiceIcon(log.service);
+                    const scenarioShort = log.scenario ? log.scenario.replace('crowdsecurity/', '') : '-';
+                    
+                    html += `
+                            <tr style="border-bottom:1px solid var(--border-default); transition:background 0.15s;" onmouseover="this.style.background='var(--bg-card-hover)'" onmouseout="this.style.background='transparent'">
+                                <td style="padding:10px 16px; font-family:monospace; font-size:12px; color:var(--text-secondary);">${escapeHtml(ts)}</td>
+                                <td style="padding:10px 16px; font-size:13px;">${serviceIcon} ${escapeHtml(log.service || '-')}</td>
+                                <td style="padding:10px 16px;"><span style="color:${typeColor}; font-size:12px; font-weight:600; background:${typeColor}15; padding:2px 8px; border-radius:4px;">${escapeHtml(log.log_type || '-')}</span></td>
+                                <td style="padding:10px 16px; font-family:monospace; font-size:13px; color:var(--accent-amber);">${escapeHtml(log.source_ip || '-')}</td>
+                                <td style="padding:10px 16px; font-size:13px;">${escapeHtml(log.target_user || '-')}</td>
+                                <td style="padding:10px 16px; font-size:12px; color:var(--text-secondary);">${escapeHtml(log.machine || '-')}</td>
+                                <td style="padding:10px 16px; font-size:12px;"><span style="color:var(--accent-blue);">${escapeHtml(scenarioShort)}</span></td>
+                            </tr>`;
+                }
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top:12px; text-align:right; color:var(--text-muted); font-size:12px;">
+                    ${logs.length} événement(s) affiché(s)
+                </div>`;
+
+            document.getElementById('app').innerHTML = html;
+
+            // Filter event handlers
+            document.getElementById('btn-apply-filter').addEventListener('click', () => {
+                const type = document.getElementById('filter-type').value;
+                const service = document.getElementById('filter-service').value;
+                const ip = document.getElementById('filter-ip').value;
+                const machine = document.getElementById('filter-machine').value;
+                
+                let url = 'logs?';
+                if (type) url += `type=${encodeURIComponent(type)}&`;
+                if (service) url += `service=${encodeURIComponent(service)}&`;
+                if (ip) url += `ip=${encodeURIComponent(ip)}&`;
+                if (machine) url += `machine=${encodeURIComponent(machine)}&`;
+                
+                fetchAPI(url).then(data => {
+                    state.logs = data || { logs: [], filters: {} };
+                    renderLogs();
+                });
+            });
+            
+            document.getElementById('btn-reset-filter').addEventListener('click', () => {
+                loadLogsData();
+            });
+
+            // Live log buttons
+            document.querySelectorAll('.btn-live-log').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const source = e.target.getAttribute('data-source');
+                    const panel = document.getElementById('live-log-panel');
+                    const title = document.getElementById('live-log-title');
+                    const content = document.getElementById('live-log-content');
+                    
+                    panel.style.display = 'block';
+                    title.textContent = '⏳ Chargement ' + source + '...';
+                    content.textContent = '';
+                    
+                    await loadLiveLogsData(source, 100);
+                    
+                    const lines = state.liveLogs.lines || [];
+                    title.textContent = '📄 ' + (state.liveLogs.file || source) + ' (' + lines.length + ' lignes)';
+                    content.textContent = lines.join('\n');
+                    
+                    // Auto-scroll to bottom
+                    panel.scrollTop = panel.scrollHeight;
+                });
+            });
+            
+            document.getElementById('btn-close-live')?.addEventListener('click', () => {
+                document.getElementById('live-log-panel').style.display = 'none';
+            });
+        }
+
+
         async function loadMetricsData() {
             await renderMetrics();
         }
@@ -2060,6 +2282,10 @@
                 case 'bouncers':
                     loadBouncersData();
                     refreshTimer = setInterval(loadBouncersData, REFRESH_INTERVAL);
+                    break;
+                case 'logs':
+                    loadLogsData();
+                    refreshTimer = setInterval(loadLogsData, REFRESH_INTERVAL);
                     break;
                 default:
                     loadOverviewData();
