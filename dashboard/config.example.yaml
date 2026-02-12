@@ -23,3 +23,9 @@ dashboard:
   
   # Intervalle de rafraîchissement automatique (en secondes)
   refresh_interval: 30
+
+# Mapping optionnel machine_id -> hostname pour affichage
+# Trouvez vos machine_id avec: sudo cscli machines list
+machines_hostnames:
+  # "votre-machine-id-long": "MonServeur"
+  # "TEST-CROWDSEC": "TEST-CROWDSEC"

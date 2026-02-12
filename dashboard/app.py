@@ -256,24 +256,94 @@ def delete_decision(decision_id):
 
 @app.route('/api/machines')
 def get_machines():
-    """Récupère la liste des machines via cscli"""
+    """Récupère la liste des machines via cscli (nécessite sudo si cscli n'est pas accessible)
+    Note: Pas de JWT requis car utilise cscli, pas l'API LAPI"""
     result = run_cscli_command(['cscli', 'machines', 'list', '-o', 'json'])
     
     if result is None:
         return jsonify({'error': 'Erreur lors de la récupération des machines'}), 500
     
+    # Enrichir avec les hostnames depuis la config
+    hostnames = config.get('machines_hostnames', {})
+    if isinstance(result, list):
+        for machine in result:
+            machine_id = machine.get('machineId') or machine.get('name')
+            if machine_id and machine_id in hostnames:
+                machine['hostname'] = hostnames[machine_id]
+    
     return jsonify(result), 200
+
+
+@app.route('/api/machines/<machine_id>')
+def get_machine(machine_id):
+    """Récupère une machine spécifique
+    Note: Pas de JWT requis car utilise cscli, pas l'API LAPI"""
+    result = run_cscli_command(['cscli', 'machines', 'list', '-o', 'json'])
+    
+    if result is None:
+        return jsonify({'error': 'Erreur lors de la récupération des machines'}), 500
+    
+    # Trouver la machine spécifique
+    machine = None
+    if isinstance(result, list):
+        for m in result:
+            if m.get('machineId') == machine_id or m.get('name') == machine_id:
+                machine = m
+                break
+    
+    if machine is None:
+        return jsonify({'error': 'Machine non trouvée'}), 404
+    
+    # Enrichir avec le hostname
+    hostnames = config.get('machines_hostnames', {})
+    machine_id_key = machine.get('machineId') or machine.get('name')
+    if machine_id_key and machine_id_key in hostnames:
+        machine['hostname'] = hostnames[machine_id_key]
+    
+    return jsonify(machine), 200
+
+
+@app.route('/api/machines/<machine_id>/alerts')
+@jwt_required  # Required because this endpoint queries LAPI /v1/alerts which needs JWT auth
+def get_machine_alerts(machine_id):
+    """Récupère les alertes d'une machine spécifique"""
+    lapi_url = config['lapi']['url']
+    token = get_jwt_token()
+    
+    try:
+        headers = {'Authorization': f'Bearer {token}'}
+        # Filtrer par machine_id via paramètre de requête
+        params = {'machine_id': machine_id}
+        response = requests.get(
+            f"{lapi_url}/v1/alerts",
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        response.raise_for_status()
+        return jsonify(response.json()), response.status_code
+    
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/bouncers')
 def get_bouncers():
-    """Récupère la liste des bouncers via cscli"""
+    """Récupère la liste des bouncers via cscli (nécessite sudo si cscli n'est pas accessible)
+    Note: Pas de JWT requis car utilise cscli, pas l'API LAPI"""
     result = run_cscli_command(['cscli', 'bouncers', 'list', '-o', 'json'])
     
     if result is None:
         return jsonify({'error': 'Erreur lors de la récupération des bouncers'}), 500
     
     return jsonify(result), 200
+
+
+@app.route('/api/config/hostnames')
+def get_hostnames():
+    """Expose le mapping machine_id -> hostname pour le frontend"""
+    hostnames = config.get('machines_hostnames', {})
+    return jsonify(hostnames), 200
 
 
 @app.route('/api/metrics')

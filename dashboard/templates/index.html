@@ -528,6 +528,117 @@
             display: none !important;
         }
 
+        .clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .clickable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--text-secondary);
+        }
+
+        .machine-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .machine-detail-icon {
+            font-size: 48px;
+        }
+
+        .machine-detail-info {
+            flex: 1;
+        }
+
+        .machine-detail-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .machine-detail-id {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .info-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .info-item-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .info-item-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .freshness-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .freshness-good {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .freshness-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--accent-amber);
+        }
+
+        .freshness-stale {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
         .mono {
             font-family: 'Courier New', monospace;
         }
@@ -567,7 +678,9 @@
             decisions: [],
             machines: [],
             bouncers: [],
-            metrics: null
+            metrics: null,
+            hostnames: {},
+            currentMachineId: null
         };
 
         // API calls
@@ -595,23 +708,28 @@
 
         // Data loading
         async function loadOverviewData() {
-            const [alerts, decisions, machines, bouncers] = await Promise.all([
+            const [alerts, decisions, machines, bouncers, hostnames] = await Promise.all([
                 fetchAPI('alerts?limit=20'),
                 fetchAPI('decisions'),
                 fetchAPI('machines'),
-                fetchAPI('bouncers')
+                fetchAPI('bouncers'),
+                fetchAPI('config/hostnames')
             ]);
             
             state.alerts = alerts || [];
             state.decisions = decisions || [];
             state.machines = machines || [];
             state.bouncers = bouncers || [];
+            state.hostnames = hostnames || {};
             
             renderOverview();
         }
 
         async function loadAlertsData() {
             state.alerts = await fetchAPI('alerts') || [];
+            if (Object.keys(state.hostnames).length === 0) {
+                state.hostnames = await fetchAPI('config/hostnames') || {};
+            }
             renderAlerts();
         }
 
@@ -621,7 +739,12 @@
         }
 
         async function loadMachinesData() {
-            state.machines = await fetchAPI('machines') || [];
+            const [machines, hostnames] = await Promise.all([
+                fetchAPI('machines'),
+                fetchAPI('config/hostnames')
+            ]);
+            state.machines = machines || [];
+            state.hostnames = hostnames || {};
             renderMachines();
         }
 
@@ -630,12 +753,40 @@
             renderBouncers();
         }
 
+        async function loadMachineDetail(machineId) {
+            const [machine, alerts, hostnames] = await Promise.all([
+                fetchAPI(`machines/${machineId}`),
+                fetchAPI(`machines/${machineId}/alerts`),
+                fetchAPI('config/hostnames')
+            ]);
+            
+            if (!machine) {
+                document.getElementById('app').innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Machine non trouvée</div></div>';
+                return;
+            }
+            
+            state.currentMachineId = machineId;
+            state.hostnames = hostnames || {};
+            renderMachineDetail(machine, alerts || []);
+        }
+
+        // Helper function to get machine display name
+        function getMachineName(machine) {
+            const machineId = machine.machineId || machine.machine_id || machine.name;
+            return state.hostnames[machineId] || machineId;
+        }
+
         // Render functions
         function renderOverview() {
             const alertsCount = state.alerts.length || 0;
             const decisionsCount = state.decisions.length || 0;
             const machinesOnline = (state.machines || []).filter(m => m.isValidated).length;
             const bouncersActive = (state.bouncers || []).length;
+            
+            // Count decisions by type
+            const banCount = (state.decisions || []).filter(d => d.type === 'ban').length;
+            const captchaCount = (state.decisions || []).filter(d => d.type === 'captcha').length;
+            const throttleCount = (state.decisions || []).filter(d => d.type === 'throttle').length;
             
             const recentAlerts = (state.alerts || []).slice(0, 20);
             const activeDecisions = (state.decisions || []).filter(d => d.type === 'ban').slice(0, 20);
@@ -655,7 +806,7 @@
                     <div class="card stat-card">
                         <div class="stat-label">Décisions actives</div>
                         <div class="stat-value">${decisionsCount}</div>
-                        <div class="stat-change">Bans en cours</div>
+                        <div class="stat-change">${banCount} bans, ${captchaCount} captcha, ${throttleCount} throttle</div>
                     </div>
                     <div class="card stat-card">
                         <div class="stat-label">Machines en ligne</div>
@@ -669,6 +820,42 @@
                     </div>
                 </div>
 
+                ${state.machines.length > 0 ? `
+                    <div class="page-header" style="margin-top: 32px;">
+                        <h2 class="page-title" style="font-size: 20px;">Machines</h2>
+                    </div>
+                    <div class="entity-grid">
+                        ${state.machines.slice(0, 4).map(machine => {
+                            const machineId = machine.machineId || machine.machine_id || machine.name;
+                            const displayName = getMachineName(machine);
+                            return `
+                            <div class="card entity-card clickable" onclick="window.location.hash = '/machines/${machineId}'">
+                                <div class="entity-header">
+                                    <div class="entity-icon">🖥️</div>
+                                    <div class="entity-info">
+                                        <div class="entity-name">${displayName}</div>
+                                        <div class="entity-meta">
+                                            <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
+                                                ${machine.isValidated ? 'Validée' : 'En attente'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="entity-details">
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">IP</span>
+                                        <span class="entity-detail-value mono">${machine.ipAddress || 'N/A'}</span>
+                                    </div>
+                                    <div class="entity-detail-row">
+                                        <span class="entity-detail-label">Version</span>
+                                        <span class="entity-detail-value">${machine.version || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `}).join('')}
+                    </div>
+                ` : ''}
+
                 <div class="table-container">
                     <div class="table-header">Alertes récentes</div>
                     ${recentAlerts.length > 0 ? `
@@ -678,18 +865,23 @@
                                     <th>Date</th>
                                     <th>Scénario</th>
                                     <th>Source</th>
+                                    <th>Machine</th>
                                     <th>Événements</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${recentAlerts.map(alert => `
+                                ${recentAlerts.map(alert => {
+                                    const machineId = alert.machine_id;
+                                    const machineName = machineId && state.hostnames[machineId] ? state.hostnames[machineId] : (machineId || 'N/A');
+                                    return `
                                     <tr>
                                         <td>${formatDate(alert.created_at)}</td>
                                         <td>${alert.scenario || 'N/A'}</td>
                                         <td class="mono">${alert.source?.value || 'N/A'}</td>
+                                        <td>${machineName}</td>
                                         <td>${alert.events_count || 0}</td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte récente</div></div>'}
@@ -880,12 +1072,17 @@
 
                 ${state.machines.length > 0 ? `
                     <div class="entity-grid">
-                        ${state.machines.map(machine => `
-                            <div class="card entity-card">
+                        ${state.machines.map(machine => {
+                            const machineId = machine.machineId || machine.machine_id || machine.name;
+                            const displayName = getMachineName(machine);
+                            const isCustomName = !!state.hostnames[machineId];
+                            return `
+                            <div class="card entity-card clickable" onclick="window.location.hash = '/machines/${machineId}'">
                                 <div class="entity-header">
                                     <div class="entity-icon">🖥️</div>
                                     <div class="entity-info">
-                                        <div class="entity-name">${machine.machine_id || machine.name || 'N/A'}</div>
+                                        <div class="entity-name">${displayName}</div>
+                                        ${isCustomName ? `<div class="entity-meta" style="color: var(--text-muted); font-size: 12px;">${machineId}</div>` : ''}
                                         <div class="entity-meta">
                                             <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
                                                 ${machine.isValidated ? 'Validée' : 'En attente'}
@@ -908,13 +1105,155 @@
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 ` : '<div class="empty-state"><div class="empty-state-icon">🖥️</div><div class="empty-state-text">Aucune machine</div><div class="empty-state-subtext">Les machines apparaîtront ici lorsqu\'elles seront connectées</div></div>'}
             `;
         }
 
+        function renderMachineDetail(machine, alerts) {
+            const machineId = machine.machineId || machine.machine_id || machine.name;
+            const displayName = getMachineName(machine);
+            const isCustomName = !!state.hostnames[machineId];
+            
+            // Filter decisions from alerts
+            const allDecisions = [];
+            (alerts || []).forEach(alert => {
+                if (alert.decisions && alert.decisions.length > 0) {
+                    allDecisions.push(...alert.decisions);
+                }
+            });
+            
+            document.getElementById('app').innerHTML = `
+                <a href="#/machines" class="back-button">← Retour aux machines</a>
+                
+                <div class="machine-detail-header">
+                    <div class="machine-detail-icon">🖥️</div>
+                    <div class="machine-detail-info">
+                        <div class="machine-detail-name">${displayName}</div>
+                        ${isCustomName ? `<div class="machine-detail-id">${machineId}</div>` : ''}
+                        <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
+                            ${machine.isValidated ? 'Validée' : 'En attente'}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-item-label">Adresse IP</div>
+                        <div class="info-item-value mono">${machine.ipAddress || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Version</div>
+                        <div class="info-item-value">${machine.version || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Système d'exploitation</div>
+                        <div class="info-item-value">${machine.os || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Type d'authentification</div>
+                        <div class="info-item-value">${machine.auth_type || 'N/A'}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Dernière mise à jour</div>
+                        <div class="info-item-value">${formatDate(machine.updated_at)}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Date d'enregistrement</div>
+                        <div class="info-item-value">${formatDate(machine.created_at)}</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Alertes de cette machine (${(alerts || []).length})</div>
+                    ${(alerts || []).length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Scénario</th>
+                                    <th>Source</th>
+                                    <th>Événements</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${alerts.map(alert => `
+                                    <tr>
+                                        <td class="mono">${alert.id || 'N/A'}</td>
+                                        <td>${formatDate(alert.created_at)}</td>
+                                        <td>${alert.scenario || 'N/A'}</td>
+                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
+                                        <td>${alert.events_count || 0}</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm btn-delete-alert" data-alert-id="${alert.id}">Supprimer</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte</div></div>'}
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">Décisions associées (${allDecisions.length})</div>
+                    ${allDecisions.length > 0 ? `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP / Range</th>
+                                    <th>Type</th>
+                                    <th>Scénario</th>
+                                    <th>Durée</th>
+                                    <th>Origine</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${allDecisions.map(decision => `
+                                    <tr>
+                                        <td class="mono">${decision.value || 'N/A'}</td>
+                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
+                                        <td>${decision.scenario || 'N/A'}</td>
+                                        <td>${decision.duration || 'N/A'}</td>
+                                        <td>${decision.origin || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision</div></div>'}
+                </div>
+            `;
+            
+            // Add event listeners
+            document.querySelectorAll('.btn-delete-alert').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const alertId = e.target.getAttribute('data-alert-id');
+                    deleteAlert(alertId).then(() => {
+                        loadMachineDetail(machineId);
+                    });
+                });
+            });
+        }
+
         function renderBouncers() {
+            // Calculate freshness for each bouncer
+            const getBouncerFreshness = (lastPull) => {
+                if (!lastPull) return { class: 'freshness-stale', text: 'Jamais connecté', icon: '🔴' };
+                const now = new Date();
+                const pullDate = new Date(lastPull);
+                const diffMinutes = Math.floor((now - pullDate) / 1000 / 60);
+                
+                if (diffMinutes < 5) {
+                    return { class: 'freshness-good', text: 'Actif', icon: '🟢' };
+                } else if (diffMinutes < 30) {
+                    return { class: 'freshness-warning', text: `Il y a ${diffMinutes} min`, icon: '🟡' };
+                } else {
+                    return { class: 'freshness-stale', text: `Il y a ${Math.floor(diffMinutes / 60)} h`, icon: '🔴' };
+                }
+            };
+            
             document.getElementById('app').innerHTML = `
                 <div class="page-header">
                     <h1 class="page-title">Bouncers</h1>
@@ -923,13 +1262,19 @@
 
                 ${state.bouncers.length > 0 ? `
                     <div class="entity-grid">
-                        ${state.bouncers.map(bouncer => `
+                        ${state.bouncers.map(bouncer => {
+                            const freshness = getBouncerFreshness(bouncer.last_pull);
+                            return `
                             <div class="card entity-card">
                                 <div class="entity-header">
                                     <div class="entity-icon">🛡️</div>
                                     <div class="entity-info">
                                         <div class="entity-name">${bouncer.name || 'N/A'}</div>
-                                        <div class="entity-meta"><span class="badge badge-online">Actif</span></div>
+                                        <div class="entity-meta">
+                                            <span class="freshness-indicator ${freshness.class}">
+                                                ${freshness.icon} ${freshness.text}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="entity-details">
@@ -938,8 +1283,8 @@
                                         <span class="entity-detail-value mono">${bouncer.ip_address || 'N/A'}</span>
                                     </div>
                                     <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Type</span>
-                                        <span class="entity-detail-value">${bouncer.type || 'N/A'}</span>
+                                        <span class="entity-detail-label">Type d'authentification</span>
+                                        <span class="entity-detail-value">${bouncer.auth_type || bouncer.type || 'N/A'}</span>
                                     </div>
                                     <div class="entity-detail-row">
                                         <span class="entity-detail-label">Dernière activité</span>
@@ -951,7 +1296,7 @@
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 ` : '<div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">Aucun bouncer</div><div class="empty-state-subtext">Les bouncers apparaîtront ici lorsqu\'ils seront connectés</div></div>'}
             `;
@@ -1040,7 +1385,10 @@
             // Update active nav link
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
-                if (link.getAttribute('href') === `#/${page}`) {
+                const href = link.getAttribute('href');
+                // Extract page from href (e.g., '#/machines' -> 'machines')
+                const linkPage = href && href.startsWith('#/') ? href.slice(2) : '';
+                if (linkPage === page || (page.startsWith(linkPage + '/') && linkPage !== '')) {
                     link.classList.add('active');
                 }
             });
@@ -1054,8 +1402,11 @@
             // Show loading
             document.getElementById('app').innerHTML = '<div class="loading">Chargement...</div>';
             
-            // Load page data
-            switch (page) {
+            // Parse route and load page data
+            const parts = page.split('/');
+            const basePage = parts[0] || 'overview';
+            
+            switch (basePage) {
                 case '':
                 case 'overview':
                     loadOverviewData();
@@ -1070,8 +1421,16 @@
                     refreshTimer = setInterval(loadDecisionsData, REFRESH_INTERVAL);
                     break;
                 case 'machines':
-                    loadMachinesData();
-                    refreshTimer = setInterval(loadMachinesData, REFRESH_INTERVAL);
+                    if (parts.length > 1) {
+                        // Machine detail page
+                        const machineId = parts.slice(1).join('/');
+                        loadMachineDetail(machineId);
+                        // No auto-refresh for detail page
+                    } else {
+                        // Machines list page
+                        loadMachinesData();
+                        refreshTimer = setInterval(loadMachinesData, REFRESH_INTERVAL);
+                    }
                     break;
                 case 'bouncers':
                     loadBouncersData();
@@ -1084,13 +1443,13 @@
 
         // Hash change handler
         window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.slice(2); // Remove '#/'
+            const hash = window.location.hash.slice(2); // Remove '#/' prefix
             navigate(hash);
         });
 
         // Initialize on load
         window.addEventListener('DOMContentLoaded', () => {
-            const hash = window.location.hash.slice(2) || 'overview';
+            const hash = window.location.hash.slice(2) || 'overview'; // Remove '#/' prefix
             navigate(hash);
         });
     </script>

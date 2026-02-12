@@ -7,7 +7,10 @@ Un tableau de bord web moderne et autonome pour CrowdSec, remplaçant `app.crowd
 - 🎨 **Interface sombre premium** inspirée de dashboardicons.com
 - 🌈 **Effets visuels animés** (bande RGB, bordures arc-en-ciel au survol)
 - 📊 **Vue d'ensemble en temps réel** des alertes, décisions, machines et bouncers
+- 🖥️ **Vue détaillée des machines** avec alertes et décisions associées
+- 🏷️ **Mapping hostname** configurable pour nommer vos machines
 - 🔍 **Recherche et filtrage** des alertes et décisions
+- 📍 **Indicateur de fraîcheur** pour les bouncers (actif/inactif)
 - 🚀 **Application monopage (SPA)** sans dépendances externes
 - 🔄 **Rafraîchissement automatique** configurable
 - 🔐 **Autonome** - fonctionne entièrement hors ligne, aucune communication avec crowdsec.net
@@ -16,7 +19,24 @@ Un tableau de bord web moderne et autonome pour CrowdSec, remplaçant `app.crowd
 
 - **Python 3.8+** installé
 - **CrowdSec** installé et en cours d'exécution
-- Accès à la commande `cscli`
+- Accès à la commande `cscli` avec les droits nécessaires (voir note ci-dessous)
+
+**⚠️ Note importante sur les permissions :**
+
+Le dashboard utilise `cscli machines list` et `cscli bouncers list` pour obtenir les informations sur les machines et bouncers. Ces commandes nécessitent des droits de lecture sur `/etc/crowdsec/config.yaml`.
+
+Vous avez deux options :
+
+1. **Lancer le dashboard avec sudo** (recommandé pour le développement)
+   ```bash
+   sudo python3 app.py
+   ```
+
+2. **Ajouter votre utilisateur au groupe crowdsec** (recommandé pour la production)
+   ```bash
+   sudo usermod -aG crowdsec $USER
+   # Puis déconnectez-vous et reconnectez-vous pour appliquer les changements
+   ```
 
 ## 🚀 Installation
 
@@ -81,6 +101,12 @@ dashboard:
   host: "0.0.0.0"  # Écoute sur toutes les interfaces (ou "127.0.0.1" pour localhost uniquement)
   port: 3000  # Port d'écoute du tableau de bord
   refresh_interval: 30  # Intervalle de rafraîchissement en secondes
+
+# Optionnel : Mapping des machine_id vers des noms personnalisés
+machines_hostnames:
+  # Trouvez vos machine_id avec: sudo cscli machines list
+  # "machine-id-long": "MonServeur"
+  # "another-machine": "Serveur-Web"
 ```
 
 **⚠️ Sécurité :** Assurez-vous que `config.yaml` n'est pas accessible publiquement (les permissions recommandées sont `600`).
@@ -95,7 +121,11 @@ chmod 600 config.yaml
 
 ```bash
 cd dashboard
+# Si vous avez ajouté votre utilisateur au groupe crowdsec :
 python app.py
+
+# Sinon, utilisez sudo :
+sudo python app.py
 ```
 
 Le tableau de bord sera accessible à l'adresse : **http://localhost:3000**
@@ -180,8 +210,9 @@ Le tableau de bord comprend 5 pages principales :
 
 ### 1. 🏠 Vue d'ensemble (`#/`)
 
-- 4 cartes de statistiques : Total des alertes, Décisions actives, Machines en ligne, Bouncers actifs
-- Tableau des alertes récentes (20 dernières)
+- 4 cartes de statistiques : Total des alertes, Décisions actives (avec détail par type : ban/captcha/throttle), Machines en ligne, Bouncers actifs
+- Mini-cartes cliquables des 4 premières machines (avec hostname si configuré)
+- Tableau des alertes récentes (20 dernières) avec la machine source
 - Tableau des décisions actives
 - Rafraîchissement automatique toutes les 30 secondes (configurable)
 
@@ -189,6 +220,7 @@ Le tableau de bord comprend 5 pages principales :
 
 - Barre de recherche avec bande RGB animée
 - Liste complète des alertes
+- Affichage du hostname de la machine source (si configuré)
 - Filtrage par scénario, IP source, date
 - Détails extensibles de chaque alerte (clic sur "Détails")
 - Suppression d'alertes (clic sur "Supprimer")
@@ -205,15 +237,29 @@ Le tableau de bord comprend 5 pages principales :
 
 ### 4. 🖥️ Machines (`#/machines`)
 
-- Grille de cartes pour chaque machine
+- Grille de cartes pour chaque machine (cliquables)
+- **Hostname personnalisé** affiché en gros (si configuré) avec machine_id en dessous
 - État (validée / en attente)
 - IP, version, dernière mise à jour
 - Effet de bordure arc-en-ciel au survol
+- **Clic sur une carte** pour accéder à la vue détaillée
+
+#### Vue détaillée d'une machine (`#/machines/<machine_id>`)
+
+- En-tête avec hostname, machine_id et statut de validation
+- 6 informations détaillées : IP, version, OS, type d'authentification, dernière mise à jour, date d'enregistrement
+- **Tableau des alertes de cette machine** avec possibilité de suppression
+- **Tableau des décisions associées** aux alertes de cette machine
+- Bouton retour vers la liste des machines
 
 ### 5. 🛡️ Bouncers (`#/bouncers`)
 
 - Grille de cartes pour chaque bouncer
-- Type, IP, dernière activité
+- **Indicateur de fraîcheur** avec code couleur :
+  - 🟢 **Actif** (< 5 minutes)
+  - 🟡 **Avertissement** (< 30 minutes)
+  - 🔴 **Inactif** (> 30 minutes)
+- Type d'authentification, IP, dernière activité
 - Version du bouncer
 - Effet de bordure arc-en-ciel au survol
 
@@ -257,7 +303,8 @@ Le tableau de bord s'inspire fortement de [dashboardicons.com](https://dashboard
 - **Authentification JWT** : Se connecte comme une machine pour les endpoints `/v1/alerts`
 - **Authentification API Key** : Utilise une clé bouncer pour `/v1/decisions`
 - **Cache de token** : Renouvelle le JWT uniquement lorsqu'il expire
-- **Appels cscli** : Exécute `cscli` en sous-processus pour machines/bouncers/metrics
+- **Appels cscli** : Exécute `cscli` en sous-processus pour machines/bouncers/metrics (nécessite les permissions appropriées)
+- **Enrichissement hostname** : Injecte les hostnames configurés dans les réponses machines
 
 ### Frontend (index.html)
 
@@ -375,13 +422,16 @@ dashboard/
 |-------|---------|-------------|
 | `/` | GET | Sert le SPA |
 | `/api/health` | GET | État du LAPI |
-| `/api/alerts` | GET | Liste des alertes (JWT) |
+| `/api/alerts` | GET | Liste des alertes (JWT, supporte `?machine_id=xxx`) |
 | `/api/alerts/<id>` | GET | Détail d'une alerte (JWT) |
 | `/api/alerts/<id>` | DELETE | Supprime une alerte (JWT) |
 | `/api/decisions` | GET | Liste des décisions (API Key) |
 | `/api/decisions/<id>` | DELETE | Supprime une décision (JWT) |
-| `/api/machines` | GET | Liste des machines (cscli) |
+| `/api/machines` | GET | Liste des machines (cscli, enrichi avec hostnames) |
+| `/api/machines/<machine_id>` | GET | Détail d'une machine (cscli, enrichi avec hostname) |
+| `/api/machines/<machine_id>/alerts` | GET | Alertes d'une machine (JWT) |
 | `/api/bouncers` | GET | Liste des bouncers (cscli) |
+| `/api/config/hostnames` | GET | Mapping machine_id → hostname |
 | `/api/metrics` | GET | Métriques (cscli) |
 
 ## 🤝 Contribution
