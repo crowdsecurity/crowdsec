@@ -1,6 +1,7 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -211,7 +211,6 @@ filename: %s`, deletedFile),
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	ctx := t.Context()
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
 	tmpDir := t.TempDir()
@@ -334,12 +333,21 @@ force_inotify: true`, testPattern),
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Skip tests that don't work on Windows due to chmod/file locking differences
+			if runtime.GOOS == "windows" && tc.name == "GlobInotifyChmod" {
+				t.Skip("Skipping on Windows: chmod 0o000 doesn't prevent file access")
+			}
+
+			ctx := t.Context()
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
 			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
-			tomb := tomb.Tomb{}
+			// Create cancellable context for Stream
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			out := make(chan pipeline.Event)
 
 			f := fileacquisition.Source{}
@@ -377,8 +385,14 @@ force_inotify: true`, testPattern),
 				}()
 			}
 
-			err = f.StreamingAcquisition(ctx, out, &tomb)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			// Stream now blocks, so run it in a goroutine
+			streamDone := make(chan error, 1)
+			go func() {
+				streamDone <- f.Stream(streamCtx, out)
+			}()
+
+			// Give Stream time to start
+			time.Sleep(100 * time.Millisecond)
 
 			if tc.expectedLines != 0 {
 				// f.IsTailing is path delimiter sensitive
@@ -420,20 +434,31 @@ force_inotify: true`, testPattern),
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
-			if tc.expectedOutput != "" {
-				if hook.LastEntry() == nil {
-					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
-				}
-
-				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
-				hook.Reset()
+		if tc.expectedOutput != "" {
+			if hook.LastEntry() == nil {
+				t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
 			}
 
-			if tc.teardown != nil {
-				tc.teardown()
-			}
+			assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
+			hook.Reset()
+		}
 
-			tomb.Kill(nil)
+		// Cancel context to stop Stream BEFORE teardown
+		// This ensures file handles are released before cleanup
+		cancel()
+
+		// Wait for Stream to finish
+		select {
+		case err := <-streamDone:
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Timeout waiting for Stream to finish")
+		}
+
+		// Run teardown AFTER Stream has stopped (files are closed)
+		if tc.teardown != nil {
+			tc.teardown()
+		}
 		})
 	}
 }
@@ -480,11 +505,19 @@ mode: tail
 
 	// Create channel for events
 	eventChan := make(chan pipeline.Event)
-	tomb := tomb.Tomb{}
 
-	// Start acquisition
-	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
-	require.NoError(t, err)
+	// Create cancellable context for Stream
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Start acquisition (Stream now blocks, so run in goroutine)
+	streamDone := make(chan error, 1)
+	go func() {
+		streamDone <- f.Stream(streamCtx, eventChan)
+	}()
+
+	// Give Stream time to start
+	time.Sleep(100 * time.Millisecond)
 
 	// Create a test file
 	testFile := filepath.Join(dir, "test.log")
@@ -501,9 +534,16 @@ mode: tail
 	require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
 	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
 
-	// Cleanup
-	tomb.Kill(nil)
-	require.NoError(t, tomb.Wait())
+	// Cleanup - cancel context to stop Stream
+	cancel()
+
+	// Wait for Stream to finish
+	select {
+	case <-streamDone:
+		// Stream finished
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for Stream to finish")
+	}
 }
 
 func TestFileResurrectionViaPolling(t *testing.T) {
@@ -531,10 +571,16 @@ mode: tail
 	require.NoError(t, err)
 
 	eventChan := make(chan pipeline.Event)
-	tomb := tomb.Tomb{}
 
-	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
-	require.NoError(t, err)
+	// Create cancellable context for Stream
+	streamCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Start acquisition (Stream now blocks, so run in goroutine)
+	streamDone := make(chan error, 1)
+	go func() {
+		streamDone <- f.Stream(streamCtx, eventChan)
+	}()
 
 	// Wait for initial tail setup
 	time.Sleep(100 * time.Millisecond)
@@ -551,7 +597,14 @@ mode: tail
 	isTailed = f.IsTailing(testFile)
 	require.True(t, isTailed, "File should be resurrected via polling")
 
-	// Cleanup
-	tomb.Kill(nil)
-	require.NoError(t, tomb.Wait())
+	// Cleanup - cancel context to stop Stream
+	cancel()
+
+	// Wait for Stream to finish
+	select {
+	case <-streamDone:
+		// Stream finished
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for Stream to finish")
+	}
 }
