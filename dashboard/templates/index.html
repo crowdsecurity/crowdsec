@@ -1,2308 +1,1172 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrowdSec Dashboard</title>
+    <title>CrowdSec Console</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #111;
-            --bg-card: #1a1a1a;
-            --bg-card-hover: #1e1e1e;
-            --border-default: #2a2a2a;
-            --text-primary: #e5e5e5;
-            --text-secondary: #999;
-            --text-muted: #666;
-            --accent-red: #ef4444;
-            --accent-amber: #f59e0b;
-            --accent-green: #10b981;
-            --accent-blue: #3b82f6;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Layout */
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 260px;
-            background: var(--bg-secondary);
-            padding: 32px 0;
-            position: fixed;
-            height: 100vh;
-            border-right: 1px solid var(--border-default);
-        }
-
-        .sidebar-logo {
-            padding: 0 24px 32px;
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sidebar-logo::before {
-            content: '🛡️';
-            font-size: 32px;
-        }
-
-        .sidebar-nav {
-            list-style: none;
-        }
-
-        .sidebar-nav li {
-            margin: 4px 0;
-        }
-
-        .sidebar-nav a {
-            display: flex;
-            align-items: center;
-            padding: 12px 24px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: all 0.2s ease;
-            position: relative;
-            font-weight: 500;
-        }
-
-        .sidebar-nav a::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: transparent;
-            transition: background 0.2s ease;
-        }
-
-        .sidebar-nav a:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .sidebar-nav a.active {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .sidebar-nav a.active::before {
-            background: linear-gradient(180deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff);
-        }
-
-        /* Main content */
-        .main-content {
-            margin-left: 260px;
-            flex: 1;
-            padding: 32px 48px;
-            max-width: calc(100vw - 260px);
-        }
-
-        /* Page header */
-        .page-header {
-            margin-bottom: 32px;
-        }
-
-        .page-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .page-subtitle {
-            color: var(--text-secondary);
-            font-size: 16px;
-        }
-
-        /* Search bar with RGB band */
-        .search-container {
-            margin-bottom: 32px;
-        }
-
-        .search-bar {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 16px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 2px;
-        }
-
-        .search-bar input {
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            flex: 1;
-            font-size: 15px;
-            outline: none;
-            font-family: inherit;
-        }
-
-        .search-bar input::placeholder {
-            color: var(--text-muted);
-        }
-
-        /* Animated RGB band */
-        .rgb-band {
-            height: 2px;
-            background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000, #ff0000);
-            background-size: 200% 100%;
-            animation: rgb-flow 3s linear infinite;
-            border-radius: 1px;
-        }
-
-        @keyframes rgb-flow {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 200% 50%; }
-        }
-
-        /* Stats grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 24px;
-            margin-bottom: 48px;
-        }
-
-        /* Card with rainbow border hover effect */
-        @property --angle {
-            syntax: '<angle>';
-            initial-value: 0deg;
-            inherits: false;
-        }
-
-        .card {
-            position: relative;
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            inset: -1px;
-            border-radius: 13px;
-            padding: 1px;
-            background: conic-gradient(from var(--angle), #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000);
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .card:hover::before {
-            opacity: 1;
-            animation: rotate-border 3s linear infinite;
-        }
-
-        @keyframes rotate-border {
-            to { --angle: 360deg; }
-        }
-
-        .stat-card {
-            cursor: default;
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 14px;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .stat-value {
-            font-size: 36px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .stat-change {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        /* Table */
-        .table-container {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 32px;
-        }
-
-        .table-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border-default);
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        th {
-            text-align: left;
-            padding: 16px 24px;
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--border-default);
-        }
-
-        td {
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--border-default);
-            font-size: 14px;
-        }
-
-        tbody tr {
-            transition: background 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Badges */
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-ban {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-        }
-
-        .badge-captcha {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--accent-amber);
-        }
-
-        .badge-throttle {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--accent-blue);
-        }
-
-        .badge-online {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--accent-green);
-        }
-
-        .badge-offline {
-            background: rgba(153, 153, 153, 0.15);
-            color: var(--text-muted);
-        }
-
-        /* Machine/Bouncer grid */
-        .entity-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-        }
-
-        .entity-card {
-            cursor: pointer;
-        }
-
-        .entity-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .entity-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-
-        .entity-info {
-            flex: 1;
-        }
-
-        .entity-name {
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
-
-        .entity-meta {
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .entity-details {
-            display: grid;
-            gap: 12px;
-        }
-
-        .entity-detail-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-        }
-
-        .entity-detail-label {
-            color: var(--text-secondary);
-        }
-
-        .entity-detail-value {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        /* Buttons */
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-
-        .btn-danger {
-            background: var(--accent-red);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* Loading & Empty states */
-        .loading {
-            text-align: center;
-            padding: 64px;
-            color: var(--text-secondary);
-        }
-
-        .loading::before {
-            content: '⟳';
-            display: block;
-            font-size: 48px;
-            margin-bottom: 16px;
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 64px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
-            opacity: 0.5;
-        }
-
-        .empty-state-text {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-
-        .empty-state-subtext {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        /* Alert details */
-        .alert-details {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border-default);
-        }
-
-        .detail-section {
-            margin-bottom: 16px;
-        }
-
-        .detail-title {
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .detail-content {
-            font-size: 14px;
-            color: var(--text-primary);
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar {
-                width: 220px;
-            }
-            .main-content {
-                margin-left: 220px;
-                padding: 24px 32px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-            .main-content {
-                margin-left: 0;
-                padding: 20px;
-            }
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Utility classes */
-        .hidden {
-            display: none !important;
-        }
-
-        .clickable {
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .clickable:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        }
-
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--border-default);
-            border-radius: 8px;
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 24px;
-            transition: all 0.2s ease;
-        }
-
-        .back-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: var(--text-secondary);
-        }
-
-        .machine-detail-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .machine-detail-icon {
-            font-size: 48px;
-        }
-
-        .machine-detail-info {
-            flex: 1;
-        }
-
-        .machine-detail-name {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .machine-detail-id {
-            font-size: 14px;
-            color: var(--text-muted);
-            font-family: monospace;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .info-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 16px;
-        }
-
-        .info-item-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .info-item-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .freshness-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .freshness-good {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent-green);
-        }
-
-        .freshness-warning {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--accent-amber);
-        }
-
-        .freshness-stale {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--accent-red);
-        }
-
-        .mono {
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Progress bar styles */
-        .progress-bar {
-            height: 8px;
-            background: var(--border-default);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
-            transition: width 0.3s ease;
-        }
-
-        /* Top 3 grid layout */
-        .top3-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .top3-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .top3-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .top3-item {
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-
-        .top3-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .top3-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .top3-item-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .top3-item-count {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--accent-blue);
-        }
-
-        .top3-item-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        /* Chart containers */
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-top: 16px;
-        }
-
-        .chart-small {
-            height: 250px;
-        }
-
-        /* Metrics page specific styles */
-        .metrics-section {
-            margin-bottom: 32px;
-        }
-
-        .metrics-section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--text-primary);
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .metric-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .metric-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--accent-blue);
-            margin-bottom: 8px;
-        }
-
-        .metric-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .metric-unit {
-            font-size: 18px;
-            color: var(--text-secondary);
-        }
+            --bg-body: #0b0e14;
+            --bg-card: #111520;
+            --bg-sidebar: #0d1017;
+            --bg-header: #111520;
+            --bg-table-header: rgba(255,255,255,0.04);
+            --bg-hover: rgba(255,255,255,0.04);
+            --bg-active: rgba(255,255,255,0.06);
+            --border: rgba(255,255,255,0.08);
+            --border-strong: rgba(255,255,255,0.12);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --text-desc: #64748b;
+            --primary: #5d54b0;
+            --primary-light: #7c74d4;
+            --primary-bg: rgba(93,84,176,0.12);
+            --primary-border: rgba(93,84,176,0.25);
+            --success: #22c55e;
+            --success-bg: rgba(34,197,94,0.12);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245,158,11,0.12);
+            --danger: #ef4444;
+            --danger-bg: rgba(239,68,68,0.12);
+            --info: #3b82f6;
+            --rgb-gradient: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000);
+            --rgb-gradient-subtle: linear-gradient(90deg, rgba(255,0,0,0.15), rgba(255,119,0,0.15), rgba(255,255,0,0.15), rgba(0,255,0,0.15), rgba(0,119,255,0.15), rgba(139,0,255,0.15));
+            --rgb-glow: 0 0 20px rgba(139,0,255,0.15), 0 0 40px rgba(0,119,255,0.08);
+            --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.3);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-full: 9999px;
+        }
+        body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:var(--bg-body); color:var(--text-primary); line-height:1.5; font-size:14px; -webkit-font-smoothing:antialiased; }
+
+        /* ── Layout ── */
+        .layout { display:flex; min-height:100vh; }
+        .sidebar { width:280px; background:var(--bg-sidebar); position:fixed; top:0; left:0; bottom:0; border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:40; overflow-y:auto; }
+        .content { margin-left:280px; flex:1; min-height:100vh; }
+        .topbar { height:56px; background:var(--bg-header); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 24px; position:sticky; top:0; z-index:30; backdrop-filter:blur(12px); }
+        .page-content { padding:24px; max-width:1400px; }
+
+        /* ── RGB Accent Bar ── */
+        .rgb-bar { height:3px; background:var(--rgb-gradient); background-size:200% 100%; animation:rgbShift 4s linear infinite; }
+        @keyframes rgbShift { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+
+        /* ── Sidebar ── */
+        .sidebar-header { padding:16px 16px 12px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); min-height:80px; }
+        .sidebar-logo { display:flex; align-items:center; gap:10px; }
+        .sidebar-logo-icon { width:36px; height:36px; border-radius:var(--radius-sm); background:var(--border-strong); display:flex; align-items:center; justify-content:center; padding:2px; }
+        .sidebar-logo-icon-inner { width:100%; height:100%; background:var(--bg-sidebar); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+        .sidebar-logo-text { font-weight:700; font-size:16px; letter-spacing:-0.02em; }
+        .sidebar-logo-sub { font-size:11px; color:var(--text-muted); }
+
+        .sidebar-nav { padding:12px 8px; flex:1; }
+        .sidebar-section { margin-bottom:8px; }
+        .sidebar-section-title { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); padding:8px 12px 4px; }
+        .nav-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:var(--radius-sm); color:var(--text-secondary); text-decoration:none; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; position:relative; }
+        .nav-item:hover { color:var(--text-primary); background:var(--bg-hover); }
+        .nav-item.active { color:var(--text-primary); font-weight:600; background:var(--bg-active); }
+        .nav-item.active::before { content:''; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:0 3px 3px 0; background:var(--rgb-gradient); background-size:100% 300%; animation:rgbVertical 3s linear infinite; }
+        @keyframes rgbVertical { 0%{background-position:50% 0%} 100%{background-position:50% 300%} }
+        .nav-item i { font-size:16px; width:20px; text-align:center; }
+        .nav-badge { margin-left:auto; font-size:10px; font-weight:600; background:var(--primary-bg); color:var(--primary-light); padding:1px 7px; border-radius:var(--radius-full); border:1px solid var(--primary-border); }
+
+        .sidebar-footer { padding:12px 16px; border-top:1px solid var(--border); }
+        .sidebar-user { display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--radius-sm); }
+        .sidebar-avatar { width:32px; height:32px; border-radius:var(--radius-full); background:var(--border-strong); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; padding:2px; }
+        .sidebar-avatar-inner { width:100%; height:100%; background:var(--bg-sidebar); border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; }
+
+        /* ── Topbar ── */
+        .topbar-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px; }
+        .topbar-actions { display:flex; align-items:center; gap:8px; }
+        .topbar-btn { background:transparent; border:1px solid var(--border-strong); color:var(--text-secondary); padding:6px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+        .topbar-btn:hover { color:var(--text-primary); border-color:var(--text-muted); background:var(--bg-hover); }
+        .topbar-search { background:rgba(255,255,255,0.05); border:2px solid transparent; color:var(--text-primary); padding:7px 14px 7px 36px; border-radius:var(--radius-sm); font-size:13px; width:280px; transition:border-color 0.2s; }
+        .topbar-search:focus { outline:none; border-color:var(--primary); }
+        .topbar-search-wrap { position:relative; }
+        .topbar-search-wrap i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:14px; }
+
+        /* ── Cards ── */
+        .card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-card); overflow:hidden; }
+        .card-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+        .card-header-title { font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+        .card-body { padding:20px; }
+        .card-body-flush { padding:0; }
+
+        /* Stat cards */
+        .stat-grid { display:grid; gap:16px; margin-bottom:24px; }
+        .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; display:flex; flex-direction:column; gap:4px; box-shadow:var(--shadow-card); position:relative; overflow:hidden; }
+        .stat-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--rgb-gradient); background-size:200% 100%; animation:rgbShift 4s linear infinite; opacity:0; transition:opacity 0.3s; }
+        .stat-card:hover::after { opacity:1; }
+        .stat-label { font-size:12px; color:var(--text-muted); font-weight:500; display:flex; align-items:center; gap:6px; }
+        .stat-value { font-size:28px; font-weight:800; letter-spacing:-0.02em; line-height:1.2; }
+        .stat-meta { font-size:11px; color:var(--text-muted); }
+
+        /* ── Grid ── */
+        .grid { display:grid; gap:16px; margin-bottom:24px; }
+        .g2 { grid-template-columns:repeat(2,1fr); }
+        .g3 { grid-template-columns:repeat(3,1fr); }
+        .g4 { grid-template-columns:repeat(4,1fr); }
+        .g5 { grid-template-columns:repeat(5,1fr); }
+
+        /* ── Tables ── */
+        table { width:100%; border-collapse:separate; border-spacing:0; }
+        thead th { padding:10px 16px; text-align:left; font-size:12px; font-weight:600; color:var(--text-muted); background:var(--bg-table-header); white-space:nowrap; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; }
+        thead th:first-child { border-radius:8px 0 0 0; }
+        thead th:last-child { border-radius:0 8px 0 0; }
+        tbody td { padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+        tbody tr { transition:background 0.1s; }
+        tbody tr:hover { background:var(--bg-hover); }
+        .mono { font-family:'JetBrains Mono','Fira Code','Courier New',monospace; font-size:12px; }
+
+        /* ── Badges ── */
+        .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:var(--radius-full); font-size:11px; font-weight:600; border:1px solid; white-space:nowrap; }
+        .badge-ban { background:var(--danger-bg); border-color:rgba(239,68,68,0.2); color:#f87171; }
+        .badge-success { background:var(--success-bg); border-color:rgba(34,197,94,0.2); color:#4ade80; }
+        .badge-warning { background:var(--warning-bg); border-color:rgba(245,158,11,0.2); color:#fbbf24; }
+        .badge-info { background:rgba(59,130,246,0.12); border-color:rgba(59,130,246,0.2); color:#60a5fa; }
+        .badge-primary { background:var(--primary-bg); border-color:var(--primary-border); color:var(--primary-light); }
+        .badge-neutral { background:rgba(255,255,255,0.06); border-color:var(--border); color:var(--text-secondary); }
+
+        /* ── Buttons ── */
+        .btn { padding:7px 16px; border-radius:var(--radius-sm); border:1px solid var(--border-strong); background:transparent; color:var(--text-secondary); cursor:pointer; font-size:12px; font-weight:600; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+        .btn:hover { color:var(--text-primary); border-color:var(--text-muted); }
+        .btn-danger { color:#f87171; border-color:rgba(239,68,68,0.3); }
+        .btn-danger:hover { background:var(--danger-bg); }
+        .btn-primary { background:var(--primary); color:white; border-color:var(--primary); }
+        .btn-primary:hover { opacity:0.9; }
+        .btn-rgb { position:relative; background:var(--bg-card); color:var(--text-primary); border:none; padding:8px 18px; }
+        .btn-rgb::before { content:''; position:absolute; inset:-2px; border-radius:10px; background:var(--rgb-gradient); background-size:200% 100%; animation:rgbShift 3s linear infinite; z-index:-1; }
+        .btn-rgb::after { content:''; position:absolute; inset:0; border-radius:var(--radius-sm); background:var(--bg-card); z-index:-1; }
+
+        /* ── Tabs (CrowdSec style) ── */
+        .tabs-bar { display:flex; border-bottom:2px solid var(--border); margin-bottom:24px; gap:0; }
+        .tab-item { padding:12px 16px; font-size:13px; font-weight:500; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+        .tab-item:hover { color:var(--text-primary); }
+        .tab-item.active { color:var(--text-primary); font-weight:600; border-bottom-color:var(--primary-light); }
+
+        /* ── Chips ── */
+        .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+        .chip { padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border); background:transparent; color:var(--text-secondary); cursor:pointer; font-size:12px; font-weight:500; transition:all 0.15s; }
+        .chip:hover { border-color:var(--text-muted); color:var(--text-primary); }
+        .chip.active { border-color:var(--primary-border); background:var(--primary-bg); color:var(--primary-light); }
+
+        /* ── Scroll ── */
+        .scroll { max-height:65vh; overflow-y:auto; }
+        .scroll::-webkit-scrollbar { width:5px; }
+        .scroll::-webkit-scrollbar-track { background:transparent; }
+        .scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+        .scroll::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+
+        /* ── Visualizer (CrowdSec style) ── */
+        .vis-container { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+        .vis-col-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:12px; }
+        .vis-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+        .vis-rank { font-size:11px; font-weight:700; color:var(--text-muted); width:28px; }
+        .vis-bar { flex:1; min-width:0; }
+        .vis-bar-label { font-size:12px; font-weight:500; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .vis-bar-track { height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+        .vis-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
+        .vis-count { font-size:11px; color:var(--text-muted); font-weight:600; white-space:nowrap; }
+
+        /* ── Log entries ── */
+        .log-entry { display:flex; align-items:center; gap:10px; padding:8px 16px; border-bottom:1px solid var(--border); transition:background 0.1s; }
+        .log-entry:hover { background:var(--bg-hover); }
+        .log-icon { width:24px; text-align:center; font-size:14px; flex-shrink:0; }
+        .log-ts { width:140px; flex-shrink:0; font-family:monospace; font-size:11px; color:var(--text-muted); }
+        .log-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .log-body { flex:1; font-size:13px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+        /* ── Machine cards ── */
+        .engine-card { padding:20px; cursor:pointer; transition:all 0.2s; position:relative; }
+        .engine-card:hover { border-color:rgba(255,255,255,0.15); background:var(--bg-hover); }
+        .engine-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--rgb-gradient); background-size:200% 100%; animation:rgbShift 4s linear infinite; opacity:0; transition:opacity 0.3s; }
+        .engine-card:hover::after { opacity:1; }
+        .engine-status { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .engine-status.online { background:var(--success); box-shadow:0 0 8px rgba(34,197,94,0.4); }
+        .engine-status.warning { background:var(--warning); }
+        .engine-status.offline { background:var(--danger); }
+
+        /* ── Info grid ── */
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .info-item { }
+        .info-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:3px; }
+        .info-value { font-size:13px; color:var(--text-primary); }
+
+        /* ── Empty state ── */
+        .empty { padding:48px; text-align:center; color:var(--text-muted); }
+        .empty-icon { font-size:40px; margin-bottom:12px; opacity:0.5; }
+
+        /* ── Page header ── */
+        .page-header { margin-bottom:24px; }
+        .page-title { font-size:22px; font-weight:700; letter-spacing:-0.02em; margin-bottom:2px; }
+        .page-desc { font-size:13px; color:var(--text-desc); }
+        .breadcrumb { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted); margin-bottom:16px; }
+        .breadcrumb a { color:var(--text-secondary); text-decoration:none; }
+        .breadcrumb a:hover { color:var(--text-primary); }
+
+        /* ── Section ── */
+        .section { margin-bottom:24px; }
+        .section-title { font-size:14px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+
+        /* ── Pagination ── */
+        .pagination { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; font-size:12px; color:var(--text-muted); border-top:1px solid var(--border); }
+        .pagination-info { }
+        .pagination-buttons { display:flex; gap:4px; }
+        .pagination-btn { padding:4px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text-secondary); cursor:pointer; font-size:12px; }
+        .pagination-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+
+        /* ── Responsive ── */
+        @media (max-width:1200px) { .g4,.g5 { grid-template-columns:repeat(2,1fr); } .vis-container { grid-template-columns:repeat(2,1fr); } }
+        @media (max-width:900px) { .g2,.g3 { grid-template-columns:1fr; } .sidebar { display:none; } .content { margin-left:0; } }
+
+        /* ── Clickable ── */
+        .clickable { cursor:pointer; }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">CrowdSec</div>
-            <nav>
-                <ul class="sidebar-nav">
-                    <li><a href="#/" class="nav-link">📊 Vue d'ensemble</a></li>
-                    <li><a href="#/alerts" class="nav-link">🚨 Alertes</a></li>
-                    <li><a href="#/decisions" class="nav-link">⚖️ Décisions</a></li>
-                    <li><a href="#/metrics" class="nav-link">📈 Métriques</a></li>
-                    <li><a href="#/machines" class="nav-link">🖥️ Machines</a></li>
-                    <li><a href="#/bouncers" class="nav-link">🛡️ Bouncers</a></li>
-                    <li><a href="#/logs" class="nav-link">📋 Logs</a></li>
-                </ul>
-            </nav>
-        </aside>
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon"><div class="sidebar-logo-icon-inner">🛡️</div></div>
+                <div>
+                    <div class="sidebar-logo-text">CrowdSec</div>
+                    <div class="sidebar-logo-sub">Security Console</div>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <a href="#/" class="nav-item nav-link"><i class="bi bi-shield"></i>Dashboard</a>
+                <a href="#/machines" class="nav-item nav-link"><i class="bi bi-hdd-stack"></i>Engines</a>
+                <a href="#/security" class="nav-item nav-link"><i class="bi bi-exclamation-triangle"></i>Alerts</a>
+                <a href="#/bans" class="nav-item nav-link"><i class="bi bi-ban"></i>Bans</a>
+                <a href="#/logs" class="nav-item nav-link"><i class="bi bi-file-text"></i>Logs</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar"><div class="sidebar-avatar-inner">CS</div></div>
+                <div>
+                    <div style="font-size:13px;font-weight:600">CrowdSec</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Self-hosted</div>
+                </div>
+            </div>
+        </div>
+    </aside>
 
-        <!-- Main content -->
-        <main class="main-content">
-            <div id="app"></div>
-        </main>
+    <!-- Main -->
+    <div class="content">
+        <header class="topbar">
+            <div class="topbar-title" id="topbarTitle">📊 Dashboard</div>
+            <div class="topbar-actions">
+                <div class="topbar-search-wrap">
+                    <i class="bi bi-search"></i>
+                    <input type="text" class="topbar-search" placeholder="Rechercher..." id="globalSearch">
+                </div>
+                <button class="topbar-btn" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+        </header>
+        <div class="page-content"><div id="app"><div class="empty">⏳</div></div></div>
     </div>
+</div>
 
-    <script>
-        // Configuration
-        const REFRESH_INTERVAL = {{ refresh_interval }} * 1000; // Convertir en ms
-        let refreshTimer = null;
+<script>
+const REFRESH = {{ refresh_interval }} * 1000;
+let refreshTimer = null;
 
-        // State management
-        const state = {
-            currentPage: 'overview',
-            alerts: [],
-            decisions: [],
-            machines: [],
-            bouncers: [],
-            metrics: null,
-            hostnames: {},
-            currentMachineId: null,
-            alertsStats: {},
-            metricsStats: {},
-            logs: { logs: [], filters: {} },
-            liveLogs: { lines: [] }
-        };
+const state = {
+    alerts:[], decisions:[], machines:[], bouncers:[],
+    hostnames:{}, alertsStats:{}, hub:{},
+    logs:{ logs:[], filters:{} }
+};
 
-        // API calls
-        async function fetchAPI(endpoint) {
-            try {
-                const response = await fetch(`/api/${endpoint}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error(`Erreur API ${endpoint}:`, error);
-                return null;
-            }
+async function fetchAPI(ep) {
+    try { const r = await fetch(`/api/${ep}`); if(!r.ok) throw new Error(r.status); return await r.json(); }
+    catch(e) { console.error(`API ${ep}:`,e); return null; }
+}
+async function deleteAPI(ep) {
+    try { const r = await fetch(`/api/${ep}`,{method:'DELETE'}); return await r.json(); }
+    catch(e) { console.error(e); return null; }
+}
+
+function esc(t) { if(!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+function getFlag(cc) { if(!cc||cc.length!==2) return '🏴'; return String.fromCodePoint(...cc.toUpperCase().split('').map(c=>127397+c.charCodeAt())); }
+function getName(m) { const id=m.machineId||m.machine_id||m.name; return state.hostnames[id]||id; }
+function fmtDate(s) {
+    if(!s) return '-';
+    const d=new Date(s), now=new Date(), diff=Math.floor((now-d)/1000);
+    if(diff<60) return "à l'instant";
+    if(diff<3600) return `il y a ${Math.floor(diff/60)}min`;
+    if(diff<86400) return `il y a ${Math.floor(diff/3600)}h`;
+    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
+    if(d.toDateString()===yesterday.toDateString()) return 'yesterday at '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+function fmtTime(s) { if(!s) return ''; const d=new Date(s); return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function fmtTs(s) { return s ? s.replace('T',' ').substring(0,19) : ''; }
+
+function setTopbar(title, icon) {
+    document.getElementById('topbarTitle').innerHTML = `<i class="bi bi-${icon}"></i> ${title}`;
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+async function loadDashboard() {
+    const [alerts,decisions,machines,bouncers,hostnames] = await Promise.all([
+        fetchAPI('alerts'), fetchAPI('decisions'), fetchAPI('machines'),
+        fetchAPI('bouncers'), fetchAPI('config/hostnames')
+    ]);
+    state.alerts=alerts||[]; state.decisions=decisions||[]; state.machines=machines||[];
+    state.bouncers=bouncers||[]; state.hostnames=hostnames||{};
+    renderDashboard();
+}
+
+function renderDashboard() {
+    const a=state.alerts, d=state.decisions, m=state.machines, b=state.bouncers;
+    const bans=d.filter(x=>x.type==='ban');
+    setTopbar('Dashboard','shield');
+
+    let html = `
+        <div class="page-header">
+            <div class="page-title">Dashboard</div>
+            <div class="page-desc">Vue d'ensemble de votre infrastructure CrowdSec</div>
+        </div>
+
+        <div class="stat-grid g4">
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-exclamation-triangle"></i> Alertes</div><div class="stat-value">${a.length}</div><div class="stat-meta">Total des alertes reçues</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-ban"></i> Bans actifs</div><div class="stat-value" style="color:#f87171">${bans.length}</div><div class="stat-meta">IPs actuellement bannies</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-hdd-stack"></i> Engines</div><div class="stat-value">${m.filter(x=>x.isValidated).length}</div><div class="stat-meta">${m.filter(x=>x.last_heartbeat&&(new Date()-new Date(x.last_heartbeat))/60000<5).length} en ligne</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-router"></i> Bouncers</div><div class="stat-value">${b.length}</div><div class="stat-meta">${b.filter(x=>x.last_pull&&(new Date()-new Date(x.last_pull))/60000<5).length} actif(s)</div></div>
+        </div>`;
+
+    // Infrastructure
+    html += `<div class="section"><div class="section-title"><i class="bi bi-diagram-3"></i> Infrastructure</div><div class="grid g${Math.min(m.length+b.length,3)}">`;
+    for(const machine of m) {
+        const name=getName(machine);
+        const hb=machine.last_heartbeat?(new Date()-new Date(machine.last_heartbeat))/60000:999;
+        const st=hb<5?'online':hb<30?'warning':'offline';
+        html += `<div class="card engine-card" onclick="window.location.hash='/machines'">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div class="engine-status ${st}"></div>
+                <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(name)}</div>
+                <div style="color:var(--text-muted);font-size:12px">${esc(machine.ipAddress||'')} · ${esc((machine.version||'').split('-')[0])}</div></div>
+                <span class="badge badge-${st==='online'?'success':st==='warning'?'warning':'ban'}">${st==='online'?'Online':st==='warning'?'Recent':'Offline'}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                <div><div class="info-label">OS</div><div class="info-value" style="font-size:12px">${esc(machine.os||'?')}</div></div>
+                <div><div class="info-label">Version</div><div class="info-value" style="font-size:12px">${esc((machine.version||'?').split('-')[0])}</div></div>
+                <div><div class="info-label">Datasources</div><div class="info-value" style="font-size:12px">${machine.datasources?Object.values(machine.datasources).reduce((a,b)=>a+b,0):0} file(s)</div></div>
+            </div>
+        </div>`;
+    }
+    for(const bouncer of b) {
+        const bOn=bouncer.last_pull?((new Date()-new Date(bouncer.last_pull))/60000<5):false;
+        html += `<div class="card" style="padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <i class="bi bi-router" style="font-size:24px;color:var(--primary-light)"></i>
+                <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(bouncer.name||'')}</div>
+                <div style="color:var(--text-muted);font-size:12px">${esc(bouncer.ip_address||'')} · ${esc(bouncer.type||'')}</div></div>
+                <span class="badge badge-${bOn?'success':'ban'}">${bOn?'Active':'Inactive'}</span>
+            </div>
+        </div>`;
+    }
+    html += `</div></div>`;
+
+    // Active decisions
+    html += `<div class="section"><div class="section-title"><i class="bi bi-ban"></i> Active Decisions</div>`;
+    if(d.length) {
+        html += `<div class="card"><div class="card-body-flush"><div class="scroll"><table><thead><tr><th>IP</th><th>Type</th><th>Reason</th><th>Country</th><th>Duration</th><th></th></tr></thead><tbody>`;
+        for(const dec of d) {
+            const geo=dec._geo||{};
+            html += `<tr>
+                <td class="mono" style="color:var(--warning)">${esc(dec.value)}</td>
+                <td><span class="badge badge-ban">${esc(dec.type)}</span></td>
+                <td style="color:var(--text-secondary)">${esc(dec.scenario||dec.origin||'')}</td>
+                <td>${geo.flag||''} ${esc(geo.country||'')}</td>
+                <td style="color:var(--text-muted)">${esc(dec.duration)}</td>
+                <td><button class="btn btn-danger btn-del-dec" data-id="${dec.id}" style="padding:4px 10px"><i class="bi bi-trash"></i></button></td>
+            </tr>`;
         }
+        html += `</tbody></table></div></div></div>`;
+    } else { html += `<div class="card"><div class="empty"><div class="empty-icon"><i class="bi bi-check2-circle"></i></div>No active decisions</div></div>`; }
+    html += `</div>`;
 
-        async function deleteAPI(endpoint) {
-            try {
-                const response = await fetch(`/api/${endpoint}`, { method: 'DELETE' });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
-            } catch (error) {
-                console.error(`Erreur DELETE ${endpoint}:`, error);
-                return null;
-            }
+    // Recent alerts
+    html += `<div class="section"><div class="section-title"><i class="bi bi-exclamation-triangle"></i> Recent Alerts</div>`;
+    if(a.length) {
+        html += `<div class="card"><div class="card-body-flush"><div class="scroll"><table><thead><tr><th>When</th><th>Scenario</th><th>Source</th><th>Country</th><th>Engine</th><th>Events</th></tr></thead><tbody>`;
+        for(const alert of a.slice(0,30)) {
+            const ip=alert.source?.value||'';
+            const geo=alert.geoip||{};
+            const machine=alert.machine_id?(state.hostnames[alert.machine_id]||alert.machine_id):'-';
+            html += `<tr>
+                <td><div style="font-size:12px;color:var(--text-secondary)">${fmtDate(alert.created_at)}</div><div style="font-size:10px;color:var(--text-muted)">${fmtTime(alert.created_at)}</div></td>
+                <td><span class="badge badge-warning">${esc(alert.scenario?.replace('crowdsecurity/',''))}</span></td>
+                <td class="mono" style="color:var(--warning)">${esc(ip)}</td>
+                <td>${geo.country_flag||'🏴'} ${esc(geo.country_name||'')}</td>
+                <td style="color:var(--text-secondary);font-size:12px">${esc(machine)}</td>
+                <td><span class="badge badge-neutral">${alert.events_count||0}</span></td>
+            </tr>`;
         }
+        html += `</tbody></table></div></div></div>`;
+    } else { html += `<div class="card"><div class="empty"><div class="empty-icon"><i class="bi bi-inbox"></i></div>No alerts</div></div>`; }
+    html += `</div>`;
 
-        // Data loading
-        async function loadOverviewData() {
-            const [alerts, decisions, machines, bouncers, hostnames] = await Promise.all([
-                fetchAPI('alerts?limit=20'),
-                fetchAPI('decisions'),
-                fetchAPI('machines'),
-                fetchAPI('bouncers'),
-                fetchAPI('config/hostnames')
-            ]);
-            
-            state.alerts = alerts || [];
-            state.decisions = decisions || [];
-            state.machines = machines || [];
-            state.bouncers = bouncers || [];
-            state.hostnames = hostnames || {};
-            
-            renderOverview();
-        }
+    document.getElementById('app').innerHTML = html;
+    document.querySelectorAll('.btn-del-dec').forEach(b=>b.addEventListener('click',async e=>{
+        if(!confirm('Delete this decision?')) return;
+        await deleteAPI(`decisions/${e.target.closest('button').dataset.id}`); loadDashboard();
+    }));
+}
 
-        async function loadAlertsData() {
-            const [alerts, hostnames, stats] = await Promise.all([
-                fetchAPI('alerts'),
-                fetchAPI('config/hostnames'),
-                fetchAPI('stats/alerts')
-            ]);
-            state.alerts = alerts || [];
-            state.hostnames = hostnames || {};
-            state.alertsStats = stats || {};
-            renderAlerts();
-        }
+// ═══════════════════════════════════════
+// MACHINES LIST
+// ═══════════════════════════════════════
+async function loadMachines() {
+    const [machines,bouncers,alerts,hostnames] = await Promise.all([
+        fetchAPI('machines'), fetchAPI('bouncers'), fetchAPI('alerts'), fetchAPI('config/hostnames')
+    ]);
+    state.machines=machines||[]; state.bouncers=bouncers||[];
+    state.alerts=alerts||[]; state.hostnames=hostnames||{};
+    setTopbar('Security Engines','hdd-stack');
+    renderMachineList();
+}
 
-        async function loadDecisionsData() {
-            state.decisions = await fetchAPI('decisions') || [];
-            renderDecisions();
-        }
+function renderMachineList() {
+    const m=state.machines;
+    let html = `
+        <div class="page-header">
+            <div class="page-title">Security Engines</div>
+            <div class="page-desc">${m.length} engine${m.length>1?'s':''} registered</div>
+        </div>
+        <div class="grid g2">`;
 
-        async function loadMachinesData() {
-            const [machines, hostnames] = await Promise.all([
-                fetchAPI('machines'),
-                fetchAPI('config/hostnames')
-            ]);
-            state.machines = machines || [];
-            state.hostnames = hostnames || {};
-            renderMachines();
-        }
+    for(const machine of m) {
+        const name=getName(machine);
+        const hb=machine.last_heartbeat?(new Date()-new Date(machine.last_heartbeat))/60000:999;
+        const st=hb<5?'online':hb<30?'warning':'offline';
+        const alertCount=state.alerts.filter(a=>a.machine_id===machine.machineId).length;
 
-        async function loadBouncersData() {
-            state.bouncers = await fetchAPI('bouncers') || [];
-            renderBouncers();
-        }
-
-        async function loadLogsData() {
-            const data = await fetchAPI('logs');
-            state.logs = data || { logs: [], filters: {} };
-            renderLogs();
-        }
-
-        async function loadLiveLogsData(source = 'auth', lines = 100) {
-            const data = await fetchAPI(`logs/live?source=${source}&lines=${lines}`);
-            state.liveLogs = data || { lines: [] };
-        }
-
-        async function loadMachineDetail(machineId) {
-            const [machine, alerts, hostnames] = await Promise.all([
-                fetchAPI(`machines/${machineId}`),
-                fetchAPI(`machines/${machineId}/alerts`),
-                fetchAPI('config/hostnames')
-            ]);
-            
-            if (!machine) {
-                document.getElementById('app').innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Machine non trouvée</div></div>';
-                return;
-            }
-            
-            state.currentMachineId = machineId;
-            state.hostnames = hostnames || {};
-            renderMachineDetail(machine, alerts || []);
-        }
-
-        // Helper function to get machine display name
-        function getMachineName(machine) {
-            const machineId = machine.machineId || machine.machine_id || machine.name;
-            return state.hostnames[machineId] || machineId;
-        }
-
-        // Helper function to convert country code to flag emoji
-        function getCountryFlag(countryCode) {
-            if (!countryCode || countryCode === 'N/A' || countryCode.length !== 2) return '🏴';
-            const codePoints = countryCode
-                .toUpperCase()
-                .split('')
-                .map(char => 127397 + char.charCodeAt());
-            return String.fromCodePoint(...codePoints);
-        }
-
-        // Helper function to escape HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Render functions
-        function renderOverview() {
-            const alertsCount = state.alerts.length || 0;
-            const decisionsCount = state.decisions.length || 0;
-            const machinesOnline = (state.machines || []).filter(m => m.isValidated).length;
-            const bouncersActive = (state.bouncers || []).length;
-            
-            // Count decisions by type
-            const banCount = (state.decisions || []).filter(d => d.type === 'ban').length;
-            const captchaCount = (state.decisions || []).filter(d => d.type === 'captcha').length;
-            const throttleCount = (state.decisions || []).filter(d => d.type === 'throttle').length;
-            
-            const recentAlerts = (state.alerts || []).slice(0, 20);
-            const activeDecisions = (state.decisions || []).filter(d => d.type === 'ban').slice(0, 20);
-            
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Vue d'ensemble</h1>
-                    <p class="page-subtitle">Tableau de bord CrowdSec en temps réel</p>
+        html += `
+        <div class="card engine-card" onclick="window.location.hash='/machine/${encodeURIComponent(machine.machineId)}'">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+                <div class="engine-status ${st}"></div>
+                <div style="flex:1">
+                    <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em">${esc(name)}</div>
+                    <div style="color:var(--text-muted);font-size:12px;margin-top:2px">${esc(machine.ipAddress||'')}</div>
                 </div>
+                <span class="badge badge-${st==='online'?'success':st==='warning'?'warning':'ban'}">${st==='online'?'Online':st==='warning'?'Recent':'Offline'}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                <div><div class="info-label">OS</div><div class="info-value">${esc(machine.os||'?')}</div></div>
+                <div><div class="info-label">Version</div><div class="info-value">${esc((machine.version||'?').split('-')[0])}</div></div>
+                <div><div class="info-label">Alerts</div><div class="info-value" style="color:#fbbf24">${alertCount}</div></div>
+                <div><div class="info-label">Last seen</div><div class="info-value">${fmtDate(machine.last_heartbeat)}</div></div>
+            </div>
+        </div>`;
+    }
+    html += `</div>`;
+    document.getElementById('app').innerHTML = html;
+}
 
-                <div class="stats-grid">
-                    <div class="card stat-card">
-                        <div class="stat-label">Total des alertes</div>
-                        <div class="stat-value">${alertsCount}</div>
-                        <div class="stat-change">Dernières 24h</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Décisions actives</div>
-                        <div class="stat-value">${decisionsCount}</div>
-                        <div class="stat-change">${banCount} bans, ${captchaCount} captcha, ${throttleCount} throttle</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Machines en ligne</div>
-                        <div class="stat-value">${machinesOnline}</div>
-                        <div class="stat-change">Validées</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Bouncers actifs</div>
-                        <div class="stat-value">${bouncersActive}</div>
-                        <div class="stat-change">Connectés</div>
-                    </div>
-                </div>
+// ═══════════════════════════════════════
+// MACHINE DETAIL
+// ═══════════════════════════════════════
+async function loadMachineDetail(machineId) {
+    const decoded=decodeURIComponent(machineId);
+    const [machines,bouncers,alerts,hostnames,hub] = await Promise.all([
+        fetchAPI('machines'), fetchAPI('bouncers'), fetchAPI('alerts'),
+        fetchAPI('config/hostnames'), fetchAPI('hub/installed')
+    ]);
+    state.machines=machines||[]; state.bouncers=bouncers||[];
+    state.alerts=alerts||[]; state.hostnames=hostnames||{};
+    state.hub=hub||{};
 
-                ${state.machines.length > 0 ? `
-                    <div class="page-header" style="margin-top: 32px;">
-                        <h2 class="page-title" style="font-size: 20px;">Machines</h2>
-                    </div>
-                    <div class="entity-grid">
-                        ${state.machines.slice(0, 4).map(machine => {
-                            const machineId = machine.machineId || machine.machine_id || machine.name;
-                            const displayName = getMachineName(machine);
-                            return `
-                            <div class="card entity-card clickable" onclick="window.location.hash = '/machines/${machineId}'">
-                                <div class="entity-header">
-                                    <div class="entity-icon">🖥️</div>
-                                    <div class="entity-info">
-                                        <div class="entity-name">${displayName}</div>
-                                        <div class="entity-meta">
-                                            <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
-                                                ${machine.isValidated ? 'Validée' : 'En attente'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="entity-details">
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">IP</span>
-                                        <span class="entity-detail-value mono">${machine.ipAddress || 'N/A'}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Version</span>
-                                        <span class="entity-detail-value">${machine.version || 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                ` : ''}
+    const machine=state.machines.find(m=>m.machineId===decoded);
+    if(!machine) { document.getElementById('app').innerHTML='<div class="empty"><div class="empty-icon">❓</div>Engine not found</div>'; return; }
+    setTopbar(getName(machine),'hdd-stack');
+    renderMachineDetail(machine);
+}
 
-                <div class="table-container">
-                    <div class="table-header">Alertes récentes</div>
-                    ${recentAlerts.length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Scénario</th>
-                                    <th>Source</th>
-                                    <th>Machine</th>
-                                    <th>Événements</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${recentAlerts.map(alert => {
-                                    const machineId = alert.machine_id;
-                                    const machineName = machineId && state.hostnames[machineId] ? state.hostnames[machineId] : (machineId || 'N/A');
-                                    return `
-                                    <tr>
-                                        <td>${formatDate(alert.created_at)}</td>
-                                        <td>${alert.scenario || 'N/A'}</td>
-                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
-                                        <td>${machineName}</td>
-                                        <td>${alert.events_count || 0}</td>
-                                    </tr>
-                                `}).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte récente</div></div>'}
-                </div>
+function renderMachineDetail(machine) {
+    const name=getName(machine);
+    const machineAlerts=state.alerts.filter(a=>a.machine_id===machine.machineId);
+    const hb=machine.last_heartbeat?(new Date()-new Date(machine.last_heartbeat))/60000:999;
+    const online=hb<5;
 
-                <div class="table-container">
-                    <div class="table-header">Décisions actives</div>
-                    ${activeDecisions.length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>IP / Range</th>
-                                    <th>Type</th>
-                                    <th>Scénario</th>
-                                    <th>Durée restante</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${activeDecisions.map(decision => `
-                                    <tr>
-                                        <td class="mono">${decision.value || 'N/A'}</td>
-                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
-                                        <td>${decision.scenario || 'N/A'}</td>
-                                        <td>${decision.duration || 'N/A'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision active</div></div>'}
-                </div>
-            `;
-        }
+    // Visualizer stats
+    const srcIps={}, srcAs={}, engines={}, scenarios={};
+    for(const a of machineAlerts) {
+        const ip=a.source?.value; if(ip) srcIps[ip]=(srcIps[ip]||0)+1;
+        const asn=a.geoip?.as_name; if(asn) srcAs[asn]=(srcAs[asn]||0)+1;
+        const eng=a.machine_id; if(eng) engines[state.hostnames[eng]||eng]=(engines[state.hostnames[eng]||eng]||0)+1;
+        const sc=a.scenario; if(sc) scenarios[sc]=(scenarios[sc]||0)+1;
+    }
+    const topIps=Object.entries(srcIps).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const topAs=Object.entries(srcAs).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const topEngines=Object.entries(engines).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const topScenarios=Object.entries(scenarios).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const maxAlerts=Math.max(...[...topIps,...topAs,...topEngines,...topScenarios].map(x=>x[1]),1);
 
-        function renderAlerts() {
-            const stats = state.alertsStats || {};
-            
-            // Statistiques pour les compteurs
-            const uniqueIps = stats.unique_ips || 0;
-            const uniqueAs = stats.unique_as || 0;
-            const uniqueCountries = stats.unique_countries || 0;
-            const uniqueScenarios = stats.unique_scenarios || 0;
-            const uniqueMachines = stats.unique_machines || 0;
-            const noiseCanceling = stats.noise_canceling || 0;
-            
-            // Top 3 data
-            const topIps = stats.top_ips || [];
-            const topAs = stats.top_as || [];
-            const topCountries = stats.top_countries || [];
-            const topScenarios = stats.top_scenarios || [];
-            const topMachines = stats.top_machines || [];
-            
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Alertes</h1>
-                    <p class="page-subtitle">Gestion des alertes de sécurité</p>
-                </div>
+    const hubScenarios=state.hub.scenarios||[];
+    const hubCollections=state.hub.collections||[];
 
-                <!-- Visibility Counters -->
-                <div class="stats-grid" style="margin-bottom: 24px;">
-                    <div class="card stat-card">
-                        <div class="stat-label">Noise Canceling</div>
-                        <div class="stat-value">${noiseCanceling}%</div>
-                        <div class="stat-change">Alertes filtrées</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Source IPs</div>
-                        <div class="stat-value">${uniqueIps}</div>
-                        <div class="stat-change">IPs distinctes</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Source AS</div>
-                        <div class="stat-value">${uniqueAs}</div>
-                        <div class="stat-change">AS distincts</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Pays</div>
-                        <div class="stat-value">${uniqueCountries}</div>
-                        <div class="stat-change">Pays distincts</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Scénarios</div>
-                        <div class="stat-value">${uniqueScenarios}</div>
-                        <div class="stat-change">Types d'attaques</div>
-                    </div>
-                    <div class="card stat-card">
-                        <div class="stat-label">Security Engines</div>
-                        <div class="stat-value">${uniqueMachines}</div>
-                        <div class="stat-change">Machines actives</div>
+    let html = `
+        <div class="breadcrumb"><a href="#/machines"><i class="bi bi-chevron-left"></i> Engines</a> <span style="color:var(--text-muted)">/</span> <span>${esc(name)}</span></div>
+
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;">
+            <div class="engine-status ${online?'online':'offline'}" style="width:14px;height:14px;"></div>
+            <div style="flex:1">
+                <div class="page-title" style="margin-bottom:0">${esc(name)}</div>
+                <div class="page-desc">${esc(machine.ipAddress||'')} · ${esc(machine.os||'')} · ${esc((machine.version||'').split('-')[0])}</div>
+            </div>
+            <span class="badge badge-${online?'success':'ban'}" style="font-size:12px;padding:5px 14px;">${online?'● Online':'○ Offline'}</span>
+        </div>
+
+        <!-- Info + Bouncers -->
+        <div class="grid g2">
+            <div class="card">
+                <div class="card-header"><div class="card-header-title"><i class="bi bi-info-circle"></i> Engine Information</div></div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item"><div class="info-label">Machine ID</div><div class="info-value mono" style="font-size:11px;word-break:break-all;color:var(--text-secondary)">${esc(machine.machineId)}</div></div>
+                        <div class="info-item"><div class="info-label">IP Address</div><div class="info-value mono" style="color:var(--warning)">${esc(machine.ipAddress||'-')}</div></div>
+                        <div class="info-item"><div class="info-label">Operating System</div><div class="info-value">${esc(machine.os||'Unknown')}</div></div>
+                        <div class="info-item"><div class="info-label">CrowdSec Version</div><div class="info-value">${esc(machine.version||'?')}</div></div>
+                        <div class="info-item"><div class="info-label">Last Heartbeat</div><div class="info-value">${fmtDate(machine.last_heartbeat)}</div></div>
+                        <div class="info-item"><div class="info-label">Last Push</div><div class="info-value">${fmtDate(machine.last_push)}</div></div>
+                        <div class="info-item"><div class="info-label">Authentication</div><div class="info-value">${esc(machine.auth_type||'?')}</div></div>
+                        <div class="info-item"><div class="info-label">Datasources</div><div class="info-value">${machine.datasources?Object.entries(machine.datasources).map(([k,v])=>k+': '+v).join(', '):'-'}</div></div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Top 3 Source IPs -->
-                ${topIps.length > 0 ? `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source IP</h3>
-                    <div class="top3-grid">
-                        ${topIps.slice(0, 3).map((item, index) => `
-                            <div class="top3-card">
-                                <div class="top3-title">#${index + 1} IP Source</div>
-                                <div class="top3-item">
-                                    <div class="top3-item-header">
-                                        <span class="top3-item-label mono">${escapeHtml(item.ip)}</span>
-                                        <span class="top3-item-count">${item.count} alertes</span>
-                                    </div>
-                                    <div class="top3-item-meta">${escapeHtml(item.as_name)} | ${item.country_flag} ${escapeHtml(item.country)}</div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
-                                    </div>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
+            <div class="card">
+                <div class="card-header"><div class="card-header-title"><i class="bi bi-router"></i> Bouncers</div></div>
+                <div class="card-body" style="padding:0;">`;
 
-                <!-- Top 3 Source AS -->
-                ${topAs.length > 0 ? `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source AS</h3>
-                    <div class="top3-grid">
-                        ${topAs.slice(0, 3).map((item, index) => `
-                            <div class="top3-card">
-                                <div class="top3-title">#${index + 1} Autonomous System</div>
-                                <div class="top3-item">
-                                    <div class="top3-item-header">
-                                        <span class="top3-item-label">${escapeHtml(item.as_name)}</span>
-                                        <span class="top3-item-count">${item.count} alertes</span>
-                                    </div>
-                                    <div class="top3-item-meta">${escapeHtml(item.as_number)} | ${item.country_flag} ${escapeHtml(item.country)}</div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
-                                    </div>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+    if(state.bouncers.length) {
+        for(const b of state.bouncers) {
+            const bOn=b.last_pull?((new Date()-new Date(b.last_pull))/60000<5):false;
+            html += `<div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="engine-status ${bOn?'online':'offline'}" style="width:8px;height:8px;"></div>
+                    <span style="font-weight:600;font-size:13px">${esc(b.name)}</span>
+                    <span class="badge badge-${bOn?'success':'ban'}" style="margin-left:auto">${bOn?'Active':'Inactive'}</span>
                 </div>
-                ` : ''}
-
-                <!-- Top 3 Countries -->
-                ${topCountries.length > 0 ? `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">Top 3 Source Countries</h3>
-                    <div class="top3-grid">
-                        ${topCountries.slice(0, 3).map((item, index) => `
-                            <div class="top3-card">
-                                <div class="top3-title">#${index + 1} Pays Source</div>
-                                <div class="top3-item">
-                                    <div class="top3-item-header">
-                                        <span class="top3-item-label">${item.country_flag} ${escapeHtml(item.country_name)}</span>
-                                        <span class="top3-item-count">${item.count} alertes</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
-                                    </div>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+                <div class="info-grid" style="padding-left:18px;">
+                    <div class="info-item"><div class="info-label">IP</div><div class="info-value mono" style="font-size:12px">${esc(b.ip_address||'-')}</div></div>
+                    <div class="info-item"><div class="info-label">Type</div><div class="info-value" style="font-size:12px">${esc(b.type||'-')}</div></div>
+                    <div class="info-item"><div class="info-label">Auth</div><div class="info-value" style="font-size:12px">${esc(b.auth_type||'-')}</div></div>
+                    <div class="info-item"><div class="info-label">Last Pull</div><div class="info-value" style="font-size:12px">${fmtDate(b.last_pull)}</div></div>
                 </div>
-                ` : ''}
-
-                <!-- Top Scenarios -->
-                ${topScenarios.length > 0 ? `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">🛡️ Top Scénarios</h3>
-                    <div class="top3-grid">
-                        ${topScenarios.slice(0, 6).map((item, index) => `
-                            <div class="top3-card">
-                                <div class="top3-item">
-                                    <div class="top3-item-header">
-                                        <span class="top3-item-label" style="font-size: 12px;">${escapeHtml(item.scenario)}</span>
-                                        <span class="top3-item-count">${item.count}</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
-                                    </div>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-
-                <!-- Top Security Engines -->
-                ${topMachines.length > 0 ? `
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">🖥️ Top Security Engines</h3>
-                    <div class="top3-grid">
-                        ${topMachines.slice(0, 6).map((item, index) => `
-                            <div class="top3-card">
-                                <div class="top3-item">
-                                    <div class="top3-item-header">
-                                        <span class="top3-item-label">${escapeHtml(item.hostname)}</span>
-                                        <span class="top3-item-count">${item.count}</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill" style="width: ${item.percentage}%"></div>
-                                    </div>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${item.percentage}%</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-
-                <!-- Timeline Chart -->
-                <div class="card" style="margin-bottom: 24px; padding: 24px;">
-                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">📊 Timeline des alertes</h3>
-                    <div class="chart-container">
-                        <canvas id="alertsTimelineChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="search-container">
-                    <div class="search-bar">
-                        <span>🔍</span>
-                        <input type="text" placeholder="Rechercher par IP, scénario..." id="alertSearch" onkeyup="filterAlerts()">
-                    </div>
-                    <div class="rgb-band"></div>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">Liste des alertes</div>
-                    ${state.alerts.length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr id="alertsTableHeader">
-                                    <th>ID</th>
-                                    <th>Date</th>
-                                    <th>Scénario</th>
-                                    <th>Source IP</th>
-                                    <th>AS</th>
-                                    <th>Pays</th>
-                                    <th>Security Engine</th>
-                                    <th>Événements</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="alertsTableBody">
-                                ${state.alerts.map(alert => {
-                                    const geoip = alert.geoip || {};
-                                    const machineId = alert.machine_id;
-                                    const machineName = machineId && state.hostnames[machineId] ? state.hostnames[machineId] : (machineId || 'N/A');
-                                    // Calculate colspan dynamically from header row
-                                    const numColumns = document.querySelectorAll('#alertsTableHeader th').length || 9;
-                                    return `
-                                    <tr data-alert-id="${alert.id}">
-                                        <td>#${alert.id}</td>
-                                        <td>${formatDate(alert.created_at)}</td>
-                                        <td>${escapeHtml(alert.scenario) || 'N/A'}</td>
-                                        <td class="mono">${escapeHtml(alert.source?.value) || 'N/A'}</td>
-                                        <td>${escapeHtml(geoip.as_name) || 'N/A'}</td>
-                                        <td>${geoip.country_flag || '🏴'} ${escapeHtml(geoip.country_name) || 'N/A'}</td>
-                                        <td>${escapeHtml(machineName)}</td>
-                                        <td>${alert.events_count || 0}</td>
-                                        <td>
-                                            <button class="btn btn-secondary btn-details" data-alert-id="${alert.id}">Détails</button>
-                                            <button class="btn btn-danger btn-delete-alert" data-alert-id="${alert.id}">Supprimer</button>
-                                        </td>
-                                    </tr>
-                                    <tr id="alert-details-${alert.id}" class="hidden">
-                                        <td colspan="${numColumns}">
-                                            <div class="alert-details">
-                                                <div class="detail-section">
-                                                    <div class="detail-title">Machine</div>
-                                                    <div class="detail-content">${escapeHtml(alert.machine_id) || 'N/A'}</div>
-                                                </div>
-                                                <div class="detail-section">
-                                                    <div class="detail-title">Message</div>
-                                                    <div class="detail-content">${escapeHtml(alert.message) || 'N/A'}</div>
-                                                </div>
-                                                ${geoip.as_number ? `
-                                                <div class="detail-section">
-                                                    <div class="detail-title">AS Info</div>
-                                                    <div class="detail-content">${escapeHtml(geoip.as_number)} - ${escapeHtml(geoip.as_name)}</div>
-                                                </div>
-                                                ` : ''}
-                                                ${alert.decisions && alert.decisions.length > 0 ? `
-                                                <div class="detail-section">
-                                                    <div class="detail-title">Décisions (${alert.decisions.length})</div>
-                                                    <div class="detail-content">
-                                                        ${alert.decisions.map(d => `
-                                                            <span class="badge badge-${d.type}">${escapeHtml(d.type)}: ${escapeHtml(d.value)}</span>
-                                                        `).join(' ')}
-                                                    </div>
-                                                </div>
-                                                ` : ''}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                `}).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte</div><div class="empty-state-subtext">Les alertes apparaîtront ici lorsqu\'elles seront détectées</div></div>'}
-                </div>
-            `;
-            
-            // Create timeline chart
-            createAlertsTimelineChart();
-            
-            // Add event listeners for alert buttons
-            document.querySelectorAll('.btn-details').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const alertId = e.target.getAttribute('data-alert-id');
-                    toggleAlertDetails(alertId);
-                });
-            });
-            
-            document.querySelectorAll('.btn-delete-alert').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const alertId = e.target.getAttribute('data-alert-id');
-                    deleteAlert(alertId);
-                });
-            });
+            </div>`;
         }
+    } else { html += `<div class="empty" style="padding:32px">No bouncers connected</div>`; }
+    html += `</div></div></div>
 
-        function renderDecisions() {
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Décisions</h1>
-                    <p class="page-subtitle">Gestion des décisions actives</p>
-                </div>
+        <!-- Collections + Scenarios -->
+        <div class="grid g2">
+            <div class="card">
+                <div class="card-header"><div class="card-header-title"><i class="bi bi-layers"></i> Collections</div><span class="badge badge-neutral">${hubCollections.length}</span></div>
+                <div class="card-body" style="padding:0;">`;
 
-                <div class="search-container">
-                    <div class="search-bar">
-                        <span>🔍</span>
-                        <input type="text" placeholder="Rechercher par IP, scénario..." id="decisionSearch" onkeyup="filterDecisions()">
-                    </div>
-                    <div class="rgb-band"></div>
-                </div>
+    for(const c of hubCollections) {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);">
+            <span style="font-size:13px">${esc(c.name||'')}</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span style="color:var(--text-muted);font-size:11px">v${esc(c.local_version||c.version||'?')}</span>
+                <span class="badge badge-success"><i class="bi bi-check2"></i> ${esc(c.status||'enabled')}</span>
+            </div>
+        </div>`;
+    }
+    if(!hubCollections.length) html += `<div class="empty" style="padding:24px">No collections</div>`;
 
-                <div class="table-container">
-                    <div class="table-header">Liste des décisions</div>
-                    ${state.decisions.length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>IP / Range</th>
-                                    <th>Type</th>
-                                    <th>Scénario</th>
-                                    <th>Origine</th>
-                                    <th>Durée restante</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="decisionsTableBody">
-                                ${state.decisions.map(decision => `
-                                    <tr>
-                                        <td>#${decision.id}</td>
-                                        <td class="mono">${decision.value || 'N/A'}</td>
-                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
-                                        <td>${decision.scenario || 'N/A'}</td>
-                                        <td>${decision.origin || 'N/A'}</td>
-                                        <td>${decision.duration || 'N/A'}</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-delete-decision" data-decision-id="${decision.id}">Supprimer</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision active</div><div class="empty-state-subtext">Les décisions apparaîtront ici lorsqu\'elles seront prises</div></div>'}
+    html += `</div></div>
+            <div class="card">
+                <div class="card-header"><div class="card-header-title"><i class="bi bi-bullseye"></i> Scenarios</div><span class="badge badge-neutral">${hubScenarios.length}</span></div>
+                <div class="card-body" style="padding:0;">`;
+
+    for(const s of hubScenarios) {
+        const triggered=machineAlerts.some(a=>a.scenario===s.name);
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);">
+            <span style="font-size:13px">${esc((s.name||'').replace('crowdsecurity/',''))}</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span style="color:var(--text-muted);font-size:11px">v${esc(s.local_version||s.version||'?')}</span>
+                ${triggered?'<span class="badge badge-warning"><i class="bi bi-lightning"></i> Triggered</span>':'<span class="badge badge-info">Active</span>'}
+            </div>
+        </div>`;
+    }
+    if(!hubScenarios.length) html += `<div class="empty" style="padding:24px">No scenarios</div>`;
+
+    html += `</div></div></div>
+
+        <!-- Visualizer -->
+        <div class="card" style="margin-bottom:24px;">
+            <div class="card-header">
+                <div class="card-header-title"><i class="bi bi-diagram-3"></i> Visualizer</div>
+                <span style="font-size:12px;color:var(--text-muted)">${machineAlerts.length} alert${machineAlerts.length>1?'s':''}</span>
+            </div>
+            <div class="card-body">
+                <div class="vis-container">
+                    ${renderVisCol('Source IP', topIps, '#f59e0b', maxAlerts)}
+                    ${renderVisCol('Source ASs', topAs, '#8b5cf6', maxAlerts)}
+                    ${renderVisCol('Security Engines', topEngines, '#3b82f6', maxAlerts)}
+                    ${renderVisCol('Scenarios', topScenarios.map(([k,v])=>[k.replace('crowdsecurity/',''),v]), '#22c55e', maxAlerts)}
                 </div>
-            `;
-            
-            // Add event listeners for decision delete buttons
-            document.querySelectorAll('.btn-delete-decision').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const decisionId = e.target.getAttribute('data-decision-id');
-                    deleteDecision(decisionId);
-                });
-            });
+            </div>
+        </div>
+
+        <!-- Alerts table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title"><i class="bi bi-exclamation-triangle"></i> Alerts</div>
+                <span style="font-size:12px;color:var(--text-muted)">Showing 1 to ${machineAlerts.length} of ${machineAlerts.length} results</span>
+            </div>
+            <div class="card-body-flush">`;
+
+    if(machineAlerts.length) {
+        html += `<div class="scroll"><table><thead><tr><th>When</th><th>Scenario</th><th>Source</th><th>Target</th><th>Context</th></tr></thead><tbody>`;
+        for(const a of machineAlerts) {
+            const decs=a.decisions||[];
+            const decText=decs.length?decs.length+' decision'+(decs.length>1?'s':''):'';
+            const meta={}; const events=a.events||[];
+            if(events.length) { for(const m of (events[0].meta||[])) meta[m.key]=m.value; }
+            const target=a.geoip?(a.geoip.country_flag||'🏴')+' '+(a.geoip.country_name||''):'';
+            const ctx=[];
+            if(meta.service) ctx.push(meta.service);
+            if(meta.target_user) ctx.push('user: '+meta.target_user);
+            if(decs[0]?.origin) ctx.push('origin: '+decs[0].origin);
+            if(a.events_count) ctx.push(a.events_count+' event'+(a.events_count>1?'s':''));
+
+            html += `<tr>
+                <td style="white-space:nowrap"><div style="font-size:12px;color:var(--text-secondary)">${fmtDate(a.created_at)}</div><div style="color:var(--text-muted);font-size:10px">${fmtTime(a.created_at)}</div></td>
+                <td><div style="display:flex;align-items:center;gap:8px;">
+                    <i class="bi bi-shield" style="color:var(--primary-light)"></i>
+                    <div><div style="font-weight:500;font-size:13px">${esc(a.scenario?.replace('crowdsecurity/',''))}</div>
+                    <div style="color:var(--text-muted);font-size:11px">${esc(decText)}</div></div>
+                </div></td>
+                <td class="mono" style="color:var(--warning)">${esc(a.source?.value||'-')}</td>
+                <td>${target}</td>
+                <td style="color:var(--text-muted);font-size:12px">${esc(ctx.join(' · '))}</td>
+            </tr>`;
         }
+        html += `</tbody></table></div>`;
+        html += `<div class="pagination"><div class="pagination-info">Showing 1 to ${machineAlerts.length} of ${machineAlerts.length} results</div></div>`;
+    } else { html += `<div class="empty"><div class="empty-icon"><i class="bi bi-inbox"></i></div>No alerts for this engine</div>`; }
+    html += `</div></div>`;
 
-        function renderMachines() {
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Machines</h1>
-                    <p class="page-subtitle">Machines connectées au LAPI</p>
+    document.getElementById('app').innerHTML = html;
+}
+
+function renderVisCol(title, items, color, maxVal) {
+    const ranks=['1st','2nd','3rd'];
+    let h = `<div><div class="vis-col-title">${title}</div>`;
+    if(items.length) {
+        items.forEach(([label,count],i) => {
+            const pct=Math.max((count/maxVal)*100,8);
+            const short=label.length>22?label.substring(0,19)+'...':label;
+            h += `<div class="vis-item">
+                <span class="vis-rank">${ranks[i]||''}</span>
+                <div class="vis-bar">
+                    <div class="vis-bar-label" style="color:${color}" title="${esc(label)}">${esc(short)}</div>
+                    <div class="vis-bar-track"><div class="vis-bar-fill" style="width:${pct}%;background:${color}"></div></div>
                 </div>
-
-                ${state.machines.length > 0 ? `
-                    <div class="entity-grid">
-                        ${state.machines.map(machine => {
-                            const machineId = machine.machineId || machine.machine_id || machine.name;
-                            const displayName = getMachineName(machine);
-                            const isCustomName = !!state.hostnames[machineId];
-                            return `
-                            <div class="card entity-card clickable" onclick="window.location.hash = '/machines/${machineId}'">
-                                <div class="entity-header">
-                                    <div class="entity-icon">🖥️</div>
-                                    <div class="entity-info">
-                                        <div class="entity-name">${displayName}</div>
-                                        ${isCustomName ? `<div class="entity-meta" style="color: var(--text-muted); font-size: 12px;">${machineId}</div>` : ''}
-                                        <div class="entity-meta">
-                                            <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
-                                                ${machine.isValidated ? 'Validée' : 'En attente'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="entity-details">
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">IP</span>
-                                        <span class="entity-detail-value mono">${machine.ipAddress || 'N/A'}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Dernière mise à jour</span>
-                                        <span class="entity-detail-value">${formatDate(machine.updated_at)}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Version</span>
-                                        <span class="entity-detail-value">${machine.version || 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                ` : '<div class="empty-state"><div class="empty-state-icon">🖥️</div><div class="empty-state-text">Aucune machine</div><div class="empty-state-subtext">Les machines apparaîtront ici lorsqu\'elles seront connectées</div></div>'}
-            `;
-        }
-
-        function renderMachineDetail(machine, alerts) {
-            const machineId = machine.machineId || machine.machine_id || machine.name;
-            const displayName = getMachineName(machine);
-            const isCustomName = !!state.hostnames[machineId];
-            
-            // Filter decisions from alerts
-            const allDecisions = [];
-            (alerts || []).forEach(alert => {
-                if (alert.decisions && alert.decisions.length > 0) {
-                    allDecisions.push(...alert.decisions);
-                }
-            });
-            
-            document.getElementById('app').innerHTML = `
-                <a href="#/machines" class="back-button">← Retour aux machines</a>
-                
-                <div class="machine-detail-header">
-                    <div class="machine-detail-icon">🖥️</div>
-                    <div class="machine-detail-info">
-                        <div class="machine-detail-name">${displayName}</div>
-                        ${isCustomName ? `<div class="machine-detail-id">${machineId}</div>` : ''}
-                        <span class="badge ${machine.isValidated ? 'badge-online' : 'badge-offline'}">
-                            ${machine.isValidated ? 'Validée' : 'En attente'}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-item-label">Adresse IP</div>
-                        <div class="info-item-value mono">${machine.ipAddress || 'N/A'}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Version</div>
-                        <div class="info-item-value">${machine.version || 'N/A'}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Système d'exploitation</div>
-                        <div class="info-item-value">${machine.os || 'N/A'}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Type d'authentification</div>
-                        <div class="info-item-value">${machine.auth_type || 'N/A'}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Dernière mise à jour</div>
-                        <div class="info-item-value">${formatDate(machine.updated_at)}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Date d'enregistrement</div>
-                        <div class="info-item-value">${formatDate(machine.created_at)}</div>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">Alertes de cette machine (${(alerts || []).length})</div>
-                    ${(alerts || []).length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Date</th>
-                                    <th>Scénario</th>
-                                    <th>Source</th>
-                                    <th>Événements</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${alerts.map(alert => `
-                                    <tr>
-                                        <td class="mono">${alert.id || 'N/A'}</td>
-                                        <td>${formatDate(alert.created_at)}</td>
-                                        <td>${alert.scenario || 'N/A'}</td>
-                                        <td class="mono">${alert.source?.value || 'N/A'}</td>
-                                        <td>${alert.events_count || 0}</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-sm btn-delete-alert" data-alert-id="${alert.id}">Supprimer</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Aucune alerte</div></div>'}
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">Décisions associées (${allDecisions.length})</div>
-                    ${allDecisions.length > 0 ? `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>IP / Range</th>
-                                    <th>Type</th>
-                                    <th>Scénario</th>
-                                    <th>Durée</th>
-                                    <th>Origine</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${allDecisions.map(decision => `
-                                    <tr>
-                                        <td class="mono">${decision.value || 'N/A'}</td>
-                                        <td><span class="badge badge-${decision.type}">${decision.type || 'N/A'}</span></td>
-                                        <td>${decision.scenario || 'N/A'}</td>
-                                        <td>${decision.duration || 'N/A'}</td>
-                                        <td>${decision.origin || 'N/A'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    ` : '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">Aucune décision</div></div>'}
-                </div>
-            `;
-            
-            // Add event listeners
-            document.querySelectorAll('.btn-delete-alert').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const alertId = e.target.getAttribute('data-alert-id');
-                    deleteAlert(alertId).then(() => {
-                        loadMachineDetail(machineId);
-                    });
-                });
-            });
-        }
-
-        function renderBouncers() {
-            // Calculate freshness for each bouncer
-            const getBouncerFreshness = (lastPull) => {
-                if (!lastPull) return { class: 'freshness-stale', text: 'Jamais connecté', icon: '🔴' };
-                const now = new Date();
-                const pullDate = new Date(lastPull);
-                const diffMinutes = Math.floor((now - pullDate) / 1000 / 60);
-                
-                if (diffMinutes < 5) {
-                    return { class: 'freshness-good', text: 'Actif', icon: '🟢' };
-                } else if (diffMinutes < 30) {
-                    return { class: 'freshness-warning', text: `Il y a ${diffMinutes} min`, icon: '🟡' };
-                } else {
-                    return { class: 'freshness-stale', text: `Il y a ${Math.floor(diffMinutes / 60)} h`, icon: '🔴' };
-                }
-            };
-            
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Bouncers</h1>
-                    <p class="page-subtitle">Bouncers actifs</p>
-                </div>
-
-                ${state.bouncers.length > 0 ? `
-                    <div class="entity-grid">
-                        ${state.bouncers.map(bouncer => {
-                            const freshness = getBouncerFreshness(bouncer.last_pull);
-                            return `
-                            <div class="card entity-card">
-                                <div class="entity-header">
-                                    <div class="entity-icon">🛡️</div>
-                                    <div class="entity-info">
-                                        <div class="entity-name">${bouncer.name || 'N/A'}</div>
-                                        <div class="entity-meta">
-                                            <span class="freshness-indicator ${freshness.class}">
-                                                ${freshness.icon} ${freshness.text}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="entity-details">
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">IP</span>
-                                        <span class="entity-detail-value mono">${bouncer.ip_address || 'N/A'}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Type d'authentification</span>
-                                        <span class="entity-detail-value">${bouncer.auth_type || bouncer.type || 'N/A'}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Dernière activité</span>
-                                        <span class="entity-detail-value">${formatDate(bouncer.last_pull)}</span>
-                                    </div>
-                                    <div class="entity-detail-row">
-                                        <span class="entity-detail-label">Version</span>
-                                        <span class="entity-detail-value">${bouncer.version || 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `}).join('')}
-                    </div>
-                ` : '<div class="empty-state"><div class="empty-state-icon">🛡️</div><div class="empty-state-text">Aucun bouncer</div><div class="empty-state-subtext">Les bouncers apparaîtront ici lorsqu\'ils seront connectés</div></div>'}
-            `;
-        }
-
-        // Action handlers
-        async function deleteAlert(alertId) {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) return;
-            
-            const result = await deleteAPI(`alerts/${alertId}`);
-            if (result) {
-                await loadAlertsData();
-            }
-        }
-
-        async function deleteDecision(decisionId) {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer cette décision ?')) return;
-            
-            const result = await deleteAPI(`decisions/${decisionId}`);
-            if (result) {
-                await loadDecisionsData();
-            }
-        }
-
-        function toggleAlertDetails(alertId) {
-            const detailsRow = document.getElementById(`alert-details-${alertId}`);
-            if (detailsRow) {
-                detailsRow.classList.toggle('hidden');
-            }
-        }
-
-        function filterAlerts() {
-            const search = document.getElementById('alertSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('#alertsTableBody tr[data-alert-id]');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                const isVisible = text.includes(search);
-                row.style.display = isVisible ? '' : 'none';
-                
-                // Hide detail row if parent is hidden
-                const alertId = row.getAttribute('data-alert-id');
-                const detailRow = document.getElementById(`alert-details-${alertId}`);
-                if (detailRow && !isVisible) {
-                    detailRow.style.display = 'none';
-                }
-            });
-        }
-
-        function filterDecisions() {
-            const search = document.getElementById('decisionSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('#decisionsTableBody tr');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(search) ? '' : 'none';
-            });
-        }
-
-        // Utility functions
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return 'N/A';
-            
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000); // secondes
-            
-            if (diff < 60) return 'Il y a quelques secondes';
-            if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
-            if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
-            
-            return date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        // Chart.js functions
-        async function createAlertsTimelineChart() {
-            const timeline = await fetchAPI('stats/timeline') || [];
-            
-            const ctx = document.getElementById('alertsTimelineChart');
-            if (!ctx) return;
-            
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: timeline.map(t => t.time),
-                    datasets: [{
-                        label: 'Alertes',
-                        data: timeline.map(t => t.count),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#e5e5e5' }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#999' },
-                            grid: { color: '#2a2a2a' }
-                        },
-                        y: {
-                            ticks: { color: '#999' },
-                            grid: { color: '#2a2a2a' }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createAttackDistributionChart(data) {
-            const ctx = document.getElementById('attackDistributionChart');
-            if (!ctx) return;
-            
-            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
-            
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: data.map(d => d.type),
-                    datasets: [{
-                        data: data.map(d => d.count),
-                        backgroundColor: colors,
-                        borderColor: '#1a1a1a',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#e5e5e5', padding: 15 }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createTrafficBreakdownChart(data) {
-            const ctx = document.getElementById('trafficBreakdownChart');
-            if (!ctx) return;
-            
-            const colors = ['#3b82f6', '#10b981', '#f59e0b'];
-            
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: data.map(d => d.origin),
-                    datasets: [{
-                        data: data.map(d => d.count),
-                        backgroundColor: colors,
-                        borderColor: '#1a1a1a',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#e5e5e5', padding: 15 }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createResourcesSavedChart(data) {
-            const ctx = document.getElementById('resourcesSavedChart');
-            if (!ctx) return;
-            
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Trafic sortant (MB)', 'Lignes de log', 'Stockage (KB)'],
-                    datasets: [{
-                        label: 'Ressources économisées',
-                        data: [data.outgoing_traffic_mb, data.log_lines, data.storage_kb],
-                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
-                        borderColor: '#1a1a1a',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#999' },
-                            grid: { color: '#2a2a2a' }
-                        },
-                        y: {
-                            ticks: { color: '#999' },
-                            grid: { color: '#2a2a2a' }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Render Metrics Page
-        async function renderMetrics() {
-            document.getElementById('app').innerHTML = '<div class="loading">Chargement des métriques...</div>';
-            
-            const stats = await fetchAPI('stats/metrics') || {};
-            state.metricsStats = stats;
-            
-            const traffic = stats.traffic || {};
-            const attackDist = stats.attack_distribution || [];
-            const resources = stats.resources_saved || {};
-            const originBreakdown = traffic.origin_breakdown || [];
-            
-            // Note: Les métriques de ressources économisées sont des estimations
-            // basées sur des formules arbitraires (voir backend pour détails)
-            
-            document.getElementById('app').innerHTML = `
-                <div class="page-header">
-                    <h1 class="page-title">Métriques</h1>
-                    <p class="page-subtitle">Analyse du trafic bloqué et ressources économisées</p>
-                </div>
-
-                <!-- Distribution of Malicious Intents -->
-                <div class="metrics-section">
-                    <h2 class="metrics-section-title">🎯 Distribution des types d'attaque</h2>
-                    <div class="card" style="padding: 24px;">
-                        <div class="chart-container">
-                            <canvas id="attackDistributionChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Malicious Traffic Discarded -->
-                <div class="metrics-section">
-                    <h2 class="metrics-section-title">🚫 Trafic malveillant bloqué</h2>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-value">${(traffic.bytes_dropped / 1024).toFixed(2)}</div>
-                            <div class="metric-unit">KB</div>
-                            <div class="metric-label">Bytes Dropped</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">${traffic.packets_dropped || 0}</div>
-                            <div class="metric-label">Packets Dropped</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">${traffic.requests_dropped || 0}</div>
-                            <div class="metric-label">Requests Dropped</div>
-                        </div>
-                    </div>
-                    
-                    ${originBreakdown.length > 0 ? `
-                    <div class="card" style="padding: 24px; margin-top: 16px;">
-                        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary);">Breakdown par origine</h3>
-                        <div class="chart-container chart-small">
-                            <canvas id="trafficBreakdownChart"></canvas>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-
-                <!-- Prevented Attacks -->
-                ${attackDist.length > 0 ? `
-                <div class="metrics-section">
-                    <h2 class="metrics-section-title">🛡️ Attaques prévenues</h2>
-                    <div class="card" style="padding: 24px;">
-                        ${attackDist.map(attack => `
-                            <div style="margin-bottom: 16px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span style="font-size: 14px; font-weight: 500; text-transform: capitalize;">${escapeHtml(attack.type)}</span>
-                                    <span style="font-size: 14px; font-weight: 600; color: var(--accent-blue);">${attack.count} (${attack.percentage}%)</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-bar-fill" style="width: ${attack.percentage}%"></div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-
-                <!-- Projected Resources Saved -->
-                <div class="metrics-section">
-                    <h2 class="metrics-section-title">💰 Ressources économisées (estimations)</h2>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-value">${resources.outgoing_traffic_mb || 0}</div>
-                            <div class="metric-unit">MB</div>
-                            <div class="metric-label">Trafic sortant bloqué</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">${resources.log_lines || 0}</div>
-                            <div class="metric-label">Lignes de log économisées</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value">${resources.storage_kb || 0}</div>
-                            <div class="metric-unit">KB</div>
-                            <div class="metric-label">Stockage économisé</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card" style="padding: 24px; margin-top: 16px;">
-                        <div class="chart-container chart-small">
-                            <canvas id="resourcesSavedChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Create charts
-            if (attackDist.length > 0) {
-                createAttackDistributionChart(attackDist);
-            }
-            if (originBreakdown.length > 0) {
-                createTrafficBreakdownChart(originBreakdown);
-            }
-            if (resources.outgoing_traffic_mb || resources.log_lines || resources.storage_kb) {
-                createResourcesSavedChart(resources);
-            }
-        }
-
-
-        function renderLogs() {
-            const logs = state.logs.logs || [];
-            const filters = state.logs.filters || {};
-            
-            const getLogTypeColor = (type) => {
-                if (!type) return 'var(--text-muted)';
-                const t = type.toLowerCase();
-                if (t.includes('failed') || t.includes('error') || t.includes('denied')) return 'var(--accent-red)';
-                if (t.includes('success') || t.includes('accepted')) return 'var(--accent-green)';
-                if (t.includes('scan') || t.includes('enum')) return 'var(--accent-amber)';
-                return 'var(--accent-blue)';
-            };
-
-            const getServiceIcon = (service) => {
-                if (!service) return '📄';
-                const s = service.toLowerCase();
-                if (s.includes('ssh')) return '🔑';
-                if (s.includes('http') || s.includes('web')) return '🌐';
-                if (s.includes('ftp')) return '📂';
-                if (s.includes('smtp') || s.includes('mail')) return '📧';
-                if (s.includes('dns')) return '🔍';
-                return '��';
-            };
-
-            // Stats
-            const totalLogs = logs.length;
-            const failedCount = logs.filter(l => l.log_type && l.log_type.toLowerCase().includes('failed')).length;
-            const successCount = logs.filter(l => l.log_type && l.log_type.toLowerCase().includes('success')).length;
-            const uniqueIPs = new Set(logs.map(l => l.source_ip).filter(Boolean)).size;
-            const uniqueUsers = new Set(logs.map(l => l.target_user).filter(Boolean)).size;
-            
-            let html = `
-                <div class="page-header">
-                    <h1 class="page-title">📋 Logs de sécurité</h1>
-                    <p class="page-subtitle">Événements détectés par les scénarios CrowdSec</p>
-                </div>
-
-                <!-- Stats cards -->
-                <div class="stats-grid" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:16px; margin-bottom:24px;">
-                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
-                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">Total événements</div>
-                        <div style="font-size:28px; font-weight:700;">${totalLogs}</div>
-                    </div>
-                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
-                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🔴 Échecs</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-red);">${failedCount}</div>
-                    </div>
-                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
-                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🟢 Succès</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-green);">${successCount}</div>
-                    </div>
-                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
-                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">🌐 IPs uniques</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-blue);">${uniqueIPs}</div>
-                    </div>
-                    <div class="stat-card" style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:20px;">
-                        <div style="color:var(--text-secondary); font-size:13px; margin-bottom:8px;">👤 Users ciblés</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-amber);">${uniqueUsers}</div>
-                    </div>
-                </div>
-
-                <!-- Filters -->
-                <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:16px; margin-bottom:24px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-                    <span style="color:var(--text-secondary); font-size:13px; font-weight:600;">Filtres :</span>
-                    <select id="filter-type" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
-                        <option value="">Tous les types</option>
-                        ${(filters.types || []).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
-                    </select>
-                    <select id="filter-service" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
-                        <option value="">Tous les services</option>
-                        ${(filters.services || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
-                    </select>
-                    <select id="filter-ip" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
-                        <option value="">Toutes les IPs</option>
-                        ${(filters.ips || []).map(ip => `<option value="${escapeHtml(ip)}">${escapeHtml(ip)}</option>`).join('')}
-                    </select>
-                    <select id="filter-machine" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:13px;">
-                        <option value="">Toutes les machines</option>
-                        ${(filters.machines || []).map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}
-                    </select>
-                    <button id="btn-apply-filter" style="background:var(--accent-blue); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; font-weight:600;">Appliquer</button>
-                    <button id="btn-reset-filter" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Reset</button>
-                    
-                    <!-- Live logs toggle -->
-                    <div style="margin-left:auto; display:flex; gap:8px;">
-                        <button class="btn-live-log" data-source="auth" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">📄 auth.log</button>
-                        <button class="btn-live-log" data-source="crowdsec" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">🛡️ crowdsec.log</button>
-                        <button class="btn-live-log" data-source="syslog" style="background:var(--bg-primary); color:var(--text-secondary); border:1px solid var(--border-default); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer;">📋 syslog</button>
-                    </div>
-                </div>
-
-                <!-- Live log panel (hidden by default) -->
-                <div id="live-log-panel" style="display:none; background:#0c0c0c; border:1px solid var(--border-default); border-radius:12px; padding:16px; margin-bottom:24px; max-height:300px; overflow-y:auto;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span id="live-log-title" style="color:var(--accent-green); font-family:monospace; font-size:13px; font-weight:600;">📄 Live Log</span>
-                        <button id="btn-close-live" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;">✕</button>
-                    </div>
-                    <pre id="live-log-content" style="color:#00ff41; font-family:'Courier New', monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; margin:0;"></pre>
-                </div>
-
-                <!-- Logs table -->
-                <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; overflow:hidden;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:var(--bg-secondary); border-bottom:1px solid var(--border-default);">
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Timestamp</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Service</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Type</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">IP Source</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">User ciblé</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Machine</th>
-                                <th style="padding:12px 16px; text-align:left; color:var(--text-secondary); font-size:12px; font-weight:600; text-transform:uppercase;">Scénario</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
-            if (logs.length === 0) {
-                html += `
-                            <tr>
-                                <td colspan="7" style="padding:48px; text-align:center; color:var(--text-muted);">
-                                    <div style="font-size:48px; margin-bottom:16px;">📋</div>
-                                    <div>Aucun log de sécurité disponible</div>
-                                    <div style="font-size:13px; margin-top:8px;">Les logs apparaîtront lorsque des scénarios seront déclenchés</div>
-                                </td>
-                            </tr>`;
-            } else {
-                for (const log of logs) {
-                    const ts = log.timestamp ? new Date(log.timestamp).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '-';
-                    const typeColor = getLogTypeColor(log.log_type);
-                    const serviceIcon = getServiceIcon(log.service);
-                    const scenarioShort = log.scenario ? log.scenario.replace('crowdsecurity/', '') : '-';
-                    
-                    html += `
-                            <tr style="border-bottom:1px solid var(--border-default); transition:background 0.15s;" onmouseover="this.style.background='var(--bg-card-hover)'" onmouseout="this.style.background='transparent'">
-                                <td style="padding:10px 16px; font-family:monospace; font-size:12px; color:var(--text-secondary);">${escapeHtml(ts)}</td>
-                                <td style="padding:10px 16px; font-size:13px;">${serviceIcon} ${escapeHtml(log.service || '-')}</td>
-                                <td style="padding:10px 16px;"><span style="color:${typeColor}; font-size:12px; font-weight:600; background:${typeColor}15; padding:2px 8px; border-radius:4px;">${escapeHtml(log.log_type || '-')}</span></td>
-                                <td style="padding:10px 16px; font-family:monospace; font-size:13px; color:var(--accent-amber);">${escapeHtml(log.source_ip || '-')}</td>
-                                <td style="padding:10px 16px; font-size:13px;">${escapeHtml(log.target_user || '-')}</td>
-                                <td style="padding:10px 16px; font-size:12px; color:var(--text-secondary);">${escapeHtml(log.machine || '-')}</td>
-                                <td style="padding:10px 16px; font-size:12px;"><span style="color:var(--accent-blue);">${escapeHtml(scenarioShort)}</span></td>
-                            </tr>`;
-                }
-            }
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top:12px; text-align:right; color:var(--text-muted); font-size:12px;">
-                    ${logs.length} événement(s) affiché(s)
-                </div>`;
-
-            document.getElementById('app').innerHTML = html;
-
-            // Filter event handlers
-            document.getElementById('btn-apply-filter').addEventListener('click', () => {
-                const type = document.getElementById('filter-type').value;
-                const service = document.getElementById('filter-service').value;
-                const ip = document.getElementById('filter-ip').value;
-                const machine = document.getElementById('filter-machine').value;
-                
-                let url = 'logs?';
-                if (type) url += `type=${encodeURIComponent(type)}&`;
-                if (service) url += `service=${encodeURIComponent(service)}&`;
-                if (ip) url += `ip=${encodeURIComponent(ip)}&`;
-                if (machine) url += `machine=${encodeURIComponent(machine)}&`;
-                
-                fetchAPI(url).then(data => {
-                    state.logs = data || { logs: [], filters: {} };
-                    renderLogs();
-                });
-            });
-            
-            document.getElementById('btn-reset-filter').addEventListener('click', () => {
-                loadLogsData();
-            });
-
-            // Live log buttons
-            document.querySelectorAll('.btn-live-log').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const source = e.target.getAttribute('data-source');
-                    const panel = document.getElementById('live-log-panel');
-                    const title = document.getElementById('live-log-title');
-                    const content = document.getElementById('live-log-content');
-                    
-                    panel.style.display = 'block';
-                    title.textContent = '⏳ Chargement ' + source + '...';
-                    content.textContent = '';
-                    
-                    await loadLiveLogsData(source, 100);
-                    
-                    const lines = state.liveLogs.lines || [];
-                    title.textContent = '📄 ' + (state.liveLogs.file || source) + ' (' + lines.length + ' lignes)';
-                    content.textContent = lines.join('\n');
-                    
-                    // Auto-scroll to bottom
-                    panel.scrollTop = panel.scrollHeight;
-                });
-            });
-            
-            document.getElementById('btn-close-live')?.addEventListener('click', () => {
-                document.getElementById('live-log-panel').style.display = 'none';
-            });
-        }
-
-
-        async function loadMetricsData() {
-            await renderMetrics();
-        }
-
-        // Router
-        function navigate(page) {
-            state.currentPage = page;
-            
-            // Update active nav link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-                const href = link.getAttribute('href');
-                // Extract page from href (e.g., '#/machines' -> 'machines')
-                const linkPage = href && href.startsWith('#/') ? href.slice(2) : '';
-                if (linkPage === page || (page.startsWith(linkPage + '/') && linkPage !== '')) {
-                    link.classList.add('active');
-                }
-            });
-            
-            // Clear auto-refresh
-            if (refreshTimer) {
-                clearInterval(refreshTimer);
-                refreshTimer = null;
-            }
-            
-            // Show loading
-            document.getElementById('app').innerHTML = '<div class="loading">Chargement...</div>';
-            
-            // Parse route and load page data
-            const parts = page.split('/');
-            const basePage = parts[0] || 'overview';
-            
-            switch (basePage) {
-                case '':
-                case 'overview':
-                    loadOverviewData();
-                    refreshTimer = setInterval(loadOverviewData, REFRESH_INTERVAL);
-                    break;
-                case 'alerts':
-                    loadAlertsData();
-                    refreshTimer = setInterval(loadAlertsData, REFRESH_INTERVAL);
-                    break;
-                case 'decisions':
-                    loadDecisionsData();
-                    refreshTimer = setInterval(loadDecisionsData, REFRESH_INTERVAL);
-                    break;
-                case 'metrics':
-                    loadMetricsData();
-                    refreshTimer = setInterval(loadMetricsData, REFRESH_INTERVAL);
-                    break;
-                case 'machines':
-                    if (parts.length > 1) {
-                        // Machine detail page
-                        const machineId = parts.slice(1).join('/');
-                        loadMachineDetail(machineId);
-                        // No auto-refresh for detail page
-                    } else {
-                        // Machines list page
-                        loadMachinesData();
-                        refreshTimer = setInterval(loadMachinesData, REFRESH_INTERVAL);
-                    }
-                    break;
-                case 'bouncers':
-                    loadBouncersData();
-                    refreshTimer = setInterval(loadBouncersData, REFRESH_INTERVAL);
-                    break;
-                case 'logs':
-                    loadLogsData();
-                    refreshTimer = setInterval(loadLogsData, REFRESH_INTERVAL);
-                    break;
-                default:
-                    loadOverviewData();
-            }
-        }
-
-        // Hash change handler
-        window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.slice(2); // Remove '#/' prefix
-            navigate(hash);
+                <span class="vis-count">× ${count}</span>
+            </div>`;
         });
+        h += `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Top ${items.length} out of ${items.length} ${title.toLowerCase()}</div>`;
+    } else { h += `<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">—</div>`; }
+    return h + '</div>';
+}
 
-        // Initialize on load
-        window.addEventListener('DOMContentLoaded', () => {
-            const hash = window.location.hash.slice(2) || 'overview'; // Remove '#/' prefix
-            navigate(hash);
+// ═══════════════════════════════════════
+// SECURITY (Alerts)
+// ═══════════════════════════════════════
+async function loadSecurity() {
+    const [alerts,decisions,stats,machines,hostnames] = await Promise.all([
+        fetchAPI('alerts'), fetchAPI('decisions'), fetchAPI('stats/alerts'),
+        fetchAPI('machines'), fetchAPI('config/hostnames')
+    ]);
+    state.alerts=alerts||[]; state.decisions=decisions||[]; state.alertsStats=stats||{};
+    state.machines=machines||[]; state.hostnames=hostnames||{};
+    setTopbar('Alerts','exclamation-triangle');
+    renderSecurity();
+}
+
+function renderSecurity() {
+    const s=state.alertsStats;
+    const topIps=s.top_ips||[], topScenarios=s.top_scenarios||[], topCountries=s.top_countries||[];
+
+    let html = `
+        <div class="page-header">
+            <div class="page-title">Alerts & Decisions</div>
+            <div class="page-desc">Monitor threats and manage active decisions</div>
+        </div>
+
+        <div class="stat-grid g5">
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-exclamation-triangle"></i> Alerts</div><div class="stat-value">${s.total_alerts||0}</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-globe2"></i> Unique IPs</div><div class="stat-value">${s.unique_ips||0}</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-geo-alt"></i> Countries</div><div class="stat-value">${s.unique_countries||0}</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-bullseye"></i> Scenarios</div><div class="stat-value">${s.unique_scenarios||0}</div></div>
+            <div class="stat-card"><div class="stat-label"><i class="bi bi-ban"></i> Active Bans</div><div class="stat-value" style="color:#f87171">${state.decisions.length}</div></div>
+        </div>`;
+
+    // Top cards
+    html += `<div class="grid g3">`;
+    html += `<div class="card"><div class="card-header"><div class="card-header-title">Top IPs</div></div><div class="card-body" style="padding:0;">`;
+    for(const ip of topIps) {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);">
+            <span class="mono" style="color:var(--warning)">${esc(ip.ip)}</span>
+            <div style="display:flex;gap:6px;align-items:center;"><span style="font-size:11px">${ip.country_flag||''}</span><span class="badge badge-ban">${ip.count}</span></div>
+        </div>`;
+    }
+    if(!topIps.length) html += `<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center;">—</div>`;
+    html += `</div></div>`;
+
+    html += `<div class="card"><div class="card-header"><div class="card-header-title">Top Countries</div></div><div class="card-body" style="padding:0;">`;
+    for(const c of topCountries) {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);">
+            <span>${c.country_flag||'🏴'} ${esc(c.country_name)}</span>
+            <span class="badge badge-info">${c.count} (${c.percentage}%)</span>
+        </div>`;
+    }
+    if(!topCountries.length) html += `<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center;">—</div>`;
+    html += `</div></div>`;
+
+    html += `<div class="card"><div class="card-header"><div class="card-header-title">Top Scenarios</div></div><div class="card-body" style="padding:0;">`;
+    for(const sc of topScenarios) {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);">
+            <span style="font-size:13px">${esc(sc.scenario?.replace('crowdsecurity/','')||sc.scenario)}</span>
+            <span class="badge badge-warning">${sc.count}</span>
+        </div>`;
+    }
+    if(!topScenarios.length) html += `<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center;">—</div>`;
+    html += `</div></div></div>`;
+
+    // Decisions
+    html += `<div class="section"><div class="section-title"><i class="bi bi-ban"></i> Active Decisions</div>`;
+    if(state.decisions.length) {
+        html += `<div class="card"><div class="card-body-flush"><table><thead><tr><th>IP</th><th>Type</th><th>Reason</th><th>Duration</th><th></th></tr></thead><tbody>`;
+        for(const d of state.decisions) {
+            html += `<tr>
+                <td class="mono" style="color:var(--warning)">${esc(d.value)}</td>
+                <td><span class="badge badge-ban">${esc(d.type)}</span></td>
+                <td style="color:var(--text-secondary)">${esc(d.scenario||d.origin||'')}</td>
+                <td style="color:var(--text-muted)">${esc(d.duration)}</td>
+                <td><button class="btn btn-danger btn-del-dec2" data-id="${d.id}" style="padding:4px 10px"><i class="bi bi-trash"></i></button></td>
+            </tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+    } else { html += `<div class="card"><div class="empty"><div class="empty-icon"><i class="bi bi-check2-circle"></i></div>No active decisions</div></div>`; }
+    html += `</div>`;
+
+    // Alert details
+    html += `<div class="card">
+        <div class="card-header">
+            <div class="card-header-title"><i class="bi bi-list-ul"></i> Alert Details</div>
+            <div style="position:relative;"><i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;"></i><input type="text" id="alertSearch" placeholder="Filter alerts..." style="background:rgba(255,255,255,0.05);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 12px 6px 32px;font-size:12px;width:220px;"></div>
+        </div>
+        <div class="card-body-flush">`;
+    if(state.alerts.length) {
+        html += `<div class="scroll"><table><thead><tr><th>When</th><th>Scenario</th><th>Source IP</th><th>Country</th><th>Engine</th><th>Events</th><th></th></tr></thead><tbody id="alertsBody">`;
+        for(const a of state.alerts) {
+            const ip=a.source?.value||''; const geo=a.geoip||{};
+            const machine=a.machine_id?(state.hostnames[a.machine_id]||a.machine_id):'-';
+            html += `<tr>
+                <td><div style="font-size:12px;color:var(--text-secondary)">${fmtDate(a.created_at)}</div><div style="font-size:10px;color:var(--text-muted)">${fmtTime(a.created_at)}</div></td>
+                <td><span class="badge badge-warning">${esc(a.scenario?.replace('crowdsecurity/',''))}</span></td>
+                <td class="mono" style="color:var(--warning)">${esc(ip)}</td>
+                <td>${geo.country_flag||'🏴'} ${esc(geo.country_name||'')}</td>
+                <td style="font-size:12px;color:var(--text-secondary)">${esc(machine)}</td>
+                <td><span class="badge badge-neutral">${a.events_count||0}</span></td>
+                <td><button class="btn btn-danger btn-del-alert" data-id="${a.id}" style="padding:4px 10px"><i class="bi bi-trash"></i></button></td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+    } else { html += `<div class="empty"><div class="empty-icon"><i class="bi bi-inbox"></i></div>No alerts</div>`; }
+    html += `</div></div>`;
+
+    document.getElementById('app').innerHTML = html;
+    document.querySelectorAll('.btn-del-dec2').forEach(b=>b.addEventListener('click',async e=>{
+        if(!confirm('Delete?')) return; await deleteAPI(`decisions/${e.target.closest('button').dataset.id}`); loadSecurity();
+    }));
+    document.querySelectorAll('.btn-del-alert').forEach(b=>b.addEventListener('click',async e=>{
+        if(!confirm('Delete this alert?')) return; await deleteAPI(`alerts/${e.target.closest('button').dataset.id}`); loadSecurity();
+    }));
+    document.getElementById('alertSearch')?.addEventListener('input', e => {
+        const q=e.target.value.toLowerCase();
+        document.querySelectorAll('#alertsBody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});
+    });
+}
+
+// ═══════════════════════════════════════
+// LOGS
+// ═══════════════════════════════════════
+function renderLogs() {
+    setTopbar('Logs','file-text');
+    let html = `
+        <div class="page-header">
+            <div class="page-title">System Logs</div>
+            <div class="page-desc">Real-time log monitoring</div>
+        </div>
+        <div class="tabs-bar">
+            <div class="tab-item active" data-src="auth"><i class="bi bi-key"></i> auth.log</div>
+            <div class="tab-item" data-src="crowdsec"><i class="bi bi-shield"></i> crowdsec.log</div>
+            <div class="tab-item" data-src="syslog"><i class="bi bi-file-text"></i> syslog</div>
+            <div class="tab-item" data-src="alerts"><i class="bi bi-exclamation-triangle"></i> LAPI Alerts</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="chips" id="logChips" style="margin-bottom:0;"></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <select id="logLines" style="background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;">
+                    <option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="500">500</option>
+                </select>
+                <button class="btn" id="btnRefresh"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+        </div>
+        <div class="stat-grid g4" id="logStats"></div>
+        <div class="card" id="logContainer"><div class="empty">⏳ Loading...</div></div>
+        <div style="margin-top:8px;text-align:right;color:var(--text-muted);font-size:11px;" id="logCount"></div>
+    `;
+    document.getElementById('app').innerHTML = html;
+    loadLogSource('auth');
+    document.querySelectorAll('.tab-item').forEach(t=>t.addEventListener('click',e=>{
+        document.querySelectorAll('.tab-item').forEach(x=>x.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        loadLogSource(e.currentTarget.dataset.src);
+    }));
+    document.getElementById('btnRefresh').addEventListener('click',()=>{
+        const active=document.querySelector('.tab-item.active');
+        if(active) loadLogSource(active.dataset.src);
+    });
+}
+
+async function loadLogSource(src) {
+    const container=document.getElementById('logContainer');
+    const stats=document.getElementById('logStats');
+    const chips=document.getElementById('logChips');
+    const count=document.getElementById('logCount');
+    const lines=document.getElementById('logLines').value;
+    container.innerHTML='<div class="empty">⏳</div>';
+    chips.innerHTML='';
+
+    if(src==='alerts') {
+        const data=await fetchAPI('logs');
+        if(!data||!data.logs){container.innerHTML='<div class="empty">No data</div>';return;}
+        renderAlertLogEntries(data.logs,data.filters||{},container,stats,chips,count); return;
+    }
+
+    const data=await fetchAPI(`logs/live?source=${src}&lines=${lines}`);
+    if(!data||!data.entries){container.innerHTML='<div class="empty">Unable to read</div>';return;}
+    const entries=data.entries;
+    const levels={success:0,danger:0,warning:0,info:0};
+    const cats={};
+    entries.forEach(e=>{levels[e.level||'info']++;cats[e.category||'other']=(cats[e.category||'other']||0)+1;});
+
+    stats.innerHTML=`
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-check2-circle"></i> Success</div><div class="stat-value" style="color:var(--success)">${levels.success}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-x-circle"></i> Failed</div><div class="stat-value" style="color:#f87171">${levels.danger}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-exclamation-triangle"></i> Warnings</div><div class="stat-value" style="color:var(--warning)">${levels.warning}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-hash"></i> Total</div><div class="stat-value">${entries.length}</div></div>
+    `;
+    const catIcons={ssh:'bi-key',sudo:'bi-lightning',session:'bi-box-arrow-in-right',crowdsec:'bi-shield',dashboard:'bi-globe2',system:'bi-cpu',other:'bi-file-text'};
+    chips.innerHTML=`<span class="chip active" data-cat="all">All (${entries.length})</span>`+
+        Object.entries(cats).map(([c,n])=>`<span class="chip" data-cat="${c}"><i class="bi ${catIcons[c]||'bi-file-text'}"></i> ${c} (${n})</span>`).join('');
+    renderLogRows(entries,container,count);
+    chips.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',e=>{
+        chips.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const cat=e.currentTarget.dataset.cat;
+        renderLogRows(cat==='all'?entries:entries.filter(x=>x.category===cat),container,count);
+    }));
+}
+
+function renderLogRows(entries,container,countEl) {
+    const colors={success:'var(--success)',danger:'#f87171',warning:'var(--warning)',info:'var(--text-secondary)'};
+    if(!entries.length){container.innerHTML='<div class="empty"><div class="empty-icon"><i class="bi bi-file-text"></i></div>No logs</div>';countEl.textContent='';return;}
+    let h='<div class="card-body-flush"><div class="scroll">';
+    for(const e of entries) {
+        const c=colors[e.level]||colors.info;
+        const user=e.user?`<span style="color:var(--warning)">👤 ${esc(e.user)}</span>`:'';
+        const ip=e.ip?`<span class="mono" style="color:var(--info)">${esc(e.ip)}</span>`:'';
+        const sc=e.scenario?`<span class="badge badge-ban" style="font-size:10px">${esc(e.scenario)}</span>`:'';
+        const svc=e.service?`<span style="color:var(--text-muted);font-size:11px">[${esc(e.service)}]</span>`:'';
+        h+=`<div class="log-entry">
+            <div class="log-icon">${e.icon||'📋'}</div>
+            <div class="log-ts">${esc(fmtTs(e.timestamp))}</div>
+            <div class="log-dot" style="background:${c}"></div>
+            <div class="log-body"><span style="color:${c};font-weight:500">${esc(e.event||'')}</span>${user}${ip}${sc}${svc}</div>
+        </div>`;
+    }
+    h+='</div></div>';
+    container.innerHTML=h;
+    countEl.textContent=`${entries.length} entries`;
+}
+
+function renderAlertLogEntries(logs,filters,container,stats,chips,countEl) {
+    const failed=logs.filter(l=>l.log_type?.includes('failed')).length;
+    const ips=new Set(logs.map(l=>l.source_ip).filter(Boolean)).size;
+    const users=new Set(logs.map(l=>l.target_user).filter(Boolean)).size;
+    stats.innerHTML=`
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-exclamation-triangle"></i> Events</div><div class="stat-value">${logs.length}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-x-circle"></i> Failed</div><div class="stat-value" style="color:#f87171">${failed}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-globe2"></i> IPs</div><div class="stat-value" style="color:var(--info)">${ips}</div></div>
+        <div class="stat-card"><div class="stat-label"><i class="bi bi-person"></i> Users</div><div class="stat-value" style="color:var(--warning)">${users}</div></div>
+    `;
+    const allIps=filters.ips||[];
+    if(allIps.length) {
+        chips.innerHTML=`<span class="chip active" data-ip="all">All IPs</span>`+
+            allIps.map(ip=>`<span class="chip mono" data-ip="${esc(ip)}">${esc(ip)}</span>`).join('');
+        chips.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',e=>{
+            chips.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            const ip=e.currentTarget.dataset.ip;
+            renderAlertRows(ip==='all'?logs:logs.filter(l=>l.source_ip===ip),container,countEl);
+        }));
+    }
+    renderAlertRows(logs,container,countEl);
+}
+
+function renderAlertRows(logs,container,countEl) {
+    if(!logs.length){container.innerHTML='<div class="empty"><div class="empty-icon"><i class="bi bi-inbox"></i></div>No events</div>';countEl.textContent='';return;}
+    let h='<div class="card-body-flush"><div class="scroll">';
+    for(const l of logs) {
+        const tc=l.log_type?.includes('failed')?'#f87171':'var(--success)';
+        const ts=l.timestamp?new Date(l.timestamp).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'-';
+        const sc=l.scenario?.replace('crowdsecurity/','')||'-';
+        h+=`<div class="log-entry">
+            <div class="log-icon"><i class="bi bi-key"></i></div>
+            <div class="log-ts">${esc(ts)}</div>
+            <div class="log-dot" style="background:${tc}"></div>
+            <div class="log-body">
+                <span style="color:${tc};font-weight:500;background:${tc}15;padding:2px 8px;border-radius:4px;font-size:12px">${esc(l.log_type||'-')}</span>
+                <span class="mono" style="color:var(--info)">${esc(l.source_ip||'-')}</span>
+                ${l.target_user?`<span style="color:var(--warning)">👤 ${esc(l.target_user)}</span>`:''}
+                <span style="color:var(--text-muted);font-size:11px">${esc(sc)}</span>
+            </div>
+        </div>`;
+    }
+    h+='</div></div>';
+    container.innerHTML=h;
+    countEl.textContent=`${logs.length} events`;
+}
+
+// ═══════════════════════════════════════
+// BANS
+// ═══════════════════════════════════════
+let bansPage = 1;
+const BANS_PER_PAGE = 50;
+
+async function loadBans() {
+    const [decisions, hostnames] = await Promise.all([
+        fetchAPI('decisions'), fetchAPI('config/hostnames')
+    ]);
+    state.decisions = decisions || [];
+    state.hostnames = hostnames || {};
+    renderBans();
+}
+
+async function banIP() {
+    const ip = document.getElementById('banIP')?.value.trim();
+    const reason = document.getElementById('banReason')?.value.trim() || 'manual ban via dashboard';
+    const duration = document.getElementById('banDuration')?.value.trim() || '4h';
+    if(!ip) return;
+    
+    const btn = document.getElementById('banSubmit');
+    btn.disabled = true; btn.textContent = '⏳';
+    
+    try {
+        const r = await fetch('/api/ban', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ip, reason, duration})
         });
-    </script>
+        const data = await r.json();
+        if(!r.ok) throw new Error(data.error || 'Erreur');
+        showToast(`✅ ${ip} bannie`);
+        loadBans();
+    } catch(e) {
+        showToast(`❌ ${e.message}`, true);
+    } finally {
+        btn.disabled = false; btn.textContent = 'Bannir';
+    }
+}
+
+async function unbanIP(ip) {
+    if(!confirm(`Débannir ${ip} ?`)) return;
+    try {
+        const r = await fetch(`/api/ban?ip=${encodeURIComponent(ip)}`, {method:'DELETE'});
+        const data = await r.json();
+        if(!r.ok) throw new Error(data.error || 'Erreur');
+        showToast(`✅ ${ip} débannie`);
+        loadBans();
+    } catch(e) {
+        showToast(`❌ ${e.message}`, true);
+    }
+}
+
+function showToast(msg, isError) {
+    let t = document.getElementById('toast');
+    if(!t) { t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:opacity 0.3s;background:${isError?'#991b1b':'#065f46'};color:white;border:1px solid ${isError?'#f87171':'#34d399'}`;
+    t.style.opacity = '1';
+    setTimeout(()=>{t.style.opacity='0';}, 3000);
+}
+
+function renderBans() {
+    const d = state.decisions.filter(x=>x.type==='ban');
+    const total = d.length;
+    const totalPages = Math.max(1, Math.ceil(total / BANS_PER_PAGE));
+    if(bansPage > totalPages) bansPage = totalPages;
+    const start = (bansPage-1)*BANS_PER_PAGE;
+    const page = d.slice(start, start+BANS_PER_PAGE);
+    
+    setTopbar('Bans','ban');
+    
+    let html = `
+        <div class="page-header">
+            <div class="page-title">Bans</div>
+            <div class="page-desc">Gestion des IPs bannies — propagation automatique sur toutes les machines</div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="card-header-title"><i class="bi bi-plus-circle"></i> Bannir une IP</div></div>
+            <div style="padding:16px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:180px">
+                    <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);display:block;margin-bottom:4px">Adresse IP</label>
+                    <input id="banIP" type="text" placeholder="ex: 1.2.3.4" style="width:100%;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;outline:none" />
+                </div>
+                <div style="flex:1;min-width:160px">
+                    <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);display:block;margin-bottom:4px">Raison</label>
+                    <input id="banReason" type="text" placeholder="manual ban" value="manual ban via dashboard" style="width:100%;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;outline:none" />
+                </div>
+                <div style="min-width:100px">
+                    <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);display:block;margin-bottom:4px">Durée</label>
+                    <select id="banDuration" style="padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;outline:none">
+                        <option value="1h">1 heure</option>
+                        <option value="4h" selected>4 heures</option>
+                        <option value="24h">24 heures</option>
+                        <option value="168h">7 jours</option>
+                        <option value="720h">30 jours</option>
+                        <option value="8760h">1 an</option>
+                    </select>
+                </div>
+                <button id="banSubmit" onclick="banIP()" style="padding:8px 20px;border-radius:var(--radius-sm);border:none;background:var(--primary);color:white;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s;height:37px">Bannir</button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title"><i class="bi bi-ban"></i> IPs bannies</div>
+                <div style="font-size:12px;color:var(--text-muted)">${total} résultat${total>1?'s':''}</div>
+            </div>`;
+    
+    if(total === 0) {
+        html += `<div style="padding:40px;text-align:center;color:var(--text-muted)"><i class="bi bi-shield-check" style="font-size:32px;display:block;margin-bottom:8px"></i>Aucune IP bannie</div>`;
+    } else {
+        html += `<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+            <th>IP</th><th>Pays</th><th>Raison</th><th>Scénario</th><th>Durée</th><th>Expire</th><th>Source</th><th style="width:80px">Action</th>
+        </tr></thead><tbody>`;
+        
+        for(const dec of page) {
+            const ip = dec.value || '-';
+            const scenario = esc(dec.scenario || '-');
+            const origin = esc(dec.origin || '-');
+            const duration = esc(dec.duration || '-');
+            const until = fmtDate(dec.until);
+            
+            html += `<tr>
+                <td><span style="font-family:monospace;font-weight:600;color:var(--text-primary)">${esc(ip)}</span></td>
+                <td class="geo-cell" data-ip="${esc(ip)}"><span class="geo-loading" style="color:var(--text-muted);font-size:11px">…</span></td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${scenario.includes("manual")?esc(dec.scenario?.split("from")[0]||scenario):scenario}</td>
+                <td style="font-size:12px;color:var(--text-secondary)">${scenario}</td>
+                <td style="font-size:12px">${duration}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${until}</td>
+                <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(99,102,241,0.15);color:var(--primary-light)">${origin}</span></td>
+                <td><button onclick="unbanIP('${esc(ip)}')" style="padding:4px 12px;border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.1);color:#f87171;font-size:12px;cursor:pointer;transition:all 0.15s;font-weight:500" onmouseover="this.style.background='rgba(248,113,113,0.25)'" onmouseout="this.style.background='rgba(248,113,113,0.1)'">Débannir</button></td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+        
+        if(totalPages > 1) {
+            html += `<div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border)">
+                <span style="font-size:12px;color:var(--text-muted)">Page ${bansPage}/${totalPages} · ${start+1}-${Math.min(start+BANS_PER_PAGE,total)} sur ${total}</span>
+                <div style="display:flex;gap:6px">
+                    <button onclick="bansPage--;renderBans()" ${bansPage<=1?'disabled':''} style="padding:4px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-hover);color:var(--text-secondary);font-size:12px;cursor:pointer">◀ Préc</button>
+                    <button onclick="bansPage++;renderBans()" ${bansPage>=totalPages?'disabled':''} style="padding:4px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-hover);color:var(--text-secondary);font-size:12px;cursor:pointer">Suiv ▶</button>
+                </div>
+            </div>`;
+        }
+    }
+    html += `</div>`;
+    
+    document.getElementById('app').innerHTML = html;
+    
+    // Enrichir les IPs avec GeoIP
+    document.querySelectorAll('.geo-cell').forEach(async cell => {
+        const ip = cell.dataset.ip;
+        if(!ip || ip==='-') { cell.innerHTML='-'; return; }
+        try {
+            const r = await fetch(`/api/enrich/ip/${ip}`);
+            if(!r.ok) throw new Error();
+            const d = await r.json();
+            cell.innerHTML = `${getFlag(d.country_code)} <span style="font-size:12px">${esc(d.country||'')}</span>`;
+        } catch { cell.innerHTML = '🏴'; }
+    });
+}
+
+// ═══════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════
+function navigate(page) {
+    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}
+    document.getElementById('app').innerHTML='<div class="empty">⏳</div>';
+    const machineMatch=page.match(/^machine\/(.+)$/);
+
+    document.querySelectorAll('.nav-link').forEach(a=>{
+        const href=a.getAttribute('href').slice(2);
+        if(machineMatch) a.classList.toggle('active',href==='machines');
+        else a.classList.toggle('active',href===page||(page===''&&href===''));
+    });
+
+    if(machineMatch){loadMachineDetail(machineMatch[1]);return;}
+
+    switch(page) {
+        case '': case 'dashboard':
+            loadDashboard(); refreshTimer=setInterval(loadDashboard,REFRESH); break;
+        case 'machines':
+            loadMachines(); refreshTimer=setInterval(loadMachines,REFRESH); break;
+        case 'security':
+            loadSecurity(); refreshTimer=setInterval(loadSecurity,REFRESH); break;
+        case 'bans':
+            loadBans(); refreshTimer=setInterval(loadBans,REFRESH); break;
+        case 'logs': renderLogs(); break;
+        default: loadDashboard();
+    }
+}
+
+// Global search
+document.getElementById('globalSearch')?.addEventListener('keydown', e=>{
+    if(e.key==='Enter') {
+        const q=e.target.value.trim();
+        if(q) { window.location.hash='/security'; setTimeout(()=>{
+            const s=document.getElementById('alertSearch');
+            if(s){s.value=q;s.dispatchEvent(new Event('input'));}
+        },500);}
+    }
+});
+
+window.addEventListener('hashchange',()=>navigate(window.location.hash.slice(2)));
+window.addEventListener('DOMContentLoaded',()=>navigate(window.location.hash.slice(2)||''));
+</script>
 </body>
 </html>

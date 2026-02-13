@@ -194,7 +194,7 @@ def enrich_ip_with_geoip(ip):
         if provider == 'ip-api':
             # ip-api.com - gratuit, 45 req/min
             # IP est déjà validée, safe pour interpolation
-            url = f"https://ip-api.com/json/{ip}"
+            url = f"http://ip-api.com/json/{ip}"
             response = requests.get(url, timeout=5)
             response.raise_for_status()
             data = response.json()
@@ -401,6 +401,53 @@ def delete_decision(decision_id):
         return jsonify({'message': 'Décision supprimée'}), 200
     
     except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ban', methods=['POST'])
+def add_ban():
+    """Ban une IP via cscli decisions add"""
+    data = request.get_json()
+    ip = data.get('ip', '').strip() if data else ''
+    reason = data.get('reason', 'manual ban via dashboard').strip()
+    duration = data.get('duration', '4h').strip()
+    
+    if not ip:
+        return jsonify({'error': 'IP requise'}), 400
+    
+    # Validation basique de l'IP
+    import re
+    if not re.match(r'^[\d\./:a-fA-F]+$', ip):
+        return jsonify({'error': 'IP invalide'}), 400
+    
+    try:
+        result = subprocess.run(
+            ['sudo', 'cscli', 'decisions', 'add', '-i', ip, '-R', reason, '-d', duration],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return jsonify({'error': result.stderr.strip()}), 500
+        return jsonify({'message': f'IP {ip} bannie avec succès', 'ip': ip}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ban', methods=['DELETE'])
+def remove_ban():
+    """Supprime un ban par IP via cscli decisions delete"""
+    ip = request.args.get('ip', '').strip()
+    if not ip:
+        return jsonify({'error': 'IP requise'}), 400
+    
+    try:
+        result = subprocess.run(
+            ['sudo', 'cscli', 'decisions', 'delete', '-i', ip],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return jsonify({'error': result.stderr.strip()}), 500
+        return jsonify({'message': f'IP {ip} débannie avec succès', 'ip': ip}), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
@@ -832,20 +879,326 @@ def fetchAPI_internal(endpoint):
         return None
 
 
+import re
+
+def parse_auth_log_lines(lines):
+    """Parse les lignes de auth.log en entrées structurées lisibles."""
+    parsed = []
+    for line in lines:
+        if not line.strip():
+            continue
+        
+        entry = {'raw': line, 'source': 'auth.log'}
+        
+        # Extraire timestamp (format ISO)
+        ts_match = re.match(r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', line)
+        if ts_match:
+            entry['timestamp'] = ts_match.group(1)
+        
+        # Extraire hostname et service
+        svc_match = re.search(r'\S+\s+(\S+)\s+(\S+?)(?:\[(\d+)\])?:', line)
+        if svc_match:
+            entry['hostname'] = svc_match.group(1)
+            entry['service'] = svc_match.group(2)
+            entry['pid'] = svc_match.group(3)
+        
+        # Classifier les événements SSH
+        if 'sshd' in line:
+            entry['category'] = 'ssh'
+            # Extraire IP
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
+            if ip_match:
+                entry['ip'] = ip_match.group(1)
+            
+            if 'Accepted password' in line:
+                user_match = re.search(r'Accepted password for (\S+) from (\S+)', line)
+                entry['event'] = 'Connexion réussie'
+                entry['level'] = 'success'
+                entry['icon'] = '✅'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Accepted publickey' in line:
+                user_match = re.search(r'Accepted publickey for (\S+) from (\S+)', line)
+                entry['event'] = 'Connexion clé SSH'
+                entry['level'] = 'success'
+                entry['icon'] = '🔑'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Failed password' in line:
+                user_match = re.search(r'Failed password for (?:invalid user )?(\S+) from (\S+)', line)
+                entry['event'] = 'Mot de passe incorrect'
+                entry['level'] = 'danger'
+                entry['icon'] = '❌'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Invalid user' in line or 'invalid user' in line:
+                user_match = re.search(r'invalid user (\S+) from (\S+)', line, re.IGNORECASE)
+                entry['event'] = 'Utilisateur inconnu'
+                entry['level'] = 'danger'
+                entry['icon'] = '🚫'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Connection closed by invalid user' in line:
+                user_match = re.search(r'Connection closed by invalid user (\S+) (\S+)', line)
+                entry['event'] = 'Rejeté (user invalide)'
+                entry['level'] = 'warning'
+                entry['icon'] = '🚫'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Connection closed by authenticating user' in line:
+                user_match = re.search(r'Connection closed by authenticating user (\S+) (\S+)', line)
+                entry['event'] = 'Échec authentification'
+                entry['level'] = 'warning'
+                entry['icon'] = '⚠️'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'Disconnected from user' in line:
+                user_match = re.search(r'Disconnected from user (\S+) (\S+)', line)
+                entry['event'] = 'Déconnexion'
+                entry['level'] = 'info'
+                entry['icon'] = '🔌'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+                    entry['ip'] = user_match.group(2)
+            elif 'session opened' in line:
+                user_match = re.search(r'session opened for user (\S+)', line)
+                entry['event'] = 'Session ouverte'
+                entry['level'] = 'success'
+                entry['icon'] = '📂'
+                if user_match:
+                    entry['user'] = user_match.group(1).rstrip('(')
+            elif 'session closed' in line:
+                user_match = re.search(r'session closed for user (\S+)', line)
+                entry['event'] = 'Session fermée'
+                entry['level'] = 'info'
+                entry['icon'] = '📁'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+            elif 'Connection reset' in line or 'reset by peer' in line:
+                entry['event'] = 'Connexion reset'
+                entry['level'] = 'warning'
+                entry['icon'] = '🔄'
+            elif 'MaxStartups' in line:
+                entry['event'] = 'Limite connexions atteinte'
+                entry['level'] = 'warning'
+                entry['icon'] = '🚧'
+            elif 'authentication failure' in line:
+                user_match = re.search(r'user=(\S+)', line)
+                entry['event'] = 'Échec PAM'
+                entry['level'] = 'danger'
+                entry['icon'] = '🔒'
+                if user_match:
+                    entry['user'] = user_match.group(1)
+            else:
+                entry['event'] = 'SSH'
+                entry['level'] = 'info'
+                entry['icon'] = '📋'
+        elif 'sudo' in line:
+            entry['category'] = 'sudo'
+            cmd_match = re.search(r'(\S+) : .* COMMAND=(.*)', line)
+            if cmd_match:
+                entry['user'] = cmd_match.group(1)
+                entry['event'] = f'sudo: {cmd_match.group(2).strip()[:60]}'
+                entry['level'] = 'info'
+                entry['icon'] = '⚡'
+            else:
+                entry['event'] = 'sudo'
+                entry['level'] = 'info'
+                entry['icon'] = '⚡'
+        elif 'systemd-logind' in line:
+            entry['category'] = 'session'
+            if 'New session' in line:
+                user_match = re.search(r'user (\S+)', line)
+                entry['event'] = 'Nouvelle session'
+                entry['level'] = 'info'
+                entry['icon'] = '🟢'
+                if user_match:
+                    entry['user'] = user_match.group(1).rstrip('.')
+            elif 'Removed session' in line:
+                entry['event'] = 'Session terminée'
+                entry['level'] = 'info'
+                entry['icon'] = '🔴'
+            else:
+                entry['event'] = 'Session'
+                entry['level'] = 'info'
+                entry['icon'] = '📋'
+        else:
+            entry['category'] = 'other'
+            entry['event'] = line.split(':', 3)[-1].strip()[:80] if ':' in line else line[:80]
+            entry['level'] = 'info'
+            entry['icon'] = '📋'
+        
+        parsed.append(entry)
+    
+    return parsed
+
+
+def parse_crowdsec_log_lines(lines):
+    """Parse les lignes de crowdsec.log en entrées structurées."""
+    parsed = []
+    for line in lines:
+        if not line.strip():
+            continue
+        
+        entry = {'raw': line, 'source': 'crowdsec.log', 'category': 'crowdsec'}
+        
+        # Parse format: time="..." level=... msg="..."
+        ts_match = re.search(r'time="([^"]+)"', line)
+        level_match = re.search(r'level=(\S+)', line)
+        msg_match = re.search(r'msg="([^"]*)"', line)
+        module_match = re.search(r'module=(\S+)', line)
+        
+        if ts_match:
+            entry['timestamp'] = ts_match.group(1)
+        if level_match:
+            lvl = level_match.group(1)
+            entry['level'] = {'info': 'info', 'warning': 'warning', 'error': 'danger', 'fatal': 'danger'}.get(lvl, 'info')
+        if module_match:
+            entry['service'] = module_match.group(1)
+        
+        msg = msg_match.group(1) if msg_match else line
+        
+        # Classifier
+        if 'ban on' in msg:
+            ip_match = re.search(r'by ip (\S+).*ban on \S+ (\S+)', msg)
+            scenario_match = re.search(r'(\S+/\S+) by ip', msg)
+            entry['event'] = '🔨 BAN'
+            entry['level'] = 'danger'
+            entry['icon'] = '🔨'
+            if ip_match:
+                entry['ip'] = ip_match.group(1)
+                entry['detail'] = msg
+            if scenario_match:
+                entry['scenario'] = scenario_match.group(1)
+        elif 'Signal push' in msg:
+            entry['event'] = 'Push signaux CAPI'
+            entry['icon'] = '📤'
+        elif 'usage metrics' in msg:
+            entry['event'] = 'Envoi métriques'
+            entry['icon'] = '📊'
+        elif 'community-blocklist' in msg:
+            entry['event'] = 'MAJ blocklist communauté'
+            entry['icon'] = '🌍'
+        elif 'capi metrics' in msg:
+            entry['event'] = 'Métriques CAPI'
+            entry['icon'] = '📈'
+        elif 'Starting' in msg:
+            entry['event'] = f'Démarrage: {msg[:60]}'
+            entry['level'] = 'success'
+            entry['icon'] = '🚀'
+        elif 'Loaded' in msg:
+            entry['event'] = msg[:60]
+            entry['level'] = 'success'
+            entry['icon'] = '✅'
+        else:
+            entry['event'] = msg[:80]
+            entry['icon'] = '📋'
+        
+        parsed.append(entry)
+    
+    return parsed
+
+
+def parse_syslog_lines(lines):
+    """Parse les lignes de syslog en entrées structurées."""
+    parsed = []
+    for line in lines:
+        if not line.strip():
+            continue
+        
+        entry = {'raw': line, 'source': 'syslog'}
+        
+        ts_match = re.match(r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', line)
+        if ts_match:
+            entry['timestamp'] = ts_match.group(1)
+        
+        svc_match = re.search(r'\S+\s+(\S+)\s+(\S+?)(?:\[(\d+)\])?:', line)
+        if svc_match:
+            entry['hostname'] = svc_match.group(1)
+            entry['service'] = svc_match.group(2)
+        
+        # Classifier
+        if 'python3' in line and ('GET ' in line or 'POST ' in line):
+            entry['category'] = 'dashboard'
+            req_match = re.search(r'"(GET|POST|DELETE) (\S+) HTTP', line)
+            status_match = re.search(r'" (\d{3}) -', line)
+            if req_match:
+                method = req_match.group(1)
+                path = req_match.group(2)
+                status = status_match.group(1) if status_match else '?'
+                entry['event'] = f'{method} {path}'
+                entry['detail'] = f'HTTP {status}'
+                entry['level'] = 'success' if status.startswith('2') else 'warning' if status.startswith('4') else 'danger' if status.startswith('5') else 'info'
+                entry['icon'] = '🌐'
+            else:
+                entry['event'] = 'Requête dashboard'
+                entry['icon'] = '🌐'
+                entry['level'] = 'info'
+        elif 'session' in line.lower():
+            entry['category'] = 'session'
+            if 'Started' in line:
+                entry['event'] = 'Session démarrée'
+                entry['icon'] = '🟢'
+                entry['level'] = 'info'
+            elif 'Deactivated' in line:
+                entry['event'] = 'Session terminée'
+                entry['icon'] = '🔴'
+                entry['level'] = 'info'
+            else:
+                entry['event'] = line.split(':', 3)[-1].strip()[:60]
+                entry['icon'] = '📋'
+                entry['level'] = 'info'
+        elif 'crowdsec' in line.lower() and 'cron' not in line.lower():
+            entry['category'] = 'crowdsec'
+            entry['event'] = line.split(':', 3)[-1].strip()[:80] if ':' in line else line[:80]
+            entry['icon'] = '🛡️'
+            entry['level'] = 'info'
+        else:
+            entry['category'] = 'system'
+            entry['event'] = line.split(':', 3)[-1].strip()[:80] if ':' in line else line[:80]
+            entry['icon'] = '📋'
+            entry['level'] = 'info'
+        
+        parsed.append(entry)
+    
+    return parsed
+
+
+
+
+@app.route('/api/hub/installed')
+def get_hub_installed():
+    """Get installed CrowdSec hub items via cscli"""
+    import subprocess as sp
+    result = {}
+    for item_type in ['scenarios', 'collections', 'parsers']:
+        try:
+            proc = sp.run(
+                ['sudo', 'cscli', item_type, 'list', '-o', 'json'],
+                capture_output=True, text=True, timeout=10
+            )
+            if proc.returncode == 0:
+                data = json.loads(proc.stdout)
+                result[item_type] = data.get(item_type, []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+            else:
+                result[item_type] = []
+        except Exception:
+            result[item_type] = []
+    return jsonify(result)
 
 @app.route('/api/logs')
 @jwt_required
 def get_logs():
-    """Récupère les logs de sécurité extraits des alertes CrowdSec.
-    
-    Extrait les événements individuels des alertes LAPI et les présente
-    comme des lignes de log structurées avec métadonnées.
-    Supporte la pagination et le filtrage par type/machine/IP.
-    """
+    """Récupère les logs de sécurité extraits des alertes CrowdSec."""
     lapi_url = config['lapi']['url']
     token = get_jwt_token()
     
-    # Paramètres de filtrage
     log_type = request.args.get('type', '')
     source_ip = request.args.get('ip', '')
     machine_filter = request.args.get('machine', '')
@@ -873,7 +1226,7 @@ def get_logs():
             alert_source = alert.get('source', {})
             alert_created = alert.get('created_at', '')
             
-            events = alert.get('events', [])
+            events = alert.get("events") or []
             for event in events:
                 meta = {}
                 for m in event.get('meta', []):
@@ -892,7 +1245,6 @@ def get_logs():
                     'datasource_type': meta.get('datasource_type', ''),
                 }
                 
-                # Filtrage
                 if log_type and log_type not in log_entry['log_type']:
                     continue
                 if source_ip and source_ip != log_entry['source_ip']:
@@ -904,13 +1256,9 @@ def get_logs():
                 
                 logs.append(log_entry)
         
-        # Trier par timestamp décroissant
         logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
-        # Limiter
         logs = logs[:limit]
         
-        # Extraire les filtres disponibles
         all_types = list(set(l['log_type'] for l in logs if l['log_type']))
         all_services = list(set(l['service'] for l in logs if l['service']))
         all_machines = list(set(l['machine'] for l in logs if l['machine']))
@@ -933,9 +1281,7 @@ def get_logs():
 
 @app.route('/api/logs/live')
 def get_live_logs():
-    """Récupère les dernières lignes des fichiers de log du système local.
-    Utile pour voir les logs en temps réel de la machine dashboard.
-    """
+    """Récupère les dernières lignes des logs système, parsées et structurées."""
     log_files = {
         'auth': '/var/log/auth.log',
         'syslog': '/var/log/syslog',
@@ -943,7 +1289,8 @@ def get_live_logs():
     }
     
     source = request.args.get('source', 'auth')
-    lines_count = min(int(request.args.get('lines', 50)), 200)
+    lines_count = min(int(request.args.get('lines', 100)), 500)
+    category_filter = request.args.get('category', '')
     
     log_file = log_files.get(source)
     if not log_file:
@@ -958,13 +1305,30 @@ def get_live_logs():
             timeout=10
         )
         
-        lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        raw_lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        
+        # Parser selon la source
+        if source == 'auth':
+            parsed = parse_auth_log_lines(raw_lines)
+        elif source == 'crowdsec':
+            parsed = parse_crowdsec_log_lines(raw_lines)
+        elif source == 'syslog':
+            parsed = parse_syslog_lines(raw_lines)
+        else:
+            parsed = [{'raw': l, 'event': l[:80], 'icon': '📋', 'level': 'info'} for l in raw_lines]
+        
+        # Filtrer par catégorie
+        if category_filter:
+            parsed = [e for e in parsed if e.get('category') == category_filter]
+        
+        # Inverser pour avoir les plus récents en premier
+        parsed.reverse()
         
         return jsonify({
             'source': source,
             'file': log_file,
-            'lines': lines,
-            'count': len(lines)
+            'entries': parsed,
+            'count': len(parsed)
         }), 200
     
     except Exception as e:
