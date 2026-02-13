@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/tomb.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
@@ -20,12 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.logger.Debug("In oneshot")
-	return nil
-}
-
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -51,6 +45,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	// We ignore the ResourceEventHandlerRegistration returned by
 	// AddEventHandler since we don't need to remove the handlers until shutdown,
 	// and we will stop the entire informer at that time.
+	s.logger.Info("Adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) { s.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
 		UpdateFunc: func(_, newObj interface{}) {
@@ -92,7 +87,7 @@ func (s *Source) Dump() any {
 }
 
 func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, onLine func(string) error) error {
-	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: true})
+	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	stream, err := req.Stream(ctx)
 	if err != nil {
 		return err
@@ -140,6 +135,7 @@ func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *
 					evt.Process = true
 					evt.Type = pipeline.LOG
 					out <- evt
+					s.logger.Tracef("got one line from %s: %s", source, line)
 					return nil
 				})
 			}()

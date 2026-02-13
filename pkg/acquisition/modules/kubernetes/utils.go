@@ -1,7 +1,7 @@
 package kubernetes
 
 import (
-	"errors"
+	"fmt"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -12,20 +12,16 @@ func (s *Source) buildConfig() (*rest.Config, error) {
 	if err == nil {
 		return cfg, nil
 	}
-	if s.Config.KubeConfigFile != "" {
-		return clientcmd.BuildConfigFromFlags("", s.Config.KubeConfigFile)
+
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: s.Config.KubeConfigFile}
+	overrides := &clientcmd.ConfigOverrides{}
+	overrides.CurrentContext = s.Config.KubeContext
+
+	cc := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+	cfg, err = cc.ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("building client config for context %q and kube config file %s: %w", s.Config.KubeContext, s.Config.KubeConfigFile, err)
 	}
 
-	if s.Config.Auth != nil {
-		loadingRules := &clientcmd.ClientConfigLoadingRules{}
-		configOverrides := &clientcmd.ConfigOverrides{
-			ClusterInfo:    s.Config.Auth.Cluster,
-			AuthInfo:       s.Config.Auth.User,
-			CurrentContext: "",
-		}
-		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-		return kubeConfig.ClientConfig()
-	}
-	// This should never happen, but just in case...
-	return nil, errors.New("could not create kubernetes client configuration")
+	return cfg, nil
 }
