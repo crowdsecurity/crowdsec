@@ -45,6 +45,9 @@ const (
 	ChallengeRemediation = "challenge"
 )
 
+const bodyChallengeOK = `{"status":"ok"}`
+const bodyChallengeFailed = `{"status":"failed"}`
+
 type phase int
 
 const (
@@ -882,6 +885,22 @@ func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
+	w.SetAction(state, ChallengeRemediation)
+	w.SetHTTPCode(state, code)
+	// FIXME: don't do this here, should be handled the same way as a block
+	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+	w.SetChallengeBody(state, body)
+	for name, value := range headers {
+		w.SetChallengeHeader(state, name, value)
+	}
+	if cookie != nil {
+		w.SetChallengeCookie(state, *cookie)
+	}
+	state.RequireChallenge = true
+	return nil
+}
+
 func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	w.Logger.Debugf("requiring valid challenge")
 
@@ -900,53 +919,37 @@ func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, r
 		if err != nil {
 			return fmt.Errorf("unable to build challenge.js: %w", err)
 		}
-		w.SetAction(state, ChallengeRemediation)
-		w.SetHTTPCode(state, http.StatusOK)
-		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
-		state.RequireChallenge = true
-		w.SetChallengeBody(state, script)
-		w.SetChallengeHeader(state, "Content-Type", "application/javascript")
-		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
-		return nil
+		return w.setChallengeResponse(state, http.StatusOK, script, map[string]string{"Content-Type": "application/javascript", "Cache-Control": "no-cache, no-store"}, nil)
 	}
 
 	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("Validating challenge response")
-		cookie, err := challenge.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		body := bodyChallengeOK
+		cookie, _, err := challenge.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
-			return fmt.Errorf("unable to validate challenge response: %w", err)
+			// TODO: find a way to propagate an event to the LP for use in scenarios
+			w.Logger.Errorf("Challenge validation failed: %s", err)
+			body = bodyChallengeFailed
 		}
-		w.SetAction(state, ChallengeRemediation)
-		w.SetHTTPCode(state, http.StatusOK)
-		// Empty response, we just set the cookie, the refresh is handled in the challenge page
-		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
-		w.SetChallengeCookie(state, *cookie)
-		w.SetChallengeBody(state, "")
-		w.SetChallengeHeader(state, "Content-Type", "text/html")
-		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
-		state.RequireChallenge = true
-		return nil
+		return w.setChallengeResponse(state, http.StatusOK, body, map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, cookie)
 	}
 
 	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	if err != nil || cookie.Value == "" {
+	isValidCookie := err == nil && challenge.ValidCookie(cookie)
+	if err != nil || !isValidCookie {
 		w.Logger.Debugf("no valid challenge cookie found")
-		challengePage, err := challenge.GetChallengePage()
+		challengePage, err := challenge.GetChallengePage(request.HTTPRequest.UserAgent())
 		if err != nil {
 			return fmt.Errorf("unable to get challenge page: %w", err)
 		}
-		w.SetAction(state, ChallengeRemediation)
-		w.SetHTTPCode(state, http.StatusOK)
+		return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+	}
 
-		// FIXME: don't do this here, should be handled the same way as a block
-		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
-
-		w.SetChallengeBody(state, challengePage)
-		w.SetChallengeHeader(state, "Content-Type", "text/html")
-		w.SetChallengeHeader(state, "Cache-Control", "no-cache, no-store")
-		state.RequireChallenge = true
+	if isValidCookie {
+		w.Logger.Debugf("valid challenge cookie found, allowing request")
 		return nil
 	}
+
 	return nil
 }
 

@@ -11,6 +11,12 @@ const (
 	defaultCookieSameSite = "Lax"
 )
 
+const (
+	SameSiteLax    = "Lax"
+	SameSiteStrict = "Strict"
+	SameSiteNone   = "None"
+)
+
 type AppsecCookie struct {
 	Name         string
 	Expiration   int64
