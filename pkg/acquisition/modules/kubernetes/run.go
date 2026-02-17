@@ -87,7 +87,8 @@ func (s *Source) Dump() any {
 	return s
 }
 
-func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, onLine func(string) error) error {
+func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event,
+	onLine func(string, string, map[string]string, metrics.AcquisitionMetricsLevel, chan pipeline.Event) error) error {
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	stream, err := req.Stream(ctx)
 	if err != nil {
@@ -100,11 +101,35 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := onLine(sc.Text()); err != nil {
+		if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, labels, metricsLevel, out); err != nil {
 			return err
 		}
 	}
 	return sc.Err()
+
+}
+
+//dev/	source := pod.Namespace + "/" + pod.Name + "/" + cont.Name
+
+func (s *Source) processLine(line string, source string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event) error {
+	l := pipeline.Line{
+		Raw:     line,
+		Labels:  s.config.Labels,
+		Time:    time.Now().UTC(),
+		Src:     source,
+		Process: true,
+		Module:  s.GetName(),
+	}
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
+	}
+	evt := pipeline.MakeEvent(true, pipeline.LOG, true)
+	evt.Line = l
+	evt.Process = true
+	evt.Type = pipeline.LOG
+	out <- evt
+	s.logger.Tracef("got one line from %s: %s", source, line)
+	return nil
 
 }
 
@@ -114,34 +139,14 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 		var cw sync.WaitGroup
 		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
-				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, func(line string) error {
-					source := pod.Namespace + "/" + pod.Name
-					l := pipeline.Line{
-						Raw: line,
-						Labels: s.config.Labels,
-						Time: time.Now().UTC(),
-						Src: source,
-						Process: true,
-						Module: s.GetName(),
-					}
-					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-						metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
-					}
-					evt := pipeline.MakeEvent(true, pipeline.LOG, true)
-					evt.Line = l
-					evt.Process = true
-					evt.Type = pipeline.LOG
-					out <- evt
-					s.logger.Tracef("got one line from %s: %s", source, line)
-					return nil
-				})
+				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, s.config.Labels, s.metricsLevel, out, s.processLine)
+				s.logger.Infof("stopped following logs for %s/%s/%s", pod.Namespace, pod.Name, cont.Name)
 			})
 		}
 		cw.Wait()
 	})
 	return cancel
 }
-
 
 func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
 	// ignore non running pods
