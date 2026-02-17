@@ -39,8 +39,6 @@ var (
 
 	flags Flags
 
-	// the state of acquisition
-	dataSources []acquisitionTypes.DataSource
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
 
@@ -66,6 +64,8 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 }
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisitionTypes.DataSource, error) {
+	var datasources []acquisitionTypes.DataSource
+
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels["type"] = flags.SingleFileType
 
@@ -73,20 +73,20 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.H
 		if err != nil {
 			return nil, err
 		}
-		dataSources = append(dataSources, ds)
+		datasources = append(datasources, ds)
 	} else {
 		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub)
 		if err != nil {
 			return nil, err
 		}
-		dataSources = dss
+		datasources = dss
 	}
 
-	if len(dataSources) == 0 {
+	if len(datasources) == 0 {
 		return nil, errors.New("no datasource enabled")
 	}
 
-	return dataSources, nil
+	return datasources, nil
 }
 
 // LoadConfig returns a configuration parsed from configuration file

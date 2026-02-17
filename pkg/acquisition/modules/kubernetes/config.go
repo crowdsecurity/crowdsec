@@ -23,34 +23,20 @@ type Configuration struct {
 	KubeContext    string `yaml:"kube_context,omitempty"`
 }
 
-func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	s.Config = Configuration{
-		Selector:    "",
-		Namespace:   "default",
-		KubeContext: "",
+func ConfigurationFromYAML(yamlConfig []byte) (Configuration, error) {
+	var cfg Configuration
+
+	if err := yaml.UnmarshalWithOptions(yamlConfig, &cfg, yaml.Strict()); err != nil {
+		return cfg, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
 	}
 
-	if err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict()); err != nil {
-		return fmt.Errorf("while parsing KubernetesAcquisition configuration: %s", yaml.FormatError(err, false, false))
+	cfg.SetDefaults()
+
+	if err := cfg.Validate(); err != nil {
+		return cfg, err
 	}
 
-	if s.logger != nil {
-		s.logger.Tracef("Kubernetes configuration: %+v", s.Config)
-	}
-
-	return nil
-}
-
-func (s *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
-	s.logger = logger
-	s.metricsLevel = metricsLevel
-
-	err := s.UnmarshalConfig(yamlConfig)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return cfg, nil
 }
 
 func (c *Configuration) SetDefaults() {
@@ -67,9 +53,36 @@ func (c *Configuration) SetDefaults() {
 	}
 }
 
-func (s *Source) Validate() error {
-	if s.Config.Selector == "" {
+func (c *Configuration) Validate() error {
+	if c.Selector == "" {
 		return errors.New("selector must be set in kubernetes acquisition")
 	}
+	return nil
+}
+
+func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
+	cfg, err := ConfigurationFromYAML(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	if s.logger != nil {
+		s.logger.Tracef("Kubernetes configuration: %+v", cfg)
+	}
+
+	s.config = cfg
+
+	return nil
+}
+
+func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+	err := s.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	s.logger = logger
+	s.metricsLevel = metricsLevel
+
 	return nil
 }

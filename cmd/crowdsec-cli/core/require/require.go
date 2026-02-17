@@ -89,14 +89,6 @@ func DBClient(ctx context.Context, dbcfg *csconfig.DatabaseCfg) (*database.Clien
 	return db, nil
 }
 
-func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(true); err != nil {
-		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
-	}
-
-	return nil
-}
-
 func HubDownloader(ctx context.Context, c *csconfig.Config) (*cwhub.Downloader, error) {
 	// set branch in config, and log if necessary
 	branch, err := HubBranch(ctx, c)
