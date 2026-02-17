@@ -2,6 +2,9 @@ package appsec_rule
 
 import (
 	"testing"
+
+	"github.com/corazawaf/coraza/v3"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVPatchRuleString(t *testing.T) {
@@ -10,6 +13,7 @@ func TestVPatchRuleString(t *testing.T) {
 		description string
 		rule        CustomRule
 		expected    string
+		invalid     bool
 	}{
 		{
 			name:        "Collection count",
@@ -150,6 +154,7 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'test ru
 		{
 			name:        "OR AND mix",
 			description: "test rule",
+			invalid:     true,
 
 			rule: CustomRule{
 				And: []CustomRule{
@@ -179,6 +184,15 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'test ru
 SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase"
 SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',severity:'emergency',t:lowercase"`,
 		},
+		{
+			name: "all transforms",
+			rule: CustomRule{
+				Zones:     []string{"ARGS"},
+				Variables: []string{"foo"},
+				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Transform: []string{"lowercase", "uppercase", "length", "trim", "trim_left", "trim_right", "htmlentitydecode", "js_decode", "css_decode", "urldecode", "hexdecode", "cmdline", "b64decode", "b64decode_lenient", "b64encode", "normalize_path", "normalize_path_win", "remove_whitespaces", "compress_whitespaces", "remove_nulls", "replace_nulls", "remove_comments", "replace_comments"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -187,8 +201,16 @@ SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1519945803,phase:2,deny,log,msg:'test r
 			if err != nil {
 				t.Errorf("Error converting rule: %s", err)
 			}
-			if actual != tt.expected {
+			if tt.expected != "" && actual != tt.expected {
 				t.Errorf("Expected:\n%s\nGot:\n%s", tt.expected, actual)
+			}
+			// Attempt to parse the rule to make sure we generated a valid one
+			cfg := coraza.NewWAFConfig().WithDirectives(actual)
+			_, err = coraza.NewWAF(cfg)
+			if tt.invalid {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
