@@ -82,7 +82,7 @@ func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 	}
 }
 
-func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, pourCollector *leakybucket.PourCollector) {
+func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, pourCollector *leakybucket.PourCollector, bucketStore *leakybucket.BucketStore) {
 	for idx := range cConfig.Crowdsec.BucketsRoutinesCount {
 		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
@@ -98,7 +98,7 @@ func startHeartBeat(ctx context.Context, _ *csconfig.Config, apiClient *apiclien
 	apiClient.HeartBeat.StartHeartBeat(ctx)
 }
 
-func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient, sd *StateDumper) {
+func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers *parser.Parsers, apiClient *apiclient.ApiClient, sd *StateDumper, bucketStore *leakybucket.BucketStore) {
 	for idx := range cConfig.Crowdsec.OutputRoutinesCount {
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
@@ -127,7 +127,7 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 			aggregated = true
 		}
 
-		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
+		if err := acquisition.GetMetrics(datasources, aggregated); err != nil {
 			return fmt.Errorf("while fetching prometheus metrics for datasources: %w", err)
 		}
 	}
@@ -144,12 +144,13 @@ func runCrowdsec(
 	hub *cwhub.Hub,
 	datasources []acquisitionTypes.DataSource,
 	sd *StateDumper,
+	bucketStore *leakybucket.BucketStore,
 ) error {
 	inEvents = make(chan pipeline.Event)
 	logLines = make(chan pipeline.Event)
 
 	startParserRoutines(ctx, g, cConfig, parsers, sd.StageParse)
-	startBucketRoutines(ctx, g, cConfig, sd.Pour)
+	startBucketRoutines(ctx, g, cConfig, sd.Pour, bucketStore)
 
 	apiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
@@ -158,7 +159,7 @@ func runCrowdsec(
 
 	startHeartBeat(ctx, cConfig, apiClient)
 
-	startOutputRoutines(ctx, cConfig, parsers, apiClient, sd)
+	startOutputRoutines(ctx, cConfig, parsers, apiClient, sd, bucketStore)
 
 	if err := startLPMetrics(ctx, cConfig, apiClient, hub, datasources); err != nil {
 		return err
@@ -166,7 +167,7 @@ func runCrowdsec(
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, dataSources, logLines, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(ctx, datasources, logLines, &acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
@@ -187,6 +188,8 @@ func serveCrowdsec(
 
 	var g errgroup.Group
 
+	bucketStore := leakybucket.NewBucketStore()
+
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
@@ -197,7 +200,7 @@ func serveCrowdsec(
 
 			agentReady <- true
 
-			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd); err != nil {
+			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd, bucketStore); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
@@ -209,7 +212,7 @@ func serveCrowdsec(
 		waitOnTomb()
 		log.Debugf("Shutting down crowdsec routines")
 
-		if err := ShutdownCrowdsecRoutines(cancel, &g); err != nil {
+		if err := ShutdownCrowdsecRoutines(cancel, &g, datasources); err != nil {
 			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
 		}
 

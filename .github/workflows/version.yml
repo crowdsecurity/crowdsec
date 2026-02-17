@@ -9,6 +9,10 @@ on:
         description: "CrowdSec version/tag to deploy (e.g. v1.6.0). Leave empty to deploy latest release."
         required: false
         type: string
+      date:
+        description: "Deployment date (YYYY-MM-DDTHH:MM:SSZ). Cannot be empty if version is not empty."
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -19,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v4
         with:
           node-version: 20
 
@@ -27,24 +31,34 @@ jobs:
         id: pick_version
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          INPUT_DATE: ${{ inputs.date }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
+          if [ -n "${INPUT_VERSION:-}" ] && [ -z "${INPUT_DATE:-}" ]; then
+            echo "Error: If version is provided, date must also be provided." >&2
+            exit 1
+          fi
+
           if [ -n "${INPUT_VERSION:-}" ]; then
             TAG="${INPUT_VERSION}"
+            DATE="${INPUT_DATE}"
           else
             # latest non-prerelease tag
-            TAG="$(gh release list --json tagName --exclude-pre-releases --limit 1 | jq -r '.[0].tagName')"
+            JSON_CONTENT="$(gh release list --json tagName,publishedAt --exclude-pre-releases --limit 1)"
+            TAG="$(echo "$JSON_CONTENT" | jq -r '.[0].tagName')"
+            DATE="$(echo "$JSON_CONTENT" | jq -r '.[0].publishedAt')"
           fi
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
       - name: Write dist artifact
         run: |
           set -euo pipefail
           mkdir -p ./dist
-          echo '{"name":"${{ steps.pick_version.outputs.tag }}"}' > ./dist/latest
+          echo '{"name":"${{ steps.pick_version.outputs.tag }}", "tag_name":"${{ steps.pick_version.outputs.tag }}", "published_at":"${{ steps.pick_version.outputs.date }}"}' > ./dist/latest
           cat ./dist/latest
 
       # Deploy the build output directory (adjust ./dist to your framework output)

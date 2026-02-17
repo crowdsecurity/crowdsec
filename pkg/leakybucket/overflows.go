@@ -34,15 +34,15 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 
 	for k, v := range evt.Overflow.Sources {
 		/*the scopes are already similar, nothing to do*/
-		if leaky.scopeType.Scope == *v.Scope {
+		if leaky.Factory.Spec.ScopeType.Scope == *v.Scope {
 			srcs[k] = v
 			continue
 		}
 
 		/*The bucket requires a decision on scope Range */
-		if leaky.scopeType.Scope != types.Range {
+		if leaky.Factory.Spec.ScopeType.Scope != types.Range {
 			log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
-				leaky.Name, *v.Scope, *v.Value)
+				leaky.Factory.Spec.Name, *v.Scope, *v.Value)
 			continue
 		}
 
@@ -57,15 +57,15 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 			src.Range = v.Range
 			src.Value = new(string)
 			src.Scope = new(string)
-			*src.Scope = leaky.scopeType.Scope
+			*src.Scope = leaky.Factory.Spec.ScopeType.Scope
 			*src.Value = ""
 
 			if v.Range != "" {
 				*src.Value = v.Range
 			}
 
-			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+			if leaky.Factory.Spec.ScopeType.RunTimeFilter != nil {
+				retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -79,7 +79,7 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 			}
 
 			if *src.Value == "" {
-				log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
+				log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Factory.Spec.Name, *v.Value)
 				continue
 			}
 
@@ -95,19 +95,19 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 	src := models.Source{}
 
-	switch leaky.scopeType.Scope {
+	switch leaky.Factory.Spec.ScopeType.Scope {
 	case types.Range, types.Ip:
 		v, ok := evt.Meta["source_ip"]
 		if !ok {
-			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.scopeType.Scope)
+			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.Factory.Spec.ScopeType.Scope)
 		}
 
 		if net.ParseIP(v) == nil {
-			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
+			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.Factory.Spec.ScopeType.Scope, v)
 		}
 
 		src.IP = v
-		src.Scope = &leaky.scopeType.Scope
+		src.Scope = &leaky.Factory.Spec.ScopeType.Scope
 
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
@@ -153,13 +153,13 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 			}
 		}
 
-		if leaky.scopeType.Scope == types.Ip {
+		if leaky.Factory.Spec.ScopeType.Scope == types.Ip {
 			src.Value = &src.IP
-		} else if leaky.scopeType.Scope == types.Range {
+		} else if leaky.Factory.Spec.ScopeType.Scope == types.Range {
 			src.Value = &src.Range
 
-			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+			if leaky.Factory.Spec.ScopeType.RunTimeFilter != nil {
+				retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 				if err != nil {
 					return srcs, fmt.Errorf("while running scope filter: %w", err)
 				}
@@ -175,11 +175,11 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 		srcs[*src.Value] = src
 	default:
-		if leaky.scopeType.RunTimeFilter == nil {
+		if leaky.Factory.Spec.ScopeType.RunTimeFilter == nil {
 			return srcs, errors.New("empty scope information")
 		}
 
-		retValue, err := exprhelpers.Run(leaky.scopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.BucketConfig.Debug)
+		retValue, err := exprhelpers.Run(leaky.Factory.Spec.ScopeType.RunTimeFilter, map[string]any{"evt": &evt}, leaky.logger, leaky.Factory.Spec.Debug)
 		if err != nil {
 			return srcs, fmt.Errorf("while running scope filter: %w", err)
 		}
@@ -191,7 +191,7 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 
 		src.Value = &value
 		src.Scope = new(string)
-		*src.Scope = leaky.scopeType.Scope
+		*src.Scope = leaky.Factory.Spec.ScopeType.Scope
 		srcs[*src.Value] = src
 	}
 
@@ -257,13 +257,13 @@ func alertFormatSource(leaky *Leaky, queue *pipeline.Queue) (map[string]models.S
 
 	sources := make(map[string]models.Source)
 
-	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
+	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Factory.Spec.Name, leaky.Factory.Spec.ScopeType.Scope, leaky.Factory.Spec.ScopeType.Filter)
 
 	qEvents := queue.GetQueue()
 	for idx := range qEvents {
 		srcs, err := SourceFromEvent(qEvents[idx], leaky)
 		if err != nil {
-			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Name, err)
+			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Factory.Spec.Name, err)
 		}
 
 		for key, src := range srcs {
@@ -301,25 +301,25 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		log.Warningf("failed to serialize ovflw ts %s : %s", leaky.First_ts.String(), err)
 	}
 
-	capacity := int32(leaky.Capacity)
+	capacity := int32(leaky.Factory.Spec.Capacity)
 	EventsCount := int32(leaky.Total_count)
-	leakSpeed := leaky.Leakspeed.String()
+	leakSpeed := leaky.Factory.leakspeed.String()
 	startAt := string(start_at)
 	stopAt := string(stop_at)
 	apiAlert := models.Alert{
-		Scenario:        &leaky.Name,
-		ScenarioHash:    &leaky.hash,
-		ScenarioVersion: &leaky.scenarioVersion,
+		Scenario:        &leaky.Factory.Spec.Name,
+		ScenarioHash:    &leaky.Factory.scenarioHash,
+		ScenarioVersion: &leaky.Factory.Spec.ScenarioVersion,
 		Capacity:        &capacity,
 		EventsCount:     &EventsCount,
 		Leakspeed:       &leakSpeed,
 		Message:         new(string),
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
-		Simulated:       &leaky.Simulated,
+		Simulated:       &leaky.Factory.Simulated,
 	}
 
-	if leaky.BucketConfig == nil {
+	if leaky.Factory == nil {
 		return runtimeAlert, errors.New("leaky.BucketConfig is nil")
 	}
 
@@ -344,7 +344,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		}
 	}
 
-	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
+	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Factory.Spec.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	// Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
 
@@ -352,7 +352,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 
 	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue())
 	for _, w := range warnings {
-		log.Warningf("while extracting context from bucket %s : %s", leaky.Name, w)
+		log.Warningf("while extracting context from bucket %s : %s", leaky.Factory.Spec.Name, w)
 	}
 
 	// Loop over the Sources and generate appropriate number of ApiAlerts
@@ -362,7 +362,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		newApiAlert.Source = &srcCopy
 
 		//revive:disable-next-line:bool-literal-in-expr
-		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == true {
+		if v, ok := leaky.Factory.Spec.Labels["remediation"]; ok && v == true {
 			newApiAlert.Remediation = true
 		}
 
@@ -377,7 +377,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
 	}
 
-	if leaky.Reprocess {
+	if leaky.Factory.Spec.Reprocess {
 		runtimeAlert.Reprocess = true
 	}
 

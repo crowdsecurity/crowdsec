@@ -39,11 +39,8 @@ var (
 
 	flags Flags
 
-	// the state of acquisition
-	dataSources []acquisitionTypes.DataSource
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
-	bucketStore *leakybucket.BucketStore
 
 	logLines   chan pipeline.Event
 	inEvents  chan pipeline.Event
@@ -54,27 +51,21 @@ var (
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var err error
 
-	bucketStore = leakybucket.NewBucketStore()
-
 	scenarios := hub.GetInstalledByType(cwhub.SCENARIOS, false)
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, bucketStore, flags.OrderEvent)
+	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, flags.OrderEvent)
 	if err != nil {
 		return err
-	}
-
-	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
-		for holderIndex := range holders {
-			holders[holderIndex].Profiling = true
-		}
 	}
 
 	return nil
 }
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisitionTypes.DataSource, error) {
+	var datasources []acquisitionTypes.DataSource
+
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels["type"] = flags.SingleFileType
 
@@ -82,20 +73,20 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.H
 		if err != nil {
 			return nil, err
 		}
-		dataSources = append(dataSources, ds)
+		datasources = append(datasources, ds)
 	} else {
 		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub)
 		if err != nil {
 			return nil, err
 		}
-		dataSources = dss
+		datasources = dss
 	}
 
-	if len(dataSources) == 0 {
+	if len(datasources) == 0 {
 		return nil, errors.New("no datasource enabled")
 	}
 
-	return dataSources, nil
+	return datasources, nil
 }
 
 // LoadConfig returns a configuration parsed from configuration file
