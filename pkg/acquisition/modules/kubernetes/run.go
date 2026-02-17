@@ -47,11 +47,11 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	// and we will stop the entire informer at that time.
 	s.logger.Info("Adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) { s.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
-		UpdateFunc: func(_, newObj interface{}) {
+		AddFunc: func(obj any) { s.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
+		UpdateFunc: func(_, newObj any) {
 			s.startPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
 			if !ok {
 				t, _ := obj.(cache.DeletedFinalStateUnknown)
@@ -107,26 +107,22 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 
 }
 
-func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup) context.CancelFunc {
-	podCtx, cancel := context.WithCancel(meta)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup) context.CancelFunc {
+	podCtx, cancel := context.WithCancel(parentCtx)
+	wg.Go(func() {
 		var cw sync.WaitGroup
 		for _, c := range pod.Spec.Containers {
-			c := c.Name
-			cw.Add(1)
-			go func() {
-				defer cw.Done()
-				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, c, func(line string) error {
+			cw.Go(func() {
+				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, c.Name, func(line string) error {
 					source := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
-					l := pipeline.Line{}
-					l.Raw = line
-					l.Labels = s.config.Labels
-					l.Time = time.Now().UTC()
-					l.Src = source
-					l.Process = true
-					l.Module = s.GetName()
+					l := pipeline.Line{
+						Raw: line,
+						Labels: s.config.Labels,
+						Time: time.Now().UTC(),
+						Src: source,
+						Process: true,
+						Module: s.GetName(),
+					}
 					if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 						metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 					}
@@ -138,10 +134,10 @@ func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *
 					s.logger.Tracef("got one line from %s: %s", source, line)
 					return nil
 				})
-			}()
+			})
 		}
 		cw.Wait()
-	}()
+	})
 	return cancel
 }
 
