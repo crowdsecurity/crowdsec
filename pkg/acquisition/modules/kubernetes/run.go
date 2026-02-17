@@ -25,7 +25,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 
 	s.logger.Info("Starting Kubernetes acquisition")
 
-	cfg, err := s.buildConfig()
+	cfg, err := s.config.buildClientConfig()
 	if err != nil {
 		return err
 	}
