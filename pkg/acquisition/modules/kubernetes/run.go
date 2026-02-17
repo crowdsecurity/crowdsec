@@ -37,8 +37,8 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	cancels := map[string]context.CancelFunc{}
 
 	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
-		informers.WithNamespace(s.Config.Namespace),
-		informers.WithTweakListOptions(func(o *metav1.ListOptions) { o.LabelSelector = s.Config.Selector }),
+		informers.WithNamespace(s.config.Namespace),
+		informers.WithTweakListOptions(func(o *metav1.ListOptions) { o.LabelSelector = s.config.Selector }),
 	)
 	inf := f.Core().V1().Pods().Informer()
 
@@ -122,7 +122,7 @@ func (s *Source) podWorker(meta context.Context, cs *kubernetes.Clientset, pod *
 					source := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
 					l := pipeline.Line{}
 					l.Raw = line
-					l.Labels = s.Config.Labels
+					l.Labels = s.config.Labels
 					l.Time = time.Now().UTC()
 					l.Src = source
 					l.Process = true

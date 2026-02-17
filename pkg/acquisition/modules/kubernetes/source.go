@@ -8,7 +8,7 @@ import (
 
 type Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
-	Config       Configuration
+	config       Configuration
 
 	logger *log.Entry
 }
@@ -18,7 +18,7 @@ func (*Source) GetName() string {
 }
 
 func (s *Source) GetMode() string {
-	return s.Config.Mode
+	return s.config.Mode
 }
 
 func (*Source) CanRun() error {
@@ -26,5 +26,5 @@ func (*Source) CanRun() error {
 }
 
 func (s *Source) GetUuid() string {
-	return s.Config.UniqueId
+	return s.config.UniqueId
 }

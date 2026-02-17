@@ -13,14 +13,14 @@ func (s *Source) buildConfig() (*rest.Config, error) {
 		return cfg, nil
 	}
 
-	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: s.Config.KubeConfigFile}
+	loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: s.config.KubeConfigFile}
 	overrides := &clientcmd.ConfigOverrides{}
-	overrides.CurrentContext = s.Config.KubeContext
+	overrides.CurrentContext = s.config.KubeContext
 
 	cc := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
 	cfg, err = cc.ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("building client config for context %q and kube config file %s: %w", s.Config.KubeContext, s.Config.KubeConfigFile, err)
+		return nil, fmt.Errorf("building client config for context %q and kube config file %s: %w", s.config.KubeContext, s.config.KubeConfigFile, err)
 	}
 
 	return cfg, nil
