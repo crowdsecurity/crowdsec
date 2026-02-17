@@ -48,9 +48,9 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	// and we will stop the entire informer at that time.
 	s.logger.Info("Adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) { s.startPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
+		AddFunc: func(obj any) { s.tailPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
 		UpdateFunc: func(_, newObj any) {
-			s.startPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
+			s.tailPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
@@ -112,10 +112,10 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 	podCtx, cancel := context.WithCancel(parentCtx)
 	wg.Go(func() {
 		var cw sync.WaitGroup
-		for _, c := range pod.Spec.Containers {
+		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
-				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, c.Name, func(line string) error {
-					source := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
+				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, func(line string) error {
+					source := pod.Namespace + "/" + pod.Name
 					l := pipeline.Line{
 						Raw: line,
 						Labels: s.config.Labels,
@@ -142,10 +142,10 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 	return cancel
 }
 
-func shouldTail(p *corev1.Pod) bool { return p.Status.Phase == corev1.PodRunning }
 
-func (s *Source) startPod(meta context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
-	if !shouldTail(p) {
+func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
+	// ignore non running pods
+	if p.Status.Phase != corev1.PodRunning {
 		return
 	}
 	key := p.UID
@@ -154,7 +154,7 @@ func (s *Source) startPod(meta context.Context, cs *kubernetes.Clientset, p *cor
 		mu.Unlock()
 		return
 	}
-	cancels[key] = s.podWorker(meta, cs, p, out, wg)
+	cancels[key] = s.podWorker(ctx, cs, p, out, wg)
 	mu.Unlock()
 }
 
