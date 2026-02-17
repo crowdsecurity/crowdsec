@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -34,7 +35,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		return fmt.Errorf("can't create a kubernetes client: %s", err)
 	}
 
-	cancels := map[string]context.CancelFunc{}
+	cancels := map[types.UID]context.CancelFunc{}
 
 	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
 		informers.WithNamespace(s.config.Namespace),
@@ -143,11 +144,11 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 
 func shouldTail(p *corev1.Pod) bool { return p.Status.Phase == corev1.PodRunning }
 
-func (s *Source) startPod(meta context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[string]context.CancelFunc) {
+func (s *Source) startPod(meta context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
 	if !shouldTail(p) {
 		return
 	}
-	key := string(p.UID)
+	key := p.UID
 	mu.Lock()
 	if _, ok := cancels[key]; ok {
 		mu.Unlock()
@@ -157,8 +158,8 @@ func (s *Source) startPod(meta context.Context, cs *kubernetes.Clientset, p *cor
 	mu.Unlock()
 }
 
-func (*Source) stopPod(p *corev1.Pod, mu *sync.Mutex, cancels map[string]context.CancelFunc) {
-	key := string(p.UID)
+func (*Source) stopPod(p *corev1.Pod, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
+	key := p.UID
 	mu.Lock()
 	cancel, ok := cancels[key]
 	if ok {
