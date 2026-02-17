@@ -92,7 +92,7 @@ jobs:
 
       - name: Build and push image (slim)
         if: ${{ inputs.slim }}
-        uses: docker/build-push-action@ee4ca427a2f43b6a16632044ca514c076267da23 # v6.19.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
@@ -108,7 +108,7 @@ jobs:
             BUILD_VERSION=${{ inputs.crowdsec_version }}
 
       - name: Build and push image (full)
-        uses: docker/build-push-action@ee4ca427a2f43b6a16632044ca514c076267da23 # v6.19.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
