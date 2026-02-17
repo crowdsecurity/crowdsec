@@ -198,6 +198,7 @@ func (c *Client) flushAgents(ctx context.Context, authType string, duration *tim
 		machine.LastHeartbeatLTE(time.Now().UTC().Add(-*duration)),
 		machine.Not(machine.HasAlerts()),
 		machine.AuthTypeEQ(authType),
+		machine.IpAddressNotIn("127.0.0.1", "::1"),
 	).Exec(ctx)
 	if err != nil {
 		c.Log.Errorf("while auto-deleting expired machines (%s): %s", authType, err)
