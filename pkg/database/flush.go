@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
@@ -79,7 +78,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.AgentsGC.Api != nil {
-			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
+			c.Log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
 		}
 	}
 
@@ -103,7 +102,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.BouncersGC.LoginPassword != nil {
-			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+			c.Log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
 		}
 	}
 
@@ -227,7 +226,7 @@ func (c *Client) flushAgents(ctx context.Context, authType string, duration *tim
 }
 
 func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
-	log.Debug("starting FlushAgentsAndBouncers")
+	c.Log.Debug("starting FlushAgentsAndBouncers")
 
 	if agentsCfg != nil {
 		c.flushAgents(ctx, types.TlsAuthType, agentsCfg.CertDuration)
