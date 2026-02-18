@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -19,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -28,7 +29,7 @@ const (
 	flushInterval        = 1 * time.Minute
 )
 
-func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
+func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (gocron.Scheduler, error) {
 	maxItems := 0
 
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
@@ -40,14 +41,23 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 	}
 
 	// Init & Start cronjob every minute for alerts
-	scheduler := gocron.NewScheduler(time.UTC)
+	scheduler, err := gocron.NewScheduler(
+		gocron.WithLocation(time.UTC),
+		gocron.WithLogger(logging.GoCronLoggerAdapter{Logger: c.Log}),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(1*time.Minute),
+		gocron.NewTask(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
 
-	job.SingletonMode()
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
 		if config.AgentsGC.Cert != nil {
@@ -97,28 +107,34 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 	}
 
-	baJob, err := scheduler.Every(flushInterval).Do(c.FlushAgentsAndBouncers, ctx, config.AgentsGC, config.BouncersGC)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.FlushAgentsAndBouncers, ctx, config.AgentsGC, config.BouncersGC),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
 	}
 
-	baJob.SingletonMode()
-
-	metricsJob, err := scheduler.Every(flushInterval).Do(c.flushMetrics, ctx, time.Duration(config.MetricsMaxAge))
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.flushMetrics, ctx, time.Duration(config.MetricsMaxAge)),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting flushMetrics scheduler: %w", err)
 	}
 
-	metricsJob.SingletonMode()
-
-	allowlistsJob, err := scheduler.Every(flushInterval).Do(c.flushAllowlists, ctx)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.flushAllowlists, ctx),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAllowlists scheduler: %w", err)
 	}
 
-	allowlistsJob.SingletonMode()
-
-	scheduler.StartAsync()
+	scheduler.Start()
 
 	return scheduler, nil
 }

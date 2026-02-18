@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -36,7 +36,7 @@ type APIServer struct {
 	cfg            *csconfig.LocalApiServerCfg
 	dbClient       *database.Client
 	controller     *controllers.Controller
-	flushScheduler *gocron.Scheduler
+	flushScheduler gocron.Scheduler
 	router         *gin.Engine
 	httpServer     *http.Server
 	apic           *apic
@@ -116,7 +116,7 @@ func CustomRecoveryWithWriter(c *gin.Context) {
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
 func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
-	var flushScheduler *gocron.Scheduler
+	var flushScheduler gocron.Scheduler
 
 	if accessLogger == nil {
 		accessLogger = log.StandardLogger().WithFields(nil)
@@ -461,7 +461,7 @@ func (s *APIServer) Close() {
 	s.dbClient.Ent.Close()
 
 	if s.flushScheduler != nil {
-		s.flushScheduler.Stop()
+		_ = s.flushScheduler.Shutdown()
 	}
 }
 
