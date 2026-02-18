@@ -95,8 +95,14 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}
+
 	// merge all scenarios together
 	for _, v := range machines {
+		if v.Scenarios == "" {
+			log.Debugf("No scenarios for machine %d", v.ID)
+			continue
+		}
+
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
 
