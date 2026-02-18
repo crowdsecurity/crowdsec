@@ -39,7 +39,18 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 
 	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
 		informers.WithNamespace(s.config.Namespace),
-		informers.WithTweakListOptions(func(o *metav1.ListOptions) { o.LabelSelector = s.config.Selector }),
+		informers.WithTweakListOptions(func(o *metav1.ListOptions) {
+			// We set the LabelSelector on the ListOptions to filter pods at the
+			// API level, so we only get events for pods that match our
+			// selector. This is more efficient than getting all pod events and
+			// filtering them in our event handlers.
+			o.LabelSelector = s.config.Selector
+			// We set the FieldSelector to only get events for pods that are in
+			// the Running phase, since we only want to tail logs from running
+			// pods. This is more efficient than getting events for all pods and
+			// filtering them in our event handlers.
+			o.FieldSelector = "status.phase=Running"
+		}),
 	)
 	inf := f.Core().V1().Pods().Informer()
 
@@ -150,9 +161,6 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 
 func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
 	// ignore non running pods
-	if p.Status.Phase != corev1.PodRunning {
-		return
-	}
 	key := p.UID
 	mu.Lock()
 	if _, ok := cancels[key]; ok {
