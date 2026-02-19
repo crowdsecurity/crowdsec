@@ -25,7 +25,7 @@ try {
 
   const result = JavaScriptObfuscator.obfuscate(
     sourceCode,
-    JavaScriptObfuscator.getOptionsByPreset("low-obfuscation"),
+    JavaScriptObfuscator.getOptionsByPreset("high-obfuscation"),
   );
 
   writeStdout(result.getObfuscatedCode());

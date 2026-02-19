@@ -50,6 +50,19 @@ async function encryptFingerprint(key, fingerprint) {
 const ts = "__CROWDSEC_TIMESTAMP__";
 const ticket = "__CROWDSEC_TICKET__";
 
+function reportChallengeStatus(status) {
+  if (typeof window.crowdsecSetChallengeStatus === "function") {
+    window.crowdsecSetChallengeStatus(status);
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("crowdsec-challenge-status", {
+      detail: { status },
+    }),
+  );
+}
+
 await new Promise((r) => setTimeout(r, 4000));
 const scanner = new FingerprintScanner();
 const result = await scanner.collectFingerprint({ encrypt: false });
@@ -65,5 +78,12 @@ fetch("/crowdsec-internal/challenge/submit", {
   body: new URLSearchParams({ f: f, t: ticket, ts: ts, h: h, s: sessionKey }),
 })
   .then((response) => response.json())
-  .then((data) => console.log(data))
-  .catch((error) => console.error("Error submitting fingerprint:", error));
+  .then((data) => {
+    console.log(data);
+    const status = typeof data?.status === "string" ? data.status : "fail";
+    reportChallengeStatus(status);
+  })
+  .catch((error) => {
+    console.error("Error submitting fingerprint:", error);
+    reportChallengeStatus("fail");
+  });
