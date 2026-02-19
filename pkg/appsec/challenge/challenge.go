@@ -6,17 +6,19 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	_ "embed"
 
 	"text/template"
 
@@ -30,12 +32,11 @@ import (
 const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
 const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
 const ChallengeCookieName = "__crowdsec_challenge"
+const challengeJSCacheSize = 10
+const challengeJSRefreshInterval = 10 * time.Minute
 
 // FIXME
 const masterSecret = "SUPER_SECRET_KEY"
-
-//go:embed js/fpscanner/src/*
-var jsFS embed.FS
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
@@ -45,56 +46,30 @@ var obfuscatorWasmGz []byte
 
 var (
 	obfuscatorWasm     []byte
-	obfuscatorWasmErr  error
 	obfuscatorWasmOnce sync.Once
 )
 
-func ObfuscateJS(ctx context.Context, inputJS string) (string, error) {
-	wasm, err := loadObfuscatorWasm()
-	if err != nil {
-		return "", err
-	}
+type ChallengeRuntime struct {
+	r wazero.Runtime
 
-	// 1. Create the Runtime
-	r := wazero.NewRuntime(ctx)
-	defer r.Close(ctx)
+	obfuscatedJSCache []string
+	cacheMutex        sync.RWMutex
 
-	// 2. Instantiate WASI (System Interface)
-	// This allows the WASM module to use Stdin/Stdout/Stderr
-	wasi_snapshot_preview1.MustInstantiate(ctx, r)
-
-	// 3. Prepare the IO buffers
-	// Input: Your JS code
-	stdin := bytes.NewReader([]byte(inputJS))
-	// Output: Where the WASM will write the result
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	// 4. Configure the Module
-	config := wazero.NewModuleConfig().
-		WithStdin(stdin).
-		WithStdout(&stdout).
-		WithStderr(&stderr).
-		// Important: Javy expects the entry point to be run automatically.
-		// We don't need to call a specific function, just instantiating it runs the main loop.
-		WithStartFunctions("_start")
-
-	// 5. Compile & Instantiate (Run)
-	// Since Javy compiles the JS into the _start function,
-	// simply Instantiating the module runs the script.
-	_, err = r.InstantiateWithConfig(ctx, wasm, config)
-	if err != nil {
-		// Check stderr if there was a runtime error in the WASM
-		if stderr.Len() > 0 {
-			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
-		}
-		return "", fmt.Errorf("wasm instantiation error: %v", err)
-	}
-
-	return stdout.String(), nil
+	challengeTicket    string
+	challengeTimestamp string
 }
 
-func loadObfuscatorWasm() ([]byte, error) {
+func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
+	r := wazero.NewRuntime(ctx)
+
+	// No need to keep the closer around, we can just close the runtime itself when stopping
+	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
+	}
+
+	var obfuscatorWasmErr error
+
 	obfuscatorWasmOnce.Do(func() {
 		r, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
 		if err != nil {
@@ -110,25 +85,179 @@ func loadObfuscatorWasm() ([]byte, error) {
 		}
 	})
 
-	return obfuscatorWasm, obfuscatorWasmErr
+	if obfuscatorWasmErr != nil {
+		return nil, obfuscatorWasmErr
+	}
+
+	challengeRuntime := &ChallengeRuntime{
+		r:                 r,
+		obfuscatedJSCache: make([]string, 0, challengeJSCacheSize),
+	}
+
+	challengeRuntime.challengeTimestamp = strconv.FormatInt(time.Now().UnixNano(), 10)
+	challengeRuntime.challengeTicket = challengeRuntime.getTicket(challengeRuntime.challengeTimestamp)
+
+	if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
+		return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
+	}
+
+	go challengeRuntime.challengeGenerator(ctx)
+
+	return challengeRuntime, nil
 }
 
-func getTicket(userAgent string, ts string) (string, string) {
+func (c *ChallengeRuntime) challengeGenerator(ctx context.Context) {
+	// Startup warm-up: grow the cache in background until full.
+	if err := c.fillCacheToCapacity(ctx); err != nil {
+		log.Errorf("failed to prefill challenge JS cache: %v", err)
+	}
+
+	ticker := time.NewTicker(challengeJSRefreshInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			variants, err := c.generateChallengeVariants(ctx, challengeJSCacheSize)
+			if err != nil {
+				log.Errorf("failed to regenerate full challenge JS cache: %v", err)
+				continue
+			}
+
+			c.replaceCachedChallengeJS(variants)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (c *ChallengeRuntime) buildChallengeBundle() string {
+	return strings.NewReplacer(
+		"__CROWDSEC_TICKET__", c.challengeTicket,
+		"__CROWDSEC_TIMESTAMP__", c.challengeTimestamp,
+	).Replace(challengejs.FPScannerBundle)
+}
+
+func (c *ChallengeRuntime) generateAndCacheChallengeJS(ctx context.Context) error {
+	variants, err := c.generateChallengeVariants(ctx, 1)
+	if err != nil {
+		return err
+	}
+
+	c.appendCachedChallengeJS(variants)
+
+	return nil
+}
+
+func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count int) ([]string, error) {
+	if count <= 0 {
+		return []string{}, nil
+	}
+
+	bundle := c.buildChallengeBundle()
+	variants := make([]string, 0, count)
+
+	for range count {
+		obfuscatedJS, err := c.ObfuscateJS(ctx, bundle)
+		if err != nil {
+			return nil, err
+		}
+		variants = append(variants, obfuscatedJS)
+	}
+
+	return variants, nil
+}
+
+func (c *ChallengeRuntime) fillCacheToCapacity(ctx context.Context) error {
+	c.cacheMutex.RLock()
+	missing := challengeJSCacheSize - len(c.obfuscatedJSCache)
+	c.cacheMutex.RUnlock()
+
+	if missing <= 0 {
+		return nil
+	}
+
+	variants, err := c.generateChallengeVariants(ctx, missing)
+	if err != nil {
+		return err
+	}
+
+	c.appendCachedChallengeJS(variants)
+	return nil
+}
+
+func (c *ChallengeRuntime) appendCachedChallengeJS(variants []string) {
+	if len(variants) == 0 {
+		return
+	}
+
+	c.cacheMutex.Lock()
+	c.obfuscatedJSCache = append(c.obfuscatedJSCache, variants...)
+	if len(c.obfuscatedJSCache) > challengeJSCacheSize {
+		c.obfuscatedJSCache = c.obfuscatedJSCache[len(c.obfuscatedJSCache)-challengeJSCacheSize:]
+	}
+	c.cacheMutex.Unlock()
+}
+
+func (c *ChallengeRuntime) replaceCachedChallengeJS(variants []string) {
+	if len(variants) == 0 {
+		return
+	}
+
+	c.cacheMutex.Lock()
+	c.obfuscatedJSCache = append([]string(nil), variants...)
+	c.cacheMutex.Unlock()
+}
+
+func (c *ChallengeRuntime) getCachedChallengeJS() string {
+	c.cacheMutex.RLock()
+	defer c.cacheMutex.RUnlock()
+
+	cacheSize := len(c.obfuscatedJSCache)
+	if cacheSize == 0 {
+		return ""
+	}
+
+	idx := rand.IntN(cacheSize)
+	return c.obfuscatedJSCache[idx]
+}
+
+func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (string, error) {
+	stdin := bytes.NewReader([]byte(inputJS))
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	config := wazero.NewModuleConfig().
+		WithStdin(stdin).
+		WithStdout(&stdout).
+		WithStderr(&stderr)
+
+	_, err := c.r.InstantiateWithConfig(ctx, obfuscatorWasm, config)
+	if err != nil {
+		if stderr.Len() > 0 {
+			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
+		}
+		return "", fmt.Errorf("wasm instantiation error: %v", err)
+	}
+
+	return stdout.String(), nil
+}
+
+func (c *ChallengeRuntime) getTicket(ts string) string {
 	if ts == "" {
 		ts = strconv.FormatInt(time.Now().UnixNano(), 10)
 	}
 
 	h := hmac.New(sha256.New, []byte(masterSecret))
 
-	// TODO: what should we do if UA is empty ?
-	ua_hash := sha256.Sum256([]byte(userAgent))
-	h.Write(ua_hash[:])
 	h.Write([]byte(ts))
 
-	return fmt.Sprintf("%x", h.Sum(nil)), ts
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func GetChallengePage(userAgent string) (string, error) {
+func (c *ChallengeRuntime) GetChallengePage(userAgent string) (string, error) {
+	_ = userAgent
+
 	// We are using text/template instead of html/template because the data we send is pretty much hardcoded and trusted.
 	// Using html/template would escape the JS code we are adding, making it unusable.
 	templateObj, err := template.New("challenge").Parse(htmlTemplate)
@@ -136,18 +265,16 @@ func GetChallengePage(userAgent string) (string, error) {
 		return "", fmt.Errorf("failed to parse challenge template: %w", err)
 	}
 
-	ticket, now := getTicket(userAgent, "")
-
-	jsChallengeBundle := strings.NewReplacer(
-		"__CROWDSEC_TICKET__", ticket,
-		"__CROWDSEC_TIMESTAMP__", now,
-	).Replace(challengejs.FPScannerBundle)
-
-	obfuscatedJS, err := ObfuscateJS(context.Background(), jsChallengeBundle)
-	if err != nil {
-		return "", fmt.Errorf("failed to obfuscate challenge JS: %w", err)
+	obfuscatedJS := c.getCachedChallengeJS()
+	if obfuscatedJS == "" {
+		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
+			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
+		}
+		obfuscatedJS = c.getCachedChallengeJS()
+		if obfuscatedJS == "" {
+			return "", fmt.Errorf("challenge JS cache is empty")
+		}
 	}
-	fmt.Printf("%s\n", obfuscatedJS)
 
 	var renderedPage strings.Builder
 
@@ -157,12 +284,12 @@ func GetChallengePage(userAgent string) (string, error) {
 	return renderedPage.String(), nil
 }
 
-func getSessionKey(ticket string) string {
+func (c *ChallengeRuntime) getSessionKey(ticket string) string {
 	hash := sha256.Sum256([]byte(ticket))
 	return fmt.Sprintf("%x", hash)
 }
 
-func decryptFingerprint(sessionKey string, encrypted string) (string, error) {
+func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted string) (string, error) {
 	// Decode the base64-encoded encrypted fingerprint
 	encryptedBytes, err := base64.StdEncoding.DecodeString(encrypted)
 	if err != nil {
@@ -179,7 +306,7 @@ func decryptFingerprint(sessionKey string, encrypted string) (string, error) {
 	return decrypted, nil
 }
 
-func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
+func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
 
 	if err != nil {
@@ -197,20 +324,15 @@ func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.Apps
 		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
 	}
 
-	tsInt, err := strconv.ParseInt(clientTS, 10, 64)
-	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("invalid timestamp in challenge response: %w", err)
+	if clientTicket != c.challengeTicket {
+		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
 	}
 
-	// Quickly reject if the timestamp is too old: even if it's forged, it's still too old. Don't bother doing HMAC if the response is already expired.
-	if time.Since(time.Unix(0, tsInt)) > 2*time.Minute {
-		return nil, FingerprintData{}, fmt.Errorf("challenge response expired")
+	if clientTS != c.challengeTimestamp {
+		return nil, FingerprintData{}, fmt.Errorf("invalid timestamp in challenge response")
 	}
 
-	// Recompute the ticket so that we can validate the one sent by the client
-	ticketKey, _ := getTicket(userAgent, clientTS)
-
-	sessionKey := getSessionKey(ticketKey)
+	sessionKey := c.getSessionKey(clientTicket)
 
 	// If the key sent by the client is different from the one we just derived, something is wrong, drop the request.
 	if sessionKey != clientSessionKey {
@@ -224,7 +346,7 @@ func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.Apps
 
 	expectedHMAC.Write([]byte(encryptedFingerprint))
 	expectedHMAC.Write([]byte(clientTS))
-	expectedHMAC.Write([]byte(ticketKey))
+	expectedHMAC.Write([]byte(clientTicket))
 
 	expectedHMACB := fmt.Sprintf("%x", expectedHMAC.Sum(nil))
 
@@ -233,7 +355,7 @@ func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.Apps
 		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
 	}
 
-	fingerprint, err := decryptFingerprint(sessionKey, encryptedFingerprint)
+	fingerprint, err := c.decryptFingerprint(sessionKey, encryptedFingerprint)
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to decrypt fingerprint: %w", err)
 	}
@@ -262,14 +384,14 @@ func ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.Apps
 
 	cookieValue := fmt.Sprintf("%x", cookieHMAC.Sum(nil))
 
-	c := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(2 * time.Hour).Value(cookieValue)
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(2 * time.Hour).Value(cookieValue)
 	if request.URL.Scheme == "https" {
-		c = c.Secure()
+		ck = ck.Secure()
 	}
-	return c, fpData, nil
+	return ck, fpData, nil
 }
 
-func ValidCookie(cookie *http.Cookie) bool {
+func (c *ChallengeRuntime) ValidCookie(cookie *http.Cookie) bool {
 	if cookie == nil {
 		return false
 	}

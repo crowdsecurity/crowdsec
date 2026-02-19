@@ -54,7 +54,7 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(hookStage int) error {
+func (h *Hook) Build(hookStage int, patcher *appsecExprPatcher) error {
 	ctx := map[string]any{}
 
 	switch hookStage {
@@ -69,6 +69,9 @@ func (h *Hook) Build(hookStage int) error {
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
+	if patcher != nil {
+		opts = append(opts, expr.Patch(patcher))
+	}
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
@@ -195,6 +198,10 @@ type AppsecRuntimeConfig struct {
 
 	DisabledOutOfBandRuleIds   []int
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	// True if at least one of the hooks use `RequireValidChallenge`
+	NeedWASMVM       bool
+	ChallengeRuntime *challenge.ChallengeRuntime
 }
 
 type AppsecConfig struct {
@@ -446,13 +453,15 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
+	patcher := &appsecExprPatcher{}
+
 	// load hooks
 	for _, hook := range wc.OnLoad {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookOnLoad)
+		err := hook.Build(hookOnLoad, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
 		}
@@ -465,7 +474,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookPreEval)
+		err := hook.Build(hookPreEval, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
 		}
@@ -478,7 +487,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookPostEval)
+		err := hook.Build(hookPostEval, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
 		}
@@ -491,7 +500,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookOnMatch)
+		err := hook.Build(hookOnMatch, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
 		}
@@ -508,6 +517,8 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 		ret.CompiledVariablesTracking = append(ret.CompiledVariablesTracking, compiledVariableRule)
 	}
+
+	ret.NeedWASMVM = patcher.NeedWASMVM
 
 	return ret, nil
 }
@@ -903,6 +914,10 @@ func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, co
 func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	w.Logger.Debugf("requiring valid challenge")
 
+	if w.ChallengeRuntime == nil {
+		return fmt.Errorf("challenge runtime not initialized")
+	}
+
 	// Check if the request has a challenge response
 	// If there's a challenge response, validate it
 	// If ok, generate cookie + return it (challenge remediation + meta refresh + cookie)
@@ -914,7 +929,7 @@ func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, r
 	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("Validating challenge response")
 		body := bodyChallengeOK
-		cookie, _, err := challenge.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		cookie, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			// TODO: find a way to propagate an event to the LP for use in scenarios
 			w.Logger.Errorf("Challenge validation failed: %s", err)
@@ -924,10 +939,10 @@ func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, r
 	}
 
 	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	isValidCookie := err == nil && challenge.ValidCookie(cookie)
+	isValidCookie := err == nil && w.ChallengeRuntime.ValidCookie(cookie)
 	if err != nil || !isValidCookie {
 		w.Logger.Debugf("no valid challenge cookie found")
-		challengePage, err := challenge.GetChallengePage(request.HTTPRequest.UserAgent())
+		challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
 		if err != nil {
 			return fmt.Errorf("unable to get challenge page: %w", err)
 		}
