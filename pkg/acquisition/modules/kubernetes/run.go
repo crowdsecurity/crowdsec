@@ -20,6 +20,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+func podRef(p *corev1.Pod) string {
+	if p == nil {
+		return "<nil pod>"
+	}
+	return fmt.Sprintf("%s/%s uid=%s phase=%s rv=%s node=%s",
+		p.Namespace,
+		p.Name,
+		p.UID,
+		p.Status.Phase,
+		p.ResourceVersion,
+		p.Spec.NodeName,
+		)
+}
+
 func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -45,11 +59,6 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 			// selector. This is more efficient than getting all pod events and
 			// filtering them in our event handlers.
 			o.LabelSelector = s.config.Selector
-			// We set the FieldSelector to only get events for pods that are in
-			// the Running phase, since we only want to tail logs from running
-			// pods. This is more efficient than getting events for all pods and
-			// filtering them in our event handlers.
-			o.FieldSelector = "status.phase=Running"
 		}),
 	)
 	inf := f.Core().V1().Pods().Informer()
@@ -59,16 +68,33 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	// and we will stop the entire informer at that time.
 	s.logger.Info("Adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) { s.tailPod(ctx, cs, obj.(*corev1.Pod), out, &wg, &mu, cancels) },
-		UpdateFunc: func(_, newObj any) {
-			s.tailPod(ctx, cs, newObj.(*corev1.Pod), out, &wg, &mu, cancels)
+		AddFunc: func(obj any) {
+			p := obj.(*corev1.Pod)
+			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
+			s.tailPod(ctx, cs, p, out, &wg, &mu, cancels)
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			oldP := oldObj.(*corev1.Pod)
+			newP := newObj.(*corev1.Pod)
+
+			if oldP.Status.Phase != newP.Status.Phase {
+				s.logger.Debugf("UPDATE phase %s -> %s", podRef(oldP), podRef(newP))
+			} else {
+				s.logger.Tracef("UPDATE %s", podRef(newP))
+			}
+
+			s.tailPod(ctx, cs, newP, out, &wg, &mu, cancels)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
 			if !ok {
 				t, _ := obj.(cache.DeletedFinalStateUnknown)
 				pod, _ = t.Obj.(*corev1.Pod)
+				s.logger.Debugf("DELETE(tombstone) %s", podRef(pod))
+			} else {
+				s.logger.Debugf("DELETE %s", podRef(pod))
 			}
+
 			if pod != nil {
 				s.stopPod(pod, &mu, cancels)
 			}
@@ -160,13 +186,20 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 }
 
 func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
-	// ignore non running pods
+	if p.Status.Phase != corev1.PodRunning {
+		s.logger.Debugf("SKIP tailPod(non-running) %s", podRef(p))
+		return
+	}
+
 	key := p.UID
 	mu.Lock()
 	if _, ok := cancels[key]; ok {
+		s.logger.Tracef("tail already running %s", podRef(p))
 		mu.Unlock()
 		return
 	}
+
+	s.logger.Debugf("START tail %s", podRef(p))
 	cancels[key] = s.podWorker(ctx, cs, p, out, wg)
 	mu.Unlock()
 }
