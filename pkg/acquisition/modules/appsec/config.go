@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -115,7 +116,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
-func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
 	}
@@ -188,6 +189,15 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
 
+	if appsecRuntime.NeedWASMVM {
+		logger.Info("Initializing WASM runtime for challenge obfuscation")
+		challengeRuntime, err := challenge.NewChallengeRuntime(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to create challenge runtime: %w", err)
+		}
+		appsecRuntime.ChallengeRuntime = challengeRuntime
+	}
+
 	w.AppsecRuntime = appsecRuntime
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
@@ -201,14 +211,11 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		// we copy AppsecRuntime for each runner
-		wrt := *w.AppsecRuntime
-		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
 			inChan:                 w.InChan,
 			UUID:                   appsecRunnerUUID,
 			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
-			AppsecRuntime:          &wrt,
+			AppsecRuntime:          w.AppsecRuntime,
 			Labels:                 w.config.Labels,
 			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
