@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
@@ -904,23 +903,13 @@ func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, co
 func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	w.Logger.Debugf("requiring valid challenge")
 
-	// If the page requests is /crowdsec-internal/challenge/challenge.js, just return it, don't validate anything
-	// Then check if the request has a challenge response
+	// Check if the request has a challenge response
 	// If there's a challenge response, validate it
 	// If ok, generate cookie + return it (challenge remediation + meta refresh + cookie)
 	// If bad, return challenge page
 	// Finally, check for the challenge cookie
 	// If it's valid, just return
 	// If not, return the challenge HTML page
-
-	if request.HTTPRequest.URL.Path == challenge.ChallengeJSPath && request.HTTPRequest.Method == http.MethodGet {
-		w.Logger.Infof("Serving challenge.js")
-		script, err := challenge.BuildFingerprintScript()
-		if err != nil {
-			return fmt.Errorf("unable to build challenge.js: %w", err)
-		}
-		return w.setChallengeResponse(state, http.StatusOK, script, map[string]string{"Content-Type": "application/javascript", "Cache-Control": "no-cache, no-store"}, nil)
-	}
 
 	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("Validating challenge response")
@@ -966,7 +955,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 
 	resp := BodyResponse{Action: response.Action}
 
-	spew.Dump("Generating response", response)
+	//spew.Dump("Generating response", response)
 
 	switch response.Action {
 	case AllowRemediation:

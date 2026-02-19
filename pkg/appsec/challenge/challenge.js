@@ -1,4 +1,4 @@
-import FingerprintScanner from "/crowdsec-internal/challenge/challenge.js";
+import FingerprintScanner from "./js/fpscanner/src/index.ts";
 
 async function getSessionKey(ticket) {
   const hash = await crypto.subtle.digest(
@@ -47,8 +47,8 @@ async function encryptFingerprint(key, fingerprint) {
   return btoa(binaryString);
 }
 
-const ts = "{{.Timestamp}}";
-const ticket = "{{.Ticket}}";
+const ts = "__CROWDSEC_TIMESTAMP__";
+const ticket = "__CROWDSEC_TICKET__";
 
 await new Promise((r) => setTimeout(r, 4000));
 const scanner = new FingerprintScanner();

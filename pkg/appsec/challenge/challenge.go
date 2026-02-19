@@ -1,22 +1,30 @@
 package challenge
 
 import (
+	"bytes"
+	"compress/gzip"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"text/template"
 
+	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	log "github.com/sirupsen/logrus"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
@@ -26,14 +34,84 @@ const ChallengeCookieName = "__crowdsec_challenge"
 // FIXME
 const masterSecret = "SUPER_SECRET_KEY"
 
-//go:embed js/src/*
+//go:embed js/fpscanner/src/*
 var jsFS embed.FS
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
-//go:embed challenge.js
-var jsChallenge string
+//go:embed js/obfuscate/index.wasm.gz
+var obfuscatorWasmGz []byte
+
+var (
+	obfuscatorWasm     []byte
+	obfuscatorWasmErr  error
+	obfuscatorWasmOnce sync.Once
+)
+
+func ObfuscateJS(ctx context.Context, inputJS string) (string, error) {
+	wasm, err := loadObfuscatorWasm()
+	if err != nil {
+		return "", err
+	}
+
+	// 1. Create the Runtime
+	r := wazero.NewRuntime(ctx)
+	defer r.Close(ctx)
+
+	// 2. Instantiate WASI (System Interface)
+	// This allows the WASM module to use Stdin/Stdout/Stderr
+	wasi_snapshot_preview1.MustInstantiate(ctx, r)
+
+	// 3. Prepare the IO buffers
+	// Input: Your JS code
+	stdin := bytes.NewReader([]byte(inputJS))
+	// Output: Where the WASM will write the result
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	// 4. Configure the Module
+	config := wazero.NewModuleConfig().
+		WithStdin(stdin).
+		WithStdout(&stdout).
+		WithStderr(&stderr).
+		// Important: Javy expects the entry point to be run automatically.
+		// We don't need to call a specific function, just instantiating it runs the main loop.
+		WithStartFunctions("_start")
+
+	// 5. Compile & Instantiate (Run)
+	// Since Javy compiles the JS into the _start function,
+	// simply Instantiating the module runs the script.
+	_, err = r.InstantiateWithConfig(ctx, wasm, config)
+	if err != nil {
+		// Check stderr if there was a runtime error in the WASM
+		if stderr.Len() > 0 {
+			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
+		}
+		return "", fmt.Errorf("wasm instantiation error: %v", err)
+	}
+
+	return stdout.String(), nil
+}
+
+func loadObfuscatorWasm() ([]byte, error) {
+	obfuscatorWasmOnce.Do(func() {
+		r, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
+		if err != nil {
+			obfuscatorWasmErr = fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
+			return
+		}
+		defer r.Close()
+
+		obfuscatorWasm, err = io.ReadAll(r)
+		if err != nil {
+			obfuscatorWasmErr = fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
+			return
+		}
+	})
+
+	return obfuscatorWasm, obfuscatorWasmErr
+}
 
 func getTicket(userAgent string, ts string) (string, string) {
 	if ts == "" {
@@ -58,28 +136,23 @@ func GetChallengePage(userAgent string) (string, error) {
 		return "", fmt.Errorf("failed to parse challenge template: %w", err)
 	}
 
-	jsTemplateObj, err := template.New("challengeJS").Parse(jsChallenge)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse challenge JS template: %w", err)
-	}
-
-	var jsChallengeBuilder strings.Builder
-
 	ticket, now := getTicket(userAgent, "")
 
-	err = jsTemplateObj.Execute(&jsChallengeBuilder, map[string]string{
-		"Ticket":    ticket,
-		"Timestamp": now,
-	})
+	jsChallengeBundle := strings.NewReplacer(
+		"__CROWDSEC_TICKET__", ticket,
+		"__CROWDSEC_TIMESTAMP__", now,
+	).Replace(challengejs.FPScannerBundle)
 
+	obfuscatedJS, err := ObfuscateJS(context.Background(), jsChallengeBundle)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute challenge JS template: %w", err)
+		return "", fmt.Errorf("failed to obfuscate challenge JS: %w", err)
 	}
+	fmt.Printf("%s\n", obfuscatedJS)
 
 	var renderedPage strings.Builder
 
 	templateObj.Execute(&renderedPage, map[string]string{
-		"JSChallenge": jsChallengeBuilder.String(),
+		"JSChallenge": obfuscatedJS,
 	})
 	return renderedPage.String(), nil
 }
