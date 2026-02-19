@@ -1,0 +1,96 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Kubernetes datasource
+description: >
+  Schema for Kubernetes acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/kubernetes.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: kubernetes
+    description: >
+      Must be kubernetes to bind this acquisition entry to the Kubernetes
+      datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: kubernetes).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  selector:
+    type: string
+    minLength: 1
+    description: >
+      Kubernetes label selector applied to pods; at least one selector is required.
+  namespace:
+    type: string
+    description: >
+      Namespace whose pods should be tailed; defaults to default when omitted.
+  kube_config:
+    type: string
+    description: >
+      Path to a kubeconfig file to use when running outside the cluster.
+  auth:
+    type: object
+    minProperties: 1
+    additionalProperties: false
+    description: >
+      Inline Kubernetes client authentication overriding kubeconfig defaults.
+      Mirrors clientcmd/api.Cluster and AuthInfo fields; keys match kubeconfig
+      file entries (for example server, certificate-authority, client-certificate,
+      token, exec, auth-provider, ...).
+    properties:
+      cluster:
+        type: object
+        additionalProperties: true
+        description: >
+          Optional cluster stanza (clientcmd/api.Cluster) with fields such as
+          server, certificate-authority, tls-server-name, or
+          insecure-skip-tls-verify.
+      user:
+        type: object
+        additionalProperties: true
+        description: >
+          Optional user stanza (clientcmd/api.AuthInfo) with fields such as
+          client-certificate, client-key, token, token-file, exec or auth-provider.
+required:
+  - source
+  - selector
+allOf:
+  - description: auth and kube_config are mutually exclusive.
+    not:
+      required: [auth, kube_config]
