@@ -18,6 +18,18 @@ setup() {
 
 #----------
 
+@test "cscli capi <unknown command>" {
+    rune -1 cscli capi foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli capi"'
+}
+
+@test "cscli papi <unknown command>" {
+    rune -1 cscli papi foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli papi"'
+}
+
 @test "cscli capi status: fails without credentials" {
     config_enable_capi
     ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"

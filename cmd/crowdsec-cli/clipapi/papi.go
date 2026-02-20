@@ -33,6 +33,10 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {

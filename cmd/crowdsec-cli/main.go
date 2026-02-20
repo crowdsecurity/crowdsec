@@ -35,6 +35,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisupport"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -70,7 +71,6 @@ func (lf *logFlags) Level() log.Level {
 		return log.InfoLevel
 	}
 }
-
 
 type cliRoot struct {
 	logFlags     logFlags
@@ -232,8 +232,13 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		ValidArgs:         validArgs,
 		DisableAutoGenTag: true,
 		SilenceErrors:     true,
-		SilenceUsage:      true,
-		/*TBD examples*/
+		// We don't want usage to be printed for every error: Example 'cscli parser install foo/bar'
+		// But we set NoArgs for commands that require a subcommand and print Usage explicitly in RunE.
+		SilenceUsage: true,
+		Args:         args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cli.colorize(cmd)
