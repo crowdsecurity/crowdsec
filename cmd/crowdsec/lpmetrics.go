@@ -46,13 +46,13 @@ type MetricsProvider struct {
 }
 
 type staticMetrics struct {
-	osName         string
-	osFamily       string
-	osVersion      string
-	startupTS      int64
-	featureFlags   []string
-	datasourceMap  map[string]int64
-	hubState       models.HubItems
+	osName        string
+	osFamily      string
+	osVersion     string
+	startupTS     int64
+	featureFlags  []string
+	datasourceMap map[string]int64
+	hubState      models.HubItems
 }
 
 // Key is the prom label
@@ -97,13 +97,13 @@ func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub)
 	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
-		osName:         osName,
-		osFamily:       osFamily,
-		osVersion:      osVersion,
-		startupTS:      time.Now().UTC().Unix(),
-		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		datasourceMap:  datasourceMap,
-		hubState:       getHubState(hub),
+		osName:        osName,
+		osFamily:      osFamily,
+		osVersion:     osVersion,
+		startupTS:     time.Now().UTC().Unix(),
+		featureFlags:  fflag.Crowdsec.GetEnabledFeatures(),
+		datasourceMap: datasourceMap,
+		hubState:      getHubState(hub),
 	}
 }
 
@@ -115,7 +115,7 @@ func NewMetricsProvider(
 	hub *cwhub.Hub,
 ) *MetricsProvider {
 	static := newStaticMetrics(datasources, hub)
-	
+
 	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 
 	return &MetricsProvider{
