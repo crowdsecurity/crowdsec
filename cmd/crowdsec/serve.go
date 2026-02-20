@@ -143,7 +143,7 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, data
 
 	cancel()
 
-	if err := waitErrGroup(g, 3 * time.Second); err != nil {
+	if err := waitErrGroup(g, 3*time.Second); err != nil {
 		log.WithError(err).Warn("timeout waiting for parser/bucket routines")
 	}
 
