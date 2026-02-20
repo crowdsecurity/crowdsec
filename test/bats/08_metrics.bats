@@ -21,6 +21,12 @@ teardown() {
 
 #----------
 
+@test "cscli metrics <unknown command>" {
+    rune -1 cscli metrics foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli metrics"'
+}
+
 @test "cscli metrics (crowdsec not running)" {
     rune -0 cscli metrics
     # crowdsec is down, we won't get an error because some metrics come from the db instead

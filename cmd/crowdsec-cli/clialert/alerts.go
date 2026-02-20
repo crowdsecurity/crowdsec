@@ -203,6 +203,10 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 		Short:             "Manage alerts",
 		DisableAutoGenTag: true,
 		Aliases:           []string{"alert"},
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
