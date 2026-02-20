@@ -243,7 +243,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	cli.colorize(cmd)
 
-	/*don't sort flags so we can enforce order*/
+	// don't sort flags so we can enforce order
 	cmd.Flags().SortFlags = false
 
 	pflags := cmd.PersistentFlags()

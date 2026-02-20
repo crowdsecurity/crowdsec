@@ -174,8 +174,6 @@ func (cli *cliSimulation) newStatusCmd() *cobra.Command {
 		Run: func(_ *cobra.Command, _ []string) {
 			cli.status()
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		},
 	}
 
 	return cmd
