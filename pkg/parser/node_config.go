@@ -25,6 +25,9 @@ type NodeConfig struct {
 	// OnSuccess allows to tag a node to be able to move log to next stage on success
 	OnSuccess string `yaml:"onsuccess,omitempty"`
 	Filter    string `yaml:"filter,omitempty"`
+
+	SubNodes []NodeConfig `yaml:"nodes,omitempty"`
+
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
 	// pattern_syntax are named grok patterns that are re-utilized over several grok patterns
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`

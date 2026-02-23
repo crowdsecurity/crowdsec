@@ -30,13 +30,39 @@ type Node struct {
 	// and must succeed or node is exited
 	RunTimeFilter *vm.Program `yaml:"-"` // the actual compiled filter
 	// If node has leafs, execute all of them until one asks for a 'break'
-	LeavesNodes []Node `yaml:"nodes,omitempty"`
+	LeavesNodes []Node `yaml:"-"`
 	// Flag used to describe when to 'break' or return an 'error'
 	EnrichFunctions EnricherCtx
 
 	RuntimeGrok RuntimeGrokPattern `yaml:"-"`
 	RuntimeStatics []RuntimeStatic `yaml:"-"`
 	RuntimeStashes []RuntimeStash `yaml:"-"`
+}
+
+func (n *Node) UnmarshalYAML(unmarshal func(any) error) error {
+	var cfg NodeConfig
+	if err := unmarshal(&cfg); err != nil {
+		return err
+	}
+
+	// Reset node and assign config.
+	*n = Node{NodeConfig: cfg}
+	n.initRuntimeChildrenFromConfig()
+	return nil
+}
+
+func (n *Node) initRuntimeChildrenFromConfig() {
+	subNodes := n.NodeConfig.SubNodes
+	if len(subNodes) == 0 {
+		n.LeavesNodes = nil
+		return
+	}
+	n.LeavesNodes = make([]Node, len(subNodes))
+	for i := range subNodes {
+		child := Node{NodeConfig: subNodes[i]}
+		child.initRuntimeChildrenFromConfig()
+		n.LeavesNodes[i] = child
+	}
 }
 
 func (n *Node) validate(ectx EnricherCtx) error {
