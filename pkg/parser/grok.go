@@ -59,11 +59,6 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 			return nil, fmt.Errorf("failed to compile grok %q: %v", g.RegexpValue, err)
 		}
 
-		if rg.RunTimeRegexp == nil {
-			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
-			return nil, fmt.Errorf("grok compilation failure: %s", g.RegexpValue)
-		}
-
 		logger.Tracef("%s regexp: %s", g.RegexpValue, rg.RunTimeRegexp.String())
 	}
 

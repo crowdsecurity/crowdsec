@@ -165,8 +165,8 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				return err
 			}
 
-			csParsers := parser.NewParsers(hub)
-			if csParsers, err = parser.LoadParsers(cfg, csParsers); err != nil {
+			csParsers, err := parser.LoadParsers(cfg, hub)
+			if err != nil {
 				return fmt.Errorf("unable to load parsers: %w", err)
 			}
 
