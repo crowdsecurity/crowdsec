@@ -5,7 +5,7 @@ ifeq ($(OS), Windows_NT)
 endif
 
 GO = go
-GOBUILD = $(GO) build
+GOBUILD = $(GO) build $(GORACE_OPTS)
 GOTEST = $(GO) test
 
 CROWDSEC_BIN = crowdsec$(EXT)
