@@ -30,7 +30,7 @@ type Context struct {
 
 func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
-		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{
+		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]any{
 			"evt":   &pipeline.Event{},
 			"match": &pipeline.MatchedRule{},
 			"req":   &http.Request{},
@@ -70,7 +70,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		}
 
 		for _, value := range values {
-			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{
+			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]any{
 				"evt":   &pipeline.Event{},
 				"match": &pipeline.MatchedRule{},
 				"req":   &http.Request{},
@@ -179,7 +179,7 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 		for _, value := range values {
 			var val string
 
-			output, err := expr.Run(value, map[string]interface{}{"match": match, "evt": evt, "req": request})
+			output, err := expr.Run(value, map[string]any{"match": match, "evt": evt, "req": request})
 			if err != nil {
 				errors = append(errors, fmt.Errorf("failed to get value for %s: %w", key, err))
 				continue
