@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -19,7 +20,7 @@ import (
 
 const MaxContextValueLen = 4000
 
-var alertContext = Context{}
+var alertContext atomic.Pointer[Context]
 
 type Context struct {
 	ContextToSend         map[string][]string
@@ -53,19 +54,19 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		valueLength = MaxContextValueLen
 	}
 
-	alertContext = Context{
+	ac := Context{
 		ContextToSend:         contextToSend,
 		ContextValueLen:       valueLength,
 		ContextToSendCompiled: make(map[string][]*vm.Program),
 	}
 
 	for key, values := range contextToSend {
-		if _, ok := alertContext.ContextToSend[key]; !ok {
-			alertContext.ContextToSend[key] = make([]string, 0)
+		if _, ok := ac.ContextToSend[key]; !ok {
+			ac.ContextToSend[key] = make([]string, 0)
 		}
 
-		if _, ok := alertContext.ContextToSendCompiled[key]; !ok {
-			alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
+		if _, ok := ac.ContextToSendCompiled[key]; !ok {
+			ac.ContextToSendCompiled[key] = make([]*vm.Program, 0)
 		}
 
 		for _, value := range values {
@@ -78,25 +79,36 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
 			}
 
-			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
-			alertContext.ContextToSend[key] = append(alertContext.ContextToSend[key], value)
+			ac.ContextToSendCompiled[key] = append(ac.ContextToSendCompiled[key], valueCompiled)
+			ac.ContextToSend[key] = append(ac.ContextToSend[key], value)
 		}
 	}
 
+	alertContext.Store(&ac)
+
 	return nil
+}
+
+func getAlertContext() *Context {
+	if ac := alertContext.Load(); ac != nil {
+		return ac
+	}
+
+	return &Context{}
 }
 
 // Truncate the context map to fit in the context value length
 func TruncateContextMap(contextMap map[string][]string, contextValueLen int) ([]*models.MetaItems0, []error) {
 	metas := make([]*models.MetaItems0, 0)
 	errors := make([]error, 0)
+	ac := getAlertContext()
 
 	for key, values := range contextMap {
 		if len(values) == 0 {
 			continue
 		}
 
-		valueStr, err := TruncateContext(values, alertContext.ContextValueLen)
+		valueStr, err := TruncateContext(values, ac.ContextValueLen)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error truncating content for %s: %w", key, err))
 			continue
@@ -157,7 +169,9 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 		request = &http.Request{}
 	}
 
-	for key, values := range alertContext.ContextToSendCompiled {
+	ac := getAlertContext()
+
+	for key, values := range ac.ContextToSendCompiled {
 		if _, ok := tmpContext[key]; !ok {
 			tmpContext[key] = make([]string, 0)
 		}
@@ -223,7 +237,9 @@ func AppsecEventToContext(event pipeline.AppsecEvent, request *http.Request) (mo
 		errors = append(errors, tmpErrors...)
 	}
 
-	metas, truncErrors := TruncateContextMap(tmpContext, alertContext.ContextValueLen)
+	ac := getAlertContext()
+
+	metas, truncErrors := TruncateContextMap(tmpContext, ac.ContextValueLen)
 	errors = append(errors, truncErrors...)
 
 	ret := models.Meta(metas)
@@ -242,7 +258,9 @@ func EventToContext(events []pipeline.Event) (models.Meta, []error) {
 		errors = append(errors, tmpErrors...)
 	}
 
-	metas, truncErrors := TruncateContextMap(tmpContext, alertContext.ContextValueLen)
+	ac := getAlertContext()
+
+	metas, truncErrors := TruncateContextMap(tmpContext, ac.ContextValueLen)
 	errors = append(errors, truncErrors...)
 
 	ret := models.Meta(metas)
