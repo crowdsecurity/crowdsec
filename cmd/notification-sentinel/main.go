@@ -98,7 +98,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 
 	client := &http.Client{}
 
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error("failed to send request", "error", err)
 		return &protobufs.Empty{}, err

@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -180,6 +182,7 @@ func LoadOrStoreBucketFromHolder(
 	actual, stored := buckets.LoadOrStore(partitionKey, fresh_bucket)
 	if !stored {
 		go func() {
+			defer trace.ReportPanic()
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
 			fresh_bucket.LeakRoutine(ctx, buckets)

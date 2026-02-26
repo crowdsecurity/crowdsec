@@ -60,6 +60,10 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		Long:              "To list/inspect/test notification template",
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {

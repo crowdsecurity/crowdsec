@@ -41,6 +41,10 @@ func (cli *cliCapi) NewCommand() *cobra.Command {
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newRegisterCmd())

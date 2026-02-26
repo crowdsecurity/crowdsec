@@ -2,7 +2,6 @@ package leakybucket
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
-
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -37,20 +34,20 @@ type Leaky struct {
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan pipeline.Event `json:"-"`
 	// the unique identifier of the bucket (a hash)
-	Mapkey string
-	ready        chan struct{} // closed when LeakRoutine is ready
-	readyOnce    sync.Once     // use to prevent double close
-	done         chan struct{} // closed when LeakRoutine has stopped processing
-	doneOnce     sync.Once     // use to prevent double close
-	Suicide      chan bool `json:"-"`
-	Uuid         string
-	First_ts     time.Time
-	Last_ts      time.Time
-	Ovflw_ts     time.Time
-	Total_count  int
-	Factory      *BucketFactory
-	Duration     time.Duration
-	Pour         func(*Leaky, pourGate, pipeline.Event) `json:"-"`
+	Mapkey              string
+	ready               chan struct{} // closed when LeakRoutine is ready
+	readyOnce           sync.Once     // use to prevent double close
+	done                chan struct{} // closed when LeakRoutine has stopped processing
+	doneOnce            sync.Once     // use to prevent double close
+	Suicide             chan bool     `json:"-"`
+	Uuid                string
+	First_ts            time.Time
+	Last_ts             time.Time
+	Ovflw_ts            time.Time
+	Total_count         int
+	Factory             *BucketFactory
+	Duration            time.Duration
+	Pour                func(*Leaky, pourGate, pipeline.Event) `json:"-"`
 	timedOverflow       bool
 	conditionalOverflow bool
 	logger              *log.Entry
@@ -88,16 +85,16 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 
 	// create the leaky bucket per se
 	l := &Leaky{
-		Limiter:         limiter,
-		Uuid:            seed.Generate(),
-		Queue:           pipeline.NewQueue(Qsize),
-		Out:             make(chan *pipeline.Queue, 1),
-		Suicide:         make(chan bool, 1),
-		AllOut:          f.ret,
-		Factory:         f,
-		Pour:            Pour,
-		Mode:            pipeline.LIVE,
-		mutex:           &sync.Mutex{},
+		Limiter: limiter,
+		Uuid:    seed.Generate(),
+		Queue:   pipeline.NewQueue(Qsize),
+		Out:     make(chan *pipeline.Queue, 1),
+		Suicide: make(chan bool, 1),
+		AllOut:  f.ret,
+		Factory: f,
+		Pour:    Pour,
+		Mode:    pipeline.LIVE,
+		mutex:   &sync.Mutex{},
 	}
 	if f.Spec.Capacity > 0 && f.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(f.Spec.Capacity+1) * f.leakspeed
@@ -134,8 +131,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			durationTicker.Stop()
 		}
 	}()
-
-	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", l.Factory.Spec.Name))
 
 	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Dec()
@@ -330,4 +325,3 @@ func (l *Leaky) markDone() {
 		close(l.done)
 	})
 }
-

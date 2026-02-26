@@ -22,7 +22,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.outChan = out
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")
+		defer trace.ReportPanic()
 
 		s.logger.Infof("Starting k8s-audit server on %s:%d%s", s.config.ListenAddr, s.config.ListenPort, s.config.WebhookPath)
 

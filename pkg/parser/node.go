@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -380,7 +381,7 @@ func (n *Node) process(p *pipeline.Event, ctx UnixParserCtx, expressionEnv map[s
 		log.Trace("node is successful, check strategy")
 
 		if n.OnSuccess == "next_stage" {
-			idx := stageidx(p.Stage, ctx.Stages)
+			idx := slices.Index(ctx.Stages, p.Stage)
 			// we're at the last stage
 			if idx+1 == len(ctx.Stages) {
 				clog.Debugf("node reached the last stage: %s", p.Stage)

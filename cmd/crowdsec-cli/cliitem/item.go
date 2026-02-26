@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -46,6 +47,10 @@ func (cli *cliItem) NewCommand() *cobra.Command {
 		Example:           cli.help.example,
 		Aliases:           []string{cli.singular},
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newInstallCmd())

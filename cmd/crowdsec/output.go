@@ -15,6 +15,34 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+type alertBuffer struct {
+	mu     sync.Mutex
+	alerts []pipeline.RuntimeAlert
+}
+
+func (b *alertBuffer) add(a pipeline.RuntimeAlert) {
+	b.mu.Lock()
+	b.alerts = append(b.alerts, a)
+	b.mu.Unlock()
+}
+
+func (b *alertBuffer) takeAll() []pipeline.RuntimeAlert {
+	b.mu.Lock()
+	batch := b.alerts
+	b.alerts = nil
+	b.mu.Unlock()
+	return batch
+}
+
+func (b *alertBuffer) requeue(batch []pipeline.RuntimeAlert) {
+	if len(batch) == 0 {
+		return
+	}
+	b.mu.Lock()
+	b.alerts = append(b.alerts, batch...)
+	b.mu.Unlock()
+}
+
 func dedupAlerts(alerts []pipeline.RuntimeAlert) []*models.Alert {
 	var dedupCache []*models.Alert
 
@@ -62,10 +90,7 @@ func runOutput(
 	client *apiclient.ApiClient,
 	sd *StateDumper,
 ) error {
-	var (
-		cache      []pipeline.RuntimeAlert
-		cacheMutex sync.Mutex
-	)
+	var pendingAlerts alertBuffer
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -73,33 +98,27 @@ func runOutput(
 	for {
 		select {
 		case <-ticker.C:
-			if len(cache) > 0 {
-				cacheMutex.Lock()
-				cachecopy := cache
-				cache = nil
-				cacheMutex.Unlock()
-				/*
-					This loop needs to block as little as possible as scenarios directly write to the input chan
-					Under high load, LAPI may take between 1 and 2 seconds to process ~100 alerts, which slows down everything including the WAF.
-					Send the alerts from a goroutine to avoid staying too long in this case.
-				*/
-				outputsTomb.Go(func() error {
-					if err := PushAlerts(ctx, cachecopy, client); err != nil {
-						log.Errorf("while pushing to api : %s", err)
-						// just push back the events to the queue
-						cacheMutex.Lock()
-						cache = append(cache, cachecopy...)
-						cacheMutex.Unlock()
-					}
-					return nil
-				})
+			batch := pendingAlerts.takeAll()
+			if len(batch) == 0 {
+				break
 			}
+			/*
+				This loop needs to block as little as possible as scenarios directly write to the input chan
+				Under high load, LAPI may take between 1 and 2 seconds to process ~100 alerts, which slows down everything including the WAF.
+				Send the alerts from a goroutine to avoid staying too long in this case.
+			*/
+			outputsTomb.Go(func() error {
+				if err := PushAlerts(ctx, batch, client); err != nil {
+					log.Errorf("while pushing to api : %s", err)
+					// just push back the events to the queue
+					pendingAlerts.requeue(batch)
+				}
+				return nil
+			})
 		case <-outputsTomb.Dying():
-			if len(cache) > 0 {
-				cacheMutex.Lock()
-				cachecopy := cache
-				cacheMutex.Unlock()
-				if err := PushAlerts(ctx, cachecopy, client); err != nil {
+			batch := pendingAlerts.takeAll()
+			if len(batch) > 0 {
+				if err := PushAlerts(ctx, batch, client); err != nil {
 					log.Errorf("while pushing leftovers to api : %s", err)
 				}
 			}
@@ -144,9 +163,7 @@ func runOutput(
 				continue
 			}
 
-			cacheMutex.Lock()
-			cache = append(cache, ov)
-			cacheMutex.Unlock()
+			pendingAlerts.add(ov)
 		}
 	}
 }
