@@ -518,6 +518,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "IsAnomalous",
+		function: IsAnomalous,
+		signature: []interface{}{
+			new(func(string, string) (bool, error)),
+		},
+	},
+	{
 		name:     "JA4H",
 		function: JA4H,
 		signature: []any{
@@ -542,6 +549,6 @@ var exprFuncs = []exprCustomFunc{
 	},
 }
 
-//go 1.20 "CutPrefix":              strings.CutPrefix,
+//go 1.20 "CutPrefix": strings.CutPrefix,
 //go 1.20 "CutSuffix": strings.CutSuffix,
 //"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
