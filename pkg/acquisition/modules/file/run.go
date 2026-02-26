@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/nxadm/tail"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -21,6 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/tailwrapper"
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -131,7 +131,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 	// Setup polling if enabled
 	var (
 		tickerChan <-chan time.Time
-		ticker *time.Ticker
+		ticker     *time.Ticker
 	)
 
 	if s.config.DiscoveryPollEnable {
@@ -257,7 +257,7 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 	}
 
 	// Create the tailer with appropriate configuration
-	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
+	seekInfo := &tailwrapper.SeekInfo{Offset: 0, Whence: io.SeekEnd}
 	if s.config.Mode == configuration.CAT_MODE {
 		seekInfo.Whence = io.SeekStart
 	}
@@ -268,12 +268,14 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
-	tail, err := tail.TailFile(file, tail.Config{
-		ReOpen:   true,
-		Follow:   true,
-		Poll:     pollFile,
-		Location: seekInfo,
-		Logger:   log.NewEntry(log.StandardLogger()),
+	tail, err := tailwrapper.TailFile(file, tailwrapper.Config{
+		ReOpen:           true,
+		Follow:           true,
+		Poll:             pollFile,
+		Location:         seekInfo,
+		Logger:           log.NewEntry(log.StandardLogger()),
+		TailMode:         s.config.TailMode,
+		StatPollInterval: s.config.StatPollInterval,
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
@@ -291,8 +293,8 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 	return nil
 }
 
-func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail) error {
-	logger := s.logger.WithField("tail", tail.Filename)
+func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail tailwrapper.Tailer) error {
+	logger := s.logger.WithField("tail", tail.Filename())
 	logger.Debug("-> start tailing")
 
 	for {
@@ -319,11 +321,11 @@ func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail
 			// Just remove the dead tailer from our map and return
 			// monitorNewFiles will pick up the file again if it's recreated
 			s.tailMapMutex.Lock()
-			delete(s.tails, tail.Filename)
+			delete(s.tails, tail.Filename())
 			s.tailMapMutex.Unlock()
 
 			return nil
-		case line := <-tail.Lines:
+		case line := <-tail.Lines():
 			if line == nil {
 				logger.Warning("tail is empty")
 				continue
@@ -339,12 +341,12 @@ func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail
 			}
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
+				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename(), "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 			}
 
-			src := tail.Filename
+			src := tail.Filename()
 			if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
-				src = filepath.Base(tail.Filename)
+				src = filepath.Base(tail.Filename())
 			}
 
 			l := pipeline.Line{
