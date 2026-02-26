@@ -94,7 +94,10 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) 
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		go func() {
+			defer trace.ReportPanic()
+			servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		}()
 	}
 	return Serve(ctx, cConfig, agentReady, sd)
 }

@@ -20,8 +20,6 @@ import (
 )
 
 func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
-	defer trace.ReportPanic()
-
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
 	serverError := make(chan error, 2)

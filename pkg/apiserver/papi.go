@@ -12,8 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/trace"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -234,8 +232,6 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 
 // Pull is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull(ctx context.Context) error {
-	defer trace.ReportPanic()
-
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
@@ -328,8 +324,6 @@ func (p *Papi) Pull(ctx context.Context) error {
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
-	defer trace.ReportPanic()
-
 	var cache models.DecisionsDeleteRequest
 
 	ticker := time.NewTicker(p.SyncInterval)

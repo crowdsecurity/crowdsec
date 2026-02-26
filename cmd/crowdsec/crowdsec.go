@@ -117,6 +117,7 @@ func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *ap
 	)
 
 	go func() {
+		defer trace.ReportPanic()
 		mp.Run(ctx)
 	}()
 

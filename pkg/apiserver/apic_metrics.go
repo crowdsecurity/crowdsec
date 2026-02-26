@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -255,8 +254,6 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
 func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
-	defer trace.ReportPanic()
-
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
 
@@ -341,8 +338,6 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 }
 
 func (a *apic) SendUsageMetrics(ctx context.Context) {
-	defer trace.ReportPanic()
-
 	firstRun := true
 
 	log.Debugf("Start sending usage metrics to CrowdSec Central API (interval: %s once, then %s)", a.usageMetricsIntervalFirst, a.usageMetricsInterval)

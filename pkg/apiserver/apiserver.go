@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -233,7 +233,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		cfg:		config,
+		cfg:            config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -285,15 +285,27 @@ func (s *APIServer) papiSync(ctx context.Context) error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
-	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
+	s.apic.pushTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPush(ctx)
+	})
+	s.apic.pullTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPull(ctx)
+	})
 
 	if s.apic.apiClient.IsEnrolled() {
 		if s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
-				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
-				s.papi.syncTomb.Go(func() error { return s.papiSync(ctx) })
+				s.papi.pullTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiPull(ctx)
+				})
+				s.papi.syncTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiSync(ctx)
+				})
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 			}
@@ -303,12 +315,14 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	}
 
 	s.apic.metricsTomb.Go(func() error {
+		defer trace.ReportPanic()
 		s.apic.SendMetrics(ctx, make(chan bool))
 		return nil
 	})
 
 	if !s.cfg.DisableUsageMetricsExport {
 		s.apic.metricsTomb.Go(func() error {
+			defer trace.ReportPanic()
 			s.apic.SendUsageMetrics(ctx)
 			return nil
 		})
@@ -316,8 +330,6 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
-	defer trace.ReportPanic()
-
 	tlsCfg, err := s.cfg.TLS.GetTLSConfig()
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
