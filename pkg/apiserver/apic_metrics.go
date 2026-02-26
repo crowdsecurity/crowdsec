@@ -255,7 +255,7 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
 func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
-	defer trace.CatchPanic("lapi/metricsToAPIC")
+	defer trace.ReportPanic()
 
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
@@ -341,7 +341,7 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 }
 
 func (a *apic) SendUsageMetrics(ctx context.Context) {
-	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
+	defer trace.ReportPanic()
 
 	firstRun := true
 

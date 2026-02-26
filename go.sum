@@ -134,6 +134,8 @@ github.com/crowdsecurity/dlog v0.0.2 h1:nj/7jLKO0o8tYn79O+g51ASeGLr5oOVahSoJ6Umq
 github.com/crowdsecurity/dlog v0.0.2/go.mod h1:zpv7r+7KXwgVUZnUNjyP22zc/D7LKjyoY02weH2RBbk=
 github.com/crowdsecurity/go-cs-lib v0.0.24 h1:ZIYXHRHCFyByZmMg7S4XE8c/ZMtsTCPVUJbnDcxpTtk=
 github.com/crowdsecurity/go-cs-lib v0.0.24/go.mod h1:X0GMJY2CxdA1S09SpuqIKaWQsvRGxXmecUp9cP599dE=
+github.com/crowdsecurity/go-cs-lib v0.0.25 h1:Ov6VPW9yV+OPsbAIQk1iTkEWhwkpaG0v3lrBzeqjzj4=
+github.com/crowdsecurity/go-cs-lib v0.0.25/go.mod h1:X0GMJY2CxdA1S09SpuqIKaWQsvRGxXmecUp9cP599dE=
 github.com/crowdsecurity/grokky v0.2.2 h1:yALsI9zqpDArYzmSSxfBq2dhYuGUTKMJq8KOEIAsuo4=
 github.com/crowdsecurity/grokky v0.2.2/go.mod h1:33usDIYzGDsgX1kHAThCbseso6JuWNJXOzRQDGXHtWM=
 github.com/crowdsecurity/machineid v1.0.3 h1:mgd//PhMJqyA1EdRTgwRvafwbzNjoktdJyEgZGVCD2Q=

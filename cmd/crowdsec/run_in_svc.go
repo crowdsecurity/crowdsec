@@ -27,7 +27,7 @@ func StartRunSvc(
 	cConfig *csconfig.Config,
 	sd *StateDumper,
 ) error {
-	defer trace.CatchPanic("crowdsec/StartRunSvc")
+	defer trace.ReportPanic()
 
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled

@@ -316,7 +316,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
-	defer trace.CatchPanic("lapi/runServer")
+	defer trace.ReportPanic()
 
 	tlsCfg, err := s.cfg.TLS.GetTLSConfig()
 	if err != nil {

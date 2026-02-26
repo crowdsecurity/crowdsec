@@ -2,7 +2,6 @@ package leakybucket
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -135,7 +134,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 		}
 	}()
 
-	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", l.Factory.Spec.Name))
+	defer trace.ReportPanic()
 
 	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Dec()

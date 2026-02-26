@@ -286,7 +286,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pushToAPIC")
+	defer trace.ReportPanic()
 
 	var cache models.AddSignalsRequest
 
@@ -1038,7 +1038,7 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 }
 
 func (a *apic) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pullFromAPIC")
+	defer trace.ReportPanic()
 
 	toldOnce := false
 

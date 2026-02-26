@@ -381,7 +381,7 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
+	defer trace.ReportPanic()
 
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -402,7 +402,7 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 }
 
 func (m *MetricsProvider) Run(ctx context.Context) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
+	defer trace.ReportPanic()
 
 	if m.interval == time.Duration(0) {
 		return
