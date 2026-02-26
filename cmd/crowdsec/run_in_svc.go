@@ -27,8 +27,6 @@ func StartRunSvc(
 	cConfig *csconfig.Config,
 	sd *StateDumper,
 ) error {
-	defer trace.ReportPanic()
-
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
@@ -59,7 +57,10 @@ func StartRunSvc(
 
 		registerPrometheus(cConfig.Prometheus)
 
-		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		go func() {
+			defer trace.ReportPanic()
+			servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		}()
 	} else {
 		// avoid leaking the channel
 		go func() {

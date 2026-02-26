@@ -462,8 +462,6 @@ func transform(
 	transformRuntime *vm.Program,
 	logger *log.Entry,
 ) {
-	defer trace.ReportPanic()
-
 	logger.Info("transformer started")
 
 	for {
@@ -647,6 +645,7 @@ func StartAcquisition(
 				})
 
 				acquisTomb.Go(func() error {
+					defer trace.ReportPanic()
 					transform(outChan, output, acquisTomb, transformRuntime, transformLogger)
 					return nil
 				})

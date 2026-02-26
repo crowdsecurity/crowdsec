@@ -11,8 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 
-	"github.com/crowdsecurity/go-cs-lib/trace"
-
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -133,8 +131,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			durationTicker.Stop()
 		}
 	}()
-
-	defer trace.ReportPanic()
 
 	metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 	defer metrics.BucketsCurrentCount.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Dec()
@@ -329,4 +325,3 @@ func (l *Leaky) markDone() {
 		close(l.done)
 	})
 }
-

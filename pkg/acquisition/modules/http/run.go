@@ -212,11 +212,11 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 	listenConfig := &net.ListenConfig{}
 
 	t.Go(func() error {
+		defer trace.ReportPanic()
+
 		if s.Config.ListenSocket == "" {
 			return nil
 		}
-
-		defer trace.ReportPanic()
 
 		s.logger.Infof("creating unix socket on %s", s.Config.ListenSocket)
 		_ = os.Remove(s.Config.ListenSocket)
@@ -242,11 +242,11 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 	})
 
 	t.Go(func() error {
+		defer trace.ReportPanic()
+
 		if s.Config.ListenAddr == "" {
 			return nil
 		}
-
-		defer trace.ReportPanic()
 
 		if s.Config.TLS != nil {
 			s.logger.Infof("start https server on %s", s.Config.ListenAddr)

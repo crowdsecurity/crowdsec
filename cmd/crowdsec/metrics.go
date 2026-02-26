@@ -89,8 +89,6 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 		return
 	}
 
-	defer trace.ReportPanic()
-
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 
 	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), nil); err != nil {

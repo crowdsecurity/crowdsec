@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
@@ -381,8 +380,6 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.ReportPanic()
-
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -402,8 +399,6 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 }
 
 func (m *MetricsProvider) Run(ctx context.Context) {
-	defer trace.ReportPanic()
-
 	if m.interval == time.Duration(0) {
 		return
 	}
