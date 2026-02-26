@@ -462,7 +462,7 @@ func transform(
 	transformRuntime *vm.Program,
 	logger *log.Entry,
 ) {
-	defer trace.CatchPanic("crowdsec/acquis")
+	defer trace.ReportPanic()
 
 	logger.Info("transformer started")
 
@@ -630,7 +630,7 @@ func StartAcquisition(
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		acquisTomb.Go(func() error {
-			defer trace.CatchPanic("crowdsec/acquis")
+			defer trace.ReportPanic()
 
 			outChan := output
 

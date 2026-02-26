@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -75,7 +74,7 @@ func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 	for idx := range cConfig.Crowdsec.ParserRoutinesCount {
 		log.WithField("idx", idx).Info("Starting parser routine")
 		g.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runParse/" + strconv.Itoa(idx))
+			defer trace.ReportPanic()
 			runParse(ctx, logLines, inEvents, *parsers.Ctx, parsers.Nodes, stageCollector)
 			return nil
 		})
@@ -86,7 +85,7 @@ func startBucketRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconf
 	for idx := range cConfig.Crowdsec.BucketsRoutinesCount {
 		log.WithField("idx", idx).Info("Starting bucket routine")
 		g.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runPour/" + strconv.Itoa(idx))
+			defer trace.ReportPanic()
 			runPour(ctx, inEvents, holders, bucketStore, cConfig, pourCollector)
 			return nil
 		})
@@ -102,7 +101,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 	for idx := range cConfig.Crowdsec.OutputRoutinesCount {
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
-			defer trace.CatchPanic("crowdsec/runOutput/" + strconv.Itoa(idx))
+			defer trace.ReportPanic()
 			return runOutput(ctx, inEvents, outEvents, bucketStore, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, sd)
 		})
 	}
@@ -191,10 +190,10 @@ func serveCrowdsec(
 	bucketStore := leakybucket.NewBucketStore()
 
 	crowdsecTomb.Go(func() error {
-		defer trace.CatchPanic("crowdsec/serveCrowdsec")
+		defer trace.ReportPanic()
 
 		go func() {
-			defer trace.CatchPanic("crowdsec/runCrowdsec")
+			defer trace.ReportPanic()
 			// this logs every time, even at config reload
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
 

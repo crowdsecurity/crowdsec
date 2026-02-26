@@ -216,7 +216,7 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 			return nil
 		}
 
-		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
+		defer trace.ReportPanic()
 
 		s.logger.Infof("creating unix socket on %s", s.Config.ListenSocket)
 		_ = os.Remove(s.Config.ListenSocket)
@@ -246,7 +246,7 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 			return nil
 		}
 
-		defer trace.CatchPanic("crowdsec/acquis/http/server/tcp")
+		defer trace.ReportPanic()
 
 		if s.Config.TLS != nil {
 			s.logger.Infof("start https server on %s", s.Config.ListenAddr)
@@ -282,7 +282,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.logger.Debugf("start http server on %s", s.Config.ListenAddr)
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/http/live")
+		defer trace.ReportPanic()
 		return s.RunServer(ctx, out, t)
 	})
 

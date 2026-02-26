@@ -20,7 +20,7 @@ import (
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
+		defer trace.ReportPanic()
 
 		// update cache metrics (stash)
 		cache.UpdateCacheMetrics()
@@ -89,7 +89,7 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 		return
 	}
 
-	defer trace.CatchPanic("crowdsec/servePrometheus")
+	defer trace.ReportPanic()
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 

@@ -234,7 +234,7 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 
 // Pull is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/PullPAPI")
+	defer trace.ReportPanic()
 
 	p.Logger.Infof("Starting Polling API Pull")
 
@@ -328,7 +328,7 @@ func (p *Papi) Pull(ctx context.Context) error {
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/syncDecisionsToCAPI")
+	defer trace.ReportPanic()
 
 	var cache models.DecisionsDeleteRequest
 

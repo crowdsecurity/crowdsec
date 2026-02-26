@@ -254,7 +254,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	defer pprof.StopCPUProfile()
 
 	go func() {
-		defer trace.CatchPanic("crowdsec/HandleSignals")
+		defer trace.ReportPanic()
 
 		for {
 			s := <-signalChan
