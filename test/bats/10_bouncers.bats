@@ -22,6 +22,12 @@ teardown() {
 
 #----------
 
+@test "cscli bouncers <unknown command>" {
+    rune -1 cscli bouncers foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli bouncers"'
+}
+
 @test "there are 0 bouncers" {
     rune -0 cscli bouncers list -o json
     assert_json '[]'

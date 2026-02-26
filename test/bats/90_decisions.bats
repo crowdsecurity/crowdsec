@@ -28,6 +28,12 @@ teardown() {
 
 #----------
 
+@test "cscli decisions <unknown command>" {
+    rune -1 cscli decisions foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli decisions"'
+}
+
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
     assert_stderr "Error: cscli decisions add: missing arguments, a value is required (--ip, --range or --scope and --value)"

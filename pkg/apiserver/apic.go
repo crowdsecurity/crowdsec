@@ -21,7 +21,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -286,8 +285,6 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pushToAPIC")
-
 	var cache models.AddSignalsRequest
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
@@ -469,48 +466,6 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 	}
 
 	return nbDeleted, nil
-}
-
-func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
-	newAlerts := make([]*models.Alert, 0)
-
-	for _, decision := range decisions {
-		found := false
-
-		for _, sub := range newAlerts {
-			if sub.Source.Scope == nil {
-				log.Warningf("nil scope in %+v", sub)
-				continue
-			}
-
-			if *decision.Origin == types.CAPIOrigin {
-				if *sub.Source.Scope == types.CAPIOrigin {
-					found = true
-					break
-				}
-			} else if *decision.Origin == types.ListOrigin {
-				if *sub.Source.Scope == *decision.Origin {
-					if sub.Scenario == nil {
-						log.Warningf("nil scenario in %+v", sub)
-					}
-
-					if *sub.Scenario == *decision.Scenario {
-						found = true
-						break
-					}
-				}
-			} else {
-				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
-			}
-		}
-
-		if !found {
-			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
-			newAlerts = append(newAlerts, createAlertForDecision(decision))
-		}
-	}
-
-	return newAlerts
 }
 
 func createAlertForDecision(decision *models.Decision) *models.Alert {
@@ -1080,8 +1035,6 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 }
 
 func (a *apic) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pullFromAPIC")
-
 	toldOnce := false
 
 	for {

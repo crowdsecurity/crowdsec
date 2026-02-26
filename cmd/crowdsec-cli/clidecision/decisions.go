@@ -19,8 +19,8 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -33,7 +33,7 @@ type cliDecisions struct {
 }
 
 func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
-	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
+	// here we cheat a bit: to make it more readable for the user, we dedup some entries
 	spamLimit := make(map[string]bool)
 	skipped := 0
 
@@ -136,8 +136,12 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 		Long:    `Add/List/Delete/Import decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
 		Aliases: []string{"decision"},
-		/*TBD example*/
+		// TBD example
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
@@ -370,7 +374,7 @@ cscli decisions add --range 1.2.3.0/24
 cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
 cscli decisions add --scope username --value foobar
 `,
-		/*TBD : fix long and example*/
+		// TBD: fix long and example
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -396,7 +400,7 @@ cscli decisions add --scope username --value foobar
 func (cli *cliDecisions) delete(ctx context.Context, delFilter apiclient.DecisionsDeleteOpts, delDecisionID string, contained *bool) error {
 	var err error
 
-	/*take care of shorthand options*/
+	// take care of shorthand options
 	delFilter.ScopeEquals, err = clialert.SanitizeScope(delFilter.ScopeEquals, delFilter.IPEquals, delFilter.RangeEquals)
 	if err != nil {
 		return err
@@ -456,9 +460,9 @@ func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 cscli decisions delete -i 1.2.3.4
 cscli decisions delete --id 42
 cscli decisions delete --type captcha
-cscli decisions delete --origin lists  --scenario list_name
+cscli decisions delete --origin lists --scenario list_name
 `,
-		/*TBD : refaire le Long/Example*/
+		// TBD : refaire le Long/Example
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			if delDecisionAll {
 				return nil

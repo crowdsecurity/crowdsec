@@ -71,7 +71,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	req.Header.Add("Authorization", fmt.Sprintf("Splunk %s", cfg.Token))
 	logger.Debug(fmt.Sprintf("posting event %s to %s", string(data), req.URL))
 
-	resp, err := s.Client.Do(req.WithContext(ctx))
+	resp, err := s.Client.Do(req)
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}

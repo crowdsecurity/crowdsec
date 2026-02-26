@@ -21,6 +21,12 @@ teardown() {
 
 #----------
 
+@test "cscli machines <unknown command>" {
+    rune -1 cscli machines foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli machines"'
+}
+
 @test "we have exactly one machine" {
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated]' <(output)

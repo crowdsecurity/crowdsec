@@ -284,7 +284,7 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 	s.tailMapMutex.Unlock()
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/tailfile")
+		defer trace.ReportPanic()
 		return s.tailFile(out, t, tail)
 	})
 

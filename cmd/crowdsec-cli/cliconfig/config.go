@@ -3,6 +3,7 @@ package cliconfig
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
@@ -23,6 +24,10 @@ func (cli *cliConfig) NewCommand(mergedConfigGetter mergedConfigGetter) *cobra.C
 		Use:               "config [command]",
 		Short:             "Allows to view current config",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newShowCmd())

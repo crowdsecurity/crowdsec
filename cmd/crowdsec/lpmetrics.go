@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
@@ -46,13 +45,13 @@ type MetricsProvider struct {
 }
 
 type staticMetrics struct {
-	osName         string
-	osFamily       string
-	osVersion      string
-	startupTS      int64
-	featureFlags   []string
-	datasourceMap  map[string]int64
-	hubState       models.HubItems
+	osName        string
+	osFamily      string
+	osVersion     string
+	startupTS     int64
+	featureFlags  []string
+	datasourceMap map[string]int64
+	hubState      models.HubItems
 }
 
 // Key is the prom label
@@ -97,13 +96,13 @@ func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub)
 	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
-		osName:         osName,
-		osFamily:       osFamily,
-		osVersion:      osVersion,
-		startupTS:      time.Now().UTC().Unix(),
-		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		datasourceMap:  datasourceMap,
-		hubState:       getHubState(hub),
+		osName:        osName,
+		osFamily:      osFamily,
+		osVersion:     osVersion,
+		startupTS:     time.Now().UTC().Unix(),
+		featureFlags:  fflag.Crowdsec.GetEnabledFeatures(),
+		datasourceMap: datasourceMap,
+		hubState:      getHubState(hub),
 	}
 }
 
@@ -115,7 +114,7 @@ func NewMetricsProvider(
 	hub *cwhub.Hub,
 ) *MetricsProvider {
 	static := newStaticMetrics(datasources, hub)
-	
+
 	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 
 	return &MetricsProvider{
@@ -381,8 +380,6 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
-
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -402,8 +399,6 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 }
 
 func (m *MetricsProvider) Run(ctx context.Context) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
-
 	if m.interval == time.Duration(0) {
 		return
 	}

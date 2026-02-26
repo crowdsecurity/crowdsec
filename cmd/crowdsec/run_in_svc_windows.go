@@ -25,7 +25,7 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper)
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
-	defer trace.CatchPanic("crowdsec/StartRunSvc")
+	defer trace.ReportPanic()
 
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled
@@ -94,7 +94,10 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) 
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		go func() {
+			defer trace.ReportPanic()
+			servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		}()
 	}
 	return Serve(ctx, cConfig, agentReady, sd)
 }
