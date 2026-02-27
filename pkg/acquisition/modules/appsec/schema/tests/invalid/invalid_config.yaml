@@ -1,0 +1,3 @@
+appsec_config: value
+appsec_config_path: "/path/to/config"
+listen_socket: "/var/run/my.sock"
