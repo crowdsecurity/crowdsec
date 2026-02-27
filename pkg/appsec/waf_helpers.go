@@ -1,6 +1,8 @@
 package appsec
 
 import (
+	"net/http"
+
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -15,6 +17,7 @@ func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
+		"LoadAPISchemaWithName":   w.LoadAPISchemaWithName,
 	}
 }
 
@@ -41,6 +44,7 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			state.PendingHTTPCode = &code
 			return nil
 		},
+		"ValidateRequestWithSchema": func(ref string, r *http.Request) error { return w.ValidateRequestWithSchema(state, ref, r, request) },
 	}
 }
 

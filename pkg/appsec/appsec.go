@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
+	apivalidation "github.com/crowdsecurity/crowdsec/pkg/appsec/api_validation"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
@@ -181,6 +182,8 @@ type AppsecRuntimeConfig struct {
 
 	DisabledOutOfBandRuleIds   []int
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	RequestValidator *apivalidation.RequestValidator
 }
 
 type AppsecConfig struct {
@@ -367,6 +370,8 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 
 func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
+
+	ret.RequestValidator = apivalidation.NewRequestValidator(wc.Logger.WithField("component", "api_validator"))
 
 	if wc.BouncerBlockedHTTPCode == 0 {
 		wc.BouncerBlockedHTTPCode = http.StatusForbidden
@@ -873,4 +878,28 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	}
 
 	return bouncerStatusCode, resp
+}
+
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, schemaPath string) error {
+	//FIXME: should be relative to data dir
+	w.Logger.Debugf("loading schema %s for ref %s", schemaPath, ref)
+	f, err := os.Open(schemaPath)
+	if err != nil {
+		return fmt.Errorf("unable to open schema file %s : %s", schemaPath, err)
+	}
+	defer f.Close()
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		return fmt.Errorf("unable to read schema file %s : %s", schemaPath, err)
+	}
+	return w.RequestValidator.LoadSchema(ref, string(schema))
+}
+
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
+	err := w.RequestValidator.ValidateRequest(ref, r)
+	if err != nil {
+		w.Logger.Errorf("request validation failed: %s", err)
+		return w.DropRequest(state, parsedRequest, fmt.Sprintf("request validation failed: %s", err))
+	}
+	return nil
 }
