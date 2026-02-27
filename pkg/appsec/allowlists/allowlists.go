@@ -8,7 +8,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
@@ -33,7 +32,6 @@ type AppsecAllowlist struct {
 	ranges     []rangeAllowlist
 	lock       sync.RWMutex
 	logger     *log.Entry
-	tomb       *tomb.Tomb
 }
 
 func NewAppsecAllowlist(logger *log.Entry) *AppsecAllowlist {
@@ -107,6 +105,7 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 
 func (a *AppsecAllowlist) updateAllowlists(ctx context.Context) {
 	ticker := time.NewTicker(allowlistRefreshInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -114,19 +113,14 @@ func (a *AppsecAllowlist) updateAllowlists(ctx context.Context) {
 			if err := a.FetchAllowlists(ctx); err != nil {
 				a.logger.Errorf("failed to fetch allowlists: %s", err)
 			}
-		case <-a.tomb.Dying():
-			ticker.Stop()
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (a *AppsecAllowlist) StartRefresh(ctx context.Context, t *tomb.Tomb) {
-	a.tomb = t
-	a.tomb.Go(func() error {
-		a.updateAllowlists(ctx)
-		return nil
-	})
+func (a *AppsecAllowlist) StartRefresh(ctx context.Context) {
+	go a.updateAllowlists(ctx)
 }
 
 func (a *AppsecAllowlist) IsAllowlisted(sourceIP string) (bool, string) {
