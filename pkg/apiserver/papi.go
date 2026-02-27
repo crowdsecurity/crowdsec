@@ -296,7 +296,13 @@ func (p *Papi) Pull(ctx context.Context) error {
 				papiChan = nil
 				p.Logger.Debug("done stopping PAPI pull")
 			}
-		case event := <-papiChan:
+		case event, ok := <-papiChan:
+			if !ok {
+				p.Logger.Debug("PAPI event stream closed")
+				papiChan = nil
+				continue
+			}
+
 			logger := p.Logger.WithField("request-id", event.RequestId)
 			// update last timestamp in database
 			newTime := time.Now().UTC()

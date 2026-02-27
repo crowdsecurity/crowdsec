@@ -8,17 +8,19 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
 type LongPollClient struct {
-	t          tomb.Tomb
+	mu         sync.Mutex
+	cancelPoll context.CancelFunc
+	done       chan struct{}
 	c          chan Event
 	url        url.URL
 	logger     *log.Entry
@@ -89,8 +91,8 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 
 	defer resp.Body.Close()
 
-	requestId := resp.Header.Get("X-Amzn-Trace-Id")
-	logger = logger.WithField("request-id", requestId)
+	requestID := resp.Header.Get("X-Amzn-Trace-Id")
+	logger = logger.WithField("request-id", requestID)
 	if resp.StatusCode != http.StatusOK {
 		c.logger.Errorf("unexpected status code: %d", resp.StatusCode)
 		if resp.StatusCode == http.StatusPaymentRequired {
@@ -109,20 +111,15 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 
 	for {
 		select {
-		case <-c.t.Dying():
-			logger.Debugf("dying")
-			close(c.c)
-			return nil
 		case <-ctx.Done():
-			logger.Debugf("context canceled")
-			close(c.c)
+			logger.Debug("context canceled")
 			return ctx.Err()
 		default:
 			var pollResp pollResponse
 			err = decoder.Decode(&pollResp)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
-					logger.Debugf("server closed connection")
+					logger.Debug("server closed connection")
 					return nil
 				}
 				return fmt.Errorf("error decoding poll response: %v", err)
@@ -132,7 +129,7 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 
 			if pollResp.ErrorMessage != "" {
 				if pollResp.ErrorMessage == timeoutMessage {
-					logger.Debugf("got timeout message")
+					logger.Debug("got timeout message")
 					return nil
 				}
 				return fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
@@ -141,8 +138,12 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 			if len(pollResp.Events) > 0 {
 				logger.Debugf("got %d events", len(pollResp.Events))
 				for _, event := range pollResp.Events {
-					event.RequestId = requestId
-					c.c <- event
+					event.RequestId = requestID
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case c.c <- event:
+					}
 					if event.Timestamp > c.since {
 						c.since = event.Timestamp
 					}
@@ -157,27 +158,21 @@ func (c *LongPollClient) poll(ctx context.Context) error {
 }
 
 func (c *LongPollClient) pollEvents(ctx context.Context) error {
-
 	initialBackoff := 1 * time.Second
 	maxBackoff := 30 * time.Second
 	currentBackoff := initialBackoff
 
 	for {
 		select {
-		case <-c.t.Dying():
-			c.logger.Debug("dying")
-			return nil
 		case <-ctx.Done():
 			c.logger.Debug("context canceled")
-			return ctx.Err()
+			return nil
 		default:
 			c.logger.Debug("Polling PAPI")
 			err := c.poll(ctx)
 			if err != nil {
 				if errors.Is(err, errUnauthorized) {
 					c.logger.Errorf("unauthorized, stopping polling")
-					c.t.Kill(err)
-					close(c.c)
 					return err
 				}
 				if errors.Is(err, context.Canceled) {
@@ -186,10 +181,8 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 				}
 				c.logger.Errorf("failed to poll: %s, retrying in %s", err, currentBackoff)
 				select {
-				case <-c.t.Dying():
-					return nil
 				case <-ctx.Done():
-					return ctx.Err()
+					return nil
 				case <-time.After(currentBackoff):
 				}
 
@@ -205,17 +198,47 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 }
 
 func (c *LongPollClient) Start(ctx context.Context, since time.Time) chan Event {
-	c.logger.Infof("starting polling client")
-	c.c = make(chan Event)
+	_ = c.Stop()
+
+	c.logger.Info("starting polling client")
+
+	pollCtx, cancel := context.WithCancel(ctx)
+	out := make(chan Event)
+	done := make(chan struct{})
+
+	c.mu.Lock()
+	c.c = out
 	c.since = since.Unix() * 1000
 	c.timeout = "45"
-	c.t = tomb.Tomb{}
-	c.t.Go(func() error { return c.pollEvents(ctx) })
-	return c.c
+	c.cancelPoll = cancel
+	c.done = done
+	c.mu.Unlock()
+
+	go func() {
+		defer close(done)
+		defer close(out)
+		_ = c.pollEvents(pollCtx)
+	}()
+
+	return out
 }
 
 func (c *LongPollClient) Stop() error {
-	c.t.Kill(nil)
+	c.mu.Lock()
+	cancel := c.cancelPoll
+	done := c.done
+	c.cancelPoll = nil
+	c.done = nil
+	c.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+
+	if done != nil {
+		<-done
+	}
+
 	return nil
 }
 
@@ -235,7 +258,7 @@ func (c *LongPollClient) PullOnce(ctx context.Context, since time.Time) ([]Event
 		err = decoder.Decode(&pollResp)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				c.logger.Debugf("server closed connection")
+				c.logger.Debug("server closed connection")
 				break
 			}
 			log.Errorf("error decoding poll response: %v", err)
@@ -246,7 +269,7 @@ func (c *LongPollClient) PullOnce(ctx context.Context, since time.Time) ([]Event
 
 		if pollResp.ErrorMessage != "" {
 			if pollResp.ErrorMessage == timeoutMessage {
-				c.logger.Debugf("got timeout message")
+				c.logger.Debug("got timeout message")
 				break
 			}
 			log.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
