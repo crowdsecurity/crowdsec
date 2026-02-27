@@ -127,7 +127,14 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	if err != nil {
 		w.logger.Errorf("failed to fetch allowlists for appsec, disabling them: %s", err)
 	} else {
-		w.appsecAllowlistClient.StartRefresh(ctx, t)
+		refreshCtx, refreshCancel := context.WithCancel(ctx)
+		t.Go(func() error {
+			<-t.Dying()
+			refreshCancel()
+			return nil
+		})
+
+		w.appsecAllowlistClient.StartRefresh(refreshCtx)
 	}
 
 	t.Go(func() error {
