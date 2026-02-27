@@ -156,6 +156,13 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		//FIXME: should we abort here ?
 	}
 
+	// User has requested valid challenge, but we did not find a valid cookie
+	// Immediately return, everything has been set already
+	if state.RequireChallenge {
+		r.logger.Infof("valid challenge required, skipping WAF evaluation")
+		return nil
+	}
+
 	if state.DropInfo(request) != nil {
 		r.logger.Debug("drop helper triggered during pre_eval, skipping WAF evaluation")
 		return nil
@@ -418,6 +425,9 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- state.Response
+
+	// TODO: what should we do with challenge remediation for OOB matches ?
+	// (captcha has no special treatment, but is also useless for OOB)
 
 	//Now let's process the out of band rules
 

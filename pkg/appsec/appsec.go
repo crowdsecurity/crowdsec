@@ -14,6 +14,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -36,10 +38,14 @@ const (
 )
 
 const (
-	BanRemediation     = "ban"
-	CaptchaRemediation = "captcha"
-	AllowRemediation   = "allow"
+	BanRemediation       = "ban"
+	CaptchaRemediation   = "captcha"
+	AllowRemediation     = "allow"
+	ChallengeRemediation = "challenge"
 )
+
+const bodyChallengeOK = `{"status":"ok"}`
+const bodyChallengeFailed = `{"status":"failed"}`
 
 type phase int
 
@@ -48,7 +54,7 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(hookStage int) error {
+func (h *Hook) Build(hookStage int, patcher *appsecExprPatcher) error {
 	ctx := map[string]any{}
 
 	switch hookStage {
@@ -63,6 +69,9 @@ func (h *Hook) Build(hookStage int) error {
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
+	if patcher != nil {
+		opts = append(opts, expr.Patch(patcher))
+	}
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
@@ -87,11 +96,14 @@ func (h *Hook) Build(hookStage int) error {
 type AppsecTempResponse struct {
 	InBandInterrupt         bool
 	OutOfBandInterrupt      bool
-	Action                  string // allow, deny, captcha, log
-	UserHTTPResponseCode    int    // The response code to send to the user
-	BouncerHTTPResponseCode int    // The response code to send to the remediation component
-	SendEvent               bool   // do we send an internal event on rule match
-	SendAlert               bool   // do we send an alert on rule match
+	Action                  string                // allow, deny, captcha, challenge, log
+	UserHTTPResponseCode    int                   // The response code to send to the user
+	UserHTTPBodyContent     string                // The body content to send to the user, only for challenge response
+	UserHTTPCookies         []cookie.AppsecCookie // Raw Set-Cookie headers to send to the user.
+	UserHeaders             map[string][]string   // Headers to send to the user
+	BouncerHTTPResponseCode int                   // The response code to send to the remediation component
+	SendEvent               bool                  // do we send an internal event on rule match
+	SendAlert               bool                  // do we send an alert on rule match
 }
 
 type AppsecDropInfo struct {
@@ -109,6 +121,8 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	RequireChallenge bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -123,8 +137,11 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
 	s.Response.SendEvent = true
 	s.Response.SendAlert = true
+	s.Response.UserHTTPBodyContent = ""
+	s.Response.UserHTTPCookies = nil
 	s.PendingAction = nil
 	s.PendingHTTPCode = nil
+	s.RequireChallenge = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -181,6 +198,10 @@ type AppsecRuntimeConfig struct {
 
 	DisabledOutOfBandRuleIds   []int
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	// True if at least one of the hooks use `RequireValidChallenge`
+	NeedWASMVM       bool
+	ChallengeRuntime *challenge.ChallengeRuntime
 }
 
 type AppsecConfig struct {
@@ -394,10 +415,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	// set the defaults
 	switch wc.DefaultRemediation {
-	case BanRemediation, CaptchaRemediation, AllowRemediation:
+	case BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation:
 		// those are the officially supported remediation(s)
 	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation)
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation)
 	}
 
 	ret.Name = wc.Name
@@ -432,13 +453,15 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
+	patcher := &appsecExprPatcher{}
+
 	// load hooks
 	for _, hook := range wc.OnLoad {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
 			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookOnLoad)
+		err := hook.Build(hookOnLoad, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
 		}
@@ -451,7 +474,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookPreEval)
+		err := hook.Build(hookPreEval, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
 		}
@@ -464,7 +487,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookPostEval)
+		err := hook.Build(hookPostEval, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
 		}
@@ -477,7 +500,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
 		}
 
-		err := hook.Build(hookOnMatch)
+		err := hook.Build(hookOnMatch, patcher)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
 		}
@@ -494,6 +517,8 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 		ret.CompiledVariablesTracking = append(ret.CompiledVariablesTracking, compiledVariableRule)
 	}
+
+	ret.NeedWASMVM = patcher.NeedWASMVM
 
 	return ret, nil
 }
@@ -849,19 +874,119 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) e
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) SetChallengeBody(state *AppsecRequestState, content string) error {
+	w.Logger.Debugf("setting challenge body content")
+	state.Response.UserHTTPBodyContent = content
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeCookie(state *AppsecRequestState, cookie cookie.AppsecCookie) error {
+	w.Logger.Debugf("adding challenge cookie")
+	state.Response.UserHTTPCookies = append(state.Response.UserHTTPCookies, cookie)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name string, value string) error {
+	w.Logger.Debugf("adding challenge headers")
+	if state.Response.UserHeaders == nil {
+		state.Response.UserHeaders = make(map[string][]string)
+	}
+	state.Response.UserHeaders[name] = append(state.Response.UserHeaders[name], value)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
+	w.SetAction(state, ChallengeRemediation)
+	w.SetHTTPCode(state, code)
+	// FIXME: don't do this here, should be handled the same way as a block
+	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+	w.SetChallengeBody(state, body)
+	for name, value := range headers {
+		w.SetChallengeHeader(state, name, value)
+	}
+	if cookie != nil {
+		w.SetChallengeCookie(state, *cookie)
+	}
+	state.RequireChallenge = true
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	w.Logger.Debugf("requiring valid challenge")
+
+	if w.ChallengeRuntime == nil {
+		return fmt.Errorf("challenge runtime not initialized")
+	}
+
+	// Check if the request has a challenge response
+	// If there's a challenge response, validate it
+	// If ok, generate cookie + return it (challenge remediation + meta refresh + cookie)
+	// If bad, return challenge page
+	// Finally, check for the challenge cookie
+	// If it's valid, just return
+	// If not, return the challenge HTML page
+
+	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
+		w.Logger.Debugf("Validating challenge response")
+		body := bodyChallengeOK
+		cookie, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		if err != nil {
+			// TODO: find a way to propagate an event to the LP for use in scenarios
+			w.Logger.Errorf("Challenge validation failed: %s", err)
+			body = bodyChallengeFailed
+		}
+		return w.setChallengeResponse(state, http.StatusOK, body, map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, cookie)
+	}
+
+	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	isValidCookie := err == nil && w.ChallengeRuntime.ValidCookie(cookie)
+	if err != nil || !isValidCookie {
+		w.Logger.Debugf("no valid challenge cookie found")
+		challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
+		if err != nil {
+			return fmt.Errorf("unable to get challenge page: %w", err)
+		}
+		return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+	}
+
+	if isValidCookie {
+		w.Logger.Debugf("valid challenge cookie found, allowing request")
+		return nil
+	}
+
+	return nil
+}
+
 type BodyResponse struct {
-	Action     string `json:"action"`
-	HTTPStatus int    `json:"http_status"`
+	Action          string              `json:"action"`
+	HTTPStatus      int                 `json:"http_status"`
+	UserBodyContent string              `json:"user_body_content,omitempty"`
+	UserCookies     []string            `json:"user_cookies,omitempty"`
+	UserHeaders     map[string][]string `json:"user_headers,omitempty"`
 }
 
 func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) (int, BodyResponse) {
 	var bouncerStatusCode int
 
 	resp := BodyResponse{Action: response.Action}
-	if response.Action == AllowRemediation {
+
+	//spew.Dump("Generating response", response)
+
+	switch response.Action {
+	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
-	} else { // ban, captcha and anything else
+	case ChallengeRemediation:
+		resp.UserBodyContent = response.UserHTTPBodyContent
+		resp.UserCookies = make([]string, 0, len(response.UserHTTPCookies))
+		for _, cookie := range response.UserHTTPCookies {
+			resp.UserCookies = append(resp.UserCookies, cookie.String())
+		}
+		resp.UserHeaders = response.UserHeaders
+		// Return code are handled the same way for challenge/ban/captcha
+		// There's probably a less brittle way to do this, but falltrhough is easier
+		fallthrough
+	case BanRemediation, CaptchaRemediation:
 		resp.HTTPStatus = response.UserHTTPResponseCode
 		if resp.HTTPStatus == 0 {
 			resp.HTTPStatus = w.Config.UserBlockedHTTPCode
