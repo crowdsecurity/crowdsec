@@ -45,6 +45,11 @@ func (acp *alertCounterByPluginName) Set(key string, val int) {
 	acp.Unlock()
 }
 
+func (acp *alertCounterByPluginName) Inc(key string) {
+	acp.Lock()
+	acp.data[key]++
+	acp.Unlock()
+}
 type PluginWatcher struct {
 	PluginConfigByName     map[string]PluginConfig
 	AlertCountByPluginName alertCounterByPluginName
@@ -60,9 +65,6 @@ func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginNam
 	pw.PluginEvents = make(chan string)
 	pw.AlertCountByPluginName = newAlertCounterByPluginName()
 	pw.Inserts = make(chan string)
-	for name := range alertsByPluginName {
-		pw.AlertCountByPluginName.Set(name, 0)
-	}
 }
 
 func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
@@ -144,7 +146,10 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			pw.PluginEvents <- pluginName
 		case <-pw.tomb.Dying():
 			// no lock here because we have the broker still listening even in dying state before killing us
-			pw.PluginEvents <- pluginName
+			select {
+			case pw.PluginEvents <- pluginName:
+			default: // prevent deadlock during shutdown
+			}
 			return
 		}
 	}
@@ -155,11 +160,10 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		select {
 		case pluginName := <-pw.Inserts:
 			// we only "count" pending alerts, and watchPluginTicker is actually going to send it
-			curr, ok := pw.AlertCountByPluginName.Get(pluginName)
-			if !ok {
-				curr = 0
+			if _, ok := pw.PluginConfigByName[pluginName]; ok {
+				// atomic increment, prevent race between Get/Set
+				pw.AlertCountByPluginName.Inc(pluginName)
 			}
-			pw.AlertCountByPluginName.Set(pluginName, curr+1)
 		case <-pw.tomb.Dying():
 			return
 		}
