@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -19,7 +18,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -275,7 +273,6 @@ func (cli *cliNotifications) notificationConfigFilter(_ *cobra.Command, args []s
 func (cli *cliNotifications) newTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
-		pluginTomb    tomb.Tomb
 		alertOverride string
 	)
 
@@ -315,11 +312,15 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				},
 			}, cfg.ConfigPaths)
 		},
-		RunE: func(_ *cobra.Command, _ []string) error {
-			pluginTomb.Go(func() error {
-				pluginBroker.Run(&pluginTomb)
-				return nil
-			})
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			pluginCtx, cancelPlugin := context.WithCancel(cmd.Context())
+			pluginDone := make(chan struct{})
+
+			go func() {
+				pluginBroker.Run(pluginCtx)
+				close(pluginDone)
+			}()
+
 			alert := &models.Alert{
 				Capacity: ptr.Of(int32(0)),
 				Decisions: []*models.Decision{{
@@ -361,15 +362,15 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 			}
 
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(errors.New("terminating"))
-			_ = pluginTomb.Wait()
+			cancelPlugin()
+			<-pluginDone
 
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
-		"JSON string used to override alert fields in the generic alert " +
-		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+		"JSON string used to override alert fields in the generic alert "+
+			"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }
@@ -401,10 +402,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var (
-				pluginBroker csplugin.PluginBroker
-				pluginTomb   tomb.Tomb
-			)
+			var pluginBroker csplugin.PluginBroker
 
 			ctx := cmd.Context()
 			cfg := cli.cfg()
@@ -442,10 +440,13 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				return fmt.Errorf("can't initialize plugins: %w", err)
 			}
 
-			pluginTomb.Go(func() error {
-				pluginBroker.Run(&pluginTomb)
-				return nil
-			})
+			pluginCtx, cancelPlugin := context.WithCancel(ctx)
+			pluginDone := make(chan struct{})
+
+			go func() {
+				pluginBroker.Run(pluginCtx)
+				close(pluginDone)
+			}()
 
 			profiles, err := csprofiles.NewProfile(cfg.API.Server.Profiles)
 			if err != nil {
@@ -482,15 +483,15 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				}
 			}
 			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(errors.New("terminating"))
-			_ = pluginTomb.Wait()
+			cancelPlugin()
+			<-pluginDone
 
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
-		"JSON string used to override alert fields in the reinjected alert " +
-		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+		"JSON string used to override alert fields in the reinjected alert "+
+			"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }

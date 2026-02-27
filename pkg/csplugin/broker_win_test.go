@@ -4,6 +4,7 @@ package csplugin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -73,8 +73,9 @@ func (s *PluginSuite) TestBrokerRun() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	assert.NoFileExists(t, s.outFile)
 	defer os.Remove(s.outFile)

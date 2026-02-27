@@ -1,11 +1,11 @@
 package csplugin
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -50,7 +50,8 @@ type PluginWatcher struct {
 	AlertCountByPluginName alertCounterByPluginName
 	PluginEvents           chan string
 	Inserts                chan string
-	tomb                   *tomb.Tomb
+	wg                     sync.WaitGroup
+	done                   chan struct{}
 }
 
 var DefaultEmptyTicker = time.Second * 1
@@ -65,23 +66,33 @@ func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginNam
 	}
 }
 
-func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
-	pw.tomb = tomb
+func (pw *PluginWatcher) Start(ctx context.Context) <-chan struct{} {
+	pw.done = make(chan struct{})
+
 	for name := range pw.PluginConfigByName {
 		pname := name
-		pw.tomb.Go(func() error {
-			pw.watchPluginTicker(pname)
-			return nil
-		})
+		pw.wg.Add(1)
+		go func() {
+			defer pw.wg.Done()
+			pw.watchPluginTicker(ctx, pname)
+		}()
 	}
 
-	pw.tomb.Go(func() error {
-		pw.watchPluginAlertCounts()
-		return nil
-	})
+	pw.wg.Add(1)
+	go func() {
+		defer pw.wg.Done()
+		pw.watchPluginAlertCounts(ctx)
+	}()
+
+	go func() {
+		pw.wg.Wait()
+		close(pw.done)
+	}()
+
+	return pw.done
 }
 
-func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
+func (pw *PluginWatcher) watchPluginTicker(ctx context.Context, pluginName string) {
 	cfg := pw.PluginConfigByName[pluginName]
 	interval := cfg.GroupWait
 	threshold := cfg.GroupThreshold
@@ -142,15 +153,15 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			lastSend = now
 			pw.AlertCountByPluginName.Set(pluginName, 0)
 			pw.PluginEvents <- pluginName
-		case <-pw.tomb.Dying():
-			// no lock here because we have the broker still listening even in dying state before killing us
+		case <-ctx.Done():
+			// no lock here because the broker is still listening during shutdown.
 			pw.PluginEvents <- pluginName
 			return
 		}
 	}
 }
 
-func (pw *PluginWatcher) watchPluginAlertCounts() {
+func (pw *PluginWatcher) watchPluginAlertCounts(ctx context.Context) {
 	for {
 		select {
 		case pluginName := <-pw.Inserts:
@@ -160,7 +171,7 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 				curr = 0
 			}
 			pw.AlertCountByPluginName.Set(pluginName, curr+1)
-		case <-pw.tomb.Dying():
+		case <-ctx.Done():
 			return
 		}
 	}

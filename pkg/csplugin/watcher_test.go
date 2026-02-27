@@ -7,19 +7,26 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func resetTestTomb(t *testing.T, testTomb *tomb.Tomb, pw *PluginWatcher) {
-	testTomb.Kill(nil)
-	<-pw.PluginEvents
+func stopWatcher(t *testing.T, cancel context.CancelFunc, pw *PluginWatcher, done <-chan struct{}) {
+	cancel()
 
-	err := testTomb.Wait()
-	require.NoError(t, err)
+	select {
+	case <-pw.PluginEvents:
+	case <-time.After(time.Second):
+		require.FailNow(t, "timeout waiting for watcher flush event")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		require.FailNow(t, "timeout waiting for watcher shutdown")
+	}
 }
 
 func resetWatcherAlertCounter(pw *PluginWatcher) {
@@ -54,23 +61,24 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
-	testTomb := tomb.Tomb{}
+	watcherCtx, cancelWatcher := context.WithCancel(ctx)
 	configs := map[string]PluginConfig{
 		"testPlugin": {
 			GroupWait: time.Millisecond,
 		},
 	}
 	pw.Init(configs, alertsByPluginName)
-	pw.Start(&testTomb)
+	watcherDone := pw.Start(watcherCtx)
 
 	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
 	defer cancel()
 
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	cstest.RequireErrorContains(t, err, "context deadline exceeded")
-	resetTestTomb(t, &testTomb, &pw)
-	testTomb = tomb.Tomb{}
-	pw.Start(&testTomb)
+	stopWatcher(t, cancelWatcher, &pw, watcherDone)
+
+	watcherCtx, cancelWatcher = context.WithCancel(ctx)
+	watcherDone = pw.Start(watcherCtx)
 	insertNAlertsToPlugin(&pw, 1, "testPlugin")
 
 	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
@@ -78,7 +86,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
-	resetTestTomb(t, &testTomb, &pw)
+	stopWatcher(t, cancelWatcher, &pw, watcherDone)
 	// This is to avoid the int complaining
 }
 
@@ -94,10 +102,10 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 			GroupThreshold: 5,
 		},
 	}
-	testTomb := tomb.Tomb{}
+	watcherCtx, cancelWatcher := context.WithCancel(ctx)
 
 	pw.Init(configs, alertsByPluginName)
-	pw.Start(&testTomb)
+	watcherDone := pw.Start(watcherCtx)
 
 	// Channel won't contain any events since threshold is not crossed.
 	ct, cancel := context.WithTimeout(ctx, time.Second)
@@ -125,5 +133,5 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	require.NoError(t, err)
-	resetTestTomb(t, &testTomb, &pw)
+	stopWatcher(t, cancelWatcher, &pw, watcherDone)
 }

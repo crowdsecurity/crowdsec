@@ -56,8 +56,16 @@ func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 			}
 		}()
 
+		pluginCtx, cancelPlugin := context.WithCancel(ctx)
+
 		pluginTomb.Go(func() error {
-			pluginBroker.Run(&pluginTomb)
+			<-pluginTomb.Dying()
+			cancelPlugin()
+			return nil
+		})
+
+		pluginTomb.Go(func() error {
+			pluginBroker.Run(pluginCtx)
 			return nil
 		})
 

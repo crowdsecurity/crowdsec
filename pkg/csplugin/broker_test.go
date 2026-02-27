@@ -4,6 +4,7 @@ package csplugin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -13,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -154,8 +154,9 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	// send one item, it should be processed right now
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -206,8 +207,9 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	// send data
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -243,8 +245,9 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	// send data
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -284,8 +287,9 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	// send data
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -338,8 +342,9 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	// send data
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -369,8 +374,9 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	pb, err := s.InitBroker(ctx, nil)
 	require.NoError(t, err)
 
-	tomb := tomb.Tomb{}
-	go pb.Run(&tomb)
+	brokerCtx, cancelBroker := context.WithCancel(ctx)
+	defer cancelBroker()
+	go pb.Run(brokerCtx)
 
 	assert.NoFileExists(t, s.outFile)
 

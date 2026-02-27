@@ -17,7 +17,6 @@ import (
 	"github.com/google/uuid"
 	plugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
@@ -40,17 +39,17 @@ const (
 // It receives all the events from the main process and stacks them up
 // It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
-	PluginChannel                   chan models.ProfileAlert
-	alertsByPluginName              map[string][]*models.Alert
-	profileConfigs                  []*csconfig.ProfileCfg
-	pluginConfigByName              map[string]PluginConfig
-	pluginMap                       map[string]plugin.Plugin
-	notificationPluginByName        map[string]protobufs.NotifierServer
-	watcher                         PluginWatcher
-	pluginKillMethods               []func()
-	pluginProcConfig                *csconfig.PluginCfg
-	pluginsTypesToDispatch          map[string]struct{}
-	newBackoff                      backoffFactory
+	PluginChannel            chan models.ProfileAlert
+	alertsByPluginName       map[string][]*models.Alert
+	profileConfigs           []*csconfig.ProfileCfg
+	pluginConfigByName       map[string]PluginConfig
+	pluginMap                map[string]plugin.Plugin
+	notificationPluginByName map[string]protobufs.NotifierServer
+	watcher                  PluginWatcher
+	pluginKillMethods        []func()
+	pluginProcConfig         *csconfig.PluginCfg
+	pluginsTypesToDispatch   map[string]struct{}
+	newBackoff               backoffFactory
 }
 
 // holder to determine where to dispatch config and how to format messages
@@ -127,11 +126,22 @@ func (pb *PluginBroker) Kill() {
 	}
 }
 
-func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
-	// we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
-	ctx := context.TODO()
+func (pb *PluginBroker) popPluginAlerts(pluginName string) []*models.Alert {
+	pluginMutex.Lock()
+	log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
+	tmpAlerts := pb.alertsByPluginName[pluginName]
+	pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
+	pluginMutex.Unlock()
 
-	pb.watcher.Start(&tomb.Tomb{})
+	return tmpAlerts
+}
+
+func (pb *PluginBroker) Run(ctx context.Context) {
+	// we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
+	notifyCtx := context.TODO()
+
+	watcherCtx, cancelWatcher := context.WithCancel(context.Background())
+	watcherDone := pb.watcher.Start(watcherCtx)
 
 	for {
 		select {
@@ -139,47 +149,37 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 			pb.addProfileAlert(profileAlert)
 
 		case pluginName := <-pb.watcher.PluginEvents:
-			// this can be run in goroutine, but then locks will be needed
-			pluginMutex.Lock()
-			log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
-			tmpAlerts := pb.alertsByPluginName[pluginName]
-			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
-			pluginMutex.Unlock()
+			tmpAlerts := pb.popPluginAlerts(pluginName)
 
-			go func() {
+			go func(pluginName string, alerts []*models.Alert) {
 				// Chunk alerts to respect group_threshold
 				threshold := pb.pluginConfigByName[pluginName].GroupThreshold
 				if threshold == 0 {
 					threshold = 1
 				}
 
-				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
-					if err := pb.pushNotificationsToPlugin(ctx, pluginName, chunk); err != nil {
+				for _, chunk := range slicetools.Chunks(alerts, threshold) {
+					if err := pb.pushNotificationsToPlugin(notifyCtx, pluginName, chunk); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}
-			}()
+			}(pluginName, tmpAlerts)
 
-		case <-pluginTomb.Dying():
-			log.Infof("pluginTomb dying")
-			pb.watcher.tomb.Kill(errors.New("Terminating"))
+		case <-ctx.Done():
+			log.Infof("plugin context canceled")
+			cancelWatcher()
 
 			for {
 				select {
-				case <-pb.watcher.tomb.Dead():
+				case <-watcherDone:
 					log.Info("killing all plugins")
 					pb.Kill()
 
 					return
 				case pluginName := <-pb.watcher.PluginEvents:
-					// this can be run in goroutine, but then locks will be needed
-					pluginMutex.Lock()
-					log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
-					tmpAlerts := pb.alertsByPluginName[pluginName]
-					pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
-					pluginMutex.Unlock()
+					tmpAlerts := pb.popPluginAlerts(pluginName)
 
-					if err := pb.pushNotificationsToPlugin(ctx, pluginName, tmpAlerts); err != nil {
+					if err := pb.pushNotificationsToPlugin(notifyCtx, pluginName, tmpAlerts); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}
