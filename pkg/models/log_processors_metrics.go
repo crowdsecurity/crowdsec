@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -155,11 +156,15 @@ func (m *LogProcessorsMetrics) validateHubItems(formats strfmt.Registry) error {
 
 	if m.HubItems != nil {
 		if err := m.HubItems.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("hub_items")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("hub_items")
 			}
+
 			return err
 		}
 	}
@@ -189,11 +194,15 @@ func (m *LogProcessorsMetrics) ContextValidate(ctx context.Context, formats strf
 func (m *LogProcessorsMetrics) contextValidateHubItems(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.HubItems.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("hub_items")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("hub_items")
 		}
+
 		return err
 	}
 
