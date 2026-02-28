@@ -18,16 +18,20 @@ type BlackholeProcessor struct {
 	DumbProcessor
 }
 
-func NewBlackholeProcessor(f *BucketFactory) (*BlackholeProcessor, error) {
-	duration, err := time.ParseDuration(f.Spec.Blackhole)
+func NewBlackholeProcessor(s *BucketSpec) (*BlackholeProcessor, error) {
+	duration, err := time.ParseDuration(s.Blackhole)
 	if err != nil {
-		return nil, fmt.Errorf("blackhole duration not valid '%s'", f.Spec.Blackhole)
+		return nil, fmt.Errorf("blackhole duration not valid '%s'", s.Blackhole)
 	}
 	return &BlackholeProcessor{
 		duration:      duration,
 		hiddenKeys:    []hiddenKey{},
 		DumbProcessor: DumbProcessor{},
 	}, nil
+}
+
+func (*BlackholeProcessor) Description() string {
+	return "blackhole"
 }
 
 func (p *BlackholeProcessor) OnBucketOverflow(
