@@ -470,7 +470,7 @@ func (s *APIServer) Close() {
 		s.papi.Shutdown() // papi also uses the dbClient
 	}
 
-	s.dbClient.Ent.Close()
+	s.dbClient.Close()
 
 	if s.flushScheduler != nil {
 		_ = s.flushScheduler.Shutdown()
