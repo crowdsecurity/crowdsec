@@ -17,6 +17,20 @@ log_level: info
 format: |
   {{.|toJson}}
 
+# To dynamically add query parameters to the URL and customize the body,
+# use a JSON format with "url_query_params" and "request_body" fields.
+# "url_query_params" is a key-value map appended as query parameters to the url.
+# "request_body" becomes the HTTP request body.
+# If the format output is not JSON or lacks these fields, the full output
+# is sent as the body to the static url (default behavior).
+#
+# Example:
+# format: |
+#   {"url_query_params": {"ip": "{{ (index . 0).Source.IP }}"}, "request_body": {{.|toJson}}}
+#
+# With url: https://api.example.com/alerts, this produces:
+#   POST https://api.example.com/alerts?ip=1.2.3.4
+
 # The plugin will make requests to this url, eg:  https://www.example.com/
 url: <HTTP_url>
 

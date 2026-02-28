@@ -10,8 +10,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         request_path = self.path
-        request_body = self.rfile.read(int(self.headers['Content-Length']))
-        request_body = json.loads(request_body.decode())
+        content_length = int(self.headers.get('Content-Length', 0))
+        raw_body = self.rfile.read(content_length).decode() if content_length > 0 else ""
+        request_body = json.loads(raw_body) if raw_body else None
         log = {
             "path": request_path,
             "status": 200,
