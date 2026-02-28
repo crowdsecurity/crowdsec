@@ -2,11 +2,12 @@ package allowlists
 
 import (
 	"context"
-	"net"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gaissmai/bart"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -15,22 +16,16 @@ import (
 
 const allowlistRefreshInterval = 60 * time.Second
 
-type rangeAllowlist struct {
-	Range         net.IPNet
-	Description   string
-	AllowlistName string
-}
-
-type ipAllowlist struct {
-	IP            net.IP
+// metadata stores Description and AllowlistName for a CIDR prefix
+type metadata struct {
 	Description   string
 	AllowlistName string
 }
 
 type AppsecAllowlist struct {
 	LAPIClient *apiclient.ApiClient
-	ips        []ipAllowlist
-	ranges     []rangeAllowlist
+	trie       *bart.Lite           // BART lite table for IP/CIDR lookups
+	meta       map[string]*metadata // Metadata keyed by CIDR prefix string
 	lock       sync.RWMutex
 	logger     *log.Entry
 	tomb       *tomb.Tomb
@@ -39,8 +34,8 @@ type AppsecAllowlist struct {
 func NewAppsecAllowlist(logger *log.Entry) *AppsecAllowlist {
 	a := &AppsecAllowlist{
 		logger: logger.WithField("component", "appsec-allowlist"),
-		ips:    []ipAllowlist{},
-		ranges: []rangeAllowlist{},
+		trie:   new(bart.Lite),
+		meta:   make(map[string]*metadata),
 	}
 
 	return a
@@ -60,47 +55,81 @@ func (a *AppsecAllowlist) FetchAllowlists(ctx context.Context) error {
 		return err
 	}
 
-	a.lock.Lock()
-	defer a.lock.Unlock()
-	prevIPsLen := len(a.ips)
-	prevRangesLen := len(a.ranges)
-	a.ranges = []rangeAllowlist{}
-	a.ips = []ipAllowlist{}
+	// Build new trie and metadata map outside the lock to minimize contention
+	newTrie := new(bart.Lite)
+	newMeta := make(map[string]*metadata)
+
+	var ipCount, cidrCount int
 
 	for _, allowlist := range *allowlists {
 		for _, item := range allowlist.Items {
+			var prefix netip.Prefix
+			var err error
+
 			if strings.Contains(item.Value, "/") {
-				_, ipNet, err := net.ParseCIDR(item.Value)
+				// It's a CIDR range
+				prefix, err = netip.ParsePrefix(item.Value)
 				if err != nil {
 					continue
 				}
-
-				a.ranges = append(a.ranges, rangeAllowlist{
-					Range:         *ipNet,
-					Description:   item.Description,
-					AllowlistName: allowlist.Name,
-				})
+				cidrCount++
 			} else {
-				ip := net.ParseIP(item.Value)
-				if ip == nil {
-					return nil
+				// It's a single IP - convert to /32 (IPv4) or /128 (IPv6)
+				addr, err := netip.ParseAddr(item.Value)
+				if err != nil {
+					continue
 				}
+				if addr.Is4() {
+					prefix = netip.PrefixFrom(addr, 32)
+				} else {
+					prefix = netip.PrefixFrom(addr, 128)
+				}
+				ipCount++
+			}
 
-				a.ips = append(a.ips, ipAllowlist{
-					IP:            ip,
-					Description:   item.Description,
-					AllowlistName: allowlist.Name,
-				})
+			// Insert into new BART lite trie
+			newTrie.Insert(prefix)
+
+			// Store metadata keyed by prefix string
+			prefixStr := prefix.String()
+			newMeta[prefixStr] = &metadata{
+				Description:   item.Description,
+				AllowlistName: allowlist.Name,
 			}
 		}
 	}
 
-	if (len(a.ips) != 0 || len(a.ranges) != 0) && (prevIPsLen != len(a.ips) || prevRangesLen != len(a.ranges)) {
-		a.logger.Infof("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
+	// Atomically swap the new trie and metadata map under lock
+	// Only replace if the data has actually changed to avoid unnecessary pointer swaps
+	a.lock.Lock()
+	prevSize := a.trie.Size()
+	newSize := newTrie.Size()
+
+	// Quick check: if sizes differ, data definitely changed
+	dataChanged := prevSize != newSize
+
+	// If sizes match, compare trie structure (expensive but avoids unnecessary replacement)
+	if !dataChanged {
+		dataChanged = !a.trie.Equal(newTrie)
 	}
-	a.logger.Debugf("fetched %d IPs and %d ranges", len(a.ips), len(a.ranges))
-	a.logger.Tracef("allowlisted ips: %+v", a.ips)
-	a.logger.Tracef("allowlisted ranges: %+v", a.ranges)
+
+	if !dataChanged {
+		// Data unchanged (same trie structure), metadata map should also be identical
+		// since it's built from the same source. No need to swap.
+		a.lock.Unlock()
+		a.logger.Debugf("allowlist unchanged: %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
+		return nil
+	}
+
+	// Data changed, atomically swap to new trie and metadata
+	a.trie = newTrie
+	a.meta = newMeta
+	a.lock.Unlock()
+
+	if newSize != prevSize && newSize > 0 {
+		a.logger.Infof("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
+	}
+	a.logger.Debugf("fetched %d IPs and %d ranges (total: %d entries)", ipCount, cidrCount, newSize)
 
 	return nil
 }
@@ -133,33 +162,46 @@ func (a *AppsecAllowlist) IsAllowlisted(sourceIP string) (bool, string) {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 
-	ip := net.ParseIP(sourceIP)
-	if ip == nil {
+	ip, err := netip.ParseAddr(sourceIP)
+	if err != nil {
 		a.logger.Warnf("failed to parse IP %s", sourceIP)
 		return false, ""
 	}
 
-	for _, allowedIP := range a.ips {
-		if allowedIP.IP.Equal(ip) {
-			a.logger.Debugf("IP %s is allowlisted by %s from %s", sourceIP, allowedIP.Description, allowedIP.AllowlistName)
-			reason := allowedIP.IP.String() + " from " + allowedIP.AllowlistName
-			if allowedIP.Description != "" {
-				reason += " (" + allowedIP.Description + ")"
-			}
-			return true, reason
-		}
+	// Check if IP is in the trie
+	if !a.trie.Contains(ip) {
+		return false, ""
 	}
 
-	for _, allowedRange := range a.ranges {
-		if allowedRange.Range.Contains(ip) {
-			a.logger.Debugf("IP %s is within allowlisted range by %s from %s", sourceIP, allowedRange.Description, allowedRange.AllowlistName)
-			reason := allowedRange.Range.String() + " from " + allowedRange.AllowlistName
-			if allowedRange.Description != "" {
-				reason += " (" + allowedRange.Description + ")"
-			}
-			return true, reason
-		}
+	// IP is allowlisted, find the matching prefix to get metadata
+	// Use LPM (Longest Prefix Match) to find the most specific matching prefix
+	// Create a /32 (IPv4) or /128 (IPv6) prefix from the IP for LPM lookup
+	var queryPrefix netip.Prefix
+	if ip.Is4() {
+		queryPrefix = netip.PrefixFrom(ip, 32)
+	} else {
+		queryPrefix = netip.PrefixFrom(ip, 128)
+	}
+	prefix, ok := a.trie.LookupPrefixLPM(queryPrefix)
+	if !ok {
+		// Should not happen if Contains returned true, but handle gracefully
+		a.logger.Debugf("IP %s is allowlisted but no prefix found", sourceIP)
+		return true, sourceIP
 	}
 
-	return false, ""
+	// Get metadata for the matching prefix
+	prefixStr := prefix.String()
+	meta, exists := a.meta[prefixStr]
+	if !exists {
+		// Metadata not found, return basic reason
+		a.logger.Debugf("IP %s is allowlisted by %s", sourceIP, prefixStr)
+		return true, prefixStr
+	}
+
+	a.logger.Debugf("IP %s is allowlisted by %s from %s", sourceIP, meta.Description, meta.AllowlistName)
+	reason := prefixStr + " from " + meta.AllowlistName
+	if meta.Description != "" {
+		reason += " (" + meta.Description + ")"
+	}
+	return true, reason
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/gaissmai/bart"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -16,10 +17,9 @@ import (
 type Whitelist struct {
 	Reason  string   `yaml:"reason,omitempty"`
 	Ips     []string `yaml:"ip,omitempty"`
-	B_Ips   []netip.Addr
 	Cidrs   []string `yaml:"cidr,omitempty"`
-	B_Cidrs []netip.Prefix
-	Exprs   []string `yaml:"expression,omitempty"`
+	B_Trie  *bart.Lite // BART lite table for IP/CIDR lookups
+	Exprs   []string   `yaml:"expression,omitempty"`
 	B_Exprs []*ExprWhitelist
 }
 
@@ -36,7 +36,7 @@ func (n *Node) ContainsExprLists() bool {
 }
 
 func (n *Node) ContainsIPLists() bool {
-	return len(n.Whitelist.B_Ips) > 0 || len(n.Whitelist.B_Cidrs) > 0
+	return n.Whitelist.B_Trie != nil && n.Whitelist.B_Trie.Size() > 0
 }
 
 func (n *Node) CheckIPsWL(p *pipeline.Event) bool {
@@ -50,21 +50,12 @@ func (n *Node) CheckIPsWL(p *pipeline.Event) bool {
 		if isWhitelisted {
 			break
 		}
-		for _, v := range n.Whitelist.B_Ips {
-			if v == src {
-				n.Logger.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-				break
-			}
-			n.Logger.Tracef("whitelist: %s is not eq [%s]", src, v)
-		}
-		for _, v := range n.Whitelist.B_Cidrs {
-			if v.Contains(src) {
-				n.Logger.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-				break
-			}
-			n.Logger.Tracef("whitelist: %s not in [%s]", src, v)
+		// Use BART lite trie for fast lookup
+		if n.Whitelist.B_Trie.Contains(src) {
+			n.Logger.Debugf("Event from [%s] is whitelisted, reason [%s]", src, n.Whitelist.Reason)
+			isWhitelisted = true
+		} else {
+			n.Logger.Tracef("whitelist: %s not in allowlist", src)
 		}
 	}
 	if isWhitelisted {
@@ -110,25 +101,41 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]any, p *pipeline.Event) (boo
 }
 
 func (n *Node) CompileWLs() (bool, error) {
+	// Initialize BART lite trie if we have IPs or CIDRs
+	if len(n.Whitelist.Ips) > 0 || len(n.Whitelist.Cidrs) > 0 {
+		n.Whitelist.B_Trie = new(bart.Lite)
+	}
+
+	// Convert IPs to /32 (IPv4) or /128 (IPv6) CIDR format and insert into trie
 	for _, v := range n.Whitelist.Ips {
 		addr, err := netip.ParseAddr(v)
 		if err != nil {
 			return false, fmt.Errorf("parsing whitelist: %w", err)
 		}
 
-		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, addr)
-		n.Logger.Debugf("adding ip %s to whitelists", addr)
+		// Convert IP to /32 (IPv4) or /128 (IPv6) CIDR prefix
+		var prefix netip.Prefix
+		if addr.Is4() {
+			prefix = netip.PrefixFrom(addr, 32)
+		} else {
+			prefix = netip.PrefixFrom(addr, 128)
+		}
+
+		n.Whitelist.B_Trie.Insert(prefix)
+		n.Logger.Debugf("adding ip %s (as %s) to whitelists", addr, prefix)
 	}
 
+	// Insert CIDR ranges into trie
 	for _, v := range n.Whitelist.Cidrs {
-		tnet, err := netip.ParsePrefix(v)
+		prefix, err := netip.ParsePrefix(v)
 		if err != nil {
 			return false, fmt.Errorf("parsing whitelist: %w", err)
 		}
-		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
-		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
+		n.Whitelist.B_Trie.Insert(prefix)
+		n.Logger.Debugf("adding cidr %s to whitelists", prefix)
 	}
 
+	// Compile expression whitelists
 	for _, filter := range n.Whitelist.Exprs {
 		var err error
 		expression := &ExprWhitelist{}
