@@ -189,18 +189,40 @@ func (c *Client) flushBouncers(ctx context.Context, authType string, duration *t
 		return
 	}
 
-	count, err := c.Ent.Bouncer.Delete().Where(
-		bouncer.LastPullLTE(time.Now().UTC().Add(-*duration)),
-	).Where(
+	cutoffTime := time.Now().UTC().Add(-*duration)
+	totalDeleted := 0
+
+	// First query: Delete auto-created bouncers where last_pull is not null and older than duration
+	countWithLastPull, err := c.Ent.Bouncer.Delete().Where(
+		bouncer.AutoCreatedEQ(true),
 		bouncer.AuthTypeEQ(authType),
+		bouncer.LastPullNotNil(),
+		bouncer.LastPullLTE(cutoffTime),
 	).Exec(ctx)
 	if err != nil {
-		c.Log.Errorf("while auto-deleting expired bouncers (%s): %s", authType, err)
+		c.Log.Errorf("while auto-deleting expired bouncers with last_pull (%s): %s", authType, err)
 		return
 	}
 
-	if count > 0 {
-		c.Log.Infof("deleted %d expired bouncers (%s)", count, authType)
+	totalDeleted += countWithLastPull
+
+	// Second query: Delete auto-created bouncers where last_pull is null and created_at is older than duration
+	countWithoutLastPull, err := c.Ent.Bouncer.Delete().Where(
+		bouncer.AutoCreatedEQ(true),
+		bouncer.AuthTypeEQ(authType),
+		bouncer.LastPullIsNil(),
+		bouncer.CreatedAtLTE(cutoffTime),
+	).Exec(ctx)
+	if err != nil {
+		c.Log.Errorf("while auto-deleting expired bouncers without last_pull (%s): %s", authType, err)
+		return
+	}
+
+	totalDeleted += countWithoutLastPull
+
+	if totalDeleted > 0 {
+		c.Log.Infof("deleted %d expired auto-created bouncers (%s): %d with last_pull, %d without last_pull",
+			totalDeleted, authType, countWithLastPull, countWithoutLastPull)
 	}
 }
 
