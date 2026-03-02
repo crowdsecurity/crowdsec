@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -38,14 +39,20 @@ import (
 func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
-	require.NoError(t, err)
+	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
+
 	dbClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
+		DbPath: dbPath,
 	}, nil)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := dbClient.Ent.Close(); err != nil {
+			t.Logf("cleanup: closing db: %v", err)
+		}
+	})
 
 	return dbClient
 }
