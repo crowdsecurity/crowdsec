@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -24,6 +25,7 @@ import (
 
 	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -52,11 +54,18 @@ var (
 type ChallengeRuntime struct {
 	r wazero.Runtime
 
-	obfuscatedJSCache []string
+	obfuscatedJSCache []obfuscatedScript
 	cacheMutex        sync.RWMutex
 
 	challengeTicket    string
 	challengeTimestamp string
+}
+
+type obfuscatedScript struct {
+	Code       string             // the obfuscated JS code
+	uuid       uuid.UUID          // unique ID to track the script, so that we can find the private key to decrypt the data
+	publicKey  ed25519.PublicKey  // public key to encrypt the fingerprint data
+	privateKey ed25519.PrivateKey // private key to decrypt the fingerprint data, stored in memory only and never sent to the client
 }
 
 func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
@@ -91,7 +100,7 @@ func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
 
 	challengeRuntime := &ChallengeRuntime{
 		r:                 r,
-		obfuscatedJSCache: make([]string, 0, challengeJSCacheSize),
+		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
 	}
 
 	challengeRuntime.challengeTimestamp = strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -149,20 +158,29 @@ func (c *ChallengeRuntime) generateAndCacheChallengeJS(ctx context.Context) erro
 	return nil
 }
 
-func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count int) ([]string, error) {
+func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count int) ([]obfuscatedScript, error) {
 	if count <= 0 {
-		return []string{}, nil
+		return []obfuscatedScript{}, nil
 	}
 
 	bundle := c.buildChallengeBundle()
-	variants := make([]string, 0, count)
+	variants := make([]obfuscatedScript, 0, count)
 
 	for range count {
+		o := obfuscatedScript{}
+		o.uuid = uuid.New()
 		obfuscatedJS, err := c.ObfuscateJS(ctx, bundle)
 		if err != nil {
 			return nil, err
 		}
-		variants = append(variants, obfuscatedJS)
+		o.Code = obfuscatedJS
+		//publicKey, privateKey, err := x25519.GenerateKey()
+		if err != nil {
+			return nil, err
+		}
+		//o.publicKey = publicKey
+		//o.privateKey = privateKey
+		variants = append(variants, o)
 	}
 
 	return variants, nil
@@ -186,7 +204,7 @@ func (c *ChallengeRuntime) fillCacheToCapacity(ctx context.Context) error {
 	return nil
 }
 
-func (c *ChallengeRuntime) appendCachedChallengeJS(variants []string) {
+func (c *ChallengeRuntime) appendCachedChallengeJS(variants []obfuscatedScript) {
 	if len(variants) == 0 {
 		return
 	}
@@ -199,23 +217,23 @@ func (c *ChallengeRuntime) appendCachedChallengeJS(variants []string) {
 	c.cacheMutex.Unlock()
 }
 
-func (c *ChallengeRuntime) replaceCachedChallengeJS(variants []string) {
+func (c *ChallengeRuntime) replaceCachedChallengeJS(variants []obfuscatedScript) {
 	if len(variants) == 0 {
 		return
 	}
 
 	c.cacheMutex.Lock()
-	c.obfuscatedJSCache = append([]string(nil), variants...)
+	c.obfuscatedJSCache = append([]obfuscatedScript(nil), variants...)
 	c.cacheMutex.Unlock()
 }
 
-func (c *ChallengeRuntime) getCachedChallengeJS() string {
+func (c *ChallengeRuntime) getCachedChallengeJS() obfuscatedScript {
 	c.cacheMutex.RLock()
 	defer c.cacheMutex.RUnlock()
 
 	cacheSize := len(c.obfuscatedJSCache)
 	if cacheSize == 0 {
-		return ""
+		return obfuscatedScript{}
 	}
 
 	idx := rand.IntN(cacheSize)
@@ -232,13 +250,15 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 		WithStdout(&stdout).
 		WithStderr(&stderr)
 
-	_, err := c.r.InstantiateWithConfig(ctx, obfuscatorWasm, config)
+	mod, err := c.r.InstantiateWithConfig(ctx, obfuscatorWasm, config)
 	if err != nil {
 		if stderr.Len() > 0 {
 			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
 		}
 		return "", fmt.Errorf("wasm instantiation error: %v", err)
 	}
+
+	mod.Close(ctx)
 
 	return stdout.String(), nil
 }
@@ -266,12 +286,12 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string) (string, error) {
 	}
 
 	obfuscatedJS := c.getCachedChallengeJS()
-	if obfuscatedJS == "" {
+	if obfuscatedJS.Code == "" {
 		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
 			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
 		}
 		obfuscatedJS = c.getCachedChallengeJS()
-		if obfuscatedJS == "" {
+		if obfuscatedJS.Code == "" {
 			return "", fmt.Errorf("challenge JS cache is empty")
 		}
 	}
@@ -279,7 +299,7 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string) (string, error) {
 	var renderedPage strings.Builder
 
 	templateObj.Execute(&renderedPage, map[string]string{
-		"JSChallenge": obfuscatedJS,
+		"JSChallenge": obfuscatedJS.Code,
 	})
 	return renderedPage.String(), nil
 }

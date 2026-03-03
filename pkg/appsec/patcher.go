@@ -8,7 +8,7 @@ type appsecExprPatcher struct {
 }
 
 func (p *appsecExprPatcher) Visit(node *ast.Node) {
-	if n, ok := (*node).(*ast.CallNode); ok && n.Callee.String() == "RequireValidChallenge" {
+	if n, ok := (*node).(*ast.CallNode); ok && n.Callee.String() == "SendChallenge" {
 		p.NeedWASMVM = true
 	}
 }

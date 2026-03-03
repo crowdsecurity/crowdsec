@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -47,8 +48,11 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"AppsecCookie": func(name string) *cookie.AppsecCookie {
 			return cookie.NewAppsecCookie(name)
 		},
-		"RequireValidChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
-			return w.RequireValidChallenge(state, request)
+		"SendChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
+			return w.SendChallenge(state, request)
+		},
+		"ValidateChallenge": func(conditions ...bool) (challenge.ChallengeMatcher, error) {
+			return w.ValidateChallenge(state, request, conditions...)
 		},
 	}
 }
@@ -59,6 +63,12 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
+		"SendChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
+			return w.SendChallenge(state, request)
+		},
+		"ValidateChallenge": func(name string, conditions ...bool) (challenge.ChallengeMatcher, error) {
+			return w.ValidateChallenge(state, request, conditions...)
+		},
 	}
 }
 

@@ -911,12 +911,25 @@ func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, co
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, request *ParsedRequest) error {
-	w.Logger.Debugf("requiring valid challenge")
+func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	w.Logger.Debugf("sending challenge")
 
 	if w.ChallengeRuntime == nil {
 		return fmt.Errorf("challenge runtime not initialized")
 	}
+
+	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	isValidCookie := err == nil && w.ChallengeRuntime.ValidCookie(cookie)
+	if err != nil || !isValidCookie {
+		w.Logger.Debugf("no valid challenge cookie found")
+		challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
+		if err != nil {
+			return fmt.Errorf("unable to get challenge page: %w", err)
+		}
+		return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+	}
+
+	return nil
 
 	// Check if the request has a challenge response
 	// If there's a challenge response, validate it
@@ -938,23 +951,31 @@ func (w *AppsecRuntimeConfig) RequireValidChallenge(state *AppsecRequestState, r
 		return w.setChallengeResponse(state, http.StatusOK, body, map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, cookie)
 	}
 
-	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	isValidCookie := err == nil && w.ChallengeRuntime.ValidCookie(cookie)
-	if err != nil || !isValidCookie {
-		w.Logger.Debugf("no valid challenge cookie found")
-		challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
-		if err != nil {
-			return fmt.Errorf("unable to get challenge page: %w", err)
-		}
-		return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
-	}
-
 	if isValidCookie {
 		w.Logger.Debugf("valid challenge cookie found, allowing request")
 		return nil
 	}
 
 	return nil
+}
+
+func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (challenge.ChallengeMatcher, error) {
+
+	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	isValidCookie := err == nil && w.ChallengeRuntime != nil && w.ChallengeRuntime.ValidCookie(cookie)
+
+	if isValidCookie {
+		w.Logger.Debugf("valid challenge cookie found, allowing request")
+		return challenge.NewChallengeMatcher([]bool{true}), nil
+	}
+
+	if request.HTTPRequest.URL.Path != challenge.ChallengeSubmitPath || request.HTTPRequest.Method != http.MethodPost {
+		// If not a challenge submission, consider it valid
+		//
+		return challenge.NewChallengeMatcher([]bool{true}), nil
+	}
+
+	return challenge.NewChallengeMatcher([]bool{true}), nil
 }
 
 type BodyResponse struct {

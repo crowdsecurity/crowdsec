@@ -17,7 +17,7 @@ func TestAppsecConfigBuildDetectsRequireValidChallenge(t *testing.T) {
 		Logger: log.NewEntry(logger),
 		PreEval: []Hook{
 			{
-				Apply: []string{"RequireValidChallenge()"},
+				Apply: []string{"SendChallenge()"},
 			},
 		},
 	}
