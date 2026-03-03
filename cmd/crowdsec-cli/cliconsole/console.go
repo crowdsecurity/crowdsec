@@ -208,6 +208,16 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 				return err
 			}
 
+			if name == "" {
+				// Default to hostname if no name is provided
+				hostname, err := os.Hostname()
+				if err != nil {
+					log.Warnf("Could not get machine hostname: %s. Defaulting to machine id as instance name", err)
+				} else {
+					name = hostname
+				}
+			}
+
 			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
 		},
 	}
