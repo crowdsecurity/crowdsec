@@ -171,14 +171,14 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 	return opts, nil
 }
 
-func (cli *cliConsole) getHostname() string {
+func (cli *cliConsole) getDefaultInstanceName() string {
 	hostname, err := os.Hostname()
 	if err != nil {
 		log.Warnf("Could not get machine hostname: %s. Defaulting to machine id as instance name", err)
 		return ""
 	}
 
-	return hostname
+	return hostname + "-" + cli.cfg().API.Server.OnlineClient.Credentials.Login[:8]
 }
 
 func (cli *cliConsole) newEnrollCmd() *cobra.Command {
@@ -223,7 +223,7 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&name, "name", "n", cli.getHostname(), "Name to display in the console")
+	flags.StringVarP(&name, "name", "n", cli.getDefaultInstanceName(), "Name to display in the console")
 	flags.BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	flags.StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	flags.StringSliceVarP(&enableOpts, "enable", "e", enableOpts, "Enable console options")
