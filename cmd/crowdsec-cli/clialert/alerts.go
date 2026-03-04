@@ -280,6 +280,7 @@ func (cli *cliAlerts) newListCmd() *cobra.Command {
 		TypeEquals:     "",
 		IncludeCAPI:    new(bool),
 		OriginEquals:   "",
+		Kind:           "",
 	}
 
 	limit := new(int)
@@ -316,6 +317,7 @@ cscli alerts list --type ban`,
 	flags.StringVar(&alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	flags.StringVarP(&alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	flags.StringVar(&alertListFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVar(&alertListFilter.Kind, "kind", "", fmt.Sprintf("the value to match for the specified kind (%s ...)", strings.Join(types.GetAlertKinds(), ",")))
 	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	flags.IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")

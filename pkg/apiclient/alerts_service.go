@@ -29,6 +29,7 @@ type AlertsListOpts struct {
 	IncludeCAPI          *bool                   `url:"include_capi,omitempty"`
 	Limit                *int                    `url:"limit,omitempty"`
 	Contains             *bool                   `url:"contains,omitempty"`
+	Kind                 string                  `url:"kind,omitempty"`
 	ListOpts
 }
 

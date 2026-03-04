@@ -14,3 +14,14 @@ const (
 func (k AlertKind) String() string {
 	return string(k)
 }
+
+func GetAlertKinds() []string {
+	return []string{
+		CrowdsecAlertKind.String(),
+		WAFAlertKind.String(),
+		//BotChallengeAlertKind.String(),
+		CAPIAlertKind.String(),
+		PAPIAlertKind.String(),
+		CscliAlertKind.String(),
+	}
+}
