@@ -43,6 +43,9 @@ type Alert struct {
 	// Read Only: true
 	ID int64 `json:"id,omitempty"`
 
+	// Origin of the alert (crowdsec,waf,bot-detection,...)
+	Kind string `json:"kind,omitempty"`
+
 	// labels
 	Labels []string `json:"labels"`
 
