@@ -67,7 +67,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 	switch cfg.Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
-		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
+		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "kind"}
 
 		if printMachine {
 			header = append(header, "machine")
@@ -87,6 +87,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 				alertItem.Source.GetAsNumberName(),
 				decisionsFromAlert(alertItem),
 				alertItem.CreatedAt,
+				alertItem.Kind,
 			}
 			if printMachine {
 				row = append(row, alertItem.MachineID)
