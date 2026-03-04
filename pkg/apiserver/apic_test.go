@@ -637,6 +637,10 @@ func TestAPICWhitelists(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 
+	assert.Equal(t, types.CAPIAlertKind.String(), alerts[0].Kind) // All alerts are from CAPI
+	assert.Equal(t, types.CAPIAlertKind.String(), alerts[1].Kind)
+	assert.Equal(t, types.CAPIAlertKind.String(), alerts[2].Kind)
+
 	assert.Len(t, alertScenario, 3)
 	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
