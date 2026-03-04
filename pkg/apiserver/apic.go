@@ -474,7 +474,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 	return nbDeleted, nil
 }
 
-func createAlertForDecision(decision *models.Decision) *models.Alert {
+func createAlertForDecision(decision *models.Decision, kind types.AlertKind) *models.Alert {
 	var (
 		scenario string
 		scope    string
@@ -500,6 +500,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 			Value: ptr.Of(""),
 		},
 		Scenario:        ptr.Of(scenario),
+		Kind:            kind.String(),
 		Message:         ptr.Of(""),
 		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
@@ -648,7 +649,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		// apply APIC specific whitelists
 		decisions = a.ApplyApicWhitelists(ctx, decisions)
 
-		alert := createAlertForDecision(decisions[0])
+		alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 		alertsFromCapi := []*models.Alert{alert}
 		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
@@ -992,7 +993,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 	// apply APIC specific whitelists
 	decisions = a.ApplyApicWhitelists(ctx, decisions)
-	alert := createAlertForDecision(decisions[0])
+	alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 

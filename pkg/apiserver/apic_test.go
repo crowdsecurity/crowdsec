@@ -407,12 +407,12 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 		{
 			name: "1 CAPI alert should pair up with n CAPI decisions",
 			args: args{
-				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionCommunity)},
+				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionCommunity, types.CAPIAlertKind)},
 				decisions: []*models.Decision{httpBfDecisionCommunity, sshBfDecisionCommunity, sshBfDecisionCommunity, httpBfDecisionCommunity},
 			},
 			want: []*models.Alert{
 				func() *models.Alert {
-					a := createAlertForDecision(httpBfDecisionCommunity)
+					a := createAlertForDecision(httpBfDecisionCommunity, types.CAPIAlertKind)
 					a.Decisions = []*models.Decision{httpBfDecisionCommunity, sshBfDecisionCommunity, sshBfDecisionCommunity, httpBfDecisionCommunity}
 					return a
 				}(),
@@ -421,17 +421,17 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 		{
 			name: "List alert should pair up only with decisions having same scenario",
 			args: args{
-				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionList), createAlertForDecision(sshBfDecisionList)},
+				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionList, types.CAPIAlertKind), createAlertForDecision(sshBfDecisionList, types.CAPIAlertKind)},
 				decisions: []*models.Decision{httpBfDecisionList, httpBfDecisionList, sshBfDecisionList, sshBfDecisionList},
 			},
 			want: []*models.Alert{
 				func() *models.Alert {
-					a := createAlertForDecision(httpBfDecisionList)
+					a := createAlertForDecision(httpBfDecisionList, types.CAPIAlertKind)
 					a.Decisions = []*models.Decision{httpBfDecisionList, httpBfDecisionList}
 					return a
 				}(),
 				func() *models.Alert {
-					a := createAlertForDecision(sshBfDecisionList)
+					a := createAlertForDecision(sshBfDecisionList, types.CAPIAlertKind)
 					a.Decisions = []*models.Decision{sshBfDecisionList, sshBfDecisionList}
 					return a
 				}(),
