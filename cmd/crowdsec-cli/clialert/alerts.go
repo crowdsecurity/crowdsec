@@ -130,6 +130,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
  - Machine      : {{.MachineID}}
  - Simulation   : {{.Simulated}}
  - Remediation  : {{.Remediation}}
+ - Kind         : {{.Kind}}
  - Reason       : {{.Scenario}}
  - Events Count : {{.EventsCount}}
  - Scope:Value  : {{.Source.Scope}}{{if .Source.Value}}:{{.Source.Value}}{{end}}
