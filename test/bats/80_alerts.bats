@@ -67,16 +67,16 @@ teardown() {
     assert_output --regexp ".*Ip:10.20.30.40.*manual 'ban' from.*ban:1.*"
 
     rune -0 cscli alerts list -o json
-    rune -0 jq -c '.[].decisions[0] | [.origin, .scenario, .scope, .simulated, .type, .value]' <(output)
-    assert_line --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
+    rune -0 jq -c '.[].decisions[0] | [.origin, .scenario, .scope, .simulated, .type, .value, .kind]' <(output)
+    assert_line --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?'\",\"Ip\",false,\"ban\",\"10.20.30.40\",\"cscli\"\]"
 
     rune -0 cscli alerts list -o raw
-    assert_line "id,scope,value,reason,country,as,decisions,created_at"
-    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*"
+    assert_line "id,scope,value,reason,country,as,decisions,created_at,kind"
+    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*,cscli"
 
     rune -0 cscli alerts list -o raw --machine
-    assert_line "id,scope,value,reason,country,as,decisions,created_at,machine"
-    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
+    assert_line "id,scope,value,reason,country,as,decisions,created_at,kind,machine"
+    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*,cscli,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
 }
 
 @test "cscli alerts list --scenario" {
