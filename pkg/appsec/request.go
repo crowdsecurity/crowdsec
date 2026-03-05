@@ -322,6 +322,11 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		}
 
 		if int64(len(body)) > maxSize {
+			// Drain the remaining body so the client doesn't time out waiting for the server
+			// to finish reading. The LimitReader stopped at maxSize+1, so r.Body may still
+			// have unread bytes.
+			_, _ = io.Copy(io.Discard, r.Body)
+
 			switch action {
 			case BodySizeActionDrop:
 				logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
