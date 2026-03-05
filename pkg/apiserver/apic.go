@@ -117,11 +117,11 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	return scenarios, nil
 }
 
-func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
-	apiDecisions := models.AddSignalsRequestItemDecisions{}
+func decisionsToAPIDecisions(decisions []*models.Decision) modelscapi.AddSignalsRequestItemDecisions {
+	apiDecisions := modelscapi.AddSignalsRequestItemDecisions{}
 
 	for _, decision := range decisions {
-		x := &models.AddSignalsRequestItemDecisionsItem{
+		x := &modelscapi.AddSignalsRequestItemDecisionsItem{
 			Duration: ptr.Of(*decision.Duration),
 			ID:       new(int64),
 			Origin:   ptr.Of(*decision.Origin),
@@ -146,13 +146,13 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	return apiDecisions
 }
 
-func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *models.AddSignalsRequestItem {
-	signal := &models.AddSignalsRequestItem{
+func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *modelscapi.AddSignalsRequestItem {
+	signal := &modelscapi.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
 		ScenarioVersion: alert.ScenarioVersion,
-		Source: &models.AddSignalsRequestItemSource{
+		Source: &modelscapi.AddSignalsRequestItemSource{
 			AsName:    alert.Source.AsName,
 			AsNumber:  alert.Source.AsNumber,
 			Cn:        alert.Source.Cn,
@@ -170,12 +170,13 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 		ScenarioTrust: scenarioTrust,
 		Decisions:     decisionsToAPIDecisions(alert.Decisions),
 		UUID:          alert.UUID,
+		Kind:          alert.Kind,
 	}
 	if shareContext {
-		signal.Context = make([]*models.AddSignalsRequestItemContextItems0, 0)
+		signal.Context = make([]*modelscapi.AddSignalsRequestItemContextItems0, 0)
 
 		for _, meta := range alert.Meta {
-			contextItem := models.AddSignalsRequestItemContextItems0{
+			contextItem := modelscapi.AddSignalsRequestItemContextItems0{
 				Key:   meta.Key,
 				Value: meta.Value,
 			}
@@ -291,7 +292,7 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	var cache models.AddSignalsRequest
+	var cache modelscapi.AddSignalsRequest
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
 
@@ -317,14 +318,14 @@ func (a *apic) Push(ctx context.Context) error {
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
-				cache = make(models.AddSignalsRequest, 0)
+				cache = make(modelscapi.AddSignalsRequest, 0)
 				a.mu.Unlock()
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 
 				go a.Send(ctx, &cacheCopy)
 			}
 		case alerts := <-a.AlertsAddChan:
-			var signals []*models.AddSignalsRequestItem
+			var signals []*modelscapi.AddSignalsRequestItem
 
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig, a.shareSignals); ok {
@@ -390,16 +391,16 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
-func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsRequestItem) error {
+func (a *apic) sendBatch(ctx context.Context, signals []*modelscapi.AddSignalsRequestItem) error {
 	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*modelscapi.AddSignalsRequest)(&signals))
 
 	return err
 }
 
-func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
+func (a *apic) Send(ctx context.Context, cacheOrig *modelscapi.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
 	This chan is filled by Controller.CreateAlert
@@ -411,7 +412,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var cache []*models.AddSignalsRequestItem = *cacheOrig
+	var cache []*modelscapi.AddSignalsRequestItem = *cacheOrig
 
 	batchSize := 50
 
