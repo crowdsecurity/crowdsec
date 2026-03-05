@@ -161,6 +161,14 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		return nil
 	}
 
+	if request.BodySizeExceeded {
+		r.logger.Warnf("request body exceeded maximum allowed size, dropping request")
+		if err = r.AppsecRuntime.DropRequest(state, request, "request body exceeded maximum allowed size"); err != nil {
+			r.logger.Errorf("unable to drop request: %s", err)
+		}
+		return nil
+	}
+
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
 	for k, v := range request.Args {
@@ -191,6 +199,10 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	if in != nil {
 		r.logger.Infof("inband rules matched for headers : %s", in.Action)
 		return nil
+	}
+
+	if request.BodyTruncated {
+		r.logger.Warnf("request body was truncated to %d bytes (partial mode)", len(request.Body))
 	}
 
 	if len(request.Body) > 0 {
