@@ -287,9 +287,9 @@ func TestWatcherEnroll(t *testing.T) {
 
 	client := NewClient(mycfg)
 
-	_, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false)
+	_, _, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false, false)
 	require.NoError(t, err)
 
-	_, err = client.Auth.EnrollWatcher(ctx, "badkey", "", []string{}, false)
+	_, _, err = client.Auth.EnrollWatcher(ctx, "badkey", "", []string{}, false, false)
 	assert.Contains(t, err.Error(), "the attachment key provided is not valid", "got %s", err.Error())
 }
