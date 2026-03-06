@@ -218,7 +218,7 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 
 	// list of valid subcommands for the shell completion
 	validArgs := []string{
-		"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+		"alerts", "appsec-configs", "waf-configs", "appsec-rules", "waf-rules", "bouncers", "capi", "collections",
 		"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
 		"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
 		"postoverflows", "scenarios", "simulation", "support", "version",
