@@ -374,10 +374,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		r.Header.Del("User-Agent")
 	}
 
-	parsedURL, err := url.Parse(clientURI)
-	if err != nil {
-		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
-	}
+	parsedURL := exprhelpers.ParseURL(clientURI)
 
 	originalHTTPRequest.URL = parsedURL
 
