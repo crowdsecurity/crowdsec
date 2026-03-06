@@ -229,6 +229,16 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			t.ResetToken()
 		}
 
+		// If we got a 401 and we're using mTLS, try to reload the certificate from disk.
+		// The cert may have been renewed while the old one expired in memory.
+		if resp.StatusCode == http.StatusUnauthorized {
+			if err := ReloadCertIfNeeded(t.Transport); err != nil {
+				log.Warnf("failed to reload client certificate: %s", err)
+			} else if CertPath != "" {
+				log.Infof("client certificate reloaded from %s", CertPath)
+			}
+		}
+
 		log.Debugf("retrying request to %s", req.URL.String())
 
 		attemptsCount[resp.StatusCode]++

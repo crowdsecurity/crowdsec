@@ -216,6 +216,9 @@ func (l *LocalApiClientCfg) Load() error {
 		}
 
 		apiclient.Cert = &cert
+		// Store the paths so the certificate can be reloaded if it expires and is renewed on disk
+		apiclient.CertPath = l.Credentials.CertPath
+		apiclient.KeyPath = l.Credentials.KeyPath
 	}
 
 	return nil
