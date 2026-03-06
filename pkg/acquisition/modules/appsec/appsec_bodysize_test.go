@@ -78,7 +78,7 @@ func TestAppsecBodySize(t *testing.T) {
 			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
-				// Inband alert+event cancelled; outband LOG event still fires
+				// Inband alert+event canceled; outband LOG event still fires
 				require.Len(t, events, 1)
 				require.Equal(t, pipeline.LOG, events[0].Type)
 				require.True(t, events[0].Appsec.HasOutBandMatches)

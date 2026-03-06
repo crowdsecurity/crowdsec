@@ -223,8 +223,8 @@ type AppsecConfig struct {
 	PostEval          []Hook              `yaml:"post_eval"`
 	OnMatch           []Hook              `yaml:"on_match"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
-	InbandOptions    AppsecSubEngineOpts `yaml:"inband_options"`
-	OutOfBandOptions AppsecSubEngineOpts `yaml:"outofband_options"`
+	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
+	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
@@ -880,7 +880,7 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) e
 // SetMaxBodySize sets the maximum allowed body size in bytes. Intended for use in on_load hooks.
 func (w *AppsecRuntimeConfig) SetMaxBodySize(size int64) error {
 	if size <= 0 {
-		return fmt.Errorf("max_body_size must be a positive integer")
+		return errors.New("max_body_size must be a positive integer")
 	}
 
 	w.Logger.Debugf("setting max body size to %d bytes", size)
