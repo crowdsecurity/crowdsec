@@ -6,15 +6,17 @@ import (
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
-		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
-		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
-		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
-		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
-		"RemoveOutBandRuleByTag":  w.DisableOutBandRuleByTag,
-		"RemoveOutBandRuleByName": w.DisableOutBandRuleByName,
-		"SetRemediationByTag":     w.SetActionByTag,
-		"SetRemediationByID":      w.SetActionByID,
-		"SetRemediationByName":    w.SetActionByName,
+		"RemoveInBandRuleByID":       w.DisableInBandRuleByID,
+		"RemoveInBandRuleByTag":      w.DisableInBandRuleByTag,
+		"RemoveInBandRuleByName":     w.DisableInBandRuleByName,
+		"RemoveOutBandRuleByID":      w.DisableOutBandRuleByID,
+		"RemoveOutBandRuleByTag":     w.DisableOutBandRuleByTag,
+		"RemoveOutBandRuleByName":    w.DisableOutBandRuleByName,
+		"SetRemediationByTag":        w.SetActionByTag,
+		"SetRemediationByID":         w.SetActionByID,
+		"SetRemediationByName":       w.SetActionByName,
+		"SetMaxBodySize":             w.SetMaxBodySize,
+		"SetBodySizeExceededAction":  w.SetBodySizeExceededAction,
 	}
 }
 
