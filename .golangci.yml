@@ -78,6 +78,13 @@ linters:
     - wsl_v5     # add or remove empty lines
 
   settings:
+    custom:
+      nilaway:
+        type: "module"
+        description: Static analysis tool to detect potential nil panics in Go code.
+        settings:
+          include-pkgs: "github.com/crowdsecurity/crowdsec"
+
 
     decorder:
       # Required order of `type`, `const`, `var` and `func` declarations inside a file.
@@ -664,6 +671,19 @@ linters:
           - staticcheck
         path: pkg/parser/(.+).go
         text: 'QF1008: could remove embedded field "NodeConfig" from selector'
+
+      - linters:
+         - nilaway
+        path: pkg/exprhelpers/(.+).go
+
+      - linters:
+         - nilaway
+        path: pkg/cticlient/ctiexpr/(.+).go
+
+      # global hubPtr
+      - linters:
+         - nilaway
+        path: cmd/crowdsec-cli/clihubtest/run.go
 
     paths:
       - third_party$

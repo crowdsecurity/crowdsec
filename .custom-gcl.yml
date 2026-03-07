@@ -1,0 +1,7 @@
+version: v2.10.1
+plugins:
+  - module: "go.uber.org/nilaway"
+    import: "go.uber.org/nilaway/cmd/gclplugin"
+    # Nilaway does not have, at the moment, stable tags or releases.
+    # Some versions can even crash during analysis, so we pin one that doesn't.
+    version: v0.0.0-20260213150243-937701de96c7
