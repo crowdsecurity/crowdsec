@@ -42,9 +42,10 @@ import (
 )
 
 var (
-	dataFile      map[string][]string
-	dataFileRegex map[string][]*regexp.Regexp
-	dataFileRe2   map[string][]*re2.Regexp
+	dataFile            map[string][]string
+	dataFileRegex       map[string][]*regexp.Regexp
+	dataFileRe2         map[string][]*re2.Regexp
+	mlRobertaModelFiles map[string]struct{}
 )
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
@@ -121,6 +122,7 @@ func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
+	mlRobertaModelFiles = make(map[string]struct{})
 	dbClient = databaseClient
 
 	XMLCacheInit()
@@ -208,7 +210,19 @@ func FileInit(directory string, filename string, fileType string) error {
 		return err
 	}
 
-	file, err := os.Open(filepath.Join(directory, filename))
+	filepath := filepath.Join(directory, filename)
+
+	if fileType == "ml_roberta_model" {
+		err := InitRobertaInferencePipeline(filepath)
+		if err != nil {
+			log.Errorf("unable to init roberta model : %s", err)
+			return err
+		}
+		mlRobertaModelFiles[filename] = struct{}{}
+		return nil
+	}
+
+	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
@@ -302,6 +316,8 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 			_, ok = dataFileRegex[filename]
 		}
 	case "string":
+		_, ok = dataFile[filename]
+	case "ml_roberta_model":
 		_, ok = dataFile[filename]
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
