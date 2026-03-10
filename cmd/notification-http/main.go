@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -19,6 +21,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
+
+type FormatOutput struct {
+	URLQueryParams map[string]string `json:"url_query_params"`
+	RequestBody    json.RawMessage   `json:"request_body"`
+}
 
 type PluginConfig struct {
 	Name                string            `yaml:"name"`
@@ -132,7 +139,29 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 	text := notification.GetText()
 
-	request, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, bytes.NewReader([]byte(text)))
+	requestURL := cfg.URL
+	requestBody := text
+
+	var fmtOutput FormatOutput
+	if err := json.Unmarshal([]byte(text), &fmtOutput); err == nil && len(fmtOutput.URLQueryParams) > 0 {
+		u, err := url.Parse(cfg.URL)
+		if err == nil {
+			q := u.Query()
+			for k, v := range fmtOutput.URLQueryParams {
+				q.Set(k, v)
+			}
+			u.RawQuery = q.Encode()
+			requestURL = u.String()
+		}
+
+		if fmtOutput.RequestBody != nil {
+			requestBody = string(fmtOutput.RequestBody)
+		} else {
+			requestBody = ""
+		}
+	}
+
+	request, err := http.NewRequestWithContext(ctx, cfg.Method, requestURL, bytes.NewReader([]byte(requestBody)))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +171,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 		request.Header.Add(headerName, headerValue)
 	}
 
-	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, text))
+	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, requestURL, requestBody))
 
 	resp, err := cfg.Client.Do(request)
 	if err != nil {
