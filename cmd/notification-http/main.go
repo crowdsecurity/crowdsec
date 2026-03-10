@@ -95,6 +95,7 @@ func getTLSClient(c *PluginConfig) error {
 	}
 
 	transport := &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: tlsConfig,
 	}
 
