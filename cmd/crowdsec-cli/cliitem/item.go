@@ -30,6 +30,7 @@ type cliItem struct {
 	name          string // plural, as used in the hub index
 	singular      string
 	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
+	aliases       []string
 	help          cliHelp
 	installHelp   cliHelp
 	removeHelp    cliHelp
@@ -40,12 +41,20 @@ type cliItem struct {
 }
 
 func (cli *cliItem) NewCommand() *cobra.Command {
+	aliases := make([]string, 0, 1+len(cli.aliases))
+	if cli.singular != "" {
+		aliases = append(aliases, cli.singular)
+	}
+	if len(cli.aliases) > 0 {
+		aliases = append(aliases, cli.aliases...)
+	}
+
 	cmd := &cobra.Command{
 		Use:               cmp.Or(cli.help.use, cli.name+" <action> [item]..."),
 		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
 		Long:              cli.help.long,
 		Example:           cli.help.example,
-		Aliases:           []string{cli.singular},
+		Aliases:           aliases,
 		DisableAutoGenTag: true,
 		Args:              args.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
