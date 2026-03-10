@@ -340,6 +340,7 @@ func (cli *cliDecisions) add(ctx context.Context, addIP, addRange, addDuration, 
 		StopAt:      &stopAt,
 		CreatedAt:   createdAt,
 		Remediation: true,
+		Kind:        types.CscliAlertKind.String(),
 	}
 
 	alerts = append(alerts, &alert)

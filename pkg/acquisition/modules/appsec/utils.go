@@ -244,6 +244,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
+	alert.Kind = types.WAFAlertKind.String()
 
 	msg := ""
 

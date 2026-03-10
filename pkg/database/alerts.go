@@ -241,6 +241,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 		SetSimulated(*alertItem.Simulated).
 		SetScenarioVersion(*alertItem.ScenarioVersion).
 		SetScenarioHash(*alertItem.ScenarioHash).
+		SetKind(alertItem.Kind).
 		SetRemediation(true) // it's from CAPI, we always have decisions
 
 	alertRef, err := alertB.Save(ctx)
@@ -332,7 +333,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 				decision.OriginEQ(decOrigin),
 				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 				decision.ValueIn(vals...),
-				)).Exec(ctx)
+			)).Exec(ctx)
 		if err != nil {
 			return err
 		}
@@ -625,7 +626,7 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 }
 
 type alertCreatePlan struct {
-	builder *ent.AlertCreate
+	builder   *ent.AlertCreate
 	decisions []*ent.Decision
 }
 
@@ -686,6 +687,7 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 			SetScenarioHash(*alertItem.ScenarioHash).
 			SetRemediation(alertItem.Remediation).
 			SetUUID(alertItem.UUID).
+			SetKind(alertItem.Kind).
 			AddEvents(events...).
 			AddMetas(metas...)
 
@@ -694,7 +696,7 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 		}
 
 		batch = append(batch, alertCreatePlan{
-			builder: builder,
+			builder:   builder,
 			decisions: decisions,
 		})
 	}

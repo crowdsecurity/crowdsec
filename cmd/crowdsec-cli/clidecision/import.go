@@ -244,6 +244,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 			ScenarioHash:    ptr.Of(""),
 			ScenarioVersion: ptr.Of(""),
 			Decisions:       chunk,
+			Kind:            types.CscliAlertKind.String(),
 		}
 
 		_, _, err = cli.client.Alerts.Add(ctx, models.AddAlertsRequest{&importAlert})

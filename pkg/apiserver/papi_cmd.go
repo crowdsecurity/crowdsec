@@ -149,6 +149,7 @@ func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 		alert.Message = ptr.Of("")
 		alert.Scenario = ptr.Of("")
 		alert.Source = &models.Source{}
+		alert.Kind = types.PAPIAlertKind.String()
 
 		// if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
 		if len(alert.Decisions) >= 1 {

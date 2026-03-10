@@ -451,6 +451,9 @@ definitions:
         $ref: "#/definitions/AddSignalsRequestItemDecisions"
       stop_at:
         type: "string"
+      kind:
+        type: "string"
+        description: Origin of the alert (crowdsec,waf,bot-detection,...)
     title: "Signal"
   DecisionsSyncRequest:
     title: "sync decisions request"
