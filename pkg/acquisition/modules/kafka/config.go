@@ -49,7 +49,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalWithOptions(yamlConfig, &s.Config, yaml.Strict())
 	if err != nil {
-		return fmt.Errorf("cannot parse %s datasource configuration: %s", s.GetName(), yaml.FormatError(err, false, false))
+		return fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
 	}
 
 	if len(s.Config.Brokers) == 0 {
@@ -57,7 +57,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if s.Config.Topic == "" {
-		return fmt.Errorf("cannot create a %s reader with am empty topic", s.GetName())
+		return fmt.Errorf("cannot create a %s reader with an empty topic", s.GetName())
 	}
 
 	if s.Config.Mode == "" {

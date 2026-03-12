@@ -60,6 +60,10 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 		Long:              "To list/inspect/test notification template",
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
@@ -110,7 +114,7 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 	}
 
 	if err := filepath.Walk(cfg.ConfigPaths.NotificationDir, wf); err != nil {
-		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
+		return nil, fmt.Errorf("while loading notification plugin configuration: %w", err)
 	}
 
 	return pcfgs, nil

@@ -251,18 +251,25 @@ type LocalApiServerCfg struct {
 // inside LogDir. For "stdout" or "syslog", the access logger uses the same
 // output destination as the standard logger.
 func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Entry {
-	clog := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+	media := cfg.GetMedia()
+	logger := log.WithField("output", media)
 
-	if cfg.GetMedia() != "file" {
-		return clog
+	defer func() {
+		logger.Debug("starting access logger")
+	}()
+
+	accessLogger := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+
+	if media != "file" {
+		return accessLogger
 	}
 
-	logFile := filepath.Join(cfg.GetDir(), filename)
-	log.Debugf("starting router, logging to %s", logFile)
+	logPath := filepath.Join(cfg.GetDir(), filename)
+	logger = logger.WithField("file", logPath)
 
-	clog.Logger.SetOutput(cfg.NewRotatingLogger())
+	accessLogger.Logger.SetOutput(cfg.NewRotatingLogger(filename))
 
-	return clog
+	return accessLogger
 }
 
 func (c *LocalApiServerCfg) NewPAPILogger() *log.Entry {

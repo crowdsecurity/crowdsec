@@ -8,4 +8,6 @@ line: Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authenticatio
 		├ 🟢 crowdsecurity/ssh-bf
 		├ 🟢 crowdsecurity/ssh-bf_user-enum
 		├ 🟢 crowdsecurity/ssh-slow-bf
-		└ 🟢 crowdsecurity/ssh-slow-bf_user-enum
+		├ 🟢 crowdsecurity/ssh-slow-bf_user-enum
+		├ 🟢 crowdsecurity/ssh-time-based-bf
+		└ 🟢 crowdsecurity/ssh-time-based-bf_user-enum

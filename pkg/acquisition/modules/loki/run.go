@@ -66,7 +66,7 @@ func (l *Source) readOneEntry(entry lokiclient.Entry, labels map[string]string, 
 	ll.Module = l.GetName()
 
 	if l.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": "loki", "acquis_type": ll.Labels["type"]}).Inc()
+		metrics.LokiDataSourceLinesRead.With(prometheus.Labels{"source": l.Config.URL, "datasource_type": ModuleName, "acquis_type": ll.Labels["type"]}).Inc()
 	}
 
 	evt := pipeline.MakeEvent(l.Config.UseTimeMachine, pipeline.LOG, true)

@@ -2,9 +2,9 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -28,7 +28,7 @@ func (c *Client) AcquireLock(ctx context.Context, name string) error {
 	}
 
 	if err != nil {
-		return errors.Wrapf(InsertFail, "insert lock: %s", err)
+		return fmt.Errorf("insert lock: %w: %w", err, InsertFail)
 	}
 
 	return nil
@@ -38,7 +38,7 @@ func (c *Client) ReleaseLock(ctx context.Context, name string) error {
 	log.Debugf("releasing lock %s", name)
 	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func (c *Client) ReleaseLockWithTimeout(ctx context.Context, name string, timeou
 		lock.CreatedAtLT(time.Now().UTC().Add(-time.Duration(timeout)*time.Minute)),
 	).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func (c *Client) ReleasePullCAPILock(ctx context.Context) error {
 		lock.NameEQ(CapiPullLockName),
 	).Exec(ctx)
 	if err != nil {
-		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
+		return fmt.Errorf("delete lock: %w: %w", err, DeleteFail)
 	}
 
 	return nil

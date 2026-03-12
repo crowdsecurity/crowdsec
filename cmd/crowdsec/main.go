@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
@@ -11,12 +10,15 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules" // register all datasources
+	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -24,90 +26,68 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 var (
 	// tombs for the parser, buckets and outputs.
-	acquisTomb    tomb.Tomb
-	parsersTomb   tomb.Tomb
-	bucketsTomb   tomb.Tomb
-	outputsTomb   tomb.Tomb
-	apiTomb       tomb.Tomb
-	crowdsecTomb  tomb.Tomb
-	pluginTomb    tomb.Tomb
-	lpMetricsTomb tomb.Tomb
+	acquisTomb   tomb.Tomb
+	outputsTomb  tomb.Tomb
+	apiTomb      tomb.Tomb
+	crowdsecTomb tomb.Tomb
+	pluginTomb   tomb.Tomb
 
 	flags Flags
 
-	// the state of acquisition
-	dataSources []acquisition.DataSource
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
-	buckets *leakybucket.Buckets
 
-	inputLineChan   chan pipeline.Event
-	inputEventChan  chan pipeline.Event
-	outputEventChan chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
-	// settings
-	lastProcessedItem time.Time // keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.
-	pluginBroker      csplugin.PluginBroker
+	logLines     chan pipeline.Event
+	inEvents     chan pipeline.Event
+	outEvents    chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
+	pluginBroker csplugin.PluginBroker
 )
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var err error
 
-	buckets = leakybucket.NewBuckets()
-
 	scenarios := hub.GetInstalledByType(cwhub.SCENARIOS, false)
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, flags.OrderEvent)
 	if err != nil {
-		return fmt.Errorf("scenario loading failed: %w", err)
-	}
-
-	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
-		for holderIndex := range holders {
-			holders[holderIndex].Profiling = true
-		}
+		return err
 	}
 
 	return nil
 }
 
-func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config) ([]acquisition.DataSource, error) {
+func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisitionTypes.DataSource, error) {
+	var datasources []acquisitionTypes.DataSource
+
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		flags.Labels = additionalLabels
 		flags.Labels["type"] = flags.SingleFileType
 
-		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform)
+		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform, hub)
 		if err != nil {
 			return nil, err
 		}
-		dataSources = append(dataSources, ds)
+		datasources = append(datasources, ds)
 	} else {
-		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus)
+		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub)
 		if err != nil {
 			return nil, err
 		}
-		dataSources = dss
+		datasources = dss
 	}
 
-	if len(dataSources) == 0 {
+	if len(datasources) == 0 {
 		return nil, errors.New("no datasource enabled")
 	}
 
-	return dataSources, nil
+	return datasources, nil
 }
-
-var (
-	dumpFolder         string
-	dumpStates         bool
-	additionalLabels = make(labelsMap)
-)
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
@@ -125,13 +105,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.LogLevel = flags.LogLevel
 		}
-	}
-
-	if dumpFolder != "" {
-		parser.ParseDump = true
-		parser.DumpFolder = dumpFolder
-		leakybucket.BucketPourTrack = true
-		dumpStates = true
 	}
 
 	if flags.haveTimeMachine() {
@@ -206,7 +179,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 // or uptime of the application
 var crowdsecT0 time.Time
 
-func run() error {
+func run(flags Flags) error {
 	if flags.CPUProfile != "" {
 		f, err := os.Create(flags.CPUProfile)
 		if err != nil {
@@ -231,7 +204,9 @@ func run() error {
 		return err
 	}
 
-	return StartRunSvc(ctx, cConfig)
+	sd := NewStateDumper(flags.DumpDir)
+
+	return StartRunSvc(ctx, cConfig, sd)
 }
 
 func main() {
@@ -252,22 +227,22 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	// Handle command line arguments
-	flags.parse()
-
-	if len(flag.Args()) > 0 {
-		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
-		flag.Usage()
-		// the flag package exits with 2 in case of unknown flag
+	parsedFlags, err := parseFlags(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, color.RedString("Error:"), err)
+		// the flag package exits with 2 in case of unknown flag,
+		// we do the same for extra arguments
 		os.Exit(2)
 	}
 
+	flags = parsedFlags
+
 	if flags.PrintVersion {
 		os.Stdout.WriteString(cwversion.FullString())
-		os.Exit(0)
+		return
 	}
 
-	if err := run(); err != nil {
+	if err := run(flags); err != nil {
 		log.Fatal(err)
 	}
 }

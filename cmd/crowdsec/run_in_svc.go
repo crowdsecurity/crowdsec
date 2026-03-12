@@ -22,9 +22,11 @@ func isWindowsService() (bool, error) {
 	return false, nil
 }
 
-func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
-	defer trace.CatchPanic("crowdsec/StartRunSvc")
-
+func StartRunSvc(
+	ctx context.Context,
+	cConfig *csconfig.Config,
+	sd *StateDumper,
+) error {
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
@@ -55,7 +57,10 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 
 		registerPrometheus(cConfig.Prometheus)
 
-		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		go func() {
+			defer trace.ReportPanic()
+			servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		}()
 	} else {
 		// avoid leaking the channel
 		go func() {
@@ -63,5 +68,5 @@ func StartRunSvc(ctx context.Context, cConfig *csconfig.Config) error {
 		}()
 	}
 
-	return Serve(ctx, cConfig, agentReady)
+	return Serve(ctx, cConfig, agentReady, sd)
 }

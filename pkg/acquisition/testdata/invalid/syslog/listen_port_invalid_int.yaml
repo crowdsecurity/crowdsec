@@ -1,0 +1,5 @@
+# wantErr: datasource of type syslog: invalid port 424242
+source: syslog
+labels:
+  type: sometype
+listen_port: 424242

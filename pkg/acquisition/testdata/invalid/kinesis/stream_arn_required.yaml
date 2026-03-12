@@ -1,0 +1,5 @@
+# wantErr: datasource of type kinesis: stream_arn is mandatory when use_enhanced_fanout is true
+source: kinesis
+use_enhanced_fanout: true
+labels:
+  type: sometype

@@ -348,7 +348,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	return nil
 }
 
-func (wc *AppsecConfig) Load(configName string) error {
+func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
 	if item != nil && item.State.IsInstalled() {
@@ -365,11 +365,7 @@ func (wc *AppsecConfig) Load(configName string) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (*AppsecConfig) GetDataDir() string {
-	return hub.GetDataDir()
-}
-
-func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
+func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
 	if wc.BouncerBlockedHTTPCode == 0 {
@@ -413,7 +409,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
 
-		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"), hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
 		}
@@ -426,7 +422,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	for _, rule := range wc.InBandRules {
 		wc.Logger.Infof("loading inband rule %s", rule)
 
-		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"), hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}

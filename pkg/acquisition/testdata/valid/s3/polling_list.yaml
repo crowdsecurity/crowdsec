@@ -1,0 +1,5 @@
+source: s3
+labels:
+  type: sometype
+bucket_name: foobar
+polling_method: list

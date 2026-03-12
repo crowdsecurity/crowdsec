@@ -1,0 +1,4 @@
+source: docker
+check_interval: 10s
+container_name:
+ - toto

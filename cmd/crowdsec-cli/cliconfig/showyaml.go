@@ -2,6 +2,7 @@ package cliconfig
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -15,7 +16,7 @@ func (*cliConfig) newShowYAMLCmd(mergedConfigGetter mergedConfigGetter) *cobra.C
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			fmt.Println(mergedConfigGetter())
+			fmt.Fprintln(os.Stdout, mergedConfigGetter())
 			return nil
 		},
 	}

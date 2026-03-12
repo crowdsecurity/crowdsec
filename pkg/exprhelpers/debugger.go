@@ -116,7 +116,7 @@ func (o *OpOutput) String() string {
 
 func (ExprRuntimeDebug) extractCode(ip int, program *vm.Program) string {
 	locations := program.Locations()
-	src := string(program.Source())
+	src := program.Source().String()
 
 	currentInstruction := locations[ip]
 
@@ -456,7 +456,7 @@ func cleanTextForDebug(text string) string {
 }
 
 func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
-	logger.Debugf("dbg(result=%v): %s", ret, cleanTextForDebug(string(program.Source())))
+	logger.Debugf("dbg(result=%v): %s", ret, cleanTextForDebug(program.Source().String()))
 
 	for _, output := range outputs {
 		logger.Debugf("%s", output.String())

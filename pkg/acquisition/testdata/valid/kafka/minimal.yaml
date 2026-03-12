@@ -1,0 +1,6 @@
+source: kafka
+labels:
+  type: sometype
+brokers:
+  - localhost:9092
+topic: crowdsec

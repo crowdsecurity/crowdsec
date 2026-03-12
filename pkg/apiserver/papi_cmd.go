@@ -104,6 +104,30 @@ func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 		}
 
 		log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
+		decisionsToKeep := make([]*models.Decision, 0)
+		for _, decision := range alert.Decisions {
+			if decision.Value == nil {
+				continue
+			}
+			isAllowlisted, reason, err := p.DBClient.IsAllowlisted(ctx, *decision.Value)
+			if err != nil {
+				log.Errorf("Failed to check if decision '%s' is allowlisted: %s", *decision.Value, err)
+				// keep the decision in case of error during allowlist check
+				decisionsToKeep = append(decisionsToKeep, decision)
+				continue
+			}
+			if isAllowlisted {
+				log.Infof("Decision '%s' is allowlisted, removing it (%s)", *decision.Value, reason)
+				continue
+			}
+			decisionsToKeep = append(decisionsToKeep, decision)
+		}
+		alert.Decisions = decisionsToKeep
+
+		if len(alert.Decisions) == 0 {
+			log.Infof("All decisions are allowlisted for alert %s, skipping alert creation", alert.UUID)
+			return nil
+		}
 
 		/*Fix the alert with missing mandatory items*/
 		if alert.StartAt == nil || *alert.StartAt == "" {

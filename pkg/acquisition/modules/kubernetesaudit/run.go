@@ -22,7 +22,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.outChan = out
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")
+		defer trace.ReportPanic()
 
 		s.logger.Infof("Starting k8s-audit server on %s:%d%s", s.config.ListenAddr, s.config.ListenPort, s.config.WebhookPath)
 
@@ -83,7 +83,7 @@ func (s *Source) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	for idx := range auditEvents.Items {
 		if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": s.addr, "datasource_type": "k8s-audit", "acquis_type": s.config.Labels["type"]}).Inc()
+			metrics.K8SAuditDataSourceEventCount.With(prometheus.Labels{"source": s.addr, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
 		}
 
 		bytesEvent, err := json.Marshal(auditEvents.Items[idx])

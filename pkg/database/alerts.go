@@ -3,13 +3,13 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
@@ -201,7 +201,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+		return 0, 0, 0, fmt.Errorf("start_at field time '%s': %w: %w", *alertItem.StartAt, err, ParseTimeFail)
 	}
 
 	if alertItem.StopAt == nil {
@@ -210,7 +210,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+		return 0, 0, 0, fmt.Errorf("stop_at field time '%s': %w: %w", *alertItem.StopAt, err, ParseTimeFail)
 	}
 
 	ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
@@ -245,7 +245,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	alertRef, err := alertB.Save(ctx)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(BulkError, "error creating alert : %s", err)
+		return 0, 0, 0, fmt.Errorf("error creating alert: %w: %w", err, BulkError)
 	}
 
 	if len(alertItem.Decisions) == 0 {
@@ -254,7 +254,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 
 	txClient, err := c.Ent.Tx(ctx)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
+		return 0, 0, 0, fmt.Errorf("error creating transaction: %w: %w", err, BulkError)
 	}
 
 	decOrigin := CapiMachineID
@@ -373,7 +373,7 @@ func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAt
 
 		duration, err := cstime.ParseDurationWithDays(*decisionItem.Duration)
 		if err != nil {
-			return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+			return nil, fmt.Errorf("decision duration '%+v': %w: %w", *decisionItem.Duration, err, ParseDurationFail)
 		}
 
 		// if the scope is IP or Range, convert the value to integers
@@ -456,7 +456,7 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 
 		marshallMetas, err := json.Marshal(eventItem.Meta)
 		if err != nil {
-			return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+			return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
 		}
 
 		// the serialized field is too big, let's try to progressively strip it
@@ -475,7 +475,7 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 
 				marshallMetas, err = json.Marshal(eventItem.Meta)
 				if err != nil {
-					return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+					return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
 				}
 
 				if event.SerializedValidator(string(marshallMetas)) == nil {
@@ -599,7 +599,7 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 
 	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(builders...).Save(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+		return nil, fmt.Errorf("bulk creating alert: %w: %w", err, BulkError)
 	}
 
 	ret := make([]string, len(alertsCreateBulk))
@@ -798,7 +798,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
 		if err != nil {
-			return nil, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
+			return nil, fmt.Errorf("bad limit in parameters: %s: %w", val, QueryFail)
 		}
 
 		limit = limitConv
@@ -843,7 +843,7 @@ func (c *Client) QueryAlertWithFilter(ctx context.Context, filter map[string][]s
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
+			return nil, fmt.Errorf("pagination size: %d, offset: %d: %w: %w", paginationSize, offset, err, QueryFail)
 		}
 
 		if len(result) == 0 { // no results, no need to try to paginate further
@@ -888,28 +888,28 @@ func (c *Client) DeleteAlertGraphBatch(ctx context.Context, alertItems []*ent.Al
 		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+		return 0, fmt.Errorf("alert graph delete batch events: %w", DeleteFail)
 	}
 
 	_, err = c.Ent.Meta.Delete().
 		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
+		return 0, fmt.Errorf("alert graph delete batch meta: %w", DeleteFail)
 	}
 
 	_, err = c.Ent.Decision.Delete().
 		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
+		return 0, fmt.Errorf("alert graph delete batch decisions: %w", DeleteFail)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
 		Where(alert.IDIn(idList...)).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
+		return deleted, fmt.Errorf("alert graph delete batch: %w", DeleteFail)
 	}
 
 	c.Log.Debug("Done batch delete alerts")
@@ -923,7 +923,7 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("event with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the associated meta
@@ -931,7 +931,7 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("meta with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the associated decisions
@@ -939,14 +939,14 @@ func (c *Client) DeleteAlertGraph(ctx context.Context, alertItem *ent.Alert) err
 		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
+		return fmt.Errorf("decision with alert ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	// delete the alert
 	err = c.Ent.Alert.DeleteOne(alertItem).Exec(ctx)
 	if err != nil {
 		c.Log.Warningf("DeleteAlertGraph : %s", err)
-		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
+		return fmt.Errorf("alert with ID '%d': %w", alertItem.ID, DeleteFail)
 	}
 
 	return nil

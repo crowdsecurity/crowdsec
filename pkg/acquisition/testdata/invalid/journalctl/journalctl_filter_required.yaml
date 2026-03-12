@@ -1,0 +1,4 @@
+# wantErr: datasource of type journalctl: journalctl_filter is required
+source: journalctl
+labels:
+  type: sometype

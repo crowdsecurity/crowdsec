@@ -28,7 +28,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "wineventlog"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {

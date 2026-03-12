@@ -1,0 +1,5 @@
+# wantErr: datasource of type kinesis: cannot parse: [5:14] cannot unmarshal string into Go struct field Configuration.MaxRetries of type int
+source: kinesis
+labels:
+  type: sometype
+max_retries: whavev

@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -38,14 +39,20 @@ import (
 func getDBClient(t *testing.T, ctx context.Context) *database.Client {
 	t.Helper()
 
-	dbPath, err := os.CreateTemp("", "*sqlite")
-	require.NoError(t, err)
+	dbPath := filepath.Join(t.TempDir(), "test.sqlite")
+
 	dbClient, err := database.NewClient(ctx, &csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
+		DbPath: dbPath,
 	}, nil)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := dbClient.Ent.Close(); err != nil {
+			t.Logf("cleanup: closing db: %v", err)
+		}
+	})
 
 	return dbClient
 }
@@ -358,87 +365,6 @@ func TestAPICGetMetrics(t *testing.T) {
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
 			assert.Equal(t, tc.expectedMetric.Machines, foundMetrics.Machines)
-		})
-	}
-}
-
-func TestCreateAlertsForDecision(t *testing.T) {
-	httpBfDecisionList := &models.Decision{
-		Origin:   ptr.Of(types.ListOrigin),
-		Scenario: ptr.Of("crowdsecurity/http-bf"),
-	}
-
-	sshBfDecisionList := &models.Decision{
-		Origin:   ptr.Of(types.ListOrigin),
-		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
-	}
-
-	httpBfDecisionCommunity := &models.Decision{
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Scenario: ptr.Of("crowdsecurity/http-bf"),
-	}
-
-	sshBfDecisionCommunity := &models.Decision{
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
-	}
-
-	type args struct {
-		decisions []*models.Decision
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want []*models.Alert
-	}{
-		{
-			name: "2 decisions CAPI List Decisions should create 2 alerts",
-			args: args{
-				decisions: []*models.Decision{
-					httpBfDecisionList,
-					sshBfDecisionList,
-				},
-			},
-			want: []*models.Alert{
-				createAlertForDecision(httpBfDecisionList),
-				createAlertForDecision(sshBfDecisionList),
-			},
-		},
-		{
-			name: "2 decisions CAPI List same scenario decisions should create 1 alert",
-			args: args{
-				decisions: []*models.Decision{
-					httpBfDecisionList,
-					httpBfDecisionList,
-				},
-			},
-			want: []*models.Alert{
-				createAlertForDecision(httpBfDecisionList),
-			},
-		},
-		{
-			name: "5 decisions from community list should create 1 alert",
-			args: args{
-				decisions: []*models.Decision{
-					httpBfDecisionCommunity,
-					httpBfDecisionCommunity,
-					sshBfDecisionCommunity,
-					sshBfDecisionCommunity,
-					sshBfDecisionCommunity,
-				},
-			},
-			want: []*models.Alert{
-				createAlertForDecision(sshBfDecisionCommunity),
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := createAlertsForDecisions(tc.args.decisions); !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tc.want)
-			}
 		})
 	}
 }

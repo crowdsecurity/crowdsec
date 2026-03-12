@@ -387,7 +387,7 @@ func TestAppsecEventToContext(t *testing.T) {
 
 	for _, test := range tests {
 		// reset cache
-		alertContext = Context{}
+		alertContext.Store(nil)
 		// compile
 		if err := NewAlertContext(test.contextToSend, 100); err != nil {
 			t.Fatalf("failed to compile %s: %s", test.name, err)
@@ -434,7 +434,7 @@ func TestEvalAlertContextRules(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			contextDict := make(map[string][]string)
 
-			alertContext = Context{}
+			alertContext.Store(nil)
 			if err := NewAlertContext(test.contextToSend, 100); err != nil {
 				t.Fatalf("failed to compile %s: %s", test.name, err)
 			}

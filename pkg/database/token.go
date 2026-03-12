@@ -16,7 +16,6 @@ var (
 	ErrTokenNotFound     = errors.New("token not found in DB")
 	ErrTokenParse        = errors.New("unable to parse token")
 	ErrTokenMissingClaim = errors.New("token missing required claim")
-	ErrTokenTooOld       = errors.New("token too old")
 	ErrTokenExpired      = errors.New("token expired")
 )
 
@@ -47,16 +46,6 @@ func (c *Client) LoadAPICToken(ctx context.Context, logger logrus.FieldLogger) (
 	claims, ok := tok.Claims.(jwt.MapClaims)
 	if !ok {
 		return APICToken{}, ErrTokenParse
-	}
-
-	iatFloat, ok := claims["iat"].(float64)
-	if !ok {
-		return APICToken{}, fmt.Errorf("%w: iat", ErrTokenMissingClaim)
-	}
-
-	iat := time.Unix(int64(iatFloat), 0)
-	if time.Now().UTC().After(iat.Add(1 * time.Minute)) {
-		return APICToken{}, ErrTokenTooOld
 	}
 
 	expFloat, ok := claims["exp"].(float64)

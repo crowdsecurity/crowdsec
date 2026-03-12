@@ -1,0 +1,5 @@
+# wantErr: datasource of type wineventlog: cannot parse wineventlog configuration: [5:1] unknown field "foobar"
+source: wineventlog
+labels:
+  type: sometype
+foobar: asd.log

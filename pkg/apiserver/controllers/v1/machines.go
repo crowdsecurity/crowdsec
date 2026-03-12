@@ -14,7 +14,7 @@ import (
 )
 
 func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, error) {
-	if !*c.AutoRegisterCfg.Enable {
+	if c.AutoRegisterCfg == nil || c.AutoRegisterCfg.Enable == nil || !*c.AutoRegisterCfg.Enable {
 		return false, nil
 	}
 
@@ -26,7 +26,7 @@ func (c *Controller) shouldAutoRegister(token string, gctx *gin.Context) (bool, 
 		return false, nil
 	}
 
-	if token == "" || c.AutoRegisterCfg == nil {
+	if token == "" {
 		return false, nil
 	}
 

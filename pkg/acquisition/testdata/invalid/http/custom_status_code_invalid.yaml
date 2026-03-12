@@ -1,0 +1,10 @@
+# wantErr: datasource of type http: invalid HTTP status code
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: value
+custom_status_code: 999

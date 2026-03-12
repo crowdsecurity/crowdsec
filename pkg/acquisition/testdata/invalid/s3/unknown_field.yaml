@@ -1,0 +1,5 @@
+# wantErr: datasource of type s3: cannot parse S3Acquisition configuration: [5:1] unknown field "foobar"
+source: s3
+labels:
+  type: sometype
+foobar: asd.log

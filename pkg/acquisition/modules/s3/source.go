@@ -44,7 +44,7 @@ func (s *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "s3"
+	return ModuleName
 }
 
 func (s *Source) GetUuid() string {

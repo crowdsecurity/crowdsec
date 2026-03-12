@@ -1,0 +1,4 @@
+# wantErr: datasource of type loki: loki query is mandatory
+source: loki
+labels:
+  type: sometype

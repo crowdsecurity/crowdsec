@@ -23,6 +23,12 @@ teardown() {
 
 #----------
 
+@test "cscli allowlists <unknown command>" {
+    rune -1 cscli allowlists foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli allowlists"'
+}
+
 @test "cscli allowlists list (empty)" {
     rune -0 cscli allowlists list
     assert_output - <<-EOT

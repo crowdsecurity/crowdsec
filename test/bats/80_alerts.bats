@@ -22,6 +22,12 @@ teardown() {
 
 #----------
 
+@test "cscli alerts <unknown command>" {
+    rune -1 cscli alerts foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli alerts"'
+}
+
 @test "cscli alerts list, with and without --machine" {
     is_db_postgres && skip
     rune -0 cscli decisions add -i 10.20.30.40 -t ban

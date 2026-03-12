@@ -8,16 +8,14 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -232,34 +230,7 @@ func (rg *RuntimeGrokPattern) ProcessStatics(event *pipeline.Event, ectx Enriche
 	return nil
 }
 
-func stageidx(stage string, stages []string) int {
-	for i, v := range stages {
-		if stage == v {
-			return i
-		}
-	}
-
-	return -1
-}
-
-var (
-	ParseDump  bool
-	DumpFolder string
-)
-
-var (
-	StageParseCache dumps.ParserResults = make(dumps.ParserResults)
-	StageParseMutex sync.Mutex
-	// initialize the cache only once, even if called concurrently
-	ensureStageCache = sync.OnceFunc(func() {
-		StageParseCache["success"] = make(map[string][]dumps.ParserResult)
-		StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
-	})
-)
-
-func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, error) {
-	event := xp
-
+func Parse(ctx UnixParserCtx, event pipeline.Event, nodes []Node, collector *StageParseCollector) (pipeline.Event, error) {
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
 		event.Stage = ctx.Stages[0]
@@ -291,16 +262,12 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, 
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
-	if ParseDump {
-		ensureStageCache()
-	}
-
 	exprEnv := map[string]any{"evt": &event}
 
 	for _, stage := range ctx.Stages {
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
-		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
+		if slices.Index(ctx.Stages, event.Stage) > slices.Index(ctx.Stages, stage) {
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
 			continue
 		}
@@ -342,36 +309,8 @@ func Parse(ctx UnixParserCtx, xp pipeline.Event, nodes []Node) (pipeline.Event, 
 
 			clog.Tracef("node (%s) ret : %v", nodes[idx].rn, ret)
 
-			if ParseDump {
-				var parserIdxInStage int
-
-				// copy outside of critical section
-				evtcopy := deepcopy.Copy(event)
-				name := nodes[idx].Name
-
-				// ensure the stage map exists
-				StageParseMutex.Lock()
-
-				stageMap, ok := StageParseCache[stage]
-				if !ok {
-					stageMap = make(map[string][]dumps.ParserResult)
-					StageParseCache[stage] = stageMap
-				}
-
-				// ensure the slice for this parser exists
-				if _, ok := stageMap[name]; !ok {
-					stageMap[name] = make([]dumps.ParserResult, 0)
-					parserIdxInStage = len(stageMap)
-				} else {
-					parserIdxInStage = stageMap[name][0].Idx
-				}
-
-				stageMap[name] = append(stageMap[name], dumps.ParserResult{
-					Evt:     evtcopy.(pipeline.Event),
-					Success: ret, Idx: parserIdxInStage,
-				})
-
-				StageParseMutex.Unlock()
+			if collector != nil {
+				collector.Add(stage, nodes[idx].Name, event, ret)
 			}
 
 			if ret {

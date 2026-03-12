@@ -1,0 +1,5 @@
+source: s3
+labels:
+  type: sometype
+polling_method: sqs
+sqs_name: foobar

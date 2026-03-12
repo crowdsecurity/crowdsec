@@ -1,0 +1,10 @@
+# wantErr: datasource of type http: max_body_size must be positive
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: value
+max_body_size: 0

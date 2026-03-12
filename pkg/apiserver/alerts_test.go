@@ -240,7 +240,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", alertContent, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// get without filters
 
@@ -418,7 +418,7 @@ func TestListAlert(t *testing.T) {
 
 	w := lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?test=test", emptyBody, "password")
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.JSONEq(t, `{"message":"Filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
+	assert.JSONEq(t, `{"message":"filter parameter 'test' is unknown (=test): invalid filter"}`, w.Body.String())
 
 	// List Alert
 

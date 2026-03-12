@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -36,7 +36,7 @@ type APIServer struct {
 	cfg            *csconfig.LocalApiServerCfg
 	dbClient       *database.Client
 	controller     *controllers.Controller
-	flushScheduler *gocron.Scheduler
+	flushScheduler gocron.Scheduler
 	router         *gin.Engine
 	httpServer     *http.Server
 	apic           *apic
@@ -54,7 +54,8 @@ func isBrokenConnection(maybeError any) bool {
 	if errors.As(err, &netOpError) {
 		var syscallError *os.SyscallError
 		if errors.As(netOpError.Err, &syscallError) {
-			if strings.Contains(strings.ToLower(syscallError.Error()), "broken pipe") || strings.Contains(strings.ToLower(syscallError.Error()), "connection reset by peer") {
+			s := strings.ToLower(syscallError.Error())
+			if strings.Contains(s, "broken pipe") || strings.Contains(s, "connection reset by peer") {
 				return true
 			}
 		}
@@ -81,7 +82,8 @@ func isBrokenConnection(maybeError any) bool {
 }
 
 func recoverFromPanic(c *gin.Context) {
-	err := recover() //nolint:revive
+	//revive:disable-next-line:defer
+	err := recover()
 	if err == nil {
 		return
 	}
@@ -91,31 +93,30 @@ func recoverFromPanic(c *gin.Context) {
 	if isBrokenConnection(err) {
 		log.Warningf("client %s disconnected: %s", c.ClientIP(), err)
 		c.Abort()
-	} else {
-		log.Warningf("client %s error: %s", c.ClientIP(), err)
-
-		filename, err := trace.WriteStackTrace(err)
-		if err != nil {
-			log.Errorf("also while writing stacktrace: %s", err)
-		}
-
-		log.Warningf("stacktrace written to %s, please join to your issue", filename)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
+
+	log.Warningf("client %s error: %s", c.ClientIP(), err)
+
+	filename, err := trace.WriteStackTrace(err)
+	if err != nil {
+		log.Errorf("also while writing stacktrace: %s", err)
+	}
+
+	log.Warningf("stacktrace written to %s, please join to your issue", filename)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
 // CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
-func CustomRecoveryWithWriter() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer recoverFromPanic(c)
-		c.Next()
-	}
+func CustomRecoveryWithWriter(c *gin.Context) {
+	defer recoverFromPanic(c)
+	c.Next()
 }
 
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
 func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
-	var flushScheduler *gocron.Scheduler
+	var flushScheduler gocron.Scheduler
 
 	if accessLogger == nil {
 		accessLogger = log.StandardLogger().WithFields(nil)
@@ -176,7 +177,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 	})
-	router.Use(CustomRecoveryWithWriter())
+	router.Use(CustomRecoveryWithWriter)
 
 	controller := &controllers.Controller{
 		DBClient:                      dbClient,
@@ -232,7 +233,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		cfg:		config,
+		cfg:            config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
@@ -284,15 +285,27 @@ func (s *APIServer) papiSync(ctx context.Context) error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
-	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
+	s.apic.pushTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPush(ctx)
+	})
+	s.apic.pullTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPull(ctx)
+	})
 
 	if s.apic.apiClient.IsEnrolled() {
 		if s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
-				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
-				s.papi.syncTomb.Go(func() error { return s.papiSync(ctx) })
+				s.papi.pullTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiPull(ctx)
+				})
+				s.papi.syncTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiSync(ctx)
+				})
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 			}
@@ -302,12 +315,14 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 	}
 
 	s.apic.metricsTomb.Go(func() error {
+		defer trace.ReportPanic()
 		s.apic.SendMetrics(ctx, make(chan bool))
 		return nil
 	})
 
 	if !s.cfg.DisableUsageMetricsExport {
 		s.apic.metricsTomb.Go(func() error {
+			defer trace.ReportPanic()
 			s.apic.SendUsageMetrics(ctx)
 			return nil
 		})
@@ -315,8 +330,6 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
-	defer trace.CatchPanic("lapi/runServer")
-
 	tlsCfg, err := s.cfg.TLS.GetTLSConfig()
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
@@ -457,10 +470,10 @@ func (s *APIServer) Close() {
 		s.papi.Shutdown() // papi also uses the dbClient
 	}
 
-	s.dbClient.Ent.Close()
+	s.dbClient.Close()
 
 	if s.flushScheduler != nil {
-		s.flushScheduler.Stop()
+		_ = s.flushScheduler.Shutdown()
 	}
 }
 

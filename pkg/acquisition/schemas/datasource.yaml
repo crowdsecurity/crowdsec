@@ -1,0 +1,8 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Docker datasource
+description: >
+  Schema for acquisition entries consumed by CrowdSec. Every field
+  mirrors the configuration of at least one acquisition module and the embedded
+  configuration DataSourceCommonCfg.
+anyOf:
+  - $ref: docker.yaml

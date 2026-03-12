@@ -160,12 +160,12 @@ func (s *Source) ParseAndPushRecords(records []kinTypes.Record, out chan pipelin
 		if s.Config.StreamARN != "" {
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": s.Config.StreamARN, "shard": shardID}).Inc()
-				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": s.Config.StreamARN, "datasource_type": "kinesis", "acquis_type": s.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": s.Config.StreamARN, "datasource_type": ModuleName, "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 		} else {
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 				metrics.KinesisDataSourceLinesReadShards.With(prometheus.Labels{"stream": s.Config.StreamName, "shard": shardID}).Inc()
-				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": s.Config.StreamName, "datasource_type": "kinesis", "acquis_type": s.Config.Labels["type"]}).Inc()
+				metrics.KinesisDataSourceLinesRead.With(prometheus.Labels{"stream": s.Config.StreamName, "datasource_type": ModuleName, "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 		}
 
@@ -404,7 +404,7 @@ func (s *Source) ReadFromStream(ctx context.Context, out chan pipeline.Event, t 
 			shardID := *shard.ShardId
 
 			s.shardReaderTomb.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
+				defer trace.ReportPanic()
 				return s.ReadFromShard(ctx, out, shardID)
 			})
 		}
@@ -432,7 +432,7 @@ func (s *Source) ReadFromStream(ctx context.Context, out chan pipeline.Event, t 
 
 func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
+		defer trace.ReportPanic()
 
 		if s.Config.UseEnhancedFanOut {
 			return s.EnhancedRead(ctx, out, t)

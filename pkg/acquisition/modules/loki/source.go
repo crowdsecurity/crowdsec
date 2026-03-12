@@ -22,7 +22,7 @@ func (l *Source) GetMode() string {
 }
 
 func (*Source) GetName() string {
-	return "loki"
+	return ModuleName
 }
 
 func (*Source) CanRun() error {
