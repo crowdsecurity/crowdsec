@@ -6,3 +6,4 @@ description: >
   configuration DataSourceCommonCfg.
 anyOf:
   - $ref: docker.yaml
+  - $ref: kubernetes.yaml
