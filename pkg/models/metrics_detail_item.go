@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -70,11 +71,15 @@ func (m *MetricsDetailItem) validateLabels(formats strfmt.Registry) error {
 
 	if m.Labels != nil {
 		if err := m.Labels.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("labels")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("labels")
 			}
+
 			return err
 		}
 	}
@@ -138,11 +143,15 @@ func (m *MetricsDetailItem) contextValidateLabels(ctx context.Context, formats s
 	}
 
 	if err := m.Labels.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("labels")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("labels")
 		}
+
 		return err
 	}
 
