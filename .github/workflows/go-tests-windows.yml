@@ -61,3 +61,9 @@ jobs:
         version: v2.10
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
+
+    - name: Build custom-gcl (nilaway plugin)
+      run: golangci-lint custom -v
+
+    - name: nilaway
+      run: .\custom-gcl.exe run --issues-exit-code=1 --timeout 10m --enable-only=nilaway
