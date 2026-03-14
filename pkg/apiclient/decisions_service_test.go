@@ -447,6 +447,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		ScenariosNotContaining string
 		CommunityPull          bool
 		AdditionalPull         bool
+		Dedup                  bool
 	}
 
 	tests := []struct {
@@ -461,6 +462,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 			fields: fields{
 				CommunityPull:  true,
 				AdditionalPull: true,
+				Dedup:          true,
 			},
 		},
 		{
@@ -469,6 +471,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				Startup:        true,
 				CommunityPull:  true,
 				AdditionalPull: true,
+				Dedup:          true,
 			},
 			expected: baseURLString + "?startup=true",
 		},
@@ -481,6 +484,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				ScenariosNotContaining: "bf",
 				CommunityPull:          true,
 				AdditionalPull:         true,
+				Dedup:                  true,
 			},
 			expected: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
 		},
@@ -489,8 +493,27 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 			fields: fields{
 				CommunityPull:  false,
 				AdditionalPull: false,
+				Dedup:          true,
 			},
 			expected: baseURLString + "?additional_pull=false&community_pull=false",
+		},
+		{
+			name: "dedup=false",
+			fields: fields{
+				CommunityPull:  true,
+				AdditionalPull: true,
+				Dedup:          false,
+			},
+			expected: baseURLString + "?dedup=false",
+		},
+		{
+			name: "all pull options false",
+			fields: fields{
+				CommunityPull:  false,
+				AdditionalPull: false,
+				Dedup:          false,
+			},
+			expected: baseURLString + "?additional_pull=false&community_pull=false&dedup=false",
 		},
 	}
 
@@ -503,6 +526,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
 				CommunityPull:          tt.fields.CommunityPull,
 				AdditionalPull:         tt.fields.AdditionalPull,
+				Dedup:                  tt.fields.Dedup,
 			}
 
 			got, err := o.addQueryParamsToURL(baseURLString)

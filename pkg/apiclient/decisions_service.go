@@ -33,6 +33,7 @@ type DecisionsStreamOpts struct {
 	Startup                bool   `url:"startup,omitempty"`
 	CommunityPull          bool   `url:"community_pull"`
 	AdditionalPull         bool   `url:"additional_pull"`
+	Dedup                  bool   `url:"dedup"`
 	Scopes                 string `url:"scopes,omitempty"`
 	ScenariosContaining    string `url:"scenarios_containing,omitempty"`
 	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
@@ -45,7 +46,7 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 		return "", err
 	}
 
-	// Those 2 are a bit different
+	// Those 3 are a bit different
 	// They default to true, and we only want to include them if they are false
 
 	if params.Get("community_pull") == "true" {
@@ -54,6 +55,10 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 
 	if params.Get("additional_pull") == "true" {
 		params.Del("additional_pull")
+	}
+
+	if params.Get("dedup") == "true" {
+		params.Del("dedup")
 	}
 
 	return fmt.Sprintf("%s?%s", url, params.Encode()), nil
