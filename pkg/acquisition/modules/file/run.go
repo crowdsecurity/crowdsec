@@ -297,7 +297,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 	s.tailMapMutex.Unlock()
 
 	g.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/tailfile")
+		defer trace.ReportPanic()
 		return s.tailFile(ctx, out, tail)
 	})
 

@@ -404,7 +404,7 @@ func (s *Source) ReadFromStream(ctx context.Context, out chan pipeline.Event, t 
 			shardID := *shard.ShardId
 
 			s.shardReaderTomb.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
+				defer trace.ReportPanic()
 				return s.ReadFromShard(ctx, out, shardID)
 			})
 		}
@@ -432,7 +432,7 @@ func (s *Source) ReadFromStream(ctx context.Context, out chan pipeline.Event, t 
 
 func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
+		defer trace.ReportPanic()
 
 		if s.Config.UseEnhancedFanOut {
 			return s.EnhancedRead(ctx, out, t)

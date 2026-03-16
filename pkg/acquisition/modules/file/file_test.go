@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -363,19 +364,19 @@ force_inotify: true`, testPattern),
 				tc.afterConfigure()
 			}
 
-			actualLines := 0
+			var actualLines atomic.Int32
 
 			if tc.expectedLines != 0 {
-				var stopReading bool
-				defer func() { stopReading = true }()
+				var stopReading atomic.Bool
+				defer func() { stopReading.Store(true) }()
 
 				go func() {
 					for {
 						select {
 						case <-out:
-							actualLines++
+							actualLines.Add(1)
 						default:
-							if stopReading {
+							if stopReading.Load() {
 								return
 							}
 							// Small sleep to prevent tight loop
@@ -431,7 +432,7 @@ force_inotify: true`, testPattern),
 				time.Sleep(2 * time.Second)
 
 				os.Remove(streamLogFile)
-				assert.Equal(t, tc.expectedLines, actualLines)
+				assert.Equal(t, tc.expectedLines, int(actualLines.Load()))
 			}
 
 		if tc.expectedOutput != "" {

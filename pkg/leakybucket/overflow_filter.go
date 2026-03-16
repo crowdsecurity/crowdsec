@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"fmt"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -21,9 +20,9 @@ func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 
 	u := OverflowProcessor{}
 
-	u.Filter = f.OverflowFilter
+	u.Filter = f.Spec.OverflowFilter
 
-	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})...)
+	u.FilterRuntime, err = compile(u.Filter, map[string]any{"queue": &pipeline.Queue{}, "signal": &pipeline.RuntimeAlert{}, "leaky": &Leaky{}})
 	if err != nil {
 		f.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
@@ -33,7 +32,7 @@ func NewOverflowProcessor(f *BucketFactory) (*OverflowProcessor, error) {
 
 func (u *OverflowProcessor) OnBucketOverflow(f *BucketFactory, l *Leaky, s pipeline.RuntimeAlert, q *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	el, err := exprhelpers.Run(u.FilterRuntime, map[string]any{
-		"queue": q, "signal": s, "leaky": l}, l.logger, f.Debug)
+		"queue": q, "signal": s, "leaky": l}, l.logger, f.Spec.Debug)
 	if err != nil {
 		l.logger.Errorf("Failed running overflow filter: %s", err)
 		return s, q

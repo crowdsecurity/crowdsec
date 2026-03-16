@@ -229,6 +229,10 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 		Short:             "Manage centralized allowlists",
 		Aliases:           []string{"allowlist"},
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newCreateCmd())

@@ -14,7 +14,7 @@ import (
 )
 
 func shouldTriggerGC(count int) bool {
-	return count % 5000 == 0
+	return count%5000 == 0
 }
 
 func triggerGC(parsed pipeline.Event, buckets *leaky.BucketStore, cConfig *csconfig.Config) {

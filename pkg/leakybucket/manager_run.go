@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -41,11 +43,11 @@ func GarbageCollectBuckets(deadline time.Time, bucketStore *BucketStore) {
 		const eps = 1e-9
 
 		tokat := val.Limiter.GetTokensCountAt(deadline)
-		tokcapa := float64(val.Capacity)
+		tokcapa := float64(val.Factory.Spec.Capacity)
 
 		// bucket actually underflowed based on log time, but no in real time
 		if tokat+eps >= tokcapa {
-			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
+			metrics.BucketsUnderflow.With(prometheus.Labels{"name": val.Factory.Spec.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.cancel()
@@ -135,9 +137,9 @@ func PourItemToBucket(
 			// holder.logger.Tracef("Successfully sent !")
 			if collector != nil {
 				evt := deepcopy.Copy(*parsed).(pipeline.Event)
-				collector.Add(bucket.Name, evt)
+				collector.Add(bucket.Factory.Spec.Name, evt)
 			}
-			holder.logger.Debugf("bucket '%s' is poured", holder.Name)
+			holder.logger.Debugf("bucket '%s' is poured", holder.Spec.Name)
 			return nil
 		default:
 			failed_sent += 1
@@ -180,6 +182,7 @@ func LoadOrStoreBucketFromHolder(
 	actual, stored := buckets.LoadOrStore(partitionKey, fresh_bucket)
 	if !stored {
 		go func() {
+			defer trace.ReportPanic()
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
 			fresh_bucket.LeakRoutine(ctx, buckets)
@@ -219,7 +222,7 @@ func PourItemToHolders(
 			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
 				map[string]any{"evt": &parsed},
 				holders[idx].logger,
-				holders[idx].Debug)
+				holders[idx].Spec.Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -238,7 +241,7 @@ func PourItemToHolders(
 		// groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]any{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]any{"evt": &parsed}, holders[idx].logger, holders[idx].Spec.Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")
@@ -258,7 +261,7 @@ func PourItemToHolders(
 		}
 		// finally, pour the even into the bucket
 
-		if bucket.orderEvent {
+		if bucket.Factory.orderEvent {
 			if orderEvent == nil {
 				orderEvent = make(map[string]*sync.WaitGroup)
 			}
@@ -273,7 +276,7 @@ func PourItemToHolders(
 
 		err = PourItemToBucket(ctx, bucket, &holders[idx], buckets, &parsed, collector)
 
-		if bucket.orderEvent {
+		if bucket.Factory.orderEvent {
 			orderEvent[buckey].Wait()
 		}
 

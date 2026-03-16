@@ -15,12 +15,5 @@ func GetFSType(path string) (string, error) {
 		return "", fmt.Errorf("failed to get filesystem type: %w", err)
 	}
 
-	bs := fsStat.Fstypename
-
-	b := make([]byte, len(bs))
-	for i, v := range bs {
-		b[i] = byte(v)
-	}
-
-	return string(b), nil
+	return unix.ByteSliceToString(fsStat.Fstypename[:]), nil
 }
