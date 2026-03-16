@@ -186,6 +186,9 @@ func LoadOrStoreBucketFromHolder(
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
 			fresh_bucket.LeakRoutine(ctx, buckets)
+			// Always call cancel to avoid leaks
+			// In case of replay, cancel() may be called by the GC func (eg, for an underflow), but cancel is safe to call multiple times
+			cancel()
 		}()
 		leaky = fresh_bucket
 		// once the created goroutine is ready to process event, we can return it
