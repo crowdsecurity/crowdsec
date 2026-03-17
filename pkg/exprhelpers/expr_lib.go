@@ -119,6 +119,20 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "FileMap",
+		function: FileMap,
+		signature: []any{
+			new(func(string) []map[string]string),
+		},
+	},
+	{
+		name:     "LookupFile",
+		function: LookupFile,
+		signature: []any{
+			new(func(string, string, string, string) string),
+		},
+	},
+	{
 		name:     "Upper",
 		function: Upper,
 		signature: []any{

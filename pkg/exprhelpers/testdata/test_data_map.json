@@ -1,0 +1,11 @@
+{"pattern": "/tmui/", "technology": "F5", "type": "contains"}
+{"pattern": "/webfig/", "technology": "MikroTik", "type": "contains"}
+{"pattern": "/cgi-bin/luci", "technology": "OpenWrt", "type": "contains"}
+{"pattern": "/.env", "technology": "Generic", "type": "contains"}
+{"pattern": "/solr/", "technology": "Solr", "type": "contains"}
+{"pattern": "/wp-admin/", "technology": "WordPress", "type": "contains"}
+{"pattern": "/specific/endpoint.php", "technology": "SpecificApp", "type": "equals"}
+# this is a comment and should be skipped
+
+{"pattern": "/wp-content/plugins/[^/]+/readme\\.txt", "technology": "WordPress-Plugin", "type": "regex"}
+{"pattern": "/(dana|logon/LogonPoint)/", "technology": "VPN-Endpoint", "type": "regex"}
