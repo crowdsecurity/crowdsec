@@ -67,6 +67,12 @@ func fileMapInit(filename string, line string) error {
 		return fmt.Errorf("unknown entry type '%s' in %s: %s", entryType, filename, line)
 	}
 
+	if entryType == "regex" {
+		if _, err := regexp.Compile(record["pattern"]); err != nil {
+			log.Warningf("invalid regex pattern in %s: %s", filename, err)
+		}
+	}
+
 	if dataFileMap[filename] == nil {
 		dataFileMap[filename] = &fileMapEntry{}
 	}
@@ -101,6 +107,10 @@ func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 
 		switch row["type"] {
 		case "equals":
+			if prev, exists := idx.equalsMap[val]; exists {
+				log.Warningf("fileMapEntry: duplicate equals pattern '%s' (row %d overrides row %d)", val, i, prev)
+			}
+
 			idx.equalsMap[val] = i
 		case "regex":
 			re, err := regexp.Compile(val)
@@ -111,9 +121,11 @@ func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 
 			idx.regexPatterns = append(idx.regexPatterns, re)
 			idx.regexToRow = append(idx.regexToRow, i)
-		default: // "contains"
+		case "contains":
 			acPatterns = append(acPatterns, val)
 			idx.acPatternToRow = append(idx.acPatternToRow, i)
+		default:
+			continue
 		}
 	}
 
