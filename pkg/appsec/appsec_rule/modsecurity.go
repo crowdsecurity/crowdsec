@@ -13,24 +13,47 @@ type ModsecurityRule struct {
 	ids []uint32
 }
 
-var zonesMap = map[string]string{
-	"ARGS":             "ARGS_GET",
-	"ARGS_NAMES":       "ARGS_GET_NAMES",
-	"BODY_ARGS":        "ARGS_POST",
-	"BODY_ARGS_NAMES":  "ARGS_POST_NAMES",
-	"COOKIES":          "REQUEST_COOKIES",
-	"COOKIES_NAMES":    "REQUEST_COOKIES_NAMES",
-	"FILES":            "FILES",
-	"FILES_NAMES":      "FILES_NAMES",
-	"FILES_TOTAL_SIZE": "FILES_COMBINED_SIZE",
-	"HEADERS_NAMES":    "REQUEST_HEADERS_NAMES",
-	"HEADERS":          "REQUEST_HEADERS",
-	"METHOD":           "REQUEST_METHOD",
-	"PROTOCOL":         "REQUEST_PROTOCOL",
-	"URI":              "REQUEST_FILENAME",
-	"URI_FULL":         "REQUEST_URI",
-	"RAW_BODY":         "RAW_REQUEST_BODY",
-	"FILENAMES":        "FILES",
+// Zone represents a modsecurity zone with its properties
+type Zone struct {
+	ModsecName   string // The actual modsecurity variable name
+	MinimumPhase int    // Minimum phase required for this zone
+}
+
+// String returns the modsecurity variable name
+func (z Zone) String() string {
+	return z.ModsecName
+}
+
+// RequiresPhase2 returns true if this zone requires phase 2
+func (z Zone) RequiresPhase2() bool {
+	return z.MinimumPhase >= 2
+}
+
+// GetZone safely retrieves a zone by name
+func GetZone(name string) (Zone, bool) {
+	zone, exists := zones[name]
+	return zone, exists
+}
+
+// zones defines all available zones with their properties
+var zones = map[string]Zone{
+	"ARGS":             {ModsecName: "ARGS_GET", MinimumPhase: 1},
+	"ARGS_NAMES":       {ModsecName: "ARGS_GET_NAMES", MinimumPhase: 1},
+	"BODY_ARGS":        {ModsecName: "ARGS_POST", MinimumPhase: 2},
+	"BODY_ARGS_NAMES":  {ModsecName: "ARGS_POST_NAMES", MinimumPhase: 2},
+	"COOKIES":          {ModsecName: "REQUEST_COOKIES", MinimumPhase: 1},
+	"COOKIES_NAMES":    {ModsecName: "REQUEST_COOKIES_NAMES", MinimumPhase: 1},
+	"FILES":            {ModsecName: "FILES", MinimumPhase: 2},
+	"FILES_NAMES":      {ModsecName: "FILES_NAMES", MinimumPhase: 2},
+	"FILES_TOTAL_SIZE": {ModsecName: "FILES_COMBINED_SIZE", MinimumPhase: 2},
+	"HEADERS_NAMES":    {ModsecName: "REQUEST_HEADERS_NAMES", MinimumPhase: 1},
+	"HEADERS":          {ModsecName: "REQUEST_HEADERS", MinimumPhase: 1},
+	"METHOD":           {ModsecName: "REQUEST_METHOD", MinimumPhase: 1},
+	"PROTOCOL":         {ModsecName: "REQUEST_PROTOCOL", MinimumPhase: 1},
+	"URI":              {ModsecName: "REQUEST_FILENAME", MinimumPhase: 1},
+	"URI_FULL":         {ModsecName: "REQUEST_URI", MinimumPhase: 1},
+	"RAW_BODY":         {ModsecName: "RAW_REQUEST_BODY", MinimumPhase: 2},
+	"FILENAMES":        {ModsecName: "FILES", MinimumPhase: 2},
 }
 
 var transformMap = map[string]string{
@@ -107,6 +130,10 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 }
 
 func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, and bool, toSkip int, depth int, isRoot bool) ([]string, error) {
+	return m.buildRulesWithPhase(rule, appsecRuleName, appsecRuleDescription, and, toSkip, depth, isRoot, 0)
+}
+
+func (m *ModsecurityRule) buildRulesWithPhase(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, and bool, toSkip int, depth int, isRoot bool, forcedPhase int) ([]string, error) {
 	ret := make([]string, 0)
 
 	if len(rule.And) != 0 && len(rule.Or) != 0 {
@@ -114,12 +141,16 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 	}
 
 	if rule.And != nil {
+		// For chained rules (AND), all must be in the same phase
+		// Find the highest required phase for all rules in the chain
+		// Also respect forcedPhase from parent (e.g., if inside an OR that requires phase 2)
+		chainPhase := max(forcedPhase, m.determineChainPhase(rule))
 		for c, andRule := range rule.And {
 			depth++
 			andRule.Severity = rule.Severity
 			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
 			root := c == 0
-			rules, err := m.buildRules(&andRule, appsecRuleName, appsecRuleDescription, !lastRule, 0, depth, root)
+			rules, err := m.buildRulesWithPhase(&andRule, appsecRuleName, appsecRuleDescription, !lastRule, 0, depth, root, chainPhase)
 			if err != nil {
 				return nil, err
 			}
@@ -128,12 +159,16 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 	}
 
 	if rule.Or != nil {
+		// For OR rules using skip, all must be in the same phase
+		// Determine the max phase needed across all OR rules
+		// Also respect forcedPhase from parent (e.g., if inside an AND chain that requires phase 2)
+		orPhase := max(forcedPhase, m.determineOrPhase(rule))
 		for c, orRule := range rule.Or {
 			depth++
 			orRule.Severity = rule.Severity
 			skip := len(rule.Or) - c - 1
 			root := c == 0
-			rules, err := m.buildRules(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root)
+			rules, err := m.buildRulesWithPhase(&orRule, appsecRuleName, appsecRuleDescription, false, skip, depth, root, orPhase)
 			if err != nil {
 				return nil, err
 			}
@@ -163,18 +198,18 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 		if idx > 0 {
 			r.WriteByte('|')
 		}
-		mappedZone, ok := zonesMap[zone]
+		zoneInfo, ok := GetZone(zone)
 		if !ok {
 			return nil, fmt.Errorf("unknown zone '%s'", zone)
 		}
 		if len(rule.Variables) == 0 {
-			r.WriteString(mappedZone)
+			r.WriteString(zoneInfo.ModsecName)
 		} else {
 			for j, variable := range rule.Variables {
 				if j > 0 {
 					r.WriteByte('|')
 				}
-				r.WriteString(fmt.Sprintf("%s%s:%s%s", zone_prefix, mappedZone, variable_prefix, variable))
+				r.WriteString(fmt.Sprintf("%s%s:%s%s", zone_prefix, zoneInfo.ModsecName, variable_prefix, variable))
 			}
 		}
 	}
@@ -199,8 +234,9 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 		msg = appsecRuleName
 	}
 
-	//Should phase:2 be configurable?
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), msg, appsecRuleName))
+	// Determine optimal phase for this rule
+	phase := m.determineOptimalPhase(rule, forcedPhase)
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:%d,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, depth), phase, msg, appsecRuleName))
 
 	if rule.Severity != "" && isRoot { // Only put severity on the root rule
 		r.WriteString(fmt.Sprintf(`,severity:'%s'`, rule.Severity))
@@ -240,4 +276,79 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, ap
 
 	ret = append(ret, r.String())
 	return ret, nil
+}
+
+// determineOptimalPhase determines the optimal phase for a rule based on its zones
+func (*ModsecurityRule) determineOptimalPhase(rule *CustomRule, forcedPhase int) int {
+	minPhase := 1
+
+	// If rule has body type specified, it requires phase 2
+	if rule.BodyType != "" {
+		minPhase = 2
+	}
+
+	// Check all zones used by this rule
+	for _, zoneName := range rule.Zones {
+		zoneInfo, ok := GetZone(zoneName)
+		if !ok {
+			// Unknown zone, default to phase 2 for safety
+			minPhase = 2
+			break
+		}
+
+		// If any zone requires phase 2, the whole rule must be phase 2
+		if zoneInfo.RequiresPhase2() {
+			minPhase = 2
+			break
+		}
+	}
+
+	// Return the higher of forcedPhase and the rule's minimum required phase
+	return max(forcedPhase, minPhase)
+}
+
+// determineChainPhase determines the required phase for a chain of AND rules
+func (m *ModsecurityRule) determineChainPhase(rule *CustomRule) int {
+	// Check the current rule
+	maxPhase := m.determineOptimalPhase(rule, 0)
+
+	// Check all AND rules in the chain
+	for _, andRule := range rule.And {
+		maxPhase = max(maxPhase, m.determineOptimalPhase(&andRule, 0))
+
+		// Recursively check nested AND chains
+		if len(andRule.And) > 0 {
+			maxPhase = max(maxPhase, m.determineChainPhase(&andRule))
+		}
+
+		// Also check nested OR rules within AND children
+		if len(andRule.Or) > 0 {
+			maxPhase = max(maxPhase, m.determineOrPhase(&andRule))
+		}
+	}
+
+	return max(maxPhase, 1)
+}
+
+// determineOrPhase determines the required phase for OR rules (using skip)
+// All OR rules must be in the same phase for skip to work correctly
+func (m *ModsecurityRule) determineOrPhase(rule *CustomRule) int {
+	maxPhase := m.determineOptimalPhase(rule, 0)
+
+	// Check all OR rules
+	for _, orRule := range rule.Or {
+		maxPhase = max(maxPhase, m.determineOptimalPhase(&orRule, 0))
+
+		// Recursively check nested OR rules
+		if len(orRule.Or) > 0 {
+			maxPhase = max(maxPhase, m.determineOrPhase(&orRule))
+		}
+
+		// Also check nested AND rules within OR branches
+		if len(orRule.And) > 0 {
+			maxPhase = max(maxPhase, m.determineChainPhase(&orRule))
+		}
+	}
+
+	return max(maxPhase, 1)
 }
