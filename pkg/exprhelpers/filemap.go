@@ -20,11 +20,12 @@ var validMapEntryTypes = map[string]bool{
 	"regex":    true,
 }
 
-// fileMapEntry holds the parsed JSON-lines data and lazily-built match indexes.
+// fileMapEntry holds the parsed JSON-lines data and a lazily-built match index.
+// The pattern field is always "pattern" and the value field is always "tag".
 type fileMapEntry struct {
-	rows    []map[string]string
-	mu      sync.Mutex
-	indexes map[string]*matchIndex // keyed by patternField name
+	rows  []map[string]string
+	mu    sync.Mutex
+	index *matchIndex // lazily built, always uses "pattern" field
 }
 
 // matchIndex holds the pre-built matching structures for a given pattern field.
@@ -42,15 +43,23 @@ type matchIndex struct {
 }
 
 // fileMapInit parses a single JSON line and appends it to the fileMapEntry for the given filename.
-// The "type" field is mandatory and must be one of: "equals", "contains", "regex".
+// Three fields are mandatory: "pattern", "tag", and "type" (one of: "equals", "contains", "regex").
 func fileMapInit(filename string, line string) error {
 	var record map[string]string
 	if err := json.Unmarshal([]byte(line), &record); err != nil {
 		return fmt.Errorf("failed to parse JSON line in %s: %w", filename, err)
 	}
 
-	entryType, ok := record["type"]
-	if !ok || entryType == "" {
+	if record["pattern"] == "" {
+		return fmt.Errorf("missing mandatory 'pattern' field in %s: %s", filename, line)
+	}
+
+	if record["tag"] == "" {
+		return fmt.Errorf("missing mandatory 'tag' field in %s: %s", filename, line)
+	}
+
+	entryType := record["type"]
+	if entryType == "" {
 		return fmt.Errorf("missing mandatory 'type' field in %s: %s", filename, line)
 	}
 
@@ -59,9 +68,7 @@ func fileMapInit(filename string, line string) error {
 	}
 
 	if dataFileMap[filename] == nil {
-		dataFileMap[filename] = &fileMapEntry{
-			indexes: make(map[string]*matchIndex),
-		}
+		dataFileMap[filename] = &fileMapEntry{}
 	}
 
 	dataFileMap[filename].rows = append(dataFileMap[filename].rows, record)
@@ -69,17 +76,18 @@ func fileMapInit(filename string, line string) error {
 	return nil
 }
 
-// getOrBuildIndex returns the cached matchIndex for the given field, building it on first access.
-// It partitions rows by their "type" field (validated at load time):
+// getOrBuildIndex returns the cached matchIndex, building it on first access.
+// It always indexes on the "pattern" field. Rows are partitioned by their "type" field
+// (validated at load time):
 //   - "equals"   → inserted into equalsMap for O(1) lookup
 //   - "contains" → fed to Aho-Corasick automaton builder
 //   - "regex"    → compiled to *regexp.Regexp
-func (e *fileMapEntry) getOrBuildIndex(field string) *matchIndex {
+func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if idx, ok := e.indexes[field]; ok {
-		return idx
+	if e.index != nil {
+		return e.index
 	}
 
 	idx := &matchIndex{
@@ -89,10 +97,7 @@ func (e *fileMapEntry) getOrBuildIndex(field string) *matchIndex {
 	var acPatterns []string
 
 	for i, row := range e.rows {
-		val, ok := row[field]
-		if !ok || val == "" {
-			continue
-		}
+		val := row["pattern"]
 
 		switch row["type"] {
 		case "equals":
@@ -124,7 +129,7 @@ func (e *fileMapEntry) getOrBuildIndex(field string) *matchIndex {
 		idx.acAutomaton = &ac
 	}
 
-	e.indexes[field] = idx
+	e.index = idx
 
 	return idx
 }
@@ -144,19 +149,17 @@ func FileMap(params ...any) (any, error) {
 	return entry.rows, nil
 }
 
-// LookupFile searches for the first entry in the map file whose patternField value
+// LookupFile searches for the first entry in the map file whose "pattern" value
 // matches the haystack. Matching is done in priority order:
 //  1. "equals" entries via O(1) hash map lookup
 //  2. "contains" entries via Aho-Corasick substring matching
 //  3. "regex" entries via pre-compiled regexp
 //
-// Returns the corresponding valueField, or "" if no match.
-// func LookupFile(haystack string, filename string, patternField string, valueField string) string
+// Returns the corresponding "tag" value, or "" if no match.
+// func LookupFile(haystack string, filename string) string
 func LookupFile(params ...any) (any, error) {
 	haystack := params[0].(string)
 	filename := params[1].(string)
-	patternField := params[2].(string)
-	valueField := params[3].(string)
 
 	entry, ok := dataFileMap[filename]
 	if !ok {
@@ -164,14 +167,14 @@ func LookupFile(params ...any) (any, error) {
 		return "", nil
 	}
 
-	idx := entry.getOrBuildIndex(patternField)
+	idx := entry.getOrBuildIndex()
 	if idx == nil {
 		return "", nil
 	}
 
 	// Phase 1: Equals map (O(1) exact match)
 	if rowIdx, ok := idx.equalsMap[haystack]; ok {
-		return entry.rows[rowIdx][valueField], nil
+		return entry.rows[rowIdx]["tag"], nil
 	}
 
 	// Phase 2: Aho-Corasick for "contains" entries
@@ -180,7 +183,7 @@ func LookupFile(params ...any) (any, error) {
 		if match := iter.Next(); match != nil {
 			rowIdx := idx.acPatternToRow[match.Pattern()]
 
-			return entry.rows[rowIdx][valueField], nil
+			return entry.rows[rowIdx]["tag"], nil
 		}
 	}
 
@@ -189,7 +192,7 @@ func LookupFile(params ...any) (any, error) {
 		if re.MatchString(haystack) {
 			rowIdx := idx.regexToRow[i]
 
-			return entry.rows[rowIdx][valueField], nil
+			return entry.rows[rowIdx]["tag"], nil
 		}
 	}
 

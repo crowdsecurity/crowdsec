@@ -1,11 +1,11 @@
-{"pattern": "/tmui/", "technology": "F5", "type": "contains"}
-{"pattern": "/webfig/", "technology": "MikroTik", "type": "contains"}
-{"pattern": "/cgi-bin/luci", "technology": "OpenWrt", "type": "contains"}
-{"pattern": "/.env", "technology": "Generic", "type": "contains"}
-{"pattern": "/solr/", "technology": "Solr", "type": "contains"}
-{"pattern": "/wp-admin/", "technology": "WordPress", "type": "contains"}
-{"pattern": "/specific/endpoint.php", "technology": "SpecificApp", "type": "equals"}
+{"pattern": "/tmui/", "tag": "F5", "type": "contains"}
+{"pattern": "/webfig/", "tag": "MikroTik", "type": "contains"}
+{"pattern": "/cgi-bin/luci", "tag": "OpenWrt", "type": "contains"}
+{"pattern": "/.env", "tag": "Generic", "type": "contains"}
+{"pattern": "/solr/", "tag": "Solr", "type": "contains"}
+{"pattern": "/wp-admin/", "tag": "WordPress", "type": "contains"}
+{"pattern": "/specific/endpoint.php", "tag": "SpecificApp", "type": "equals"}
 # this is a comment and should be skipped
 
-{"pattern": "/wp-content/plugins/[^/]+/readme\\.txt", "technology": "WordPress-Plugin", "type": "regex"}
-{"pattern": "/(dana|logon/LogonPoint)/", "technology": "VPN-Endpoint", "type": "regex"}
+{"pattern": "/wp-content/plugins/[^/]+/readme\\.txt", "tag": "WordPress-Plugin", "type": "regex"}
+{"pattern": "/(dana|logon/LogonPoint)/", "tag": "VPN-Endpoint", "type": "regex"}

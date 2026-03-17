@@ -129,7 +129,7 @@ var exprFuncs = []exprCustomFunc{
 		name:     "LookupFile",
 		function: LookupFile,
 		signature: []any{
-			new(func(string, string, string, string) string),
+			new(func(string, string) string),
 		},
 	},
 	{

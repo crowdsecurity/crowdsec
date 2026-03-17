@@ -22,17 +22,17 @@ func TestFileInitMap(t *testing.T) {
 
 	// Verify a specific contains row
 	assert.Equal(t, "/tmui/", entry.rows[0]["pattern"])
-	assert.Equal(t, "F5", entry.rows[0]["technology"])
+	assert.Equal(t, "F5", entry.rows[0]["tag"])
 	assert.Equal(t, "contains", entry.rows[0]["type"])
 
 	// Verify equals row
 	assert.Equal(t, "/specific/endpoint.php", entry.rows[6]["pattern"])
-	assert.Equal(t, "SpecificApp", entry.rows[6]["technology"])
+	assert.Equal(t, "SpecificApp", entry.rows[6]["tag"])
 	assert.Equal(t, "equals", entry.rows[6]["type"])
 
 	// Verify regex-typed row
 	assert.Equal(t, "regex", entry.rows[7]["type"])
-	assert.Equal(t, "WordPress-Plugin", entry.rows[7]["technology"])
+	assert.Equal(t, "WordPress-Plugin", entry.rows[7]["tag"])
 }
 
 func TestFileInitMapInvalidJSON(t *testing.T) {
@@ -60,6 +60,24 @@ func TestFileInitMapUnknownType(t *testing.T) {
 	err = FileInit("testdata", "test_data_map_bad_type.json", "map")
 	require.Error(t, err, "should fail on unknown type value")
 	assert.Contains(t, err.Error(), "unknown entry type 'foobar'")
+}
+
+func TestFileInitMapMissingPattern(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	err = FileInit("testdata", "test_data_map_no_pattern.json", "map")
+	require.Error(t, err, "should fail when pattern field is missing")
+	assert.Contains(t, err.Error(), "missing mandatory 'pattern' field")
+}
+
+func TestFileInitMapMissingTag(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	err = FileInit("testdata", "test_data_map_no_tag.json", "map")
+	require.Error(t, err, "should fail when tag field is missing")
+	assert.Contains(t, err.Error(), "missing mandatory 'tag' field")
 }
 
 func TestFileInitMapAlreadyLoaded(t *testing.T) {
@@ -123,7 +141,7 @@ func TestFileMapHelper(t *testing.T) {
 	rows, ok := result.([]map[string]string)
 	require.True(t, ok, "FileMap should return []map[string]string")
 	assert.Len(t, rows, 9)
-	assert.Equal(t, "F5", rows[0]["technology"])
+	assert.Equal(t, "F5", rows[0]["tag"])
 }
 
 func TestFileMapHelperMissingFile(t *testing.T) {
@@ -195,7 +213,7 @@ func TestLookupFileContainsMatch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := map[string]any{"path": tc.haystack}
 			compiledFilter, err := expr.Compile(
-				`LookupFile(path, "test_data_map.json", "pattern", "technology")`,
+				`LookupFile(path, "test_data_map.json")`,
 				GetExprOptions(env)...,
 			)
 			require.NoError(t, err)
@@ -240,7 +258,7 @@ func TestLookupFileEqualsMatch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := map[string]any{"path": tc.haystack}
 			compiledFilter, err := expr.Compile(
-				`LookupFile(path, "test_data_map.json", "pattern", "technology")`,
+				`LookupFile(path, "test_data_map.json")`,
 				GetExprOptions(env)...,
 			)
 			require.NoError(t, err)
@@ -254,10 +272,8 @@ func TestLookupFileEqualsMatch(t *testing.T) {
 
 func TestLookupFileEqualsBeforeContains(t *testing.T) {
 	// Equals should be checked before contains.
-	// /.env exactly matches the equals check if we set it up that way,
-	// but in our test data /.env is a "contains" entry.
-	// To test priority, we verify that equals is checked first by checking
-	// that an exact equals entry takes precedence.
+	// To test priority, we verify that an exact equals entry takes precedence
+	// over a contains entry with the same pattern.
 	err := Init(nil)
 	require.NoError(t, err)
 
@@ -265,17 +281,16 @@ func TestLookupFileEqualsBeforeContains(t *testing.T) {
 	dataFileMap = make(map[string]*fileMapEntry)
 
 	entry := &fileMapEntry{
-		indexes: make(map[string]*matchIndex),
 		rows: []map[string]string{
-			{"pattern": "/overlap/path", "technology": "ContainsTech", "type": "contains"},
-			{"pattern": "/overlap/path", "technology": "EqualsTech", "type": "equals"},
+			{"pattern": "/overlap/path", "tag": "ContainsTech", "type": "contains"},
+			{"pattern": "/overlap/path", "tag": "EqualsTech", "type": "equals"},
 		},
 	}
 	dataFileMap["overlap_test.json"] = entry
 
 	env := map[string]any{"path": "/overlap/path"}
 	compiledFilter, err := expr.Compile(
-		`LookupFile(path, "overlap_test.json", "pattern", "technology")`,
+		`LookupFile(path, "overlap_test.json")`,
 		GetExprOptions(env)...,
 	)
 	require.NoError(t, err)
@@ -318,7 +333,7 @@ func TestLookupFileRegexMatch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := map[string]any{"path": tc.haystack}
 			compiledFilter, err := expr.Compile(
-				`LookupFile(path, "test_data_map.json", "pattern", "technology")`,
+				`LookupFile(path, "test_data_map.json")`,
 				GetExprOptions(env)...,
 			)
 			require.NoError(t, err)
@@ -343,7 +358,7 @@ func TestLookupFileContainsBeforeRegex(t *testing.T) {
 	// a regex entry for WordPress-Plugin also exists.
 	env := map[string]any{"path": "/wp-admin/plugins/akismet/readme.txt"}
 	compiledFilter, err := expr.Compile(
-		`LookupFile(path, "test_data_map.json", "pattern", "technology")`,
+		`LookupFile(path, "test_data_map.json")`,
 		GetExprOptions(env)...,
 	)
 	require.NoError(t, err)
@@ -359,7 +374,7 @@ func TestLookupFileMissingFile(t *testing.T) {
 
 	env := map[string]any{"path": "/tmui/"}
 	compiledFilter, err := expr.Compile(
-		`LookupFile(path, "nonexistent.json", "pattern", "technology")`,
+		`LookupFile(path, "nonexistent.json")`,
 		GetExprOptions(env)...,
 	)
 	require.NoError(t, err)
@@ -367,26 +382,6 @@ func TestLookupFileMissingFile(t *testing.T) {
 	result, err := expr.Run(compiledFilter, env)
 	require.NoError(t, err)
 	assert.Empty(t, result)
-}
-
-func TestLookupFileMissingValueField(t *testing.T) {
-	err := Init(nil)
-	require.NoError(t, err)
-
-	err = FileInit("testdata", "test_data_map.json", "map")
-	require.NoError(t, err)
-
-	// Request a valueField that doesn't exist in the rows
-	env := map[string]any{"path": "/tmui/login"}
-	compiledFilter, err := expr.Compile(
-		`LookupFile(path, "test_data_map.json", "pattern", "nonexistent_field")`,
-		GetExprOptions(env)...,
-	)
-	require.NoError(t, err)
-
-	result, err := expr.Run(compiledFilter, env)
-	require.NoError(t, err)
-	assert.Empty(t, result, "missing valueField should return empty string")
 }
 
 func TestResetClearsMap(t *testing.T) {
@@ -434,7 +429,7 @@ func TestLookupFileFilterPattern(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := map[string]any{"path": tc.haystack}
 			compiledFilter, err := expr.Compile(
-				`LookupFile(path, "test_data_map.json", "pattern", "technology") != ""`,
+				`LookupFile(path, "test_data_map.json") != ""`,
 				GetExprOptions(env)...,
 			)
 			require.NoError(t, err)
@@ -455,43 +450,41 @@ func BenchmarkLookupFile(b *testing.B) {
 	// Generate a large test data file in memory
 	dataFileMap = make(map[string]*fileMapEntry)
 
-	entry := &fileMapEntry{
-		indexes: make(map[string]*matchIndex),
-	}
+	entry := &fileMapEntry{}
 	// Add 100 equals entries
 	for i := range 100 {
 		entry.rows = append(entry.rows, map[string]string{
-			"pattern":    fmt.Sprintf("/exact-%d", i),
-			"technology": fmt.Sprintf("ExactTech-%d", i),
-			"type":       "equals",
+			"pattern": fmt.Sprintf("/exact-%d", i),
+			"tag":     fmt.Sprintf("ExactTech-%d", i),
+			"type":    "equals",
 		})
 	}
 	// Add 500 contains entries
 	for i := range 500 {
 		entry.rows = append(entry.rows, map[string]string{
-			"pattern":    fmt.Sprintf("/probe-%d/", i),
-			"technology": fmt.Sprintf("Tech-%d", i),
-			"type":       "contains",
+			"pattern": fmt.Sprintf("/probe-%d/", i),
+			"tag":     fmt.Sprintf("Tech-%d", i),
+			"type":    "contains",
 		})
 	}
 	// Add 50 regex entries
 	for i := range 50 {
 		entry.rows = append(entry.rows, map[string]string{
-			"pattern":    fmt.Sprintf("/regex-%d/[a-z]+", i),
-			"technology": fmt.Sprintf("RegexTech-%d", i),
-			"type":       "regex",
+			"pattern": fmt.Sprintf("/regex-%d/[a-z]+", i),
+			"tag":     fmt.Sprintf("RegexTech-%d", i),
+			"type":    "regex",
 		})
 	}
 
 	dataFileMap["bench.json"] = entry
 
 	// Warm up the index
-	result, _ := LookupFile("warmup", "bench.json", "pattern", "technology")
+	result, _ := LookupFile("warmup", "bench.json")
 	_ = result
 
 	b.Run("equals_match", func(b *testing.B) {
 		for range b.N {
-			result, _ := LookupFile("/exact-50", "bench.json", "pattern", "technology")
+			result, _ := LookupFile("/exact-50", "bench.json")
 			if result != "ExactTech-50" {
 				b.Fatalf("unexpected result: %s", result)
 			}
@@ -501,7 +494,7 @@ func BenchmarkLookupFile(b *testing.B) {
 	b.Run("contains_match", func(b *testing.B) {
 		haystack := "/some/path/probe-499/admin"
 		for range b.N {
-			result, _ := LookupFile(haystack, "bench.json", "pattern", "technology")
+			result, _ := LookupFile(haystack, "bench.json")
 			if result != "Tech-499" {
 				b.Fatalf("unexpected result: %s", result)
 			}
@@ -511,7 +504,7 @@ func BenchmarkLookupFile(b *testing.B) {
 	b.Run("regex_match", func(b *testing.B) {
 		haystack := "/regex-49/abcdef"
 		for range b.N {
-			result, _ := LookupFile(haystack, "bench.json", "pattern", "technology")
+			result, _ := LookupFile(haystack, "bench.json")
 			if result != "RegexTech-49" {
 				b.Fatalf("unexpected result: %s", result)
 			}
@@ -521,7 +514,7 @@ func BenchmarkLookupFile(b *testing.B) {
 	b.Run("no_match", func(b *testing.B) {
 		haystack := "/completely/normal/path/nothing/matches/here"
 		for range b.N {
-			result, _ := LookupFile(haystack, "bench.json", "pattern", "technology")
+			result, _ := LookupFile(haystack, "bench.json")
 			if result != "" {
 				b.Fatalf("unexpected result: %s", result)
 			}
