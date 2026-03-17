@@ -366,7 +366,7 @@ func TestLookupFileMissingFile(t *testing.T) {
 
 	result, err := expr.Run(compiledFilter, env)
 	require.NoError(t, err)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 func TestLookupFileMissingValueField(t *testing.T) {
@@ -386,7 +386,7 @@ func TestLookupFileMissingValueField(t *testing.T) {
 
 	result, err := expr.Run(compiledFilter, env)
 	require.NoError(t, err)
-	assert.Equal(t, "", result, "missing valueField should return empty string")
+	assert.Empty(t, result, "missing valueField should return empty string")
 }
 
 func TestResetClearsMap(t *testing.T) {
