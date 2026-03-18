@@ -20,12 +20,13 @@ var validMapEntryTypes = map[string]bool{
 	"regex":    true,
 }
 
-// fileMapEntry holds the parsed JSON-lines data and a lazily-built match index.
+// fileMapEntry holds the parsed JSON-lines data and the pre-built match index.
 // The pattern field is always "pattern" and the value field is always "tag".
 type fileMapEntry struct {
-	rows  []map[string]string
-	mu    sync.Mutex
-	index *matchIndex // lazily built, always uses "pattern" field
+	filename string // data file name, kept for log/error messages
+	rows     []map[string]string
+	mu       sync.Mutex
+	index    *matchIndex // built eagerly via FileInit, always uses "pattern" field
 }
 
 // matchIndex holds the pre-built matching structures for a given pattern field.
@@ -74,7 +75,7 @@ func fileMapInit(filename string, line string) error {
 	}
 
 	if dataFileMap[filename] == nil {
-		dataFileMap[filename] = &fileMapEntry{}
+		dataFileMap[filename] = &fileMapEntry{filename: filename}
 	}
 
 	dataFileMap[filename].rows = append(dataFileMap[filename].rows, record)
@@ -108,14 +109,14 @@ func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 		switch row["type"] {
 		case "equals":
 			if prev, exists := idx.equalsMap[val]; exists {
-				log.Warningf("fileMapEntry: duplicate equals pattern '%s' (row %d overrides row %d)", val, i, prev)
+				log.Warningf("file '%s': duplicate equals pattern '%s' (row %d overrides row %d)", e.filename, val, i, prev)
 			}
 
 			idx.equalsMap[val] = i
 		case "regex":
 			re, err := regexp.Compile(val)
 			if err != nil {
-				log.Errorf("fileMapEntry: invalid regex pattern '%s' in row %d: %s", val, i, err)
+				log.Errorf("file '%s': invalid regex pattern '%s' in row %d: %s", e.filename, val, i, err)
 				continue
 			}
 
@@ -128,6 +129,9 @@ func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 			continue
 		}
 	}
+
+	log.Infof("file '%s': loaded %d equals, %d contains, %d regex patterns",
+		e.filename, len(idx.equalsMap), len(acPatterns), len(idx.regexPatterns))
 
 	if len(acPatterns) > 0 {
 		builder := aho_corasick.NewAhoCorasickBuilder(aho_corasick.Opts{

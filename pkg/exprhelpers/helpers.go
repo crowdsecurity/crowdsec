@@ -243,7 +243,18 @@ func FileInit(directory string, filename string, fileType string) error {
 		}
 	}
 
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Build the match index eagerly so errors surface at load time.
+	if fileType == "map" {
+		if entry, ok := dataFileMap[filename]; ok {
+			entry.getOrBuildIndex()
+		}
+	}
+
+	return nil
 }
 
 // Expr helpers
