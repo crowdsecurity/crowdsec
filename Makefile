@@ -171,6 +171,7 @@ COMPONENTS := \
 	datasource_kafka \
 	datasource_journalctl \
 	datasource_kinesis \
+	datasource_kubernetes \
 	datasource_loki \
 	datasource_victorialogs \
 	datasource_s3 \
