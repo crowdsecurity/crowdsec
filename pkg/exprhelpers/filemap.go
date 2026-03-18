@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"sync"
+	"slices"
+	"strings"
 
 	aho_corasick "github.com/petar-dambovaliev/aho-corasick"
 	log "github.com/sirupsen/logrus"
@@ -14,18 +15,13 @@ import (
 var dataFileMap map[string]*fileMapEntry
 
 // validMapEntryTypes lists the recognized values for the mandatory "type" field in map data files.
-var validMapEntryTypes = map[string]bool{
-	"equals":   true,
-	"contains": true,
-	"regex":    true,
-}
+var validMapEntryTypes = []string{"equals", "contains", "regex"}
 
 // fileMapEntry holds the parsed JSON-lines data and the pre-built match index.
 // The pattern field is always "pattern" and the value field is always "tag".
 type fileMapEntry struct {
 	filename string // data file name, kept for log/error messages
 	rows     []map[string]string
-	mu       sync.Mutex
 	index    *matchIndex // built eagerly via FileInit, always uses "pattern" field
 }
 
@@ -64,8 +60,9 @@ func fileMapInit(filename string, line string) error {
 		return fmt.Errorf("missing mandatory 'type' field in %s: %s", filename, line)
 	}
 
-	if !validMapEntryTypes[entryType] {
-		return fmt.Errorf("unknown entry type '%s' in %s: %s", entryType, filename, line)
+	if !slices.Contains(validMapEntryTypes, entryType) {
+		return fmt.Errorf("unknown entry type '%s' in %s (supported: %s): %s",
+			entryType, filename, strings.Join(validMapEntryTypes, ", "), line)
 	}
 
 	if entryType == "regex" {
@@ -83,20 +80,13 @@ func fileMapInit(filename string, line string) error {
 	return nil
 }
 
-// getOrBuildIndex returns the cached matchIndex, building it on first access.
-// It always indexes on the "pattern" field. Rows are partitioned by their "type" field
-// (validated at load time):
+// buildIndex builds the matchIndex from the parsed rows.
+// Called once from FileInit after all lines are loaded.
+// Rows are partitioned by their "type" field (validated at load time):
 //   - "equals"   → inserted into equalsMap for O(1) lookup
 //   - "contains" → fed to Aho-Corasick automaton builder
 //   - "regex"    → compiled to *regexp.Regexp
-func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	if e.index != nil {
-		return e.index
-	}
-
+func (e *fileMapEntry) buildIndex() {
 	idx := &matchIndex{
 		equalsMap: make(map[string]int),
 	}
@@ -146,8 +136,6 @@ func (e *fileMapEntry) getOrBuildIndex() *matchIndex {
 	}
 
 	e.index = idx
-
-	return idx
 }
 
 // FileMap returns the pre-parsed JSON-lines data for the given filename.
@@ -183,7 +171,7 @@ func LookupFile(params ...any) (any, error) {
 		return "", nil
 	}
 
-	idx := entry.getOrBuildIndex()
+	idx := entry.index
 	if idx == nil {
 		return "", nil
 	}

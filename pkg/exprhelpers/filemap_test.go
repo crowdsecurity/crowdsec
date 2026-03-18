@@ -281,12 +281,14 @@ func TestLookupFileEqualsBeforeContains(t *testing.T) {
 	dataFileMap = make(map[string]*fileMapEntry)
 
 	entry := &fileMapEntry{
+		filename: "overlap_test.json",
 		rows: []map[string]string{
 			{"pattern": "/overlap/path", "tag": "ContainsTech", "type": "contains"},
 			{"pattern": "/overlap/path", "tag": "EqualsTech", "type": "equals"},
 		},
 	}
 	dataFileMap["overlap_test.json"] = entry
+	entry.buildIndex()
 
 	env := map[string]any{"path": "/overlap/path"}
 	compiledFilter, err := expr.Compile(
@@ -450,7 +452,7 @@ func BenchmarkLookupFile(b *testing.B) {
 	// Generate a large test data file in memory
 	dataFileMap = make(map[string]*fileMapEntry)
 
-	entry := &fileMapEntry{}
+	entry := &fileMapEntry{filename: "bench.json"}
 	// Add 100 equals entries
 	for i := range 100 {
 		entry.rows = append(entry.rows, map[string]string{
@@ -477,10 +479,7 @@ func BenchmarkLookupFile(b *testing.B) {
 	}
 
 	dataFileMap["bench.json"] = entry
-
-	// Warm up the index
-	result, _ := LookupFile("warmup", "bench.json")
-	_ = result
+	entry.buildIndex()
 
 	b.Run("equals_match", func(b *testing.B) {
 		for range b.N {
