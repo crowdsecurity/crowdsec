@@ -50,11 +50,11 @@ The "Community Blocklist" is a curated list of IP addresses identified as malici
 [![Multiple Platforms support](https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
 
 
-## Outnumbering hackers all together
+## Outnumbering hackers altogether
 
-By sharing the threat they faced, all users are protecting each other (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyze logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
+By sharing the threats they face, users help protect each other (hence the name Crowd-Security). CrowdSec is designed for modern infrastructures, using a "Detect Here, Remedy There" approach. This allows you to analyze logs from multiple sources in one place and block threats at different levels of your stack (application, system, and infrastructure).
 
-CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
+CrowdSec comes with built-in scenarios (such as brute force, port scan, web scan, etc.) adapted for most use cases. You can easily extend them by selecting additional scenarios from the **[HUB](https://hub.crowdsec.net)**. It is also simple to customize existing scenarios or create your own.
 
 ## Installation
 
