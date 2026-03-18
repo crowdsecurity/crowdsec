@@ -250,7 +250,7 @@ func FileInit(directory string, filename string, fileType string) error {
 	// Build the match index eagerly so errors surface at load time.
 	if fileType == "map" {
 		if entry, ok := dataFileMap[filename]; ok {
-			entry.getOrBuildIndex()
+			entry.buildIndex()
 		}
 	}
 
