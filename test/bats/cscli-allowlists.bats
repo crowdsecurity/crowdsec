@@ -292,7 +292,7 @@ teardown() {
 
     # empty file
     rune -1 cscli allowlist import foo -i /dev/null
-    assert_stderr --partial 'Error: cscli allowlists import: unable to parse CSV'
+    assert_stderr --partial 'Error: cscli allowlists import: no values to import'
 
     # nonexistent allowlist
     tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
