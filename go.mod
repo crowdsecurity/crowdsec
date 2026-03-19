@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.3
 	github.com/beevik/etree v1.4.1
 	github.com/bluele/gcache v0.0.2
-	github.com/buger/jsonparser v1.1.1
+	github.com/buger/jsonparser v1.1.2
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/containerd/errdefs v1.0.0
