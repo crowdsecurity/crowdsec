@@ -215,9 +215,7 @@ func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (boo
 		groklabel = n.Grok.RegexpName
 	}
 
-	grok := n.RuntimeGrok.RunTimeRegexp.Parse(gstr)
-
-	if len(grok) == 0 {
+	if !n.RuntimeGrok.RunTimeRegexp.ParseInto(gstr, p.Parsed) {
 		// grok failed, node failed
 		clog.Debugf("+ Grok %q didn't return data on %q", groklabel, gstr)
 		return false, false, nil
@@ -226,12 +224,7 @@ func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (boo
 	// tag explicitly that the *current* node had a successful grok pattern. it's important to know success state
 	nodeHasOKGrok = true
 
-	clog.Debugf("+ Grok %q returned %d entries to merge in Parsed", groklabel, len(grok))
-	// We managed to grok stuff, merged into parse
-	for k, v := range grok {
-		clog.Debugf("\t.Parsed[%q] = %q", k, v)
-		p.Parsed[k] = v
-	}
+	clog.Debugf("+ Grok %q returned data to merge in Parsed", groklabel)
 	// if the grok succeed, process associated statics
 	err := n.RuntimeGrok.ProcessStatics(p, n.EnrichFunctions, clog, n.Debug)
 	if err != nil {
