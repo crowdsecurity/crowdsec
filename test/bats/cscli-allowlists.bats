@@ -281,6 +281,80 @@ teardown() {
     assert_json '{"description":"a foo","items":[],"name":"foo"}'
 }
 
+@test "cscli allowlists import" {
+    rune -1 cscli allowlist import
+    assert_stderr 'Error: cscli allowlists import: accepts 1 arg(s), received 0'
+
+    rune -1 cscli allowlist import foo
+    assert_stderr 'Error: cscli allowlists import: required flag(s) "input" not set'
+
+    rune -1 cscli allowlist import does-not-exist -i /dev/null
+    assert_stderr "Error: cscli allowlists import: allowlist 'does-not-exist' not found"
+
+    rune -0 cscli allowlist create foo -d 'a foo'
+
+    # empty file
+    rune -1 cscli allowlist import foo -i /dev/null
+    assert_stderr --partial 'Error: cscli allowlists import: unable to parse CSV'
+
+    # basic csv import with all columns
+    tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    cat > "$tmpfile" <<-EOT
+	value,expiration,comment
+	1.2.3.4,24h,my comment
+	5.6.7.8,,another comment
+	10.0.0.0/8,1d,
+	EOT
+    rune -0 cscli allowlist import foo -i "$tmpfile"
+    assert_output 'added 3 values to allowlist foo'
+    refute_stderr
+
+    # deduplication: 1.2.3.4 already exists
+    cat > "$tmpfile" <<-EOT
+	value,expiration,comment
+	1.2.3.4,,duplicate
+	9.9.9.9,,new one
+	EOT
+    rune -0 cscli allowlist import foo -i "$tmpfile"
+    assert_stderr --partial 'level=warning msg="value 1.2.3.4 already in allowlist"'
+    assert_output 'added 1 values to allowlist foo'
+
+    # csv with only value column
+    cat > "$tmpfile" <<-EOT
+	value
+	100.100.100.100
+	200.200.200.200
+	EOT
+    rune -0 cscli allowlist import foo -i "$tmpfile"
+    assert_output 'added 2 values to allowlist foo'
+    refute_stderr
+
+    # missing value in a row
+    cat > "$tmpfile" <<-EOT
+	value,comment
+	1.1.1.1,ok
+	,missing value
+	EOT
+    rune -1 cscli allowlist import foo -i "$tmpfile"
+    assert_stderr --partial "row 2: missing 'value'"
+
+    # invalid expiration
+    cat > "$tmpfile" <<-EOT
+	value,expiration
+	2.2.2.2,toto
+	EOT
+    rune -1 cscli allowlist import foo -i "$tmpfile"
+    assert_stderr --partial 'row 1: invalid expiration "toto"'
+
+    # stdin support
+    rune -0 cscli allowlist import foo -i - <<-EOT
+	value,comment
+	30.30.30.30,from stdin
+	EOT
+    assert_output 'added 1 values to allowlist foo'
+    refute_stderr
+}
+
 @test "allowlists expire active decisions" {
     rune -0 cscli decisions add -i 1.2.3.4
     rune -0 cscli decisions add -r 2.3.4.0/24
