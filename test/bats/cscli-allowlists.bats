@@ -288,17 +288,20 @@ teardown() {
     rune -1 cscli allowlist import foo
     assert_stderr 'Error: cscli allowlists import: required flag(s) "input" not set'
 
-    rune -1 cscli allowlist import does-not-exist -i /dev/null
-    assert_stderr "Error: cscli allowlists import: allowlist 'does-not-exist' not found"
-
     rune -0 cscli allowlist create foo -d 'a foo'
 
     # empty file
     rune -1 cscli allowlist import foo -i /dev/null
     assert_stderr --partial 'Error: cscli allowlists import: unable to parse CSV'
 
-    # basic csv import with all columns
+    # nonexistent allowlist
     tmpfile=$(TMPDIR="$BATS_TEST_TMPDIR" mktemp)
+    cat > "$tmpfile" <<-EOT
+	value
+	1.2.3.4
+	EOT
+    rune -1 cscli allowlist import does-not-exist -i "$tmpfile"
+    assert_stderr "Error: cscli allowlists import: allowlist 'does-not-exist' not found"
     cat > "$tmpfile" <<-EOT
 	value,expiration,comment
 	1.2.3.4,24h,my comment
