@@ -127,23 +127,36 @@ func (s *Source) Dump() any {
 func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event,
 	onLine func(string, string, map[string]string, metrics.AcquisitionMetricsLevel, chan pipeline.Event) error) error {
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
-	stream, err := req.Stream(ctx)
-	if err != nil {
-		return err
-	}
-	defer stream.Close()
-
-	sc := bufio.NewScanner(stream)
-	for sc.Scan() {
+	fn := func() error {
 		if err := ctx.Err(); err != nil {
+			return nil
+		}
+		stream, err := req.Stream(ctx)
+		if err != nil {
 			return err
 		}
-		if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, labels, metricsLevel, out); err != nil {
+		defer stream.Close()
+
+		sc := bufio.NewScanner(stream)
+		for sc.Scan() {
+			if err := ctx.Err(); err != nil {
+				return nil
+			}
+			if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, labels, metricsLevel, out); err != nil {
+				return err
+			}
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		return sc.Err()
+	}
+	for {
+		err := fn()
+		if err != nil {
 			return err
 		}
 	}
-	return sc.Err()
-
 }
 
 //dev/	source := pod.Namespace + "/" + pod.Name + "/" + cont.Name
@@ -170,9 +183,14 @@ func (s *Source) processLine(line string, source string, labels map[string]strin
 
 }
 
-func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup) context.CancelFunc {
+func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) context.CancelFunc {
 	podCtx, cancel := context.WithCancel(parentCtx)
 	wg.Go(func() {
+		defer func() {
+			mu.Lock()
+			delete(cancels, pod.UID)
+			mu.Unlock()
+		}()
 		var cw sync.WaitGroup
 		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
@@ -180,7 +198,7 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 				if err != nil {
 					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
 				} else {
-					s.logger.Debugf("stopped following logs for %s/%s/%s", pod)
+					s.logger.Debugf("stopped following logs for %s/%s/%s", pod.Namespace, pod.Name, cont.Name)
 				}
 			})
 		}
@@ -204,7 +222,7 @@ func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev
 	}
 
 	s.logger.Debugf("START tail %s", podRef(p))
-	cancels[key] = s.podWorker(ctx, cs, p, out, wg)
+	cancels[key] = s.podWorker(ctx, cs, p, out, wg, mu, cancels)
 	mu.Unlock()
 }
 
