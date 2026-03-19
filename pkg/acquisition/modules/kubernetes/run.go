@@ -31,7 +31,7 @@ func podRef(p *corev1.Pod) string {
 		p.Status.Phase,
 		p.ResourceVersion,
 		p.Spec.NodeName,
-		)
+	)
 }
 
 func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
@@ -176,8 +176,12 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 		var cw sync.WaitGroup
 		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
-				_ = s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, s.config.Labels, s.metricsLevel, out, s.processLine)
-				s.logger.Infof("stopped following logs for %s/%s/%s", pod.Namespace, pod.Name, cont.Name)
+				err := s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, s.config.Labels, s.metricsLevel, out, s.processLine)
+				if err != nil {
+					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
+				} else {
+					s.logger.Debugf("stopped following logs for %s/%s/%s", pod)
+				}
 			})
 		}
 		cw.Wait()
