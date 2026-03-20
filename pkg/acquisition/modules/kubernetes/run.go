@@ -3,12 +3,12 @@ package kubernetes
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,15 +38,19 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	s.logger.Info("Starting Kubernetes acquisition")
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+		"unique_id": s.config.UniqueId,
+	}).Info("starting kubernetes acquisition")
 
-	cfg, err := s.config.buildClientConfig()
+	cfg, err := s.config.buildClientConfig(s.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
 	}
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("can't create a kubernetes client: %s", err)
+		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
 	}
 
 	cancels := map[types.UID]context.CancelFunc{}
@@ -66,7 +70,11 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	// We ignore the ResourceEventHandlerRegistration returned by
 	// AddEventHandler since we don't need to remove the handlers until shutdown,
 	// and we will stop the entire informer at that time.
-	s.logger.Info("Adding kubernetes event handler")
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+		"unique_id": s.config.UniqueId,
+	}).Info("adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			p := obj.(*corev1.Pod)
@@ -102,11 +110,11 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("while adding event handler: %w", err)
+		return fmt.Errorf("while adding event handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
 	}
 	f.Start(ctx.Done())
 	if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
-		return errors.New("cache sync failed")
+		return fmt.Errorf("cache sync failed for namespace=%q selector=%q unique_id=%q", s.config.Namespace, s.config.Selector, s.config.UniqueId)
 	}
 
 	<-ctx.Done()
