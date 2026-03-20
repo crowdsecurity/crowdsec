@@ -239,6 +239,7 @@ func (cli *cliAllowLists) NewCommand() *cobra.Command {
 	cmd.AddCommand(cli.newListCmd())
 	cmd.AddCommand(cli.newDeleteCmd())
 	cmd.AddCommand(cli.newAddCmd())
+	cmd.AddCommand(cli.newImportCmd())
 	cmd.AddCommand(cli.newRemoveCmd())
 	cmd.AddCommand(cli.newInspectCmd())
 	cmd.AddCommand(cli.newCheckCmd())
