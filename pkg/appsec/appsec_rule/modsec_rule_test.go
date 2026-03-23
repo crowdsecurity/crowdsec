@@ -155,7 +155,6 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:651140804,phase:2,deny,log,msg:'test ru
 			// leaf(foo) AND (foo OR bar) → DNF: (foo AND foo) OR (foo AND bar) → 2 groups of 2
 			name:        "OR AND mix",
 			description: "test rule",
-			invalid:     true,
 
 			rule: CustomRule{
 				And: []CustomRule{
