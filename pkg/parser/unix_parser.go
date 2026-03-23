@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -36,7 +37,12 @@ type Parsers struct {
 func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
-	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
+	// RE2 is enabled by default on linux, but can be disabled with re2_disable_grok_support
+	if runtime.GOOS == "linux" {
+		r.Grok.UseRe2 = fflag.Re2DisableGrokSupport.IsEnabled() || true
+	} else {
+		r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
+	}
 
 	files, err := os.ReadDir(patternDir)
 	if err != nil {
