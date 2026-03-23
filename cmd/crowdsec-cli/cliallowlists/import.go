@@ -65,7 +65,7 @@ $ cat allowlist.csv | cscli allowlists import my_allowlist -i -`,
 
 			name := args[0]
 
-			return cli.import_(ctx, db, name, input)
+			return cli.import_allowlist(ctx, db, name, input)
 		},
 	}
 
@@ -77,7 +77,7 @@ $ cat allowlist.csv | cscli allowlists import my_allowlist -i -`,
 	return cmd
 }
 
-func (*cliAllowLists) import_(ctx context.Context, db *database.Client, name string, input string) error {
+func (*cliAllowLists) import_allowlist(ctx context.Context, db *database.Client, name string, input string) error {
 	var (
 		fin *os.File
 		err error
