@@ -27,3 +27,9 @@ func (cm *ChallengeMatcher) Deny(reason string) bool {
 	}
 	return true
 }
+
+func NewChallengeMatcher(conditions ...bool) *ChallengeMatcher {
+	return &ChallengeMatcher{
+		conditions: conditions,
+	}
+}

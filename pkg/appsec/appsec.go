@@ -959,23 +959,23 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (challenge.ChallengeMatcher, error) {
+func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (*challenge.ChallengeMatcher, error) {
 
 	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
 	isValidCookie := err == nil && w.ChallengeRuntime != nil && w.ChallengeRuntime.ValidCookie(cookie)
 
 	if isValidCookie {
 		w.Logger.Debugf("valid challenge cookie found, allowing request")
-		return challenge.NewChallengeMatcher([]bool{true}), nil
+		return challenge.NewChallengeMatcher(true), nil
 	}
 
 	if request.HTTPRequest.URL.Path != challenge.ChallengeSubmitPath || request.HTTPRequest.Method != http.MethodPost {
 		// If not a challenge submission, consider it valid
 		//
-		return challenge.NewChallengeMatcher([]bool{true}), nil
+		return challenge.NewChallengeMatcher(true), nil
 	}
 
-	return challenge.NewChallengeMatcher([]bool{true}), nil
+	return challenge.NewChallengeMatcher(true), nil
 }
 
 type BodyResponse struct {
