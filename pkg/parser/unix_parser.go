@@ -39,7 +39,7 @@ func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error)
 	r.Grok = grokky.NewBase()
 	// RE2 is enabled by default on linux, but can be disabled with re2_disable_grok_support
 	if runtime.GOOS == "linux" {
-		r.Grok.UseRe2 = fflag.Re2DisableGrokSupport.IsEnabled() || true
+		r.Grok.UseRe2 = !fflag.Re2DisableGrokSupport.IsEnabled()
 	} else {
 		r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 	}
