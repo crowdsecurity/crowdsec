@@ -16,7 +16,7 @@ var (
 	PProfBlockProfile      = &Feature{Name: "pprof_block_profile", Description: "Enable pprof block/mutex profiling. Do not use unless instructed by CrowdSec support"}
 )
 
-//revive:disable-next-line:if-return
+//revive:disable:if-return
 func RegisterAllFeatures() error {
 	if err := Crowdsec.RegisterFeature(DisableHttpRetryBackoff); err != nil {
 		return err
@@ -52,3 +52,5 @@ func RegisterAllFeatures() error {
 
 	return nil
 }
+
+//revice:enable:if-return
