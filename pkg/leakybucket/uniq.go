@@ -6,7 +6,6 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -21,60 +20,60 @@ var (
 	uniqExprCacheLock sync.Mutex
 )
 
-type Uniq struct {
+type UniqProcessor struct {
 	DistinctCompiled *vm.Program
 	KeyCache         map[string]bool
 	CacheMutex       sync.Mutex
 }
 
-func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
-	element, err := getElement(msg, u.DistinctCompiled)
+func (p *UniqProcessor) OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky *Leaky) *pipeline.Event {
+	element, err := getElement(msg, p.DistinctCompiled)
 	if err != nil {
 		leaky.logger.Errorf("Uniq filter exec failed : %v", err)
 		return &msg
 	}
-	leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
-	u.CacheMutex.Lock()
-	defer u.CacheMutex.Unlock()
-	if _, ok := u.KeyCache[element]; !ok {
+	leaky.logger.Tracef("Uniq '%s' -> '%s'", f.Spec.Distinct, element)
+	p.CacheMutex.Lock()
+	defer p.CacheMutex.Unlock()
+	if _, ok := p.KeyCache[element]; !ok {
 		leaky.logger.Debugf("Uniq(%s) : ok", element)
-		u.KeyCache[element] = true
+		p.KeyCache[element] = true
 		return &msg
 	}
 	leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
 	return nil
 }
 
-func (*Uniq) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
+func (*UniqProcessor) OnBucketOverflow(_ *BucketFactory, _ *Leaky, alert pipeline.RuntimeAlert, queue *pipeline.Queue) (pipeline.RuntimeAlert, *pipeline.Queue) {
 	return alert, queue
 }
 
-func (*Uniq) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
+func (*UniqProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event, _ *Leaky) *pipeline.Event {
 	return &msg
 }
 
-func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
+func (p *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 	if uniqExprCache == nil {
 		uniqExprCache = make(map[string]vm.Program)
 	}
 
 	uniqExprCacheLock.Lock()
-	if compiled, ok := uniqExprCache[bucketFactory.Distinct]; ok {
+	if compiled, ok := uniqExprCache[f.Spec.Distinct]; ok {
 		uniqExprCacheLock.Unlock()
-		u.DistinctCompiled = &compiled
+		p.DistinctCompiled = &compiled
 	} else {
 		uniqExprCacheLock.Unlock()
 		// release the lock during compile
-		compiledExpr, err := expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		compiledExpr, err := compile(f.Spec.Distinct, nil)
 		if err != nil {
 			return err
 		}
-		u.DistinctCompiled = compiledExpr
+		p.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
-		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
+		uniqExprCache[f.Spec.Distinct] = *compiledExpr
 		uniqExprCacheLock.Unlock()
 	}
-	u.KeyCache = make(map[string]bool)
+	p.KeyCache = make(map[string]bool)
 	return nil
 }
 

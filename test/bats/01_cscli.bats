@@ -29,12 +29,14 @@ teardown() {
     assert_output --partial "Usage:"
     assert_output --partial "cscli [command]"
     assert_output --partial "Available Commands:"
+}
 
-    # no "usage" output after every error
-    rune -1 cscli blahblah
+@test "cscli <unknown command>" {
+    rune -1 cscli foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli"'
     # error is displayed with print, not as a log entry
-    assert_stderr --partial 'unknown command "blahblah" for "cscli"'
-    refute_stderr --partial 'level=fatal'
+    refute_stderr --partial 'level'
 }
 
 @test "cscli version" {
@@ -64,6 +66,12 @@ teardown() {
     rm "$CONFIG_YAML"
     rune -0 cscli help
     assert_line "Available Commands:"
+}
+
+@test "cscli config <unknown command>" {
+    rune -1 cscli config foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli config"'
 }
 
 @test "cscli config show" {
@@ -229,6 +237,12 @@ teardown() {
     rm "$CONFIG_YAML"
     rune -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
+}
+
+@test "cscli support <unknown command>" {
+    rune -1 cscli support foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli support"'
 }
 
 @test "cscli support dump (smoke test)" {

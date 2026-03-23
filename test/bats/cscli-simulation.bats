@@ -30,15 +30,17 @@ setup() {
 
 #----------
 
+@test "cscli simulation <unknown command>" {
+    rune -1 cscli simulation foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli simulation"'
+}
+
 @test "cscli simulation" {
     rune -0 cscli help
     assert_line --regexp '^ +simulation +Manage simulation status of scenarios$'
 
     rune -0 cscli simulation --help
-    assert_line 'Usage:'
-
-    # should be -1
-    rune -0 cscli simulation blahblah
     assert_line 'Usage:'
 }
 

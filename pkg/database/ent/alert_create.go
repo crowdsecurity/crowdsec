@@ -354,6 +354,20 @@ func (ac *AlertCreate) SetNillableRemediation(b *bool) *AlertCreate {
 	return ac
 }
 
+// SetKind sets the "kind" field.
+func (ac *AlertCreate) SetKind(s string) *AlertCreate {
+	ac.mutation.SetKind(s)
+	return ac
+}
+
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (ac *AlertCreate) SetNillableKind(s *string) *AlertCreate {
+	if s != nil {
+		ac.SetKind(*s)
+	}
+	return ac
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
 	ac.mutation.SetOwnerID(id)
@@ -624,6 +638,10 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		_spec.SetField(alert.FieldRemediation, field.TypeBool, value)
 		_node.Remediation = value
 	}
+	if value, ok := ac.mutation.Kind(); ok {
+		_spec.SetField(alert.FieldKind, field.TypeString, value)
+		_node.Kind = value
+	}
 	if nodes := ac.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -832,6 +850,9 @@ func (u *AlertUpsertOne) UpdateNewValues() *AlertUpsertOne {
 		}
 		if _, exists := u.create.mutation.Remediation(); exists {
 			s.SetIgnore(alert.FieldRemediation)
+		}
+		if _, exists := u.create.mutation.Kind(); exists {
+			s.SetIgnore(alert.FieldKind)
 		}
 	}))
 	return u
@@ -1122,6 +1143,9 @@ func (u *AlertUpsertBulk) UpdateNewValues() *AlertUpsertBulk {
 			}
 			if _, exists := b.mutation.Remediation(); exists {
 				s.SetIgnore(alert.FieldRemediation)
+			}
+			if _, exists := b.mutation.Kind(); exists {
+				s.SetIgnore(alert.FieldKind)
 			}
 		}
 	}))

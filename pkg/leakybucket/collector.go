@@ -2,7 +2,7 @@ package leakybucket
 
 import (
 	"sync"
-	
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"

@@ -284,6 +284,9 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if au.mutation.RemediationCleared() {
 		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
 	}
+	if au.mutation.KindCleared() {
+		_spec.ClearField(alert.FieldKind, field.TypeString)
+	}
 	if au.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -749,6 +752,9 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 	}
 	if auo.mutation.RemediationCleared() {
 		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
+	}
+	if auo.mutation.KindCleared() {
+		_spec.ClearField(alert.FieldKind, field.TypeString)
 	}
 	if auo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{

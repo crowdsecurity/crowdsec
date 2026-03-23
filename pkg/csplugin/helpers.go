@@ -11,7 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-var helpers = template.FuncMap{
+var funcMap = template.FuncMap{
 	"GetMeta": func(a *models.Alert, metaName string) []string {
 		var metaValues []string
 		for _, evt := range a.Events {
@@ -32,8 +32,4 @@ var helpers = template.FuncMap{
 	},
 	"Hostname":   os.Hostname,
 	"HTMLEscape": html.EscapeString,
-}
-
-func funcMap() template.FuncMap {
-	return helpers
 }

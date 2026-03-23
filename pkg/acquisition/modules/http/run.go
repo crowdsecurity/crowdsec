@@ -37,7 +37,7 @@ func authorizeRequest(r *http.Request, hc *Configuration) error {
 	}
 
 	if hc.AuthType == "headers" {
-		for key, value := range *hc.Headers {
+		for key, value := range hc.Headers {
 			if r.Header.Get(key) != value {
 				return errors.New("invalid headers")
 			}
@@ -169,7 +169,7 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 		}
 
 		if s.Config.CustomHeaders != nil {
-			for key, value := range *s.Config.CustomHeaders {
+			for key, value := range s.Config.CustomHeaders {
 				w.Header().Set(key, value)
 			}
 		}
@@ -212,11 +212,11 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 	listenConfig := &net.ListenConfig{}
 
 	t.Go(func() error {
+		defer trace.ReportPanic()
+
 		if s.Config.ListenSocket == "" {
 			return nil
 		}
-
-		defer trace.CatchPanic("crowdsec/acquis/http/server/unix")
 
 		s.logger.Infof("creating unix socket on %s", s.Config.ListenSocket)
 		_ = os.Remove(s.Config.ListenSocket)
@@ -242,11 +242,11 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 	})
 
 	t.Go(func() error {
+		defer trace.ReportPanic()
+
 		if s.Config.ListenAddr == "" {
 			return nil
 		}
-
-		defer trace.CatchPanic("crowdsec/acquis/http/server/tcp")
 
 		if s.Config.TLS != nil {
 			s.logger.Infof("start https server on %s", s.Config.ListenAddr)
@@ -282,7 +282,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.logger.Debugf("start http server on %s", s.Config.ListenAddr)
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/http/live")
+		defer trace.ReportPanic()
 		return s.RunServer(ctx, out, t)
 	})
 

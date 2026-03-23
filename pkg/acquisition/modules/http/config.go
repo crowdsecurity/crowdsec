@@ -18,20 +18,20 @@ import (
 )
 
 type Configuration struct {
-	// IPFilter                       []string           `yaml:"ip_filter"`
-	// ChunkSize                      *int64             `yaml:"chunk_size"`
-	ListenAddr                        string             `yaml:"listen_addr"`
-	ListenSocket                      string             `yaml:"listen_socket"`
-	Path                              string             `yaml:"path"`
-	AuthType                          string             `yaml:"auth_type"`
-	BasicAuth                         *BasicAuthConfig   `yaml:"basic_auth"`
-	Headers                           *map[string]string `yaml:"headers"`
-	TLS                               *TLSConfig         `yaml:"tls"`
-	CustomStatusCode                  *int               `yaml:"custom_status_code"`
-	CustomHeaders                     *map[string]string `yaml:"custom_headers"`
-	MaxBodySize                       *int64             `yaml:"max_body_size"`
-	Timeout                           *time.Duration     `yaml:"timeout"`
-	configuration.DataSourceCommonCfg `yaml:",inline"`
+	// IPFilter                       []string          `yaml:"ip_filter"`
+	// ChunkSize                      *int64            `yaml:"chunk_size"`
+	ListenAddr                        string            `yaml:"listen_addr"`
+	ListenSocket                      string            `yaml:"listen_socket"`
+	Path                              string            `yaml:"path"`
+	AuthType                          string            `yaml:"auth_type"`
+	BasicAuth                         *BasicAuthConfig  `yaml:"basic_auth"`
+	Headers                           map[string]string `yaml:"headers"`
+	TLS                               *TLSConfig        `yaml:"tls"`
+	CustomStatusCode                  *int              `yaml:"custom_status_code"`
+	CustomHeaders                     map[string]string `yaml:"custom_headers"`
+	MaxBodySize                       *int64            `yaml:"max_body_size"`
+	Timeout                           *time.Duration    `yaml:"timeout"`
+	configuration.DataSourceCommonCfg                   `yaml:",inline"`
 }
 
 func ConfigurationFromYAML(y []byte) (Configuration, error) {

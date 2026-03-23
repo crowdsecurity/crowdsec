@@ -221,9 +221,9 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 
 	// This is a modsec rule match
 	if scenarioName == "" && len(sevRules) > 0 {
-		// If from CRS (TX scores are set), use that as the name
+		// If from CRS (TX scores are set, and the global score is not 0), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
-		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+		if score, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok && score != "0" {
 			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
 		} else {
 			if msg, msgOk := sevRules[0]["msg"].(string); msgOk {
@@ -244,6 +244,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
+	alert.Kind = types.WAFAlertKind.String()
 
 	msg := ""
 
@@ -312,33 +313,6 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 	evt.Appsec = pipeline.AppsecEvent{}
 
 	return evt, nil
-}
-
-func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
-	req := evt.Parsed["target_uri"]
-	if len(req) > 12 {
-		req = req[:10] + ".."
-	}
-
-	if evt.Meta["appsec_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else if evt.Parsed["outofband_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	}
 }
 
 type ruleData struct {
