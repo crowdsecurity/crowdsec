@@ -938,33 +938,30 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 		return w.setChallengeResponse(state, http.StatusOK, body, map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, cookie)
 	}
 
-	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	isValidCookie := err == nil && w.ChallengeRuntime.ValidCookie(cookie)
-	if err != nil || !isValidCookie {
-		w.Logger.Debugf("no valid challenge cookie found")
-		challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
-		if err != nil {
-			return fmt.Errorf("unable to get challenge page: %w", err)
+	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	if err == nil {
+		if _, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+			w.Logger.Debugf("valid challenge cookie found, allowing request")
+			return nil
 		}
-		return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
 	}
 
-	if isValidCookie {
-		w.Logger.Debugf("valid challenge cookie found, allowing request")
-		return nil
+	w.Logger.Debugf("no valid challenge cookie found")
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
+	if err != nil {
+		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
-
-	return nil
+	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
 }
 
 func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (*challenge.ChallengeMatcher, error) {
 
-	cookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	isValidCookie := err == nil && w.ChallengeRuntime != nil && w.ChallengeRuntime.ValidCookie(cookie)
-
-	if isValidCookie {
-		w.Logger.Debugf("valid challenge cookie found, allowing request")
-		return challenge.NewChallengeMatcher(true), nil
+	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
+	if err == nil && w.ChallengeRuntime != nil {
+		if _, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+			w.Logger.Debugf("valid challenge cookie found, allowing request")
+			return challenge.NewChallengeMatcher(true), nil
+		}
 	}
 
 	if request.HTTPRequest.URL.Path != challenge.ChallengeSubmitPath || request.HTTPRequest.Method != http.MethodPost {

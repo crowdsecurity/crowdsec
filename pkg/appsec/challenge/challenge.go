@@ -338,7 +338,6 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientTS := vars.Get("ts")
 	clientHMAC := vars.Get("h")
 	clientSessionKey := vars.Get("s")
-	userAgent := request.UserAgent()
 
 	if encryptedFingerprint == "" || clientTicket == "" || clientTS == "" || clientHMAC == "" || clientSessionKey == "" {
 		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
@@ -388,21 +387,10 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
 
-	// FIXME: make this configurable
-	//now := time.Now()
-
-	// Would JWE be better and simpler here ?
-	cookieHMAC := hmac.New(sha256.New, []byte(masterSecret))
-	cookieHMAC.Write([]byte(userAgent))
-
-	// Initial plan was to use expiration time as part of the HMAC
-	// But it would also be part of the cookie, and the expiration time by itself is not sent by the client
-	// So this means that we would need to partially trust some data from the cookie before validating it (and it would be used to derive the HMAC key), which seems bad.
-
-	// Cookie value is encrypted value of {"iat": now, "f": fingerprint}
-	// HMAC is computed with expiration time + user agent, so that the cookie is tied to both the client and a specific time window.
-
-	cookieValue := fmt.Sprintf("%x", cookieHMAC.Sum(nil))
+	cookieValue, err := sealCookie(fpData.ToProto(), masterSecret, []byte(request.UserAgent()))
+	if err != nil {
+		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
+	}
 
 	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(2 * time.Hour).Value(cookieValue)
 	if request.URL.Scheme == "https" {
@@ -411,9 +399,17 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	return ck, fpData, nil
 }
 
-func (c *ChallengeRuntime) ValidCookie(cookie *http.Cookie) bool {
-	if cookie == nil {
-		return false
+func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*FingerprintData, error) {
+	if ck == nil {
+		return nil, fmt.Errorf("nil cookie")
 	}
-	return true
+
+	pbData, err := openCookie(ck.Value, masterSecret, []byte(userAgent))
+	if err != nil {
+		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
+	}
+
+	fpData := fingerprintDataFromProto(pbData)
+
+	return &fpData, nil
 }
