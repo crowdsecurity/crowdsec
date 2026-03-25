@@ -384,6 +384,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	err = json.Unmarshal([]byte(fingerprint), &fpData)
 
 	if err != nil {
+		log.Errorf("fp: %s", fingerprint)
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
 

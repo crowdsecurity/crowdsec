@@ -25,26 +25,26 @@ function isValidPluginArray() {
 
 
   function getPluginCount() {
-    if (!navigator.plugins) return NA;
+    if (!navigator.plugins) return 0;
     return navigator.plugins.length;
   }
 
   function getPluginConsistency1() {
-    if (!navigator.plugins) return NA;
+    if (!navigator.plugins) return false;
     try {
         return navigator.plugins[0] === navigator.plugins[0][0].enabledPlugin;
     } catch (e) {
-        return ERROR;
+        return false;
     }
   }
 
   function getPluginOverflow() {
-    if (!navigator.plugins) return NA;
+    if (!navigator.plugins) return false;
 
     try {
         return navigator.plugins.item(4294967296) !== navigator.plugins[0];
     } catch (e) {
-        return ERROR;
+        return false;
     }
   }
 

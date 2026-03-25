@@ -63,7 +63,7 @@ function reportChallengeStatus(status) {
   );
 }
 
-await new Promise((r) => setTimeout(r, 4000));
+await new Promise((r) => setTimeout(r, 50));
 const scanner = new FingerprintScanner();
 const result = await scanner.collectFingerprint({ encrypt: false });
 const sessionKey = await getSessionKey(ticket);

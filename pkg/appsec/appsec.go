@@ -61,11 +61,11 @@ func (h *Hook) Build(hookStage int, patcher *appsecExprPatcher) error {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -123,6 +123,7 @@ type AppsecRequestState struct {
 	PendingHTTPCode *int
 
 	RequireChallenge bool
+	Fingerprint      *challenge.FingerprintData
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -940,8 +941,9 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 
 	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
 	if err == nil {
-		if _, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
-			w.Logger.Debugf("valid challenge cookie found, allowing request")
+		if fpData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data in transaction")
+			state.Fingerprint = fpData
 			return nil
 		}
 	}
@@ -954,7 +956,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
 }
 
-func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (*challenge.ChallengeMatcher, error) {
+/*func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (*challenge.ChallengeMatcher, error) {
 
 	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
 	if err == nil && w.ChallengeRuntime != nil {
@@ -971,7 +973,7 @@ func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, reque
 	}
 
 	return challenge.NewChallengeMatcher(true), nil
-}
+}*/
 
 type BodyResponse struct {
 	Action          string              `json:"action"`
