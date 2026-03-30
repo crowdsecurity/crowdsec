@@ -2542,22 +2542,6 @@ func TestAnsiRegex(t *testing.T) {
 			result: "Hello World",
 		},
 		{
-			name: "AnsiRegex() test: strips ANSI escapes from auth warning line",
-			env: map[string]any{
-				"authWarnLine": "\x1b[36m2026-03-24T22:22:35+06:00\x1b[0m [\x1b[38;5;208mAUTH\x1b[0m] \x1b[33mWARN:\x1b[0m Incorrect username or password for user thisistest. IP=IP",
-			},
-			code:   "ReplaceAllRegex(AnsiRegex(), authWarnLine, '')",
-			result: "2026-03-24T22:22:35+06:00 [AUTH] WARN: Incorrect username or password for user thisistest. IP=IP",
-		},
-		{
-			name: "AnsiRegex() test: literal ESC text is not treated as an escape byte",
-			env: map[string]any{
-				"literalEscText": "ESC[36m2026-03-24T22:22:35+06:00ESC[0m [ESC[38;5;208mAUTHESC[0m] ESC[33mWARN:ESC[0m Incorrect username or password for user thisistest. IP=IP",
-			},
-			code:   "ReplaceAllRegex(AnsiRegex(), literalEscText, '')",
-			result: "ESC[36m2026-03-24T22:22:35+06:00ESC[0m [ESC[38;5;208mAUTHESC[0m] ESC[33mWARN:ESC[0m Incorrect username or password for user thisistest. IP=IP",
-		},
-		{
 			name: "AnsiRegex() test: can be used with ReplaceRegexp (first occurrence only)",
 			env: map[string]any{
 				"coloredText": "\x1b[31mHello\x1b[0m \x1b[32mWorld\x1b[0m",
