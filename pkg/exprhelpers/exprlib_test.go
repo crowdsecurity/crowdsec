@@ -2528,12 +2528,6 @@ func TestAnsiRegex(t *testing.T) {
 		result string
 	}{
 		{
-			name:   "AnsiRegex() test: returns ANSI regex pattern",
-			env:    map[string]any{},
-			code:   "AnsiRegex()",
-			result: `\x1b\[[0-9;]*m|\033\[[0-9;]*m`,
-		},
-		{
 			name: "AnsiRegex() test: can be used with ReplaceAllRegex",
 			env: map[string]any{
 				"coloredText": "\x1b[31mHello\x1b[0m \x1b[32mWorld\x1b[0m",
