@@ -31,7 +31,7 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 
 func (h *HeartBeatService) StartHeartBeat(ctx context.Context) {
 	go func() {
-		defer trace.CatchPanic("crowdsec/apiClient/heartbeat")
+		defer trace.ReportPanic()
 
 		hbTimer := time.NewTicker(1 * time.Minute)
 

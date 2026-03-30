@@ -66,6 +66,8 @@ type Alert struct {
 	UUID string `json:"uuid,omitempty"`
 	// Remediation holds the value of the "remediation" field.
 	Remediation bool `json:"remediation,omitempty"`
+	// Kind holds the value of the "kind" field.
+	Kind string `json:"kind,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
@@ -137,7 +139,7 @@ func (*Alert) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case alert.FieldID, alert.FieldEventsCount, alert.FieldCapacity:
 			values[i] = new(sql.NullInt64)
-		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash, alert.FieldUUID:
+		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash, alert.FieldUUID, alert.FieldKind:
 			values[i] = new(sql.NullString)
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
 			values[i] = new(sql.NullTime)
@@ -308,6 +310,12 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				a.Remediation = value.Bool
 			}
+		case alert.FieldKind:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field kind", values[i])
+			} else if value.Valid {
+				a.Kind = value.String
+			}
 		case alert.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
@@ -442,6 +450,9 @@ func (a *Alert) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("remediation=")
 	builder.WriteString(fmt.Sprintf("%v", a.Remediation))
+	builder.WriteString(", ")
+	builder.WriteString("kind=")
+	builder.WriteString(a.Kind)
 	builder.WriteByte(')')
 	return builder.String()
 }

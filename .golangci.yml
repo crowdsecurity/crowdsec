@@ -123,7 +123,8 @@ linters:
             - '!**/pkg/csplugin/broker.go'
             - '!**/pkg/leakybucket/bucketstore_test.go'
             - '!**/pkg/leakybucket/manager_load.go'
-            - '!**/pkg/parser/node.go'
+            - '!**/pkg/parser/node_config.go'
+            - '!**/pkg/parser/node_subnodes_test.go'
             - '!**/pkg/parser/node_test.go'
             - '!**/pkg/parser/parsing_test.go'
             - '!**/pkg/parser/stage.go'
@@ -348,7 +349,7 @@ linters:
         - name: cognitive-complexity
           arguments:
             # lower this after refactoring
-            - 91
+            - 73
         - name: comment-spacings
           disabled: true
         - name: confusing-results
@@ -599,11 +600,6 @@ linters:
 
       - linters:
           - revive
-        path: cmd/crowdsec/flags.go
-        text: 'deep-exit: .*'
-
-      - linters:
-          - revive
         path: cmd/crowdsec-cli/clisetup/setup/systemd_test.go
         text: 'deep-exit: .*'
 
@@ -662,6 +658,12 @@ linters:
       - linters:
           - embeddedstructfieldcheck
         text: "embedded fields should be listed before regular fields"
+
+      # TODO: remove when NodeConfig is not embedded anymore
+      - linters:
+          - staticcheck
+        path: pkg/parser/(.+).go
+        text: 'QF1008: could remove embedded field "NodeConfig" from selector'
 
     paths:
       - third_party$

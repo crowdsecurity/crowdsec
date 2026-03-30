@@ -3,20 +3,18 @@ package leakybucket
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -32,6 +30,8 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
+	t.Parallel()
+
 	var envSetting = os.Getenv("TEST_ONLY")
 
 	testdata := "./testdata"
@@ -49,37 +49,35 @@ func TestBucket(t *testing.T) {
 	require.NoError(t, err)
 
 	err = exprhelpers.Init(nil)
-	if err != nil {
-		t.Fatalf("exprhelpers init failed: %s", err)
-	}
+	require.NoError(t, err)
 
 	if envSetting != "" {
-		if err := testOneBucket(t, hub, envSetting); err != nil {
-			t.Fatalf("Test '%s' failed : %s", envSetting, err)
-		}
-	} else {
-		var eg errgroup.Group
+		t.Run(filepath.Base(envSetting), func(t *testing.T) {
+			t.Parallel()
+			testOneBucket(t, hub, envSetting)
+		})
+		return
+	}
 
-		fds, err := os.ReadDir(testdata)
-		require.NoError(t, err)
+	fds, err := os.ReadDir(testdata)
+	require.NoError(t, err)
 
-		for _, fd := range fds {
-			if fd.Name() == "hub" {
-				continue
-			}
-
-			fname := filepath.Join(testdata, fd.Name())
-			log.Infof("Running test on %s", fname)
-			eg.Go(func() error {
-				return testOneBucket(t, hub, fname)
-			})
+	for _, fd := range fds {
+		if fd.Name() == "hub" {
+			continue
 		}
 
-		require.NoError(t, eg.Wait())
+		fname := filepath.Join(testdata, fd.Name())
+		log.Infof("Running test on %s", fname)
+
+		t.Run(fd.Name(), func(t *testing.T) {
+			t.Parallel()
+			testOneBucket(t, hub, fname)
+		})
 	}
 }
 
-func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 	var (
 		holders []BucketFactory
 
@@ -93,25 +91,19 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	// load the scenarios
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
-		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
-	}
+	stagefiles, err = os.ReadFile(stagecfg)
+	require.NoError(t, err)
 
 	tmpl, err := template.New("test").Parse(string(stagefiles))
-	if err != nil {
-		return fmt.Errorf("failed to parse template %s: %w", stagefiles, err)
-	}
+	require.NoError(t, err)
 
 	var out bytes.Buffer
 
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	if err := yaml.UnmarshalStrict(out.Bytes(), &stages); err != nil {
-		t.Fatalf("failed to parse %s : %s", stagecfg, err)
-	}
+	err = yaml.UnmarshalStrict(out.Bytes(), &stages)
+	require.NoError(t, err)
 
 	scenarios := []*cwhub.Item{}
 
@@ -131,39 +123,58 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) error {
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, scenarios, bucketStore, false)
-	if err != nil {
-		t.Fatalf("failed loading bucket : %s", err)
-	}
+	holders, response, err := LoadBuckets(cscfg, hub, scenarios, false)
+	require.NoError(t, err)
 
-	if !testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore) {
-		return fmt.Errorf("tests from %s failed", dir)
-	}
-
-	return nil
+	testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore)
 }
 
-func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) bool {
+func matchOverflow(got, expected pipeline.RuntimeAlert) bool {
+	// both empty
+	if got.Alert == nil && expected.Alert == nil {
+		return true
+	}
+
+	// one empty, one not
+	if got.Alert == nil || expected.Alert == nil {
+		return false
+	}
+
+	if *got.Alert.Scenario != *expected.Alert.Scenario {
+		return false
+	}
+
+	if *got.Alert.EventsCount != *expected.Alert.EventsCount {
+		return false
+	}
+
+	if !reflect.DeepEqual(got.Sources, expected.Sources) {
+		return false
+	}
+
+	return true
+}
+
+func testFile(t *testing.T, file string, holders []BucketFactory, response chan pipeline.Event, bucketStore *BucketStore) {
 	var results []pipeline.Event
 
-	/* now we can load the test files */
-	// process the yaml
 	yamlFile, err := os.Open(file)
-	if err != nil {
-		t.Errorf("yamlFile.Get err   #%v ", err)
-	}
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = yamlFile.Close() })
+
 	dec := json.NewDecoder(yamlFile)
 	dec.DisallowUnknownFields()
+
 	// dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
-			return false
-		}
-		log.Warning("end of test file")
-	}
+	require.NotErrorIs(t, err, io.EOF)
+	require.NoError(t, err, "failed to decode test file %q", file)
+
+	var extra json.RawMessage
+	err = dec.Decode(&extra)
+	require.ErrorIs(t, err, io.EOF, "test file %q has trailing content after the first JSON value", file)
+
 	var latest_ts time.Time
 	ctx := t.Context()
 	for _, in := range tf.Lines {
@@ -171,9 +182,8 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
 
-		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
-			t.Fatalf("Failed to parse time from input event : %s", err)
-		}
+		err := ts.UnmarshalText([]byte(in.MarshaledTime))
+		require.NoError(t, err)
 
 		if latest_ts.IsZero() {
 			latest_ts = ts
@@ -185,9 +195,7 @@ func testFile(t *testing.T, file string, holders []BucketFactory, response chan 
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 
 		ok, err := PourItemToHolders(ctx, in, holders, bucketStore, nil)
-		if err != nil {
-			t.Fatalf("Failed to pour : %s", err)
-		}
+		require.NoError(t, err)
 
 		if !ok {
 			log.Warning("Event wasn't poured")
@@ -208,9 +216,7 @@ POLL_AGAIN:
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
 				ok, err := PourItemToHolders(ctx, ret, holders, bucketStore, nil)
-				if err != nil {
-					t.Fatalf("Failed to pour : %s", err)
-				}
+				require.NoError(t, err)
 				if !ok {
 					log.Warning("Event wasn't poured")
 				}
@@ -230,75 +236,39 @@ POLL_AGAIN:
 	*/
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
-			log.Warning("Test is successful")
-			return true
+			return
 		}
-		log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
-		if len(tf.Results) != len(results) {
-			log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
-			return false
-		}
-	checkresultsloop:
-		for eidx, out := range results {
-			for ridx, expected := range tf.Results {
-				log.Tracef("Checking next expected result.")
 
-				// empty overflow
-				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {
-					// match stuff
-				} else {
-					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
-						log.Info("Here ?")
-						continue
-					}
+		require.Len(t, results, len(tf.Results))
 
-					// Scenario
-					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
-						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
-						continue
-					}
-					log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
+		matched := false
 
-					// EventsCount
-					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
-						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
-						continue
-					}
-					log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
+		for i := range results {
+			out := results[i]
 
-					// Sources
-					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
-						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
-						continue
-					}
-					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+			matchIdx := -1
+
+			for j := range tf.Results {
+				if matchOverflow(out.Overflow, tf.Results[j].Overflow) {
+					matchIdx = j
+					break
 				}
-				// Events
-				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
-				// 	log.Errorf("(Events %s != %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
-				// 	valid = false
-				// 	continue
-				// } else {
-				// 	log.Infof("(Events: %s == %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
-				// }
-
-				// CheckFailed:
-
-				log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
-				// don't do this at home : delete current element from list and redo
-				results[eidx] = results[len(results)-1]
-				results = results[:len(results)-1]
-				tf.Results[ridx] = tf.Results[len(tf.Results)-1]
-				tf.Results = tf.Results[:len(tf.Results)-1]
-				goto checkresultsloop
 			}
+
+			if matchIdx < 0 {
+				continue
+			}
+
+			results = slices.Delete(results, i, i+1)
+			tf.Results = slices.Delete(tf.Results, matchIdx, matchIdx+1)
+
+			matched = true
+			break // return to outer loop because the slices have changed
 		}
-		if len(results) != 0 && len(tf.Results) != 0 {
-			log.Errorf("mismatching entries left")
-			log.Errorf("we got: %s", spew.Sdump(results))
-			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
-			return false
+
+		if !matched {
+			require.Failf(t, "no matching pairs remain",
+				"leftover results: %s\nleftover expected: %s", spew.Sdump(results), spew.Sdump(tf.Results))
 		}
-		log.Warning("entry valid at end of loop")
 	}
 }

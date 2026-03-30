@@ -60,6 +60,8 @@ get_latest_version() {
 @test "install an item (non-existent)" {
     rune -1 cscli parsers install foo/bar
     assert_stderr --partial "can't find 'foo/bar' in parsers"
+    # don't spam usage on all kind of errors
+    refute_output --partial 'Usage:'
 }
 
 @test "install an item (dry run)" {

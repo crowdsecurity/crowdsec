@@ -20,8 +20,6 @@ import (
 )
 
 func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/acquis/appsec/listenAndServe")
-
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
 	serverError := make(chan error, 2)
@@ -133,13 +131,13 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	}
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
+		defer trace.ReportPanic()
 
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
 
 			t.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
+				defer trace.ReportPanic()
 				return runner.Run(t)
 			})
 		}

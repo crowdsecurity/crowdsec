@@ -55,6 +55,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			Latitude:  alert.SourceLatitude,
 			Longitude: alert.SourceLongitude,
 		},
+		Kind: alert.Kind,
 	}
 
 	for _, eventItem := range alert.Edges.Events {

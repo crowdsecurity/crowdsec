@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
@@ -99,12 +100,12 @@ func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
 	}
 }
 
-func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) error {
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, datasources []acquisitionTypes.DataSource) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
 
-	if len(dataSources) > 0 {
+	if len(datasources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
 		drainChan(logLines)
@@ -142,7 +143,7 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group) erro
 
 	cancel()
 
-	if err := waitErrGroup(g, 3 * time.Second); err != nil {
+	if err := waitErrGroup(g, 3*time.Second); err != nil {
 		log.WithError(err).Warn("timeout waiting for parser/bucket routines")
 	}
 
@@ -253,7 +254,7 @@ func HandleSignals(ctx context.Context, cConfig *csconfig.Config) error {
 	defer pprof.StopCPUProfile()
 
 	go func() {
-		defer trace.CatchPanic("crowdsec/HandleSignals")
+		defer trace.ReportPanic()
 
 		for {
 			s := <-signalChan

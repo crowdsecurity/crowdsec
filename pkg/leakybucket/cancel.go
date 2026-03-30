@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"sync"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -74,7 +73,7 @@ func (p *CancelProcessor) OnBucketInit(f *BucketFactory) error {
 	}
 
 	cancelExprCacheLock.Lock()
-	if compiled, ok := cancelExprCache[f.CancelOnFilter]; ok {
+	if compiled, ok := cancelExprCache[f.Spec.CancelOnFilter]; ok {
 		cancelExprCacheLock.Unlock()
 		p.CancelOnFilter = compiled.CancelOnFilter
 		return nil
@@ -83,17 +82,17 @@ func (p *CancelProcessor) OnBucketInit(f *BucketFactory) error {
 	cancelExprCacheLock.Unlock()
 	// release the lock during compile
 
-	compiledExpr.CancelOnFilter, err = expr.Compile(f.CancelOnFilter, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	compiledExpr.CancelOnFilter, err = compile(f.Spec.CancelOnFilter, nil)
 	if err != nil {
 		f.logger.Errorf("reset_filter compile error : %s", err)
 		return err
 	}
 	p.CancelOnFilter = compiledExpr.CancelOnFilter
-	if f.Debug {
+	if f.Spec.Debug {
 		p.Debug = true
 	}
 	cancelExprCacheLock.Lock()
-	cancelExprCache[f.CancelOnFilter] = compiledExpr
+	cancelExprCache[f.Spec.CancelOnFilter] = compiledExpr
 	cancelExprCacheLock.Unlock()
 	return nil
 }

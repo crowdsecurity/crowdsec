@@ -85,7 +85,7 @@ detect:
       datasource:
         source: journalctl
         labels:
-          type: caddy
+          type: syslog
         journalctl_filter:
           - "_SYSTEMD_UNIT=caddy.service"
 

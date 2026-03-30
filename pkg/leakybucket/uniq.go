@@ -6,7 +6,6 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -33,7 +32,7 @@ func (p *UniqProcessor) OnBucketPour(f *BucketFactory, msg pipeline.Event, leaky
 		leaky.logger.Errorf("Uniq filter exec failed : %v", err)
 		return &msg
 	}
-	leaky.logger.Tracef("Uniq '%s' -> '%s'", f.Distinct, element)
+	leaky.logger.Tracef("Uniq '%s' -> '%s'", f.Spec.Distinct, element)
 	p.CacheMutex.Lock()
 	defer p.CacheMutex.Unlock()
 	if _, ok := p.KeyCache[element]; !ok {
@@ -59,19 +58,19 @@ func (p *UniqProcessor) OnBucketInit(f *BucketFactory) error {
 	}
 
 	uniqExprCacheLock.Lock()
-	if compiled, ok := uniqExprCache[f.Distinct]; ok {
+	if compiled, ok := uniqExprCache[f.Spec.Distinct]; ok {
 		uniqExprCacheLock.Unlock()
 		p.DistinctCompiled = &compiled
 	} else {
 		uniqExprCacheLock.Unlock()
 		// release the lock during compile
-		compiledExpr, err := expr.Compile(f.Distinct, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		compiledExpr, err := compile(f.Spec.Distinct, nil)
 		if err != nil {
 			return err
 		}
 		p.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
-		uniqExprCache[f.Distinct] = *compiledExpr
+		uniqExprCache[f.Spec.Distinct] = *compiledExpr
 		uniqExprCacheLock.Unlock()
 	}
 	p.KeyCache = make(map[string]bool)
