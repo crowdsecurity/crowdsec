@@ -21,162 +21,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-func TestConfiguration(t *testing.T) {
-	log.Infof("Test 'TestConfigure'")
-
-	tests := []struct {
-		config       string
-		expectedErr  string
-		password     string
-		waitForReady time.Duration
-		delayFor     time.Duration
-		noReadyCheck bool
-		testName     string
-	}{
-		{
-			config:      `foobar: asd`,
-			expectedErr: `[1:1] unknown field "foobar"`,
-			testName:    "Unknown field",
-		},
-		{
-			config: `
-mode: tail
-source: loki`,
-			expectedErr: "loki query is mandatory",
-			testName:    "Missing url",
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-`,
-			expectedErr: "loki query is mandatory",
-			testName:    "Missing query",
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-query: >
-        {server="demo"}
-`,
-			expectedErr: "",
-			testName:    "Correct config",
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-wait_for_ready: 5s
-query: >
-        {server="demo"}
-`,
-			expectedErr:  "",
-			testName:     "Correct config with wait_for_ready",
-			waitForReady: 5 * time.Second,
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-delay_for: 1s
-query: >
-        {server="demo"}
-`,
-			expectedErr: "",
-			testName:    "Correct config with delay_for",
-			delayFor:    1 * time.Second,
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-no_ready_check: true
-query: >
-        {server="demo"}
-`,
-			expectedErr:  "",
-			testName:     "Correct config with no_ready_check",
-			noReadyCheck: true,
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-auth:
-  username: foo
-  password: bar
-query: >
-        {server="demo"}
-`,
-			expectedErr: "",
-			password:    "bar",
-			testName:    "Correct config with password",
-		},
-		{
-			config: `
-mode: tail
-source: loki
-url: http://localhost:3100/
-delay_for: 10s
-query: >
-        {server="demo"}
-`,
-			expectedErr: "delay_for should be a value between 1s and 5s",
-			testName:    "Invalid DelayFor",
-		},
-		{
-			config: `
-source: loki
-no_ready_check: 37
-`,
-			expectedErr: "[3:17] cannot unmarshal uint64 into Go struct field LokiConfiguration.NoReadyCheck of type bool",
-			testName:    "type mismatch",
-		},
-	}
-	subLogger := log.WithField("type", "loki")
-
-	for _, test := range tests {
-		t.Run(test.testName, func(t *testing.T) {
-			lokiSource := loki.LokiSource{}
-			err := lokiSource.Configure([]byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.AssertErrorContains(t, err, test.expectedErr)
-
-			if test.password != "" {
-				p := lokiSource.Config.Auth.Password
-				if test.password != p {
-					t.Fatalf("Password mismatch : %s != %s", test.password, p)
-				}
-			}
-
-			if test.waitForReady != 0 {
-				if lokiSource.Config.WaitForReady != test.waitForReady {
-					t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
-				}
-			}
-
-			if test.delayFor != 0 {
-				if lokiSource.Config.DelayFor != test.delayFor {
-					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
-				}
-			}
-
-			assert.Equal(t, test.noReadyCheck, lokiSource.Config.NoReadyCheck)
-		})
-	}
-}
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
+	ctx := t.Context()
 
 	tests := []struct {
 		name         string
@@ -242,14 +93,14 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			subLogger := log.WithFields(log.Fields{
-				"type": "loki",
+				"type": loki.ModuleName,
 				"name": test.name,
 			})
 
 			t.Logf("Test : %s", test.name)
 
-			lokiSource := &loki.LokiSource{}
-			err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			lokiSource := &loki.Source{}
+			err := lokiSource.ConfigureByDSN(ctx, test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.AssertErrorContains(t, err, test.expectedErr)
 
 			noDuration, _ := time.ParseDuration("0s")
@@ -369,10 +220,10 @@ since: 1h
 	for _, ts := range tests {
 		t.Run(ts.config, func(t *testing.T) {
 			logger := log.New()
-			subLogger := logger.WithField("type", "loki")
-			lokiSource := loki.LokiSource{}
+			subLogger := logger.WithField("type", loki.ModuleName)
+			lokiSource := loki.Source{}
 
-			if err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
+			if err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone); err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
@@ -380,7 +231,7 @@ since: 1h
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			read := 0
 
 			go func() {
@@ -451,15 +302,15 @@ query: >
 		t.Run(ts.name, func(t *testing.T) {
 			logger := log.New()
 			subLogger := logger.WithFields(log.Fields{
-				"type": "loki",
+				"type": loki.ModuleName,
 				"name": ts.name,
 			})
 
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 			lokiTomb := tomb.Tomb{}
-			lokiSource := loki.LokiSource{}
+			lokiSource := loki.Source{}
 
-			err := lokiSource.Configure([]byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
@@ -531,16 +382,16 @@ query: >
   {server="demo"}
 `
 	logger := log.New()
-	subLogger := logger.WithField("type", "loki")
+	subLogger := logger.WithField("type", loki.ModuleName)
 	title := time.Now().String()
-	lokiSource := loki.LokiSource{}
+	lokiSource := loki.Source{}
 
-	err := lokiSource.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	err := lokiSource.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	out := make(chan types.Event)
+	out := make(chan pipeline.Event)
 
 	lokiTomb := &tomb.Tomb{}
 

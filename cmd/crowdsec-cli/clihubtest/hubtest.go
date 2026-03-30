@@ -5,11 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
-
-type configGetter func() *csconfig.Config
 
 var (
 	HubTest        hubtest.HubTest
@@ -19,10 +18,10 @@ var (
 )
 
 type cliHubTest struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHubTest {
+func New(cfg csconfig.Getter) *cliHubTest {
 	return &cliHubTest{
 		cfg: cfg,
 	}
@@ -40,8 +39,13 @@ func (cli *cliHubTest) NewCommand() *cobra.Command {
 		Short:             "Run functional tests on hub configurations",
 		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
+
 			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false)
 			if err != nil {
 				return fmt.Errorf("unable to load hubtest: %+v", err)

@@ -3,6 +3,7 @@
 package appsecacquisition
 
 import (
+	"net/http"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestAppsecRuleTransformsOthers(t *testing.T) {
@@ -30,15 +31,16 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/?foo=a/../b/c",
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/?foo=a/../b/c",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 		{
@@ -54,21 +56,19 @@ func TestAppsecRuleTransformsOthers(t *testing.T) {
 				},
 			},
 			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/?foo=a/../b/c/////././././",
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/?foo=a/../b/c/////././././",
+				HTTPRequest: &http.Request{Host: "example.com"},
 			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.APPSEC, events[0].Type)
-				require.Equal(t, types.LOG, events[1].Type)
-				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, pipeline.LOG, events[1].Type)
+				require.Equal(t, "test-rule", events[1].Appsec.MatchedRules[0]["msg"])
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

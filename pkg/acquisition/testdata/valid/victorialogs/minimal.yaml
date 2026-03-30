@@ -1,0 +1,6 @@
+source: victorialogs
+labels:
+  type: sometype
+url: http://localhost:9428/
+query: >
+        {server="demo"}

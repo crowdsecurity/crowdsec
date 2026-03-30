@@ -23,20 +23,18 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliAlerts struct {
 	client *apiclient.ApiClient
-	cfg    configGetter
+	cfg    csconfig.Getter
 }
 
 func decisionsFromAlert(alert *models.Alert) string {
@@ -69,7 +67,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 	switch cfg.Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
-		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
+		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "kind"}
 
 		if printMachine {
 			header = append(header, "machine")
@@ -89,6 +87,7 @@ func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachi
 				alertItem.Source.GetAsNumberName(),
 				decisionsFromAlert(alertItem),
 				alertItem.CreatedAt,
+				alertItem.Kind,
 			}
 			if printMachine {
 				row = append(row, alertItem.MachineID)
@@ -131,6 +130,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
  - Machine      : {{.MachineID}}
  - Simulation   : {{.Simulated}}
  - Remediation  : {{.Remediation}}
+ - Kind         : {{.Kind}}
  - Reason       : {{.Scenario}}
  - Events Count : {{.EventsCount}}
  - Scope:Value  : {{.Source.Scope}}{{if .Source.Value}}:{{.Source.Value}}{{end}}
@@ -156,7 +156,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	alertDecisionsTable(color.Output, cfg.Cscli.Color, alert)
 
 	if len(alert.Meta) > 0 {
-		fmt.Fprintf(os.Stdout, "\n - Context  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Context  :")
 		sort.Slice(alert.Meta, func(i, j int) bool {
 			return alert.Meta[i].Key < alert.Meta[j].Key
 		})
@@ -183,7 +183,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	}
 
 	if withDetail {
-		fmt.Fprintf(os.Stdout, "\n - Events  :\n")
+		fmt.Fprintln(os.Stdout, "\n - Events  :")
 
 		for _, event := range alert.Events {
 			alertEventTable(color.Output, cfg.Cscli.Color, event)
@@ -193,7 +193,7 @@ func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) erro
 	return nil
 }
 
-func New(getconfig configGetter) *cliAlerts {
+func New(getconfig csconfig.Getter) *cliAlerts {
 	return &cliAlerts{
 		cfg: getconfig,
 	}
@@ -205,6 +205,10 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 		Short:             "Manage alerts",
 		DisableAutoGenTag: true,
 		Aliases:           []string{"alert"},
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadAPIClient(); err != nil {
@@ -215,15 +219,12 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 				return fmt.Errorf("parsing api url: %w", err)
 			}
 
-			cli.client, err = apiclient.NewClient(&apiclient.Config{
+			cli.client = apiclient.NewClient(&apiclient.Config{
 				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
-			if err != nil {
-				return fmt.Errorf("creating api client: %w", err)
-			}
 
 			return nil
 		},
@@ -281,6 +282,7 @@ func (cli *cliAlerts) newListCmd() *cobra.Command {
 		TypeEquals:     "",
 		IncludeCAPI:    new(bool),
 		OriginEquals:   "",
+		Kind:           "",
 	}
 
 	limit := new(int)
@@ -317,6 +319,7 @@ cscli alerts list --type ban`,
 	flags.StringVar(&alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	flags.StringVarP(&alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	flags.StringVar(&alertListFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	flags.StringVar(&alertListFilter.Kind, "kind", "", fmt.Sprintf("the value to match for the specified kind (%s ...)", strings.Join(types.GetAlertKinds(), ",")))
 	flags.BoolVar(contained, "contained", false, "query decisions contained by range")
 	flags.BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	flags.IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")

@@ -29,12 +29,14 @@ teardown() {
     assert_output --partial "Usage:"
     assert_output --partial "cscli [command]"
     assert_output --partial "Available Commands:"
+}
 
-    # no "usage" output after every error
-    rune -1 cscli blahblah
+@test "cscli <unknown command>" {
+    rune -1 cscli foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli"'
     # error is displayed with print, not as a log entry
-    assert_stderr --partial 'unknown command "blahblah" for "cscli"'
-    refute_stderr --partial 'level=fatal'
+    refute_stderr --partial 'level'
 }
 
 @test "cscli version" {
@@ -64,6 +66,12 @@ teardown() {
     rm "$CONFIG_YAML"
     rune -0 cscli help
     assert_line "Available Commands:"
+}
+
+@test "cscli config <unknown command>" {
+    rune -1 cscli config foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli config"'
 }
 
 @test "cscli config show" {
@@ -231,8 +239,20 @@ teardown() {
     assert_output --partial "# bash completion for cscli"
 }
 
+@test "cscli support <unknown command>" {
+    rune -1 cscli support foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli support"'
+}
+
 @test "cscli support dump (smoke test)" {
-    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
+    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip --fast
+    assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
+}
+
+@test "cscli support dump (should work with no hub index)" {
+    rune -0 rm "$(config_get '.config_paths.hub_dir')/.index.json"
+    rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip --fast
     assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
 }
 
@@ -271,7 +291,6 @@ teardown() {
 
 @test "cscli doc" {
     cd "$BATS_TEST_TMPDIR"
-    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
     rune -1 cscli doc
     refute_output
     assert_stderr --regexp 'failed to generate cscli documentation: open doc/.*: no such file or directory'
@@ -281,36 +300,13 @@ teardown() {
     assert_output "Documentation generated in ./doc"
     refute_stderr
     assert_file_exists "doc/cscli.md"
-    assert_file_not_exist "doc/cscli_setup.md"
-
-    # commands guarded by feature flags are not documented unless the feature flag is set
-
-    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
-    rune -0 cscli doc
-    assert_file_exists "doc/cscli_setup.md"
 
     # specify a target directory
     mkdir -p "$BATS_TEST_TMPDIR/doc2"
     rune -0 cscli doc --target "$BATS_TEST_TMPDIR/doc2"
     assert_output "Documentation generated in $BATS_TEST_TMPDIR/doc2"
     refute_stderr
-    assert_file_exists "$BATS_TEST_TMPDIR/doc2/cscli_setup.md"
-
-}
-
-@test "feature flags for subcommands" {
-    # it is possible to enable subcommands with feature flags
-    # defined in feature.yaml or envvars
-
-    export CROWDSEC_FEATURE_CSCLI_SETUP="false"
-    rune -1 cscli setup detect
-    assert_stderr --partial 'unknown command "setup" for "cscli"'
-    CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    # currently, we have no subcommands guarded by feature flags
-    # echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
-    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
-    rune -0 cscli setup --help
-    assert_output --partial 'cscli setup [command]'
+    assert_file_exists "$BATS_TEST_TMPDIR/doc2/cscli.md"
 }
 
 @test "cscli config feature-flags" {
@@ -333,4 +329,9 @@ teardown() {
 
     # there are no retired features
     rune -0 cscli config feature-flags --retired
+}
+
+@test "cscli dashboard" {
+    rune -1 cscli dashboard xyz
+    assert_stderr --partial "command 'dashboard' has been removed, please read https://docs.crowdsec.net/blog/cscli_dashboard_deprecation/"
 }

@@ -15,13 +15,13 @@ import (
 )
 
 type PluginConfig struct {
-	Name      string  `yaml:"name"`
-	Webhook   string  `yaml:"webhook"`
-	Channel   string  `yaml:"channel"`
-	Username  string  `yaml:"username"`
-	IconEmoji string  `yaml:"icon_emoji"`
-	IconURL   string  `yaml:"icon_url"`
-	LogLevel  *string `yaml:"log_level"`
+	Name      string `yaml:"name"`
+	Webhook   string `yaml:"webhook"`
+	Channel   string `yaml:"channel"`
+	Username  string `yaml:"username"`
+	IconEmoji string `yaml:"icon_emoji"`
+	IconURL   string `yaml:"icon_url"`
+	LogLevel  string `yaml:"log_level"`
 }
 type Notify struct {
 	protobufs.UnimplementedNotifierServer
@@ -36,21 +36,25 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.Name]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	name := notification.GetName()
+
+	cfg, ok := n.ConfigByName[name]
+
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	cfg := n.ConfigByName[notification.Name]
-
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.Name))
-	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.Text))
+	text := notification.GetText()
+
+	logger.Info(fmt.Sprintf("found notify signal for %s config", name))
+	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, text))
 
 	err := slack.PostWebhookContext(ctx, cfg.Webhook, &slack.WebhookMessage{
-		Text:      notification.Text,
+		Text:      text,
 		Channel:   cfg.Channel,
 		Username:  cfg.Username,
 		IconEmoji: cfg.IconEmoji,
@@ -63,10 +67,10 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 	return &protobufs.Empty{}, err
 }
 
-func (n *Notify) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
+func (n *Notify) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 
-	if err := yaml.Unmarshal(config.Config, &d); err != nil {
+	if err := yaml.Unmarshal(config.GetConfig(), &d); err != nil {
 		return nil, err
 	}
 

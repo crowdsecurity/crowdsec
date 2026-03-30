@@ -1,0 +1,5 @@
+# wantErr: datasource of type s3: cannot parse S3Acquisition configuration: [5:18] cannot unmarshal bool into Go struct field Configuration.MaxBufferSize of type int
+source: s3
+labels:
+  type: sometype
+max_buffer_size: true

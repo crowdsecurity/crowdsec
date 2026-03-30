@@ -1,0 +1,5 @@
+# wantErr: datasource of type loki: cannot parse loki acquisition configuration: [5:17] cannot unmarshal uint64 into Go struct field Configuration.NoReadyCheck of type bool
+source: loki
+labels:
+  type: sometype
+no_ready_check: 37

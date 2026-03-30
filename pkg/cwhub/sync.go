@@ -15,59 +15,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/downloader"
 )
 
-func isYAMLFileName(path string) bool {
-	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
-}
-
-// resolveSymlink returns the ultimate target path of a symlink
-// returns error if the symlink is dangling or too many symlinks are followed
-func resolveSymlink(path string) (string, error) {
-	const maxSymlinks = 10 // Prevent infinite loops
-	for range maxSymlinks {
-		fi, err := os.Lstat(path)
-		if err != nil {
-			return "", err // dangling link
-		}
-
-		if fi.Mode()&os.ModeSymlink == 0 {
-			// found the target
-			return path, nil
-		}
-
-		path, err = os.Readlink(path)
-		if err != nil {
-			return "", err
-		}
-
-		// relative to the link's directory?
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(filepath.Dir(path), path)
-		}
-	}
-
-	return "", errors.New("too many levels of symbolic links")
-}
-
-// isPathInside checks if a path is inside the given directory
-func isPathInside(path, dir string) (bool, error) {
-	absFile, err := filepath.Abs(path)
-	if err != nil {
-		return false, err
-	}
-
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return false, err
-	}
-
-	rel, err := filepath.Rel(absDir, absFile)
-	if err != nil {
-		return false, err
-	}
-
-	return !strings.HasPrefix(rel, ".."), nil
-}
-
 // itemSpec contains some information needed to complete the items
 // after they have been parsed from the index. itemSpecs are created by
 // scanning the hub (/etc/crowdsec/hub/*) and install (/etc/crowdsec/*) directories.
@@ -262,7 +209,7 @@ func newLocalItem(h *Hub, path string, spec *itemSpec) (*Item, error) {
 	return item, nil
 }
 
-// A sentinel to skip regular files because "nil, nil" is ambiguous. Returning SkipDir with files would skip the rest of the directory.
+// ErrSkipPath is a sentinel to skip regular files because "nil, nil" is ambiguous. Returning SkipDir with files would skip the rest of the directory.
 var ErrSkipPath = errors.New("sentinel")
 
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error) {
@@ -311,12 +258,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 }
 
 func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget string) (*Item, error) {
-	// look for the matching index entry
-	tot := 0
-	for range h.GetItemMap(spec.ftype) {
-		tot++
-	}
-
 	for _, item := range h.GetItemMap(spec.ftype) {
 		if item.Stage != spec.stage {
 			continue
@@ -545,7 +486,7 @@ func insertInOrderNoCase(sl []string, value string) []string {
 		return strings.ToLower(sl[i]) >= strings.ToLower(value)
 	})
 
-	return append(sl[:i], append([]string{value}, sl[i:]...)...)
+	return slices.Insert(sl, i, value)
 }
 
 func removeDuplicates(sl []string) []string {

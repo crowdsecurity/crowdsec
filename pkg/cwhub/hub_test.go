@@ -42,16 +42,15 @@ func testHubCfg(t *testing.T) *csconfig.LocalHubCfg {
 	return &local
 }
 
-func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJson string) (*Hub, error) {
-	if localCfg == nil {
-		localCfg = testHubCfg(t)
-	}
+func testHub(t *testing.T, indexJSON string) (*Hub, error) {
+	localCfg := testHubCfg(t)
 
-	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJson), 0o644)
+	err := os.WriteFile(localCfg.HubIndexFile, []byte(indexJSON), 0o644)
 	require.NoError(t, err)
 
 	hub, err := NewHub(localCfg, nil)
 	require.NoError(t, err)
+
 	err = hub.Load()
 
 	return hub, err
@@ -59,35 +58,39 @@ func testHub(t *testing.T, localCfg *csconfig.LocalHubCfg, indexJson string) (*H
 
 func TestIndexEmpty(t *testing.T) {
 	// an empty hub is valid, and should not have warnings
-	hub, err := testHub(t, nil, "{}")
+	hub, err := testHub(t, "{}")
 	require.NoError(t, err)
 	assert.Empty(t, hub.Warnings)
 }
 
 func TestIndexJSON(t *testing.T) {
 	// but it can't be an empty string
-	hub, err := testHub(t, nil, "")
+	hub, err := testHub(t, "")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// it must be valid json
-	hub, err = testHub(t, nil, "def not json")
+	hub, err = testHub(t, "def not json")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: invalid character 'd' looking for beginning of value. Run 'sudo cscli hub update' to download the index again")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
-	hub, err = testHub(t, nil, "{")
+	hub, err = testHub(t, "{")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: unexpected end of JSON input")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 
 	// and by json we mean an object
-	hub, err = testHub(t, nil, "[]")
+	hub, err = testHub(t, "[]")
 	cstest.RequireErrorContains(t, err, "invalid hub index: failed to parse index: json: cannot unmarshal array into Go value of type cwhub.HubItems")
+	assert.NotNil(t, hub)
 	assert.Empty(t, hub.Warnings)
 }
 
 func TestIndexUnknownItemType(t *testing.T) {
 	// Allow unknown fields in the top level object, likely new item types
-	hub, err := testHub(t, nil, `{"goodies": {}}`)
+	hub, err := testHub(t, `{"goodies": {}}`)
 	require.NoError(t, err)
 	assert.Empty(t, hub.Warnings)
 }
@@ -95,7 +98,7 @@ func TestIndexUnknownItemType(t *testing.T) {
 func TestHubUpdate(t *testing.T) {
 	ctx := t.Context()
 	// update an empty hub with a index containing a parser.
-	hub, err := testHub(t, nil, "{}")
+	hub, err := testHub(t, "{}")
 	require.NoError(t, err)
 
 	index1 := `
@@ -144,7 +147,7 @@ func TestHubUpdate(t *testing.T) {
 
 func TestHubUpdateInvalidTemplate(t *testing.T) {
 	ctx := t.Context()
-	hub, err := testHub(t, nil, "{}")
+	hub, err := testHub(t, "{}")
 	require.NoError(t, err)
 
 	downloader := &Downloader{
@@ -159,7 +162,7 @@ func TestHubUpdateInvalidTemplate(t *testing.T) {
 
 func TestHubUpdateCannotWrite(t *testing.T) {
 	ctx := t.Context()
-	hub, err := testHub(t, nil, "{}")
+	hub, err := testHub(t, "{}")
 	require.NoError(t, err)
 
 	index1 := `
@@ -220,7 +223,7 @@ func TestHubUpdateAfterLoad(t *testing.T) {
     }
   }
 }`
-	hub, err := testHub(t, nil, index1)
+	hub, err := testHub(t, index1)
 	require.NoError(t, err)
 
 	index2 := `

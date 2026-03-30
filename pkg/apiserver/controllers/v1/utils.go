@@ -55,7 +55,7 @@ func getMachineIDFromContext(ctx *gin.Context) (string, error) {
 	return id, nil
 }
 
-func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
+func (*Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 	return func(gctx *gin.Context) {
 		if !option {
 			return

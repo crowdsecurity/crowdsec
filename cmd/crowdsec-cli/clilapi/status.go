@@ -12,8 +12,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -61,14 +61,21 @@ func (cli *cliLapi) Status(ctx context.Context, out io.Writer, hub *cwhub.Hub) e
 	cred := cfg.API.Client.Credentials
 
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Client.CredentialsFilePath)
-	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
+
+	if cred.Login != "" {
+		fmt.Fprintf(out, "Trying to authenticate with username %q on %s\n", cred.Login, cred.URL)
+	}
+
+	if cred.CertPath != "" {
+		fmt.Fprintf(out, "Trying to authenticate with certificate %q on %s\n", cred.CertPath, cred.URL)
+	}
 
 	_, err := queryLAPIStatus(ctx, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
-	fmt.Fprintf(out, "You can successfully interact with Local API (LAPI)\n")
+	fmt.Fprintln(out, "You can successfully interact with Local API (LAPI)")
 
 	return nil
 }

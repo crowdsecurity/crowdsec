@@ -13,13 +13,11 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -47,13 +45,13 @@ type MetricsProvider struct {
 }
 
 type staticMetrics struct {
-	osName         string
-	osVersion      string
-	startupTS      int64
-	featureFlags   []string
-	consoleOptions []string
-	datasourceMap  map[string]int64
-	hubState       models.HubItems
+	osName        string
+	osFamily      string
+	osVersion     string
+	startupTS     int64
+	featureFlags  []string
+	datasourceMap map[string]int64
+	hubState      models.HubItems
 }
 
 // Key is the prom label
@@ -71,9 +69,11 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 			if item.State.IsLocal() {
 				status = "custom"
 			}
+
 			if item.State.Tainted {
 				status = "tainted"
 			}
+
 			ret[itemType] = append(ret[itemType], models.HubItem{
 				Name:    item.Name,
 				Status:  status,
@@ -86,34 +86,42 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 }
 
 // newStaticMetrics is called when the process starts, or reloads the configuration
-func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) staticMetrics {
+func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub) staticMetrics {
 	datasourceMap := map[string]int64{}
 
 	for _, ds := range datasources {
 		datasourceMap[ds.GetName()] += 1
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
-		osName:         osName,
-		osVersion:      osVersion,
-		startupTS:      time.Now().UTC().Unix(),
-		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		consoleOptions: consoleOptions,
-		datasourceMap:  datasourceMap,
-		hubState:       getHubState(hub),
+		osName:        osName,
+		osFamily:      osFamily,
+		osVersion:     osVersion,
+		startupTS:     time.Now().UTC().Unix(),
+		featureFlags:  fflag.Crowdsec.GetEnabledFeatures(),
+		datasourceMap: datasourceMap,
+		hubState:      getHubState(hub),
 	}
 }
 
-func NewMetricsProvider(apic *apiclient.ApiClient, interval time.Duration, logger *logrus.Entry,
-	consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub,
+func NewMetricsProvider(
+	apic *apiclient.ApiClient,
+	interval time.Duration,
+	logger *logrus.Entry,
+	datasources []acquisitionTypes.DataSource,
+	hub *cwhub.Hub,
 ) *MetricsProvider {
+	static := newStaticMetrics(datasources, hub)
+
+	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
+
 	return &MetricsProvider{
 		apic:     apic,
 		interval: interval,
 		logger:   logger,
-		static:   newStaticMetrics(consoleOptions, datasources, hub),
+		static:   static,
 	}
 }
 
@@ -123,6 +131,7 @@ func getLabelValue(labels []*io_prometheus_client.LabelPair, key string) string 
 			return label.GetValue()
 		}
 	}
+
 	return ""
 }
 
@@ -135,9 +144,11 @@ func getDeltaKey(metricName string, labels []*io_prometheus_client.LabelPair) st
 	slices.SortFunc(sortedLabels, func(a, b *io_prometheus_client.LabelPair) int {
 		return strings.Compare(a.GetName(), b.GetName())
 	})
+
 	for _, label := range sortedLabels {
 		parts = append(parts, label.GetName()+label.GetValue())
 	}
+
 	return strings.Join(parts, "")
 }
 
@@ -147,10 +158,12 @@ func shouldIgnoreMetric(exclude map[string]*regexp.Regexp, promLabels []*io_prom
 		if labelValue == "" {
 			continue
 		}
+
 		if regex.MatchString(labelValue) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -167,6 +180,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 		if !slices.Contains(metricsName, metricFamily.GetName()) {
 			continue
 		}
+
 		for _, metric := range metricFamily.GetMetric() {
 			promLabels := metric.GetLabel()
 
@@ -191,6 +205,7 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 					value = 0
 				}
 			}
+
 			metricsLastValues[deltaKey] = currentValue
 
 			if value == 0 {
@@ -312,12 +327,12 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
 
-	/* Acquisition metrics */
-	/*{"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/* Parser metrics */
-	/*{"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/*{"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
-	/*{"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}*/
+	// Acquisition metrics
+	// {"name": "read", "value": 10, "unit": "line", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	//  Parser metrics
+	// {"name": "parsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	// {"name": "unparsed", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
+	// {"name": "whitelisted", labels: {"datasource_type": "file", "source":"/var/log/auth.log"}}
 
 	acquisitionMetrics := m.getAcquisitionMetrics()
 	if len(acquisitionMetrics) > 0 {
@@ -365,8 +380,6 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
-
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -385,11 +398,9 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 	}
 }
 
-func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
-
+func (m *MetricsProvider) Run(ctx context.Context) {
 	if m.interval == time.Duration(0) {
-		return nil
+		return
 	}
 
 	ticker := time.NewTicker(1) // Send on start
@@ -400,9 +411,9 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 			met := m.metricsPayload()
 			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
-		case <-myTomb.Dying():
+		case <-ctx.Done():
 			ticker.Stop()
-			return nil
+			return
 		}
 	}
 }

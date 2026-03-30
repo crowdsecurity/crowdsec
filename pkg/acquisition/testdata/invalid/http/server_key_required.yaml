@@ -1,0 +1,11 @@
+# wantErr: datasource of type http: server_key is required
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: value
+tls:
+  server_cert: cert

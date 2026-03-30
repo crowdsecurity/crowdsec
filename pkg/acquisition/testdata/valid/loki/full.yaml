@@ -1,0 +1,12 @@
+source: loki
+labels:
+  type: sometype
+url: http://localhost:3100/
+wait_for_ready: 5s
+delay_for: 1s
+no_ready_check: true
+auth:
+  username: foo
+  password: bar
+query: >
+        {server="demo"}

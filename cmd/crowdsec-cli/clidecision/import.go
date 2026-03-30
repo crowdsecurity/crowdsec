@@ -20,7 +20,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -244,6 +244,7 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 			ScenarioHash:    ptr.Of(""),
 			ScenarioVersion: ptr.Of(""),
 			Decisions:       chunk,
+			Kind:            types.CscliAlertKind.String(),
 		}
 
 		_, _, err = cli.client.Alerts.Add(ctx, models.AddAlertsRequest{&importAlert})
@@ -292,7 +293,7 @@ Raw values, standard input:
 
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.import_(cmd.Context(), input, duration, scope, reason, decisionType, batch, format)
 		},
 	}

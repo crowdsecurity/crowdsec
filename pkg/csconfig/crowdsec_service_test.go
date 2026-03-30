@@ -69,9 +69,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				// ContextToSend: map[string][]string{
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -109,9 +106,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
 				SimulationFilePath: "./testdata/simulation.yaml",
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -147,9 +141,6 @@ func TestLoadCrowdsec(t *testing.T) {
 				// ContextToSend: map[string][]string{
 				// 	"source_ip": {"evt.Parsed.source_ip"},
 				// },
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
 			},
 		},
 		{
@@ -171,12 +162,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:              ptr.Of(true),
-				AcquisitionFilePath: notExistFullPath,
-				AcquisitionFiles:    []string{},
-				SimulationConfig: &SimulationConfig{
-					Simulation: ptr.Of(false),
-				},
+				Enable:               ptr.Of(true),
+				AcquisitionFilePath:  notExistFullPath,
+				AcquisitionFiles:     []string{},
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				BucketsRoutinesCount: 1,

@@ -7,12 +7,12 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statAppsecRule map[string]map[string]map[string]int
 
-func (s statAppsecRule) Description() (string, string) {
+func (statAppsecRule) Description() (string, string) {
 	return "Appsec Rule Metrics",
 		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
 }

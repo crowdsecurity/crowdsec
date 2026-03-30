@@ -7,12 +7,12 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statDecision map[string]map[string]map[string]int
 
-func (s statDecision) Description() (string, string) {
+func (statDecision) Description() (string, string) {
 	return "Local API Decisions",
 		`Provides information about all currently active decisions. ` +
 			`Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`

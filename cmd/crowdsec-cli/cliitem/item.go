@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -24,13 +25,12 @@ type cliHelp struct {
 	example string
 }
 
-type configGetter func() *csconfig.Config
-
 type cliItem struct {
-	cfg           configGetter
+	cfg           csconfig.Getter
 	name          string // plural, as used in the hub index
 	singular      string
 	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
+	aliases       []string
 	help          cliHelp
 	installHelp   cliHelp
 	removeHelp    cliHelp
@@ -41,13 +41,25 @@ type cliItem struct {
 }
 
 func (cli *cliItem) NewCommand() *cobra.Command {
+	aliases := make([]string, 0, 1+len(cli.aliases))
+	if cli.singular != "" {
+		aliases = append(aliases, cli.singular)
+	}
+	if len(cli.aliases) > 0 {
+		aliases = append(aliases, cli.aliases...)
+	}
+
 	cmd := &cobra.Command{
 		Use:               cmp.Or(cli.help.use, cli.name+" <action> [item]..."),
 		Short:             cmp.Or(cli.help.short, "Manage hub "+cli.name),
 		Long:              cli.help.long,
 		Example:           cli.help.example,
-		Aliases:           []string{cli.singular},
+		Aliases:           aliases,
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.newInstallCmd())
@@ -97,7 +109,7 @@ func (cli *cliItem) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func compInstalledItems(itemType string, _ []string, toComplete string, cfg configGetter) ([]string, cobra.ShellCompDirective) {
+func compInstalledItems(itemType string, _ []string, toComplete string, cfg csconfig.Getter) ([]string, cobra.ShellCompDirective) {
 	hub, err := require.Hub(cfg(), nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

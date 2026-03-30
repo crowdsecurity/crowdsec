@@ -50,10 +50,10 @@ func (c *PurgeCommand) Prepare(plan *ActionPlan) (bool, error) {
 	return true, nil
 }
 
-func (c *PurgeCommand) Run(ctx context.Context, plan *ActionPlan) error {
+func (c *PurgeCommand) Run(_ context.Context, _ *ActionPlan) error {
 	i := c.Item
 
-	fmt.Println("purging " + colorizeItemName(i.FQName()))
+	fmt.Fprintln(os.Stdout, "purging " + colorizeItemName(i.FQName()))
 
 	if err := os.Remove(i.State.DownloadPath); err != nil {
 		if os.IsNotExist(err) {
@@ -71,7 +71,7 @@ func (c *PurgeCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	return nil
 }
 
-func (c *PurgeCommand) OperationType() string {
+func (*PurgeCommand) OperationType() string {
 	return "purge (delete source)"
 }
 

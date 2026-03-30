@@ -24,13 +24,13 @@ type Machine struct {
 func (Machine) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			Immutable(),
 		field.Time("updated_at").
-			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow),
+			Default(UtcNow).
+			UpdateDefault(UtcNow),
 		field.Time("last_push").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			Nillable().Optional(),
 		field.Time("last_heartbeat").
 			Nillable().Optional(),
@@ -45,6 +45,7 @@ func (Machine) Fields() []ent.Field {
 			Default(false),
 		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
 		field.String("osname").Optional(),
+		field.String("osfamily").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
 		field.JSON("hubstate", map[string][]ItemState{}).Optional(),

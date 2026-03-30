@@ -16,7 +16,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type ScenarioAssert struct {
@@ -30,7 +30,7 @@ type ScenarioAssert struct {
 	PourData          *dumps.BucketPourInfo
 }
 
-type BucketResults []types.Event
+type BucketResults []pipeline.Event
 
 func NewScenarioAssert(file string) *ScenarioAssert {
 	ScenarioAssert := &ScenarioAssert{

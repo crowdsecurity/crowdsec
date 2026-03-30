@@ -2,12 +2,13 @@ package cliconfig
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -29,17 +30,17 @@ func (cli *cliConfig) featureFlags(showRetired bool) error {
 			status = green("✓")
 		}
 
-		fmt.Printf("%s %s", status, nameDesc)
+		fmt.Fprintf(os.Stdout, "%s %s", status, nameDesc)
 
 		if feat.State == fflag.DeprecatedState {
-			fmt.Printf("\n  %s %s", yellow("DEPRECATED"), feat.DeprecationMsg)
+			fmt.Fprintf(os.Stdout, "\n  %s %s", yellow("DEPRECATED"), feat.DeprecationMsg)
 		}
 
 		if feat.State == fflag.RetiredState {
-			fmt.Printf("\n  %s %s", magenta("RETIRED"), feat.DeprecationMsg)
+			fmt.Fprintf(os.Stdout, "\n  %s %s", magenta("RETIRED"), feat.DeprecationMsg)
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 
 	feats := fflag.Crowdsec.GetAllFeatures()
@@ -63,29 +64,29 @@ func (cli *cliConfig) featureFlags(showRetired bool) error {
 	}
 
 	if len(enabled) > 0 {
-		fmt.Println(" --- Enabled features ---")
-		fmt.Println()
+		fmt.Fprintln(os.Stdout, " --- Enabled features ---")
+		fmt.Fprintln(os.Stdout)
 
 		for _, feat := range enabled {
 			printFeature(feat)
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 
 	if len(disabled) > 0 {
-		fmt.Println(" --- Disabled features ---")
-		fmt.Println()
+		fmt.Fprintln(os.Stdout, " --- Disabled features ---")
+		fmt.Fprintln(os.Stdout)
 
 		for _, feat := range disabled {
 			printFeature(feat)
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 
-	fmt.Println("To enable a feature you can: ")
-	fmt.Println("  - set the environment variable CROWDSEC_FEATURE_<uppercase_feature_name> to true")
+	fmt.Fprintln(os.Stdout, "To enable a feature you can: ")
+	fmt.Fprintln(os.Stdout, "  - set the environment variable CROWDSEC_FEATURE_<uppercase_feature_name> to true")
 
 	featurePath, err := filepath.Abs(csconfig.GetFeatureFilePath(cli.cfg().FilePath))
 	if err != nil {
@@ -93,23 +94,23 @@ func (cli *cliConfig) featureFlags(showRetired bool) error {
 		return err
 	}
 
-	fmt.Printf("  - add the line '- <feature_name>' to the file %s\n", featurePath)
-	fmt.Println()
+	fmt.Fprintf(os.Stdout, "  - add the line '- <feature_name>' to the file %s\n", featurePath)
+	fmt.Fprintln(os.Stdout)
 
 	if len(enabled) == 0 && len(disabled) == 0 {
-		fmt.Println("However, no feature flag is available in this release.")
-		fmt.Println()
+		fmt.Fprintln(os.Stdout, "However, no feature flag is available in this release.")
+		fmt.Fprintln(os.Stdout)
 	}
 
 	if showRetired && len(retired) > 0 {
-		fmt.Println(" --- Retired features ---")
-		fmt.Println()
+		fmt.Fprintln(os.Stdout, " --- Retired features ---")
+		fmt.Fprintln(os.Stdout)
 
 		for _, feat := range retired {
 			printFeature(feat)
 		}
 
-		fmt.Println()
+		fmt.Fprintln(os.Stdout)
 	}
 
 	return nil

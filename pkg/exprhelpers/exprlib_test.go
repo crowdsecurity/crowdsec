@@ -17,8 +17,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getDBClient(t *testing.T) *database.Client {
@@ -30,7 +30,7 @@ func getDBClient(t *testing.T) *database.Client {
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: ":memory:",
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	return testDBClient
@@ -276,7 +276,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// cache with no TTL
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(1)})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(1)})
 	require.NoError(t, err)
 
 	ret, _ := RegexpInFile("crowdsec", filename)
@@ -289,7 +289,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 
 	// cache with TTL
 	ttl := 500 * time.Millisecond
-	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
 	require.NoError(t, err)
 
 	ret, _ = RegexpInFile("crowdsec", filename)
@@ -2202,6 +2202,149 @@ func TestParseKv(t *testing.T) {
 	}
 }
 
+func TestParseKvLax(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		value          string
+		want           map[string]string
+		expr           string
+		wantBuildErr   bool
+		wantRuntimeErr bool
+	}{
+		{
+			name:  "ParseKVLax() test: valid string",
+			value: "foo=bar",
+			want:  map[string]string{"foo": "bar"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: valid string multiple",
+			value: "foo=bar bar=foo",
+			want:  map[string]string{"foo": "bar", "bar": "foo"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: quoted string",
+			value: `foo="bar=toto"`,
+			want:  map[string]string{"foo": "bar=toto"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted string",
+			value: `foo= bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty quoted string",
+			value: `foo="" bar=toto`,
+			want:  map[string]string{"bar": "toto", "foo": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: unquoted value with spaces",
+			value: `UNIFIhost=Express 7 port=443`,
+			want:  map[string]string{"UNIFIhost": "Express 7", "port": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: mixed quoted and unquoted with spaces",
+			value: `msg="Hello World" host=My Server name=test`,
+			want:  map[string]string{"msg": "Hello World", "host": "My Server", "name": "test"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped quotes in quoted value",
+			value: `msg="He said \"Hello\"" status=ok`,
+			want:  map[string]string{"msg": `He said "Hello"`, "status": "ok"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslashes in quoted value",
+			value: `path="C:\\Program Files\\App" status=running`,
+			want:  map[string]string{"path": `C:\Program Files\App`, "status": "running"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: empty unquoted value at end",
+			value: `host=server port=443 debug=`,
+			want:  map[string]string{"host": "server", "port": "443", "debug": ""},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: complex CEF-like log extension",
+			value: `src=192.168.1.100 duser=admin msg=User login successful UNIFIhost=Express 7 UNIFIport=443`,
+			want:  map[string]string{"src": "192.168.1.100", "duser": "admin", "msg": "User login successful", "UNIFIhost": "Express 7", "UNIFIport": "443"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: iptables-style values with flags",
+			value: `RES=0x00 SYN URGP=0 ID=25029 DF PROTO=TCP`,
+			want:  map[string]string{"RES": "0x00 SYN", "URGP": "0", "ID": "25029 DF", "PROTO": "TCP"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: keycloak-style JSON values",
+			value: `error=user_not_found, code_id=e44d80b4-058d-4b45-b2ee-fac3d174e10c, userId=null, type=LOGIN_ERROR`,
+			want:  map[string]string{"error": "user_not_found,", "code_id": "e44d80b4-058d-4b45-b2ee-fac3d174e10c,", "userId": "null,", "type": "LOGIN_ERROR"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: key= after escaped quotes inside quoted value",
+			value: `msg="say \"fake=val\" here" real=value`,
+			want:  map[string]string{"msg": `say "fake=val" here`, "real": "value"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:  "ParseKVLax() test: escaped backslash before closing quote",
+			value: `path="C:\\" next=val`,
+			want:  map[string]string{"path": `C:\`, "next": "val"},
+			expr:  `ParseKVLax(value, out, "a")`,
+		},
+		{
+			name:         "ParseKVLax() test: invalid type for first argument",
+			value:        "",
+			expr:         `ParseKVLax(42, out, "a")`,
+			wantBuildErr: true,
+		},
+		{
+			name:           "ParseKVLax() test: no key=value pairs",
+			value:          "no pairs here",
+			expr:           `ParseKVLax(value, out, "a")`,
+			wantRuntimeErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			outMap := make(map[string]any)
+			env := map[string]any{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.wantBuildErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			_, err = expr.Run(vm, env)
+			if tc.wantRuntimeErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
+
 func TestReplaceRegexp(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
@@ -2397,6 +2540,22 @@ func TestAnsiRegex(t *testing.T) {
 			},
 			code:   "ReplaceAllRegex(AnsiRegex(), coloredText, '')",
 			result: "Hello World",
+		},
+		{
+			name: "AnsiRegex() test: strips ANSI escapes from auth warning line",
+			env: map[string]any{
+				"authWarnLine": "\x1b[36m2026-03-24T22:22:35+06:00\x1b[0m [\x1b[38;5;208mAUTH\x1b[0m] \x1b[33mWARN:\x1b[0m Incorrect username or password for user thisistest. IP=IP",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), authWarnLine, '')",
+			result: "2026-03-24T22:22:35+06:00 [AUTH] WARN: Incorrect username or password for user thisistest. IP=IP",
+		},
+		{
+			name: "AnsiRegex() test: literal ESC text is not treated as an escape byte",
+			env: map[string]any{
+				"literalEscText": "ESC[36m2026-03-24T22:22:35+06:00ESC[0m [ESC[38;5;208mAUTHESC[0m] ESC[33mWARN:ESC[0m Incorrect username or password for user thisistest. IP=IP",
+			},
+			code:   "ReplaceAllRegex(AnsiRegex(), literalEscText, '')",
+			result: "ESC[36m2026-03-24T22:22:35+06:00ESC[0m [ESC[38;5;208mAUTHESC[0m] ESC[33mWARN:ESC[0m Incorrect username or password for user thisistest. IP=IP",
 		},
 		{
 			name: "AnsiRegex() test: can be used with ReplaceRegexp (first occurrence only)",

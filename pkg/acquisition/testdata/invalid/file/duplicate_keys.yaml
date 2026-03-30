@@ -1,0 +1,6 @@
+# wantErr: position 0: [6:1] mapping key "filenames" already defined at [5:1]
+source: file
+labels:
+  type: sometype
+filenames: "[asd.log]"
+filenames: "[ase.log]"

@@ -7,12 +7,12 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statAppsecEngine map[string]map[string]int
 
-func (s statAppsecEngine) Description() (string, string) {
+func (statAppsecEngine) Description() (string, string) {
 	return "Appsec Metrics",
 		`Measures the number of parsed and blocked requests by the AppSec Component.`
 }

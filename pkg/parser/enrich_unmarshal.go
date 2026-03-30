@@ -5,10 +5,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func unmarshalJSON(field string, p *types.Event, plog *log.Entry) (map[string]string, error) {
+func unmarshalJSON(field string, p *pipeline.Event, plog *log.Entry) (map[string]string, error) {
 	err := json.Unmarshal([]byte(p.Line.Raw), &p.Unmarshaled)
 	if err != nil {
 		plog.Errorf("could not parse JSON: %s", err)

@@ -1,0 +1,5 @@
+# wantErr: datasource of type docker: container_name_regexp: error parsing regexp: missing closing ]: `[invalid`
+# schemaErr:
+source: docker
+container_name_regexp:
+ - "[invalid"

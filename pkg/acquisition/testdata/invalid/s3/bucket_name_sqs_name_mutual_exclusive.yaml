@@ -1,0 +1,7 @@
+# wantErr: datasource of type s3: bucket_name and sqs_name are mutually exclusive
+source: s3
+labels:
+  type: sometype
+bucket_name: foobar
+polling_method: sqs
+sqs_name: foobar

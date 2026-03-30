@@ -192,19 +192,10 @@ func (j *JWT) Authenticator(c *gin.Context) (any, error) {
 		}
 	}
 
-	var scenarios string
+	if len(auth.scenariosInput) != 0 {
+		scenarios := strings.Join(auth.scenariosInput, ",")
 
-	if len(auth.scenariosInput) > 0 {
-		for _, scenario := range auth.scenariosInput {
-			if scenarios == "" {
-				scenarios = scenario
-			} else {
-				scenarios += "," + scenario
-			}
-		}
-
-		err = j.DbClient.UpdateMachineScenarios(ctx, scenarios, auth.clientMachine.ID)
-		if err != nil {
+		if err = j.DbClient.UpdateMachineScenarios(ctx, scenarios, auth.clientMachine.ID); err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", auth.machineID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}

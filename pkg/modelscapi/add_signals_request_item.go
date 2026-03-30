@@ -32,6 +32,9 @@ type AddSignalsRequestItem struct {
 	// decisions
 	Decisions AddSignalsRequestItemDecisions `json:"decisions,omitempty"`
 
+	// Origin of the alert (crowdsec,waf,bot-detection,...)
+	Kind string `json:"kind,omitempty"`
+
 	// machine id
 	MachineID string `json:"machine_id,omitempty"`
 

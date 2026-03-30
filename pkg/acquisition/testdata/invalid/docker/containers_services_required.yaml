@@ -1,0 +1,3 @@
+# wantErr: datasource of type docker: no containers or services configuration provided
+# schemaErr: /: 'allOf' failed; /: 'anyOf' failed; /: missing property 'container_id'; /: missing property 'container_id_regexp'; /: missing property 'container_name'; /: missing property 'container_name_regexp'; /: missing property 'service_id'; /: missing property 'service_id_regexp'; /: missing property 'service_name'; /: missing property 'service_name_regexp'; /: missing property 'use_container_labels'; /: missing property 'use_service_labels'
+source: docker

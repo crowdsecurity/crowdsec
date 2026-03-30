@@ -7,12 +7,12 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 )
 
 type statAlert map[string]int
 
-func (s statAlert) Description() (string, string) {
+func (statAlert) Description() (string, string) {
 	return "Local API Alerts",
 		`Tracks the total number of past and present alerts for the installed scenarios.`
 }

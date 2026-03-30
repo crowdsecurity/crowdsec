@@ -3,12 +3,12 @@ package parser
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 /* should be part of a package shared with enrich/geoip.go */
 type (
-	EnrichFunc func(string, *types.Event, *log.Entry) (map[string]string, error)
+	EnrichFunc func(string, *pipeline.Event, *log.Entry) (map[string]string, error)
 	InitFunc   func(map[string]string) (interface{}, error)
 )
 

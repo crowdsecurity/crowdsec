@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,56 +19,12 @@ import (
 
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TestBadConfiguration(t *testing.T) {
-	tests := []struct {
-		name        string
-		config      string
-		expectedErr string
-	}{
-		{
-			name:        "extra configuration key",
-			config:      "foobar: asd.log",
-			expectedErr: `cannot parse FileAcquisition configuration: [1:1] unknown field "foobar"`,
-		},
-		{
-			name:        "missing filenames",
-			config:      "mode: tail",
-			expectedErr: "no filename or filenames configuration provided",
-		},
-		{
-			name:        "glob syntax error",
-			config:      `filename: "[asd-.log"`,
-			expectedErr: "glob failure: syntax error in pattern",
-		},
-		{
-			name: "bad exclude regexp",
-			config: `filenames: ["asd.log"]
-exclude_regexps: ["as[a-$d"]`,
-			expectedErr: "could not compile regexp as",
-		},
-		{
-			name: "duplicate keys",
-			config: `filenames: ["asd.log"]
-filenames: ["ase.log"]`,
-			expectedErr: `cannot parse FileAcquisition configuration: [2:1] mapping key "filenames" already defined at [1:1]`,
-		},
-	}
-
-	subLogger := log.WithField("type", "file")
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		})
-	}
-}
-
 func TestConfigureDSN(t *testing.T) {
+	ctx := t.Context()
+
 	file := "/etc/passwd"
 
 	if runtime.GOOS == "windows" {
@@ -95,12 +52,12 @@ func TestConfigureDSN(t *testing.T) {
 		},
 	}
 
-	subLogger := log.WithField("type", "file")
+	subLogger := log.WithField("type", fileacquisition.ModuleName)
 
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
-			f := fileacquisition.FileSource{}
-			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
+			f := fileacquisition.Source{}
+			err := f.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -215,17 +172,16 @@ filename: %s`, deletedFile),
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithField("type", "file")
+			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
-			tomb := tomb.Tomb{}
-			out := make(chan types.Event, 100)
-			f := fileacquisition.FileSource{}
+			out := make(chan pipeline.Event, 100)
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			cstest.RequireErrorContains(t, err, tc.expectedConfigErr)
 
 			if tc.expectedConfigErr != "" {
@@ -236,7 +192,7 @@ filename: %s`, deletedFile),
 				tc.afterConfigure()
 			}
 
-			err = f.OneShotAcquisition(ctx, out, &tomb)
+			err = f.OneShot(ctx, out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
@@ -382,37 +338,37 @@ force_inotify: true`, testPattern),
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(tc.logLevel)
 
-			subLogger := logger.WithField("type", "file")
+			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan pipeline.Event)
 
-			f := fileacquisition.FileSource{}
+			f := fileacquisition.Source{}
 
 			if tc.setup != nil {
 				tc.setup()
 			}
 
-			err := f.Configure([]byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
 
-			actualLines := 0
+			var actualLines atomic.Int32
 
 			if tc.expectedLines != 0 {
-				var stopReading bool
-				defer func() { stopReading = true }()
+				var stopReading atomic.Bool
+				defer func() { stopReading.Store(true) }()
 
 				go func() {
 					for {
 						select {
 						case <-out:
-							actualLines++
+							actualLines.Add(1)
 						default:
-							if stopReading {
+							if stopReading.Load() {
 								return
 							}
 							// Small sleep to prevent tight loop
@@ -462,7 +418,7 @@ force_inotify: true`, testPattern),
 				time.Sleep(2 * time.Second)
 
 				os.Remove(streamLogFile)
-				assert.Equal(t, tc.expectedLines, actualLines)
+				assert.Equal(t, tc.expectedLines, int(actualLines.Load()))
 			}
 
 			if tc.expectedOutput != "" {
@@ -484,69 +440,22 @@ force_inotify: true`, testPattern),
 }
 
 func TestExclusion(t *testing.T) {
+	ctx := t.Context()
+
 	config := `filenames: ["testdata/*.log*"]
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
 	// logger.SetLevel(ts.logLevel)
-	subLogger := logger.WithField("type", "file")
+	subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
-	f := fileacquisition.FileSource{}
-	err := f.Configure([]byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	f := fileacquisition.Source{}
+	err := f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	require.NotNil(t, hook.LastEntry())
 	assert.Contains(t, hook.LastEntry().Message, `Skipping file: matches exclude regex "\\.gz`)
 	assert.Equal(t, filepath.Join("testdata", "test.log.gz"), hook.LastEntry().Data["file"])
 	hook.Reset()
-}
-
-func TestDiscoveryPollConfiguration(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  string
-		wantErr string
-	}{
-		{
-			name: "valid discovery poll config",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "30s"
-mode: tail
-`,
-			wantErr: "",
-		},
-		{
-			name: "invalid poll interval",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: true
-discovery_poll_interval: "invalid"
-mode: tail
-`,
-			wantErr: `cannot parse FileAcquisition configuration: time: invalid duration "invalid"`,
-		},
-		{
-			name: "polling disabled",
-			config: `
-filenames:
- - "tests/test.log"
-discovery_poll_enable: false
-mode: tail
-`,
-			wantErr: "",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := &fileacquisition.FileSource{}
-			err := f.Configure([]byte(tc.config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-		})
-	}
 }
 
 func TestDiscoveryPolling(t *testing.T) {
@@ -566,12 +475,12 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
-	err := f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+	f := &fileacquisition.Source{}
+	err := f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
 	// Create channel for events
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	// Start acquisition
@@ -595,7 +504,7 @@ mode: tail
 
 	// Cleanup
 	tomb.Kill(nil)
-	tomb.Wait()
+	require.NoError(t, tomb.Wait())
 }
 
 func TestFileResurrectionViaPolling(t *testing.T) {
@@ -618,11 +527,11 @@ mode: tail
 	fmt.Printf("Config: %s\n", yamlConfig)
 	config := []byte(yamlConfig)
 
-	f := &fileacquisition.FileSource{}
-	err = f.Configure(config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+	f := &fileacquisition.Source{}
+	err = f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 	require.NoError(t, err)
 
-	eventChan := make(chan types.Event)
+	eventChan := make(chan pipeline.Event)
 	tomb := tomb.Tomb{}
 
 	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
@@ -645,5 +554,5 @@ mode: tail
 
 	// Cleanup
 	tomb.Kill(nil)
-	tomb.Wait()
+	require.NoError(t, tomb.Wait())
 }

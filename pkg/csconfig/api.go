@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -21,8 +23,10 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
+
+var PAPIBaseURL = "https://papi.api.crowdsec.net/"
 
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
@@ -31,10 +35,10 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
-	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password   string `yaml:"password,omitempty" json:"-"`
+	PapiURL    string `json:"papi_url,omitempty"     yaml:"papi_url,omitempty"`
+	URL        string `json:"url,omitempty"          yaml:"url,omitempty"`
+	Login      string `json:"login,omitempty"        yaml:"login,omitempty"`
+	Password   string `json:"-"                      yaml:"password,omitempty"`
 	CACertPath string `yaml:"ca_cert_path,omitempty"`
 	KeyPath    string `yaml:"key_path,omitempty"`
 	CertPath   string `yaml:"cert_path,omitempty"`
@@ -45,7 +49,7 @@ type CapiPullConfig struct {
 	Blocklists *bool `yaml:"blocklists,omitempty"`
 }
 
-/*global api config (for lapi->capi)*/
+// global api config (for lapi->capi)
 type OnlineApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -53,7 +57,7 @@ type OnlineApiClientCfg struct {
 	Sharing             *bool              `yaml:"sharing,omitempty"`
 }
 
-/*local api config (for crowdsec/cscli->lapi)*/
+// local api config (for crowdsec/cscli->lapi)
 type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
@@ -66,7 +70,7 @@ type CTICfg struct {
 	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
 	CacheSize    *int           `yaml:"cache_size,omitempty"`
 	Enabled      *bool          `yaml:"enabled,omitempty"`
-	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
+	LogLevel     log.Level      `yaml:"log_level,omitempty"`
 }
 
 func (a *CTICfg) Load() error {
@@ -127,7 +131,7 @@ func (o *OnlineApiClientCfg) Load() error {
 	}
 
 	if o.Credentials != nil && o.Credentials.PapiURL == "" {
-		o.Credentials.PapiURL = types.PAPIBaseURL
+		o.Credentials.PapiURL = PAPIBaseURL
 	}
 
 	return nil
@@ -217,34 +221,60 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-/*local api service configuration*/
+// local api service configuration
 type LocalApiServerCfg struct {
 	Enable                        *bool                    `yaml:"enable"`
 	ListenURI                     string                   `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
 	ListenSocket                  string                   `yaml:"listen_socket,omitempty"`
 	TLS                           *TLSCfg                  `yaml:"tls"`
 	DbConfig                      *DatabaseCfg             `yaml:"-"`
-	LogDir                        string                   `yaml:"-"`
-	LogMedia                      string                   `yaml:"-"`
 	OnlineClient                  *OnlineApiClientCfg      `yaml:"online_client"`
 	ProfilesPath                  string                   `yaml:"profiles_path,omitempty"`
 	ConsoleConfigPath             string                   `yaml:"console_path,omitempty"`
 	ConsoleConfig                 *ConsoleConfig           `yaml:"-"`
 	Profiles                      []*ProfileCfg            `yaml:"-"`
-	LogLevel                      *log.Level               `yaml:"log_level"`
+	LogLevel                      log.Level                `yaml:"log_level"` // 0 == Panic - default to common log level
 	UseForwardedForHeaders        bool                     `yaml:"use_forwarded_for_headers,omitempty"`
 	TrustedProxies                *[]string                `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool                    `yaml:"-"`
-	LogMaxSize                    int                      `yaml:"-"`
-	LogMaxAge                     int                      `yaml:"-"`
-	LogMaxFiles                   int                      `yaml:"-"`
-	LogFormat                     string                   `yaml:"-"`
 	TrustedIPs                    []string                 `yaml:"trusted_ips,omitempty"`
-	PapiLogLevel                  *log.Level               `yaml:"papi_log_level"`
+	PapiLogLevel                  log.Level                `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                     `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string                   `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
+	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+}
+
+// NewAccessLogger builds and returns a logger configured for HTTP access
+// logging using the provided log configuration.
+// If log_media is "file", the access log is written to the provided filename
+// inside LogDir. For "stdout" or "syslog", the access logger uses the same
+// output destination as the standard logger.
+func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Entry {
+	media := cfg.GetMedia()
+	logger := log.WithField("output", media)
+
+	defer func() {
+		logger.Debug("starting access logger")
+	}()
+
+	accessLogger := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+
+	if media != "file" {
+		return accessLogger
+	}
+
+	logPath := filepath.Join(cfg.GetDir(), filename)
+	logger = logger.WithField("file", logPath)
+
+	accessLogger.Logger.SetOutput(cfg.NewRotatingLogger(filename))
+
+	return accessLogger
+}
+
+func (c *LocalApiServerCfg) NewPAPILogger() *log.Entry {
+	level := cmp.Or(c.PapiLogLevel, c.LogLevel)
+	return logging.SubLogger(log.StandardLogger(), "papi", level)
 }
 
 func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
@@ -336,20 +366,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	// inherit log level from common, then api->server
-	var logLevel log.Level
-	if c.API.Server.LogLevel != nil {
-		logLevel = *c.API.Server.LogLevel
-	} else if c.Common.LogLevel != nil {
-		logLevel = *c.Common.LogLevel
-	} else {
-		logLevel = log.InfoLevel
-	}
-
-	if c.API.Server.PapiLogLevel == nil {
-		c.API.Server.PapiLogLevel = &logLevel
-	}
-
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return fmt.Errorf("loading online client credentials: %w", err)
@@ -394,14 +410,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
-
-	c.API.Server.LogDir = c.Common.LogDir
-	c.API.Server.LogMedia = c.Common.LogMedia
-	c.API.Server.CompressLogs = c.Common.CompressLogs
-	c.API.Server.LogMaxSize = c.Common.LogMaxSize
-	c.API.Server.LogMaxAge = c.Common.LogMaxAge
-	c.API.Server.LogFormat = c.Common.LogFormat
-	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
 
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}

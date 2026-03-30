@@ -1,0 +1,6 @@
+# wantErr: datasource of type kinesis: stream_arn and stream_name are mutually exclusive
+source: kinesis
+labels:
+  type: sometype
+stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream
+stream_name: foobar

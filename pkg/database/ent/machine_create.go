@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -20,6 +21,7 @@ type MachineCreate struct {
 	config
 	mutation *MachineMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -162,6 +164,20 @@ func (mc *MachineCreate) SetOsname(s string) *MachineCreate {
 func (mc *MachineCreate) SetNillableOsname(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetOsname(*s)
+	}
+	return mc
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (mc *MachineCreate) SetOsfamily(s string) *MachineCreate {
+	mc.mutation.SetOsfamily(s)
+	return mc
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableOsfamily(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetOsfamily(*s)
 	}
 	return mc
 }
@@ -332,6 +348,7 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 		_node = &Machine{config: mc.config}
 		_spec = sqlgraph.NewCreateSpec(machine.Table, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = mc.conflict
 	if value, ok := mc.mutation.CreatedAt(); ok {
 		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -380,6 +397,10 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 		_spec.SetField(machine.FieldOsname, field.TypeString, value)
 		_node.Osname = value
 	}
+	if value, ok := mc.mutation.Osfamily(); ok {
+		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
+		_node.Osfamily = value
+	}
 	if value, ok := mc.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
 		_node.Osversion = value
@@ -415,11 +436,662 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Machine.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.MachineUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (mc *MachineCreate) OnConflict(opts ...sql.ConflictOption) *MachineUpsertOne {
+	mc.conflict = opts
+	return &MachineUpsertOne{
+		create: mc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (mc *MachineCreate) OnConflictColumns(columns ...string) *MachineUpsertOne {
+	mc.conflict = append(mc.conflict, sql.ConflictColumns(columns...))
+	return &MachineUpsertOne{
+		create: mc,
+	}
+}
+
+type (
+	// MachineUpsertOne is the builder for "upsert"-ing
+	//  one Machine node.
+	MachineUpsertOne struct {
+		create *MachineCreate
+	}
+
+	// MachineUpsert is the "OnConflict" setter.
+	MachineUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MachineUpsert) SetUpdatedAt(v time.Time) *MachineUpsert {
+	u.Set(machine.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateUpdatedAt() *MachineUpsert {
+	u.SetExcluded(machine.FieldUpdatedAt)
+	return u
+}
+
+// SetLastPush sets the "last_push" field.
+func (u *MachineUpsert) SetLastPush(v time.Time) *MachineUpsert {
+	u.Set(machine.FieldLastPush, v)
+	return u
+}
+
+// UpdateLastPush sets the "last_push" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateLastPush() *MachineUpsert {
+	u.SetExcluded(machine.FieldLastPush)
+	return u
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (u *MachineUpsert) ClearLastPush() *MachineUpsert {
+	u.SetNull(machine.FieldLastPush)
+	return u
+}
+
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (u *MachineUpsert) SetLastHeartbeat(v time.Time) *MachineUpsert {
+	u.Set(machine.FieldLastHeartbeat, v)
+	return u
+}
+
+// UpdateLastHeartbeat sets the "last_heartbeat" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateLastHeartbeat() *MachineUpsert {
+	u.SetExcluded(machine.FieldLastHeartbeat)
+	return u
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (u *MachineUpsert) ClearLastHeartbeat() *MachineUpsert {
+	u.SetNull(machine.FieldLastHeartbeat)
+	return u
+}
+
+// SetPassword sets the "password" field.
+func (u *MachineUpsert) SetPassword(v string) *MachineUpsert {
+	u.Set(machine.FieldPassword, v)
+	return u
+}
+
+// UpdatePassword sets the "password" field to the value that was provided on create.
+func (u *MachineUpsert) UpdatePassword() *MachineUpsert {
+	u.SetExcluded(machine.FieldPassword)
+	return u
+}
+
+// SetIpAddress sets the "ipAddress" field.
+func (u *MachineUpsert) SetIpAddress(v string) *MachineUpsert {
+	u.Set(machine.FieldIpAddress, v)
+	return u
+}
+
+// UpdateIpAddress sets the "ipAddress" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateIpAddress() *MachineUpsert {
+	u.SetExcluded(machine.FieldIpAddress)
+	return u
+}
+
+// SetScenarios sets the "scenarios" field.
+func (u *MachineUpsert) SetScenarios(v string) *MachineUpsert {
+	u.Set(machine.FieldScenarios, v)
+	return u
+}
+
+// UpdateScenarios sets the "scenarios" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateScenarios() *MachineUpsert {
+	u.SetExcluded(machine.FieldScenarios)
+	return u
+}
+
+// ClearScenarios clears the value of the "scenarios" field.
+func (u *MachineUpsert) ClearScenarios() *MachineUpsert {
+	u.SetNull(machine.FieldScenarios)
+	return u
+}
+
+// SetVersion sets the "version" field.
+func (u *MachineUpsert) SetVersion(v string) *MachineUpsert {
+	u.Set(machine.FieldVersion, v)
+	return u
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateVersion() *MachineUpsert {
+	u.SetExcluded(machine.FieldVersion)
+	return u
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *MachineUpsert) ClearVersion() *MachineUpsert {
+	u.SetNull(machine.FieldVersion)
+	return u
+}
+
+// SetIsValidated sets the "isValidated" field.
+func (u *MachineUpsert) SetIsValidated(v bool) *MachineUpsert {
+	u.Set(machine.FieldIsValidated, v)
+	return u
+}
+
+// UpdateIsValidated sets the "isValidated" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateIsValidated() *MachineUpsert {
+	u.SetExcluded(machine.FieldIsValidated)
+	return u
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *MachineUpsert) SetAuthType(v string) *MachineUpsert {
+	u.Set(machine.FieldAuthType, v)
+	return u
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateAuthType() *MachineUpsert {
+	u.SetExcluded(machine.FieldAuthType)
+	return u
+}
+
+// SetOsname sets the "osname" field.
+func (u *MachineUpsert) SetOsname(v string) *MachineUpsert {
+	u.Set(machine.FieldOsname, v)
+	return u
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateOsname() *MachineUpsert {
+	u.SetExcluded(machine.FieldOsname)
+	return u
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *MachineUpsert) ClearOsname() *MachineUpsert {
+	u.SetNull(machine.FieldOsname)
+	return u
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsert) SetOsfamily(v string) *MachineUpsert {
+	u.Set(machine.FieldOsfamily, v)
+	return u
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateOsfamily() *MachineUpsert {
+	u.SetExcluded(machine.FieldOsfamily)
+	return u
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsert) ClearOsfamily() *MachineUpsert {
+	u.SetNull(machine.FieldOsfamily)
+	return u
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *MachineUpsert) SetOsversion(v string) *MachineUpsert {
+	u.Set(machine.FieldOsversion, v)
+	return u
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateOsversion() *MachineUpsert {
+	u.SetExcluded(machine.FieldOsversion)
+	return u
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *MachineUpsert) ClearOsversion() *MachineUpsert {
+	u.SetNull(machine.FieldOsversion)
+	return u
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *MachineUpsert) SetFeatureflags(v string) *MachineUpsert {
+	u.Set(machine.FieldFeatureflags, v)
+	return u
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateFeatureflags() *MachineUpsert {
+	u.SetExcluded(machine.FieldFeatureflags)
+	return u
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *MachineUpsert) ClearFeatureflags() *MachineUpsert {
+	u.SetNull(machine.FieldFeatureflags)
+	return u
+}
+
+// SetHubstate sets the "hubstate" field.
+func (u *MachineUpsert) SetHubstate(v map[string][]schema.ItemState) *MachineUpsert {
+	u.Set(machine.FieldHubstate, v)
+	return u
+}
+
+// UpdateHubstate sets the "hubstate" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateHubstate() *MachineUpsert {
+	u.SetExcluded(machine.FieldHubstate)
+	return u
+}
+
+// ClearHubstate clears the value of the "hubstate" field.
+func (u *MachineUpsert) ClearHubstate() *MachineUpsert {
+	u.SetNull(machine.FieldHubstate)
+	return u
+}
+
+// SetDatasources sets the "datasources" field.
+func (u *MachineUpsert) SetDatasources(v map[string]int64) *MachineUpsert {
+	u.Set(machine.FieldDatasources, v)
+	return u
+}
+
+// UpdateDatasources sets the "datasources" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateDatasources() *MachineUpsert {
+	u.SetExcluded(machine.FieldDatasources)
+	return u
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (u *MachineUpsert) ClearDatasources() *MachineUpsert {
+	u.SetNull(machine.FieldDatasources)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *MachineUpsertOne) UpdateNewValues() *MachineUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(machine.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.MachineId(); exists {
+			s.SetIgnore(machine.FieldMachineId)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *MachineUpsertOne) Ignore() *MachineUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *MachineUpsertOne) DoNothing() *MachineUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the MachineCreate.OnConflict
+// documentation for more info.
+func (u *MachineUpsertOne) Update(set func(*MachineUpsert)) *MachineUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&MachineUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MachineUpsertOne) SetUpdatedAt(v time.Time) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateUpdatedAt() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetLastPush sets the "last_push" field.
+func (u *MachineUpsertOne) SetLastPush(v time.Time) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetLastPush(v)
+	})
+}
+
+// UpdateLastPush sets the "last_push" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateLastPush() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateLastPush()
+	})
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (u *MachineUpsertOne) ClearLastPush() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearLastPush()
+	})
+}
+
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (u *MachineUpsertOne) SetLastHeartbeat(v time.Time) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetLastHeartbeat(v)
+	})
+}
+
+// UpdateLastHeartbeat sets the "last_heartbeat" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateLastHeartbeat() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateLastHeartbeat()
+	})
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (u *MachineUpsertOne) ClearLastHeartbeat() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearLastHeartbeat()
+	})
+}
+
+// SetPassword sets the "password" field.
+func (u *MachineUpsertOne) SetPassword(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetPassword(v)
+	})
+}
+
+// UpdatePassword sets the "password" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdatePassword() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdatePassword()
+	})
+}
+
+// SetIpAddress sets the "ipAddress" field.
+func (u *MachineUpsertOne) SetIpAddress(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetIpAddress(v)
+	})
+}
+
+// UpdateIpAddress sets the "ipAddress" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateIpAddress() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateIpAddress()
+	})
+}
+
+// SetScenarios sets the "scenarios" field.
+func (u *MachineUpsertOne) SetScenarios(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetScenarios(v)
+	})
+}
+
+// UpdateScenarios sets the "scenarios" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateScenarios() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateScenarios()
+	})
+}
+
+// ClearScenarios clears the value of the "scenarios" field.
+func (u *MachineUpsertOne) ClearScenarios() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearScenarios()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *MachineUpsertOne) SetVersion(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateVersion() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *MachineUpsertOne) ClearVersion() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetIsValidated sets the "isValidated" field.
+func (u *MachineUpsertOne) SetIsValidated(v bool) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetIsValidated(v)
+	})
+}
+
+// UpdateIsValidated sets the "isValidated" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateIsValidated() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateIsValidated()
+	})
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *MachineUpsertOne) SetAuthType(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetAuthType(v)
+	})
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateAuthType() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateAuthType()
+	})
+}
+
+// SetOsname sets the "osname" field.
+func (u *MachineUpsertOne) SetOsname(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsname(v)
+	})
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateOsname() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsname()
+	})
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *MachineUpsertOne) ClearOsname() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsertOne) SetOsfamily(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateOsfamily() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsertOne) ClearOsfamily() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsfamily()
+	})
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *MachineUpsertOne) SetOsversion(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsversion(v)
+	})
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateOsversion() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsversion()
+	})
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *MachineUpsertOne) ClearOsversion() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsversion()
+	})
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *MachineUpsertOne) SetFeatureflags(v string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetFeatureflags(v)
+	})
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateFeatureflags() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateFeatureflags()
+	})
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *MachineUpsertOne) ClearFeatureflags() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearFeatureflags()
+	})
+}
+
+// SetHubstate sets the "hubstate" field.
+func (u *MachineUpsertOne) SetHubstate(v map[string][]schema.ItemState) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetHubstate(v)
+	})
+}
+
+// UpdateHubstate sets the "hubstate" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateHubstate() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateHubstate()
+	})
+}
+
+// ClearHubstate clears the value of the "hubstate" field.
+func (u *MachineUpsertOne) ClearHubstate() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearHubstate()
+	})
+}
+
+// SetDatasources sets the "datasources" field.
+func (u *MachineUpsertOne) SetDatasources(v map[string]int64) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetDatasources(v)
+	})
+}
+
+// UpdateDatasources sets the "datasources" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateDatasources() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateDatasources()
+	})
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (u *MachineUpsertOne) ClearDatasources() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearDatasources()
+	})
+}
+
+// Exec executes the query.
+func (u *MachineUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for MachineCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *MachineUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *MachineUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *MachineUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // MachineCreateBulk is the builder for creating many Machine entities in bulk.
 type MachineCreateBulk struct {
 	config
 	err      error
 	builders []*MachineCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Machine entities in the database.
@@ -449,6 +1121,7 @@ func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = mcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, mcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -499,6 +1172,400 @@ func (mcb *MachineCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (mcb *MachineCreateBulk) ExecX(ctx context.Context) {
 	if err := mcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Machine.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.MachineUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (mcb *MachineCreateBulk) OnConflict(opts ...sql.ConflictOption) *MachineUpsertBulk {
+	mcb.conflict = opts
+	return &MachineUpsertBulk{
+		create: mcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (mcb *MachineCreateBulk) OnConflictColumns(columns ...string) *MachineUpsertBulk {
+	mcb.conflict = append(mcb.conflict, sql.ConflictColumns(columns...))
+	return &MachineUpsertBulk{
+		create: mcb,
+	}
+}
+
+// MachineUpsertBulk is the builder for "upsert"-ing
+// a bulk of Machine nodes.
+type MachineUpsertBulk struct {
+	create *MachineCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *MachineUpsertBulk) UpdateNewValues() *MachineUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(machine.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.MachineId(); exists {
+				s.SetIgnore(machine.FieldMachineId)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Machine.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *MachineUpsertBulk) Ignore() *MachineUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *MachineUpsertBulk) DoNothing() *MachineUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the MachineCreateBulk.OnConflict
+// documentation for more info.
+func (u *MachineUpsertBulk) Update(set func(*MachineUpsert)) *MachineUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&MachineUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MachineUpsertBulk) SetUpdatedAt(v time.Time) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateUpdatedAt() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetLastPush sets the "last_push" field.
+func (u *MachineUpsertBulk) SetLastPush(v time.Time) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetLastPush(v)
+	})
+}
+
+// UpdateLastPush sets the "last_push" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateLastPush() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateLastPush()
+	})
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (u *MachineUpsertBulk) ClearLastPush() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearLastPush()
+	})
+}
+
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (u *MachineUpsertBulk) SetLastHeartbeat(v time.Time) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetLastHeartbeat(v)
+	})
+}
+
+// UpdateLastHeartbeat sets the "last_heartbeat" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateLastHeartbeat() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateLastHeartbeat()
+	})
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (u *MachineUpsertBulk) ClearLastHeartbeat() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearLastHeartbeat()
+	})
+}
+
+// SetPassword sets the "password" field.
+func (u *MachineUpsertBulk) SetPassword(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetPassword(v)
+	})
+}
+
+// UpdatePassword sets the "password" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdatePassword() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdatePassword()
+	})
+}
+
+// SetIpAddress sets the "ipAddress" field.
+func (u *MachineUpsertBulk) SetIpAddress(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetIpAddress(v)
+	})
+}
+
+// UpdateIpAddress sets the "ipAddress" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateIpAddress() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateIpAddress()
+	})
+}
+
+// SetScenarios sets the "scenarios" field.
+func (u *MachineUpsertBulk) SetScenarios(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetScenarios(v)
+	})
+}
+
+// UpdateScenarios sets the "scenarios" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateScenarios() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateScenarios()
+	})
+}
+
+// ClearScenarios clears the value of the "scenarios" field.
+func (u *MachineUpsertBulk) ClearScenarios() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearScenarios()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *MachineUpsertBulk) SetVersion(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateVersion() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *MachineUpsertBulk) ClearVersion() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetIsValidated sets the "isValidated" field.
+func (u *MachineUpsertBulk) SetIsValidated(v bool) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetIsValidated(v)
+	})
+}
+
+// UpdateIsValidated sets the "isValidated" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateIsValidated() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateIsValidated()
+	})
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *MachineUpsertBulk) SetAuthType(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetAuthType(v)
+	})
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateAuthType() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateAuthType()
+	})
+}
+
+// SetOsname sets the "osname" field.
+func (u *MachineUpsertBulk) SetOsname(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsname(v)
+	})
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateOsname() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsname()
+	})
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *MachineUpsertBulk) ClearOsname() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *MachineUpsertBulk) SetOsfamily(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateOsfamily() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *MachineUpsertBulk) ClearOsfamily() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsfamily()
+	})
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *MachineUpsertBulk) SetOsversion(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetOsversion(v)
+	})
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateOsversion() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateOsversion()
+	})
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *MachineUpsertBulk) ClearOsversion() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearOsversion()
+	})
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *MachineUpsertBulk) SetFeatureflags(v string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetFeatureflags(v)
+	})
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateFeatureflags() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateFeatureflags()
+	})
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *MachineUpsertBulk) ClearFeatureflags() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearFeatureflags()
+	})
+}
+
+// SetHubstate sets the "hubstate" field.
+func (u *MachineUpsertBulk) SetHubstate(v map[string][]schema.ItemState) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetHubstate(v)
+	})
+}
+
+// UpdateHubstate sets the "hubstate" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateHubstate() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateHubstate()
+	})
+}
+
+// ClearHubstate clears the value of the "hubstate" field.
+func (u *MachineUpsertBulk) ClearHubstate() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearHubstate()
+	})
+}
+
+// SetDatasources sets the "datasources" field.
+func (u *MachineUpsertBulk) SetDatasources(v map[string]int64) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetDatasources(v)
+	})
+}
+
+// UpdateDatasources sets the "datasources" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateDatasources() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateDatasources()
+	})
+}
+
+// ClearDatasources clears the value of the "datasources" field.
+func (u *MachineUpsertBulk) ClearDatasources() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearDatasources()
+	})
+}
+
+// Exec executes the query.
+func (u *MachineUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the MachineCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for MachineCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *MachineUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

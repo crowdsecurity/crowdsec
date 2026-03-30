@@ -13,9 +13,9 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clientinfo"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/clientinfo"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
@@ -59,7 +59,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 	fmt.Fprintln(out, t.Render())
 }
 
-func (cli *cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
+func (*cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	csvwriter := csv.NewWriter(out)
 
 	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os"})

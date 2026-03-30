@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -25,7 +24,7 @@ type dbPayload struct {
 
 func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, error) {
 	allMetrics := &models.AllMetrics{}
-	metricsIds := make([]int, 0)
+	metricsIDs := make([]int, 0)
 
 	lps, err := a.dbClient.ListMachines(ctx)
 	if err != nil {
@@ -47,12 +46,13 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		rcMetrics := models.RemediationComponentsMetrics{}
 
 		rcMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(bouncer.Osname),
-			Version: ptr.Of(bouncer.Osversion),
+			Name:    &bouncer.Osname,
+			Family:  bouncer.Osfamily,
+			Version: &bouncer.Osversion,
 		}
 		rcMetrics.Type = bouncer.Type
 		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		rcMetrics.Version = ptr.Of(bouncer.Version)
+		rcMetrics.Version = &bouncer.Version
 		rcMetrics.Name = bouncer.Name
 
 		rcMetrics.LastPull = 0
@@ -66,7 +66,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		for _, dbMetric := range dbMetrics {
 			dbPayload := &dbPayload{}
 			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIds = append(metricsIds, dbMetric.ID)
+			metricsIDs = append(metricsIDs, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
@@ -90,11 +90,12 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		lpMetrics := models.LogProcessorsMetrics{}
 
 		lpMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(lp.Osname),
-			Version: ptr.Of(lp.Osversion),
+			Name:    &lp.Osname,
+			Family:  lp.Osfamily,
+			Version: &lp.Osversion,
 		}
 		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		lpMetrics.Version = ptr.Of(lp.Version)
+		lpMetrics.Version = &lp.Version
 		lpMetrics.Name = lp.MachineId
 
 		lpMetrics.LastPush = 0
@@ -128,7 +129,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		for _, dbMetric := range dbMetrics {
 			dbPayload := &dbPayload{}
 			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIds = append(metricsIds, dbMetric.ID)
+			metricsIDs = append(metricsIDs, dbMetric.ID)
 
 			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
 			if err != nil {
@@ -150,11 +151,12 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		},
 	}
 
-	osName, osVersion := version.DetectOS()
+	osName, osFamily, osVersion := version.DetectOS()
 
 	allMetrics.Lapi.Os = &models.OSversion{
-		Name:    ptr.Of(osName),
-		Version: ptr.Of(osVersion),
+		Name:    &osName,
+		Family:  osFamily,
+		Version: &osVersion,
 	}
 	allMetrics.Lapi.Version = ptr.Of(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
@@ -178,7 +180,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		allMetrics.LogProcessors = make([]*models.LogProcessorsMetrics, 0)
 	}
 
-	return allMetrics, metricsIds, nil
+	return allMetrics, metricsIDs, nil
 }
 
 func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
@@ -252,8 +254,6 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
 func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
-	defer trace.CatchPanic("lapi/metricsToAPIC")
-
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
 
@@ -338,8 +338,6 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 }
 
 func (a *apic) SendUsageMetrics(ctx context.Context) {
-	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
-
 	firstRun := true
 
 	log.Debugf("Start sending usage metrics to CrowdSec Central API (interval: %s once, then %s)", a.usageMetricsIntervalFirst, a.usageMetricsInterval)
@@ -358,7 +356,7 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 				ticker.Reset(a.usageMetricsInterval)
 			}
 
-			metrics, metricsId, err := a.GetUsageMetrics(ctx)
+			metrics, metricsID, err := a.GetUsageMetrics(ctx)
 			if err != nil {
 				log.Errorf("unable to get usage metrics: %s", err)
 				continue
@@ -380,13 +378,13 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 				}
 			}
 
-			err = a.MarkUsageMetricsAsSent(ctx, metricsId)
+			err = a.MarkUsageMetricsAsSent(ctx, metricsID)
 			if err != nil {
 				log.Errorf("unable to mark usage metrics as sent: %s", err)
 				continue
 			}
 
-			log.Infof("Sent %d usage metrics", len(metricsId))
+			log.Infof("Sent %d usage metrics", len(metricsID))
 		}
 	}
 }

@@ -1,0 +1,6 @@
+source: cloudwatch
+labels:
+  type: sometype
+group_name: testgroup
+aws_region: eu-west-1
+

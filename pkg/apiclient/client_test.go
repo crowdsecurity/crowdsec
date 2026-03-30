@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -44,14 +44,14 @@ func setupWithPrefix(urlPrefix string) (*http.ServeMux, string, func()) {
 // toUNCPath converts a Windows file path to a UNC path.
 // This is necessary because the Go http package does not support Windows file paths.
 func toUNCPath(path string) (string, error) {
-	colonIdx := strings.Index(path, ":")
-	if colonIdx == -1 {
+	drive, rest, ok := strings.Cut(path, ":")
+	if !ok {
 		return "", fmt.Errorf("invalid path format, missing drive letter: %s", path)
 	}
 
 	// URL parsing does not like backslashes
-	remaining := strings.ReplaceAll(path[colonIdx+1:], "\\", "/")
-	uncPath := "//localhost/" + path[:colonIdx] + "$" + remaining
+	rest = strings.ReplaceAll(rest, `\`, "/")
+	uncPath := "//localhost/" + drive + "$" + rest
 
 	return uncPath, nil
 }
@@ -70,7 +70,9 @@ func setupUnixSocketWithPrefix(t *testing.T, socket string, urlPrefix string) (m
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
 
 	server := httptest.NewUnstartedServer(apiHandler)
-	l, err := net.Listen("unix", socket)
+	lc := &net.ListenConfig{}
+	ctx := t.Context()
+	l, err := lc.Listen(ctx, "unix", socket)
 	require.NoError(t, err)
 	err = server.Listener.Close()
 	require.NoError(t, err)
@@ -93,13 +95,12 @@ func TestNewClientOk(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +110,7 @@ func TestNewClientOk(t *testing.T) {
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "GET")
+		testMethod(t, r, http.MethodGet)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -131,24 +132,22 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "GET")
+		testMethod(t, r, http.MethodGet)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -158,7 +157,7 @@ func TestNewClientOk_UnixSocket(t *testing.T) {
 	}
 
 	if resp.Response.StatusCode != http.StatusOK {
-		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
+		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
 }
 
@@ -171,23 +170,22 @@ func TestNewClientKo(t *testing.T) {
 	apiURL, err := url.Parse(urlx + "/")
 	require.NoError(t, err)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	require.NoError(t, err)
 
 	/*mock login*/
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "bad login/password"}`))
 		assert.NoError(t, err)
 	})
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "GET")
+		testMethod(t, r, http.MethodGet)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -209,7 +207,7 @@ func TestNewDefaultClient(t *testing.T) {
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	require.NoError(t, err)
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)
@@ -240,7 +238,7 @@ func TestNewDefaultClient_UnixSocket(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 		assert.NoError(t, err)
@@ -280,7 +278,7 @@ func TestNewClientRegisterOK(t *testing.T) {
 
 	/*mock login*/
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
+		testMethod(t, r, http.MethodPost)
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
@@ -305,14 +303,14 @@ func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 
 	tmpDir := t.TempDir()
-	socket := path.Join(tmpDir, "socket")
+	socket := filepath.Join(tmpDir, "socket")
 
 	mux, urlx, teardown := setupUnixSocketWithPrefix(t, socket, "v1")
 	defer teardown()
 
 	/*mock login*/
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
+		testMethod(t, r, http.MethodPost)
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 		assert.NoError(t, err)
@@ -345,7 +343,7 @@ func TestNewClientBadAnswer(t *testing.T) {
 
 	/*mock login*/
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
+		testMethod(t, r, http.MethodPost)
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`bad`))
 		assert.NoError(t, err)

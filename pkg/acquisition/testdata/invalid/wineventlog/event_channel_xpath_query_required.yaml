@@ -1,0 +1,4 @@
+# wantErr: datasource of type wineventlog: event_channel or xpath_query must be set
+source: wineventlog
+labels:
+  type: sometype

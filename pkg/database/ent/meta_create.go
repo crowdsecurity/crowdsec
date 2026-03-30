@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -19,6 +20,7 @@ type MetaCreate struct {
 	config
 	mutation *MetaMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -184,6 +186,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 		_node = &Meta{config: mc.config}
 		_spec = sqlgraph.NewCreateSpec(meta.Table, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = mc.conflict
 	if value, ok := mc.mutation.CreatedAt(); ok {
 		_spec.SetField(meta.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -220,11 +223,210 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Meta.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.MetaUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (mc *MetaCreate) OnConflict(opts ...sql.ConflictOption) *MetaUpsertOne {
+	mc.conflict = opts
+	return &MetaUpsertOne{
+		create: mc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (mc *MetaCreate) OnConflictColumns(columns ...string) *MetaUpsertOne {
+	mc.conflict = append(mc.conflict, sql.ConflictColumns(columns...))
+	return &MetaUpsertOne{
+		create: mc,
+	}
+}
+
+type (
+	// MetaUpsertOne is the builder for "upsert"-ing
+	//  one Meta node.
+	MetaUpsertOne struct {
+		create *MetaCreate
+	}
+
+	// MetaUpsert is the "OnConflict" setter.
+	MetaUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MetaUpsert) SetUpdatedAt(v time.Time) *MetaUpsert {
+	u.Set(meta.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MetaUpsert) UpdateUpdatedAt() *MetaUpsert {
+	u.SetExcluded(meta.FieldUpdatedAt)
+	return u
+}
+
+// SetAlertMetas sets the "alert_metas" field.
+func (u *MetaUpsert) SetAlertMetas(v int) *MetaUpsert {
+	u.Set(meta.FieldAlertMetas, v)
+	return u
+}
+
+// UpdateAlertMetas sets the "alert_metas" field to the value that was provided on create.
+func (u *MetaUpsert) UpdateAlertMetas() *MetaUpsert {
+	u.SetExcluded(meta.FieldAlertMetas)
+	return u
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (u *MetaUpsert) ClearAlertMetas() *MetaUpsert {
+	u.SetNull(meta.FieldAlertMetas)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *MetaUpsertOne) UpdateNewValues() *MetaUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(meta.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Key(); exists {
+			s.SetIgnore(meta.FieldKey)
+		}
+		if _, exists := u.create.mutation.Value(); exists {
+			s.SetIgnore(meta.FieldValue)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *MetaUpsertOne) Ignore() *MetaUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *MetaUpsertOne) DoNothing() *MetaUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the MetaCreate.OnConflict
+// documentation for more info.
+func (u *MetaUpsertOne) Update(set func(*MetaUpsert)) *MetaUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&MetaUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MetaUpsertOne) SetUpdatedAt(v time.Time) *MetaUpsertOne {
+	return u.Update(func(s *MetaUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MetaUpsertOne) UpdateUpdatedAt() *MetaUpsertOne {
+	return u.Update(func(s *MetaUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetAlertMetas sets the "alert_metas" field.
+func (u *MetaUpsertOne) SetAlertMetas(v int) *MetaUpsertOne {
+	return u.Update(func(s *MetaUpsert) {
+		s.SetAlertMetas(v)
+	})
+}
+
+// UpdateAlertMetas sets the "alert_metas" field to the value that was provided on create.
+func (u *MetaUpsertOne) UpdateAlertMetas() *MetaUpsertOne {
+	return u.Update(func(s *MetaUpsert) {
+		s.UpdateAlertMetas()
+	})
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (u *MetaUpsertOne) ClearAlertMetas() *MetaUpsertOne {
+	return u.Update(func(s *MetaUpsert) {
+		s.ClearAlertMetas()
+	})
+}
+
+// Exec executes the query.
+func (u *MetaUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for MetaCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *MetaUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *MetaUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *MetaUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // MetaCreateBulk is the builder for creating many Meta entities in bulk.
 type MetaCreateBulk struct {
 	config
 	err      error
 	builders []*MetaCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Meta entities in the database.
@@ -254,6 +456,7 @@ func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = mcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, mcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -304,6 +507,158 @@ func (mcb *MetaCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (mcb *MetaCreateBulk) ExecX(ctx context.Context) {
 	if err := mcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Meta.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.MetaUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (mcb *MetaCreateBulk) OnConflict(opts ...sql.ConflictOption) *MetaUpsertBulk {
+	mcb.conflict = opts
+	return &MetaUpsertBulk{
+		create: mcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (mcb *MetaCreateBulk) OnConflictColumns(columns ...string) *MetaUpsertBulk {
+	mcb.conflict = append(mcb.conflict, sql.ConflictColumns(columns...))
+	return &MetaUpsertBulk{
+		create: mcb,
+	}
+}
+
+// MetaUpsertBulk is the builder for "upsert"-ing
+// a bulk of Meta nodes.
+type MetaUpsertBulk struct {
+	create *MetaCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *MetaUpsertBulk) UpdateNewValues() *MetaUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(meta.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.Key(); exists {
+				s.SetIgnore(meta.FieldKey)
+			}
+			if _, exists := b.mutation.Value(); exists {
+				s.SetIgnore(meta.FieldValue)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Meta.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *MetaUpsertBulk) Ignore() *MetaUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *MetaUpsertBulk) DoNothing() *MetaUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the MetaCreateBulk.OnConflict
+// documentation for more info.
+func (u *MetaUpsertBulk) Update(set func(*MetaUpsert)) *MetaUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&MetaUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *MetaUpsertBulk) SetUpdatedAt(v time.Time) *MetaUpsertBulk {
+	return u.Update(func(s *MetaUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *MetaUpsertBulk) UpdateUpdatedAt() *MetaUpsertBulk {
+	return u.Update(func(s *MetaUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetAlertMetas sets the "alert_metas" field.
+func (u *MetaUpsertBulk) SetAlertMetas(v int) *MetaUpsertBulk {
+	return u.Update(func(s *MetaUpsert) {
+		s.SetAlertMetas(v)
+	})
+}
+
+// UpdateAlertMetas sets the "alert_metas" field to the value that was provided on create.
+func (u *MetaUpsertBulk) UpdateAlertMetas() *MetaUpsertBulk {
+	return u.Update(func(s *MetaUpsert) {
+		s.UpdateAlertMetas()
+	})
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (u *MetaUpsertBulk) ClearAlertMetas() *MetaUpsertBulk {
+	return u.Update(func(s *MetaUpsert) {
+		s.ClearAlertMetas()
+	})
+}
+
+// Exec executes the query.
+func (u *MetaUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the MetaCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for MetaCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *MetaUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

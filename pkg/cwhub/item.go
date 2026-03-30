@@ -40,7 +40,7 @@ type HubItems map[string]map[string]*Item
 // by comparing the hash of each version to the local file.
 // If the item does not match any known version, it is considered tainted (modified).
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty" yaml:"digest,omitempty"`
+	Digest     string `json:"digest,omitempty"     yaml:"digest,omitempty"`
 	Deprecated bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
@@ -105,9 +105,9 @@ type Item struct {
 	References  []string `json:"references,omitempty"  yaml:"references,omitempty"`
 
 	// NOTE: RemotePath could be derived from the other fields
-	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml
-	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"` // the last available version
-	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`               // all the known versions
+	RemotePath string                 `json:"path,omitempty"     yaml:"path,omitempty"`    // path relative to the base URL eg. /parsers/stage/author/file.yaml
+	Version    string                 `json:"version,omitempty"  yaml:"version,omitempty"` // the last available version
+	Versions   map[string]ItemVersion `json:"versions,omitempty" yaml:"-"`                 // all the known versions
 
 	// The index contains the dependencies of the "latest" version (collections only)
 	Dependencies
@@ -184,7 +184,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 
 // MarshalYAML is used to prepare the output for "cscli ... inspect -o raw".
 // It must not use a pointer receiver.
-func (i Item) MarshalYAML() (interface{}, error) {
+func (i Item) MarshalYAML() (any, error) {
 	type Alias Item
 
 	return &struct {

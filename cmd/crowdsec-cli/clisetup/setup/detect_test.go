@@ -120,7 +120,7 @@ func TestEvaluateRules(t *testing.T) {
 			"",
 		},
 		{
-			"each expression must be a boolan",
+			"each expression must be a boolean",
 			[]string{"true", `"notabool"`},
 			false,
 			"",
@@ -129,7 +129,7 @@ func TestEvaluateRules(t *testing.T) {
 		{
 			// we keep evaluating expressions to ensure that the
 			// file is formally correct, even if it can some time.
-			"each expression must be a boolan (no short circuit)",
+			"each expression must be a boolean (no short circuit)",
 			[]string{"false", "3"},
 			false,
 			"",
@@ -222,7 +222,7 @@ func TestDetectUnit(t *testing.T) {
 detect:
   wizard:
     when:
-      - Systemd.UnitEnabled("crowdsec-setup-detect.service")
+      - Systemd.UnitInstalled("crowdsec-setup-detect.service")
     acquisition_spec:
       filename: wizard.yaml
       datasource:
@@ -258,7 +258,7 @@ detect:
 			require.NoError(t, err)
 			got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
 				OSExprPath{},
-				UnitMap{"crowdsec-setup-detect.service": struct{}{}},
+				UnitMap{"crowdsec-setup-detect.service": UnitInfo{}},
 				nil, nullLogger())
 			cstest.RequireErrorContains(t, err, tc.wantErr)
 			require.Equal(t, tc.want, got)
@@ -273,219 +273,44 @@ func TestDetectSkipService(t *testing.T) {
 	f := strings.NewReader(`
 detect:
   wizard:
+`)
+
+	detectConfig, err := NewDetectConfig(f)
+	require.NoError(t, err)
+
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{},
+		OSExprPath{},
+		nil, nil, nullLogger())
+	require.NoError(t, err)
+	require.Len(t, got.Plans, 1)
+	require.Equal(t, "wizard", got.Plans[0].Name)
+
+	got, err = BuildSetup(ctx, detectConfig, DetectOptions{SkipServices: []string{"wizard"}},
+		OSExprPath{},
+		nil, nil, nullLogger())
+	require.NoError(t, err)
+	require.Empty(t, got.Plans)
+}
+
+func TestDetectForceService(t *testing.T) {
+	ctx := t.Context()
+	cstest.SkipOnWindows(t)
+
+	f := strings.NewReader(`
+detect:
+  wizard:
     when:
       - System.ProcessRunning("foobar")
 `)
 
 	detectConfig, err := NewDetectConfig(f)
 	require.NoError(t, err)
-	got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedProcesses: []string{"foobar"}, SkipServices: []string{"wizard"}},
+	got, err := BuildSetup(ctx, detectConfig, DetectOptions{WantServices: []string{"wizard"}},
 		OSExprPath{},
 		nil, nil, nullLogger())
 	require.NoError(t, err)
-
-	want := &Setup{[]ServicePlan{}}
-	require.Equal(t, want, got)
-}
-
-func TestDetectForcedOS(t *testing.T) {
-	ctx := t.Context()
-
-	type test struct {
-		name    string
-		config  string
-		forced  ExprOS
-		want    *Setup
-		wantErr string
-	}
-
-	tests := []test{
-		{
-			"detect OS - force linux",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux"`,
-			ExprOS{Family: "linux"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - force windows",
-			`
-detect:
-  windows:
-    when:
-      - OS.Family == "windows"`,
-			ExprOS{Family: "windows"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "windows"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu (no match)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu (match)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu"`,
-			ExprOS{Family: "linux", ID: "ubuntu"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu (match with version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.Family == "linux" && OS.ID == "ubuntu" && OS.VersionCheck("19.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (no match: no version detected)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (no match: version is lower)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (match: same version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-		{
-			"detect OS - ubuntu >= 20.04 (match: version is higher)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck(">=20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "22.04"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-
-		{
-			"detect OS - ubuntu < 20.04 (no match: no version detected)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (no match: version is higher)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.10"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (no match: same version)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu" && OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "20.04"},
-			&Setup{[]ServicePlan{}},
-			"",
-		},
-		{
-			"detect OS - ubuntu < 20.04 (match: version is lower)",
-			`
-detect:
-  linux:
-    when:
-      - OS.ID == "ubuntu"
-      - OS.VersionCheck("<20.04")`,
-			ExprOS{Family: "linux", ID: "ubuntu", RawVersion: "19.10"},
-			&Setup{
-				Plans: []ServicePlan{
-					{Name: "linux"},
-				},
-			},
-			"",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			detectConfig, err := NewDetectConfig(strings.NewReader(tc.config))
-			require.NoError(t, err)
-			got, err := BuildSetup(ctx, detectConfig, DetectOptions{ForcedOS: tc.forced},
-				OSExprPath{},
-				nil, nil, nullLogger())
-			cstest.RequireErrorContains(t, err, tc.wantErr)
-			require.Equal(t, tc.want, got)
-		})
-	}
+	require.Len(t, got.Plans, 1)
+	require.Equal(t, "wizard", got.Plans[0].Name)
 }
 
 func TestDetectDatasourceValidation(t *testing.T) {
@@ -521,29 +346,6 @@ detect:
 			want:    nil,
 			wantErr: "invalid acquisition spec for wizard: datasource configuration is empty",
 		}, {
-			name: "missing acquisition file name",
-			config: `
-detect:
-  wizard:
-    acquisition_spec:
-      filename: something.yaml
-      datasource:
-        labels:
-          type: something`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for wizard: source is empty",
-		}, {
-			name: "source is unknown",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: wombat.yaml
-      datasource:
-        source: wombat`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: unknown data source wombat",
-		}, {
 			name: "source is misplaced",
 			config: `
 detect:
@@ -554,131 +356,6 @@ detect:
       source: file`,
 			want:    nil,
 			wantErr: "yaml: unmarshal errors:\n  line 7: field source not found in type setup.AcquisitionSpec",
-		}, {
-			name: "source is mismatched",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: journalctl.yaml
-      datasource:
-        source: journalctl
-        filename: /path/to/file.log`,
-			want:    nil,
-			wantErr: `invalid acquisition spec for foobar: cannot parse JournalCtlSource configuration: [1:1] unknown field "filename"`,
-		}, {
-			name: "source file: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: file.yaml
-      datasource:
-        source: file`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: no filename or filenames configuration provided",
-		}, {
-			name: "source journalctl: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: foobar.yaml
-      datasource:
-        source: journalctl`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: journalctl_filter is required",
-		}, {
-			name: "source cloudwatch: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: cloudwatch.yaml
-      datasource:
-        source: cloudwatch`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: group_name is mandatory for CloudwatchSource",
-		}, {
-			name: "source syslog: all fields are optional",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: syslog.yaml
-      datasource:
-        source: syslog`,
-			want: &Setup{
-				Plans: []ServicePlan{
-					{
-						Name: "foobar",
-						InstallRecommendation: InstallRecommendation{
-							AcquisitionSpec: AcquisitionSpec{
-								Filename: "syslog.yaml",
-								Datasource: DatasourceConfig{
-									"source": "syslog",
-								},
-							},
-						},
-					},
-				},
-			},
-		}, {
-			name: "source docker: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: docker.yaml
-      datasource:
-        source: docker`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: no containers or services configuration provided",
-		}, {
-			name: "source kinesis: required fields (enhanced fanout=false)",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kinesis.yaml
-      datasource:
-        source: kinesis`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: stream_name is mandatory when use_enhanced_fanout is false",
-		}, {
-			name: "source kinesis: required fields (enhanced fanout=true)",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kinesis.yaml
-      datasource:
-        source: kinesis
-        use_enhanced_fanout: true`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
-		}, {
-			name: "source kafka: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: kafka.yaml
-      datasource:
-        source: kafka`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: cannot create a kafka reader with an empty list of broker addresses",
-		}, {
-			name: "source loki: required fields",
-			config: `
-detect:
-  foobar:
-    acquisition_spec:
-      filename: loki.yaml
-      datasource:
-        source: loki`,
-			want:    nil,
-			wantErr: "invalid acquisition spec for foobar: loki query is mandatory",
 		},
 	}
 

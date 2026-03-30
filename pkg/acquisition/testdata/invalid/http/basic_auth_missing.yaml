@@ -1,0 +1,7 @@
+# wantErr: datasource of type http: basic_auth is selected, but basic_auth is not provided
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: basic_auth

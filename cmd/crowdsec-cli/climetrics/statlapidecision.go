@@ -7,7 +7,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cstable"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -16,7 +16,7 @@ type statLapiDecision map[string]struct {
 	Empty    int
 }
 
-func (s statLapiDecision) Description() (string, string) {
+func (statLapiDecision) Description() (string, string) {
 	return "Local API Bouncers Decisions",
 		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`
 }

@@ -35,6 +35,7 @@ var (
 		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "remediation", Type: field.TypeBool, Nullable: true},
+		{Name: "kind", Type: field.TypeString, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -45,7 +46,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[25]},
+				Columns:    []*schema.Column{AlertsColumns[26]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -132,6 +133,7 @@ var (
 		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osfamily", Type: field.TypeString, Nullable: true},
 		{Name: "osversion", Type: field.TypeString, Nullable: true},
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
 		{Name: "auto_created", Type: field.TypeBool, Default: false},
@@ -269,6 +271,7 @@ var (
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
 		{Name: "auth_type", Type: field.TypeString, Default: "password"},
 		{Name: "osname", Type: field.TypeString, Nullable: true},
+		{Name: "osfamily", Type: field.TypeString, Nullable: true},
 		{Name: "osversion", Type: field.TypeString, Nullable: true},
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
 		{Name: "hubstate", Type: field.TypeJSON, Nullable: true},

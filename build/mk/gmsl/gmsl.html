@@ -1,0 +1,743 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <title>GNU Make Standard Library</title></head>
+
+<body>
+<h1>GNU Make Standard Library</h1>
+The GNU Make Standard Library (GMSL) is a collection of functions
+implemented using native GNU Make functionality that provide list and
+string manipulation, integer arithmetic, associative arrays, stacks,
+and debugging facilities.&nbsp; The GMSL is released under the BSD License.<br>
+<br>
+<a href="https://github.com/jgrahamc/gmsl/">[Project Page]</a>
+<a href="https://github.com/jgrahamc/gmsl/releases/">[Releases]</a>
+<br>
+<h2>Using GMSL</h2>
+The two files needed are <span style="font-family: monospace;">gmsl</span>
+and <span style="font-family: monospace;">__gmsl</span>.&nbsp; To
+include the GMSL in your Makefile do<br>
+<pre style="margin-left: 40px;">include gmsl</pre>
+<span style="font-family: monospace;">gmsl</span> automatically includes<span style="font-family: monospace;"> __gmsl</span>.&nbsp; To check that
+you have the right version of <span style="font-family: monospace;">gmsl</span>
+use the <span style="font-family: monospace;">gmsl_compatible</span>
+function (see
+below). The current version is <span style="font-family: monospace;">1 2 4</span>.<br>
+<br>
+The GMSL package also includes a test suite for GMSL.&nbsp; Just run <span style="font-family: monospace;">make -f gmsl-tests</span>.<br>
+<h2>Logical Operators</h2>GMSL has boolean $(true) (a non-empty string)
+and $(false) (an empty string).&nbsp; The following operators can be
+used with those variables.<br>
+<br>
+<hr style="width: 100%; height: 2px;"><span style="font-weight: bold;">not</span><br>
+
+<br>
+
+<span style="font-family: monospace;">Arguments: A boolean value</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns $(true) if the boolean is $(false) and vice versa</span><br style="font-family: monospace;">
+
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;"></span><span style="font-weight: bold;">and</span><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns $(true) if both of the booleans are true</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;">or</span><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns $(true) if either of the booleans is true</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;">xor</span><br style="font-weight: bold;">
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns $(true) if exactly one of the booleans is true</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;">nand</span><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns value of 'not and'</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;">nor</span><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns value of 'not or'</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;"><span style="font-weight: bold;">xnor</span><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two boolean values</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">Returns:&nbsp;&nbsp; Returns value of 'not xor'</span><br style="font-family: monospace;">
+<hr style="width: 100%; height: 2px; font-family: monospace;">
+<h2>List Manipulation Functions</h2>
+&nbsp;A list is a string of characters; the list separator is a space.<br>
+
+<br>
+<hr style="width: 100%; height: 2px;"><b>first</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the first element of a list<br>
+</span>
+<hr><b>last</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the last element of a list<br>
+</span>
+<hr><b>rest</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the list with the first element
+removed<br>
+</span>
+<hr><b>chop</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the list with the last element removed<br>
+</span>
+<hr><b>map</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of function to
+$(call) for each element of list<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: List to
+iterate over calling the function in 1<br>
+Returns:&nbsp;&nbsp;&nbsp;The list after calling the function on each
+element<br>
+</span>
+<hr><b>pairmap</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of function to
+$(call) for each pair of elements<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: List to
+iterate over calling the function in 1<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3: Second
+list to iterate over calling the function in 1<br>
+Returns:&nbsp;&nbsp;&nbsp;The list after calling the function on each
+pair of elements<br>
+</span>
+<hr><b>fold</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of function to $(call) for each element of list<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This function takes two arguments<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: List to
+  iterate over calling the function in 1<br>
+  <be>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3: The "zero" element to be used when the list end is reached<br>
+Returns:&nbsp;&nbsp;&nbsp;The result of calling the function in 1 on each element in<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; the list with the previous result of calling 1 as the second<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; argument.<br>
+</span>
+<hr><b>leq</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list to compare
+against...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: ...this
+list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the two lists are identical<br>
+</span>
+<hr><b>lne</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list to compare
+against...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: ...this
+list<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the two lists are different<br>
+</span>
+<hr><b>reverse</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list to reverse<br>
+Returns:&nbsp;&nbsp;&nbsp;The list with its elements in reverse order<br>
+</span>
+<hr><b>uniq</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list to deduplicate<br>
+Returns:&nbsp;&nbsp;&nbsp;The list with elements in order without duplicates<br>
+</span>
+<hr><b>length</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list<br>
+Returns:&nbsp;&nbsp;&nbsp;The number of elements in the list<br>
+</span>
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>String Manipulation Functions</h2>
+A string is any sequence of characters.<br>
+<br>
+<hr style="width: 100%; height: 2px;"><b>seq</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A string to compare
+against...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: ...this
+string<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the two strings are
+identical<br>
+</span>
+<hr><b>sne</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A string to compare
+against...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: ...this
+string<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the two strings are not
+the same<br>
+</span>
+<hr><b>strlen</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A string<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the length of the string<br>
+</span>
+<hr><b>substr</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A string<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Start offset (first character is 1)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3: Ending offset (inclusive)<br>Returns:&nbsp;&nbsp;&nbsp;Returns a substring<br>
+</span>
+<hr><b>split</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: The character to
+split on<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: A
+string to split<br>
+Returns:&nbsp;&nbsp;&nbsp;Splits a string into a list separated by
+spaces at the split<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; character
+in the first argument<br>
+</span>
+<hr><b>merge</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: The character to
+put between fields<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: A list
+to merge into a string<br>
+Returns:&nbsp;&nbsp;&nbsp;Merges a list into a single string, list
+elements are separated<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; by the
+character in the first argument<br>
+</span>
+<hr><b>tr</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: The list of
+characters to translate from <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: The
+list of characters to translate to<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3: The
+text to translate<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the text after translating characters<br>
+</span>
+<hr><b>uc</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Text to upper case<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the text in upper case<br>
+</span>
+<hr><b>lc</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Text to lower case<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the text in lower case<br>
+</span>
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Set Manipulation Functions</h2>
+Sets are represented by sorted, deduplicated lists.  To create a set
+from a list use <span style="font-family:
+monospace;">set_create</span>, or start with the <span
+style="font-family: monospace;">empty_set</span> and <span
+style="font-family: monospace;">set_insert</span> individual elements.
+The empty set is defined as <span style="font-family:
+monospace;">empty_set</span>.<p>
+
+<hr><b>set_create</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A list of set elements<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the newly created set<br>
+</span>
+
+<hr><b>set_insert</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A single element to add to a set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: A set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the set with the element added<br>
+</span>
+
+<hr><b>set_remove</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A single element to remove from a set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: A set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the set with the element removed<br>
+</span>
+
+<hr><b>set_is_member</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A single element<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: A set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the element is in the set<br>
+</span>
+
+<hr><b>set_is_not_member</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A single element<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: A set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(false) if the element is in the set<br>
+</span>
+
+<hr><b>set_union</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: Another set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the union of the two sets<br>
+</span>
+
+<hr><b>set_intersection</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: Another set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the intersection of the two sets<br>
+</span>
+
+<hr><b>set_is_subset</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: Another set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the first set is a subset of the second<br>
+</span>
+
+<hr><b>set_equal</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A set<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: Another set<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns $(true) if the two sets are identical<br>
+</span>
+
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Integer Arithmetic Functions</h2>
+Integers are represented by lists with the equivalent number of
+x's.&nbsp; For example the number 4 is x x x x.&nbsp; The maximum
+integer that the library can handle as <span style="font-style: italic;">input</span> (i.e. as the argument to a
+call to <span style="font-family: monospace;">int_encode</span>) is
+65536. There is no limit on integer size for internal computations or
+output.<br>
+<br>
+The arithmetic library functions come in two forms: one form of each
+function takes integers as arguments and the other form takes the
+encoded form (x's created by a call to <span style="font-family: monospace;">int_encode</span>).&nbsp; For example,
+there are two plus functions: <span style="font-family: monospace;">plus</span>
+(called with integer arguments and returns an integer) and <span style="font-family: monospace;">int_plus</span> (called with encoded
+arguments and returns an encoded result).<br>
+<br>
+<span style="font-family: monospace;">plus</span> will be slower than <span style="font-family: monospace;">int_plus</span> because its arguments
+and result have to be translated between the x's format and
+integers.&nbsp; If doing a complex calculation use the <span style="font-family: monospace;">int_*</span> forms with a single
+encoding of inputs and single decoding of the output.&nbsp; For simple
+calculations the direct forms can be used.<br>
+<br>
+<hr style="width: 100%; height: 2px;"><b>int_decode</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number of x's
+representation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the integer for human consumption
+that is represented<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; by the
+string of x's<br>
+</span>
+<hr><b>int_encode</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in
+human-readable integer form<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the integer encoded as a string of x's<br>
+</span>
+<hr><b>int_plus</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the sum of the two numbers in x's
+representation<br>
+</span>
+<hr><b>plus (wrapped version of int_plus)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the sum of the two integers<br>
+</span>
+<hr><b>int_subtract</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the difference of the two numbers in
+x's representation,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or outputs
+an error on a numeric underflow<br>
+</span>
+<hr><b>subtract (wrapped version of int_subtract)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the difference of the two integers,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or outputs
+an error on a numeric underflow<br>
+</span>
+<hr><b>int_multiply</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the product of the two numbers in x's
+representation<br>
+</span>
+<hr><b>multiply (wrapped version of int_multiply)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the product of the two integers<br>
+</span>
+<hr><b>int_divide</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the result of integer division of
+argument 1 divided<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; by
+argument 2 in x's representation<br>
+</span>
+<hr><b>divide (wrapped version of int_divide)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the integer division of the first
+argument by the second<br>
+</span>
+<hr><b>int_modulo</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the remainder of integer division of
+argument 1 divided<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; by
+argument 2 in x's representation<br>
+</span>
+<hr><b>modulo (wrapped version of int_modulo)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the remainder of integer division of the first
+argument by the second<br>
+</span>
+<hr><b>int_max, int_min</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+number in x's represntation<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the maximum or minimum of its
+arguments in x's<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+representation<br>
+</span>
+<hr><b>max, min</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Another
+integer<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns the maximum or minimum of its integer
+arguments<br>
+</span>
+<hr><b>int_gt, int_gte, int_lt, int_lte, int_eq, int_ne</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two x's representation
+numbers to be compared<br>
+Returns:&nbsp;&nbsp;&nbsp;$(true) or $(false)<br>
+<br>
+int_gt First argument greater than second argument<br>
+int_gte First argument greater than or equal to second argument<br>
+int_lt First argument less than second argument <br>
+int_lte First argument less than or equal to second argument<br>
+int_eq First argument is numerically equal to the second argument<br>
+int_ne First argument is not numerically equal to the second argument<br>
+</span>
+<hr><b>gt, gte, lt, lte, eq, ne</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: Two integers to be
+compared<br>
+Returns:&nbsp;&nbsp;&nbsp;$(true) or $(false)<br>
+<br>
+gt First argument greater than second argument<br>
+gte First argument greater than or equal to second argument<br>
+lt First argument less than second argument <br>
+lte First argument less than or equal to second argument<br>
+eq First argument is numerically equal to the second argument<br>
+ne First argument is not numerically equal to the second argument<br>
+</span>
+increment adds 1 to its argument, decrement subtracts 1. Note that<br>
+decrement does not range check and hence will not underflow, but<br>
+will incorrectly say that 0 - 1 = 0<br>
+<hr><b>int_inc</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+Returns:&nbsp;&nbsp;&nbsp;The number incremented by 1 in x's
+representation<br>
+</span>
+<hr><b>inc</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The argument incremented by 1<br>
+</span>
+<hr><b>int_dec</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+Returns:&nbsp;&nbsp;&nbsp;The number decremented by 1 in x's
+representation<br>
+</span>
+<hr><b>dec</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The argument decremented by 1<br>
+</span>
+<hr><b>int_double</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+Returns:&nbsp;&nbsp;&nbsp;The number doubled (i.e. * 2) and returned in
+x's representation<br>
+</span>
+<hr><b>double</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The integer times 2<br>
+</span>
+<hr><b>int_halve</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A number in x's
+representation<br>
+Returns:&nbsp;&nbsp;&nbsp;The number halved (i.e. / 2) and returned in
+x's representation<br>
+</span>
+<hr><b>halve</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The integer divided by 2<br>
+</span>
+<hr><b>sequence</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The sequence [arg1 arg2] if arg1 >= arg2 or [arg2 arg1] if arg2 > arg1<br>
+</span>
+<hr><b>dec2hex, dec2bin, dec2oct</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: An integer<br>
+Returns:&nbsp;&nbsp;&nbsp;The decimal argument converted to hexadecimal, binary or octal<br>
+</span>
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Associative Arrays</h2>
+An associate array maps a key value (a string with no spaces in it) to
+a single value (any string).&nbsp;&nbsp;&nbsp; <br>
+<b><br>
+</b>
+<hr style="width: 100%; height: 2px;"><b>set</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of associative
+array<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: The key
+value to associate<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3: The
+value associated with the key<br>
+Returns:&nbsp;&nbsp;&nbsp;Nothing<br>
+</span>
+<hr><b>get</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of associative
+array<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: The key
+to retrieve<br>
+Returns:&nbsp;&nbsp;&nbsp;The value stored in the array for that key<br>
+</span>
+<hr><b>keys</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of associative
+array<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns a list of all defined keys in the
+array<br>
+</span>
+<hr><b>defined</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of associative
+array<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: The key
+to test<br>
+Returns:&nbsp;&nbsp;&nbsp;Returns true if the key is defined (i.e. not
+empty)<br>
+</span>
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Named Stacks</h2>
+A stack is an ordered list of strings (with no spaces in them).<br>
+<br>
+<hr style="width: 100%; height: 2px;"><b>push</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of stack<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: Value
+to push onto the top of the stack (must not contain<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; a space)<br>
+Returns:&nbsp;&nbsp;&nbsp;None<br>
+</span>
+<hr><b>pop</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of stack<br>
+Returns:&nbsp;&nbsp;&nbsp;Top element from the stack after removing it<br>
+</span>
+<hr><b>peek</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of stack<br>
+Returns:&nbsp;&nbsp;&nbsp;Top element from the stack without removing it<br>
+</span>
+<hr><b>depth</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of stack<br>
+Returns:&nbsp;&nbsp;&nbsp;Number of items on the stack<br>
+</span>
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Function memoization</h2>
+To reduce the number of calls to slow functions (such as $(shell) a single memoization function is provided.<br>
+<br>
+<hr style="width: 100%; height: 2px;"><b>memoize</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of function to memoize<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: String argument for the function<br>
+Returns:&nbsp;&nbsp;&nbsp;Result of $1 applied to $2 but only calls $1 once for each unique $2<br>
+</span>
+
+<hr style="width: 100%; height: 2px;"><span style="font-family: monospace;"></span>
+<h2>Miscellaneous and Debugging Facilities</h2>
+GMSL defines the following constants; all are accessed as normal GNU
+Make variables by wrapping them in <span style="font-family: monospace;">$()</span> or <span style="font-family: monospace;">${}</span>.<br>
+<br>
+<table style="text-align: left;" border="1" cellpadding="2" cellspacing="2">
+  <tbody>
+    <tr>
+      <td><span style="font-style: italic;">Constant</span><br>
+      </td>
+      <td><span style="font-style: italic;">Value</span><br>
+      </td>
+      <td><span style="font-style: italic;">Purpose</span><br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">true</span><br>
+      </td>
+      <td><span style="font-family: monospace;">T</span><br>
+      </td>
+      <td>Boolean for <span style="font-family: monospace;">$(if)</span>
+and return from&nbsp; GMSL functions<br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">false</span><br>
+      </td>
+      <td><br>
+      </td>
+      <td>Boolean for <span style="font-family: monospace;">$(if)</span>
+and return from GMSL functions<br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">gmsl_version</span><br>
+      </td>
+      <td><span style="font-family: monospace;">1 0 0</span><br>
+      </td>
+      <td>GMSL version number as list: major minor revision<br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<span style="font-weight: bold;"><br>
+gmsl_compatible</span><span style="font-family: monospace;"><br>
+<br>
+Arguments: List containing the desired library version number (maj min
+rev)<br>
+</span><span style="font-family: monospace;">Returns:&nbsp;&nbsp;
+$(true) if this version of the library is compatible<br>
+</span><span style="font-family: monospace;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+with the requested version number, otherwise $(false)</span>
+<hr><b>gmsl-print-% (target not a function)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: The % should be
+replaced by the name of a variable that you<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wish to
+print out.<br>
+Action:&nbsp;&nbsp;&nbsp; Echos the name of the variable that matches
+the % and its value.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; For
+example, 'make gmsl-print-SHELL' will output the value of<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; the SHELL
+variable<br>
+</span>
+<hr><b>gmsl-echo-% (target not a function)</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: The % should be
+replaced by the name of a variable that you<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wish to
+print out.<br>
+Action:&nbsp;&nbsp;&nbsp; Echos the value of the variable that matches
+the %.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; For
+example, 'make gmsl-echo-SHELL' will output the value of<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; the SHELL
+variable<br>
+</span>
+<hr><b>assert</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: A boolean that must
+be true or the assertion will fail<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2: The
+message to print with the assertion<br>
+Returns:&nbsp;&nbsp;&nbsp;None<br>
+</span>
+<hr><b>assert_exists</b><br>
+<br>
+<span style="font-family: monospace;">Arguments: 1: Name of file that
+must exist, if it is missing an assertion<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; will be
+generated<br>
+Returns:&nbsp;&nbsp;&nbsp;None<br>
+</span>
+<hr style="width: 100%; height: 2px;"><br>
+GMSL has a number of environment variables (or command-line overrides)
+that control various bits of functionality:<br>
+<br>
+<table style="text-align: left;" border="1" cellpadding="2" cellspacing="2">
+  <tbody>
+    <tr>
+      <td><span style="font-style: italic;">Variable</span><br>
+      </td>
+      <td><span style="font-style: italic;">Purpose</span><br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">GMSL_NO_WARNINGS</span><br>
+      </td>
+      <td>If set prevents GMSL from outputting warning messages:
+artithmetic functions generate underflow warnings.<br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">GMSL_NO_ERRORS</span><br>
+      </td>
+      <td>If set prevents GMSL from generating fatal errors: division
+by zero or failed assertions are fatal.<br>
+      </td>
+    </tr>
+    <tr>
+      <td><span style="font-family: monospace;">GMSL_TRACE</span><br>
+      </td>
+      <td>Enables function tracing.&nbsp; Calls to GMSL functions will
+result in name and arguments being traced.<br>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<span style="font-family: monospace;"></span><br>
+<hr>
+Copyright (c) 2005-2025 <a href="https://www.jgc.org/">John Graham-Cumming</a>.<br>
+<hr style="width: 100%; height: 2px;">
+</body></html>

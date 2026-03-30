@@ -13,21 +13,19 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/reload"
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/hubops"
 )
 
-type configGetter = func() *csconfig.Config
-
 type cliHub struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliHub {
+func New(cfg csconfig.Getter) *cliHub {
 	return &cliHub{
 		cfg: cfg,
 	}
@@ -234,12 +232,12 @@ func (cli *cliHub) upgrade(ctx context.Context, interactive bool, dryRun bool, f
 	verbosePlan := (cfg.Cscli.Output == "raw")
 
 	err = plan.Execute(ctx, interactive, dryRun, showPlan, verbosePlan)
-	switch {
-	case errors.Is(err, hubops.ErrUserCanceled):
+	if err != nil {
+		if !errors.Is(err, hubops.ErrUserCanceled) {
+			return err
+		}
 		// not a real error, and we'll want to print the reload message anyway
 		fmt.Fprintln(os.Stdout, err.Error())
-	case err != nil:
-		return err
 	}
 
 	if msg := reload.UserMessage(); msg != "" && plan.ReloadNeeded {

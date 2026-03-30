@@ -16,12 +16,12 @@ type Bouncer struct {
 func (Bouncer) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow).
+			Default(UtcNow).
 			StructTag(`json:"created_at"`).
 			Immutable(),
 		field.Time("updated_at").
-			Default(types.UtcNow).
-			UpdateDefault(types.UtcNow).StructTag(`json:"updated_at"`),
+			Default(UtcNow).
+			UpdateDefault(UtcNow).StructTag(`json:"updated_at"`),
 		field.String("name").Unique().StructTag(`json:"name"`).Immutable(),
 		field.String("api_key").Sensitive(), // hash of api_key
 		field.Bool("revoked").StructTag(`json:"revoked"`),
@@ -31,6 +31,7 @@ func (Bouncer) Fields() []ent.Field {
 		field.Time("last_pull").Nillable().Optional().StructTag(`json:"last_pull"`),
 		field.String("auth_type").StructTag(`json:"auth_type"`).Default(types.ApiKeyAuthType),
 		field.String("osname").Optional(),
+		field.String("osfamily").Optional(),
 		field.String("osversion").Optional(),
 		field.String("featureflags").Optional(),
 		// Old auto-created TLS bouncers will have a wrong value for this field

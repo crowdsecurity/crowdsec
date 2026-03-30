@@ -1,0 +1,4 @@
+# for syslog, all fields are optional
+source: syslog
+labels:
+  type: sometype

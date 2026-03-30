@@ -5,10 +5,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TimeMachinePour(l *Leaky, msg types.Event) {
+func TimeMachinePour(l *Leaky, _ pourGate, msg pipeline.Event) {
 	var (
 		d   time.Time
 		err error
@@ -17,7 +17,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		log.WithFields(log.Fields{
 			"evt_type": msg.Line.Labels["type"],
 			"evt_src":  msg.Line.Src,
-			"scenario": l.Name,
+			"scenario": l.Factory.Spec.Name,
 		}).Warningf("Trying to process event without evt.StrTime. Event cannot be poured to scenario")
 		return
 	}
@@ -47,10 +47,10 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 }
 
-func NewTimeMachine(g BucketFactory) *Leaky {
-	l := NewLeaky(g)
-	g.logger.Tracef("Instantiating timeMachine bucket")
+func NewTimeMachine(f *BucketFactory) *Leaky {
+	l := NewLeakyFromFactory(f)
+	f.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
-	l.Mode = types.TIMEMACHINE
+	l.Mode = pipeline.TIMEMACHINE
 	return l
 }

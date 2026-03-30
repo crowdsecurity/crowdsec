@@ -13,8 +13,8 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisetup/setup"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 )
 
 type acquisitionFlags struct {
@@ -54,7 +54,7 @@ cscli setup install-acquisition setup.yaml --dry-run
 `,
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			inputReader, err := maybeStdinFile(args[0])
 			if err != nil {
 				return err
@@ -100,7 +100,7 @@ func shouldOverwrite(path string, newContent []byte) (bool, error) {
 	oldContent, err := os.ReadFile(path)
 	if err != nil {
 		// File doesn't exist or unreadable, assume overwrite
-		return true, nil //nolint: nilerr
+		return true, nil //nolint:nilerr
 	}
 
 	if err := VerifyChecksum(bytes.NewReader(oldContent)); err == nil {
@@ -137,7 +137,7 @@ func shouldOverwrite(path string, newContent []byte) (bool, error) {
 // It includes an header with the appropriate checksum.
 // In dry-run, prints the content to stdout instead of writing to disk.
 // In interactive mode, it prompts the user before overwriting an existing file unless it's pristine.
-func (cli *cliSetup) processAcquisitionSpec(spec setup.AcquisitionSpec, toDir string, interactive, dryRun bool) error {
+func (*cliSetup) processAcquisitionSpec(spec setup.AcquisitionSpec, toDir string, interactive, dryRun bool) error {
 	if spec.Datasource == nil {
 		return nil
 	}
@@ -198,7 +198,11 @@ func (cli *cliSetup) acquisition(acquisitionSpecs []setup.AcquisitionSpec, toDir
 		return fmt.Errorf("no acquisition directory specified, please use --acquis-dir or set crowdsec_services.acquisition_dir in %q", cfg.FilePath)
 	}
 
-	for _, spec := range acquisitionSpecs {
+	for idx, spec := range acquisitionSpecs {
+		if err := spec.Validate(); err != nil {
+			return fmt.Errorf("invalid acquisition spec (%d): %w", idx, err)
+		}
+
 		if err := cli.processAcquisitionSpec(spec, toDir, interactive, dryRun); err != nil {
 			return err
 		}

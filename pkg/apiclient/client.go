@@ -26,19 +26,19 @@ var (
 	lapiClient         *ApiClient
 )
 
-type TokenSave func(ctx context.Context, tokenKey string, token string) error
+type TokenSave func(ctx context.Context, token string) error
 
 type ApiClient struct {
-	/*The http client used to make requests*/
+	// The http client used to make requests
 	client *http.Client
-	/*Reuse a single struct instead of allocating one for each service on the heap.*/
+	// Reuse a single struct instead of allocating one for each service on the heap.
 	common service
-	/*config stuff*/
+	// config stuff
 	BaseURL   *url.URL
 	PapiURL   *url.URL
 	URLPrefix string
 	UserAgent string
-	/*exposed Services*/
+	// exposed Services
 	Decisions      *DecisionsService
 	DecisionDelete *DecisionDeleteService
 	Alerts         *AlertsService
@@ -109,7 +109,7 @@ func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login st
 
 	pwd := strfmt.Password(password)
 
-	client, err := NewClient(&Config{
+	client := NewClient(&Config{
 		MachineID:     login,
 		Password:      pwd,
 		URL:           apiURL,
@@ -119,9 +119,6 @@ func InitLAPIClient(ctx context.Context, apiUrl string, papiUrl string, login st
 			return scenarios, nil
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("new client api: %w", err)
-	}
 
 	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, models.WatcherAuthRequest{
 		MachineID: &login,
@@ -153,7 +150,7 @@ func GetLAPIClient() (*ApiClient, error) {
 	return lapiClient, nil
 }
 
-func NewClient(config *Config) (*ApiClient, error) {
+func NewClient(config *Config) *ApiClient {
 	userAgent := config.UserAgent
 	if userAgent == "" {
 		userAgent = useragent.Default()
@@ -211,7 +208,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.HeartBeat = (*HeartBeatService)(&c.common)
 	c.UsageMetrics = (*UsageMetricsService)(&c.common)
 
-	return c, nil
+	return c
 }
 
 func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
@@ -315,9 +312,12 @@ func createTransport(url *url.URL) (*http.Transport, *url.URL) {
 	url.Host = "unix"
 	url.Scheme = "http"
 
+	dialer := &net.Dialer{}
+	socketPath := strings.TrimSuffix(urlString, "/")
+
 	return &http.Transport{
-		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			return net.Dial("unix", strings.TrimSuffix(urlString, "/"))
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", socketPath)
 		},
 	}, url
 }

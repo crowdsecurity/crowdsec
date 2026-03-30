@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,31 @@ type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
 	TlsAuth    *TLSAuth
+}
+
+// baseBouncerName removes any trailing "@<ip>" segments from a bouncer's name.
+//
+// When a bouncer changes its IP address, it is detected by LAPI as a new bouncer,
+// to allow for key sharing. LAPI then creates a new DB entry by appending "@<ip>"
+// to the existing name. If the existing name already ends with "@<ip>", this can lead to
+// chained names like "my-bouncer@1.2.3.4@5.6.7.8". To prevent runaway suffixes,
+// this helper repeatedly strips the final "@<ip>" token until no valid IPv4/IPv6
+// address remains, returning the "base" bouncer name.
+func baseBouncerName(name string) string {
+    for {
+        i := strings.LastIndexByte(name, '@')
+        if i < 0 {
+            return name
+        }
+
+        tail := name[i+1:]
+        if _, err := netip.ParseAddr(tail); err == nil {
+            name = name[:i]
+            continue
+        }
+
+        return name
+    }
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -128,10 +154,12 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 			logger.Errorf("while fetching bouncer info: %s", err)
 			return nil
 		}
+
 		if len(bouncer) == 0 {
 			logger.Debugf("no bouncer found with this key")
 			return nil
 		}
+
 		return bouncer[0]
 	}
 
@@ -148,6 +176,7 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 			logger.Errorf("bouncer isn't allowed to auth by API key")
 			return nil
 		}
+
 		return bouncer
 	}
 
@@ -173,7 +202,8 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	// Bouncers are ordered by ID, first one *should* be the manually created one
 	// Can probably get a bit weird if the user deletes the manually created one
-	bouncerName := fmt.Sprintf("%s@%s", bouncers[0].Name, clientIP)
+	base := baseBouncerName(bouncers[0].Name)
+	bouncerName := fmt.Sprintf("%s@%s", base, clientIP)
 
 	logger.Infof("Creating bouncer %s", bouncerName)
 
@@ -186,64 +216,63 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	return bouncer
 }
 
-func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var bouncer *ent.Bouncer
+func (a *APIKey) Middleware(c *gin.Context) {
+	var bouncer *ent.Bouncer
 
-		ctx := c.Request.Context()
+	ctx := c.Request.Context()
 
-		clientIP := c.ClientIP()
+	clientIP := c.ClientIP()
 
-		logger := log.WithField("ip", clientIP)
+	logger := log.WithField("ip", clientIP)
 
-		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-			bouncer = a.authTLS(c, logger)
-		} else {
-			bouncer = a.authPlain(c, logger)
-		}
+	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
+		bouncer = a.authTLS(c, logger)
+	} else {
+		bouncer = a.authPlain(c, logger)
+	}
 
-		if bouncer == nil {
-			// XXX: StatusUnauthorized?
+	if bouncer == nil {
+		// XXX: StatusUnauthorized?
+		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+		c.Abort()
+
+		return
+	}
+
+	// Appsec request, return immediately if we found something
+	if c.Request.Method == http.MethodHead {
+		c.Set(BouncerContextKey, bouncer)
+		return
+	}
+
+	logger = logger.WithField("name", bouncer.Name)
+
+	// 1st time we see this bouncer, we update its IP
+	if bouncer.IPAddress == "" {
+		if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
+			logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 
 			return
 		}
+	}
 
-		// Appsec request, return immediately if we found something
-		if c.Request.Method == http.MethodHead {
-			c.Set(BouncerContextKey, bouncer)
+	useragent := strings.Split(c.Request.UserAgent(), "/")
+	if len(useragent) != 2 {
+		logger.Warningf("bad user agent '%s'", c.Request.UserAgent())
+		useragent = []string{c.Request.UserAgent(), "N/A"}
+	}
+
+	if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
+		if err := a.DbClient.UpdateBouncerTypeAndVersion(ctx, useragent[0], useragent[1], bouncer.ID); err != nil {
+			logger.Errorf("failed to update bouncer version and type: %s", err)
+			c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
+			c.Abort()
+
 			return
 		}
-
-		logger = logger.WithField("name", bouncer.Name)
-
-		// 1st time we see this bouncer, we update its IP
-		if bouncer.IPAddress == "" {
-			if err := a.DbClient.UpdateBouncerIP(ctx, clientIP, bouncer.ID); err != nil {
-				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-				c.Abort()
-				return
-			}
-		}
-
-		useragent := strings.Split(c.Request.UserAgent(), "/")
-		if len(useragent) != 2 {
-			logger.Warningf("bad user agent '%s'", c.Request.UserAgent())
-			useragent = []string{c.Request.UserAgent(), "N/A"}
-		}
-
-		if bouncer.Version != useragent[1] || bouncer.Type != useragent[0] {
-			if err := a.DbClient.UpdateBouncerTypeAndVersion(ctx, useragent[0], useragent[1], bouncer.ID); err != nil {
-				logger.Errorf("failed to update bouncer version and type: %s", err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
-				c.Abort()
-
-				return
-			}
-		}
-
-		c.Set(BouncerContextKey, bouncer)
 	}
+
+	c.Set(BouncerContextKey, bouncer)
 }

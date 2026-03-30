@@ -1,0 +1,4 @@
+# wantErr: datasource of type http: listen_addr or listen_socket is required
+source: http
+labels:
+  type: sometype

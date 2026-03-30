@@ -10,16 +10,13 @@ import (
 )
 
 type cliDashboard struct{
-	cfg configGetter
 }
 
-func NewCLIDashboard(cfg configGetter) *cliDashboard {
-	return &cliDashboard{
-		cfg: cfg,
-	}
+func NewCLIDashboard() *cliDashboard {
+	return &cliDashboard{}
 }
 
-func (cli cliDashboard) NewCommand() *cobra.Command {
+func (cliDashboard) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "dashboard",
 		DisableAutoGenTag: true,

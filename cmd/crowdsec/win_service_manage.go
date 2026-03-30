@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	//"time"
-
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )

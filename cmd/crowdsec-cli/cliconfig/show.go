@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
@@ -60,7 +60,7 @@ func (cli *cliConfig) showKey(key string) error {
 	return nil
 }
 
-func (cli *cliConfig) template() string {
+func (*cliConfig) template() string {
 	return `Global:
 
 {{- if .ConfigPaths }}

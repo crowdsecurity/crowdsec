@@ -984,6 +984,9 @@ definitions:
         type: array
         items:
           type: string
+      kind:
+        type: string
+        description: Origin of the alert (crowdsec,waf,bot-detection,...)
     required:
       - scenario
       - scenario_hash
@@ -1289,6 +1292,10 @@ definitions:
       name:
         type: string
         description: name of the OS
+        maxLength: 255
+      family:
+        type: string
+        description: family of the OS
         maxLength: 255
       version:
         type: string

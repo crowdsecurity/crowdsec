@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
@@ -18,6 +19,7 @@ type BouncerCreate struct {
 	config
 	mutation *BouncerMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -146,6 +148,20 @@ func (bc *BouncerCreate) SetOsname(s string) *BouncerCreate {
 func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetOsname(*s)
+	}
+	return bc
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (bc *BouncerCreate) SetOsfamily(s string) *BouncerCreate {
+	bc.mutation.SetOsfamily(s)
+	return bc
+}
+
+// SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableOsfamily(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetOsfamily(*s)
 	}
 	return bc
 }
@@ -298,6 +314,7 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 		_node = &Bouncer{config: bc.config}
 		_spec = sqlgraph.NewCreateSpec(bouncer.Table, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = bc.conflict
 	if value, ok := bc.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -342,6 +359,10 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
 		_node.Osname = value
 	}
+	if value, ok := bc.mutation.Osfamily(); ok {
+		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
+		_node.Osfamily = value
+	}
 	if value, ok := bc.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
 		_node.Osversion = value
@@ -357,11 +378,561 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Bouncer.Create().
+//		SetCreatedAt(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.BouncerUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (bc *BouncerCreate) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertOne {
+	bc.conflict = opts
+	return &BouncerUpsertOne{
+		create: bc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (bc *BouncerCreate) OnConflictColumns(columns ...string) *BouncerUpsertOne {
+	bc.conflict = append(bc.conflict, sql.ConflictColumns(columns...))
+	return &BouncerUpsertOne{
+		create: bc,
+	}
+}
+
+type (
+	// BouncerUpsertOne is the builder for "upsert"-ing
+	//  one Bouncer node.
+	BouncerUpsertOne struct {
+		create *BouncerCreate
+	}
+
+	// BouncerUpsert is the "OnConflict" setter.
+	BouncerUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *BouncerUpsert) SetUpdatedAt(v time.Time) *BouncerUpsert {
+	u.Set(bouncer.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateUpdatedAt() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldUpdatedAt)
+	return u
+}
+
+// SetAPIKey sets the "api_key" field.
+func (u *BouncerUpsert) SetAPIKey(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldAPIKey, v)
+	return u
+}
+
+// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateAPIKey() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldAPIKey)
+	return u
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *BouncerUpsert) SetRevoked(v bool) *BouncerUpsert {
+	u.Set(bouncer.FieldRevoked, v)
+	return u
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateRevoked() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldRevoked)
+	return u
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (u *BouncerUpsert) SetIPAddress(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldIPAddress, v)
+	return u
+}
+
+// UpdateIPAddress sets the "ip_address" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateIPAddress() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldIPAddress)
+	return u
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (u *BouncerUpsert) ClearIPAddress() *BouncerUpsert {
+	u.SetNull(bouncer.FieldIPAddress)
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *BouncerUpsert) SetType(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldType, v)
+	return u
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateType() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldType)
+	return u
+}
+
+// ClearType clears the value of the "type" field.
+func (u *BouncerUpsert) ClearType() *BouncerUpsert {
+	u.SetNull(bouncer.FieldType)
+	return u
+}
+
+// SetVersion sets the "version" field.
+func (u *BouncerUpsert) SetVersion(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldVersion, v)
+	return u
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateVersion() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldVersion)
+	return u
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *BouncerUpsert) ClearVersion() *BouncerUpsert {
+	u.SetNull(bouncer.FieldVersion)
+	return u
+}
+
+// SetLastPull sets the "last_pull" field.
+func (u *BouncerUpsert) SetLastPull(v time.Time) *BouncerUpsert {
+	u.Set(bouncer.FieldLastPull, v)
+	return u
+}
+
+// UpdateLastPull sets the "last_pull" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateLastPull() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldLastPull)
+	return u
+}
+
+// ClearLastPull clears the value of the "last_pull" field.
+func (u *BouncerUpsert) ClearLastPull() *BouncerUpsert {
+	u.SetNull(bouncer.FieldLastPull)
+	return u
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *BouncerUpsert) SetAuthType(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldAuthType, v)
+	return u
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateAuthType() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldAuthType)
+	return u
+}
+
+// SetOsname sets the "osname" field.
+func (u *BouncerUpsert) SetOsname(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldOsname, v)
+	return u
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateOsname() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldOsname)
+	return u
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *BouncerUpsert) ClearOsname() *BouncerUpsert {
+	u.SetNull(bouncer.FieldOsname)
+	return u
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsert) SetOsfamily(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldOsfamily, v)
+	return u
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateOsfamily() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldOsfamily)
+	return u
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsert) ClearOsfamily() *BouncerUpsert {
+	u.SetNull(bouncer.FieldOsfamily)
+	return u
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *BouncerUpsert) SetOsversion(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldOsversion, v)
+	return u
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateOsversion() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldOsversion)
+	return u
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *BouncerUpsert) ClearOsversion() *BouncerUpsert {
+	u.SetNull(bouncer.FieldOsversion)
+	return u
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *BouncerUpsert) SetFeatureflags(v string) *BouncerUpsert {
+	u.Set(bouncer.FieldFeatureflags, v)
+	return u
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateFeatureflags() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldFeatureflags)
+	return u
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *BouncerUpsert) ClearFeatureflags() *BouncerUpsert {
+	u.SetNull(bouncer.FieldFeatureflags)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *BouncerUpsertOne) UpdateNewValues() *BouncerUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(bouncer.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Name(); exists {
+			s.SetIgnore(bouncer.FieldName)
+		}
+		if _, exists := u.create.mutation.AutoCreated(); exists {
+			s.SetIgnore(bouncer.FieldAutoCreated)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *BouncerUpsertOne) Ignore() *BouncerUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *BouncerUpsertOne) DoNothing() *BouncerUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the BouncerCreate.OnConflict
+// documentation for more info.
+func (u *BouncerUpsertOne) Update(set func(*BouncerUpsert)) *BouncerUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&BouncerUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *BouncerUpsertOne) SetUpdatedAt(v time.Time) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateUpdatedAt() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetAPIKey sets the "api_key" field.
+func (u *BouncerUpsertOne) SetAPIKey(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetAPIKey(v)
+	})
+}
+
+// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateAPIKey() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateAPIKey()
+	})
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *BouncerUpsertOne) SetRevoked(v bool) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetRevoked(v)
+	})
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateRevoked() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateRevoked()
+	})
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (u *BouncerUpsertOne) SetIPAddress(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetIPAddress(v)
+	})
+}
+
+// UpdateIPAddress sets the "ip_address" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateIPAddress() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateIPAddress()
+	})
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (u *BouncerUpsertOne) ClearIPAddress() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearIPAddress()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *BouncerUpsertOne) SetType(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateType() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateType()
+	})
+}
+
+// ClearType clears the value of the "type" field.
+func (u *BouncerUpsertOne) ClearType() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearType()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *BouncerUpsertOne) SetVersion(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateVersion() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *BouncerUpsertOne) ClearVersion() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetLastPull sets the "last_pull" field.
+func (u *BouncerUpsertOne) SetLastPull(v time.Time) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetLastPull(v)
+	})
+}
+
+// UpdateLastPull sets the "last_pull" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateLastPull() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateLastPull()
+	})
+}
+
+// ClearLastPull clears the value of the "last_pull" field.
+func (u *BouncerUpsertOne) ClearLastPull() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearLastPull()
+	})
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *BouncerUpsertOne) SetAuthType(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetAuthType(v)
+	})
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateAuthType() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateAuthType()
+	})
+}
+
+// SetOsname sets the "osname" field.
+func (u *BouncerUpsertOne) SetOsname(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsname(v)
+	})
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateOsname() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsname()
+	})
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *BouncerUpsertOne) ClearOsname() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsertOne) SetOsfamily(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateOsfamily() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsertOne) ClearOsfamily() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsfamily()
+	})
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *BouncerUpsertOne) SetOsversion(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsversion(v)
+	})
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateOsversion() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsversion()
+	})
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *BouncerUpsertOne) ClearOsversion() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsversion()
+	})
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *BouncerUpsertOne) SetFeatureflags(v string) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetFeatureflags(v)
+	})
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateFeatureflags() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateFeatureflags()
+	})
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *BouncerUpsertOne) ClearFeatureflags() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearFeatureflags()
+	})
+}
+
+// Exec executes the query.
+func (u *BouncerUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for BouncerCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *BouncerUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *BouncerUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *BouncerUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // BouncerCreateBulk is the builder for creating many Bouncer entities in bulk.
 type BouncerCreateBulk struct {
 	config
 	err      error
 	builders []*BouncerCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Bouncer entities in the database.
@@ -391,6 +962,7 @@ func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 					_, err = mutators[i+1].Mutate(root, bcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = bcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, bcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -441,6 +1013,347 @@ func (bcb *BouncerCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (bcb *BouncerCreateBulk) ExecX(ctx context.Context) {
 	if err := bcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Bouncer.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.BouncerUpsert) {
+//			SetCreatedAt(v+v).
+//		}).
+//		Exec(ctx)
+func (bcb *BouncerCreateBulk) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertBulk {
+	bcb.conflict = opts
+	return &BouncerUpsertBulk{
+		create: bcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (bcb *BouncerCreateBulk) OnConflictColumns(columns ...string) *BouncerUpsertBulk {
+	bcb.conflict = append(bcb.conflict, sql.ConflictColumns(columns...))
+	return &BouncerUpsertBulk{
+		create: bcb,
+	}
+}
+
+// BouncerUpsertBulk is the builder for "upsert"-ing
+// a bulk of Bouncer nodes.
+type BouncerUpsertBulk struct {
+	create *BouncerCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *BouncerUpsertBulk) UpdateNewValues() *BouncerUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(bouncer.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.Name(); exists {
+				s.SetIgnore(bouncer.FieldName)
+			}
+			if _, exists := b.mutation.AutoCreated(); exists {
+				s.SetIgnore(bouncer.FieldAutoCreated)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Bouncer.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *BouncerUpsertBulk) Ignore() *BouncerUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *BouncerUpsertBulk) DoNothing() *BouncerUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the BouncerCreateBulk.OnConflict
+// documentation for more info.
+func (u *BouncerUpsertBulk) Update(set func(*BouncerUpsert)) *BouncerUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&BouncerUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *BouncerUpsertBulk) SetUpdatedAt(v time.Time) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateUpdatedAt() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetAPIKey sets the "api_key" field.
+func (u *BouncerUpsertBulk) SetAPIKey(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetAPIKey(v)
+	})
+}
+
+// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateAPIKey() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateAPIKey()
+	})
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *BouncerUpsertBulk) SetRevoked(v bool) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetRevoked(v)
+	})
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateRevoked() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateRevoked()
+	})
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (u *BouncerUpsertBulk) SetIPAddress(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetIPAddress(v)
+	})
+}
+
+// UpdateIPAddress sets the "ip_address" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateIPAddress() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateIPAddress()
+	})
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (u *BouncerUpsertBulk) ClearIPAddress() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearIPAddress()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *BouncerUpsertBulk) SetType(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateType() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateType()
+	})
+}
+
+// ClearType clears the value of the "type" field.
+func (u *BouncerUpsertBulk) ClearType() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearType()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *BouncerUpsertBulk) SetVersion(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateVersion() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *BouncerUpsertBulk) ClearVersion() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetLastPull sets the "last_pull" field.
+func (u *BouncerUpsertBulk) SetLastPull(v time.Time) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetLastPull(v)
+	})
+}
+
+// UpdateLastPull sets the "last_pull" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateLastPull() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateLastPull()
+	})
+}
+
+// ClearLastPull clears the value of the "last_pull" field.
+func (u *BouncerUpsertBulk) ClearLastPull() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearLastPull()
+	})
+}
+
+// SetAuthType sets the "auth_type" field.
+func (u *BouncerUpsertBulk) SetAuthType(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetAuthType(v)
+	})
+}
+
+// UpdateAuthType sets the "auth_type" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateAuthType() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateAuthType()
+	})
+}
+
+// SetOsname sets the "osname" field.
+func (u *BouncerUpsertBulk) SetOsname(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsname(v)
+	})
+}
+
+// UpdateOsname sets the "osname" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateOsname() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsname()
+	})
+}
+
+// ClearOsname clears the value of the "osname" field.
+func (u *BouncerUpsertBulk) ClearOsname() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsname()
+	})
+}
+
+// SetOsfamily sets the "osfamily" field.
+func (u *BouncerUpsertBulk) SetOsfamily(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsfamily(v)
+	})
+}
+
+// UpdateOsfamily sets the "osfamily" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateOsfamily() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsfamily()
+	})
+}
+
+// ClearOsfamily clears the value of the "osfamily" field.
+func (u *BouncerUpsertBulk) ClearOsfamily() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsfamily()
+	})
+}
+
+// SetOsversion sets the "osversion" field.
+func (u *BouncerUpsertBulk) SetOsversion(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetOsversion(v)
+	})
+}
+
+// UpdateOsversion sets the "osversion" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateOsversion() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateOsversion()
+	})
+}
+
+// ClearOsversion clears the value of the "osversion" field.
+func (u *BouncerUpsertBulk) ClearOsversion() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearOsversion()
+	})
+}
+
+// SetFeatureflags sets the "featureflags" field.
+func (u *BouncerUpsertBulk) SetFeatureflags(v string) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetFeatureflags(v)
+	})
+}
+
+// UpdateFeatureflags sets the "featureflags" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateFeatureflags() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateFeatureflags()
+	})
+}
+
+// ClearFeatureflags clears the value of the "featureflags" field.
+func (u *BouncerUpsertBulk) ClearFeatureflags() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.ClearFeatureflags()
+	})
+}
+
+// Exec executes the query.
+func (u *BouncerUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the BouncerCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for BouncerCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *BouncerUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

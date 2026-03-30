@@ -2,21 +2,20 @@ package cache
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/bluele/gcache"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
-	Caches      []gcache.Cache
+	Caches      = []gcache.Cache{}
 	CacheNames  []string
-	CacheConfig []CacheCfg
+	CacheConfig = []CacheCfg{}
 )
 
 // UpdateCacheMetrics is called directly by the prom handler
@@ -33,29 +32,27 @@ type CacheCfg struct {
 	Size     int
 	TTL      time.Duration
 	Strategy string
-	LogLevel *log.Level
-	Logger   *log.Entry
+	LogLevel log.Level
+	Logger   log.FieldLogger
 }
 
-func CacheInit(cfg CacheCfg) error {
+func (cfg CacheCfg) NewLogger() *log.Entry {
+	clog := logging.SubLogger(log.StandardLogger(), "cache", cfg.LogLevel)
+	return clog.WithField("cache", cfg.Name)
+}
+
+func CacheInit(cfg CacheCfg, logger log.FieldLogger) error {
+	if logger == nil {
+		logger = log.StandardLogger()
+	}
+
+	cfg.Logger = logger
+
 	for _, name := range CacheNames {
 		if name == cfg.Name {
 			log.Infof("Cache %s already exists", cfg.Name)
 		}
 	}
-	// get a default logger
-	if cfg.LogLevel == nil {
-		cfg.LogLevel = new(log.Level)
-		*cfg.LogLevel = log.InfoLevel
-	}
-
-	clog := log.New()
-
-	if err := types.ConfigureLogger(clog, cfg.LogLevel); err != nil {
-		return fmt.Errorf("while creating cache logger: %w", err)
-	}
-
-	cfg.Logger = clog.WithField("cache", cfg.Name)
 
 	tmpCache := gcache.New(cfg.Size)
 

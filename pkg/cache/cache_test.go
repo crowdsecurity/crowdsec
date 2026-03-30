@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreateSetGet(t *testing.T) {
-	err := CacheInit(CacheCfg{Name: "test", Size: 100, TTL: 1 * time.Second})
+	err := CacheInit(CacheCfg{Name: "test", Size: 100, TTL: 1 * time.Second}, nil)
 	require.NoError(t, err)
 	//set & get
 	err = SetKey("test", "testkey0", "testvalue1", nil)

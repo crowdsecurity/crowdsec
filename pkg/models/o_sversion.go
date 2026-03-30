@@ -19,6 +19,10 @@ import (
 // swagger:model OSversion
 type OSversion struct {
 
+	// family of the OS
+	// Max Length: 255
+	Family string `json:"family,omitempty"`
+
 	// name of the OS
 	// Required: true
 	// Max Length: 255
@@ -34,6 +38,10 @@ type OSversion struct {
 func (m *OSversion) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateFamily(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -45,6 +53,18 @@ func (m *OSversion) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *OSversion) validateFamily(formats strfmt.Registry) error {
+	if swag.IsZero(m.Family) { // not required
+		return nil
+	}
+
+	if err := validate.MaxLength("family", "body", m.Family, 255); err != nil {
+		return err
+	}
+
 	return nil
 }
 

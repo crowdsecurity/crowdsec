@@ -3,16 +3,15 @@ package climetrics
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-type configGetter func() *csconfig.Config
-
 type cliMetrics struct {
-	cfg configGetter
+	cfg csconfig.Getter
 }
 
-func New(cfg configGetter) *cliMetrics {
+func New(cfg csconfig.Getter) *cliMetrics {
 	return &cliMetrics{
 		cfg: cfg,
 	}
@@ -37,6 +36,7 @@ cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
 # List available metric types
 cscli metrics list`,
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cli.show(cmd.Context(), nil, url, noUnit)
 		},

@@ -1,0 +1,9 @@
+# wantErr: datasource of type kafka: cannote create kafka reader: cannot specify both group_id and partition
+source: kafka
+labels:
+  type: sometype
+brokers:
+  - localhost:9092
+topic: crowdsec
+partition: 1
+group_id: crowdsec

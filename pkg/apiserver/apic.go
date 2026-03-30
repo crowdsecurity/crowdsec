@@ -21,7 +21,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -66,7 +65,6 @@ type apic struct {
 	pullTomb      tomb.Tomb
 	metricsTomb   tomb.Tomb
 	startup       bool
-	credentials   *csconfig.ApiCredentialsCfg
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
@@ -96,8 +94,14 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}
+
 	// merge all scenarios together
 	for _, v := range machines {
+		if v.Scenarios == "" {
+			log.Debugf("No scenarios for machine %d", v.ID)
+			continue
+		}
+
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
 
@@ -113,11 +117,11 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	return scenarios, nil
 }
 
-func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
-	apiDecisions := models.AddSignalsRequestItemDecisions{}
+func decisionsToAPIDecisions(decisions []*models.Decision) modelscapi.AddSignalsRequestItemDecisions {
+	apiDecisions := modelscapi.AddSignalsRequestItemDecisions{}
 
 	for _, decision := range decisions {
-		x := &models.AddSignalsRequestItemDecisionsItem{
+		x := &modelscapi.AddSignalsRequestItemDecisionsItem{
 			Duration: ptr.Of(*decision.Duration),
 			ID:       new(int64),
 			Origin:   ptr.Of(*decision.Origin),
@@ -129,6 +133,7 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 			Value: ptr.Of(*decision.Value),
 			UUID:  decision.UUID,
 		}
+
 		*x.ID = decision.ID
 
 		if decision.Simulated != nil {
@@ -141,13 +146,13 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	return apiDecisions
 }
 
-func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *models.AddSignalsRequestItem {
-	signal := &models.AddSignalsRequestItem{
+func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *modelscapi.AddSignalsRequestItem {
+	signal := &modelscapi.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
 		ScenarioVersion: alert.ScenarioVersion,
-		Source: &models.AddSignalsRequestItemSource{
+		Source: &modelscapi.AddSignalsRequestItemSource{
 			AsName:    alert.Source.AsName,
 			AsNumber:  alert.Source.AsNumber,
 			Cn:        alert.Source.Cn,
@@ -165,15 +170,17 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 		ScenarioTrust: scenarioTrust,
 		Decisions:     decisionsToAPIDecisions(alert.Decisions),
 		UUID:          alert.UUID,
+		Kind:          alert.Kind,
 	}
 	if shareContext {
-		signal.Context = make([]*models.AddSignalsRequestItemContextItems0, 0)
+		signal.Context = make([]*modelscapi.AddSignalsRequestItemContextItems0, 0)
 
 		for _, meta := range alert.Meta {
-			contextItem := models.AddSignalsRequestItemContextItems0{
+			contextItem := modelscapi.AddSignalsRequestItemContextItems0{
 				Key:   meta.Key,
 				Value: meta.Value,
 			}
+
 			signal.Context = append(signal.Context, &contextItem)
 		}
 	}
@@ -193,7 +200,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		dbClient:                  dbClient,
 		mu:                        sync.Mutex{},
 		startup:                   true,
-		credentials:               config.Credentials,
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
 		metricsTomb:               tomb.Tomb{},
@@ -223,20 +229,17 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
+	ret.apiClient = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
 		UpdateScenario: ret.FetchScenariosListFromDB,
-		TokenSave: func(ctx context.Context, tokenKey string, token string) error {
-			return dbClient.SaveAPICToken(ctx, tokenKey, token)
+		TokenSave: func(ctx context.Context, token string) error {
+			return dbClient.SaveAPICToken(ctx, token)
 		},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("while creating api client: %w", err)
-	}
 
 	err = ret.Authenticate(ctx, config)
 
@@ -249,16 +252,18 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 //
 // If a new token is obtained, it is saved back to the database for caching.
 func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClientCfg) error {
-	if token, exp, valid := a.dbClient.LoadAPICToken(ctx, log.StandardLogger()); valid {
-		log.Debug("using valid token from DB")
+	transport := a.apiClient.GetClient().Transport.(*apiclient.JWTTransport)
 
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = token
-		a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration = exp
+	token, err := a.dbClient.LoadAPICToken(ctx, log.StandardLogger())
+	if err == nil {
+		log.Debug("using valid token from DB")
+		transport.Token = token.Raw
+		transport.Expiration = token.ExpiresAt
 
 		return nil
 	}
 
-	log.Debug("No token found, authenticating")
+	log.WithError(err).Debug("No useful token, authenticating")
 
 	scenarios, err := a.FetchScenariosListFromDB(ctx)
 	if err != nil {
@@ -276,20 +281,18 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 		return fmt.Errorf("authenticate watcher (%s): %w", config.Credentials.Login, err)
 	}
 
-	if err = a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+	if err = transport.Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
 		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
 
-	a.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+	transport.Token = authResp.Token
 
-	return a.dbClient.SaveAPICToken(ctx, apiclient.TokenDBField, authResp.Token)
+	return a.dbClient.SaveAPICToken(ctx, authResp.Token)
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pushToAPIC")
-
-	var cache models.AddSignalsRequest
+	var cache modelscapi.AddSignalsRequest
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
 
@@ -315,14 +318,14 @@ func (a *apic) Push(ctx context.Context) error {
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
-				cache = make(models.AddSignalsRequest, 0)
+				cache = make(modelscapi.AddSignalsRequest, 0)
 				a.mu.Unlock()
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 
 				go a.Send(ctx, &cacheCopy)
 			}
 		case alerts := <-a.AlertsAddChan:
-			var signals []*models.AddSignalsRequestItem
+			var signals []*modelscapi.AddSignalsRequestItem
 
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig, a.shareSignals); ok {
@@ -331,7 +334,9 @@ func (a *apic) Push(ctx context.Context) error {
 			}
 
 			a.mu.Lock()
+
 			cache = append(cache, signals...)
+
 			a.mu.Unlock()
 		}
 	}
@@ -386,16 +391,16 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
-func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsRequestItem) error {
+func (a *apic) sendBatch(ctx context.Context, signals []*modelscapi.AddSignalsRequestItem) error {
 	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*modelscapi.AddSignalsRequest)(&signals))
 
 	return err
 }
 
-func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
+func (a *apic) Send(ctx context.Context, cacheOrig *modelscapi.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
 	This chan is filled by Controller.CreateAlert
@@ -407,7 +412,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var cache []*models.AddSignalsRequestItem = *cacheOrig
+	var cache []*modelscapi.AddSignalsRequestItem = *cacheOrig
 
 	batchSize := 50
 
@@ -424,6 +429,7 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
+
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 
@@ -461,6 +467,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 			}
 
 			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
+
 			nbDeleted += dbCliDel
 		}
 	}
@@ -468,49 +475,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 	return nbDeleted, nil
 }
 
-func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
-	newAlerts := make([]*models.Alert, 0)
-
-	for _, decision := range decisions {
-		found := false
-
-		for _, sub := range newAlerts {
-			if sub.Source.Scope == nil {
-				log.Warningf("nil scope in %+v", sub)
-				continue
-			}
-
-			if *decision.Origin == types.CAPIOrigin {
-				if *sub.Source.Scope == types.CAPIOrigin {
-					found = true
-					break
-				}
-			} else if *decision.Origin == types.ListOrigin {
-				if *sub.Source.Scope == *decision.Origin {
-					if sub.Scenario == nil {
-						log.Warningf("nil scenario in %+v", sub)
-					}
-
-					if *sub.Scenario == *decision.Scenario {
-						found = true
-						break
-					}
-				}
-			} else {
-				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
-			}
-		}
-
-		if !found {
-			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
-			newAlerts = append(newAlerts, createAlertForDecision(decision))
-		}
-	}
-
-	return newAlerts
-}
-
-func createAlertForDecision(decision *models.Decision) *models.Alert {
+func createAlertForDecision(decision *models.Decision, kind types.AlertKind) *models.Alert {
 	var (
 		scenario string
 		scope    string
@@ -536,6 +501,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 			Value: ptr.Of(""),
 		},
 		Scenario:        ptr.Of(scenario),
+		Kind:            kind.String(),
 		Message:         ptr.Of(""),
 		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
 		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
@@ -684,7 +650,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		// apply APIC specific whitelists
 		decisions = a.ApplyApicWhitelists(ctx, decisions)
 
-		alert := createAlertForDecision(decisions[0])
+		alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 		alertsFromCapi := []*models.Alert{alert}
 		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
@@ -741,102 +707,102 @@ func (a *apic) PullAllowlist(ctx context.Context, allowlist *modelscapi.Allowlis
 	return nil
 }
 
+func (a *apic) updateOneAllowlist(ctx context.Context, client *apiclient.ApiClient, link *modelscapi.AllowlistLink) error {
+	if log.IsLevelEnabled(log.TraceLevel) {
+		log.Tracef("allowlist body: %+v", spew.Sdump(link))
+	}
+
+	if link.Name == nil {
+		log.Warn("allowlist has no name")
+		return nil
+	}
+
+	if link.URL == nil {
+		log.Warnf("allowlist %s has no URL", *link.Name)
+		return nil
+	}
+
+	if link.ID == nil {
+		return fmt.Errorf("allowlist %s has no ID", *link.Name)
+	}
+
+	description := ""
+	if link.Description != nil {
+		description = *link.Description
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("while pulling allowlist: %s", err)
+	}
+
+	resp, err := client.GetClient().Do(req)
+	if err != nil {
+		return fmt.Errorf("while pulling allowlist: %s", err)
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	items := make([]*models.AllowlistItem, 0)
+
+	for scanner.Scan() {
+		item := scanner.Text()
+		j := &models.AllowlistItem{}
+
+		if err := json.Unmarshal([]byte(item), j); err != nil {
+			return fmt.Errorf("while unmarshalling allowlist item: %s", err)
+		}
+
+		items = append(items, j)
+	}
+
+	list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return fmt.Errorf("while getting allowlist %s: %s", *link.Name, err)
+		}
+	}
+
+	if list == nil {
+		list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
+		if err != nil {
+			return fmt.Errorf("while creating allowlist %s: %s", *link.Name, err)
+		}
+	}
+
+	added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
+	if err != nil {
+		return fmt.Errorf("while replacing allowlist %s: %s", *link.Name, err)
+	}
+
+	log.Infof("added %d values to allowlist %s", added, list.Name)
+
+	if list.Name != *link.Name || list.Description != description {
+		err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
+		if err != nil {
+			return fmt.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
+		}
+	}
+
+	log.Infof("Allowlist %s updated", *link.Name)
+
+	return nil
+}
+
 func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelscapi.AllowlistLink, forcePull bool) error {
 	if len(allowlistsLinks) == 0 {
 		return nil
 	}
 
-	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	client, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 
 	for _, link := range allowlistsLinks {
-		if log.IsLevelEnabled(log.TraceLevel) {
-			log.Tracef("allowlist body: %+v", spew.Sdump(link))
+		if err := a.updateOneAllowlist(ctx, client, link); err != nil {
+			log.Errorf("updating allowlists from CAPI: %s", err)
 		}
-
-		if link.Name == nil {
-			log.Warningf("allowlist has no name")
-			continue
-		}
-
-		if link.URL == nil {
-			log.Warningf("allowlist %s has no URL", *link.Name)
-			continue
-		}
-
-		if link.ID == nil {
-			log.Warningf("allowlist %s has no ID", *link.Name)
-			continue
-		}
-
-		description := ""
-		if link.Description != nil {
-			description = *link.Description
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, *link.URL, http.NoBody)
-		if err != nil {
-			log.Errorf("while pulling allowlist: %s", err)
-			continue
-		}
-
-		resp, err := defaultClient.GetClient().Do(req)
-		if err != nil {
-			log.Errorf("while pulling allowlist: %s", err)
-			continue
-		}
-		defer resp.Body.Close()
-
-		scanner := bufio.NewScanner(resp.Body)
-		items := make([]*models.AllowlistItem, 0)
-
-		for scanner.Scan() {
-			item := scanner.Text()
-			j := &models.AllowlistItem{}
-
-			if err := json.Unmarshal([]byte(item), j); err != nil {
-				log.Errorf("while unmarshalling allowlist item: %s", err)
-				continue
-			}
-
-			items = append(items, j)
-		}
-
-		list, err := a.dbClient.GetAllowListByID(ctx, *link.ID, false)
-		if err != nil {
-			if !ent.IsNotFound(err) {
-				log.Errorf("while getting allowlist %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		if list == nil {
-			list, err = a.dbClient.CreateAllowList(ctx, *link.Name, description, *link.ID, true)
-			if err != nil {
-				log.Errorf("while creating allowlist %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		added, err := a.dbClient.ReplaceAllowlist(ctx, list, items, true)
-		if err != nil {
-			log.Errorf("while replacing allowlist %s: %s", *link.Name, err)
-			continue
-		}
-
-		log.Infof("added %d values to allowlist %s", added, list.Name)
-
-		if list.Name != *link.Name || list.Description != description {
-			err = a.dbClient.UpdateAllowlistMeta(ctx, *link.ID, *link.Name, description)
-			if err != nil {
-				log.Errorf("while updating allowlist meta %s: %s", *link.Name, err)
-				continue
-			}
-		}
-
-		log.Infof("Allowlist %s updated", *link.Name)
 	}
 
 	return nil
@@ -1028,7 +994,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 	// apply APIC specific whitelists
 	decisions = a.ApplyApicWhitelists(ctx, decisions)
-	alert := createAlertForDecision(decisions[0])
+	alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
@@ -1077,8 +1043,6 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 }
 
 func (a *apic) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pullFromAPIC")
-
 	toldOnce := false
 
 	for {
@@ -1144,11 +1108,25 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 }
 
 func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
+	if counter == nil || origin == nil {
+		return
+	}
+
+	m, ok := counter[*origin]
+	if !ok {
+		m = make(map[string]int)
+		counter[*origin] = m
+	}
+
 	switch *origin {
 	case types.CAPIOrigin:
-		counter[*origin]["all"] += totalDecisions
+		m["all"] += totalDecisions
 	case types.ListOrigin:
-		counter[*origin][*scenario] += totalDecisions
+		if scenario == nil {
+			return
+		}
+
+		m[*scenario] += totalDecisions
 	default:
 		log.Warningf("Unknown origin %s", *origin)
 	}

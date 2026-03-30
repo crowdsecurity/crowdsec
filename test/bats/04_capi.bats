@@ -18,6 +18,18 @@ setup() {
 
 #----------
 
+@test "cscli capi <unknown command>" {
+    rune -1 cscli capi foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli capi"'
+}
+
+@test "cscli papi <unknown command>" {
+    rune -1 cscli papi foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli papi"'
+}
+
 @test "cscli capi status: fails without credentials" {
     config_enable_capi
     ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
@@ -126,8 +138,8 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     refute_stderr --partial "using valid token from DB"
-    assert_stderr --partial "error parsing token: token contains an invalid number of segments"
-    assert_stderr --partial "No token found, authenticating"
+    assert_stderr --partial "No useful token, authenticating"
+    assert_stderr --partial "unable to parse token: token contains an invalid number of segments"
 
     # token was re-created
 
@@ -135,7 +147,7 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
-    refute_stderr --partial "No token found, authenticating"
+    refute_stderr --partial "No useful token, authenticating"
 
     # "cscli capi status" also saves the token
 
@@ -145,7 +157,7 @@ setup() {
         --err "CAPI manager configured successfully" \
         "$CROWDSEC"
     assert_stderr --partial "using valid token from DB"
-    refute_stderr --partial "No token found, authenticating"
+    refute_stderr --partial "No useful token, authenticating"
 }
 
 @test "capi register must be run from lapi" {

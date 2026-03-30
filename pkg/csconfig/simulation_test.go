@@ -14,7 +14,7 @@ func TestSimulationLoading(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       *Config
-		expected    *SimulationConfig
+		expected    SimulationConfig
 		expectedErr string
 	}{
 		{
@@ -27,7 +27,7 @@ func TestSimulationLoading(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{},
 				Cscli:    &CscliCfg{},
 			},
-			expected: &SimulationConfig{Simulation: new(bool)},
+			expected: SimulationConfig{},
 		},
 		{
 			name: "basic nil config",
@@ -86,20 +86,19 @@ func TestSimulationLoading(t *testing.T) {
 }
 
 func TestIsSimulated(t *testing.T) {
-	simCfgOff := &SimulationConfig{
-		Simulation: new(bool),
+	simCfgOff := SimulationConfig{
+		Simulation: false,
 		Exclusions: []string{"test"},
 	}
 
-	simCfgOn := &SimulationConfig{
-		Simulation: new(bool),
+	simCfgOn := SimulationConfig{
+		Simulation: true,
 		Exclusions: []string{"test"},
 	}
-	*simCfgOn.Simulation = true
 
 	tests := []struct {
 		name             string
-		SimulationConfig *SimulationConfig
+		SimulationConfig SimulationConfig
 		Input            string
 		expected         bool
 	}{
