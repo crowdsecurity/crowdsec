@@ -1013,6 +1013,16 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 		if bouncerStatusCode == 0 {
 			bouncerStatusCode = w.Config.BouncerBlockedHTTPCode
 		}
+	default:
+		// Custom remediations use the same status code logic as ban/captcha
+		resp.HTTPStatus = response.UserHTTPResponseCode
+		if resp.HTTPStatus == 0 {
+			resp.HTTPStatus = w.Config.UserBlockedHTTPCode
+		}
+		bouncerStatusCode = response.BouncerHTTPResponseCode
+		if bouncerStatusCode == 0 {
+			bouncerStatusCode = w.Config.BouncerBlockedHTTPCode
+		}
 	}
 
 	return bouncerStatusCode, resp
