@@ -202,7 +202,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}
 
 	if state.DisableBodyInspection {
-		r.logger.Debugf("body inspection is disabled for this request, skipping body processing")
+		r.logger.Debugf("body inspection is disabled for this request, skipping body write")
 	} else {
 		if request.BodyTruncated {
 			r.logger.Warnf("request body was truncated to %d bytes (partial mode)", len(request.Body))
@@ -216,12 +216,12 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 				return nil
 			}
 		}
+	}
 
-		if err == nil {
-			in, err = state.Tx.ProcessRequestBody()
-			if err != nil {
-				r.logger.Warnf("unable to process request body, skipping body inspection: %s", err)
-			}
+	if err == nil {
+		in, err = state.Tx.ProcessRequestBody()
+		if err != nil {
+			r.logger.Warnf("unable to process request body, skipping body inspection: %s", err)
 		}
 	}
 
