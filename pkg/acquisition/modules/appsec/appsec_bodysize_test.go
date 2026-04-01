@@ -169,3 +169,94 @@ func TestAppsecBodySize(t *testing.T) {
 
 	runTests(t, tests)
 }
+
+func TestAppsecDisableBodyInspection(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "DisableBodyInspection – body rule does not fire",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"BODY_ARGS"},
+					Variables: []string{"payload"},
+					Match:     appsec_rule.Match{Type: "contains", Value: "MALICIOUS"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "1 == 1", Apply: []string{"DisableBodyInspection()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "POST",
+				URI:         "/",
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+				Body:        []byte("payload=MALICIOUS"),
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt)
+				require.Empty(t, events)
+			},
+		},
+		{
+			name:             "DisableBodyInspection – without hook, body rule fires normally",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"BODY_ARGS"},
+					Variables: []string{"payload"},
+					Match:     appsec_rule.Match{Type: "contains", Value: "MALICIOUS"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "POST",
+				URI:         "/",
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+				Body:        []byte("payload=MALICIOUS"),
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
+		{
+			name:             "DisableBodyInspection – conditional filter, body inspected when filter does not match",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"BODY_ARGS"},
+					Variables: []string{"payload"},
+					Match:     appsec_rule.Match{Type: "contains", Value: "MALICIOUS"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "req.URL.Path startsWith '/upload'", Apply: []string{"DisableBodyInspection()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "POST",
+				URI:         "/api",
+				Headers:     http.Header{"Content-Type": []string{"application/x-www-form-urlencoded"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+				Body:        []byte("payload=MALICIOUS"),
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}

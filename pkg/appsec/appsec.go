@@ -121,6 +121,8 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	DisableBodyInspection bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -902,6 +904,15 @@ func (w *AppsecRuntimeConfig) SetBodySizeExceededAction(action string) error {
 	default:
 		return fmt.Errorf("invalid body_size_exceeded_action %q (must be %s, %s, or %s)", action, BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow)
 	}
+}
+
+// DisableBodyInspection prevents Coraza from processing the request body for the current request.
+// Intended for use in pre_eval hooks.
+func (w *AppsecRuntimeConfig) DisableBodyInspection(state *AppsecRequestState) error {
+	state.DisableBodyInspection = true
+	w.Logger.Debugf("body inspection disabled for this request")
+
+	return nil
 }
 
 type BodyResponse struct {

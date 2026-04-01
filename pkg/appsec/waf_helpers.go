@@ -43,6 +43,7 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			state.PendingHTTPCode = &code
 			return nil
 		},
+		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 	}
 }
 
