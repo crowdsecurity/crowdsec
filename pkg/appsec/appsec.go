@@ -155,6 +155,17 @@ type AppsecSubEngineOpts struct {
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
 }
 
+// AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
+// Hooks defined here are automatically dispatched only during the corresponding phase.
+type AppsecPhaseConfig struct {
+	Rules             []string            `yaml:"rules"`
+	OnMatch           []Hook              `yaml:"on_match"`
+	PreEval           []Hook              `yaml:"pre_eval"`
+	PostEval          []Hook              `yaml:"post_eval"`
+	Options           AppsecSubEngineOpts `yaml:"options"`
+	VariablesTracking []string            `yaml:"variables_tracking"`
+}
+
 // runtime version of AppsecConfig
 type AppsecRuntimeConfig struct {
 	Name           string
@@ -169,6 +180,12 @@ type AppsecRuntimeConfig struct {
 	CompiledPreEval           []Hook
 	CompiledPostEval          []Hook
 	CompiledOnMatch           []Hook
+	CompiledInBandPreEval     []Hook
+	CompiledInBandPostEval    []Hook
+	CompiledInBandOnMatch     []Hook
+	CompiledOutOfBandPreEval  []Hook
+	CompiledOutOfBandPostEval []Hook
+	CompiledOutOfBandOnMatch  []Hook
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
 	// CorazaLogger              debuglog.Logger
@@ -201,6 +218,9 @@ type AppsecConfig struct {
 	VariablesTracking []string            `yaml:"variables_tracking"`
 	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
 	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
+
+	InBand    *AppsecPhaseConfig `yaml:"inband"`
+	OutOfBand *AppsecPhaseConfig `yaml:"outofband"`
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
@@ -286,6 +306,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		return fmt.Errorf("unable to parse yaml file %s : %w", file, err)
 	}
 
+	// Normalize phase-scoped sections: merge rules, options, and variables_tracking
+	// into flat fields. Hooks stay in the phase sections for Build() to compile separately.
+	tmp.normalizePhaseScoped()
+
 	if wc.Name == "" && tmp.Name != "" {
 		wc.Name = tmp.Name
 	}
@@ -319,6 +343,27 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
 
+	// Append phase-scoped hooks
+	if tmp.InBand != nil {
+		if wc.InBand == nil {
+			wc.InBand = &AppsecPhaseConfig{}
+		}
+
+		wc.InBand.OnMatch = append(wc.InBand.OnMatch, tmp.InBand.OnMatch...)
+		wc.InBand.PreEval = append(wc.InBand.PreEval, tmp.InBand.PreEval...)
+		wc.InBand.PostEval = append(wc.InBand.PostEval, tmp.InBand.PostEval...)
+	}
+
+	if tmp.OutOfBand != nil {
+		if wc.OutOfBand == nil {
+			wc.OutOfBand = &AppsecPhaseConfig{}
+		}
+
+		wc.OutOfBand.OnMatch = append(wc.OutOfBand.OnMatch, tmp.OutOfBand.OnMatch...)
+		wc.OutOfBand.PreEval = append(wc.OutOfBand.PreEval, tmp.OutOfBand.PreEval...)
+		wc.OutOfBand.PostEval = append(wc.OutOfBand.PostEval, tmp.OutOfBand.PostEval...)
+	}
+
 	// override other options
 	wc.LogLevel = tmp.LogLevel
 
@@ -343,6 +388,88 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	if tmp.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
 		wc.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBandOptions.RequestBodyInMemoryLimit
+	}
+
+	return nil
+}
+
+// normalizePhaseScoped merges rules, options, and variables_tracking from
+// phase-scoped sections (inband/outofband) into the flat top-level fields.
+// Hooks are left in the phase sections for Build() to compile separately.
+func (tmp *AppsecConfig) normalizePhaseScoped() {
+	if tmp.InBand != nil {
+		tmp.InBandRules = append(tmp.InBandRules, tmp.InBand.Rules...)
+		tmp.InBand.Rules = nil
+
+		if tmp.InBand.Options.DisableBodyInspection {
+			tmp.InbandOptions.DisableBodyInspection = true
+		}
+
+		if tmp.InBand.Options.RequestBodyInMemoryLimit != nil {
+			tmp.InbandOptions.RequestBodyInMemoryLimit = tmp.InBand.Options.RequestBodyInMemoryLimit
+		}
+
+		tmp.VariablesTracking = append(tmp.VariablesTracking, tmp.InBand.VariablesTracking...)
+		tmp.InBand.VariablesTracking = nil
+	}
+
+	if tmp.OutOfBand != nil {
+		tmp.OutOfBandRules = append(tmp.OutOfBandRules, tmp.OutOfBand.Rules...)
+		tmp.OutOfBand.Rules = nil
+
+		if tmp.OutOfBand.Options.DisableBodyInspection {
+			tmp.OutOfBandOptions.DisableBodyInspection = true
+		}
+
+		if tmp.OutOfBand.Options.RequestBodyInMemoryLimit != nil {
+			tmp.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBand.Options.RequestBodyInMemoryLimit
+		}
+
+		tmp.VariablesTracking = append(tmp.VariablesTracking, tmp.OutOfBand.VariablesTracking...)
+		tmp.OutOfBand.VariablesTracking = nil
+	}
+}
+
+func (w *AppsecRuntimeConfig) buildPhaseHooks(phase *AppsecPhaseConfig, phaseName string,
+	preEval *[]Hook, postEval *[]Hook, onMatch *[]Hook) error {
+	if phase == nil {
+		return nil
+	}
+
+	for _, hook := range phase.PreEval {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return fmt.Errorf("invalid 'on_success' for %s pre_eval hook : %s", phaseName, hook.OnSuccess)
+		}
+
+		if err := hook.Build(hookPreEval); err != nil {
+			return fmt.Errorf("unable to build %s pre_eval hook : %s", phaseName, err)
+		}
+
+		*preEval = append(*preEval, hook)
+	}
+
+	for _, hook := range phase.PostEval {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return fmt.Errorf("invalid 'on_success' for %s post_eval hook : %s", phaseName, hook.OnSuccess)
+		}
+
+		if err := hook.Build(hookPostEval); err != nil {
+			return fmt.Errorf("unable to build %s post_eval hook : %s", phaseName, err)
+		}
+
+		*postEval = append(*postEval, hook)
+	}
+
+	for _, hook := range phase.OnMatch {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return fmt.Errorf("invalid 'on_success' for %s on_match hook : %s", phaseName, hook.OnSuccess)
+		}
+
+		if err := hook.Build(hookOnMatch); err != nil {
+			return fmt.Errorf("unable to build %s on_match hook : %s", phaseName, err)
+		}
+
+		*onMatch = append(*onMatch, hook)
 	}
 
 	return nil
@@ -485,6 +612,17 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 		ret.CompiledOnMatch = append(ret.CompiledOnMatch, hook)
 	}
 
+	// compile phase-scoped hooks
+	if err := ret.buildPhaseHooks(wc.InBand, "inband",
+		&ret.CompiledInBandPreEval, &ret.CompiledInBandPostEval, &ret.CompiledInBandOnMatch); err != nil {
+		return nil, err
+	}
+
+	if err := ret.buildPhaseHooks(wc.OutOfBand, "outofband",
+		&ret.CompiledOutOfBandPreEval, &ret.CompiledOutOfBandPostEval, &ret.CompiledOutOfBandOnMatch); err != nil {
+		return nil, err
+	}
+
 	// variable tracking
 	for _, variable := range wc.VariablesTracking {
 		compiledVariableRule, err := regexp.Compile(variable)
@@ -498,14 +636,15 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	return ret, nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
+// processHooks runs a list of compiled hooks with the given environment.
+func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string) error {
 	has_match := false
 
-	for _, rule := range w.CompiledOnLoad {
+	for _, rule := range hooks {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run appsec on_load filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec %s filter %s : %w", hookType, rule.Filter, err)
 			}
 
 			switch t := output.(type) {
@@ -523,15 +662,15 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 		}
 
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				w.Logger.Errorf("unable to apply appsec on_load expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, err)
 				continue
 			}
 
 			switch t := o.(type) {
 			case error:
-				w.Logger.Errorf("unable to apply appsec on_load expr: %s", t)
+				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, t)
 				continue
 			default:
 			}
@@ -545,142 +684,59 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
+	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load")
+}
+
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	has_match := false
+	env := GetOnMatchEnv(w, state, request, evt)
 
-	for _, rule := range w.CompiledOnMatch {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec on_match filter %s : %w", rule.Filter, err)
-			}
+	if err := w.processHooks(w.CompiledOnMatch, env, "on_match"); err != nil {
+		return err
+	}
 
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
+	if request.IsInBand {
+		return w.processHooks(w.CompiledInBandOnMatch, env, "on_match[inband]")
+	}
 
-			has_match = true
-		}
-
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec on_match expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec on_match expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
+	if request.IsOutBand {
+		return w.processHooks(w.CompiledOutOfBandOnMatch, env, "on_match[outofband]")
 	}
 
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	has_match := false
+	env := GetPreEvalEnv(w, state, request)
 
-	for _, rule := range w.CompiledPreEval {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
-			}
+	if err := w.processHooks(w.CompiledPreEval, env, "pre_eval"); err != nil {
+		return err
+	}
 
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
+	if request.IsInBand {
+		return w.processHooks(w.CompiledInBandPreEval, env, "pre_eval[inband]")
+	}
 
-			has_match = true
-		}
-		// here means there is no filter or the filter matched
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
+	if request.IsOutBand {
+		return w.processHooks(w.CompiledOutOfBandPreEval, env, "pre_eval[outofband]")
 	}
 
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	has_match := false
+	env := GetPostEvalEnv(w, state, request)
 
-	for _, rule := range w.CompiledPostEval {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
-			}
+	if err := w.processHooks(w.CompiledPostEval, env, "post_eval"); err != nil {
+		return err
+	}
 
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
+	if request.IsInBand {
+		return w.processHooks(w.CompiledInBandPostEval, env, "post_eval[inband]")
+	}
 
-			has_match = true
-		}
-		// here means there is no filter or the filter matched
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
+	if request.IsOutBand {
+		return w.processHooks(w.CompiledOutOfBandPostEval, env, "post_eval[outofband]")
 	}
 
 	return nil
