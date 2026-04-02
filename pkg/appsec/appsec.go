@@ -396,80 +396,99 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 // normalizePhaseScoped merges rules, options, and variables_tracking from
 // phase-scoped sections (inband/outofband) into the flat top-level fields.
 // Hooks are left in the phase sections for Build() to compile separately.
-func (tmp *AppsecConfig) normalizePhaseScoped() {
-	if tmp.InBand != nil {
-		tmp.InBandRules = append(tmp.InBandRules, tmp.InBand.Rules...)
-		tmp.InBand.Rules = nil
+func (wc *AppsecConfig) normalizePhaseScoped() {
+	if wc.InBand != nil {
+		wc.InBandRules = append(wc.InBandRules, wc.InBand.Rules...)
+		wc.InBand.Rules = nil
 
-		if tmp.InBand.Options.DisableBodyInspection {
-			tmp.InbandOptions.DisableBodyInspection = true
+		if wc.InBand.Options.DisableBodyInspection {
+			wc.InbandOptions.DisableBodyInspection = true
 		}
 
-		if tmp.InBand.Options.RequestBodyInMemoryLimit != nil {
-			tmp.InbandOptions.RequestBodyInMemoryLimit = tmp.InBand.Options.RequestBodyInMemoryLimit
+		if wc.InBand.Options.RequestBodyInMemoryLimit != nil {
+			wc.InbandOptions.RequestBodyInMemoryLimit = wc.InBand.Options.RequestBodyInMemoryLimit
 		}
 
-		tmp.VariablesTracking = append(tmp.VariablesTracking, tmp.InBand.VariablesTracking...)
-		tmp.InBand.VariablesTracking = nil
+		wc.VariablesTracking = append(wc.VariablesTracking, wc.InBand.VariablesTracking...)
+		wc.InBand.VariablesTracking = nil
 	}
 
-	if tmp.OutOfBand != nil {
-		tmp.OutOfBandRules = append(tmp.OutOfBandRules, tmp.OutOfBand.Rules...)
-		tmp.OutOfBand.Rules = nil
+	if wc.OutOfBand != nil {
+		wc.OutOfBandRules = append(wc.OutOfBandRules, wc.OutOfBand.Rules...)
+		wc.OutOfBand.Rules = nil
 
-		if tmp.OutOfBand.Options.DisableBodyInspection {
-			tmp.OutOfBandOptions.DisableBodyInspection = true
+		if wc.OutOfBand.Options.DisableBodyInspection {
+			wc.OutOfBandOptions.DisableBodyInspection = true
 		}
 
-		if tmp.OutOfBand.Options.RequestBodyInMemoryLimit != nil {
-			tmp.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBand.Options.RequestBodyInMemoryLimit
+		if wc.OutOfBand.Options.RequestBodyInMemoryLimit != nil {
+			wc.OutOfBandOptions.RequestBodyInMemoryLimit = wc.OutOfBand.Options.RequestBodyInMemoryLimit
 		}
 
-		tmp.VariablesTracking = append(tmp.VariablesTracking, tmp.OutOfBand.VariablesTracking...)
-		tmp.OutOfBand.VariablesTracking = nil
+		wc.VariablesTracking = append(wc.VariablesTracking, wc.OutOfBand.VariablesTracking...)
+		wc.OutOfBand.VariablesTracking = nil
 	}
 }
 
-func (w *AppsecRuntimeConfig) buildPhaseHooks(phase *AppsecPhaseConfig, phaseName string,
+// buildHookList validates and compiles a list of hooks of the given stage.
+func buildHookList(hooks []Hook, stage int, stageName string) ([]Hook, error) {
+	var compiled []Hook
+
+	for _, hook := range hooks {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stageName, hook.OnSuccess)
+		}
+
+		if err := hook.Build(stage); err != nil {
+			return nil, fmt.Errorf("unable to build %s hook : %s", stageName, err)
+		}
+
+		compiled = append(compiled, hook)
+	}
+
+	return compiled, nil
+}
+
+func buildSharedHooks(wc *AppsecConfig, ret *AppsecRuntimeConfig) error {
+	var err error
+
+	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad, "on_load"); err != nil {
+		return err
+	}
+
+	if ret.CompiledPreEval, err = buildHookList(wc.PreEval, hookPreEval, "pre_eval"); err != nil {
+		return err
+	}
+
+	if ret.CompiledPostEval, err = buildHookList(wc.PostEval, hookPostEval, "post_eval"); err != nil {
+		return err
+	}
+
+	if ret.CompiledOnMatch, err = buildHookList(wc.OnMatch, hookOnMatch, "on_match"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildPhaseHooks(phase *AppsecPhaseConfig, phaseName string,
 	preEval *[]Hook, postEval *[]Hook, onMatch *[]Hook) error {
 	if phase == nil {
 		return nil
 	}
 
-	for _, hook := range phase.PreEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return fmt.Errorf("invalid 'on_success' for %s pre_eval hook : %s", phaseName, hook.OnSuccess)
-		}
+	var err error
 
-		if err := hook.Build(hookPreEval); err != nil {
-			return fmt.Errorf("unable to build %s pre_eval hook : %s", phaseName, err)
-		}
-
-		*preEval = append(*preEval, hook)
+	if *preEval, err = buildHookList(phase.PreEval, hookPreEval, phaseName+" pre_eval"); err != nil {
+		return err
 	}
 
-	for _, hook := range phase.PostEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return fmt.Errorf("invalid 'on_success' for %s post_eval hook : %s", phaseName, hook.OnSuccess)
-		}
-
-		if err := hook.Build(hookPostEval); err != nil {
-			return fmt.Errorf("unable to build %s post_eval hook : %s", phaseName, err)
-		}
-
-		*postEval = append(*postEval, hook)
+	if *postEval, err = buildHookList(phase.PostEval, hookPostEval, phaseName+" post_eval"); err != nil {
+		return err
 	}
 
-	for _, hook := range phase.OnMatch {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return fmt.Errorf("invalid 'on_success' for %s on_match hook : %s", phaseName, hook.OnSuccess)
-		}
-
-		if err := hook.Build(hookOnMatch); err != nil {
-			return fmt.Errorf("unable to build %s on_match hook : %s", phaseName, err)
-		}
-
-		*onMatch = append(*onMatch, hook)
+	if *onMatch, err = buildHookList(phase.OnMatch, hookOnMatch, phaseName+" on_match"); err != nil {
+		return err
 	}
 
 	return nil
@@ -560,65 +579,17 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
 	// load hooks
-	for _, hook := range wc.OnLoad {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
-		}
-
-		err := hook.Build(hookOnLoad)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
-		}
-
-		ret.CompiledOnLoad = append(ret.CompiledOnLoad, hook)
-	}
-
-	for _, hook := range wc.PreEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
-		}
-
-		err := hook.Build(hookPreEval)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
-		}
-
-		ret.CompiledPreEval = append(ret.CompiledPreEval, hook)
-	}
-
-	for _, hook := range wc.PostEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
-		}
-
-		err := hook.Build(hookPostEval)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
-		}
-
-		ret.CompiledPostEval = append(ret.CompiledPostEval, hook)
-	}
-
-	for _, hook := range wc.OnMatch {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
-		}
-
-		err := hook.Build(hookOnMatch)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
-		}
-
-		ret.CompiledOnMatch = append(ret.CompiledOnMatch, hook)
+	if err := buildSharedHooks(wc, ret); err != nil {
+		return nil, err
 	}
 
 	// compile phase-scoped hooks
-	if err := ret.buildPhaseHooks(wc.InBand, "inband",
+	if err := buildPhaseHooks(wc.InBand, "inband",
 		&ret.CompiledInBandPreEval, &ret.CompiledInBandPostEval, &ret.CompiledInBandOnMatch); err != nil {
 		return nil, err
 	}
 
-	if err := ret.buildPhaseHooks(wc.OutOfBand, "outofband",
+	if err := buildPhaseHooks(wc.OutOfBand, "outofband",
 		&ret.CompiledOutOfBandPreEval, &ret.CompiledOutOfBandPostEval, &ret.CompiledOutOfBandOnMatch); err != nil {
 		return nil, err
 	}

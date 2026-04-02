@@ -1258,7 +1258,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			},
 			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
-				// Shared hook cancelled LOG event with break, APPSEC alert still sent
+				// Shared hook canceled LOG event with break, APPSEC alert still sent
 				// Phase-scoped hooks still run (break only stops shared hook list)
 				require.Len(t, events, 1)
 				require.Equal(t, pipeline.APPSEC, events[0].Type)
