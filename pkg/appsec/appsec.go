@@ -28,12 +28,29 @@ type Hook struct {
 	ApplyExpr []*vm.Program `yaml:"-"`
 }
 
+type hookStage int
+
 const (
-	hookOnLoad = iota
+	hookOnLoad hookStage = iota
 	hookPreEval
 	hookPostEval
 	hookOnMatch
 )
+
+func (s hookStage) String() string {
+	switch s {
+	case hookOnLoad:
+		return "on_load"
+	case hookPreEval:
+		return "pre_eval"
+	case hookPostEval:
+		return "post_eval"
+	case hookOnMatch:
+		return "on_match"
+	default:
+		return "unknown"
+	}
+}
 
 const (
 	BanRemediation     = "ban"
@@ -48,10 +65,10 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(hookStage int) error {
+func (h *Hook) Build(stage hookStage) error {
 	ctx := map[string]any{}
 
-	switch hookStage {
+	switch stage {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
@@ -431,16 +448,16 @@ func (wc *AppsecConfig) normalizePhaseScoped() {
 }
 
 // buildHookList validates and compiles a list of hooks of the given stage.
-func buildHookList(hooks []Hook, stage int, stageName string) ([]Hook, error) {
+func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 	var compiled []Hook
 
 	for _, hook := range hooks {
 		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stageName, hook.OnSuccess)
+			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stage, hook.OnSuccess)
 		}
 
 		if err := hook.Build(stage); err != nil {
-			return nil, fmt.Errorf("unable to build %s hook : %s", stageName, err)
+			return nil, fmt.Errorf("unable to build %s hook : %s", stage, err)
 		}
 
 		compiled = append(compiled, hook)
@@ -452,19 +469,19 @@ func buildHookList(hooks []Hook, stage int, stageName string) ([]Hook, error) {
 func buildSharedHooks(wc *AppsecConfig, ret *AppsecRuntimeConfig) error {
 	var err error
 
-	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad, "on_load"); err != nil {
+	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad); err != nil {
 		return err
 	}
 
-	if ret.CompiledPreEval, err = buildHookList(wc.PreEval, hookPreEval, "pre_eval"); err != nil {
+	if ret.CompiledPreEval, err = buildHookList(wc.PreEval, hookPreEval); err != nil {
 		return err
 	}
 
-	if ret.CompiledPostEval, err = buildHookList(wc.PostEval, hookPostEval, "post_eval"); err != nil {
+	if ret.CompiledPostEval, err = buildHookList(wc.PostEval, hookPostEval); err != nil {
 		return err
 	}
 
-	if ret.CompiledOnMatch, err = buildHookList(wc.OnMatch, hookOnMatch, "on_match"); err != nil {
+	if ret.CompiledOnMatch, err = buildHookList(wc.OnMatch, hookOnMatch); err != nil {
 		return err
 	}
 
@@ -479,16 +496,16 @@ func buildPhaseHooks(phase *AppsecPhaseConfig, phaseName string,
 
 	var err error
 
-	if *preEval, err = buildHookList(phase.PreEval, hookPreEval, phaseName+" pre_eval"); err != nil {
-		return err
+	if *preEval, err = buildHookList(phase.PreEval, hookPreEval); err != nil {
+		return fmt.Errorf("%s: %w", phaseName, err)
 	}
 
-	if *postEval, err = buildHookList(phase.PostEval, hookPostEval, phaseName+" post_eval"); err != nil {
-		return err
+	if *postEval, err = buildHookList(phase.PostEval, hookPostEval); err != nil {
+		return fmt.Errorf("%s: %w", phaseName, err)
 	}
 
-	if *onMatch, err = buildHookList(phase.OnMatch, hookOnMatch, phaseName+" on_match"); err != nil {
-		return err
+	if *onMatch, err = buildHookList(phase.OnMatch, hookOnMatch); err != nil {
+		return fmt.Errorf("%s: %w", phaseName, err)
 	}
 
 	return nil
