@@ -1163,7 +1163,9 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
 			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
-				require.Empty(t, events)
+				// CancelEvent() only cancels the LOG event, the APPSEC alert is still sent
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 				require.Len(t, responses, 1)
 			},
 		},
@@ -1256,8 +1258,10 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			},
 			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
-				// Shared hook cancelled event with break, but phase-scoped hooks still run
-				require.Empty(t, events)
+				// Shared hook cancelled LOG event with break, APPSEC alert still sent
+				// Phase-scoped hooks still run (break only stops shared hook list)
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
 				require.Equal(t, "captcha", responses[0].Action)
 				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
 			},
@@ -1313,8 +1317,9 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 				},
 			},
 			inband_on_match: []appsec.Hook{
-				{Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
-				{Apply: []string{"SetRemediation('ban')"}}, // should not execute due to break
+				// break requires a filter to be present and match (sets has_match flag)
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('ban')"}}, // should not execute due to break
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
