@@ -7,11 +7,11 @@ import (
 
 var (
 	// verify interface compliance
-	_ types.DataSource      = (*Source)(nil)
-	_ types.DSNConfigurer   = (*Source)(nil)
-	_ types.BatchFetcher    = (*Source)(nil)
-	_ types.Tailer          = (*Source)(nil)
-	_ types.MetricsProvider = (*Source)(nil)
+	_ types.DataSource          = (*Source)(nil)
+	_ types.DSNConfigurer       = (*Source)(nil)
+	_ types.BatchFetcher        = (*Source)(nil)
+	_ types.RestartableStreamer = (*Source)(nil)
+	_ types.MetricsProvider     = (*Source)(nil)
 )
 
 const ModuleName = "file"
