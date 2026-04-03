@@ -32,6 +32,13 @@ type appsecRuleTest struct {
 	pre_eval               []appsec.Hook
 	post_eval              []appsec.Hook
 	on_match               []appsec.Hook
+	// Phase-scoped hooks (dispatched only during the matching phase)
+	inband_on_match      []appsec.Hook
+	inband_pre_eval      []appsec.Hook
+	inband_post_eval     []appsec.Hook
+	outofband_on_match   []appsec.Hook
+	outofband_pre_eval   []appsec.Hook
+	outofband_post_eval  []appsec.Hook
 	BouncerBlockedHTTPCode int
 	UserBlockedHTTPCode    int
 	UserPassedHTTPCode     int
@@ -113,6 +120,23 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		UserPassedHTTPCode:     test.UserPassedHTTPCode,
 		DefaultRemediation:     test.DefaultRemediation,
 		DefaultPassAction:      test.DefaultPassAction,
+	}
+
+	// Set phase-scoped hooks if any are provided
+	if len(test.inband_on_match) > 0 || len(test.inband_pre_eval) > 0 || len(test.inband_post_eval) > 0 {
+		appsecCfg.InBand = &appsec.AppsecPhaseConfig{
+			OnMatch:  test.inband_on_match,
+			PreEval:  test.inband_pre_eval,
+			PostEval: test.inband_post_eval,
+		}
+	}
+
+	if len(test.outofband_on_match) > 0 || len(test.outofband_pre_eval) > 0 || len(test.outofband_post_eval) > 0 {
+		appsecCfg.OutOfBand = &appsec.AppsecPhaseConfig{
+			OnMatch:  test.outofband_on_match,
+			PreEval:  test.outofband_pre_eval,
+			PostEval: test.outofband_post_eval,
+		}
 	}
 
 	hub := cwhub.Hub{}
