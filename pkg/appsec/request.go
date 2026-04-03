@@ -3,6 +3,7 @@ package appsec
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -48,6 +49,11 @@ type ParsedRequest struct {
 	AppsecEngine         string                  `json:"appsec_engine,omitempty"`
 	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
 	HTTPRequest          *http.Request           `json:"-"`
+	// BodyTruncated is true when the body was larger than the configured limit and was truncated (partial mode).
+	BodyTruncated bool `json:"body_truncated,omitempty"`
+	// BodySizeExceeded is true when the body exceeded the configured limit and the action is drop.
+	// The body is not populated in this case; a fake interruption will be triggered in the runner.
+	BodySizeExceeded bool `json:"body_size_exceeded,omitempty"`
 }
 
 type ReqDumpFilter struct {
@@ -285,19 +291,58 @@ func (r *ReqDumpFilter) ToJSON() error {
 	return nil
 }
 
-// Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
-func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequest, error) {
-	var err error
-	contentLength := max(r.ContentLength, 0)
-	body := make([]byte, contentLength)
-	if r.Body != nil {
-		_, err = io.ReadFull(r.Body, body)
-		if err != nil {
-			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
-		}
-		// reset the original body back as it's been read, i'm not sure its needed?
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+// Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine.
+// bodySettings controls the maximum body size and what to do when the limit is exceeded.
+func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySettings BodySettings) (ParsedRequest, error) {
+	var (
+		err              error
+		body             []byte
+		bodyTruncated    bool
+		bodySizeExceeded bool
+	)
 
+	if r.Body != nil {
+		maxSize := bodySettings.MaxSize
+		if maxSize <= 0 {
+			maxSize = DefaultMaxBodySize
+		}
+
+		action := bodySettings.Action
+		if action == "" {
+			action = BodySizeActionDrop
+		}
+
+		// Always read from the actual stream — never trust Content-Length.
+		// Read up to maxSize+1 bytes so we can detect whether the body exceeds the limit.
+		body, err = io.ReadAll(io.LimitReader(r.Body, maxSize+1))
+		// io.ErrUnexpectedEOF means the connection was closed without a clean EOF (e.g. no
+		// Content-Length and no body). Treat whatever was read as the complete body.
+		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+			return ParsedRequest{}, fmt.Errorf("unable to read body: %w", err)
+		}
+
+		if int64(len(body)) > maxSize {
+			// Drain the remaining body so the client doesn't time out waiting for the server
+			// to finish reading. The LimitReader stopped at maxSize+1, so r.Body may still
+			// have unread bytes.
+			_, _ = io.Copy(io.Discard, r.Body)
+
+			switch action {
+			case BodySizeActionDrop:
+				logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
+				body = nil
+				bodySizeExceeded = true
+			case BodySizeActionAllow:
+				logger.Warnf("request body exceeds limit %d bytes, skipping body inspection", maxSize)
+				body = nil
+			case BodySizeActionPartial:
+				logger.Warnf("request body exceeds limit %d bytes, truncating", maxSize)
+				body = body[:maxSize]
+				bodyTruncated = true
+			}
+		}
+
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
@@ -412,6 +457,8 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry) (ParsedRequ
 		URL:                  parsedURL,
 		Proto:                r.Proto,
 		Body:                 body,
+		BodyTruncated:        bodyTruncated,
+		BodySizeExceeded:     bodySizeExceeded,
 		Args:                 exprhelpers.ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
