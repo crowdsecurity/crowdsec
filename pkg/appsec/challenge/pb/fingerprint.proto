@@ -1,0 +1,249 @@
+syntax = "proto3";
+package fingerprint;
+
+option go_package = ".;pb";
+
+message FingerprintData {
+  fingerprintSignals signals = 1;
+  string fsid = 2;
+  string nonce = 3;
+  int64 time = 4;
+  string url = 5;
+  bool fastBotDetection = 6;
+  fingerprintFastBotDetectionDetails fastBotDetectionDetails = 7;
+  fingerprintBotAlias bot = 8;
+}
+
+message fingerprintSignals {
+  fingerprintAutomation automation = 1;
+  fingerprintDevice device = 2;
+  fingerprintBrowser browser = 3;
+  fingerprintGraphics graphics = 4;
+  fingerprintCodecs codecs = 5;
+  fingerprintLocale locale = 6;
+  fingerprintContexts contexts = 7;
+}
+
+message fingerprintAutomation {
+  bool webdriver = 1;
+  bool webdriverWritable = 2;
+  bool selenium = 3;
+  bool cdp = 4;
+  bool playwright = 5;
+  string navigatorPropertyDescriptors = 6;
+}
+
+message fingerprintDevice {
+  int32 cpuCount = 1;
+  int32 memory = 2;
+  string platform = 3;
+  fingerprintScreenResolution screenResolution = 4;
+  fingerprintMultimediaDevices multimediaDevices = 5;
+  fingerprintDeviceMediaQueries mediaQueries = 6;
+}
+
+message fingerprintScreenResolution {
+  int32 width = 1;
+  int32 height = 2;
+  int32 pixelDepth = 3;
+  int32 colorDepth = 4;
+  int32 availableWidth = 5;
+  int32 availableHeight = 6;
+  int32 innerWidth = 7;
+  int32 innerHeight = 8;
+  bool hasMultipleDisplays = 9;
+}
+
+message fingerprintMultimediaDevices {
+  int32 speakers = 1;
+  int32 microphones = 2;
+  int32 webcams = 3;
+}
+
+message fingerprintDeviceMediaQueries {
+  string prefersColorScheme = 1;
+  bool prefersReducedMotion = 2;
+  bool prefersReducedTransparency = 3;
+  string colorGamut = 4;
+  string pointer = 5;
+  string anyPointer = 6;
+  bool hover = 7;
+  bool anyHover = 8;
+  int32 colorDepth = 9;
+}
+
+message fingerprintBrowser {
+  string userAgent = 1;
+  fingerprintBrowserFeatures features = 2;
+  fingerprintBrowserPlugins plugins = 3;
+  fingerprintBrowserExtensions extensions = 4;
+  fingerprintBrowserHighEntropyValues highEntropyValues = 5;
+  int32 etsl = 6;
+  string maths = 7;
+  fingerprintBrowserToSourceError toSourceError = 8;
+}
+
+message fingerprintBrowserFeatures {
+  string bitmask = 1;
+  bool chrome = 2;
+  bool brave = 3;
+  bool applePaySupport = 4;
+  bool opera = 5;
+  bool serial = 6;
+  bool attachShadow = 7;
+  bool caches = 8;
+  bool webAssembly = 9;
+  bool buffer = 10;
+  bool showModalDialog = 11;
+}
+
+message fingerprintBrowserPlugins {
+  bool isValidPluginArray = 1;
+  int32 pluginCount = 2;
+  string pluginNamesHash = 3;
+  bool pluginConsistency1 = 4;
+  bool pluginOverflow = 5;
+}
+
+message fingerprintBrowserExtensions {
+  string bitmask = 1;
+  repeated string extensions = 2;
+}
+
+message fingerprintBrowserHighEntropyValues {
+  string architecture = 1;
+  string bitness = 2;
+  repeated fingerprintBrandVersion brands = 3;
+  bool mobile = 4;
+  string model = 5;
+  string platform = 6;
+  string platformVersion = 7;
+  string uaFullVersion = 8;
+}
+
+message fingerprintBrandVersion {
+  string brand = 1;
+  string version = 2;
+}
+
+message fingerprintBrowserToSourceError {
+  string toSourceError = 1;
+  bool hasToSource = 2;
+}
+
+message fingerprintGraphics {
+  fingerprintGraphicsWebGL webGL = 1;
+  fingerprintGraphicsWebGPU webgpu = 2;
+  fingerprintGraphicsCanvas canvas = 3;
+}
+
+message fingerprintGraphicsWebGL {
+  string vendor = 1;
+  string renderer = 2;
+}
+
+message fingerprintGraphicsWebGPU {
+  string vendor = 1;
+  string architecture = 2;
+  string device = 3;
+  string description = 4;
+}
+
+message fingerprintGraphicsCanvas {
+  bool hasModifiedCanvas = 1;
+  string canvasFingerprint = 2;
+}
+
+message fingerprintCodecs {
+  string audioCanPlayTypeHash = 1;
+  string videoCanPlayTypeHash = 2;
+  string audioMediaSourceHash = 3;
+  string videoMediaSourceHash = 4;
+  string rtcAudioCapabilitiesHash = 5;
+  string rtcVideoCapabilitiesHash = 6;
+  bool hasMediaSource = 7;
+}
+
+message fingerprintLocale {
+  fingerprintLocaleInternationalization internationalization = 1;
+  fingerprintLocaleLanguages languages = 2;
+}
+
+message fingerprintLocaleInternationalization {
+  string timezone = 1;
+  string localeLanguage = 2;
+}
+
+message fingerprintLocaleLanguages {
+  repeated string languages = 1;
+  string language = 2;
+}
+
+message fingerprintContexts {
+  fingerprintIframeContext iframe = 1;
+  fingerprintWebWorkerContext webWorker = 2;
+}
+
+message fingerprintIframeContext {
+  bool webdriver = 1;
+  string userAgent = 2;
+  string platform = 3;
+  int32 memory = 4;
+  int32 cpuCount = 5;
+  string language = 6;
+}
+
+message fingerprintWebWorkerContext {
+  string vendor = 1;
+  string renderer = 2;
+  string userAgent = 3;
+  string language = 4;
+  string platform = 5;
+  int32 memory = 6;
+  int32 cpuCount = 7;
+}
+
+message fingerprintFastBotDetectionDetails {
+  fingerprintDetectionResult headlessChromeScreenResolution = 1;
+  fingerprintDetectionResult hasWebdriver = 2;
+  fingerprintDetectionResult hasWebdriverWritable = 3;
+  fingerprintDetectionResult hasSeleniumProperty = 4;
+  fingerprintDetectionResult hasCDP = 5;
+  fingerprintDetectionResult hasPlaywright = 6;
+  fingerprintDetectionResult hasImpossibleDeviceMemory = 7;
+  fingerprintDetectionResult hasHighCPUCount = 8;
+  fingerprintDetectionResult hasMissingChromeObject = 9;
+  fingerprintDetectionResult hasWebdriverIframe = 10;
+  fingerprintDetectionResult hasWebdriverWorker = 11;
+  fingerprintDetectionResult hasMismatchWebGLInWorker = 12;
+  fingerprintDetectionResult hasMismatchPlatformIframe = 13;
+  fingerprintDetectionResult hasMismatchPlatformWorker = 14;
+  fingerprintDetectionResult hasSwiftshaderRenderer = 15;
+  fingerprintDetectionResult hasUTCTimezone = 16;
+}
+
+message fingerprintDetectionResult {
+  bool detected = 1;
+}
+
+message fingerprintBotAlias {
+  bool headlessChromeScreenResolution = 1;
+  bool webdriver = 2;
+  bool webdriverWritable = 3;
+  bool selenium = 4;
+  bool cdp = 5;
+  bool playwright = 6;
+  bool impossibleDeviceMemory = 7;
+  bool highCPUCount = 8;
+  bool missingChromeObject = 9;
+  bool webdriverIframe = 10;
+  bool webdriverWorker = 11;
+  bool mismatchWebGLInWorker = 12;
+  bool mismatchPlatformIframe = 13;
+  bool mismatchPlatformWorker = 14;
+  bool swiftshaderRenderer = 15;
+  bool utcTimezone = 16;
+  bool anyDetected = 17;
+  int32 detectedCount = 18;
+}
+
