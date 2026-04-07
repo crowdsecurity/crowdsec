@@ -66,13 +66,12 @@ func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, filter ma
 	}
 
 	query, err := applyDecisionFilter(query, filter)
-
-	query = query.Order(ent.Asc(decision.FieldID))
-
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, fmt.Errorf("get expired decisions with filters: %w", QueryFail)
 	}
+
+	query = query.Order(ent.Asc(decision.FieldID))
 
 	data, err := query.All(ctx)
 	if err != nil {
