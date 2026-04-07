@@ -167,9 +167,11 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(time.Now().UTC()),
-	)
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilLT(time.Now().UTC()),
+		)
 
 	if since != nil {
 		query = query.Where(decision.UntilGT(*since))
@@ -198,9 +200,11 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, sinc
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now().UTC()),
-	)
+	query := c.Ent.Decision.Query().
+		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
+		Where(
+			decision.UntilGT(time.Now().UTC()),
+		)
 
 	errorMsg := "new decisions"
 
