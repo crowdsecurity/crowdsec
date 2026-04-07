@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.26-bookworm AS build
+FROM docker.io/golang:1.26-trixie AS build
 
 ARG BUILD_VERSION
 
