@@ -14,7 +14,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
@@ -146,7 +145,7 @@ func NewDefaultConfig() *Config {
 			},
 		},
 		CTI: &CTICfg{
-			Enabled: ptr.Of(false),
+			Enabled: new(false),
 		},
 	}
 

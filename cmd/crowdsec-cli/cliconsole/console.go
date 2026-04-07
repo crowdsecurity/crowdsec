@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
@@ -399,7 +398,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				consoleCfg.ConsoleManagement = ptr.Of(wanted)
+				consoleCfg.ConsoleManagement = new(wanted)
 			}
 
 			if cfg.API.Server.OnlineClient.Credentials != nil {
@@ -432,7 +431,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
+				consoleCfg.ShareCustomScenarios = new(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			// for each flag check if it's already set before setting it
@@ -440,7 +439,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
+				consoleCfg.ShareTaintedScenarios = new(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			// for each flag check if it's already set before setting it
@@ -448,7 +447,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
+				consoleCfg.ShareManualDecisions = new(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			// for each flag check if it's already set before setting it
@@ -456,7 +455,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-				consoleCfg.ShareContext = ptr.Of(wanted)
+				consoleCfg.ShareContext = new(wanted)
 			}
 		default:
 			return fmt.Errorf("unknown flag %s", arg)

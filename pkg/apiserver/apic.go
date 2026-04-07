@@ -20,8 +20,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -122,15 +120,15 @@ func decisionsToAPIDecisions(decisions []*models.Decision) modelscapi.AddSignals
 
 	for _, decision := range decisions {
 		x := &modelscapi.AddSignalsRequestItemDecisionsItem{
-			Duration: ptr.Of(*decision.Duration),
+			Duration: new(*decision.Duration),
 			ID:       new(int64),
-			Origin:   ptr.Of(*decision.Origin),
-			Scenario: ptr.Of(*decision.Scenario),
-			Scope:    ptr.Of(*decision.Scope),
+			Origin:   new(*decision.Origin),
+			Scenario: new(*decision.Scenario),
+			Scope:    new(*decision.Scope),
 			// Simulated: *decision.Simulated,
-			Type:  ptr.Of(*decision.Type),
+			Type:  new(*decision.Type),
 			Until: decision.Until,
-			Value: ptr.Of(*decision.Value),
+			Value: new(*decision.Value),
 			UUID:  decision.UUID,
 		}
 
@@ -466,7 +464,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
 
-			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
+			updateCounterForDecision(deleteCounters, new(types.CAPIOrigin), nil, dbCliDel)
 
 			nbDeleted += dbCliDel
 		}
@@ -497,20 +495,20 @@ func createAlertForDecision(decision *models.Decision, kind types.AlertKind) *mo
 
 	return &models.Alert{
 		Source: &models.Source{
-			Scope: ptr.Of(scope),
-			Value: ptr.Of(""),
+			Scope: new(scope),
+			Value: new(""),
 		},
-		Scenario:        ptr.Of(scenario),
+		Scenario:        new(scenario),
 		Kind:            kind.String(),
-		Message:         ptr.Of(""),
-		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		Capacity:        ptr.Of(int32(0)),
-		Simulated:       ptr.Of(false),
-		EventsCount:     ptr.Of(int32(0)),
-		Leakspeed:       ptr.Of(""),
-		ScenarioHash:    ptr.Of(""),
-		ScenarioVersion: ptr.Of(""),
+		Message:         new(""),
+		StartAt:         new(time.Now().UTC().Format(time.RFC3339)),
+		StopAt:          new(time.Now().UTC().Format(time.RFC3339)),
+		Capacity:        new(int32(0)),
+		Simulated:       new(false),
+		EventsCount:     new(int32(0)),
+		Leakspeed:       new(""),
+		ScenarioHash:    new(""),
+		ScenarioVersion: new(""),
 		MachineID:       database.CapiMachineID,
 	}
 }
@@ -1031,12 +1029,12 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 	switch *alert.Source.Scope {
 	case types.CAPIOrigin:
 		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+		alert.Scenario = new(fmt.Sprintf("update : +%d/-%d IPs",
 			addCounters[types.CAPIOrigin]["all"],
 			deleteCounters[types.CAPIOrigin]["all"]))
 	case types.ListOrigin:
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+		alert.Scenario = new(fmt.Sprintf("update : +%d/-%d IPs",
 			addCounters[types.ListOrigin][*alert.Scenario],
 			deleteCounters[types.ListOrigin][*alert.Scenario]))
 	}
