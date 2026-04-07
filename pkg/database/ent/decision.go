@@ -98,7 +98,7 @@ func (*Decision) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Decision fields.
-func (d *Decision) assignValues(columns []string, values []any) error {
+func (_m *Decision) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -109,106 +109,106 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			d.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case decision.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				d.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case decision.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				d.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case decision.FieldUntil:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field until", values[i])
 			} else if value.Valid {
-				d.Until = new(time.Time)
-				*d.Until = value.Time
+				_m.Until = new(time.Time)
+				*_m.Until = value.Time
 			}
 		case decision.FieldScenario:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field scenario", values[i])
 			} else if value.Valid {
-				d.Scenario = value.String
+				_m.Scenario = value.String
 			}
 		case decision.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
-				d.Type = value.String
+				_m.Type = value.String
 			}
 		case decision.FieldStartIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_ip", values[i])
 			} else if value.Valid {
-				d.StartIP = value.Int64
+				_m.StartIP = value.Int64
 			}
 		case decision.FieldEndIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_ip", values[i])
 			} else if value.Valid {
-				d.EndIP = value.Int64
+				_m.EndIP = value.Int64
 			}
 		case decision.FieldStartSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_suffix", values[i])
 			} else if value.Valid {
-				d.StartSuffix = value.Int64
+				_m.StartSuffix = value.Int64
 			}
 		case decision.FieldEndSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_suffix", values[i])
 			} else if value.Valid {
-				d.EndSuffix = value.Int64
+				_m.EndSuffix = value.Int64
 			}
 		case decision.FieldIPSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field ip_size", values[i])
 			} else if value.Valid {
-				d.IPSize = value.Int64
+				_m.IPSize = value.Int64
 			}
 		case decision.FieldScope:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field scope", values[i])
 			} else if value.Valid {
-				d.Scope = value.String
+				_m.Scope = value.String
 			}
 		case decision.FieldValue:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value.Valid {
-				d.Value = value.String
+				_m.Value = value.String
 			}
 		case decision.FieldOrigin:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field origin", values[i])
 			} else if value.Valid {
-				d.Origin = value.String
+				_m.Origin = value.String
 			}
 		case decision.FieldSimulated:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field simulated", values[i])
 			} else if value.Valid {
-				d.Simulated = value.Bool
+				_m.Simulated = value.Bool
 			}
 		case decision.FieldUUID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field uuid", values[i])
 			} else if value.Valid {
-				d.UUID = value.String
+				_m.UUID = value.String
 			}
 		case decision.FieldAlertDecisions:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field alert_decisions", values[i])
 			} else if value.Valid {
-				d.AlertDecisions = int(value.Int64)
+				_m.AlertDecisions = int(value.Int64)
 			}
 		default:
-			d.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -216,87 +216,87 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 
 // GetValue returns the ent.Value that was dynamically selected and assigned to the Decision.
 // This includes values selected through modifiers, order, etc.
-func (d *Decision) GetValue(name string) (ent.Value, error) {
-	return d.selectValues.Get(name)
+func (_m *Decision) GetValue(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryOwner queries the "owner" edge of the Decision entity.
-func (d *Decision) QueryOwner() *AlertQuery {
-	return NewDecisionClient(d.config).QueryOwner(d)
+func (_m *Decision) QueryOwner() *AlertQuery {
+	return NewDecisionClient(_m.config).QueryOwner(_m)
 }
 
 // Update returns a builder for updating this Decision.
 // Note that you need to call Decision.Unwrap() before calling this method if this Decision
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (d *Decision) Update() *DecisionUpdateOne {
-	return NewDecisionClient(d.config).UpdateOne(d)
+func (_m *Decision) Update() *DecisionUpdateOne {
+	return NewDecisionClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Decision entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (d *Decision) Unwrap() *Decision {
-	_tx, ok := d.config.driver.(*txDriver)
+func (_m *Decision) Unwrap() *Decision {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Decision is not a transactional entity")
 	}
-	d.config.driver = _tx.drv
-	return d
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (d *Decision) String() string {
+func (_m *Decision) String() string {
 	var builder strings.Builder
 	builder.WriteString("Decision(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", d.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(d.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(d.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := d.Until; v != nil {
+	if v := _m.Until; v != nil {
 		builder.WriteString("until=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("scenario=")
-	builder.WriteString(d.Scenario)
+	builder.WriteString(_m.Scenario)
 	builder.WriteString(", ")
 	builder.WriteString("type=")
-	builder.WriteString(d.Type)
+	builder.WriteString(_m.Type)
 	builder.WriteString(", ")
 	builder.WriteString("start_ip=")
-	builder.WriteString(fmt.Sprintf("%v", d.StartIP))
+	builder.WriteString(fmt.Sprintf("%v", _m.StartIP))
 	builder.WriteString(", ")
 	builder.WriteString("end_ip=")
-	builder.WriteString(fmt.Sprintf("%v", d.EndIP))
+	builder.WriteString(fmt.Sprintf("%v", _m.EndIP))
 	builder.WriteString(", ")
 	builder.WriteString("start_suffix=")
-	builder.WriteString(fmt.Sprintf("%v", d.StartSuffix))
+	builder.WriteString(fmt.Sprintf("%v", _m.StartSuffix))
 	builder.WriteString(", ")
 	builder.WriteString("end_suffix=")
-	builder.WriteString(fmt.Sprintf("%v", d.EndSuffix))
+	builder.WriteString(fmt.Sprintf("%v", _m.EndSuffix))
 	builder.WriteString(", ")
 	builder.WriteString("ip_size=")
-	builder.WriteString(fmt.Sprintf("%v", d.IPSize))
+	builder.WriteString(fmt.Sprintf("%v", _m.IPSize))
 	builder.WriteString(", ")
 	builder.WriteString("scope=")
-	builder.WriteString(d.Scope)
+	builder.WriteString(_m.Scope)
 	builder.WriteString(", ")
 	builder.WriteString("value=")
-	builder.WriteString(d.Value)
+	builder.WriteString(_m.Value)
 	builder.WriteString(", ")
 	builder.WriteString("origin=")
-	builder.WriteString(d.Origin)
+	builder.WriteString(_m.Origin)
 	builder.WriteString(", ")
 	builder.WriteString("simulated=")
-	builder.WriteString(fmt.Sprintf("%v", d.Simulated))
+	builder.WriteString(fmt.Sprintf("%v", _m.Simulated))
 	builder.WriteString(", ")
 	builder.WriteString("uuid=")
-	builder.WriteString(d.UUID)
+	builder.WriteString(_m.UUID)
 	builder.WriteString(", ")
 	builder.WriteString("alert_decisions=")
-	builder.WriteString(fmt.Sprintf("%v", d.AlertDecisions))
+	builder.WriteString(fmt.Sprintf("%v", _m.AlertDecisions))
 	builder.WriteByte(')')
 	return builder.String()
 }

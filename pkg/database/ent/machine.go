@@ -101,7 +101,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Machine fields.
-func (m *Machine) assignValues(columns []string, values []any) error {
+func (_m *Machine) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -112,104 +112,104 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			m.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case machine.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case machine.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case machine.FieldLastPush:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_push", values[i])
 			} else if value.Valid {
-				m.LastPush = new(time.Time)
-				*m.LastPush = value.Time
+				_m.LastPush = new(time.Time)
+				*_m.LastPush = value.Time
 			}
 		case machine.FieldLastHeartbeat:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_heartbeat", values[i])
 			} else if value.Valid {
-				m.LastHeartbeat = new(time.Time)
-				*m.LastHeartbeat = value.Time
+				_m.LastHeartbeat = new(time.Time)
+				*_m.LastHeartbeat = value.Time
 			}
 		case machine.FieldMachineId:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field machineId", values[i])
 			} else if value.Valid {
-				m.MachineId = value.String
+				_m.MachineId = value.String
 			}
 		case machine.FieldPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field password", values[i])
 			} else if value.Valid {
-				m.Password = value.String
+				_m.Password = value.String
 			}
 		case machine.FieldIpAddress:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field ipAddress", values[i])
 			} else if value.Valid {
-				m.IpAddress = value.String
+				_m.IpAddress = value.String
 			}
 		case machine.FieldScenarios:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field scenarios", values[i])
 			} else if value.Valid {
-				m.Scenarios = value.String
+				_m.Scenarios = value.String
 			}
 		case machine.FieldVersion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field version", values[i])
 			} else if value.Valid {
-				m.Version = value.String
+				_m.Version = value.String
 			}
 		case machine.FieldIsValidated:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field isValidated", values[i])
 			} else if value.Valid {
-				m.IsValidated = value.Bool
+				_m.IsValidated = value.Bool
 			}
 		case machine.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
 			} else if value.Valid {
-				m.AuthType = value.String
+				_m.AuthType = value.String
 			}
 		case machine.FieldOsname:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osname", values[i])
 			} else if value.Valid {
-				m.Osname = value.String
+				_m.Osname = value.String
 			}
 		case machine.FieldOsfamily:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osfamily", values[i])
 			} else if value.Valid {
-				m.Osfamily = value.String
+				_m.Osfamily = value.String
 			}
 		case machine.FieldOsversion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osversion", values[i])
 			} else if value.Valid {
-				m.Osversion = value.String
+				_m.Osversion = value.String
 			}
 		case machine.FieldFeatureflags:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
 			} else if value.Valid {
-				m.Featureflags = value.String
+				_m.Featureflags = value.String
 			}
 		case machine.FieldHubstate:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field hubstate", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &m.Hubstate); err != nil {
+				if err := json.Unmarshal(*value, &_m.Hubstate); err != nil {
 					return fmt.Errorf("unmarshal field hubstate: %w", err)
 				}
 			}
@@ -217,12 +217,12 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field datasources", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &m.Datasources); err != nil {
+				if err := json.Unmarshal(*value, &_m.Datasources); err != nil {
 					return fmt.Errorf("unmarshal field datasources: %w", err)
 				}
 			}
 		default:
-			m.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -230,91 +230,91 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Machine.
 // This includes values selected through modifiers, order, etc.
-func (m *Machine) Value(name string) (ent.Value, error) {
-	return m.selectValues.Get(name)
+func (_m *Machine) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryAlerts queries the "alerts" edge of the Machine entity.
-func (m *Machine) QueryAlerts() *AlertQuery {
-	return NewMachineClient(m.config).QueryAlerts(m)
+func (_m *Machine) QueryAlerts() *AlertQuery {
+	return NewMachineClient(_m.config).QueryAlerts(_m)
 }
 
 // Update returns a builder for updating this Machine.
 // Note that you need to call Machine.Unwrap() before calling this method if this Machine
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (m *Machine) Update() *MachineUpdateOne {
-	return NewMachineClient(m.config).UpdateOne(m)
+func (_m *Machine) Update() *MachineUpdateOne {
+	return NewMachineClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Machine entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (m *Machine) Unwrap() *Machine {
-	_tx, ok := m.config.driver.(*txDriver)
+func (_m *Machine) Unwrap() *Machine {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Machine is not a transactional entity")
 	}
-	m.config.driver = _tx.drv
-	return m
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (m *Machine) String() string {
+func (_m *Machine) String() string {
 	var builder strings.Builder
 	builder.WriteString("Machine(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := m.LastPush; v != nil {
+	if v := _m.LastPush; v != nil {
 		builder.WriteString("last_push=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	if v := m.LastHeartbeat; v != nil {
+	if v := _m.LastHeartbeat; v != nil {
 		builder.WriteString("last_heartbeat=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("machineId=")
-	builder.WriteString(m.MachineId)
+	builder.WriteString(_m.MachineId)
 	builder.WriteString(", ")
 	builder.WriteString("password=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("ipAddress=")
-	builder.WriteString(m.IpAddress)
+	builder.WriteString(_m.IpAddress)
 	builder.WriteString(", ")
 	builder.WriteString("scenarios=")
-	builder.WriteString(m.Scenarios)
+	builder.WriteString(_m.Scenarios)
 	builder.WriteString(", ")
 	builder.WriteString("version=")
-	builder.WriteString(m.Version)
+	builder.WriteString(_m.Version)
 	builder.WriteString(", ")
 	builder.WriteString("isValidated=")
-	builder.WriteString(fmt.Sprintf("%v", m.IsValidated))
+	builder.WriteString(fmt.Sprintf("%v", _m.IsValidated))
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
-	builder.WriteString(m.AuthType)
+	builder.WriteString(_m.AuthType)
 	builder.WriteString(", ")
 	builder.WriteString("osname=")
-	builder.WriteString(m.Osname)
+	builder.WriteString(_m.Osname)
 	builder.WriteString(", ")
 	builder.WriteString("osfamily=")
-	builder.WriteString(m.Osfamily)
+	builder.WriteString(_m.Osfamily)
 	builder.WriteString(", ")
 	builder.WriteString("osversion=")
-	builder.WriteString(m.Osversion)
+	builder.WriteString(_m.Osversion)
 	builder.WriteString(", ")
 	builder.WriteString("featureflags=")
-	builder.WriteString(m.Featureflags)
+	builder.WriteString(_m.Featureflags)
 	builder.WriteString(", ")
 	builder.WriteString("hubstate=")
-	builder.WriteString(fmt.Sprintf("%v", m.Hubstate))
+	builder.WriteString(fmt.Sprintf("%v", _m.Hubstate))
 	builder.WriteString(", ")
 	builder.WriteString("datasources=")
-	builder.WriteString(fmt.Sprintf("%v", m.Datasources))
+	builder.WriteString(fmt.Sprintf("%v", _m.Datasources))
 	builder.WriteByte(')')
 	return builder.String()
 }

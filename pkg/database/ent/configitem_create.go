@@ -23,59 +23,59 @@ type ConfigItemCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (cic *ConfigItemCreate) SetCreatedAt(t time.Time) *ConfigItemCreate {
-	cic.mutation.SetCreatedAt(t)
-	return cic
+func (_c *ConfigItemCreate) SetCreatedAt(v time.Time) *ConfigItemCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (cic *ConfigItemCreate) SetNillableCreatedAt(t *time.Time) *ConfigItemCreate {
-	if t != nil {
-		cic.SetCreatedAt(*t)
+func (_c *ConfigItemCreate) SetNillableCreatedAt(v *time.Time) *ConfigItemCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return cic
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (cic *ConfigItemCreate) SetUpdatedAt(t time.Time) *ConfigItemCreate {
-	cic.mutation.SetUpdatedAt(t)
-	return cic
+func (_c *ConfigItemCreate) SetUpdatedAt(v time.Time) *ConfigItemCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (cic *ConfigItemCreate) SetNillableUpdatedAt(t *time.Time) *ConfigItemCreate {
-	if t != nil {
-		cic.SetUpdatedAt(*t)
+func (_c *ConfigItemCreate) SetNillableUpdatedAt(v *time.Time) *ConfigItemCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return cic
+	return _c
 }
 
 // SetName sets the "name" field.
-func (cic *ConfigItemCreate) SetName(s string) *ConfigItemCreate {
-	cic.mutation.SetName(s)
-	return cic
+func (_c *ConfigItemCreate) SetName(v string) *ConfigItemCreate {
+	_c.mutation.SetName(v)
+	return _c
 }
 
 // SetValue sets the "value" field.
-func (cic *ConfigItemCreate) SetValue(s string) *ConfigItemCreate {
-	cic.mutation.SetValue(s)
-	return cic
+func (_c *ConfigItemCreate) SetValue(v string) *ConfigItemCreate {
+	_c.mutation.SetValue(v)
+	return _c
 }
 
 // Mutation returns the ConfigItemMutation object of the builder.
-func (cic *ConfigItemCreate) Mutation() *ConfigItemMutation {
-	return cic.mutation
+func (_c *ConfigItemCreate) Mutation() *ConfigItemMutation {
+	return _c.mutation
 }
 
 // Save creates the ConfigItem in the database.
-func (cic *ConfigItemCreate) Save(ctx context.Context) (*ConfigItem, error) {
-	cic.defaults()
-	return withHooks(ctx, cic.sqlSave, cic.mutation, cic.hooks)
+func (_c *ConfigItemCreate) Save(ctx context.Context) (*ConfigItem, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (cic *ConfigItemCreate) SaveX(ctx context.Context) *ConfigItem {
-	v, err := cic.Save(ctx)
+func (_c *ConfigItemCreate) SaveX(ctx context.Context) *ConfigItem {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -83,53 +83,53 @@ func (cic *ConfigItemCreate) SaveX(ctx context.Context) *ConfigItem {
 }
 
 // Exec executes the query.
-func (cic *ConfigItemCreate) Exec(ctx context.Context) error {
-	_, err := cic.Save(ctx)
+func (_c *ConfigItemCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (cic *ConfigItemCreate) ExecX(ctx context.Context) {
-	if err := cic.Exec(ctx); err != nil {
+func (_c *ConfigItemCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (cic *ConfigItemCreate) defaults() {
-	if _, ok := cic.mutation.CreatedAt(); !ok {
+func (_c *ConfigItemCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := configitem.DefaultCreatedAt()
-		cic.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := cic.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := configitem.DefaultUpdatedAt()
-		cic.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (cic *ConfigItemCreate) check() error {
-	if _, ok := cic.mutation.CreatedAt(); !ok {
+func (_c *ConfigItemCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ConfigItem.created_at"`)}
 	}
-	if _, ok := cic.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ConfigItem.updated_at"`)}
 	}
-	if _, ok := cic.mutation.Name(); !ok {
+	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "ConfigItem.name"`)}
 	}
-	if _, ok := cic.mutation.Value(); !ok {
+	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "ConfigItem.value"`)}
 	}
 	return nil
 }
 
-func (cic *ConfigItemCreate) sqlSave(ctx context.Context) (*ConfigItem, error) {
-	if err := cic.check(); err != nil {
+func (_c *ConfigItemCreate) sqlSave(ctx context.Context) (*ConfigItem, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := cic.createSpec()
-	if err := sqlgraph.CreateNode(ctx, cic.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -137,30 +137,30 @@ func (cic *ConfigItemCreate) sqlSave(ctx context.Context) (*ConfigItem, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	cic.mutation.id = &_node.ID
-	cic.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (cic *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
+func (_c *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
 	var (
-		_node = &ConfigItem{config: cic.config}
+		_node = &ConfigItem{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(configitem.Table, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = cic.conflict
-	if value, ok := cic.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(configitem.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := cic.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := cic.mutation.Name(); ok {
+	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(configitem.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := cic.mutation.Value(); ok {
+	if value, ok := _c.mutation.Value(); ok {
 		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 		_node.Value = value
 	}
@@ -183,10 +183,10 @@ func (cic *ConfigItemCreate) createSpec() (*ConfigItem, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (cic *ConfigItemCreate) OnConflict(opts ...sql.ConflictOption) *ConfigItemUpsertOne {
-	cic.conflict = opts
+func (_c *ConfigItemCreate) OnConflict(opts ...sql.ConflictOption) *ConfigItemUpsertOne {
+	_c.conflict = opts
 	return &ConfigItemUpsertOne{
-		create: cic,
+		create: _c,
 	}
 }
 
@@ -196,10 +196,10 @@ func (cic *ConfigItemCreate) OnConflict(opts ...sql.ConflictOption) *ConfigItemU
 //	client.ConfigItem.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (cic *ConfigItemCreate) OnConflictColumns(columns ...string) *ConfigItemUpsertOne {
-	cic.conflict = append(cic.conflict, sql.ConflictColumns(columns...))
+func (_c *ConfigItemCreate) OnConflictColumns(columns ...string) *ConfigItemUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &ConfigItemUpsertOne{
-		create: cic,
+		create: _c,
 	}
 }
 
@@ -358,16 +358,16 @@ type ConfigItemCreateBulk struct {
 }
 
 // Save creates the ConfigItem entities in the database.
-func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, error) {
-	if cicb.err != nil {
-		return nil, cicb.err
+func (_c *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(cicb.builders))
-	nodes := make([]*ConfigItem, len(cicb.builders))
-	mutators := make([]Mutator, len(cicb.builders))
-	for i := range cicb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*ConfigItem, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := cicb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*ConfigItemMutation)
@@ -381,12 +381,12 @@ func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, erro
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, cicb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = cicb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, cicb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -410,7 +410,7 @@ func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, erro
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, cicb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -418,8 +418,8 @@ func (cicb *ConfigItemCreateBulk) Save(ctx context.Context) ([]*ConfigItem, erro
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (cicb *ConfigItemCreateBulk) SaveX(ctx context.Context) []*ConfigItem {
-	v, err := cicb.Save(ctx)
+func (_c *ConfigItemCreateBulk) SaveX(ctx context.Context) []*ConfigItem {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -427,14 +427,14 @@ func (cicb *ConfigItemCreateBulk) SaveX(ctx context.Context) []*ConfigItem {
 }
 
 // Exec executes the query.
-func (cicb *ConfigItemCreateBulk) Exec(ctx context.Context) error {
-	_, err := cicb.Save(ctx)
+func (_c *ConfigItemCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (cicb *ConfigItemCreateBulk) ExecX(ctx context.Context) {
-	if err := cicb.Exec(ctx); err != nil {
+func (_c *ConfigItemCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -454,10 +454,10 @@ func (cicb *ConfigItemCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (cicb *ConfigItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *ConfigItemUpsertBulk {
-	cicb.conflict = opts
+func (_c *ConfigItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *ConfigItemUpsertBulk {
+	_c.conflict = opts
 	return &ConfigItemUpsertBulk{
-		create: cicb,
+		create: _c,
 	}
 }
 
@@ -467,10 +467,10 @@ func (cicb *ConfigItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *Config
 //	client.ConfigItem.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (cicb *ConfigItemCreateBulk) OnConflictColumns(columns ...string) *ConfigItemUpsertBulk {
-	cicb.conflict = append(cicb.conflict, sql.ConflictColumns(columns...))
+func (_c *ConfigItemCreateBulk) OnConflictColumns(columns ...string) *ConfigItemUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &ConfigItemUpsertBulk{
-		create: cicb,
+		create: _c,
 	}
 }
 
