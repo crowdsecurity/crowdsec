@@ -154,7 +154,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
+func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, dbFunc func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
@@ -171,7 +171,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(ctx, filters)
+		data, err := dbFunc(ctx, now, filters)
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, time.Time, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	limit := 30000 // FIXME : make it configurable
 	needComma := false
 	lastId := 0
@@ -223,7 +223,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(ctx, lastPull, filters)
+		data, err := dbFunc(ctx, now, lastPull, filters)
 		if err != nil {
 			return err
 		}
@@ -261,6 +261,8 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, filters map[string][]string) error {
 	var err error
 
+	now := time.Now().UTC()
+
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
@@ -269,7 +271,7 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 	// if the blocker just started, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
 		// Active decisions
-		err := writeStartupDecisions(gctx, filters, c.DBClient.QueryAllDecisionsWithFilters)
+		err := writeStartupDecisions(gctx, now, filters, c.DBClient.QueryAllDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for startup: %v", err)
 			gctx.Writer.WriteString(`], "deleted": []}`)
@@ -280,7 +282,7 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 
 		gctx.Writer.WriteString(`], "deleted": [`)
 		// Expired decisions
-		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
+		err = writeStartupDecisions(gctx, now, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for startup: %v", err)
 			gctx.Writer.WriteString(`]}`)
@@ -292,7 +294,7 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 		gctx.Writer.WriteString(`]}`)
 		gctx.Writer.Flush()
 	} else {
-		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
+		err = writeDeltaDecisions(gctx, now, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for delta: %v", err)
 			gctx.Writer.WriteString(`], "deleted": []}`)
@@ -303,13 +305,14 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 
 		gctx.Writer.WriteString(`], "deleted": [`)
 
+		// Use a 2-second overlap to avoid missing decisions that expired around the last pull time
 		var expiredSince *time.Time
 		if bouncerInfo.LastPull != nil {
 			since := bouncerInfo.LastPull.Add(-2 * time.Second)
 			expiredSince = &since
 		}
 
-		err = writeDeltaDecisions(gctx, filters, expiredSince, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
+		err = writeDeltaDecisions(gctx, now, filters, expiredSince, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for delta: %v", err)
 			gctx.Writer.WriteString("]}")
