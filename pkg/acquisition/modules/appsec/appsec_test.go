@@ -33,12 +33,12 @@ type appsecRuleTest struct {
 	post_eval              []appsec.Hook
 	on_match               []appsec.Hook
 	// Phase-scoped hooks (dispatched only during the matching phase)
-	inband_on_match      []appsec.Hook
-	inband_pre_eval      []appsec.Hook
-	inband_post_eval     []appsec.Hook
-	outofband_on_match   []appsec.Hook
-	outofband_pre_eval   []appsec.Hook
-	outofband_post_eval  []appsec.Hook
+	inband_on_match        []appsec.Hook
+	inband_pre_eval        []appsec.Hook
+	inband_post_eval       []appsec.Hook
+	outofband_on_match     []appsec.Hook
+	outofband_pre_eval     []appsec.Hook
+	outofband_post_eval    []appsec.Hook
 	BouncerBlockedHTTPCode int
 	UserBlockedHTTPCode    int
 	UserPassedHTTPCode     int
