@@ -52,6 +52,30 @@ func (s hookStage) String() string {
 	}
 }
 
+// PhaseHooks bundles the three phase-scoped hook lists (pre_eval, post_eval,
+// on_match) that run during request evaluation. OnLoad is excluded because it
+// runs once at startup and is not phase-scoped.
+type PhaseHooks struct {
+	PreEval  []Hook
+	PostEval []Hook
+	OnMatch  []Hook
+}
+
+// get returns the hook list for a given stage, or nil for stages that are not
+// phase-scoped (hookOnLoad or unknown).
+func (p *PhaseHooks) get(stage hookStage) []Hook {
+	switch stage {
+	case hookPreEval:
+		return p.PreEval
+	case hookPostEval:
+		return p.PostEval
+	case hookOnMatch:
+		return p.OnMatch
+	default:
+		return nil
+	}
+}
+
 const (
 	BanRemediation     = "ban"
 	CaptchaRemediation = "captcha"
@@ -190,19 +214,15 @@ type AppsecRuntimeConfig struct {
 
 	InBandRules []AppsecCollection
 
-	DefaultRemediation        string
-	RemediationByTag          map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
-	RemediationById           map[int]string
-	CompiledOnLoad            []Hook
-	CompiledPreEval           []Hook
-	CompiledPostEval          []Hook
-	CompiledOnMatch           []Hook
-	CompiledInBandPreEval     []Hook
-	CompiledInBandPostEval    []Hook
-	CompiledInBandOnMatch     []Hook
-	CompiledOutOfBandPreEval  []Hook
-	CompiledOutOfBandPostEval []Hook
-	CompiledOutOfBandOnMatch  []Hook
+	DefaultRemediation string
+	RemediationByTag   map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	RemediationById    map[int]string
+
+	CompiledOnLoad []Hook     // runs once at startup, not phase-scoped
+	CommonHooks    PhaseHooks // apply to both phases
+	InBandHooks    PhaseHooks // only run during in-band
+	OutOfBandHooks PhaseHooks // only run during out-of-band
+
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
 	// CorazaLogger              debuglog.Logger
@@ -466,49 +486,34 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 	return compiled, nil
 }
 
-func buildSharedHooks(wc *AppsecConfig, ret *AppsecRuntimeConfig) error {
-	var err error
+// buildPhaseHooks compiles pre_eval / post_eval / on_match hook lists into a
+// PhaseHooks. phaseName is only used to wrap errors ("" for the shared section).
+func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook) (PhaseHooks, error) {
+	var (
+		out PhaseHooks
+		err error
+	)
 
-	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad); err != nil {
-		return err
+	wrap := func(e error) error {
+		if phaseName == "" || e == nil {
+			return e
+		}
+		return fmt.Errorf("%s: %w", phaseName, e)
 	}
 
-	if ret.CompiledPreEval, err = buildHookList(wc.PreEval, hookPreEval); err != nil {
-		return err
+	if out.PreEval, err = buildHookList(pre, hookPreEval); err != nil {
+		return PhaseHooks{}, wrap(err)
 	}
 
-	if ret.CompiledPostEval, err = buildHookList(wc.PostEval, hookPostEval); err != nil {
-		return err
+	if out.PostEval, err = buildHookList(post, hookPostEval); err != nil {
+		return PhaseHooks{}, wrap(err)
 	}
 
-	if ret.CompiledOnMatch, err = buildHookList(wc.OnMatch, hookOnMatch); err != nil {
-		return err
+	if out.OnMatch, err = buildHookList(onMatch, hookOnMatch); err != nil {
+		return PhaseHooks{}, wrap(err)
 	}
 
-	return nil
-}
-
-func buildPhaseHooks(phase *AppsecPhaseConfig, phaseName string,
-	preEval *[]Hook, postEval *[]Hook, onMatch *[]Hook) error {
-	if phase == nil {
-		return nil
-	}
-
-	var err error
-
-	if *preEval, err = buildHookList(phase.PreEval, hookPreEval); err != nil {
-		return fmt.Errorf("%s: %w", phaseName, err)
-	}
-
-	if *postEval, err = buildHookList(phase.PostEval, hookPostEval); err != nil {
-		return fmt.Errorf("%s: %w", phaseName, err)
-	}
-
-	if *onMatch, err = buildHookList(phase.OnMatch, hookOnMatch); err != nil {
-		return fmt.Errorf("%s: %w", phaseName, err)
-	}
-
-	return nil
+	return out, nil
 }
 
 func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
@@ -596,19 +601,28 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
 	// load hooks
-	if err := buildSharedHooks(wc, ret); err != nil {
+	var err error
+
+	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad); err != nil {
 		return nil, err
 	}
 
-	// compile phase-scoped hooks
-	if err := buildPhaseHooks(wc.InBand, "inband",
-		&ret.CompiledInBandPreEval, &ret.CompiledInBandPostEval, &ret.CompiledInBandOnMatch); err != nil {
+	if ret.CommonHooks, err = buildPhaseHooks("", wc.PreEval, wc.PostEval, wc.OnMatch); err != nil {
 		return nil, err
 	}
 
-	if err := buildPhaseHooks(wc.OutOfBand, "outofband",
-		&ret.CompiledOutOfBandPreEval, &ret.CompiledOutOfBandPostEval, &ret.CompiledOutOfBandOnMatch); err != nil {
-		return nil, err
+	if wc.InBand != nil {
+		if ret.InBandHooks, err = buildPhaseHooks("inband",
+			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch); err != nil {
+			return nil, err
+		}
+	}
+
+	if wc.OutOfBand != nil {
+		if ret.OutOfBandHooks, err = buildPhaseHooks("outofband",
+			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch); err != nil {
+			return nil, err
+		}
 	}
 
 	// variable tracking
@@ -676,58 +690,35 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load")
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	env := GetOnMatchEnv(w, state, request, evt)
+// runPhaseHooks runs the common hooks for the given stage, then dispatches to
+// the in-band or out-of-band phase hooks depending on the request band.
+func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, request *ParsedRequest) error {
+	label := stage.String()
 
-	if err := w.processHooks(w.CompiledOnMatch, env, "on_match"); err != nil {
+	if err := w.processHooks(w.CommonHooks.get(stage), env, label); err != nil {
 		return err
 	}
 
-	if request.IsInBand {
-		return w.processHooks(w.CompiledInBandOnMatch, env, "on_match[inband]")
-	}
-
-	if request.IsOutBand {
-		return w.processHooks(w.CompiledOutOfBandOnMatch, env, "on_match[outofband]")
+	switch {
+	case request.IsInBand:
+		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]")
+	case request.IsOutBand:
+		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]")
 	}
 
 	return nil
+}
+
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
+	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	env := GetPreEvalEnv(w, state, request)
-
-	if err := w.processHooks(w.CompiledPreEval, env, "pre_eval"); err != nil {
-		return err
-	}
-
-	if request.IsInBand {
-		return w.processHooks(w.CompiledInBandPreEval, env, "pre_eval[inband]")
-	}
-
-	if request.IsOutBand {
-		return w.processHooks(w.CompiledOutOfBandPreEval, env, "pre_eval[outofband]")
-	}
-
-	return nil
+	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	env := GetPostEvalEnv(w, state, request)
-
-	if err := w.processHooks(w.CompiledPostEval, env, "post_eval"); err != nil {
-		return err
-	}
-
-	if request.IsInBand {
-		return w.processHooks(w.CompiledInBandPostEval, env, "post_eval[inband]")
-	}
-
-	if request.IsOutBand {
-		return w.processHooks(w.CompiledOutOfBandPostEval, env, "post_eval[outofband]")
-	}
-
-	return nil
+	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
