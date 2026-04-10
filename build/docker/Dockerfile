@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.25-alpine3.21 AS build
+FROM docker.io/golang:1.26-alpine3.23 AS build
 
 ARG BUILD_VERSION
 
@@ -28,11 +28,11 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_
     cscli parsers install crowdsecurity/whitelists && \
     echo '{"source": "file", "filename": "/does/not/exist", "labels": {"type": "syslog"}}' > /etc/crowdsec/acquis.yaml
 
-    # we create a useless acquis.yaml, which will be overridden by a mounted volume
-    # in most cases, but is still required for the container to start during tests
+# we create a useless acquis.yaml, which will be overridden by a mounted volume
+# in most cases, but is still required for the container to start during tests
 
-    # In case we need to remove agents here..
-    # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
+# In case we need to remove agents here..
+# cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
 FROM docker.io/alpine:3.21 AS slim
 

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -111,18 +110,18 @@ func TestAlertsListAsMachine(t *testing.T) {
 
 	expected := models.GetAlertsResponse{
 		&models.Alert{
-			Capacity:  ptr.Of(int32(5)),
+			Capacity:  new(int32(5)),
 			CreatedAt: "2020-11-28T10:20:47+01:00",
 			Decisions: []*models.Decision{
 				{
-					Duration: ptr.Of("59m49.264032632s"),
+					Duration: new("59m49.264032632s"),
 					ID:       1,
-					Origin:   ptr.Of("crowdsec"),
+					Origin:   new("crowdsec"),
 					Scenario: &tscenario,
 
 					Scope:     &tscope,
-					Simulated: ptr.Of(false),
-					Type:      ptr.Of("ban"),
+					Simulated: new(false),
+					Type:      new("ban"),
 					Value:     &tvalue,
 				},
 			},
@@ -153,16 +152,16 @@ func TestAlertsListAsMachine(t *testing.T) {
 					Timestamp: &ttimestamp,
 				},
 			},
-			EventsCount:     ptr.Of(int32(6)),
+			EventsCount:     new(int32(6)),
 			ID:              1,
-			Leakspeed:       ptr.Of("10s"),
+			Leakspeed:       new("10s"),
 			MachineID:       "test",
 			Message:         &tmessage,
 			Remediation:     false,
 			Scenario:        &tscenario,
-			ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
-			ScenarioVersion: ptr.Of("0.1"),
-			Simulated:       ptr.Of(false),
+			ScenarioHash:    new("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
+			ScenarioVersion: new("0.1"),
+			Simulated:       new(false),
 			Source: &models.Source{
 				AsName:    "Cloudflare Inc",
 				AsNumber:  "",
@@ -174,8 +173,8 @@ func TestAlertsListAsMachine(t *testing.T) {
 				Scope:     &tscope,
 				Value:     &tvalue,
 			},
-			StartAt: ptr.Of("2020-11-28 10:20:46.842701127 +0100 +0100"),
-			StopAt:  ptr.Of("2020-11-28 10:20:46.845621385 +0100 +0100"),
+			StartAt: new("2020-11-28 10:20:46.842701127 +0100 +0100"),
+			StopAt:  new("2020-11-28 10:20:46.845621385 +0100 +0100"),
 		},
 	}
 
@@ -288,17 +287,17 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	ttimestamp := "2020-11-28 10:20:46 +0000 UTC"
 
 	expected := &models.Alert{
-		Capacity:  ptr.Of(int32(5)),
+		Capacity:  new(int32(5)),
 		CreatedAt: "2020-11-28T10:20:47+01:00",
 		Decisions: []*models.Decision{
 			{
-				Duration: ptr.Of("59m49.264032632s"),
+				Duration: new("59m49.264032632s"),
 				ID:       1,
-				Origin:   ptr.Of("crowdsec"),
+				Origin:   new("crowdsec"),
 				Scenario: &tscenario,
 
 				Scope:     &tscope,
-				Simulated: ptr.Of(false),
+				Simulated: new(false),
 				Type:      &ttype,
 				Value:     &tvalue,
 			},
@@ -330,16 +329,16 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				Timestamp: &ttimestamp,
 			},
 		},
-		EventsCount:     ptr.Of(int32(6)),
+		EventsCount:     new(int32(6)),
 		ID:              1,
-		Leakspeed:       ptr.Of("10s"),
+		Leakspeed:       new("10s"),
 		MachineID:       "test",
-		Message:         ptr.Of("Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 2.920062ms) at 2020-11-28 10:20:46.845619968 +0100 CET m=+5.903899761"),
+		Message:         new("Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 2.920062ms) at 2020-11-28 10:20:46.845619968 +0100 CET m=+5.903899761"),
 		Remediation:     false,
 		Scenario:        &tscenario,
-		ScenarioHash:    ptr.Of("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
-		ScenarioVersion: ptr.Of("0.1"),
-		Simulated:       ptr.Of(false),
+		ScenarioHash:    new("4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f"),
+		ScenarioVersion: new("0.1"),
+		Simulated:       new(false),
 		Source: &models.Source{
 			AsName:    "Cloudflare Inc",
 			AsNumber:  "",
@@ -351,8 +350,8 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			Scope:     &tscope,
 			Value:     &tvalue,
 		},
-		StartAt: ptr.Of("2020-11-28 10:20:46.842701127 +0100 +0100"),
-		StopAt:  ptr.Of("2020-11-28 10:20:46.845621385 +0100 +0100"),
+		StartAt: new("2020-11-28 10:20:46.842701127 +0100 +0100"),
+		StopAt:  new("2020-11-28 10:20:46.845621385 +0100 +0100"),
 	}
 
 	alerts, resp, err := client.Alerts.GetByID(ctx, 1)

@@ -48,7 +48,7 @@ func (*ConfigItem) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the ConfigItem fields.
-func (ci *ConfigItem) assignValues(columns []string, values []any) error {
+func (_m *ConfigItem) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -59,33 +59,33 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ci.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case configitem.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ci.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case configitem.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ci.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case configitem.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				ci.Name = value.String
+				_m.Name = value.String
 			}
 		case configitem.FieldValue:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value.Valid {
-				ci.Value = value.String
+				_m.Value = value.String
 			}
 		default:
-			ci.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -93,44 +93,44 @@ func (ci *ConfigItem) assignValues(columns []string, values []any) error {
 
 // GetValue returns the ent.Value that was dynamically selected and assigned to the ConfigItem.
 // This includes values selected through modifiers, order, etc.
-func (ci *ConfigItem) GetValue(name string) (ent.Value, error) {
-	return ci.selectValues.Get(name)
+func (_m *ConfigItem) GetValue(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this ConfigItem.
 // Note that you need to call ConfigItem.Unwrap() before calling this method if this ConfigItem
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (ci *ConfigItem) Update() *ConfigItemUpdateOne {
-	return NewConfigItemClient(ci.config).UpdateOne(ci)
+func (_m *ConfigItem) Update() *ConfigItemUpdateOne {
+	return NewConfigItemClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the ConfigItem entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (ci *ConfigItem) Unwrap() *ConfigItem {
-	_tx, ok := ci.config.driver.(*txDriver)
+func (_m *ConfigItem) Unwrap() *ConfigItem {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: ConfigItem is not a transactional entity")
 	}
-	ci.config.driver = _tx.drv
-	return ci
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (ci *ConfigItem) String() string {
+func (_m *ConfigItem) String() string {
 	var builder strings.Builder
 	builder.WriteString("ConfigItem(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", ci.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(ci.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(ci.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(ci.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("value=")
-	builder.WriteString(ci.Value)
+	builder.WriteString(_m.Value)
 	builder.WriteByte(')')
 	return builder.String()
 }

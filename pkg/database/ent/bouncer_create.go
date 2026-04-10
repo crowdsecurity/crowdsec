@@ -23,205 +23,205 @@ type BouncerCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (bc *BouncerCreate) SetCreatedAt(t time.Time) *BouncerCreate {
-	bc.mutation.SetCreatedAt(t)
-	return bc
+func (_c *BouncerCreate) SetCreatedAt(v time.Time) *BouncerCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableCreatedAt(t *time.Time) *BouncerCreate {
-	if t != nil {
-		bc.SetCreatedAt(*t)
+func (_c *BouncerCreate) SetNillableCreatedAt(v *time.Time) *BouncerCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (bc *BouncerCreate) SetUpdatedAt(t time.Time) *BouncerCreate {
-	bc.mutation.SetUpdatedAt(t)
-	return bc
+func (_c *BouncerCreate) SetUpdatedAt(v time.Time) *BouncerCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableUpdatedAt(t *time.Time) *BouncerCreate {
-	if t != nil {
-		bc.SetUpdatedAt(*t)
+func (_c *BouncerCreate) SetNillableUpdatedAt(v *time.Time) *BouncerCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetName sets the "name" field.
-func (bc *BouncerCreate) SetName(s string) *BouncerCreate {
-	bc.mutation.SetName(s)
-	return bc
+func (_c *BouncerCreate) SetName(v string) *BouncerCreate {
+	_c.mutation.SetName(v)
+	return _c
 }
 
 // SetAPIKey sets the "api_key" field.
-func (bc *BouncerCreate) SetAPIKey(s string) *BouncerCreate {
-	bc.mutation.SetAPIKey(s)
-	return bc
+func (_c *BouncerCreate) SetAPIKey(v string) *BouncerCreate {
+	_c.mutation.SetAPIKey(v)
+	return _c
 }
 
 // SetRevoked sets the "revoked" field.
-func (bc *BouncerCreate) SetRevoked(b bool) *BouncerCreate {
-	bc.mutation.SetRevoked(b)
-	return bc
+func (_c *BouncerCreate) SetRevoked(v bool) *BouncerCreate {
+	_c.mutation.SetRevoked(v)
+	return _c
 }
 
 // SetIPAddress sets the "ip_address" field.
-func (bc *BouncerCreate) SetIPAddress(s string) *BouncerCreate {
-	bc.mutation.SetIPAddress(s)
-	return bc
+func (_c *BouncerCreate) SetIPAddress(v string) *BouncerCreate {
+	_c.mutation.SetIPAddress(v)
+	return _c
 }
 
 // SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableIPAddress(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetIPAddress(*s)
+func (_c *BouncerCreate) SetNillableIPAddress(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetIPAddress(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetType sets the "type" field.
-func (bc *BouncerCreate) SetType(s string) *BouncerCreate {
-	bc.mutation.SetType(s)
-	return bc
+func (_c *BouncerCreate) SetType(v string) *BouncerCreate {
+	_c.mutation.SetType(v)
+	return _c
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableType(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetType(*s)
+func (_c *BouncerCreate) SetNillableType(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetType(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetVersion sets the "version" field.
-func (bc *BouncerCreate) SetVersion(s string) *BouncerCreate {
-	bc.mutation.SetVersion(s)
-	return bc
+func (_c *BouncerCreate) SetVersion(v string) *BouncerCreate {
+	_c.mutation.SetVersion(v)
+	return _c
 }
 
 // SetNillableVersion sets the "version" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetVersion(*s)
+func (_c *BouncerCreate) SetNillableVersion(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetVersion(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetLastPull sets the "last_pull" field.
-func (bc *BouncerCreate) SetLastPull(t time.Time) *BouncerCreate {
-	bc.mutation.SetLastPull(t)
-	return bc
+func (_c *BouncerCreate) SetLastPull(v time.Time) *BouncerCreate {
+	_c.mutation.SetLastPull(v)
+	return _c
 }
 
 // SetNillableLastPull sets the "last_pull" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableLastPull(t *time.Time) *BouncerCreate {
-	if t != nil {
-		bc.SetLastPull(*t)
+func (_c *BouncerCreate) SetNillableLastPull(v *time.Time) *BouncerCreate {
+	if v != nil {
+		_c.SetLastPull(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetAuthType sets the "auth_type" field.
-func (bc *BouncerCreate) SetAuthType(s string) *BouncerCreate {
-	bc.mutation.SetAuthType(s)
-	return bc
+func (_c *BouncerCreate) SetAuthType(v string) *BouncerCreate {
+	_c.mutation.SetAuthType(v)
+	return _c
 }
 
 // SetNillableAuthType sets the "auth_type" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableAuthType(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetAuthType(*s)
+func (_c *BouncerCreate) SetNillableAuthType(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetAuthType(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetOsname sets the "osname" field.
-func (bc *BouncerCreate) SetOsname(s string) *BouncerCreate {
-	bc.mutation.SetOsname(s)
-	return bc
+func (_c *BouncerCreate) SetOsname(v string) *BouncerCreate {
+	_c.mutation.SetOsname(v)
+	return _c
 }
 
 // SetNillableOsname sets the "osname" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableOsname(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetOsname(*s)
+func (_c *BouncerCreate) SetNillableOsname(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetOsname(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetOsfamily sets the "osfamily" field.
-func (bc *BouncerCreate) SetOsfamily(s string) *BouncerCreate {
-	bc.mutation.SetOsfamily(s)
-	return bc
+func (_c *BouncerCreate) SetOsfamily(v string) *BouncerCreate {
+	_c.mutation.SetOsfamily(v)
+	return _c
 }
 
 // SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableOsfamily(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetOsfamily(*s)
+func (_c *BouncerCreate) SetNillableOsfamily(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetOsfamily(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetOsversion sets the "osversion" field.
-func (bc *BouncerCreate) SetOsversion(s string) *BouncerCreate {
-	bc.mutation.SetOsversion(s)
-	return bc
+func (_c *BouncerCreate) SetOsversion(v string) *BouncerCreate {
+	_c.mutation.SetOsversion(v)
+	return _c
 }
 
 // SetNillableOsversion sets the "osversion" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableOsversion(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetOsversion(*s)
+func (_c *BouncerCreate) SetNillableOsversion(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetOsversion(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetFeatureflags sets the "featureflags" field.
-func (bc *BouncerCreate) SetFeatureflags(s string) *BouncerCreate {
-	bc.mutation.SetFeatureflags(s)
-	return bc
+func (_c *BouncerCreate) SetFeatureflags(v string) *BouncerCreate {
+	_c.mutation.SetFeatureflags(v)
+	return _c
 }
 
 // SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableFeatureflags(s *string) *BouncerCreate {
-	if s != nil {
-		bc.SetFeatureflags(*s)
+func (_c *BouncerCreate) SetNillableFeatureflags(v *string) *BouncerCreate {
+	if v != nil {
+		_c.SetFeatureflags(*v)
 	}
-	return bc
+	return _c
 }
 
 // SetAutoCreated sets the "auto_created" field.
-func (bc *BouncerCreate) SetAutoCreated(b bool) *BouncerCreate {
-	bc.mutation.SetAutoCreated(b)
-	return bc
+func (_c *BouncerCreate) SetAutoCreated(v bool) *BouncerCreate {
+	_c.mutation.SetAutoCreated(v)
+	return _c
 }
 
 // SetNillableAutoCreated sets the "auto_created" field if the given value is not nil.
-func (bc *BouncerCreate) SetNillableAutoCreated(b *bool) *BouncerCreate {
-	if b != nil {
-		bc.SetAutoCreated(*b)
+func (_c *BouncerCreate) SetNillableAutoCreated(v *bool) *BouncerCreate {
+	if v != nil {
+		_c.SetAutoCreated(*v)
 	}
-	return bc
+	return _c
 }
 
 // Mutation returns the BouncerMutation object of the builder.
-func (bc *BouncerCreate) Mutation() *BouncerMutation {
-	return bc.mutation
+func (_c *BouncerCreate) Mutation() *BouncerMutation {
+	return _c.mutation
 }
 
 // Save creates the Bouncer in the database.
-func (bc *BouncerCreate) Save(ctx context.Context) (*Bouncer, error) {
-	bc.defaults()
-	return withHooks(ctx, bc.sqlSave, bc.mutation, bc.hooks)
+func (_c *BouncerCreate) Save(ctx context.Context) (*Bouncer, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (bc *BouncerCreate) SaveX(ctx context.Context) *Bouncer {
-	v, err := bc.Save(ctx)
+func (_c *BouncerCreate) SaveX(ctx context.Context) *Bouncer {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -229,74 +229,74 @@ func (bc *BouncerCreate) SaveX(ctx context.Context) *Bouncer {
 }
 
 // Exec executes the query.
-func (bc *BouncerCreate) Exec(ctx context.Context) error {
-	_, err := bc.Save(ctx)
+func (_c *BouncerCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bc *BouncerCreate) ExecX(ctx context.Context) {
-	if err := bc.Exec(ctx); err != nil {
+func (_c *BouncerCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (bc *BouncerCreate) defaults() {
-	if _, ok := bc.mutation.CreatedAt(); !ok {
+func (_c *BouncerCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := bouncer.DefaultCreatedAt()
-		bc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := bc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := bouncer.DefaultUpdatedAt()
-		bc.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := bc.mutation.IPAddress(); !ok {
+	if _, ok := _c.mutation.IPAddress(); !ok {
 		v := bouncer.DefaultIPAddress
-		bc.mutation.SetIPAddress(v)
+		_c.mutation.SetIPAddress(v)
 	}
-	if _, ok := bc.mutation.AuthType(); !ok {
+	if _, ok := _c.mutation.AuthType(); !ok {
 		v := bouncer.DefaultAuthType
-		bc.mutation.SetAuthType(v)
+		_c.mutation.SetAuthType(v)
 	}
-	if _, ok := bc.mutation.AutoCreated(); !ok {
+	if _, ok := _c.mutation.AutoCreated(); !ok {
 		v := bouncer.DefaultAutoCreated
-		bc.mutation.SetAutoCreated(v)
+		_c.mutation.SetAutoCreated(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (bc *BouncerCreate) check() error {
-	if _, ok := bc.mutation.CreatedAt(); !ok {
+func (_c *BouncerCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Bouncer.created_at"`)}
 	}
-	if _, ok := bc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Bouncer.updated_at"`)}
 	}
-	if _, ok := bc.mutation.Name(); !ok {
+	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Bouncer.name"`)}
 	}
-	if _, ok := bc.mutation.APIKey(); !ok {
+	if _, ok := _c.mutation.APIKey(); !ok {
 		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required field "Bouncer.api_key"`)}
 	}
-	if _, ok := bc.mutation.Revoked(); !ok {
+	if _, ok := _c.mutation.Revoked(); !ok {
 		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "Bouncer.revoked"`)}
 	}
-	if _, ok := bc.mutation.AuthType(); !ok {
+	if _, ok := _c.mutation.AuthType(); !ok {
 		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
 	}
-	if _, ok := bc.mutation.AutoCreated(); !ok {
+	if _, ok := _c.mutation.AutoCreated(); !ok {
 		return &ValidationError{Name: "auto_created", err: errors.New(`ent: missing required field "Bouncer.auto_created"`)}
 	}
 	return nil
 }
 
-func (bc *BouncerCreate) sqlSave(ctx context.Context) (*Bouncer, error) {
-	if err := bc.check(); err != nil {
+func (_c *BouncerCreate) sqlSave(ctx context.Context) (*Bouncer, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := bc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, bc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -304,74 +304,74 @@ func (bc *BouncerCreate) sqlSave(ctx context.Context) (*Bouncer, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	bc.mutation.id = &_node.ID
-	bc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
+func (_c *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Bouncer{config: bc.config}
+		_node = &Bouncer{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(bouncer.Table, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = bc.conflict
-	if value, ok := bc.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(bouncer.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := bc.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := bc.mutation.Name(); ok {
+	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(bouncer.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := bc.mutation.APIKey(); ok {
+	if value, ok := _c.mutation.APIKey(); ok {
 		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
 		_node.APIKey = value
 	}
-	if value, ok := bc.mutation.Revoked(); ok {
+	if value, ok := _c.mutation.Revoked(); ok {
 		_spec.SetField(bouncer.FieldRevoked, field.TypeBool, value)
 		_node.Revoked = value
 	}
-	if value, ok := bc.mutation.IPAddress(); ok {
+	if value, ok := _c.mutation.IPAddress(); ok {
 		_spec.SetField(bouncer.FieldIPAddress, field.TypeString, value)
 		_node.IPAddress = value
 	}
-	if value, ok := bc.mutation.GetType(); ok {
+	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(bouncer.FieldType, field.TypeString, value)
 		_node.Type = value
 	}
-	if value, ok := bc.mutation.Version(); ok {
+	if value, ok := _c.mutation.Version(); ok {
 		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 		_node.Version = value
 	}
-	if value, ok := bc.mutation.LastPull(); ok {
+	if value, ok := _c.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 		_node.LastPull = &value
 	}
-	if value, ok := bc.mutation.AuthType(); ok {
+	if value, ok := _c.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 		_node.AuthType = value
 	}
-	if value, ok := bc.mutation.Osname(); ok {
+	if value, ok := _c.mutation.Osname(); ok {
 		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
 		_node.Osname = value
 	}
-	if value, ok := bc.mutation.Osfamily(); ok {
+	if value, ok := _c.mutation.Osfamily(); ok {
 		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
 		_node.Osfamily = value
 	}
-	if value, ok := bc.mutation.Osversion(); ok {
+	if value, ok := _c.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
 		_node.Osversion = value
 	}
-	if value, ok := bc.mutation.Featureflags(); ok {
+	if value, ok := _c.mutation.Featureflags(); ok {
 		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
 		_node.Featureflags = value
 	}
-	if value, ok := bc.mutation.AutoCreated(); ok {
+	if value, ok := _c.mutation.AutoCreated(); ok {
 		_spec.SetField(bouncer.FieldAutoCreated, field.TypeBool, value)
 		_node.AutoCreated = value
 	}
@@ -394,10 +394,10 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (bc *BouncerCreate) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertOne {
-	bc.conflict = opts
+func (_c *BouncerCreate) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertOne {
+	_c.conflict = opts
 	return &BouncerUpsertOne{
-		create: bc,
+		create: _c,
 	}
 }
 
@@ -407,10 +407,10 @@ func (bc *BouncerCreate) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertOn
 //	client.Bouncer.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (bc *BouncerCreate) OnConflictColumns(columns ...string) *BouncerUpsertOne {
-	bc.conflict = append(bc.conflict, sql.ConflictColumns(columns...))
+func (_c *BouncerCreate) OnConflictColumns(columns ...string) *BouncerUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &BouncerUpsertOne{
-		create: bc,
+		create: _c,
 	}
 }
 
@@ -936,16 +936,16 @@ type BouncerCreateBulk struct {
 }
 
 // Save creates the Bouncer entities in the database.
-func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
-	if bcb.err != nil {
-		return nil, bcb.err
+func (_c *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(bcb.builders))
-	nodes := make([]*Bouncer, len(bcb.builders))
-	mutators := make([]Mutator, len(bcb.builders))
-	for i := range bcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Bouncer, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := bcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*BouncerMutation)
@@ -959,12 +959,12 @@ func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, bcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = bcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, bcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -988,7 +988,7 @@ func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, bcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -996,8 +996,8 @@ func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (bcb *BouncerCreateBulk) SaveX(ctx context.Context) []*Bouncer {
-	v, err := bcb.Save(ctx)
+func (_c *BouncerCreateBulk) SaveX(ctx context.Context) []*Bouncer {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -1005,14 +1005,14 @@ func (bcb *BouncerCreateBulk) SaveX(ctx context.Context) []*Bouncer {
 }
 
 // Exec executes the query.
-func (bcb *BouncerCreateBulk) Exec(ctx context.Context) error {
-	_, err := bcb.Save(ctx)
+func (_c *BouncerCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bcb *BouncerCreateBulk) ExecX(ctx context.Context) {
-	if err := bcb.Exec(ctx); err != nil {
+func (_c *BouncerCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -1032,10 +1032,10 @@ func (bcb *BouncerCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (bcb *BouncerCreateBulk) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertBulk {
-	bcb.conflict = opts
+func (_c *BouncerCreateBulk) OnConflict(opts ...sql.ConflictOption) *BouncerUpsertBulk {
+	_c.conflict = opts
 	return &BouncerUpsertBulk{
-		create: bcb,
+		create: _c,
 	}
 }
 
@@ -1045,10 +1045,10 @@ func (bcb *BouncerCreateBulk) OnConflict(opts ...sql.ConflictOption) *BouncerUps
 //	client.Bouncer.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (bcb *BouncerCreateBulk) OnConflictColumns(columns ...string) *BouncerUpsertBulk {
-	bcb.conflict = append(bcb.conflict, sql.ConflictColumns(columns...))
+func (_c *BouncerCreateBulk) OnConflictColumns(columns ...string) *BouncerUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &BouncerUpsertBulk{
-		create: bcb,
+		create: _c,
 	}
 }
 

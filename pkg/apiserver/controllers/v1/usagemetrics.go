@@ -11,8 +11,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -166,8 +164,8 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	if baseMetrics.Os == nil {
 		baseMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(""),
-			Version: ptr.Of(""),
+			Name:    new(""),
+			Version: new(""),
 		}
 	}
 

@@ -158,15 +158,15 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		Family:  osFamily,
 		Version: &osVersion,
 	}
-	allMetrics.Lapi.Version = ptr.Of(version.String())
+	allMetrics.Lapi.Version = new(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
 	allMetrics.Lapi.Metrics = make([]*models.DetailedMetrics, 0)
 
 	allMetrics.Lapi.Metrics = append(allMetrics.Lapi.Metrics, &models.DetailedMetrics{
 		Meta: &models.MetricsMeta{
-			UtcNowTimestamp:   ptr.Of(time.Now().UTC().Unix()),
-			WindowSizeSeconds: ptr.Of(int64(a.metricsInterval.Seconds())),
+			UtcNowTimestamp:   new(time.Now().UTC().Unix()),
+			WindowSizeSeconds: new(int64(a.metricsInterval.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
@@ -226,7 +226,7 @@ func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
 	}
 
 	return &models.Metrics{
-		ApilVersion: ptr.Of(version.String()),
+		ApilVersion: new(version.String()),
 		Machines:    machinesInfo,
 		Bouncers:    bouncersInfo,
 	}, nil

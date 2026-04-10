@@ -74,7 +74,7 @@ func (*Meta) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Meta fields.
-func (m *Meta) assignValues(columns []string, values []any) error {
+func (_m *Meta) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -85,39 +85,39 @@ func (m *Meta) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			m.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case meta.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case meta.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case meta.FieldKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field key", values[i])
 			} else if value.Valid {
-				m.Key = value.String
+				_m.Key = value.String
 			}
 		case meta.FieldValue:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value.Valid {
-				m.Value = value.String
+				_m.Value = value.String
 			}
 		case meta.FieldAlertMetas:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field alert_metas", values[i])
 			} else if value.Valid {
-				m.AlertMetas = int(value.Int64)
+				_m.AlertMetas = int(value.Int64)
 			}
 		default:
-			m.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -125,52 +125,52 @@ func (m *Meta) assignValues(columns []string, values []any) error {
 
 // GetValue returns the ent.Value that was dynamically selected and assigned to the Meta.
 // This includes values selected through modifiers, order, etc.
-func (m *Meta) GetValue(name string) (ent.Value, error) {
-	return m.selectValues.Get(name)
+func (_m *Meta) GetValue(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryOwner queries the "owner" edge of the Meta entity.
-func (m *Meta) QueryOwner() *AlertQuery {
-	return NewMetaClient(m.config).QueryOwner(m)
+func (_m *Meta) QueryOwner() *AlertQuery {
+	return NewMetaClient(_m.config).QueryOwner(_m)
 }
 
 // Update returns a builder for updating this Meta.
 // Note that you need to call Meta.Unwrap() before calling this method if this Meta
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (m *Meta) Update() *MetaUpdateOne {
-	return NewMetaClient(m.config).UpdateOne(m)
+func (_m *Meta) Update() *MetaUpdateOne {
+	return NewMetaClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Meta entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (m *Meta) Unwrap() *Meta {
-	_tx, ok := m.config.driver.(*txDriver)
+func (_m *Meta) Unwrap() *Meta {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Meta is not a transactional entity")
 	}
-	m.config.driver = _tx.drv
-	return m
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (m *Meta) String() string {
+func (_m *Meta) String() string {
 	var builder strings.Builder
 	builder.WriteString("Meta(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("key=")
-	builder.WriteString(m.Key)
+	builder.WriteString(_m.Key)
 	builder.WriteString(", ")
 	builder.WriteString("value=")
-	builder.WriteString(m.Value)
+	builder.WriteString(_m.Value)
 	builder.WriteString(", ")
 	builder.WriteString("alert_metas=")
-	builder.WriteString(fmt.Sprintf("%v", m.AlertMetas))
+	builder.WriteString(fmt.Sprintf("%v", _m.AlertMetas))
 	builder.WriteByte(')')
 	return builder.String()
 }
