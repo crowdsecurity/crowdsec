@@ -8,6 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func newTestConfig() AppsecConfig {
@@ -210,8 +212,8 @@ inband:
 }
 
 func TestLoadByPathPhaseRulesNormalized(t *testing.T) {
-	// Verify that rules from phase sections are moved to flat fields
-	// and the phase section's Rules field is cleared
+	// Verify that rules and variables_tracking from phase sections are moved
+	// to flat fields, and the phase section's fields are cleared afterward.
 	cfg := newTestConfig()
 	f := writeTempYAML(t, `
 name: test-normalize
@@ -219,14 +221,30 @@ inband:
   rules:
     - ruleA
     - ruleB
+  variables_tracking:
+    - tx.anomaly_score
 outofband:
   rules:
     - ruleC
 `)
 
 	require.NoError(t, cfg.LoadByPath(f))
+
+	// Rules moved to flat fields
 	assert.Equal(t, []string{"ruleA", "ruleB"}, cfg.InBandRules)
 	assert.Equal(t, []string{"ruleC"}, cfg.OutOfBandRules)
+
+	// Phase config objects survive (they may still hold hooks)
+	require.NotNil(t, cfg.InBand)
+	require.NotNil(t, cfg.OutOfBand)
+
+	// Rules cleared from phase sections after normalization
+	assert.Nil(t, cfg.InBand.Rules)
+	assert.Nil(t, cfg.OutOfBand.Rules)
+
+	// variables_tracking also normalized
+	assert.Contains(t, cfg.VariablesTracking, "tx.anomaly_score")
+	assert.Nil(t, cfg.InBand.VariablesTracking)
 }
 
 func TestLoadByPathEmptyPhaseSection(t *testing.T) {
@@ -239,4 +257,91 @@ inband:
 
 	require.NoError(t, cfg.LoadByPath(f))
 	assert.Empty(t, cfg.InBandRules)
+}
+
+func TestBuildPopulatesPhaseHooks(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		// Shared hooks
+		PreEval:  []Hook{{Apply: []string{"SetRemediationByTag('foo', 'captcha')"}}},
+		PostEval: []Hook{{Apply: []string{"DumpRequest()"}}},
+		OnMatch:  []Hook{{Apply: []string{"SetReturnCode(418)"}}},
+		// InBand hooks
+		InBand: &AppsecPhaseConfig{
+			PreEval: []Hook{{Apply: []string{"SetRemediationByTag('bar', 'ban')"}}},
+			OnMatch: []Hook{{Apply: []string{"SetReturnCode(413)"}}},
+		},
+		// OutOfBand hooks
+		OutOfBand: &AppsecPhaseConfig{
+			PostEval: []Hook{{Apply: []string{"DumpRequest()"}}},
+		},
+	}
+
+	hub := &cwhub.Hub{}
+	rt, err := cfg.Build(hub)
+	require.NoError(t, err)
+
+	// Common hooks populated
+	assert.Len(t, rt.CommonHooks.PreEval, 1)
+	assert.Len(t, rt.CommonHooks.PostEval, 1)
+	assert.Len(t, rt.CommonHooks.OnMatch, 1)
+
+	// InBand hooks populated
+	assert.Len(t, rt.InBandHooks.PreEval, 1)
+	assert.Empty(t, rt.InBandHooks.PostEval)
+	assert.Len(t, rt.InBandHooks.OnMatch, 1)
+
+	// OutOfBand hooks populated
+	assert.Empty(t, rt.OutOfBandHooks.PreEval)
+	assert.Len(t, rt.OutOfBandHooks.PostEval, 1)
+	assert.Empty(t, rt.OutOfBandHooks.OnMatch)
+
+	// Expressions are actually compiled
+	assert.NotNil(t, rt.CommonHooks.PreEval[0].ApplyExpr)
+	assert.NotNil(t, rt.InBandHooks.OnMatch[0].ApplyExpr)
+}
+
+func TestBuildNilPhaseConfig(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OnMatch:            []Hook{{Apply: []string{"SetReturnCode(418)"}}},
+		// InBand and OutOfBand left nil
+	}
+
+	hub := &cwhub.Hub{}
+	rt, err := cfg.Build(hub)
+	require.NoError(t, err)
+
+	// Common hooks populated
+	assert.Len(t, rt.CommonHooks.OnMatch, 1)
+
+	// Phase-specific hooks empty (zero-value PhaseHooks)
+	assert.Empty(t, rt.InBandHooks.PreEval)
+	assert.Empty(t, rt.InBandHooks.PostEval)
+	assert.Empty(t, rt.InBandHooks.OnMatch)
+	assert.Empty(t, rt.OutOfBandHooks.PreEval)
+	assert.Empty(t, rt.OutOfBandHooks.PostEval)
+	assert.Empty(t, rt.OutOfBandHooks.OnMatch)
+}
+
+func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OnLoad:             []Hook{{Apply: []string{"RemoveInBandRuleByID(123)"}}},
+	}
+
+	hub := &cwhub.Hub{}
+	rt, err := cfg.Build(hub)
+	require.NoError(t, err)
+
+	assert.Len(t, rt.CompiledOnLoad, 1)
+	assert.NotNil(t, rt.CompiledOnLoad[0].ApplyExpr)
+
+	// PhaseHooks should have no on_load contamination
+	assert.Empty(t, rt.CommonHooks.PreEval)
+	assert.Empty(t, rt.CommonHooks.PostEval)
+	assert.Empty(t, rt.CommonHooks.OnMatch)
 }
