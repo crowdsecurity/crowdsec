@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
 	"github.com/moby/moby/client"
-	yaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -159,7 +159,6 @@ func (d *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	opts := []client.Opt{
 		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
 	}
 
 	if d.Config.DockerHost != "" {
@@ -208,8 +207,8 @@ func (d *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 	}
 
 	d.Config = Configuration{
-		FollowStdout:  true,
-		FollowStdErr:  true,
+		FollowStdout: true,
+		FollowStdErr: true,
 	}
 	d.Config.UniqueId = uuid
 	d.Config.ContainerName = make([]string, 0)
@@ -222,7 +221,6 @@ func (d *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 
 	opts := []client.Opt{
 		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
 	}
 
 	d.containerLogsOptions = &client.ContainerLogsOptions{

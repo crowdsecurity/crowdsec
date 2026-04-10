@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestLoadCrowdsec(t *testing.T) {
@@ -55,7 +54,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:                    ptr.Of(true),
+				Enable:                    new(true),
 				AcquisitionDirPath:        "",
 				ConsoleContextPath:        contextFileFullPath,
 				AcquisitionFilePath:       acquisFullPath,
@@ -92,7 +91,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:                    ptr.Of(true),
+				Enable:                    new(true),
 				AcquisitionDirPath:        acquisDirFullPath,
 				AcquisitionFilePath:       acquisFullPath,
 				ConsoleContextPath:        contextFileFullPath,
@@ -127,7 +126,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:                    ptr.Of(true),
+				Enable:                    new(true),
 				AcquisitionDirPath:        "",
 				AcquisitionFilePath:       "",
 				ConsoleContextPath:        contextFileFullPath,
@@ -162,7 +161,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:               ptr.Of(true),
+				Enable:               new(true),
 				AcquisitionFilePath:  notExistFullPath,
 				AcquisitionFiles:     []string{},
 				ParserRoutinesCount:  1,

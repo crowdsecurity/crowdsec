@@ -14,13 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/cstime"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -74,7 +73,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 			ShareCustomScenarios:  new(bool),
 		},
 		AutoRegister: &csconfig.LocalAPIAutoRegisterCfg{
-			Enable: ptr.Of(true),
+			Enable: new(true),
 			Token:  validRegistrationToken,
 			AllowedRanges: []string{
 				"127.0.0.1/8",
