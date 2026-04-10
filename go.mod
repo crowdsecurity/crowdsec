@@ -55,7 +55,7 @@ require (
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.18.3
-	github.com/jarcoal/httpmock v1.1.0
+	github.com/jarcoal/httpmock v1.4.1
 	github.com/jedib0t/go-pretty/v6 v6.7.9
 	github.com/jszwec/csvutil v1.10.0
 	github.com/mattn/go-isatty v0.0.20
