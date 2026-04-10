@@ -477,7 +477,7 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 		}
 
 		if err := hook.Build(stage); err != nil {
-			return nil, fmt.Errorf("unable to build %s hook : %s", stage, err)
+			return nil, fmt.Errorf("unable to build %s hook : %w", stage, err)
 		}
 
 		compiled = append(compiled, hook)
