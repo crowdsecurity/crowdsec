@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/ed25519"
 	"crypto/hmac"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,15 +34,29 @@ import (
 
 const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
 const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
+const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 const ChallengeCookieName = "__crowdsec_challenge"
 const challengeJSCacheSize = 10
 const challengeJSRefreshInterval = 10 * time.Minute
+// PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
+// obfuscator runs ~500-5000 ops/sec, so keep these conservative.
+const (
+	PowDifficultyDisabled = 0  // no PoW required, nonce "0" always valid
+	PowDifficultyLow      = 10 // ~1024 avg iterations ≈ 0.2-2s
+	PowDifficultyMedium   = 12 // ~4096 avg iterations ≈ 1-8s
+	PowDifficultyHigh     = 15 // ~32768 avg iterations ≈ 7-60s
+
+	defaultPowDifficulty = PowDifficultyMedium
+)
 
 // FIXME
 const masterSecret = "SUPER_SECRET_KEY"
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
+
+//go:embed pow-worker.js
+var PowWorkerJS string
 
 //go:embed js/obfuscate/index.wasm.gz
 var obfuscatorWasmGz []byte
@@ -57,15 +72,41 @@ type ChallengeRuntime struct {
 	obfuscatedJSCache []obfuscatedScript
 	cacheMutex        sync.RWMutex
 
-	challengeTicket    string
-	challengeTimestamp string
+	powDifficulty int
+}
+
+// DifficultyFromLevel resolves a named level ("low", "medium", "high") to
+// a PoW difficulty in leading zero bits. Case-insensitive.
+func DifficultyFromLevel(level string) (int, error) {
+	switch strings.ToLower(level) {
+	case "disabled":
+		return PowDifficultyDisabled, nil
+	case "low":
+		return PowDifficultyLow, nil
+	case "medium":
+		return PowDifficultyMedium, nil
+	case "high":
+		return PowDifficultyHigh, nil
+	default:
+		return 0, fmt.Errorf("unknown challenge difficulty %q (expected disabled, low, medium, or high)", level)
+	}
+}
+
+// SetDifficulty sets the default PoW difficulty from a named level.
+func (c *ChallengeRuntime) SetDifficulty(level string) error {
+	bits, err := DifficultyFromLevel(level)
+	if err != nil {
+		return err
+	}
+
+	c.powDifficulty = bits
+
+	return nil
 }
 
 type obfuscatedScript struct {
-	Code       string             // the obfuscated JS code
-	uuid       uuid.UUID          // unique ID to track the script, so that we can find the private key to decrypt the data
-	publicKey  ed25519.PublicKey  // public key to encrypt the fingerprint data
-	privateKey ed25519.PrivateKey // private key to decrypt the fingerprint data, stored in memory only and never sent to the client
+	Code string    // the obfuscated JS code
+	uuid uuid.UUID // unique ID to track the script
 }
 
 func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
@@ -101,10 +142,8 @@ func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
 	challengeRuntime := &ChallengeRuntime{
 		r:                 r,
 		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
+		powDifficulty:     defaultPowDifficulty,
 	}
-
-	challengeRuntime.challengeTimestamp = strconv.FormatInt(time.Now().UnixNano(), 10)
-	challengeRuntime.challengeTicket = challengeRuntime.getTicket(challengeRuntime.challengeTimestamp)
 
 	if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
 		return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
@@ -142,8 +181,8 @@ func (c *ChallengeRuntime) challengeGenerator(ctx context.Context) {
 
 func (c *ChallengeRuntime) buildChallengeBundle() string {
 	return strings.NewReplacer(
-		"__CROWDSEC_TICKET__", c.challengeTicket,
-		"__CROWDSEC_TIMESTAMP__", c.challengeTimestamp,
+		"__CROWDSEC_SUBMIT_PATH__", ChallengeSubmitPath,
+		"__CROWDSEC_POW_WORKER_PATH__", ChallengePowWorkerPath,
 	).Replace(challengejs.FPScannerBundle)
 }
 
@@ -163,8 +202,9 @@ func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count 
 		return []obfuscatedScript{}, nil
 	}
 
-	bundle := c.buildChallengeBundle()
 	variants := make([]obfuscatedScript, 0, count)
+
+	bundle := c.buildChallengeBundle()
 
 	for range count {
 		o := obfuscatedScript{}
@@ -174,12 +214,6 @@ func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count 
 			return nil, err
 		}
 		o.Code = obfuscatedJS
-		//publicKey, privateKey, err := x25519.GenerateKey()
-		if err != nil {
-			return nil, err
-		}
-		//o.publicKey = publicKey
-		//o.privateKey = privateKey
 		variants = append(variants, o)
 	}
 
@@ -263,20 +297,21 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	return stdout.String(), nil
 }
 
-func (c *ChallengeRuntime) getTicket(ts string) string {
-	if ts == "" {
-		ts = strconv.FormatInt(time.Now().UnixNano(), 10)
-	}
-
+func computeTicket(ts string) string {
 	h := hmac.New(sha256.New, []byte(masterSecret))
-
 	h.Write([]byte(ts))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (c *ChallengeRuntime) GetChallengePage(userAgent string) (string, error) {
+// GetChallengePage renders the challenge HTML page with the given PoW difficulty.
+// If difficulty is 0, the default difficulty is used.
+func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (string, error) {
 	_ = userAgent
+
+	if difficulty <= 0 {
+		difficulty = c.powDifficulty
+	}
 
 	// We are using text/template instead of html/template because the data we send is pretty much hardcoded and trusted.
 	// Using html/template would escape the JS code we are adding, making it unusable.
@@ -296,21 +331,73 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string) (string, error) {
 		}
 	}
 
+	// All per-request values: ticket, timestamp, PoW salt, PoW MAC.
+	// Fully stateless — no server-side storage, works across HA instances.
+	ts := fmt.Sprintf("%d", time.Now().UnixNano())
+	ticket := computeTicket(ts)
+	powSalt := generatePowPrefix()
+	powMAC := computePowMAC(powSalt, ticket, ts)
+
 	var renderedPage strings.Builder
 
-	templateObj.Execute(&renderedPage, map[string]string{
-		"JSChallenge": obfuscatedJS.Code,
+	templateObj.Execute(&renderedPage, map[string]interface{}{
+		"JSChallenge":   obfuscatedJS.Code,
+		"PowDifficulty": difficulty,
+		"PowPrefix":     powSalt,
+		"PowMAC":        powMAC,
+		"Ticket":        ticket,
+		"Timestamp":     ts,
 	})
 	return renderedPage.String(), nil
 }
 
-func (c *ChallengeRuntime) getSessionKey(ticket string) string {
-	hash := sha256.Sum256([]byte(ticket))
+func generatePowPrefix() string {
+	buf := make([]byte, 16)
+	if _, err := crand.Read(buf); err != nil {
+		panic(fmt.Sprintf("failed to generate PoW prefix: %v", err))
+	}
+
+	return hex.EncodeToString(buf)
+}
+
+// computePowMAC produces an HMAC that authenticates a PoW salt as server-generated
+// and bound to a specific ticket window. Stateless: any instance sharing the
+// masterSecret can verify it.
+func computePowMAC(salt, ticket, ts string) string {
+	h := hmac.New(sha256.New, []byte(masterSecret))
+	h.Write([]byte(salt))
+	h.Write([]byte(ticket))
+	h.Write([]byte(ts))
+
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func hasLeadingZeroBits(hash []byte, bits int) bool {
+	fullBytes := bits / 8
+	remainBits := bits % 8
+
+	for i := range fullBytes {
+		if hash[i] != 0 {
+			return false
+		}
+	}
+
+	if remainBits > 0 {
+		mask := byte(0xFF << (8 - remainBits))
+		if hash[fullBytes]&mask != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (c *ChallengeRuntime) getSessionKey(ticket string, nonce string) string {
+	hash := sha256.Sum256([]byte(ticket + nonce))
 	return fmt.Sprintf("%x", hash)
 }
 
 func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted string) (string, error) {
-	// Decode the base64-encoded encrypted fingerprint
 	encryptedBytes, err := base64.StdEncoding.DecodeString(encrypted)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode encrypted fingerprint: %w", err)
@@ -322,13 +409,38 @@ func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted strin
 		decryptedBytes[i] = encryptedBytes[i] ^ sessionKey[i%len(sessionKey)]
 	}
 
-	decrypted := string(decryptedBytes)
-	return decrypted, nil
+	return string(decryptedBytes), nil
+}
+
+// matchesChallenge verifies that the ticket/timestamp/PoW salt are authentically
+// server-generated and the timestamp is recent. Fully stateless — any instance
+// sharing masterSecret can verify.
+func matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
+	// Verify the ticket is an authentic HMAC of the timestamp.
+	expectedTicket := computeTicket(clientTS)
+	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
+		return false
+	}
+
+	// Verify the timestamp is recent (within 2 refresh intervals for safety).
+	tsVal, err := strconv.ParseInt(clientTS, 10, 64)
+	if err != nil {
+		return false
+	}
+
+	age := time.Since(time.Unix(0, tsVal))
+	if age < 0 || age > 2*challengeJSRefreshInterval {
+		return false
+	}
+
+	// Verify the PoW salt MAC is authentic and bound to this ticket+timestamp.
+	expectedMAC := computePowMAC(clientPowSalt, clientTicket, clientTS)
+
+	return hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC))
 }
 
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
-
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to parse challenge response: %w", err)
 	}
@@ -337,40 +449,38 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientTicket := vars.Get("t")
 	clientTS := vars.Get("ts")
 	clientHMAC := vars.Get("h")
-	clientSessionKey := vars.Get("s")
+	clientNonce := vars.Get("n")
+	clientPowSalt := vars.Get("p")
+	clientPowMAC := vars.Get("m")
 
-	if encryptedFingerprint == "" || clientTicket == "" || clientTS == "" || clientHMAC == "" || clientSessionKey == "" {
+	if encryptedFingerprint == "" || clientTicket == "" || clientTS == "" || clientHMAC == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" {
 		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
 	}
 
-	if clientTicket != c.challengeTicket {
+	// Verify ticket/timestamp match and PoW salt is authentically server-generated (stateless).
+	if !matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
 	}
 
-	if clientTS != c.challengeTimestamp {
-		return nil, FingerprintData{}, fmt.Errorf("invalid timestamp in challenge response")
+	// Verify proof-of-work: SHA256(powSalt + nonce) must have required leading zero bits
+	powHash := sha256.Sum256([]byte(clientPowSalt + clientNonce))
+	if !hasLeadingZeroBits(powHash[:], c.powDifficulty) {
+		return nil, FingerprintData{}, fmt.Errorf("invalid proof-of-work in challenge response")
 	}
 
-	sessionKey := c.getSessionKey(clientTicket)
+	// Derive session key from ticket + nonce (same as client-side)
+	sessionKey := c.getSessionKey(clientTicket, clientNonce)
 
-	// If the key sent by the client is different from the one we just derived, something is wrong, drop the request.
-	if sessionKey != clientSessionKey {
-		log.Infof("Expected session key: %s | client session key: %s", sessionKey, clientSessionKey)
-		return nil, FingerprintData{}, fmt.Errorf("invalid session key in challenge response")
-	}
-
-	// Now recompute the HMAC from encrypted fingerprint + timestamp + ticket
-
+	// Verify HMAC over encrypted fingerprint + timestamp + ticket + nonce
 	expectedHMAC := hmac.New(sha256.New, []byte(sessionKey))
-
 	expectedHMAC.Write([]byte(encryptedFingerprint))
 	expectedHMAC.Write([]byte(clientTS))
 	expectedHMAC.Write([]byte(clientTicket))
+	expectedHMAC.Write([]byte(clientNonce))
 
-	expectedHMACB := fmt.Sprintf("%x", expectedHMAC.Sum(nil))
+	expectedHMACHex := fmt.Sprintf("%x", expectedHMAC.Sum(nil))
 
-	if !hmac.Equal([]byte(clientHMAC), []byte(expectedHMACB)) {
-		log.Infof("Expected HMAC: %s | Received HMAC: %s", expectedHMACB, clientHMAC)
+	if !hmac.Equal([]byte(clientHMAC), []byte(expectedHMACHex)) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
 	}
 
@@ -381,9 +491,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	var fpData FingerprintData
 
-	err = json.Unmarshal([]byte(fingerprint), &fpData)
-
-	if err != nil {
+	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
 		log.Errorf("fp: %s", fingerprint)
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
@@ -397,6 +505,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
+
 	return ck, fpData, nil
 }
 

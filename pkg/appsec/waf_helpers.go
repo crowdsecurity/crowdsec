@@ -16,6 +16,7 @@ func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
+		"SetChallengeDifficulty":  w.SetChallengeDifficulty,
 	}
 }
 
@@ -47,8 +48,11 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"AppsecCookie": func(name string) *cookie.AppsecCookie {
 			return cookie.NewAppsecCookie(name)
 		},
-		"SendChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
+		"SendChallenge": func() error {
 			return w.SendChallenge(state, request)
+		},
+		"SetChallengeDifficulty": func(level string) error {
+			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
 		/*"ValidateChallenge": func(conditions ...bool) (*challenge.ChallengeMatcher, error) {
 			return w.ValidateChallenge(state, request, conditions...)
@@ -63,8 +67,11 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
-		"SendChallenge": func( /* TODO: add placeholder configuration for the challenge (for now, it will likely not support anything, but difficulty might be added later)*/ ) error {
+		"SendChallenge": func() error {
 			return w.SendChallenge(state, request)
+		},
+		"SetChallengeDifficulty": func(level string) error {
+			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
 		"fingerprint": state.Fingerprint,
 		/*"ValidateChallenge": func(name string, conditions ...bool) (*challenge.ChallengeMatcher, error) {

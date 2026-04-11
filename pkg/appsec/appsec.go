@@ -122,8 +122,9 @@ type AppsecRequestState struct {
 	PendingAction   *string
 	PendingHTTPCode *int
 
-	RequireChallenge bool
-	Fingerprint      *challenge.FingerprintData
+	RequireChallenge    bool
+	Fingerprint         *challenge.FingerprintData
+	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -912,6 +913,27 @@ func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, co
 	return nil
 }
 
+// SetChallengeDifficulty sets the default PoW difficulty on the runtime (used from on_load).
+func (w *AppsecRuntimeConfig) SetChallengeDifficulty(level string) error {
+	if w.ChallengeRuntime == nil {
+		return fmt.Errorf("challenge runtime not initialized")
+	}
+
+	return w.ChallengeRuntime.SetDifficulty(level)
+}
+
+// SetChallengeDifficultyPerRequest sets a per-request PoW difficulty override (used from pre_eval/post_eval).
+func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequestState, level string) error {
+	bits, err := challenge.DifficultyFromLevel(level)
+	if err != nil {
+		return err
+	}
+
+	state.ChallengeDifficulty = &bits
+
+	return nil
+}
+
 func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	w.Logger.Debugf("sending challenge")
 
@@ -926,6 +948,11 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	// Finally, check for the challenge cookie
 	// If it's valid, just return
 	// If not, return the challenge HTML page
+
+	// Serve the PoW worker script (plain JS, not obfuscated)
+	if request.HTTPRequest.URL.Path == challenge.ChallengePowWorkerPath {
+		return w.setChallengeResponse(state, http.StatusOK, challenge.PowWorkerJS, map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+	}
 
 	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("Validating challenge response")
@@ -949,7 +976,13 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	}
 
 	w.Logger.Debugf("no valid challenge cookie found")
-	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent())
+
+	difficulty := 0 // 0 = use runtime default
+	if state.ChallengeDifficulty != nil {
+		difficulty = *state.ChallengeDifficulty
+	}
+
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent(), difficulty)
 	if err != nil {
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
