@@ -16,7 +16,7 @@ type enrollRequest struct {
 	Name       string   `json:"name"`
 	Tags       []string `json:"tags"`
 	Overwrite  bool     `json:"overwrite"`
-	AutoEnroll bool     `json:"auto_enroll"`
+	AutoEnroll bool     `json:"autoenroll"`
 }
 
 type autoEnrollResponse struct {
