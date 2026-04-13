@@ -199,3 +199,11 @@ teardown() {
     rune -0 cscli hub types -o json
     assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
 }
+
+@test "cscli waf aliases for hub items" {
+    rune -0 cscli waf-configs list -o json
+    rune -0 jq -e '."appsec-configs"' <(output)
+
+    rune -0 cscli waf-rules list -o json
+    rune -0 jq -e '."appsec-rules"' <(output)
+}

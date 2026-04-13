@@ -220,8 +220,12 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	state.Tx = tx
-	// Even if we have no inband rules, we might have pre-eval rules to process
-	if len(r.AppsecRuntime.InBandRules) == 0 && len(r.AppsecRuntime.CompiledPreEval) == 0 {
+	// Even if we have no inband rules, we might have pre-eval or post-eval rules to process
+	if len(r.AppsecRuntime.InBandRules) == 0 &&
+		len(r.AppsecRuntime.CommonHooks.PreEval) == 0 &&
+		len(r.AppsecRuntime.InBandHooks.PreEval) == 0 &&
+		len(r.AppsecRuntime.CommonHooks.PostEval) == 0 &&
+		len(r.AppsecRuntime.InBandHooks.PostEval) == 0 {
 		return nil
 	}
 	err := r.processRequest(state, request)
@@ -231,7 +235,11 @@ func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, requ
 func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	state.Tx = tx
-	if len(r.AppsecRuntime.OutOfBandRules) == 0 && len(r.AppsecRuntime.CompiledPreEval) == 0 {
+	if len(r.AppsecRuntime.OutOfBandRules) == 0 &&
+		len(r.AppsecRuntime.CommonHooks.PreEval) == 0 &&
+		len(r.AppsecRuntime.OutOfBandHooks.PreEval) == 0 &&
+		len(r.AppsecRuntime.CommonHooks.PostEval) == 0 &&
+		len(r.AppsecRuntime.OutOfBandHooks.PostEval) == 0 {
 		return nil
 	}
 	err := r.processRequest(state, request)

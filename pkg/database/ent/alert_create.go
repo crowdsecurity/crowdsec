@@ -27,411 +27,425 @@ type AlertCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (ac *AlertCreate) SetCreatedAt(t time.Time) *AlertCreate {
-	ac.mutation.SetCreatedAt(t)
-	return ac
+func (_c *AlertCreate) SetCreatedAt(v time.Time) *AlertCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableCreatedAt(t *time.Time) *AlertCreate {
-	if t != nil {
-		ac.SetCreatedAt(*t)
+func (_c *AlertCreate) SetNillableCreatedAt(v *time.Time) *AlertCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ac *AlertCreate) SetUpdatedAt(t time.Time) *AlertCreate {
-	ac.mutation.SetUpdatedAt(t)
-	return ac
+func (_c *AlertCreate) SetUpdatedAt(v time.Time) *AlertCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableUpdatedAt(t *time.Time) *AlertCreate {
-	if t != nil {
-		ac.SetUpdatedAt(*t)
+func (_c *AlertCreate) SetNillableUpdatedAt(v *time.Time) *AlertCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetScenario sets the "scenario" field.
-func (ac *AlertCreate) SetScenario(s string) *AlertCreate {
-	ac.mutation.SetScenario(s)
-	return ac
+func (_c *AlertCreate) SetScenario(v string) *AlertCreate {
+	_c.mutation.SetScenario(v)
+	return _c
 }
 
 // SetBucketId sets the "bucketId" field.
-func (ac *AlertCreate) SetBucketId(s string) *AlertCreate {
-	ac.mutation.SetBucketId(s)
-	return ac
+func (_c *AlertCreate) SetBucketId(v string) *AlertCreate {
+	_c.mutation.SetBucketId(v)
+	return _c
 }
 
 // SetNillableBucketId sets the "bucketId" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableBucketId(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetBucketId(*s)
+func (_c *AlertCreate) SetNillableBucketId(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetBucketId(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetMessage sets the "message" field.
-func (ac *AlertCreate) SetMessage(s string) *AlertCreate {
-	ac.mutation.SetMessage(s)
-	return ac
+func (_c *AlertCreate) SetMessage(v string) *AlertCreate {
+	_c.mutation.SetMessage(v)
+	return _c
 }
 
 // SetNillableMessage sets the "message" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableMessage(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetMessage(*s)
+func (_c *AlertCreate) SetNillableMessage(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetMessage(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetEventsCount sets the "eventsCount" field.
-func (ac *AlertCreate) SetEventsCount(i int32) *AlertCreate {
-	ac.mutation.SetEventsCount(i)
-	return ac
+func (_c *AlertCreate) SetEventsCount(v int32) *AlertCreate {
+	_c.mutation.SetEventsCount(v)
+	return _c
 }
 
 // SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableEventsCount(i *int32) *AlertCreate {
-	if i != nil {
-		ac.SetEventsCount(*i)
+func (_c *AlertCreate) SetNillableEventsCount(v *int32) *AlertCreate {
+	if v != nil {
+		_c.SetEventsCount(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetStartedAt sets the "startedAt" field.
-func (ac *AlertCreate) SetStartedAt(t time.Time) *AlertCreate {
-	ac.mutation.SetStartedAt(t)
-	return ac
+func (_c *AlertCreate) SetStartedAt(v time.Time) *AlertCreate {
+	_c.mutation.SetStartedAt(v)
+	return _c
 }
 
 // SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableStartedAt(t *time.Time) *AlertCreate {
-	if t != nil {
-		ac.SetStartedAt(*t)
+func (_c *AlertCreate) SetNillableStartedAt(v *time.Time) *AlertCreate {
+	if v != nil {
+		_c.SetStartedAt(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetStoppedAt sets the "stoppedAt" field.
-func (ac *AlertCreate) SetStoppedAt(t time.Time) *AlertCreate {
-	ac.mutation.SetStoppedAt(t)
-	return ac
+func (_c *AlertCreate) SetStoppedAt(v time.Time) *AlertCreate {
+	_c.mutation.SetStoppedAt(v)
+	return _c
 }
 
 // SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableStoppedAt(t *time.Time) *AlertCreate {
-	if t != nil {
-		ac.SetStoppedAt(*t)
+func (_c *AlertCreate) SetNillableStoppedAt(v *time.Time) *AlertCreate {
+	if v != nil {
+		_c.SetStoppedAt(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceIp sets the "sourceIp" field.
-func (ac *AlertCreate) SetSourceIp(s string) *AlertCreate {
-	ac.mutation.SetSourceIp(s)
-	return ac
+func (_c *AlertCreate) SetSourceIp(v string) *AlertCreate {
+	_c.mutation.SetSourceIp(v)
+	return _c
 }
 
 // SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceIp(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceIp(*s)
+func (_c *AlertCreate) SetNillableSourceIp(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceIp(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceRange sets the "sourceRange" field.
-func (ac *AlertCreate) SetSourceRange(s string) *AlertCreate {
-	ac.mutation.SetSourceRange(s)
-	return ac
+func (_c *AlertCreate) SetSourceRange(v string) *AlertCreate {
+	_c.mutation.SetSourceRange(v)
+	return _c
 }
 
 // SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceRange(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceRange(*s)
+func (_c *AlertCreate) SetNillableSourceRange(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceRange(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceAsNumber sets the "sourceAsNumber" field.
-func (ac *AlertCreate) SetSourceAsNumber(s string) *AlertCreate {
-	ac.mutation.SetSourceAsNumber(s)
-	return ac
+func (_c *AlertCreate) SetSourceAsNumber(v string) *AlertCreate {
+	_c.mutation.SetSourceAsNumber(v)
+	return _c
 }
 
 // SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceAsNumber(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceAsNumber(*s)
+func (_c *AlertCreate) SetNillableSourceAsNumber(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceAsNumber(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceAsName sets the "sourceAsName" field.
-func (ac *AlertCreate) SetSourceAsName(s string) *AlertCreate {
-	ac.mutation.SetSourceAsName(s)
-	return ac
+func (_c *AlertCreate) SetSourceAsName(v string) *AlertCreate {
+	_c.mutation.SetSourceAsName(v)
+	return _c
 }
 
 // SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceAsName(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceAsName(*s)
+func (_c *AlertCreate) SetNillableSourceAsName(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceAsName(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceCountry sets the "sourceCountry" field.
-func (ac *AlertCreate) SetSourceCountry(s string) *AlertCreate {
-	ac.mutation.SetSourceCountry(s)
-	return ac
+func (_c *AlertCreate) SetSourceCountry(v string) *AlertCreate {
+	_c.mutation.SetSourceCountry(v)
+	return _c
 }
 
 // SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceCountry(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceCountry(*s)
+func (_c *AlertCreate) SetNillableSourceCountry(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceCountry(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceLatitude sets the "sourceLatitude" field.
-func (ac *AlertCreate) SetSourceLatitude(f float32) *AlertCreate {
-	ac.mutation.SetSourceLatitude(f)
-	return ac
+func (_c *AlertCreate) SetSourceLatitude(v float32) *AlertCreate {
+	_c.mutation.SetSourceLatitude(v)
+	return _c
 }
 
 // SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceLatitude(f *float32) *AlertCreate {
-	if f != nil {
-		ac.SetSourceLatitude(*f)
+func (_c *AlertCreate) SetNillableSourceLatitude(v *float32) *AlertCreate {
+	if v != nil {
+		_c.SetSourceLatitude(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceLongitude sets the "sourceLongitude" field.
-func (ac *AlertCreate) SetSourceLongitude(f float32) *AlertCreate {
-	ac.mutation.SetSourceLongitude(f)
-	return ac
+func (_c *AlertCreate) SetSourceLongitude(v float32) *AlertCreate {
+	_c.mutation.SetSourceLongitude(v)
+	return _c
 }
 
 // SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceLongitude(f *float32) *AlertCreate {
-	if f != nil {
-		ac.SetSourceLongitude(*f)
+func (_c *AlertCreate) SetNillableSourceLongitude(v *float32) *AlertCreate {
+	if v != nil {
+		_c.SetSourceLongitude(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceScope sets the "sourceScope" field.
-func (ac *AlertCreate) SetSourceScope(s string) *AlertCreate {
-	ac.mutation.SetSourceScope(s)
-	return ac
+func (_c *AlertCreate) SetSourceScope(v string) *AlertCreate {
+	_c.mutation.SetSourceScope(v)
+	return _c
 }
 
 // SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceScope(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceScope(*s)
+func (_c *AlertCreate) SetNillableSourceScope(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceScope(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSourceValue sets the "sourceValue" field.
-func (ac *AlertCreate) SetSourceValue(s string) *AlertCreate {
-	ac.mutation.SetSourceValue(s)
-	return ac
+func (_c *AlertCreate) SetSourceValue(v string) *AlertCreate {
+	_c.mutation.SetSourceValue(v)
+	return _c
 }
 
 // SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSourceValue(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetSourceValue(*s)
+func (_c *AlertCreate) SetNillableSourceValue(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetSourceValue(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetCapacity sets the "capacity" field.
-func (ac *AlertCreate) SetCapacity(i int32) *AlertCreate {
-	ac.mutation.SetCapacity(i)
-	return ac
+func (_c *AlertCreate) SetCapacity(v int32) *AlertCreate {
+	_c.mutation.SetCapacity(v)
+	return _c
 }
 
 // SetNillableCapacity sets the "capacity" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableCapacity(i *int32) *AlertCreate {
-	if i != nil {
-		ac.SetCapacity(*i)
+func (_c *AlertCreate) SetNillableCapacity(v *int32) *AlertCreate {
+	if v != nil {
+		_c.SetCapacity(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetLeakSpeed sets the "leakSpeed" field.
-func (ac *AlertCreate) SetLeakSpeed(s string) *AlertCreate {
-	ac.mutation.SetLeakSpeed(s)
-	return ac
+func (_c *AlertCreate) SetLeakSpeed(v string) *AlertCreate {
+	_c.mutation.SetLeakSpeed(v)
+	return _c
 }
 
 // SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableLeakSpeed(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetLeakSpeed(*s)
+func (_c *AlertCreate) SetNillableLeakSpeed(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetLeakSpeed(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetScenarioVersion sets the "scenarioVersion" field.
-func (ac *AlertCreate) SetScenarioVersion(s string) *AlertCreate {
-	ac.mutation.SetScenarioVersion(s)
-	return ac
+func (_c *AlertCreate) SetScenarioVersion(v string) *AlertCreate {
+	_c.mutation.SetScenarioVersion(v)
+	return _c
 }
 
 // SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableScenarioVersion(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetScenarioVersion(*s)
+func (_c *AlertCreate) SetNillableScenarioVersion(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetScenarioVersion(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetScenarioHash sets the "scenarioHash" field.
-func (ac *AlertCreate) SetScenarioHash(s string) *AlertCreate {
-	ac.mutation.SetScenarioHash(s)
-	return ac
+func (_c *AlertCreate) SetScenarioHash(v string) *AlertCreate {
+	_c.mutation.SetScenarioHash(v)
+	return _c
 }
 
 // SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableScenarioHash(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetScenarioHash(*s)
+func (_c *AlertCreate) SetNillableScenarioHash(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetScenarioHash(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetSimulated sets the "simulated" field.
-func (ac *AlertCreate) SetSimulated(b bool) *AlertCreate {
-	ac.mutation.SetSimulated(b)
-	return ac
+func (_c *AlertCreate) SetSimulated(v bool) *AlertCreate {
+	_c.mutation.SetSimulated(v)
+	return _c
 }
 
 // SetNillableSimulated sets the "simulated" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
-	if b != nil {
-		ac.SetSimulated(*b)
+func (_c *AlertCreate) SetNillableSimulated(v *bool) *AlertCreate {
+	if v != nil {
+		_c.SetSimulated(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetUUID sets the "uuid" field.
-func (ac *AlertCreate) SetUUID(s string) *AlertCreate {
-	ac.mutation.SetUUID(s)
-	return ac
+func (_c *AlertCreate) SetUUID(v string) *AlertCreate {
+	_c.mutation.SetUUID(v)
+	return _c
 }
 
 // SetNillableUUID sets the "uuid" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableUUID(s *string) *AlertCreate {
-	if s != nil {
-		ac.SetUUID(*s)
+func (_c *AlertCreate) SetNillableUUID(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetUUID(*v)
 	}
-	return ac
+	return _c
 }
 
 // SetRemediation sets the "remediation" field.
-func (ac *AlertCreate) SetRemediation(b bool) *AlertCreate {
-	ac.mutation.SetRemediation(b)
-	return ac
+func (_c *AlertCreate) SetRemediation(v bool) *AlertCreate {
+	_c.mutation.SetRemediation(v)
+	return _c
 }
 
 // SetNillableRemediation sets the "remediation" field if the given value is not nil.
-func (ac *AlertCreate) SetNillableRemediation(b *bool) *AlertCreate {
-	if b != nil {
-		ac.SetRemediation(*b)
+func (_c *AlertCreate) SetNillableRemediation(v *bool) *AlertCreate {
+	if v != nil {
+		_c.SetRemediation(*v)
 	}
-	return ac
+	return _c
+}
+
+// SetKind sets the "kind" field.
+func (_c *AlertCreate) SetKind(v string) *AlertCreate {
+	_c.mutation.SetKind(v)
+	return _c
+}
+
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_c *AlertCreate) SetNillableKind(v *string) *AlertCreate {
+	if v != nil {
+		_c.SetKind(*v)
+	}
+	return _c
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
-	ac.mutation.SetOwnerID(id)
-	return ac
+func (_c *AlertCreate) SetOwnerID(id int) *AlertCreate {
+	_c.mutation.SetOwnerID(id)
+	return _c
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (ac *AlertCreate) SetNillableOwnerID(id *int) *AlertCreate {
+func (_c *AlertCreate) SetNillableOwnerID(id *int) *AlertCreate {
 	if id != nil {
-		ac = ac.SetOwnerID(*id)
+		_c = _c.SetOwnerID(*id)
 	}
-	return ac
+	return _c
 }
 
 // SetOwner sets the "owner" edge to the Machine entity.
-func (ac *AlertCreate) SetOwner(m *Machine) *AlertCreate {
-	return ac.SetOwnerID(m.ID)
+func (_c *AlertCreate) SetOwner(v *Machine) *AlertCreate {
+	return _c.SetOwnerID(v.ID)
 }
 
 // AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
-func (ac *AlertCreate) AddDecisionIDs(ids ...int) *AlertCreate {
-	ac.mutation.AddDecisionIDs(ids...)
-	return ac
+func (_c *AlertCreate) AddDecisionIDs(ids ...int) *AlertCreate {
+	_c.mutation.AddDecisionIDs(ids...)
+	return _c
 }
 
 // AddDecisions adds the "decisions" edges to the Decision entity.
-func (ac *AlertCreate) AddDecisions(d ...*Decision) *AlertCreate {
-	ids := make([]int, len(d))
-	for i := range d {
-		ids[i] = d[i].ID
+func (_c *AlertCreate) AddDecisions(v ...*Decision) *AlertCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ac.AddDecisionIDs(ids...)
+	return _c.AddDecisionIDs(ids...)
 }
 
 // AddEventIDs adds the "events" edge to the Event entity by IDs.
-func (ac *AlertCreate) AddEventIDs(ids ...int) *AlertCreate {
-	ac.mutation.AddEventIDs(ids...)
-	return ac
+func (_c *AlertCreate) AddEventIDs(ids ...int) *AlertCreate {
+	_c.mutation.AddEventIDs(ids...)
+	return _c
 }
 
 // AddEvents adds the "events" edges to the Event entity.
-func (ac *AlertCreate) AddEvents(e ...*Event) *AlertCreate {
-	ids := make([]int, len(e))
-	for i := range e {
-		ids[i] = e[i].ID
+func (_c *AlertCreate) AddEvents(v ...*Event) *AlertCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ac.AddEventIDs(ids...)
+	return _c.AddEventIDs(ids...)
 }
 
 // AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
-func (ac *AlertCreate) AddMetaIDs(ids ...int) *AlertCreate {
-	ac.mutation.AddMetaIDs(ids...)
-	return ac
+func (_c *AlertCreate) AddMetaIDs(ids ...int) *AlertCreate {
+	_c.mutation.AddMetaIDs(ids...)
+	return _c
 }
 
 // AddMetas adds the "metas" edges to the Meta entity.
-func (ac *AlertCreate) AddMetas(m ...*Meta) *AlertCreate {
-	ids := make([]int, len(m))
-	for i := range m {
-		ids[i] = m[i].ID
+func (_c *AlertCreate) AddMetas(v ...*Meta) *AlertCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ac.AddMetaIDs(ids...)
+	return _c.AddMetaIDs(ids...)
 }
 
 // Mutation returns the AlertMutation object of the builder.
-func (ac *AlertCreate) Mutation() *AlertMutation {
-	return ac.mutation
+func (_c *AlertCreate) Mutation() *AlertMutation {
+	return _c.mutation
 }
 
 // Save creates the Alert in the database.
-func (ac *AlertCreate) Save(ctx context.Context) (*Alert, error) {
-	ac.defaults()
-	return withHooks(ctx, ac.sqlSave, ac.mutation, ac.hooks)
+func (_c *AlertCreate) Save(ctx context.Context) (*Alert, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (ac *AlertCreate) SaveX(ctx context.Context) *Alert {
-	v, err := ac.Save(ctx)
+func (_c *AlertCreate) SaveX(ctx context.Context) *Alert {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -439,77 +453,77 @@ func (ac *AlertCreate) SaveX(ctx context.Context) *Alert {
 }
 
 // Exec executes the query.
-func (ac *AlertCreate) Exec(ctx context.Context) error {
-	_, err := ac.Save(ctx)
+func (_c *AlertCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ac *AlertCreate) ExecX(ctx context.Context) {
-	if err := ac.Exec(ctx); err != nil {
+func (_c *AlertCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ac *AlertCreate) defaults() {
-	if _, ok := ac.mutation.CreatedAt(); !ok {
+func (_c *AlertCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := alert.DefaultCreatedAt()
-		ac.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := ac.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := alert.DefaultUpdatedAt()
-		ac.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := ac.mutation.BucketId(); !ok {
+	if _, ok := _c.mutation.BucketId(); !ok {
 		v := alert.DefaultBucketId
-		ac.mutation.SetBucketId(v)
+		_c.mutation.SetBucketId(v)
 	}
-	if _, ok := ac.mutation.Message(); !ok {
+	if _, ok := _c.mutation.Message(); !ok {
 		v := alert.DefaultMessage
-		ac.mutation.SetMessage(v)
+		_c.mutation.SetMessage(v)
 	}
-	if _, ok := ac.mutation.EventsCount(); !ok {
+	if _, ok := _c.mutation.EventsCount(); !ok {
 		v := alert.DefaultEventsCount
-		ac.mutation.SetEventsCount(v)
+		_c.mutation.SetEventsCount(v)
 	}
-	if _, ok := ac.mutation.StartedAt(); !ok {
+	if _, ok := _c.mutation.StartedAt(); !ok {
 		v := alert.DefaultStartedAt()
-		ac.mutation.SetStartedAt(v)
+		_c.mutation.SetStartedAt(v)
 	}
-	if _, ok := ac.mutation.StoppedAt(); !ok {
+	if _, ok := _c.mutation.StoppedAt(); !ok {
 		v := alert.DefaultStoppedAt()
-		ac.mutation.SetStoppedAt(v)
+		_c.mutation.SetStoppedAt(v)
 	}
-	if _, ok := ac.mutation.Simulated(); !ok {
+	if _, ok := _c.mutation.Simulated(); !ok {
 		v := alert.DefaultSimulated
-		ac.mutation.SetSimulated(v)
+		_c.mutation.SetSimulated(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ac *AlertCreate) check() error {
-	if _, ok := ac.mutation.CreatedAt(); !ok {
+func (_c *AlertCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Alert.created_at"`)}
 	}
-	if _, ok := ac.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Alert.updated_at"`)}
 	}
-	if _, ok := ac.mutation.Scenario(); !ok {
+	if _, ok := _c.mutation.Scenario(); !ok {
 		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Alert.scenario"`)}
 	}
-	if _, ok := ac.mutation.Simulated(); !ok {
+	if _, ok := _c.mutation.Simulated(); !ok {
 		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Alert.simulated"`)}
 	}
 	return nil
 }
 
-func (ac *AlertCreate) sqlSave(ctx context.Context) (*Alert, error) {
-	if err := ac.check(); err != nil {
+func (_c *AlertCreate) sqlSave(ctx context.Context) (*Alert, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := ac.createSpec()
-	if err := sqlgraph.CreateNode(ctx, ac.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -517,114 +531,118 @@ func (ac *AlertCreate) sqlSave(ctx context.Context) (*Alert, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	ac.mutation.id = &_node.ID
-	ac.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
+func (_c *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Alert{config: ac.config}
+		_node = &Alert{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(alert.Table, sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = ac.conflict
-	if value, ok := ac.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(alert.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := ac.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := ac.mutation.Scenario(); ok {
+	if value, ok := _c.mutation.Scenario(); ok {
 		_spec.SetField(alert.FieldScenario, field.TypeString, value)
 		_node.Scenario = value
 	}
-	if value, ok := ac.mutation.BucketId(); ok {
+	if value, ok := _c.mutation.BucketId(); ok {
 		_spec.SetField(alert.FieldBucketId, field.TypeString, value)
 		_node.BucketId = value
 	}
-	if value, ok := ac.mutation.Message(); ok {
+	if value, ok := _c.mutation.Message(); ok {
 		_spec.SetField(alert.FieldMessage, field.TypeString, value)
 		_node.Message = value
 	}
-	if value, ok := ac.mutation.EventsCount(); ok {
+	if value, ok := _c.mutation.EventsCount(); ok {
 		_spec.SetField(alert.FieldEventsCount, field.TypeInt32, value)
 		_node.EventsCount = value
 	}
-	if value, ok := ac.mutation.StartedAt(); ok {
+	if value, ok := _c.mutation.StartedAt(); ok {
 		_spec.SetField(alert.FieldStartedAt, field.TypeTime, value)
 		_node.StartedAt = value
 	}
-	if value, ok := ac.mutation.StoppedAt(); ok {
+	if value, ok := _c.mutation.StoppedAt(); ok {
 		_spec.SetField(alert.FieldStoppedAt, field.TypeTime, value)
 		_node.StoppedAt = value
 	}
-	if value, ok := ac.mutation.SourceIp(); ok {
+	if value, ok := _c.mutation.SourceIp(); ok {
 		_spec.SetField(alert.FieldSourceIp, field.TypeString, value)
 		_node.SourceIp = value
 	}
-	if value, ok := ac.mutation.SourceRange(); ok {
+	if value, ok := _c.mutation.SourceRange(); ok {
 		_spec.SetField(alert.FieldSourceRange, field.TypeString, value)
 		_node.SourceRange = value
 	}
-	if value, ok := ac.mutation.SourceAsNumber(); ok {
+	if value, ok := _c.mutation.SourceAsNumber(); ok {
 		_spec.SetField(alert.FieldSourceAsNumber, field.TypeString, value)
 		_node.SourceAsNumber = value
 	}
-	if value, ok := ac.mutation.SourceAsName(); ok {
+	if value, ok := _c.mutation.SourceAsName(); ok {
 		_spec.SetField(alert.FieldSourceAsName, field.TypeString, value)
 		_node.SourceAsName = value
 	}
-	if value, ok := ac.mutation.SourceCountry(); ok {
+	if value, ok := _c.mutation.SourceCountry(); ok {
 		_spec.SetField(alert.FieldSourceCountry, field.TypeString, value)
 		_node.SourceCountry = value
 	}
-	if value, ok := ac.mutation.SourceLatitude(); ok {
+	if value, ok := _c.mutation.SourceLatitude(); ok {
 		_spec.SetField(alert.FieldSourceLatitude, field.TypeFloat32, value)
 		_node.SourceLatitude = value
 	}
-	if value, ok := ac.mutation.SourceLongitude(); ok {
+	if value, ok := _c.mutation.SourceLongitude(); ok {
 		_spec.SetField(alert.FieldSourceLongitude, field.TypeFloat32, value)
 		_node.SourceLongitude = value
 	}
-	if value, ok := ac.mutation.SourceScope(); ok {
+	if value, ok := _c.mutation.SourceScope(); ok {
 		_spec.SetField(alert.FieldSourceScope, field.TypeString, value)
 		_node.SourceScope = value
 	}
-	if value, ok := ac.mutation.SourceValue(); ok {
+	if value, ok := _c.mutation.SourceValue(); ok {
 		_spec.SetField(alert.FieldSourceValue, field.TypeString, value)
 		_node.SourceValue = value
 	}
-	if value, ok := ac.mutation.Capacity(); ok {
+	if value, ok := _c.mutation.Capacity(); ok {
 		_spec.SetField(alert.FieldCapacity, field.TypeInt32, value)
 		_node.Capacity = value
 	}
-	if value, ok := ac.mutation.LeakSpeed(); ok {
+	if value, ok := _c.mutation.LeakSpeed(); ok {
 		_spec.SetField(alert.FieldLeakSpeed, field.TypeString, value)
 		_node.LeakSpeed = value
 	}
-	if value, ok := ac.mutation.ScenarioVersion(); ok {
+	if value, ok := _c.mutation.ScenarioVersion(); ok {
 		_spec.SetField(alert.FieldScenarioVersion, field.TypeString, value)
 		_node.ScenarioVersion = value
 	}
-	if value, ok := ac.mutation.ScenarioHash(); ok {
+	if value, ok := _c.mutation.ScenarioHash(); ok {
 		_spec.SetField(alert.FieldScenarioHash, field.TypeString, value)
 		_node.ScenarioHash = value
 	}
-	if value, ok := ac.mutation.Simulated(); ok {
+	if value, ok := _c.mutation.Simulated(); ok {
 		_spec.SetField(alert.FieldSimulated, field.TypeBool, value)
 		_node.Simulated = value
 	}
-	if value, ok := ac.mutation.UUID(); ok {
+	if value, ok := _c.mutation.UUID(); ok {
 		_spec.SetField(alert.FieldUUID, field.TypeString, value)
 		_node.UUID = value
 	}
-	if value, ok := ac.mutation.Remediation(); ok {
+	if value, ok := _c.mutation.Remediation(); ok {
 		_spec.SetField(alert.FieldRemediation, field.TypeBool, value)
 		_node.Remediation = value
 	}
-	if nodes := ac.mutation.OwnerIDs(); len(nodes) > 0 {
+	if value, ok := _c.mutation.Kind(); ok {
+		_spec.SetField(alert.FieldKind, field.TypeString, value)
+		_node.Kind = value
+	}
+	if nodes := _c.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -641,7 +659,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		_node.machine_alerts = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := ac.mutation.DecisionsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.DecisionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -657,7 +675,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := ac.mutation.EventsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.EventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -673,7 +691,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := ac.mutation.MetasIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.MetasIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -708,10 +726,10 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (ac *AlertCreate) OnConflict(opts ...sql.ConflictOption) *AlertUpsertOne {
-	ac.conflict = opts
+func (_c *AlertCreate) OnConflict(opts ...sql.ConflictOption) *AlertUpsertOne {
+	_c.conflict = opts
 	return &AlertUpsertOne{
-		create: ac,
+		create: _c,
 	}
 }
 
@@ -721,10 +739,10 @@ func (ac *AlertCreate) OnConflict(opts ...sql.ConflictOption) *AlertUpsertOne {
 //	client.Alert.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (ac *AlertCreate) OnConflictColumns(columns ...string) *AlertUpsertOne {
-	ac.conflict = append(ac.conflict, sql.ConflictColumns(columns...))
+func (_c *AlertCreate) OnConflictColumns(columns ...string) *AlertUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &AlertUpsertOne{
-		create: ac,
+		create: _c,
 	}
 }
 
@@ -833,6 +851,9 @@ func (u *AlertUpsertOne) UpdateNewValues() *AlertUpsertOne {
 		if _, exists := u.create.mutation.Remediation(); exists {
 			s.SetIgnore(alert.FieldRemediation)
 		}
+		if _, exists := u.create.mutation.Kind(); exists {
+			s.SetIgnore(alert.FieldKind)
+		}
 	}))
 	return u
 }
@@ -920,16 +941,16 @@ type AlertCreateBulk struct {
 }
 
 // Save creates the Alert entities in the database.
-func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
-	if acb.err != nil {
-		return nil, acb.err
+func (_c *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(acb.builders))
-	nodes := make([]*Alert, len(acb.builders))
-	mutators := make([]Mutator, len(acb.builders))
-	for i := range acb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Alert, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := acb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*AlertMutation)
@@ -943,12 +964,12 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, acb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = acb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, acb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -972,7 +993,7 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, acb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -980,8 +1001,8 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (acb *AlertCreateBulk) SaveX(ctx context.Context) []*Alert {
-	v, err := acb.Save(ctx)
+func (_c *AlertCreateBulk) SaveX(ctx context.Context) []*Alert {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -989,14 +1010,14 @@ func (acb *AlertCreateBulk) SaveX(ctx context.Context) []*Alert {
 }
 
 // Exec executes the query.
-func (acb *AlertCreateBulk) Exec(ctx context.Context) error {
-	_, err := acb.Save(ctx)
+func (_c *AlertCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (acb *AlertCreateBulk) ExecX(ctx context.Context) {
-	if err := acb.Exec(ctx); err != nil {
+func (_c *AlertCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -1016,10 +1037,10 @@ func (acb *AlertCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (acb *AlertCreateBulk) OnConflict(opts ...sql.ConflictOption) *AlertUpsertBulk {
-	acb.conflict = opts
+func (_c *AlertCreateBulk) OnConflict(opts ...sql.ConflictOption) *AlertUpsertBulk {
+	_c.conflict = opts
 	return &AlertUpsertBulk{
-		create: acb,
+		create: _c,
 	}
 }
 
@@ -1029,10 +1050,10 @@ func (acb *AlertCreateBulk) OnConflict(opts ...sql.ConflictOption) *AlertUpsertB
 //	client.Alert.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (acb *AlertCreateBulk) OnConflictColumns(columns ...string) *AlertUpsertBulk {
-	acb.conflict = append(acb.conflict, sql.ConflictColumns(columns...))
+func (_c *AlertCreateBulk) OnConflictColumns(columns ...string) *AlertUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &AlertUpsertBulk{
-		create: acb,
+		create: _c,
 	}
 }
 
@@ -1122,6 +1143,9 @@ func (u *AlertUpsertBulk) UpdateNewValues() *AlertUpsertBulk {
 			}
 			if _, exists := b.mutation.Remediation(); exists {
 				s.SetIgnore(alert.FieldRemediation)
+			}
+			if _, exists := b.mutation.Kind(); exists {
+				s.SetIgnore(alert.FieldKind)
 			}
 		}
 	}))

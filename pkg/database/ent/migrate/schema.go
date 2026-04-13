@@ -35,6 +35,7 @@ var (
 		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "remediation", Type: field.TypeBool, Nullable: true},
+		{Name: "kind", Type: field.TypeString, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -45,7 +46,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[25]},
+				Columns:    []*schema.Column{AlertsColumns[26]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},

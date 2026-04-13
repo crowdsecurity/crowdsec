@@ -24,92 +24,92 @@ type EventCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (ec *EventCreate) SetCreatedAt(t time.Time) *EventCreate {
-	ec.mutation.SetCreatedAt(t)
-	return ec
+func (_c *EventCreate) SetCreatedAt(v time.Time) *EventCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (ec *EventCreate) SetNillableCreatedAt(t *time.Time) *EventCreate {
-	if t != nil {
-		ec.SetCreatedAt(*t)
+func (_c *EventCreate) SetNillableCreatedAt(v *time.Time) *EventCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return ec
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ec *EventCreate) SetUpdatedAt(t time.Time) *EventCreate {
-	ec.mutation.SetUpdatedAt(t)
-	return ec
+func (_c *EventCreate) SetUpdatedAt(v time.Time) *EventCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (ec *EventCreate) SetNillableUpdatedAt(t *time.Time) *EventCreate {
-	if t != nil {
-		ec.SetUpdatedAt(*t)
+func (_c *EventCreate) SetNillableUpdatedAt(v *time.Time) *EventCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return ec
+	return _c
 }
 
 // SetTime sets the "time" field.
-func (ec *EventCreate) SetTime(t time.Time) *EventCreate {
-	ec.mutation.SetTime(t)
-	return ec
+func (_c *EventCreate) SetTime(v time.Time) *EventCreate {
+	_c.mutation.SetTime(v)
+	return _c
 }
 
 // SetSerialized sets the "serialized" field.
-func (ec *EventCreate) SetSerialized(s string) *EventCreate {
-	ec.mutation.SetSerialized(s)
-	return ec
+func (_c *EventCreate) SetSerialized(v string) *EventCreate {
+	_c.mutation.SetSerialized(v)
+	return _c
 }
 
 // SetAlertEvents sets the "alert_events" field.
-func (ec *EventCreate) SetAlertEvents(i int) *EventCreate {
-	ec.mutation.SetAlertEvents(i)
-	return ec
+func (_c *EventCreate) SetAlertEvents(v int) *EventCreate {
+	_c.mutation.SetAlertEvents(v)
+	return _c
 }
 
 // SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
-func (ec *EventCreate) SetNillableAlertEvents(i *int) *EventCreate {
-	if i != nil {
-		ec.SetAlertEvents(*i)
+func (_c *EventCreate) SetNillableAlertEvents(v *int) *EventCreate {
+	if v != nil {
+		_c.SetAlertEvents(*v)
 	}
-	return ec
+	return _c
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
-func (ec *EventCreate) SetOwnerID(id int) *EventCreate {
-	ec.mutation.SetOwnerID(id)
-	return ec
+func (_c *EventCreate) SetOwnerID(id int) *EventCreate {
+	_c.mutation.SetOwnerID(id)
+	return _c
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
-func (ec *EventCreate) SetNillableOwnerID(id *int) *EventCreate {
+func (_c *EventCreate) SetNillableOwnerID(id *int) *EventCreate {
 	if id != nil {
-		ec = ec.SetOwnerID(*id)
+		_c = _c.SetOwnerID(*id)
 	}
-	return ec
+	return _c
 }
 
 // SetOwner sets the "owner" edge to the Alert entity.
-func (ec *EventCreate) SetOwner(a *Alert) *EventCreate {
-	return ec.SetOwnerID(a.ID)
+func (_c *EventCreate) SetOwner(v *Alert) *EventCreate {
+	return _c.SetOwnerID(v.ID)
 }
 
 // Mutation returns the EventMutation object of the builder.
-func (ec *EventCreate) Mutation() *EventMutation {
-	return ec.mutation
+func (_c *EventCreate) Mutation() *EventMutation {
+	return _c.mutation
 }
 
 // Save creates the Event in the database.
-func (ec *EventCreate) Save(ctx context.Context) (*Event, error) {
-	ec.defaults()
-	return withHooks(ctx, ec.sqlSave, ec.mutation, ec.hooks)
+func (_c *EventCreate) Save(ctx context.Context) (*Event, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (ec *EventCreate) SaveX(ctx context.Context) *Event {
-	v, err := ec.Save(ctx)
+func (_c *EventCreate) SaveX(ctx context.Context) *Event {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -117,45 +117,45 @@ func (ec *EventCreate) SaveX(ctx context.Context) *Event {
 }
 
 // Exec executes the query.
-func (ec *EventCreate) Exec(ctx context.Context) error {
-	_, err := ec.Save(ctx)
+func (_c *EventCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ec *EventCreate) ExecX(ctx context.Context) {
-	if err := ec.Exec(ctx); err != nil {
+func (_c *EventCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ec *EventCreate) defaults() {
-	if _, ok := ec.mutation.CreatedAt(); !ok {
+func (_c *EventCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := event.DefaultCreatedAt()
-		ec.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := ec.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := event.DefaultUpdatedAt()
-		ec.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ec *EventCreate) check() error {
-	if _, ok := ec.mutation.CreatedAt(); !ok {
+func (_c *EventCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Event.created_at"`)}
 	}
-	if _, ok := ec.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Event.updated_at"`)}
 	}
-	if _, ok := ec.mutation.Time(); !ok {
+	if _, ok := _c.mutation.Time(); !ok {
 		return &ValidationError{Name: "time", err: errors.New(`ent: missing required field "Event.time"`)}
 	}
-	if _, ok := ec.mutation.Serialized(); !ok {
+	if _, ok := _c.mutation.Serialized(); !ok {
 		return &ValidationError{Name: "serialized", err: errors.New(`ent: missing required field "Event.serialized"`)}
 	}
-	if v, ok := ec.mutation.Serialized(); ok {
+	if v, ok := _c.mutation.Serialized(); ok {
 		if err := event.SerializedValidator(v); err != nil {
 			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
 		}
@@ -163,12 +163,12 @@ func (ec *EventCreate) check() error {
 	return nil
 }
 
-func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
-	if err := ec.check(); err != nil {
+func (_c *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := ec.createSpec()
-	if err := sqlgraph.CreateNode(ctx, ec.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -176,34 +176,34 @@ func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	ec.mutation.id = &_node.ID
-	ec.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
+func (_c *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Event{config: ec.config}
+		_node = &Event{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(event.Table, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = ec.conflict
-	if value, ok := ec.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(event.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := ec.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := ec.mutation.Time(); ok {
+	if value, ok := _c.mutation.Time(); ok {
 		_spec.SetField(event.FieldTime, field.TypeTime, value)
 		_node.Time = value
 	}
-	if value, ok := ec.mutation.Serialized(); ok {
+	if value, ok := _c.mutation.Serialized(); ok {
 		_spec.SetField(event.FieldSerialized, field.TypeString, value)
 		_node.Serialized = value
 	}
-	if nodes := ec.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -239,10 +239,10 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (ec *EventCreate) OnConflict(opts ...sql.ConflictOption) *EventUpsertOne {
-	ec.conflict = opts
+func (_c *EventCreate) OnConflict(opts ...sql.ConflictOption) *EventUpsertOne {
+	_c.conflict = opts
 	return &EventUpsertOne{
-		create: ec,
+		create: _c,
 	}
 }
 
@@ -252,10 +252,10 @@ func (ec *EventCreate) OnConflict(opts ...sql.ConflictOption) *EventUpsertOne {
 //	client.Event.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (ec *EventCreate) OnConflictColumns(columns ...string) *EventUpsertOne {
-	ec.conflict = append(ec.conflict, sql.ConflictColumns(columns...))
+func (_c *EventCreate) OnConflictColumns(columns ...string) *EventUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &EventUpsertOne{
-		create: ec,
+		create: _c,
 	}
 }
 
@@ -430,16 +430,16 @@ type EventCreateBulk struct {
 }
 
 // Save creates the Event entities in the database.
-func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
-	if ecb.err != nil {
-		return nil, ecb.err
+func (_c *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(ecb.builders))
-	nodes := make([]*Event, len(ecb.builders))
-	mutators := make([]Mutator, len(ecb.builders))
-	for i := range ecb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Event, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := ecb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*EventMutation)
@@ -453,12 +453,12 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, ecb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = ecb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, ecb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -482,7 +482,7 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, ecb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -490,8 +490,8 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ecb *EventCreateBulk) SaveX(ctx context.Context) []*Event {
-	v, err := ecb.Save(ctx)
+func (_c *EventCreateBulk) SaveX(ctx context.Context) []*Event {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -499,14 +499,14 @@ func (ecb *EventCreateBulk) SaveX(ctx context.Context) []*Event {
 }
 
 // Exec executes the query.
-func (ecb *EventCreateBulk) Exec(ctx context.Context) error {
-	_, err := ecb.Save(ctx)
+func (_c *EventCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ecb *EventCreateBulk) ExecX(ctx context.Context) {
-	if err := ecb.Exec(ctx); err != nil {
+func (_c *EventCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -526,10 +526,10 @@ func (ecb *EventCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (ecb *EventCreateBulk) OnConflict(opts ...sql.ConflictOption) *EventUpsertBulk {
-	ecb.conflict = opts
+func (_c *EventCreateBulk) OnConflict(opts ...sql.ConflictOption) *EventUpsertBulk {
+	_c.conflict = opts
 	return &EventUpsertBulk{
-		create: ecb,
+		create: _c,
 	}
 }
 
@@ -539,10 +539,10 @@ func (ecb *EventCreateBulk) OnConflict(opts ...sql.ConflictOption) *EventUpsertB
 //	client.Event.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (ecb *EventCreateBulk) OnConflictColumns(columns ...string) *EventUpsertBulk {
-	ecb.conflict = append(ecb.conflict, sql.ConflictColumns(columns...))
+func (_c *EventCreateBulk) OnConflictColumns(columns ...string) *EventUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &EventUpsertBulk{
-		create: ecb,
+		create: _c,
 	}
 }
 

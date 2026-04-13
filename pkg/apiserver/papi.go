@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/longpollclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -146,6 +147,8 @@ func (p *Papi) handleEvent(ctx context.Context, event longpollclient.Event, sync
 	if !ok {
 		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
 	}
+
+	metrics.PapiOrdersReceived.WithLabelValues(message.Header.OperationType, message.Header.OperationCmd).Inc()
 
 	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 
@@ -305,8 +308,11 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 			lastTimestamp = newTime
 
+			metrics.PapiLastPullTimestamp.SetToCurrentTime()
+
 			err = p.handleEvent(ctx, event, false)
 			if err != nil {
+				metrics.PapiInvalidOrdersReceived.Inc()
 				logger.Errorf("failed to handle event: %s", err)
 				continue
 			}

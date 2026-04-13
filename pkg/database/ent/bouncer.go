@@ -72,7 +72,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Bouncer fields.
-func (b *Bouncer) assignValues(columns []string, values []any) error {
+func (_m *Bouncer) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -83,100 +83,100 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			b.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case bouncer.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				b.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case bouncer.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				b.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case bouncer.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				b.Name = value.String
+				_m.Name = value.String
 			}
 		case bouncer.FieldAPIKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field api_key", values[i])
 			} else if value.Valid {
-				b.APIKey = value.String
+				_m.APIKey = value.String
 			}
 		case bouncer.FieldRevoked:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field revoked", values[i])
 			} else if value.Valid {
-				b.Revoked = value.Bool
+				_m.Revoked = value.Bool
 			}
 		case bouncer.FieldIPAddress:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field ip_address", values[i])
 			} else if value.Valid {
-				b.IPAddress = value.String
+				_m.IPAddress = value.String
 			}
 		case bouncer.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
-				b.Type = value.String
+				_m.Type = value.String
 			}
 		case bouncer.FieldVersion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field version", values[i])
 			} else if value.Valid {
-				b.Version = value.String
+				_m.Version = value.String
 			}
 		case bouncer.FieldLastPull:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_pull", values[i])
 			} else if value.Valid {
-				b.LastPull = new(time.Time)
-				*b.LastPull = value.Time
+				_m.LastPull = new(time.Time)
+				*_m.LastPull = value.Time
 			}
 		case bouncer.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
 			} else if value.Valid {
-				b.AuthType = value.String
+				_m.AuthType = value.String
 			}
 		case bouncer.FieldOsname:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osname", values[i])
 			} else if value.Valid {
-				b.Osname = value.String
+				_m.Osname = value.String
 			}
 		case bouncer.FieldOsfamily:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osfamily", values[i])
 			} else if value.Valid {
-				b.Osfamily = value.String
+				_m.Osfamily = value.String
 			}
 		case bouncer.FieldOsversion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field osversion", values[i])
 			} else if value.Valid {
-				b.Osversion = value.String
+				_m.Osversion = value.String
 			}
 		case bouncer.FieldFeatureflags:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field featureflags", values[i])
 			} else if value.Valid {
-				b.Featureflags = value.String
+				_m.Featureflags = value.String
 			}
 		case bouncer.FieldAutoCreated:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field auto_created", values[i])
 			} else if value.Valid {
-				b.AutoCreated = value.Bool
+				_m.AutoCreated = value.Bool
 			}
 		default:
-			b.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -184,78 +184,78 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Bouncer.
 // This includes values selected through modifiers, order, etc.
-func (b *Bouncer) Value(name string) (ent.Value, error) {
-	return b.selectValues.Get(name)
+func (_m *Bouncer) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Bouncer.
 // Note that you need to call Bouncer.Unwrap() before calling this method if this Bouncer
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (b *Bouncer) Update() *BouncerUpdateOne {
-	return NewBouncerClient(b.config).UpdateOne(b)
+func (_m *Bouncer) Update() *BouncerUpdateOne {
+	return NewBouncerClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Bouncer entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (b *Bouncer) Unwrap() *Bouncer {
-	_tx, ok := b.config.driver.(*txDriver)
+func (_m *Bouncer) Unwrap() *Bouncer {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Bouncer is not a transactional entity")
 	}
-	b.config.driver = _tx.drv
-	return b
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (b *Bouncer) String() string {
+func (_m *Bouncer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bouncer(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", b.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(b.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(b.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("api_key=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("revoked=")
-	builder.WriteString(fmt.Sprintf("%v", b.Revoked))
+	builder.WriteString(fmt.Sprintf("%v", _m.Revoked))
 	builder.WriteString(", ")
 	builder.WriteString("ip_address=")
-	builder.WriteString(b.IPAddress)
+	builder.WriteString(_m.IPAddress)
 	builder.WriteString(", ")
 	builder.WriteString("type=")
-	builder.WriteString(b.Type)
+	builder.WriteString(_m.Type)
 	builder.WriteString(", ")
 	builder.WriteString("version=")
-	builder.WriteString(b.Version)
+	builder.WriteString(_m.Version)
 	builder.WriteString(", ")
-	if v := b.LastPull; v != nil {
+	if v := _m.LastPull; v != nil {
 		builder.WriteString("last_pull=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
-	builder.WriteString(b.AuthType)
+	builder.WriteString(_m.AuthType)
 	builder.WriteString(", ")
 	builder.WriteString("osname=")
-	builder.WriteString(b.Osname)
+	builder.WriteString(_m.Osname)
 	builder.WriteString(", ")
 	builder.WriteString("osfamily=")
-	builder.WriteString(b.Osfamily)
+	builder.WriteString(_m.Osfamily)
 	builder.WriteString(", ")
 	builder.WriteString("osversion=")
-	builder.WriteString(b.Osversion)
+	builder.WriteString(_m.Osversion)
 	builder.WriteString(", ")
 	builder.WriteString("featureflags=")
-	builder.WriteString(b.Featureflags)
+	builder.WriteString(_m.Featureflags)
 	builder.WriteString(", ")
 	builder.WriteString("auto_created=")
-	builder.WriteString(fmt.Sprintf("%v", b.AutoCreated))
+	builder.WriteString(fmt.Sprintf("%v", _m.AutoCreated))
 	builder.WriteByte(')')
 	return builder.String()
 }

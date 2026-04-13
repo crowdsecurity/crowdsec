@@ -51,6 +51,7 @@ func (Alert) Fields() []ent.Field {
 		field.Bool("simulated").Default(false).Immutable(),
 		field.String("uuid").Optional().Immutable(), // this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each alert
 		field.Bool("remediation").Optional().Immutable(),
+		field.String("kind").Optional().Immutable(), // Origin of the alert (crowdsec,waf,bot-detection,...)
 	}
 }
 
