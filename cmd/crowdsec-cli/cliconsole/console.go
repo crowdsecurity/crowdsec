@@ -197,7 +197,7 @@ func (*cliConsole) getDefaultInstanceName() string {
 func (cli *cliConsole) newEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
-	autoEnroll := false
+	quickEnroll := false
 	tags := []string{}
 	enableOpts := []string{}
 	disableOpts := []string{}
@@ -222,11 +222,11 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 		Args:              args.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 && !autoEnroll {
+			if len(args) == 0 && !quickEnroll {
 				return cmd.Usage()
 			}
-			if len(args) > 0 && autoEnroll {
-				return errors.New("enroll key cannot be specified when using auto-enroll")
+			if len(args) > 0 && quickEnroll {
+				return errors.New("enroll key cannot be specified when using quick enroll")
 			}
 			key := ""
 			if len(args) > 0 {
@@ -244,7 +244,7 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 				return err
 			}
 
-			return cli.enroll(cmd.Context(), key, name, overwrite, tags, opts, autoEnroll)
+			return cli.enroll(cmd.Context(), key, name, overwrite, tags, opts, quickEnroll)
 		},
 	}
 
@@ -254,7 +254,7 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 	flags.StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	flags.StringSliceVarP(&enableOpts, "enable", "e", enableOpts, "Enable console options")
 	flags.StringSliceVarP(&disableOpts, "disable", "d", disableOpts, "Disable console options")
-	flags.BoolVarP(&autoEnroll, "auto", "a", false, "Enrolls the instance without an enroll key by visiting a link to the CrowdSec console.")
+	flags.BoolVarP(&quickEnroll, "quick", "q", false, "Enrolls the instance without an enroll key by visiting a link to the CrowdSec console.")
 
 	return cmd
 }
