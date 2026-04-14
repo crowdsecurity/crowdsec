@@ -249,12 +249,18 @@ func TestWatcherEnroll(t *testing.T) {
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		log.Debugf("body -> %s", newStr)
+		parsedBody := map[string]any{}
+		err := json.Unmarshal([]byte(newStr), &parsedBody)
+		require.NoError(t, err)
 
-		if newStr == `{"attachment_key":"goodkey","name":"","tags":[],"overwrite":false}
-` {
+		if parsedBody["attachment_key"] == "goodkey" && parsedBody["autoenroll"] == false {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `{"statusCode": 200, "message": "OK"}`)
+		} else if parsedBody["attachment_key"] == "" && parsedBody["autoenroll"] == true {
+			log.Print("autoenroll")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"url": "https://example.com/enroll"}`)
 		} else {
 			log.Print("bad key")
 			w.WriteHeader(http.StatusForbidden)
@@ -288,6 +294,9 @@ func TestWatcherEnroll(t *testing.T) {
 	client := NewClient(mycfg)
 
 	_, _, err = client.Auth.EnrollWatcher(ctx, "goodkey", "", []string{}, false, false)
+	require.NoError(t, err)
+
+	_, _, err = client.Auth.EnrollWatcher(ctx, "", "", []string{}, false, true)
 	require.NoError(t, err)
 
 	_, _, err = client.Auth.EnrollWatcher(ctx, "badkey", "", []string{}, false, false)
