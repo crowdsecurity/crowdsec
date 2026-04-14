@@ -12,15 +12,16 @@ type AuthService service
 
 // Don't add it to the models, as they are used with LAPI, but the enroll endpoint is specific to CAPI
 type enrollRequest struct {
-	EnrollKey  string   `json:"attachment_key"`
+	EnrollKey  string   `json:"attachment_key,omitempty"`
 	Name       string   `json:"name"`
 	Tags       []string `json:"tags"`
-	Overwrite  bool     `json:"overwrite"`
+	Overwrite  bool     `json:"overwrite,omitempty"`
 	AutoEnroll bool     `json:"autoenroll"`
 }
 
 type autoEnrollResponse struct {
-	Url string `json:"url"`
+	Url       string `json:"url"`
+	ExpiresAt int64  `json:"expire_at"`
 }
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
@@ -76,7 +77,16 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string, overwrite bool, autoEnroll bool) (autoEnrollResponse, *Response, error) {
 	u := fmt.Sprintf("%s/watchers/enroll", s.client.URLPrefix)
 
-	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite, AutoEnroll: autoEnroll})
+	b := &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, AutoEnroll: autoEnroll}
+	// Console refuses enroll requests if overwrite or key is set even to falsy values with autoenroll, so we only set them if they are needed
+	if overwrite {
+		b.Overwrite = true
+	}
+	if enrollKey != "" {
+		b.EnrollKey = enrollKey
+	}
+
+	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, b)
 	if err != nil {
 		return autoEnrollResponse{}, nil, err
 	}

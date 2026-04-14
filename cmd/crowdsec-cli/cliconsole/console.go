@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -107,6 +108,9 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 
 	if autoEnroll {
 		log.Infof("Please visit the following URL to enroll your instance: %s", autoResp.Url)
+		log.Infof("This link is valid for the next %s.", time.Until(time.UnixMilli(autoResp.ExpiresAt)).Round(time.Minute))
+		log.Info("Please restart crowdsec after accepting the enrollment.")
+
 	} else {
 		log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
 		log.Info("Please restart crowdsec after accepting the enrollment.")

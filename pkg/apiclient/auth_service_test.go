@@ -256,7 +256,7 @@ func TestWatcherEnroll(t *testing.T) {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `{"statusCode": 200, "message": "OK"}`)
-		} else if parsedBody["attachment_key"] == "" && parsedBody["autoenroll"].(bool) {
+		} else if parsedBody["attachment_key"] == nil && parsedBody["autoenroll"].(bool) {
 			log.Print("autoenroll")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `{"url": "https://example.com/enroll"}`)
