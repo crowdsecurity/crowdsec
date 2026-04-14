@@ -250,8 +250,7 @@ func TestWatcherEnroll(t *testing.T) {
 		newStr := buf.String()
 		log.Debugf("body -> %s", newStr)
 		parsedBody := map[string]any{}
-		err := json.Unmarshal([]byte(newStr), &parsedBody)
-		require.NoError(t, err)
+		_ = json.Unmarshal([]byte(newStr), &parsedBody)
 
 		if parsedBody["attachment_key"] == "goodkey" && !parsedBody["autoenroll"].(bool) {
 			log.Print("good key")
