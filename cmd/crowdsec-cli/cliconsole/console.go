@@ -180,7 +180,7 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 	return opts, nil
 }
 
-func (_ *cliConsole) getDefaultInstanceName() string {
+func (*cliConsole) getDefaultInstanceName() string {
 	hostname, err := os.Hostname()
 	if err != nil {
 		log.Warnf("Could not get machine hostname: %s. Defaulting to machine id as instance name", err)
