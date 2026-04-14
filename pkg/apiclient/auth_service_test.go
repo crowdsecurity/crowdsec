@@ -253,11 +253,11 @@ func TestWatcherEnroll(t *testing.T) {
 		err := json.Unmarshal([]byte(newStr), &parsedBody)
 		require.NoError(t, err)
 
-		if parsedBody["attachment_key"] == "goodkey" && parsedBody["autoenroll"] == false {
+		if parsedBody["attachment_key"] == "goodkey" && !parsedBody["autoenroll"].(bool) {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `{"statusCode": 200, "message": "OK"}`)
-		} else if parsedBody["attachment_key"] == "" && parsedBody["autoenroll"] == true {
+		} else if parsedBody["attachment_key"] == "" && parsedBody["autoenroll"].(bool) {
 			log.Print("autoenroll")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `{"url": "https://example.com/enroll"}`)
