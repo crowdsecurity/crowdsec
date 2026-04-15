@@ -97,7 +97,7 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 
 	if rawResp.Response.StatusCode == http.StatusOK {
 		if autoEnroll {
-			log.Warn("The instance is already enrolled in an organisation; transfer it using https://app.crowdsec.net/.")
+			log.Warn("The instance is already enrolled in an organization; transfer it using https://app.crowdsec.net/.")
 			return nil
 		}
 		if !overwrite {
