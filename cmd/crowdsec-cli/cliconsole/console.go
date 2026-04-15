@@ -97,7 +97,7 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 
 	if rawResp.Response.StatusCode == http.StatusOK {
 		if autoEnroll {
-			log.Warn("Instance already enrolled. Please visit https://app.crowdsec.net if you wish to move it to another account.")
+			log.Warn("The instance is already enrolled in an organisation; transfer it using https://app.crowdsec.net/.")
 			return nil
 		}
 		if !overwrite {
@@ -107,7 +107,8 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	}
 
 	if autoEnroll {
-		log.Infof("Please visit the following URL to enroll your instance: %s", autoResp.Url)
+		bold := color.New(color.Bold)
+		log.Infof("Please visit the following URL to enroll your instance: %s", bold.Sprint(autoResp.Url))
 		log.Infof("This link is valid for the next %s.", time.Until(time.UnixMilli(autoResp.ExpiresAt)).Round(time.Minute))
 		log.Info("Please restart crowdsec after accepting the enrollment.")
 
@@ -211,8 +212,8 @@ Enroll this instance to https://app.crowdsec.net
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
-cscli console enroll --auto
-cscli console enroll --auto --name [instance_name]
+cscli console enroll --quick
+cscli console enroll --quick --name [instance_name]
 cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
 cscli console enroll --enable console_management YOUR-ENROLL-KEY
