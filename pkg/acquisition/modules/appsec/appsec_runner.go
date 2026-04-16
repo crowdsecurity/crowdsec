@@ -140,9 +140,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}
 
 	defer func() {
-		state.Tx.ProcessLogging()
 		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
-
 		err := r.AppsecRuntime.ProcessPostEvalRules(state, request)
 		if err != nil {
 			r.logger.Errorf("unable to process PostEval rules: %s", err)
@@ -167,6 +165,11 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		r.logger.Debug("drop helper triggered during pre_eval, skipping WAF evaluation")
 		return nil
 	}
+
+	defer func() {
+		state.Tx.ProcessLogging()
+		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+	}()
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
