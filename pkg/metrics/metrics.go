@@ -38,7 +38,8 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow,
 			LapiRouteHits,
 			BucketsCurrentCount,
-			CacheMetrics, RegexpCacheMetrics, NodesWlHitsOk, NodesWlHits)
+			CacheMetrics, RegexpCacheMetrics, NodesWlHitsOk, NodesWlHits,
+			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
 	case MetricsLevelFull:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
 			NodesHits, NodesHitsOk, NodesHitsKo,
@@ -46,7 +47,8 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			LapiRouteHits, LapiMachineHits, LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions, LapiResponseTime,
 			BucketsPour, BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow, BucketsCurrentCount,
 			GlobalActiveDecisions, GlobalAlerts, NodesWlHitsOk, NodesWlHits,
-			CacheMetrics, RegexpCacheMetrics)
+			CacheMetrics, RegexpCacheMetrics,
+			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
 	default:
 		return fmt.Errorf("%w: %s", ErrInvalidMetricsLevel, metricsLevel)
 	}

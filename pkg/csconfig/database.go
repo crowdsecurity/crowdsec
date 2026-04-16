@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -100,10 +99,10 @@ func (c *Config) LoadDBConfig(inCli bool) error {
 						"Set explicitly to false to disable this warning.")
 			case isNetwork:
 				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
-				c.DbConfig.UseWal = ptr.Of(false)
+				c.DbConfig.UseWal = new(false)
 			default:
 				log.Debugf("database is on local filesystem (%s), setting useWal to true", fsType)
-				c.DbConfig.UseWal = ptr.Of(true)
+				c.DbConfig.UseWal = new(true)
 			}
 		} else if *c.DbConfig.UseWal {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
