@@ -162,11 +162,18 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}
 
 	if request.BodySizeExceeded {
-		r.logger.Warnf("request body exceeded maximum allowed size, dropping request")
-		if err = r.AppsecRuntime.DropRequest(state, request, "request body exceeded maximum allowed size"); err != nil {
-			r.logger.Errorf("unable to drop request: %s", err)
+		// DisableBodyInspection in pre_eval also opts out of the size-exceeded drop:
+		// the operator has explicitly accepted that this request's body will not be
+		// processed, so there is nothing to protect the WAF from.
+		if state.DisableBodyInspection {
+			r.logger.Debugf("request body exceeded maximum allowed size but body inspection is disabled, allowing request")
+		} else {
+			r.logger.Warnf("request body exceeded maximum allowed size, dropping request")
+			if err = r.AppsecRuntime.DropRequest(state, request, "request body exceeded maximum allowed size"); err != nil {
+				r.logger.Errorf("unable to drop request: %s", err)
+			}
+			return nil
 		}
-		return nil
 	}
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)

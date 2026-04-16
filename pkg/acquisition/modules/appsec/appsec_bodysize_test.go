@@ -231,6 +231,46 @@ func TestAppsecDisableBodyInspection(t *testing.T) {
 			},
 		},
 		{
+			name:             "DisableBodyInspection bypasses BodySizeExceeded drop",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Filter: "1 == 1", Apply: []string{"DisableBodyInspection()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:         "1.2.3.4",
+				RemoteAddr:       "127.0.0.1",
+				Method:           "POST",
+				URI:              "/",
+				HTTPRequest:      &http.Request{Host: "example.com"},
+				BodySizeExceeded: true,
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt)
+				require.Empty(t, events)
+			},
+		},
+		{
+			name:             "BodySizeExceeded with conditional DisableBodyInspection - still drops when filter does not match",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Filter: "req.URL.Path startsWith '/upload'", Apply: []string{"DisableBodyInspection()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:         "1.2.3.4",
+				RemoteAddr:       "127.0.0.1",
+				Method:           "POST",
+				URI:              "/api",
+				HTTPRequest:      &http.Request{Host: "example.com"},
+				BodySizeExceeded: true,
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
+		{
 			name:             "DisableBodyInspection - conditional filter, body inspected when filter does not match",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
