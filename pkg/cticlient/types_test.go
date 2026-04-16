@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 //func (c *SmokeItem) GetAttackDetails() []string {
@@ -16,16 +14,16 @@ func getSampleSmokeItem() SmokeItem {
 	emptyItem := SmokeItem{
 		IpRangeScore: 2.0,
 		Ip:           "1.2.3.4",
-		IpRange:      ptr.Of("1.2.3.0/24"),
-		AsName:       ptr.Of("AS1234"),
-		AsNum:        ptr.Of(1234),
+		IpRange:      new("1.2.3.0/24"),
+		AsName:       new("AS1234"),
+		AsNum:        new(1234),
 		Location: CTILocationInfo{
-			Country:   ptr.Of("FR"),
-			City:      ptr.Of("Paris"),
+			Country:   new("FR"),
+			City:      new("Paris"),
 			Latitude:  &lat,
 			Longitude: &long,
 		},
-		ReverseDNS: ptr.Of("foo.bar.com"),
+		ReverseDNS: new("foo.bar.com"),
 		Behaviors: []*CTIBehavior{
 			{
 				Name:        "ssh:bruteforce",
@@ -34,8 +32,8 @@ func getSampleSmokeItem() SmokeItem {
 			},
 		},
 		History: CTIHistory{
-			FirstSeen: ptr.Of("2022-12-05T17:45:00+00:00"),
-			LastSeen:  ptr.Of("2022-12-06T19:15:00+00:00"),
+			FirstSeen: new("2022-12-05T17:45:00+00:00"),
+			LastSeen:  new("2022-12-06T19:15:00+00:00"),
 			FullAge:   3,
 			DaysAge:   1,
 		},
@@ -62,7 +60,7 @@ func getSampleSmokeItem() SmokeItem {
 			"GB": 14,
 			"US": 14,
 		},
-		BackgroundNoiseScore: ptr.Of(3),
+		BackgroundNoiseScore: new(3),
 		Scores: CTIScores{
 			Overall: CTIScore{
 				Aggressiveness: 2,

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 type SignalService service
 
-func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsRequest) (interface{}, *Response, error) {
+func (s *SignalService) Add(ctx context.Context, signals *modelscapi.AddSignalsRequest) (interface{}, *Response, error) {
 	u := fmt.Sprintf("%s/signals", s.client.URLPrefix)
 
 	req, err := s.client.PrepareRequest(ctx, http.MethodPost, u, &signals)

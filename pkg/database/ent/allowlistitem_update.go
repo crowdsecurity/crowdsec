@@ -24,87 +24,87 @@ type AllowListItemUpdate struct {
 }
 
 // Where appends a list predicates to the AllowListItemUpdate builder.
-func (aliu *AllowListItemUpdate) Where(ps ...predicate.AllowListItem) *AllowListItemUpdate {
-	aliu.mutation.Where(ps...)
-	return aliu
+func (_u *AllowListItemUpdate) Where(ps ...predicate.AllowListItem) *AllowListItemUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (aliu *AllowListItemUpdate) SetUpdatedAt(t time.Time) *AllowListItemUpdate {
-	aliu.mutation.SetUpdatedAt(t)
-	return aliu
+func (_u *AllowListItemUpdate) SetUpdatedAt(v time.Time) *AllowListItemUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetExpiresAt sets the "expires_at" field.
-func (aliu *AllowListItemUpdate) SetExpiresAt(t time.Time) *AllowListItemUpdate {
-	aliu.mutation.SetExpiresAt(t)
-	return aliu
+func (_u *AllowListItemUpdate) SetExpiresAt(v time.Time) *AllowListItemUpdate {
+	_u.mutation.SetExpiresAt(v)
+	return _u
 }
 
 // SetNillableExpiresAt sets the "expires_at" field if the given value is not nil.
-func (aliu *AllowListItemUpdate) SetNillableExpiresAt(t *time.Time) *AllowListItemUpdate {
-	if t != nil {
-		aliu.SetExpiresAt(*t)
+func (_u *AllowListItemUpdate) SetNillableExpiresAt(v *time.Time) *AllowListItemUpdate {
+	if v != nil {
+		_u.SetExpiresAt(*v)
 	}
-	return aliu
+	return _u
 }
 
 // ClearExpiresAt clears the value of the "expires_at" field.
-func (aliu *AllowListItemUpdate) ClearExpiresAt() *AllowListItemUpdate {
-	aliu.mutation.ClearExpiresAt()
-	return aliu
+func (_u *AllowListItemUpdate) ClearExpiresAt() *AllowListItemUpdate {
+	_u.mutation.ClearExpiresAt()
+	return _u
 }
 
 // AddAllowlistIDs adds the "allowlist" edge to the AllowList entity by IDs.
-func (aliu *AllowListItemUpdate) AddAllowlistIDs(ids ...int) *AllowListItemUpdate {
-	aliu.mutation.AddAllowlistIDs(ids...)
-	return aliu
+func (_u *AllowListItemUpdate) AddAllowlistIDs(ids ...int) *AllowListItemUpdate {
+	_u.mutation.AddAllowlistIDs(ids...)
+	return _u
 }
 
 // AddAllowlist adds the "allowlist" edges to the AllowList entity.
-func (aliu *AllowListItemUpdate) AddAllowlist(a ...*AllowList) *AllowListItemUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListItemUpdate) AddAllowlist(v ...*AllowList) *AllowListItemUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aliu.AddAllowlistIDs(ids...)
+	return _u.AddAllowlistIDs(ids...)
 }
 
 // Mutation returns the AllowListItemMutation object of the builder.
-func (aliu *AllowListItemUpdate) Mutation() *AllowListItemMutation {
-	return aliu.mutation
+func (_u *AllowListItemUpdate) Mutation() *AllowListItemMutation {
+	return _u.mutation
 }
 
 // ClearAllowlist clears all "allowlist" edges to the AllowList entity.
-func (aliu *AllowListItemUpdate) ClearAllowlist() *AllowListItemUpdate {
-	aliu.mutation.ClearAllowlist()
-	return aliu
+func (_u *AllowListItemUpdate) ClearAllowlist() *AllowListItemUpdate {
+	_u.mutation.ClearAllowlist()
+	return _u
 }
 
 // RemoveAllowlistIDs removes the "allowlist" edge to AllowList entities by IDs.
-func (aliu *AllowListItemUpdate) RemoveAllowlistIDs(ids ...int) *AllowListItemUpdate {
-	aliu.mutation.RemoveAllowlistIDs(ids...)
-	return aliu
+func (_u *AllowListItemUpdate) RemoveAllowlistIDs(ids ...int) *AllowListItemUpdate {
+	_u.mutation.RemoveAllowlistIDs(ids...)
+	return _u
 }
 
 // RemoveAllowlist removes "allowlist" edges to AllowList entities.
-func (aliu *AllowListItemUpdate) RemoveAllowlist(a ...*AllowList) *AllowListItemUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListItemUpdate) RemoveAllowlist(v ...*AllowList) *AllowListItemUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aliu.RemoveAllowlistIDs(ids...)
+	return _u.RemoveAllowlistIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (aliu *AllowListItemUpdate) Save(ctx context.Context) (int, error) {
-	aliu.defaults()
-	return withHooks(ctx, aliu.sqlSave, aliu.mutation, aliu.hooks)
+func (_u *AllowListItemUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (aliu *AllowListItemUpdate) SaveX(ctx context.Context) int {
-	affected, err := aliu.Save(ctx)
+func (_u *AllowListItemUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -112,63 +112,63 @@ func (aliu *AllowListItemUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (aliu *AllowListItemUpdate) Exec(ctx context.Context) error {
-	_, err := aliu.Save(ctx)
+func (_u *AllowListItemUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (aliu *AllowListItemUpdate) ExecX(ctx context.Context) {
-	if err := aliu.Exec(ctx); err != nil {
+func (_u *AllowListItemUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (aliu *AllowListItemUpdate) defaults() {
-	if _, ok := aliu.mutation.UpdatedAt(); !ok {
+func (_u *AllowListItemUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := allowlistitem.UpdateDefaultUpdatedAt()
-		aliu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (aliu *AllowListItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *AllowListItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(allowlistitem.Table, allowlistitem.Columns, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
-	if ps := aliu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := aliu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlistitem.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := aliu.mutation.ExpiresAt(); ok {
+	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(allowlistitem.FieldExpiresAt, field.TypeTime, value)
 	}
-	if aliu.mutation.ExpiresAtCleared() {
+	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(allowlistitem.FieldExpiresAt, field.TypeTime)
 	}
-	if aliu.mutation.CommentCleared() {
+	if _u.mutation.CommentCleared() {
 		_spec.ClearField(allowlistitem.FieldComment, field.TypeString)
 	}
-	if aliu.mutation.StartIPCleared() {
+	if _u.mutation.StartIPCleared() {
 		_spec.ClearField(allowlistitem.FieldStartIP, field.TypeInt64)
 	}
-	if aliu.mutation.EndIPCleared() {
+	if _u.mutation.EndIPCleared() {
 		_spec.ClearField(allowlistitem.FieldEndIP, field.TypeInt64)
 	}
-	if aliu.mutation.StartSuffixCleared() {
+	if _u.mutation.StartSuffixCleared() {
 		_spec.ClearField(allowlistitem.FieldStartSuffix, field.TypeInt64)
 	}
-	if aliu.mutation.EndSuffixCleared() {
+	if _u.mutation.EndSuffixCleared() {
 		_spec.ClearField(allowlistitem.FieldEndSuffix, field.TypeInt64)
 	}
-	if aliu.mutation.IPSizeCleared() {
+	if _u.mutation.IPSizeCleared() {
 		_spec.ClearField(allowlistitem.FieldIPSize, field.TypeInt64)
 	}
-	if aliu.mutation.AllowlistCleared() {
+	if _u.mutation.AllowlistCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -181,7 +181,7 @@ func (aliu *AllowListItemUpdate) sqlSave(ctx context.Context) (n int, err error)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aliu.mutation.RemovedAllowlistIDs(); len(nodes) > 0 && !aliu.mutation.AllowlistCleared() {
+	if nodes := _u.mutation.RemovedAllowlistIDs(); len(nodes) > 0 && !_u.mutation.AllowlistCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -197,7 +197,7 @@ func (aliu *AllowListItemUpdate) sqlSave(ctx context.Context) (n int, err error)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aliu.mutation.AllowlistIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AllowlistIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -213,7 +213,7 @@ func (aliu *AllowListItemUpdate) sqlSave(ctx context.Context) (n int, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, aliu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{allowlistitem.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -221,8 +221,8 @@ func (aliu *AllowListItemUpdate) sqlSave(ctx context.Context) (n int, err error)
 		}
 		return 0, err
 	}
-	aliu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // AllowListItemUpdateOne is the builder for updating a single AllowListItem entity.
@@ -234,94 +234,94 @@ type AllowListItemUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (aliuo *AllowListItemUpdateOne) SetUpdatedAt(t time.Time) *AllowListItemUpdateOne {
-	aliuo.mutation.SetUpdatedAt(t)
-	return aliuo
+func (_u *AllowListItemUpdateOne) SetUpdatedAt(v time.Time) *AllowListItemUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetExpiresAt sets the "expires_at" field.
-func (aliuo *AllowListItemUpdateOne) SetExpiresAt(t time.Time) *AllowListItemUpdateOne {
-	aliuo.mutation.SetExpiresAt(t)
-	return aliuo
+func (_u *AllowListItemUpdateOne) SetExpiresAt(v time.Time) *AllowListItemUpdateOne {
+	_u.mutation.SetExpiresAt(v)
+	return _u
 }
 
 // SetNillableExpiresAt sets the "expires_at" field if the given value is not nil.
-func (aliuo *AllowListItemUpdateOne) SetNillableExpiresAt(t *time.Time) *AllowListItemUpdateOne {
-	if t != nil {
-		aliuo.SetExpiresAt(*t)
+func (_u *AllowListItemUpdateOne) SetNillableExpiresAt(v *time.Time) *AllowListItemUpdateOne {
+	if v != nil {
+		_u.SetExpiresAt(*v)
 	}
-	return aliuo
+	return _u
 }
 
 // ClearExpiresAt clears the value of the "expires_at" field.
-func (aliuo *AllowListItemUpdateOne) ClearExpiresAt() *AllowListItemUpdateOne {
-	aliuo.mutation.ClearExpiresAt()
-	return aliuo
+func (_u *AllowListItemUpdateOne) ClearExpiresAt() *AllowListItemUpdateOne {
+	_u.mutation.ClearExpiresAt()
+	return _u
 }
 
 // AddAllowlistIDs adds the "allowlist" edge to the AllowList entity by IDs.
-func (aliuo *AllowListItemUpdateOne) AddAllowlistIDs(ids ...int) *AllowListItemUpdateOne {
-	aliuo.mutation.AddAllowlistIDs(ids...)
-	return aliuo
+func (_u *AllowListItemUpdateOne) AddAllowlistIDs(ids ...int) *AllowListItemUpdateOne {
+	_u.mutation.AddAllowlistIDs(ids...)
+	return _u
 }
 
 // AddAllowlist adds the "allowlist" edges to the AllowList entity.
-func (aliuo *AllowListItemUpdateOne) AddAllowlist(a ...*AllowList) *AllowListItemUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListItemUpdateOne) AddAllowlist(v ...*AllowList) *AllowListItemUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aliuo.AddAllowlistIDs(ids...)
+	return _u.AddAllowlistIDs(ids...)
 }
 
 // Mutation returns the AllowListItemMutation object of the builder.
-func (aliuo *AllowListItemUpdateOne) Mutation() *AllowListItemMutation {
-	return aliuo.mutation
+func (_u *AllowListItemUpdateOne) Mutation() *AllowListItemMutation {
+	return _u.mutation
 }
 
 // ClearAllowlist clears all "allowlist" edges to the AllowList entity.
-func (aliuo *AllowListItemUpdateOne) ClearAllowlist() *AllowListItemUpdateOne {
-	aliuo.mutation.ClearAllowlist()
-	return aliuo
+func (_u *AllowListItemUpdateOne) ClearAllowlist() *AllowListItemUpdateOne {
+	_u.mutation.ClearAllowlist()
+	return _u
 }
 
 // RemoveAllowlistIDs removes the "allowlist" edge to AllowList entities by IDs.
-func (aliuo *AllowListItemUpdateOne) RemoveAllowlistIDs(ids ...int) *AllowListItemUpdateOne {
-	aliuo.mutation.RemoveAllowlistIDs(ids...)
-	return aliuo
+func (_u *AllowListItemUpdateOne) RemoveAllowlistIDs(ids ...int) *AllowListItemUpdateOne {
+	_u.mutation.RemoveAllowlistIDs(ids...)
+	return _u
 }
 
 // RemoveAllowlist removes "allowlist" edges to AllowList entities.
-func (aliuo *AllowListItemUpdateOne) RemoveAllowlist(a ...*AllowList) *AllowListItemUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListItemUpdateOne) RemoveAllowlist(v ...*AllowList) *AllowListItemUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aliuo.RemoveAllowlistIDs(ids...)
+	return _u.RemoveAllowlistIDs(ids...)
 }
 
 // Where appends a list predicates to the AllowListItemUpdate builder.
-func (aliuo *AllowListItemUpdateOne) Where(ps ...predicate.AllowListItem) *AllowListItemUpdateOne {
-	aliuo.mutation.Where(ps...)
-	return aliuo
+func (_u *AllowListItemUpdateOne) Where(ps ...predicate.AllowListItem) *AllowListItemUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (aliuo *AllowListItemUpdateOne) Select(field string, fields ...string) *AllowListItemUpdateOne {
-	aliuo.fields = append([]string{field}, fields...)
-	return aliuo
+func (_u *AllowListItemUpdateOne) Select(field string, fields ...string) *AllowListItemUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated AllowListItem entity.
-func (aliuo *AllowListItemUpdateOne) Save(ctx context.Context) (*AllowListItem, error) {
-	aliuo.defaults()
-	return withHooks(ctx, aliuo.sqlSave, aliuo.mutation, aliuo.hooks)
+func (_u *AllowListItemUpdateOne) Save(ctx context.Context) (*AllowListItem, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (aliuo *AllowListItemUpdateOne) SaveX(ctx context.Context) *AllowListItem {
-	node, err := aliuo.Save(ctx)
+func (_u *AllowListItemUpdateOne) SaveX(ctx context.Context) *AllowListItem {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -329,34 +329,34 @@ func (aliuo *AllowListItemUpdateOne) SaveX(ctx context.Context) *AllowListItem {
 }
 
 // Exec executes the query on the entity.
-func (aliuo *AllowListItemUpdateOne) Exec(ctx context.Context) error {
-	_, err := aliuo.Save(ctx)
+func (_u *AllowListItemUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (aliuo *AllowListItemUpdateOne) ExecX(ctx context.Context) {
-	if err := aliuo.Exec(ctx); err != nil {
+func (_u *AllowListItemUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (aliuo *AllowListItemUpdateOne) defaults() {
-	if _, ok := aliuo.mutation.UpdatedAt(); !ok {
+func (_u *AllowListItemUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := allowlistitem.UpdateDefaultUpdatedAt()
-		aliuo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowListItem, err error) {
+func (_u *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowListItem, err error) {
 	_spec := sqlgraph.NewUpdateSpec(allowlistitem.Table, allowlistitem.Columns, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
-	id, ok := aliuo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "AllowListItem.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := aliuo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, allowlistitem.FieldID)
 		for _, f := range fields {
@@ -368,41 +368,41 @@ func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowL
 			}
 		}
 	}
-	if ps := aliuo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := aliuo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlistitem.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := aliuo.mutation.ExpiresAt(); ok {
+	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(allowlistitem.FieldExpiresAt, field.TypeTime, value)
 	}
-	if aliuo.mutation.ExpiresAtCleared() {
+	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(allowlistitem.FieldExpiresAt, field.TypeTime)
 	}
-	if aliuo.mutation.CommentCleared() {
+	if _u.mutation.CommentCleared() {
 		_spec.ClearField(allowlistitem.FieldComment, field.TypeString)
 	}
-	if aliuo.mutation.StartIPCleared() {
+	if _u.mutation.StartIPCleared() {
 		_spec.ClearField(allowlistitem.FieldStartIP, field.TypeInt64)
 	}
-	if aliuo.mutation.EndIPCleared() {
+	if _u.mutation.EndIPCleared() {
 		_spec.ClearField(allowlistitem.FieldEndIP, field.TypeInt64)
 	}
-	if aliuo.mutation.StartSuffixCleared() {
+	if _u.mutation.StartSuffixCleared() {
 		_spec.ClearField(allowlistitem.FieldStartSuffix, field.TypeInt64)
 	}
-	if aliuo.mutation.EndSuffixCleared() {
+	if _u.mutation.EndSuffixCleared() {
 		_spec.ClearField(allowlistitem.FieldEndSuffix, field.TypeInt64)
 	}
-	if aliuo.mutation.IPSizeCleared() {
+	if _u.mutation.IPSizeCleared() {
 		_spec.ClearField(allowlistitem.FieldIPSize, field.TypeInt64)
 	}
-	if aliuo.mutation.AllowlistCleared() {
+	if _u.mutation.AllowlistCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -415,7 +415,7 @@ func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowL
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aliuo.mutation.RemovedAllowlistIDs(); len(nodes) > 0 && !aliuo.mutation.AllowlistCleared() {
+	if nodes := _u.mutation.RemovedAllowlistIDs(); len(nodes) > 0 && !_u.mutation.AllowlistCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -431,7 +431,7 @@ func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowL
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aliuo.mutation.AllowlistIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AllowlistIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -447,10 +447,10 @@ func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowL
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &AllowListItem{config: aliuo.config}
+	_node = &AllowListItem{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, aliuo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{allowlistitem.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -458,6 +458,6 @@ func (aliuo *AllowListItemUpdateOne) sqlSave(ctx context.Context) (_node *AllowL
 		}
 		return nil, err
 	}
-	aliuo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

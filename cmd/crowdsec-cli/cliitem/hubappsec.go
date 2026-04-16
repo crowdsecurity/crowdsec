@@ -20,94 +20,95 @@ func NewAppsecConfig(cfg csconfig.Getter) *cliItem {
 		name:      cwhub.APPSEC_CONFIGS,
 		singular:  "appsec-config",
 		oneOrMore: "appsec-config(s)",
+		aliases:   []string{"waf-configs"},
 		help: cliHelp{
-			example: `cscli appsec-configs list -a
-cscli appsec-configs install crowdsecurity/virtual-patching
-cscli appsec-configs inspect crowdsecurity/virtual-patching
-cscli appsec-configs upgrade crowdsecurity/virtual-patching
-cscli appsec-configs remove crowdsecurity/virtual-patching
+			example: `cscli waf-configs list -a
+cscli waf-configs install crowdsecurity/virtual-patching
+cscli waf-configs inspect crowdsecurity/virtual-patching
+cscli waf-configs upgrade crowdsecurity/virtual-patching
+cscli waf-configs remove crowdsecurity/virtual-patching
 `,
 		},
 		installHelp: cliHelp{
-			example: `# Install some appsec-configs.
-cscli appsec-configs install crowdsecurity/virtual-patching
+			example: `# Install some waf-configs.
+cscli waf-configs install crowdsecurity/virtual-patching
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-configs install crowdsecurity/virtual-patching --dry-run
+cscli waf-configs install crowdsecurity/virtual-patching --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-configs install crowdsecurity/virtual-patching --dry-run -o raw
+cscli waf-configs install crowdsecurity/virtual-patching --dry-run -o raw
 
 # Download only, to be installed later.
-cscli appsec-configs install crowdsecurity/virtual-patching --download-only
+cscli waf-configs install crowdsecurity/virtual-patching --download-only
 
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
-cscli appsec-configs install crowdsecurity/virtual-patching --force
+cscli waf-configs install crowdsecurity/virtual-patching --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-configs install crowdsecurity/virtual-patching -i
-cscli appsec-configs install crowdsecurity/virtual-patching --interactive`,
+cscli waf-configs install crowdsecurity/virtual-patching -i
+cscli waf-configs install crowdsecurity/virtual-patching --interactive`,
 		},
 		removeHelp: cliHelp{
-			example: `# Uninstall some appsec-configs.
-cscli appsec-configs remove crowdsecurity/virtual-patching
+			example: `# Uninstall some waf-configs.
+cscli waf-configs remove crowdsecurity/virtual-patching
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-configs remove crowdsecurity/virtual-patching --dry-run
+cscli waf-configs remove crowdsecurity/virtual-patching --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-configs remove crowdsecurity/virtual-patching --dry-run -o raw
+cscli waf-configs remove crowdsecurity/virtual-patching --dry-run -o raw
 
 # Uninstall and also remove the downloaded files.
-cscli appsec-configs remove crowdsecurity/virtual-patching --purge
+cscli waf-configs remove crowdsecurity/virtual-patching --purge
 
 # Remove tainted items.
-cscli appsec-configs remove crowdsecurity/virtual-patching --force
+cscli waf-configs remove crowdsecurity/virtual-patching --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-configs remove crowdsecurity/virtual-patching -i
-cscli appsec-configs remove crowdsecurity/virtual-patching --interactive`,
+cscli waf-configs remove crowdsecurity/virtual-patching -i
+cscli waf-configs remove crowdsecurity/virtual-patching --interactive`,
 		},
 		upgradeHelp: cliHelp{
-			example: `# Upgrade some appsec-configs. If they are not currently installed, they are downloaded but not installed.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching
+			example: `# Upgrade some waf-configs. If they are not currently installed, they are downloaded but not installed.
+cscli waf-configs upgrade crowdsecurity/virtual-patching
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching --dry-run
+cscli waf-configs upgrade crowdsecurity/virtual-patching --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching --dry-run -o raw
+cscli waf-configs upgrade crowdsecurity/virtual-patching --dry-run -o raw
 
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching --force
+cscli waf-configs upgrade crowdsecurity/virtual-patching --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-configs upgrade crowdsecurity/virtual-patching -i
-cscli appsec-configs upgrade crowdsecurity/virtual-patching --interactive`,
+cscli waf-configs upgrade crowdsecurity/virtual-patching -i
+cscli waf-configs upgrade crowdsecurity/virtual-patching --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, ancestor collections of appsec-configs (installed or not).
-cscli appsec-configs inspect crowdsecurity/virtual-patching
+			example: `# Display metadata, state, ancestor collections of waf-configs (installed or not).
+cscli waf-configs inspect crowdsecurity/virtual-patching
 
 # If the config is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
 # To avoid this, use --no-metrics.
-cscli appsec-configs inspect crowdsecurity/virtual-patching --no-metrics
+cscli waf-configs inspect crowdsecurity/virtual-patching --no-metrics
 
 # Display difference between a tainted item and the latest one.
-cscli appsec-configs inspect crowdsecurity/virtual-patching --diff
+cscli waf-configs inspect crowdsecurity/virtual-patching --diff
 
 # Reverse the above diff
-cscli appsec-configs inspect crowdsecurity/virtual-patching --diff --rev`,
+cscli waf-configs inspect crowdsecurity/virtual-patching --diff --rev`,
 		},
 		listHelp: cliHelp{
-			example: `# List enabled (installed) appsec-configs.
-cscli appsec-configs list
+			example: `# List enabled (installed) waf-configs.
+cscli waf-configs list
 
-# List all available appsec-configs (installed or not).
-cscli appsec-configs list -a
+# List all available waf-configs (installed or not).
+cscli waf-configs list -a
 
-# List specific appsec-configs (installed or not).
-cscli appsec-configs list crowdsecurity/virtual-patching crowdsecurity/generic-rules`,
+# List specific waf-configs (installed or not).
+cscli waf-configs list crowdsecurity/virtual-patching crowdsecurity/generic-rules`,
 		},
 	}
 }
@@ -162,95 +163,96 @@ func NewAppsecRule(cfg csconfig.Getter) *cliItem {
 		name:      "appsec-rules",
 		singular:  "appsec-rule",
 		oneOrMore: "appsec-rule(s)",
+		aliases:   []string{"waf-rules"},
 		help: cliHelp{
-			example: `cscli appsec-rules list -a
-cscli appsec-rules install crowdsecurity/crs
-cscli appsec-rules inspect crowdsecurity/crs
-cscli appsec-rules upgrade crowdsecurity/crs
-cscli appsec-rules remove crowdsecurity/crs
+			example: `cscli waf-rules list -a
+cscli waf-rules install crowdsecurity/crs
+cscli waf-rules inspect crowdsecurity/crs
+cscli waf-rules upgrade crowdsecurity/crs
+cscli waf-rules remove crowdsecurity/crs
 `,
 		},
 		installHelp: cliHelp{
-			example: `# Install some appsec-rules.
-cscli appsec-rules install crowdsecurity/crs
+			example: `# Install some waf-rules.
+cscli waf-rules install crowdsecurity/crs
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-rules install crowdsecurity/crs --dry-run
+cscli waf-rules install crowdsecurity/crs --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-rules install crowdsecurity/crs --dry-run -o raw
+cscli waf-rules install crowdsecurity/crs --dry-run -o raw
 
 # Download only, to be installed later.
-cscli appsec-rules install crowdsecurity/crs --download-only
+cscli waf-rules install crowdsecurity/crs --download-only
 
 # Install over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
-cscli appsec-rules install crowdsecurity/crs --force
+cscli waf-rules install crowdsecurity/crs --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-rules install crowdsecurity/crs -i
-cscli appsec-rules install crowdsecurity/crs --interactive`,
+cscli waf-rules install crowdsecurity/crs -i
+cscli waf-rules install crowdsecurity/crs --interactive`,
 		},
 		removeHelp: cliHelp{
-			example: `# Uninstall some appsec-rules.
-cscli appsec-rules remove crowdsecurity/crs
+			example: `# Uninstall some waf-rules.
+cscli waf-rules remove crowdsecurity/crs
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-rules remove crowdsecurity/crs --dry-run
+cscli waf-rules remove crowdsecurity/crs --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-rules remove crowdsecurity/crs --dry-run -o raw
+cscli waf-rules remove crowdsecurity/crs --dry-run -o raw
 
 # Uninstall and also remove the downloaded files.
-cscli appsec-rules remove crowdsecurity/crs --purge
+cscli waf-rules remove crowdsecurity/crs --purge
 
 # Remove tainted items.
-cscli appsec-rules remove crowdsecurity/crs --force
+cscli waf-rules remove crowdsecurity/crs --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-rules remove crowdsecurity/crs -i
-cscli appsec-rules remove crowdsecurity/crs --interactive`,
+cscli waf-rules remove crowdsecurity/crs -i
+cscli waf-rules remove crowdsecurity/crs --interactive`,
 		},
 		upgradeHelp: cliHelp{
-			example: `# Upgrade some appsec-rules. If they are not currently installed, they are downloaded but not installed.
-cscli appsec-rules upgrade crowdsecurity/crs
+			example: `# Upgrade some waf-rules. If they are not currently installed, they are downloaded but not installed.
+cscli waf-rules upgrade crowdsecurity/crs
 
 # Show the execution plan without changing anything - compact output sorted by type and name.
-cscli appsec-rules upgrade crowdsecurity/crs --dry-run
+cscli waf-rules upgrade crowdsecurity/crs --dry-run
 
 # Show the execution plan without changing anything - verbose output sorted by execution order.
-cscli appsec-rules upgrade crowdsecurity/crs --dry-run -o raw
+cscli waf-rules upgrade crowdsecurity/crs --dry-run -o raw
 
 # Upgrade over tainted items. Can be used to restore or repair after local modifications or missing dependencies.
-cscli appsec-rules upgrade crowdsecurity/crs --force
+cscli waf-rules upgrade crowdsecurity/crs --force
 
 # Prompt for confirmation if running in an interactive terminal; otherwise, the option is ignored.
-cscli appsec-rules upgrade crowdsecurity/crs -i
-cscli appsec-rules upgrade crowdsecurity/crs --interactive`,
+cscli waf-rules upgrade crowdsecurity/crs -i
+cscli waf-rules upgrade crowdsecurity/crs --interactive`,
 		},
 		inspectHelp: cliHelp{
-			example: `# Display metadata, state, ancestor collections of appsec-rules (installed or not).
-cscli appsec-rules inspect crowdsecurity/crs
+			example: `# Display metadata, state, ancestor collections of waf-rules (installed or not).
+cscli waf-rules inspect crowdsecurity/crs
 
 # If the rule is installed, its metrics are collected and shown as well (with an error if crowdsec is not running).
 # To avoid this, use --no-metrics.
-cscli appsec-configs inspect crowdsecurity/crs --no-metrics
+cscli waf-rules inspect crowdsecurity/crs --no-metrics
 
 # Display difference between a tainted item and the latest one.
-cscli appsec-rules inspect crowdsecurity/crs --diff
+cscli waf-rules inspect crowdsecurity/crs --diff
 
 # Reverse the above diff
-cscli appsec-rules inspect crowdsecurity/crs --diff --rev`,
+cscli waf-rules inspect crowdsecurity/crs --diff --rev`,
 		},
 		inspectDetail: inspectDetail,
 		listHelp: cliHelp{
-			example: `# List enabled (installed) appsec-rules.
-cscli appsec-rules list
+			example: `# List enabled (installed) waf-rules.
+cscli waf-rules list
 
-# List all available appsec-rules (installed or not).
-cscli appsec-rules list -a
+# List all available waf-rules (installed or not).
+cscli waf-rules list -a
 
-# List specific appsec-rules (installed or not).
-cscli appsec-rules list crowdsecurity/crs crowdsecurity/vpatch-git-config`,
+# List specific waf-rules (installed or not).
+cscli waf-rules list crowdsecurity/crs crowdsecurity/vpatch-git-config`,
 		},
 	}
 }

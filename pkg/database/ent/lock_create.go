@@ -23,39 +23,39 @@ type LockCreate struct {
 }
 
 // SetName sets the "name" field.
-func (lc *LockCreate) SetName(s string) *LockCreate {
-	lc.mutation.SetName(s)
-	return lc
+func (_c *LockCreate) SetName(v string) *LockCreate {
+	_c.mutation.SetName(v)
+	return _c
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (lc *LockCreate) SetCreatedAt(t time.Time) *LockCreate {
-	lc.mutation.SetCreatedAt(t)
-	return lc
+func (_c *LockCreate) SetCreatedAt(v time.Time) *LockCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (lc *LockCreate) SetNillableCreatedAt(t *time.Time) *LockCreate {
-	if t != nil {
-		lc.SetCreatedAt(*t)
+func (_c *LockCreate) SetNillableCreatedAt(v *time.Time) *LockCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return lc
+	return _c
 }
 
 // Mutation returns the LockMutation object of the builder.
-func (lc *LockCreate) Mutation() *LockMutation {
-	return lc.mutation
+func (_c *LockCreate) Mutation() *LockMutation {
+	return _c.mutation
 }
 
 // Save creates the Lock in the database.
-func (lc *LockCreate) Save(ctx context.Context) (*Lock, error) {
-	lc.defaults()
-	return withHooks(ctx, lc.sqlSave, lc.mutation, lc.hooks)
+func (_c *LockCreate) Save(ctx context.Context) (*Lock, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (lc *LockCreate) SaveX(ctx context.Context) *Lock {
-	v, err := lc.Save(ctx)
+func (_c *LockCreate) SaveX(ctx context.Context) *Lock {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -63,43 +63,43 @@ func (lc *LockCreate) SaveX(ctx context.Context) *Lock {
 }
 
 // Exec executes the query.
-func (lc *LockCreate) Exec(ctx context.Context) error {
-	_, err := lc.Save(ctx)
+func (_c *LockCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (lc *LockCreate) ExecX(ctx context.Context) {
-	if err := lc.Exec(ctx); err != nil {
+func (_c *LockCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (lc *LockCreate) defaults() {
-	if _, ok := lc.mutation.CreatedAt(); !ok {
+func (_c *LockCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := lock.DefaultCreatedAt()
-		lc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (lc *LockCreate) check() error {
-	if _, ok := lc.mutation.Name(); !ok {
+func (_c *LockCreate) check() error {
+	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Lock.name"`)}
 	}
-	if _, ok := lc.mutation.CreatedAt(); !ok {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Lock.created_at"`)}
 	}
 	return nil
 }
 
-func (lc *LockCreate) sqlSave(ctx context.Context) (*Lock, error) {
-	if err := lc.check(); err != nil {
+func (_c *LockCreate) sqlSave(ctx context.Context) (*Lock, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := lc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, lc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -107,22 +107,22 @@ func (lc *LockCreate) sqlSave(ctx context.Context) (*Lock, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	lc.mutation.id = &_node.ID
-	lc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (lc *LockCreate) createSpec() (*Lock, *sqlgraph.CreateSpec) {
+func (_c *LockCreate) createSpec() (*Lock, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Lock{config: lc.config}
+		_node = &Lock{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(lock.Table, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = lc.conflict
-	if value, ok := lc.mutation.Name(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(lock.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := lc.mutation.CreatedAt(); ok {
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
@@ -145,10 +145,10 @@ func (lc *LockCreate) createSpec() (*Lock, *sqlgraph.CreateSpec) {
 //			SetName(v+v).
 //		}).
 //		Exec(ctx)
-func (lc *LockCreate) OnConflict(opts ...sql.ConflictOption) *LockUpsertOne {
-	lc.conflict = opts
+func (_c *LockCreate) OnConflict(opts ...sql.ConflictOption) *LockUpsertOne {
+	_c.conflict = opts
 	return &LockUpsertOne{
-		create: lc,
+		create: _c,
 	}
 }
 
@@ -158,10 +158,10 @@ func (lc *LockCreate) OnConflict(opts ...sql.ConflictOption) *LockUpsertOne {
 //	client.Lock.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (lc *LockCreate) OnConflictColumns(columns ...string) *LockUpsertOne {
-	lc.conflict = append(lc.conflict, sql.ConflictColumns(columns...))
+func (_c *LockCreate) OnConflictColumns(columns ...string) *LockUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &LockUpsertOne{
-		create: lc,
+		create: _c,
 	}
 }
 
@@ -268,16 +268,16 @@ type LockCreateBulk struct {
 }
 
 // Save creates the Lock entities in the database.
-func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
-	if lcb.err != nil {
-		return nil, lcb.err
+func (_c *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(lcb.builders))
-	nodes := make([]*Lock, len(lcb.builders))
-	mutators := make([]Mutator, len(lcb.builders))
-	for i := range lcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Lock, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := lcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*LockMutation)
@@ -291,12 +291,12 @@ func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, lcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = lcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, lcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -320,7 +320,7 @@ func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, lcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -328,8 +328,8 @@ func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (lcb *LockCreateBulk) SaveX(ctx context.Context) []*Lock {
-	v, err := lcb.Save(ctx)
+func (_c *LockCreateBulk) SaveX(ctx context.Context) []*Lock {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -337,14 +337,14 @@ func (lcb *LockCreateBulk) SaveX(ctx context.Context) []*Lock {
 }
 
 // Exec executes the query.
-func (lcb *LockCreateBulk) Exec(ctx context.Context) error {
-	_, err := lcb.Save(ctx)
+func (_c *LockCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (lcb *LockCreateBulk) ExecX(ctx context.Context) {
-	if err := lcb.Exec(ctx); err != nil {
+func (_c *LockCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -364,10 +364,10 @@ func (lcb *LockCreateBulk) ExecX(ctx context.Context) {
 //			SetName(v+v).
 //		}).
 //		Exec(ctx)
-func (lcb *LockCreateBulk) OnConflict(opts ...sql.ConflictOption) *LockUpsertBulk {
-	lcb.conflict = opts
+func (_c *LockCreateBulk) OnConflict(opts ...sql.ConflictOption) *LockUpsertBulk {
+	_c.conflict = opts
 	return &LockUpsertBulk{
-		create: lcb,
+		create: _c,
 	}
 }
 
@@ -377,10 +377,10 @@ func (lcb *LockCreateBulk) OnConflict(opts ...sql.ConflictOption) *LockUpsertBul
 //	client.Lock.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (lcb *LockCreateBulk) OnConflictColumns(columns ...string) *LockUpsertBulk {
-	lcb.conflict = append(lcb.conflict, sql.ConflictColumns(columns...))
+func (_c *LockCreateBulk) OnConflictColumns(columns ...string) *LockUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &LockUpsertBulk{
-		create: lcb,
+		create: _c,
 	}
 }
 
