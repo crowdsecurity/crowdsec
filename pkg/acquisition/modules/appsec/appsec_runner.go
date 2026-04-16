@@ -211,18 +211,16 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		if len(request.Body) > 0 {
 			in, _, err = state.Tx.WriteRequestBody(request.Body)
 			if err != nil {
-				r.logger.Warnf("unable to write request body, skipping body inspection: %s", err)
+				r.logger.Warnf("unable to write request body: %s", err)
 			} else if in != nil {
 				return nil
 			}
 		}
 	}
 
-	if err == nil {
-		in, err = state.Tx.ProcessRequestBody()
-		if err != nil {
-			r.logger.Warnf("unable to process request body, skipping body inspection: %s", err)
-		}
+	in, err = state.Tx.ProcessRequestBody()
+	if err != nil {
+		r.logger.Warnf("unable to process request body: %s", err)
 	}
 
 	if in != nil {
