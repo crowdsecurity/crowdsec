@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestCreateMachine(t *testing.T) {
@@ -228,7 +226,7 @@ func TestAutoRegistration(t *testing.T) {
 
 	// No token / valid source IP
 	regReq = MachineTest
-	regReq.MachineID = ptr.Of("test2")
+	regReq.MachineID = new("test2")
 	b, err = json.Marshal(regReq)
 	require.NoError(t, err)
 

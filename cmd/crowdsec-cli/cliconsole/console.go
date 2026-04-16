@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -19,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
@@ -66,7 +66,7 @@ func (cli *cliConsole) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, opts []string) error {
+func (cli *cliConsole) enroll(ctx context.Context, key string, name string, overwrite bool, tags []string, opts []string, autoEnroll bool) error {
 	cfg := cli.cfg()
 	password := strfmt.Password(cfg.API.Server.OnlineClient.Credentials.Password)
 
@@ -90,14 +90,31 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		},
 	})
 
-	resp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite)
+	autoResp, rawResp, err := c.Auth.EnrollWatcher(ctx, key, name, tags, overwrite, autoEnroll)
 	if err != nil {
 		return fmt.Errorf("could not enroll instance: %w", err)
 	}
 
-	if resp.Response.StatusCode == http.StatusOK && !overwrite {
-		log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
-		return nil
+	if rawResp.Response.StatusCode == http.StatusOK {
+		if autoEnroll {
+			log.Warn("The instance is already enrolled in an organization; transfer it using https://app.crowdsec.net/.")
+			return nil
+		}
+		if !overwrite {
+			log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
+			return nil
+		}
+	}
+
+	if autoEnroll {
+		bold := color.New(color.Bold)
+		log.Infof("Please visit the following URL to enroll your instance: %s", bold.Sprint(autoResp.Url))
+		log.Infof("This link is valid for the next %s.", time.Until(time.UnixMilli(autoResp.ExpiresAt)).Round(time.Minute))
+		log.Info("Please restart crowdsec after accepting the enrollment.")
+
+	} else {
+		log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
+		log.Info("Please restart crowdsec after accepting the enrollment.")
 	}
 
 	if err := cli.setConsoleOpts(opts, true); err != nil {
@@ -107,9 +124,6 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	for _, opt := range opts {
 		log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
 	}
-
-	log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
-	log.Info("Please restart crowdsec after accepting the enrollment.")
 
 	return nil
 }
@@ -171,9 +185,20 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 	return opts, nil
 }
 
+func (*cliConsole) getDefaultInstanceName() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Warnf("Could not get machine hostname: %s. Defaulting to machine id as instance name", err)
+		return ""
+	}
+
+	return hostname
+}
+
 func (cli *cliConsole) newEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
+	quickEnroll := false
 	tags := []string{}
 	enableOpts := []string{}
 	disableOpts := []string{}
@@ -187,15 +212,27 @@ Enroll this instance to https://app.crowdsec.net
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
 		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
+cscli console enroll --quick
+cscli console enroll --quick --name [instance_name]
 cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
 cscli console enroll --enable console_management YOUR-ENROLL-KEY
 cscli console enroll --disable context YOUR-ENROLL-KEY
 
 valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
-		Args:              args.ExactArgs(1),
+		Args:              args.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 && !quickEnroll {
+				return cmd.Usage()
+			}
+			if len(args) > 0 && quickEnroll {
+				return errors.New("enroll key cannot be specified when using quick enroll")
+			}
+			key := ""
+			if len(args) > 0 {
+				key = args[0]
+			}
 			opts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT}
 
 			opts, err := optionFilterEnable(opts, enableOpts)
@@ -208,16 +245,17 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 				return err
 			}
 
-			return cli.enroll(cmd.Context(), args[0], name, overwrite, tags, opts)
+			return cli.enroll(cmd.Context(), key, name, overwrite, tags, opts, quickEnroll)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&name, "name", "n", "", "Name to display in the console")
+	flags.StringVarP(&name, "name", "n", cli.getDefaultInstanceName(), "Name to display in the console")
 	flags.BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	flags.StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	flags.StringSliceVarP(&enableOpts, "enable", "e", enableOpts, "Enable console options")
 	flags.StringSliceVarP(&disableOpts, "disable", "d", disableOpts, "Disable console options")
+	flags.BoolVarP(&quickEnroll, "quick", "q", false, "Enrolls the instance without an enroll key by visiting a link to the CrowdSec console.")
 
 	return cmd
 }
@@ -399,7 +437,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				consoleCfg.ConsoleManagement = ptr.Of(wanted)
+				consoleCfg.ConsoleManagement = new(wanted)
 			}
 
 			if cfg.API.Server.OnlineClient.Credentials != nil {
@@ -432,7 +470,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				consoleCfg.ShareCustomScenarios = ptr.Of(wanted)
+				consoleCfg.ShareCustomScenarios = new(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			// for each flag check if it's already set before setting it
@@ -440,7 +478,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				consoleCfg.ShareTaintedScenarios = ptr.Of(wanted)
+				consoleCfg.ShareTaintedScenarios = new(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			// for each flag check if it's already set before setting it
@@ -448,7 +486,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				consoleCfg.ShareManualDecisions = ptr.Of(wanted)
+				consoleCfg.ShareManualDecisions = new(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			// for each flag check if it's already set before setting it
@@ -456,7 +494,7 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 				log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-				consoleCfg.ShareContext = ptr.Of(wanted)
+				consoleCfg.ShareContext = new(wanted)
 			}
 		default:
 			return fmt.Errorf("unknown flag %s", arg)

@@ -74,7 +74,7 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Event fields.
-func (e *Event) assignValues(columns []string, values []any) error {
+func (_m *Event) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -85,39 +85,39 @@ func (e *Event) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			e.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case event.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				e.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case event.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				e.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case event.FieldTime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field time", values[i])
 			} else if value.Valid {
-				e.Time = value.Time
+				_m.Time = value.Time
 			}
 		case event.FieldSerialized:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field serialized", values[i])
 			} else if value.Valid {
-				e.Serialized = value.String
+				_m.Serialized = value.String
 			}
 		case event.FieldAlertEvents:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field alert_events", values[i])
 			} else if value.Valid {
-				e.AlertEvents = int(value.Int64)
+				_m.AlertEvents = int(value.Int64)
 			}
 		default:
-			e.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -125,52 +125,52 @@ func (e *Event) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Event.
 // This includes values selected through modifiers, order, etc.
-func (e *Event) Value(name string) (ent.Value, error) {
-	return e.selectValues.Get(name)
+func (_m *Event) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryOwner queries the "owner" edge of the Event entity.
-func (e *Event) QueryOwner() *AlertQuery {
-	return NewEventClient(e.config).QueryOwner(e)
+func (_m *Event) QueryOwner() *AlertQuery {
+	return NewEventClient(_m.config).QueryOwner(_m)
 }
 
 // Update returns a builder for updating this Event.
 // Note that you need to call Event.Unwrap() before calling this method if this Event
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (e *Event) Update() *EventUpdateOne {
-	return NewEventClient(e.config).UpdateOne(e)
+func (_m *Event) Update() *EventUpdateOne {
+	return NewEventClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Event entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (e *Event) Unwrap() *Event {
-	_tx, ok := e.config.driver.(*txDriver)
+func (_m *Event) Unwrap() *Event {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Event is not a transactional entity")
 	}
-	e.config.driver = _tx.drv
-	return e
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (e *Event) String() string {
+func (_m *Event) String() string {
 	var builder strings.Builder
 	builder.WriteString("Event(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", e.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(e.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(e.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("time=")
-	builder.WriteString(e.Time.Format(time.ANSIC))
+	builder.WriteString(_m.Time.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("serialized=")
-	builder.WriteString(e.Serialized)
+	builder.WriteString(_m.Serialized)
 	builder.WriteString(", ")
 	builder.WriteString("alert_events=")
-	builder.WriteString(fmt.Sprintf("%v", e.AlertEvents))
+	builder.WriteString(fmt.Sprintf("%v", _m.AlertEvents))
 	builder.WriteByte(')')
 	return builder.String()
 }

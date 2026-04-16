@@ -23,7 +23,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -71,10 +70,10 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 		pushTomb:    tomb.Tomb{},
 		metricsTomb: tomb.Tomb{},
 		consoleConfig: &csconfig.ConsoleConfig{
-			ShareManualDecisions:  ptr.Of(false),
-			ShareTaintedScenarios: ptr.Of(false),
-			ShareCustomScenarios:  ptr.Of(false),
-			ShareContext:          ptr.Of(false),
+			ShareManualDecisions:  new(false),
+			ShareTaintedScenarios: new(false),
+			ShareCustomScenarios:  new(false),
+			ShareContext:          new(false),
 		},
 		isPulling:      make(chan bool, 1),
 		shareSignals:   true,
@@ -212,10 +211,10 @@ func TestNewAPIC(t *testing.T) {
 				Login:    "foo",
 				Password: "bar",
 			},
-			Sharing: ptr.Of(true),
+			Sharing: new(true),
 			PullConfig: csconfig.CapiPullConfig{
-				Community:  ptr.Of(true),
-				Blocklists: ptr.Of(true),
+				Community:  new(true),
+				Blocklists: new(true),
 			},
 		}
 	}
@@ -290,7 +289,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			machineIDs: []string{},
 			bouncers:   []string{},
 			expectedMetric: &models.Metrics{
-				ApilVersion: ptr.Of(version.String()),
+				ApilVersion: new(version.String()),
 				Bouncers:    []*models.MetricsBouncerInfo{},
 				Machines:    []*models.MetricsAgentInfo{},
 			},
@@ -300,7 +299,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			machineIDs: []string{"a", "b", "c"},
 			bouncers:   []string{"1", "2", "3"},
 			expectedMetric: &models.Metrics{
-				ApilVersion: ptr.Of(version.String()),
+				ApilVersion: new(version.String()),
 				Bouncers: []*models.MetricsBouncerInfo{
 					{
 						CustomName: "1",
@@ -371,27 +370,27 @@ func TestAPICGetMetrics(t *testing.T) {
 
 func TestFillAlertsWithDecisions(t *testing.T) {
 	httpBfDecisionCommunity := &models.Decision{
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Scenario: ptr.Of("crowdsecurity/http-bf"),
-		Scope:    ptr.Of("ip"),
+		Origin:   new(types.CAPIOrigin),
+		Scenario: new("crowdsecurity/http-bf"),
+		Scope:    new("ip"),
 	}
 
 	sshBfDecisionCommunity := &models.Decision{
-		Origin:   ptr.Of(types.CAPIOrigin),
-		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
-		Scope:    ptr.Of("ip"),
+		Origin:   new(types.CAPIOrigin),
+		Scenario: new("crowdsecurity/ssh-bf"),
+		Scope:    new("ip"),
 	}
 
 	httpBfDecisionList := &models.Decision{
-		Origin:   ptr.Of(types.ListOrigin),
-		Scenario: ptr.Of("crowdsecurity/http-bf"),
-		Scope:    ptr.Of("ip"),
+		Origin:   new(types.ListOrigin),
+		Scenario: new("crowdsecurity/http-bf"),
+		Scope:    new("ip"),
 	}
 
 	sshBfDecisionList := &models.Decision{
-		Origin:   ptr.Of(types.ListOrigin),
-		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
-		Scope:    ptr.Of("ip"),
+		Origin:   new(types.ListOrigin),
+		Scenario: new("crowdsecurity/ssh-bf"),
+		Scope:    new("ip"),
 	}
 
 	type args struct {
@@ -488,68 +487,68 @@ func TestAPICWhitelists(t *testing.T) {
 							"9.9.9.9", // This is already present in DB
 							"9.1.9.9", // This is not present in DB
 						},
-						Scope: ptr.Of("Ip"),
+						Scope: new("Ip"),
 					}, // This is already present in DB
 				},
 				New: modelscapi.GetDecisionsStreamResponseNew{
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.4"), // wl by cidr
-								Duration: ptr.Of("24h"),
+								Value:    new("13.2.3.4"), // wl by cidr
+								Duration: new("24h"),
 							},
 						},
 					},
 
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("2.2.3.4"),
-								Duration: ptr.Of("24h"),
+								Value:    new("2.2.3.4"),
+								Duration: new("24h"),
 							},
 						},
 					},
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test2"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test2"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("13.2.3.5"), // wl by cidr
-								Duration: ptr.Of("24h"),
+								Value:    new("13.2.3.5"), // wl by cidr
+								Duration: new("24h"),
 							},
 						},
 					}, // These two are from community list.
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("6.2.3.4"),
-								Duration: ptr.Of("24h"),
+								Value:    new("6.2.3.4"),
+								Duration: new("24h"),
 							},
 						},
 					},
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("9.2.3.4"), // wl by ip
-								Duration: ptr.Of("24h"),
+								Value:    new("9.2.3.4"), // wl by ip
+								Duration: new("24h"),
 							},
 						},
 					},
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("10.2.3.4"), // wl by allowlist that we pull at the same time
-								Duration: ptr.Of("24h"),
+								Value:    new("10.2.3.4"), // wl by allowlist that we pull at the same time
+								Duration: new("24h"),
 							},
 						},
 					},
@@ -557,27 +556,27 @@ func TestAPICWhitelists(t *testing.T) {
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
-							Name:        ptr.Of("blocklist1"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist1"),
+							Name:        new("blocklist1"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist2"),
-							Name:        ptr.Of("blocklist2"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist2"),
+							Name:        new("blocklist2"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 					},
 					Allowlists: []*modelscapi.AllowlistLink{
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/allowlist1"),
-							Name:        ptr.Of("allowlist1"),
-							ID:          ptr.Of("1"),
-							Description: ptr.Of("test"),
-							CreatedAt:   ptr.Of(strfmt.DateTime(time.Now())),
+							URL:         new("http://api.crowdsec.net/allowlist1"),
+							Name:        new("allowlist1"),
+							ID:          new("1"),
+							Description: new("test"),
+							CreatedAt:   new(strfmt.DateTime(time.Now())),
 						},
 					},
 				},
@@ -700,27 +699,27 @@ func TestAPICPullTop(t *testing.T) {
 							"9.9.9.9", // This is already present in DB
 							"9.1.9.9", // This is not present in DB
 						},
-						Scope: ptr.Of("Ip"),
+						Scope: new("Ip"),
 					}, // This is already present in DB
 				},
 				New: modelscapi.GetDecisionsStreamResponseNew{
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("1.2.3.4"),
-								Duration: ptr.Of("24h"),
+								Value:    new("1.2.3.4"),
+								Duration: new("24h"),
 							},
 						},
 					},
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test2"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test2"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("1.2.3.5"),
-								Duration: ptr.Of("24h"),
+								Value:    new("1.2.3.5"),
+								Duration: new("24h"),
 							},
 						},
 					}, // These two are from community list.
@@ -728,18 +727,18 @@ func TestAPICPullTop(t *testing.T) {
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
-							Name:        ptr.Of("blocklist1"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist1"),
+							Name:        new("blocklist1"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist2"),
-							Name:        ptr.Of("blocklist2"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist2"),
+							Name:        new("blocklist2"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 					},
 				},
@@ -813,12 +812,12 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 			modelscapi.GetDecisionsStreamResponse{
 				New: modelscapi.GetDecisionsStreamResponseNew{
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("1.2.3.4"),
-								Duration: ptr.Of("24h"),
+								Value:    new("1.2.3.4"),
+								Duration: new("24h"),
 							},
 						},
 					},
@@ -826,11 +825,11 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
-							Name:        ptr.Of("blocklist1"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist1"),
+							Name:        new("blocklist1"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 					},
 				},
@@ -906,12 +905,12 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 			modelscapi.GetDecisionsStreamResponse{
 				New: modelscapi.GetDecisionsStreamResponseNew{
 					&modelscapi.GetDecisionsStreamResponseNewItem{
-						Scenario: ptr.Of("crowdsecurity/test1"),
-						Scope:    ptr.Of("Ip"),
+						Scenario: new("crowdsecurity/test1"),
+						Scope:    new("Ip"),
 						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 							{
-								Value:    ptr.Of("1.2.3.4"),
-								Duration: ptr.Of("24h"),
+								Value:    new("1.2.3.4"),
+								Duration: new("24h"),
 							},
 						},
 					},
@@ -919,11 +918,11 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 				Links: &modelscapi.GetDecisionsStreamResponseLinks{
 					Blocklists: []*modelscapi.BlocklistLink{
 						{
-							URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
-							Name:        ptr.Of("blocklist1"),
-							Scope:       ptr.Of("Ip"),
-							Remediation: ptr.Of("ban"),
-							Duration:    ptr.Of("24h"),
+							URL:         new("http://api.crowdsec.net/blocklist1"),
+							Name:        new("blocklist1"),
+							Scope:       new("Ip"),
+							Remediation: new("ban"),
+							Duration:    new("24h"),
 						},
 					},
 				},
@@ -977,11 +976,11 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 
 	api.apiClient = apic
 	err = api.PullBlocklist(ctx, &modelscapi.BlocklistLink{
-		URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
-		Name:        ptr.Of("blocklist1"),
-		Scope:       ptr.Of("Ip"),
-		Remediation: ptr.Of("ban"),
-		Duration:    ptr.Of("24h"),
+		URL:         new("http://api.crowdsec.net/blocklist1"),
+		Name:        new("blocklist1"),
+		Scope:       new("Ip"),
+		Remediation: new("ban"),
+		Duration:    new("24h"),
 	}, true)
 	require.NoError(t, err)
 }
@@ -997,10 +996,10 @@ func TestAPICPush(t *testing.T) {
 			name: "simple single alert",
 			alerts: []*models.Alert{
 				{
-					Scenario:        ptr.Of("crowdsec/test"),
-					ScenarioHash:    ptr.Of("certified"),
-					ScenarioVersion: ptr.Of("v1.0"),
-					Simulated:       ptr.Of(false),
+					Scenario:        new("crowdsec/test"),
+					ScenarioHash:    new("certified"),
+					ScenarioVersion: new("v1.0"),
+					Simulated:       new(false),
 					Source:          &models.Source{},
 				},
 			},
@@ -1010,10 +1009,10 @@ func TestAPICPush(t *testing.T) {
 			name: "simulated alert is not pushed",
 			alerts: []*models.Alert{
 				{
-					Scenario:        ptr.Of("crowdsec/test"),
-					ScenarioHash:    ptr.Of("certified"),
-					ScenarioVersion: ptr.Of("v1.0"),
-					Simulated:       ptr.Of(true),
+					Scenario:        new("crowdsec/test"),
+					ScenarioHash:    new("certified"),
+					ScenarioVersion: new("v1.0"),
+					Simulated:       new(true),
 					Source:          &models.Source{},
 				},
 			},
@@ -1026,10 +1025,10 @@ func TestAPICPush(t *testing.T) {
 				alerts := make([]*models.Alert, 100)
 				for i := range 100 {
 					alerts[i] = &models.Alert{
-						Scenario:        ptr.Of("crowdsec/test"),
-						ScenarioHash:    ptr.Of("certified"),
-						ScenarioVersion: ptr.Of("v1.0"),
-						Simulated:       ptr.Of(false),
+						Scenario:        new("crowdsec/test"),
+						ScenarioHash:    new("certified"),
+						ScenarioVersion: new("v1.0"),
+						Simulated:       new(false),
 						Source:          &models.Source{},
 					}
 				}
@@ -1131,12 +1130,12 @@ func TestAPICPull(t *testing.T) {
 				modelscapi.GetDecisionsStreamResponse{
 					New: modelscapi.GetDecisionsStreamResponseNew{
 						&modelscapi.GetDecisionsStreamResponseNewItem{
-							Scenario: ptr.Of("crowdsecurity/ssh-bf"),
-							Scope:    ptr.Of("Ip"),
+							Scenario: new("crowdsecurity/ssh-bf"),
+							Scope:    new("Ip"),
 							Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 								{
-									Value:    ptr.Of("1.2.3.5"),
-									Duration: ptr.Of("24h"),
+									Value:    new("1.2.3.5"),
+									Duration: new("24h"),
 								},
 							},
 						},
@@ -1176,9 +1175,9 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "custom alert should be shared if config enables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareCustomScenarios: ptr.Of(true),
+				ShareCustomScenarios: new(true),
 			},
-			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			alert:         &models.Alert{Simulated: new(false)},
 			shareSignals:  true,
 			expectedRet:   true,
 			expectedTrust: "custom",
@@ -1186,9 +1185,9 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "custom alert should not be shared if config disables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareCustomScenarios: ptr.Of(false),
+				ShareCustomScenarios: new(false),
 			},
-			alert:         &models.Alert{Simulated: ptr.Of(false)},
+			alert:         &models.Alert{Simulated: new(false)},
 			shareSignals:  true,
 			expectedRet:   false,
 			expectedTrust: "custom",
@@ -1196,12 +1195,12 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "manual alert should be shared if config enables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareManualDecisions: ptr.Of(true),
+				ShareManualDecisions: new(true),
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated: ptr.Of(false),
-				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
+				Simulated: new(false),
+				Decisions: []*models.Decision{{Origin: new(types.CscliOrigin)}},
 			},
 			expectedRet:   true,
 			expectedTrust: "manual",
@@ -1209,12 +1208,12 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "manual alert should not be shared if config disables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareManualDecisions: ptr.Of(false),
+				ShareManualDecisions: new(false),
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated: ptr.Of(false),
-				Decisions: []*models.Decision{{Origin: ptr.Of(types.CscliOrigin)}},
+				Simulated: new(false),
+				Decisions: []*models.Decision{{Origin: new(types.CscliOrigin)}},
 			},
 			expectedRet:   false,
 			expectedTrust: "manual",
@@ -1222,12 +1221,12 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "manual alert should be shared if config enables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareTaintedScenarios: ptr.Of(true),
+				ShareTaintedScenarios: new(true),
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
-				ScenarioHash: ptr.Of("whateverHash"),
+				Simulated:    new(false),
+				ScenarioHash: new("whateverHash"),
 			},
 			expectedRet:   true,
 			expectedTrust: "tainted",
@@ -1235,12 +1234,12 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "manual alert should not be shared if config disables it",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareTaintedScenarios: ptr.Of(false),
+				ShareTaintedScenarios: new(false),
 			},
 			shareSignals: true,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
-				ScenarioHash: ptr.Of("whateverHash"),
+				Simulated:    new(false),
+				ScenarioHash: new("whateverHash"),
 			},
 			expectedRet:   false,
 			expectedTrust: "tainted",
@@ -1248,12 +1247,12 @@ func TestShouldShareAlert(t *testing.T) {
 		{
 			name: "manual alert should not be shared if global sharing is disabled",
 			consoleConfig: &csconfig.ConsoleConfig{
-				ShareManualDecisions: ptr.Of(true),
+				ShareManualDecisions: new(true),
 			},
 			shareSignals: false,
 			alert: &models.Alert{
-				Simulated:    ptr.Of(false),
-				ScenarioHash: ptr.Of("whateverHash"),
+				Simulated:    new(false),
+				ScenarioHash: new("whateverHash"),
 			},
 			expectedRet:   false,
 			expectedTrust: "manual",
