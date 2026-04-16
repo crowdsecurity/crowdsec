@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -93,6 +94,11 @@ func DifficultyFromLevel(level string) (int, error) {
 	default:
 		return 0, fmt.Errorf("unknown challenge difficulty %q (expected disabled, low, medium, high, or impossible)", level)
 	}
+}
+
+// Difficulty returns the current default PoW difficulty (in leading zero bits).
+func (c *ChallengeRuntime) Difficulty() int {
+	return c.powDifficulty
 }
 
 // SetDifficulty sets the default PoW difficulty from a named level.
@@ -505,7 +511,12 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
 
-	cookieValue, err := sealCookie(fpData.ToProto(), masterSecret, []byte(request.UserAgent()))
+	envelope := &pb.ChallengeCookie{
+		Fingerprint:   fpData.ToProto(),
+		PowDifficulty: int32(c.powDifficulty),
+	}
+
+	cookieValue, err := sealCookie(envelope, masterSecret, []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
@@ -518,17 +529,26 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	return ck, fpData, nil
 }
 
-func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*FingerprintData, error) {
+// CookieData bundles the decrypted fingerprint with cookie-envelope metadata
+// (currently just the proven PoW difficulty) so callers can make re-challenge
+// decisions without touching the fingerprint struct.
+type CookieData struct {
+	Fingerprint   FingerprintData
+	PowDifficulty int
+}
+
+func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*CookieData, error) {
 	if ck == nil {
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	pbData, err := openCookie(ck.Value, masterSecret, []byte(userAgent))
+	envelope, err := openCookie(ck.Value, masterSecret, []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}
 
-	fpData := fingerprintDataFromProto(pbData)
-
-	return &fpData, nil
+	return &CookieData{
+		Fingerprint:   fingerprintDataFromProto(envelope.GetFingerprint()),
+		PowDifficulty: int(envelope.GetPowDifficulty()),
+	}, nil
 }

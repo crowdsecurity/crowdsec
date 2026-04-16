@@ -170,6 +170,7 @@ type AppsecRequestState struct {
 
 	RequireChallenge    bool
 	Fingerprint         *challenge.FingerprintData
+	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
 	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
 }
 
@@ -799,39 +800,31 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
 	}
 
-	// Challenge submission: validate, then run user hooks with the decrypted
-	// fingerprint before issuing the cookie. If a user hook drops the request
-	// or issues a fresh challenge, the cookie is not granted.
+	// Challenge submission: validate and issue (or deny) the cookie. User hooks
+	// do NOT run here — they would overwrite the JSON submission response and
+	// confuse the client. Policy inspection of the fingerprint happens on the
+	// very next request, which will carry the cookie we just issued.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("validating challenge response")
-		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		ck, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			// TODO: find a way to propagate an event to the LP for use in scenarios
 			w.Logger.Errorf("challenge validation failed: %s", err)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
-
-		state.Fingerprint = &fpData
-		if err := w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge"); err != nil {
-			return err
-		}
-
-		// If user hooks already shaped the response (drop or fresh challenge),
-		// don't overwrite it by issuing the cookie.
-		if state.RequireChallenge || state.DropInfo(request) != nil {
-			return nil
-		}
-
 		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
 	}
 
-	// Regular request: validate the existing cookie (if any) to populate fingerprint.
+	// Regular request: validate the existing cookie (if any) to populate
+	// fingerprint and remember the difficulty the client proved.
 	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
-		if fpData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+		if cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
 			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data")
-			state.Fingerprint = fpData
+			fp := cookieData.Fingerprint
+			state.Fingerprint = &fp
+			state.CookiePowDifficulty = cookieData.PowDifficulty
 		}
 	}
 
@@ -1076,27 +1069,30 @@ func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequ
 // SendChallenge issues a challenge HTML page for the current request. Cookie
 // and submission handling live in ProcessOnChallengeRules; by the time this
 // runs, state.Fingerprint has already been populated if a valid cookie was
-// presented. If the caller already holds a valid fingerprint, SendChallenge is
-// a no-op so that naive `pre_eval: SendChallenge()` configs pass through
-// already-validated clients.
+// presented. If the client already proved a PoW at least as hard as the
+// target difficulty for this request, SendChallenge is a no-op. When the
+// target difficulty is raised (e.g. on_challenge calls SetChallengeDifficulty
+// to punish a suspect fingerprint), the stored difficulty is lower than the
+// target and a fresh challenge is issued.
 func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	if w.ChallengeRuntime == nil {
 		return fmt.Errorf("challenge runtime not initialized")
 	}
 
-	if state.Fingerprint != nil {
-		w.Logger.Debugf("fingerprint already validated, skipping challenge issue")
+	target := w.ChallengeRuntime.Difficulty()
+	if state.ChallengeDifficulty != nil {
+		target = *state.ChallengeDifficulty
+	}
+
+	if state.Fingerprint != nil && state.CookiePowDifficulty >= target {
+		w.Logger.Debugf("client already proved difficulty %d >= target %d, skipping challenge issue",
+			state.CookiePowDifficulty, target)
 		return nil
 	}
 
-	w.Logger.Debugf("sending challenge")
+	w.Logger.Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
 
-	difficulty := 0 // 0 = use runtime default
-	if state.ChallengeDifficulty != nil {
-		difficulty = *state.ChallengeDifficulty
-	}
-
-	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent(), difficulty)
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent(), target)
 	if err != nil {
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}

@@ -14,6 +14,18 @@ message FingerprintData {
   fingerprintBotAlias bot = 8;
 }
 
+// ChallengeCookie is the sealed cookie payload. It wraps the validated
+// fingerprint together with metadata that influences re-challenge decisions
+// (e.g. the PoW difficulty the client proved). Keeping this separate from
+// FingerprintData lets us evolve the cookie envelope without polluting the
+// fingerprint model exposed to hook expressions.
+message ChallengeCookie {
+  FingerprintData fingerprint = 1;
+  // pow_difficulty is the PoW difficulty (in leading zero bits) the client
+  // proved when this cookie was sealed.
+  int32 pow_difficulty = 2;
+}
+
 message fingerprintSignals {
   fingerprintAutomation automation = 1;
   fingerprintDevice device = 2;

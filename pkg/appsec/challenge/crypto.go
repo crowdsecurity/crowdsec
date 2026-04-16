@@ -34,10 +34,10 @@ func deriveKey(secret string) ([]byte, error) {
 	return key, nil
 }
 
-func sealCookie(fpData *pb.FingerprintData, secret string, aad []byte) (string, error) {
-	plaintext, err := proto.Marshal(fpData)
+func sealCookie(envelope *pb.ChallengeCookie, secret string, aad []byte) (string, error) {
+	plaintext, err := proto.Marshal(envelope)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal fingerprint proto: %w", err)
+		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
 	}
 
 	key, err := deriveKey(secret)
@@ -65,7 +65,7 @@ func sealCookie(fpData *pb.FingerprintData, secret string, aad []byte) (string, 
 	return base64.RawURLEncoding.EncodeToString(ciphertext), nil
 }
 
-func openCookie(encoded string, secret string, aad []byte) (*pb.FingerprintData, error) {
+func openCookie(encoded string, secret string, aad []byte) (*pb.ChallengeCookie, error) {
 	ciphertext, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode: %w", ErrCookieMalformed, err)
@@ -98,10 +98,10 @@ func openCookie(encoded string, secret string, aad []byte) (*pb.FingerprintData,
 		return nil, fmt.Errorf("%w: %w", ErrCookieSignature, err)
 	}
 
-	fpData := &pb.FingerprintData{}
-	if err := proto.Unmarshal(plaintext, fpData); err != nil {
+	envelope := &pb.ChallengeCookie{}
+	if err := proto.Unmarshal(plaintext, envelope); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCookiePayload, err)
 	}
 
-	return fpData, nil
+	return envelope, nil
 }

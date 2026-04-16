@@ -18,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -154,13 +153,11 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 
 	// Hooks using SendChallenge() or on_challenge hooks require the WASM
 	// challenge runtime; mirror what pkg/acquisition/modules/appsec/config.go
-	// does in production.
+	// does in production. We share a single runtime across tests — building
+	// one is expensive (~15-20s for WASM obfuscator warm-up), and none of the
+	// tests mutate runtime-level state like default difficulty.
 	if AppsecRuntime.NeedWASMVM {
-		cr, err := challenge.NewChallengeRuntime(t.Context())
-		if err != nil {
-			t.Fatalf("unable to create challenge runtime : %s", err)
-		}
-		AppsecRuntime.ChallengeRuntime = cr
+		AppsecRuntime.ChallengeRuntime = getSharedChallengeRuntime(t)
 	}
 	appsecRunnerUUID := uuid.New().String()
 	//we copy AppsecRutime for each runner
