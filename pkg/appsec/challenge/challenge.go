@@ -41,10 +41,11 @@ const challengeJSRefreshInterval = 10 * time.Minute
 // PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
 // obfuscator runs ~500-5000 ops/sec, so keep these conservative.
 const (
-	PowDifficultyDisabled = 0  // no PoW required, nonce "0" always valid
-	PowDifficultyLow      = 10 // ~1024 avg iterations ≈ 0.2-2s
-	PowDifficultyMedium   = 12 // ~4096 avg iterations ≈ 1-8s
-	PowDifficultyHigh     = 15 // ~32768 avg iterations ≈ 7-60s
+	PowDifficultyDisabled   = 0   // no PoW required, nonce "0" always valid
+	PowDifficultyLow        = 10  // ~1024 avg iterations ≈ 0.2-2s
+	PowDifficultyMedium     = 12  // ~4096 avg iterations ≈ 1-8s
+	PowDifficultyHigh       = 15  // ~32768 avg iterations ≈ 7-60s
+	PowDifficultyImpossible = 256 // full SHA-256 width: clients cannot solve, server always rejects
 
 	defaultPowDifficulty = PowDifficultyMedium
 )
@@ -87,8 +88,10 @@ func DifficultyFromLevel(level string) (int, error) {
 		return PowDifficultyMedium, nil
 	case "high":
 		return PowDifficultyHigh, nil
+	case "impossible":
+		return PowDifficultyImpossible, nil
 	default:
-		return 0, fmt.Errorf("unknown challenge difficulty %q (expected disabled, low, medium, or high)", level)
+		return 0, fmt.Errorf("unknown challenge difficulty %q (expected disabled, low, medium, high, or impossible)", level)
 	}
 }
 
@@ -460,6 +463,12 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// Verify ticket/timestamp match and PoW salt is authentically server-generated (stateless).
 	if !matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
+	}
+
+	// An impossible difficulty is a deliberate hard-block: clients cannot solve
+	// it, and the server must not accept any submission.
+	if c.powDifficulty >= PowDifficultyImpossible {
+		return nil, FingerprintData{}, fmt.Errorf("challenge difficulty is impossible; submission rejected")
 	}
 
 	// Verify proof-of-work: SHA256(powSalt + nonce) must have required leading zero bits

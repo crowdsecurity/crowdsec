@@ -106,6 +106,10 @@ func TestDifficultyFromLevel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, PowDifficultyDisabled, bits)
 
+	bits, err = DifficultyFromLevel("IMPOSSIBLE")
+	assert.NoError(t, err)
+	assert.Equal(t, PowDifficultyImpossible, bits)
+
 	_, err = DifficultyFromLevel("extreme")
 	assert.Error(t, err)
 }
@@ -122,8 +126,11 @@ func TestSetDifficulty(t *testing.T) {
 	assert.NoError(t, c.SetDifficulty("High"))
 	assert.Equal(t, PowDifficultyHigh, c.powDifficulty)
 
+	assert.NoError(t, c.SetDifficulty("impossible"))
+	assert.Equal(t, PowDifficultyImpossible, c.powDifficulty)
+
 	assert.Error(t, c.SetDifficulty("extreme"))
-	assert.Equal(t, PowDifficultyHigh, c.powDifficulty) // unchanged on error
+	assert.Equal(t, PowDifficultyImpossible, c.powDifficulty) // unchanged on error
 }
 
 func TestGetSessionKey(t *testing.T) {
@@ -315,6 +322,20 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid proof-of-work")
+}
+
+func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
+	// A submission that would otherwise pass at low difficulty is rejected
+	// outright when the runtime is set to impossible.
+	c := &ChallengeRuntime{powDifficulty: PowDifficultyImpossible}
+	ticket, ts := freshTicket()
+	body := buildValidBody(8, ticket, ts) // satisfies 8-bit PoW but not impossible
+
+	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req.Header.Set("User-Agent", "test-agent")
+
+	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	assert.ErrorContains(t, err, "impossible")
 }
 
 func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
