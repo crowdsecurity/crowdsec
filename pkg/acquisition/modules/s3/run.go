@@ -27,7 +27,7 @@ import (
 )
 
 // For some reason, the aws sdk doesn't have a struct for this
-// The one aws-lamdbda-go/events is only intended when using S3 Notification without event bridge
+// The one aws-lambda-go/events is only intended when using S3 Notification without event bridge
 type S3Event struct {
 	Version    string   `json:"version"`
 	Id         string   `json:"id"`
@@ -393,7 +393,7 @@ func (s *Source) readFile(bucket string, key string) error {
 			logger.Tracef("Read line %s", text)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": "s3", "acquis_type": s.Config.Labels["type"]}).Inc()
+				metrics.S3DataSourceLinesRead.With(prometheus.Labels{"bucket": bucket, "datasource_type": ModuleName, "acquis_type": s.Config.Labels["type"]}).Inc()
 			}
 
 			l := pipeline.Line{}

@@ -13,13 +13,10 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -47,13 +44,13 @@ type MetricsProvider struct {
 }
 
 type staticMetrics struct {
-	osName         string
-	osFamily       string
-	osVersion      string
-	startupTS      int64
-	featureFlags   []string
-	datasourceMap  map[string]int64
-	hubState       models.HubItems
+	osName        string
+	osFamily      string
+	osVersion     string
+	startupTS     int64
+	featureFlags  []string
+	datasourceMap map[string]int64
+	hubState      models.HubItems
 }
 
 // Key is the prom label
@@ -88,7 +85,7 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 }
 
 // newStaticMetrics is called when the process starts, or reloads the configuration
-func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSource, hub *cwhub.Hub) staticMetrics {
+func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub) staticMetrics {
 	datasourceMap := map[string]int64{}
 
 	for _, ds := range datasources {
@@ -98,13 +95,13 @@ func newStaticMetrics(consoleOptions []string, datasources []acquisition.DataSou
 	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
-		osName:         osName,
-		osFamily:       osFamily,
-		osVersion:      osVersion,
-		startupTS:      time.Now().UTC().Unix(),
-		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		datasourceMap:  datasourceMap,
-		hubState:       getHubState(hub),
+		osName:        osName,
+		osFamily:      osFamily,
+		osVersion:     osVersion,
+		startupTS:     time.Now().UTC().Unix(),
+		featureFlags:  fflag.Crowdsec.GetEnabledFeatures(),
+		datasourceMap: datasourceMap,
+		hubState:      getHubState(hub),
 	}
 }
 
@@ -112,12 +109,11 @@ func NewMetricsProvider(
 	apic *apiclient.ApiClient,
 	interval time.Duration,
 	logger *logrus.Entry,
-	consoleOptions []string,
-	datasources []acquisition.DataSource,
+	datasources []acquisitionTypes.DataSource,
 	hub *cwhub.Hub,
 ) *MetricsProvider {
-	static := newStaticMetrics(consoleOptions, datasources, hub)
-	
+	static := newStaticMetrics(datasources, hub)
+
 	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 
 	return &MetricsProvider{
@@ -216,10 +212,10 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 			}
 
 			item := &models.MetricsDetailItem{
-				Name:   ptr.Of(metricName),
-				Unit:   ptr.Of(unitType),
+				Name:   new(metricName),
+				Unit:   new(unitType),
 				Labels: metricsLabels,
-				Value:  ptr.Of(value),
+				Value:  new(value),
 			}
 			m.logger.Debugf("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
 			items = append(items, item)
@@ -304,14 +300,14 @@ func (m *MetricsProvider) getAppsecBlockedMetrics() []*models.MetricsDetailItem 
 
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	os := &models.OSversion{
-		Name:    ptr.Of(m.static.osName),
-		Version: ptr.Of(m.static.osVersion),
+		Name:    new(m.static.osName),
+		Version: new(m.static.osVersion),
 	}
 
 	base := models.BaseMetrics{
-		UtcStartupTimestamp: ptr.Of(m.static.startupTS),
+		UtcStartupTimestamp: new(m.static.startupTS),
 		Os:                  os,
-		Version:             ptr.Of(version.String()),
+		Version:             new(version.String()),
 		FeatureFlags:        m.static.featureFlags,
 		Metrics:             make([]*models.DetailedMetrics, 0),
 	}
@@ -324,8 +320,8 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 
 	met.Metrics = append(met.Metrics, &models.DetailedMetrics{
 		Meta: &models.MetricsMeta{
-			UtcNowTimestamp:   ptr.Of(time.Now().Unix()),
-			WindowSizeSeconds: ptr.Of(int64(m.interval.Seconds())),
+			UtcNowTimestamp:   new(time.Now().Unix()),
+			WindowSizeSeconds: new(int64(m.interval.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
@@ -383,8 +379,6 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
-
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -403,11 +397,9 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 	}
 }
 
-func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
-
+func (m *MetricsProvider) Run(ctx context.Context) {
 	if m.interval == time.Duration(0) {
-		return nil
+		return
 	}
 
 	ticker := time.NewTicker(1) // Send on start
@@ -418,9 +410,9 @@ func (m *MetricsProvider) Run(ctx context.Context, myTomb *tomb.Tomb) error {
 			met := m.metricsPayload()
 			m.sendMetrics(ctx, met)
 			ticker.Reset(m.interval)
-		case <-myTomb.Dying():
+		case <-ctx.Done():
 			ticker.Stop()
-			return nil
+			return
 		}
 	}
 }

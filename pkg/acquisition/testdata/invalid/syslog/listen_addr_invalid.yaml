@@ -1,0 +1,5 @@
+# wantErr: datasource of type syslog: invalid listen IP 10.0.0
+source: syslog
+labels:
+  type: sometype
+listen_addr: 10.0.0

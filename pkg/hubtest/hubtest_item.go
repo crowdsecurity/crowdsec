@@ -210,13 +210,13 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	}
 
 	if len(t.Config.OverrideStatics) > 0 {
-		n := parser.Node{
+		cfg := parser.NodeConfig{
 			Name:    "overrides",
 			Filter:  "1==1",
 			Statics: t.Config.OverrideStatics,
 		}
 
-		b, err := yaml.Marshal(n)
+		b, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("unable to serialize overrides: %w", err)
 		}
@@ -295,7 +295,7 @@ func (*HubTestItem) ImprovedLogDisplay(crowdsecLogFile string) error {
 	failures := []string{}
 	general := []string{}
 
-	for _, line := range strings.Split(string(crowdsecLog), "\n") {
+	for line := range strings.SplitSeq(string(crowdsecLog), "\n") {
 		if strings.Contains(line, `"Evaluating operator: MATCH"`) {
 			success = append(success, line)
 		} else if strings.Contains(line, `"Evaluating operator: NO MATCH"`) {

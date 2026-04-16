@@ -1,0 +1,4 @@
+# wantErr: datasource of type s3: bucket_name is required
+source: s3
+labels:
+  type: sometype

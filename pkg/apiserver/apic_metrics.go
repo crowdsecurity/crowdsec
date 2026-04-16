@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -159,15 +158,15 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 		Family:  osFamily,
 		Version: &osVersion,
 	}
-	allMetrics.Lapi.Version = ptr.Of(version.String())
+	allMetrics.Lapi.Version = new(version.String())
 	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
 
 	allMetrics.Lapi.Metrics = make([]*models.DetailedMetrics, 0)
 
 	allMetrics.Lapi.Metrics = append(allMetrics.Lapi.Metrics, &models.DetailedMetrics{
 		Meta: &models.MetricsMeta{
-			UtcNowTimestamp:   ptr.Of(time.Now().UTC().Unix()),
-			WindowSizeSeconds: ptr.Of(int64(a.metricsInterval.Seconds())),
+			UtcNowTimestamp:   new(time.Now().UTC().Unix()),
+			WindowSizeSeconds: new(int64(a.metricsInterval.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
@@ -227,7 +226,7 @@ func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
 	}
 
 	return &models.Metrics{
-		ApilVersion: ptr.Of(version.String()),
+		ApilVersion: new(version.String()),
 		Machines:    machinesInfo,
 		Bouncers:    bouncersInfo,
 	}, nil
@@ -255,8 +254,6 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 // then at regular metricsInterval. If a change is detected in the list
 // of machines, the next metrics are sent immediately.
 func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
-	defer trace.CatchPanic("lapi/metricsToAPIC")
-
 	// verify the list of machines every <checkInt> interval
 	const checkInt = 20 * time.Second
 
@@ -341,8 +338,6 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 }
 
 func (a *apic) SendUsageMetrics(ctx context.Context) {
-	defer trace.CatchPanic("lapi/usageMetricsToAPIC")
-
 	firstRun := true
 
 	log.Debugf("Start sending usage metrics to CrowdSec Central API (interval: %s once, then %s)", a.usageMetricsIntervalFirst, a.usageMetricsInterval)

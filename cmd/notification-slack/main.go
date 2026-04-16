@@ -15,13 +15,13 @@ import (
 )
 
 type PluginConfig struct {
-	Name      string  `yaml:"name"`
-	Webhook   string  `yaml:"webhook"`
-	Channel   string  `yaml:"channel"`
-	Username  string  `yaml:"username"`
-	IconEmoji string  `yaml:"icon_emoji"`
-	IconURL   string  `yaml:"icon_url"`
-	LogLevel  *string `yaml:"log_level"`
+	Name      string `yaml:"name"`
+	Webhook   string `yaml:"webhook"`
+	Channel   string `yaml:"channel"`
+	Username  string `yaml:"username"`
+	IconEmoji string `yaml:"icon_emoji"`
+	IconURL   string `yaml:"icon_url"`
+	LogLevel  string `yaml:"log_level"`
 }
 type Notify struct {
 	protobufs.UnimplementedNotifierServer
@@ -36,21 +36,25 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	if _, ok := n.ConfigByName[notification.GetName()]; !ok {
-		return nil, fmt.Errorf("invalid plugin config name %s", notification.GetName())
+	name := notification.GetName()
+
+	cfg, ok := n.ConfigByName[name]
+
+	if !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", name)
 	}
 
-	cfg := n.ConfigByName[notification.GetName()]
-
-	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
-		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	if cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(cfg.LogLevel))
 	}
 
-	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.GetName()))
-	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.GetText()))
+	text := notification.GetText()
+
+	logger.Info(fmt.Sprintf("found notify signal for %s config", name))
+	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, text))
 
 	err := slack.PostWebhookContext(ctx, cfg.Webhook, &slack.WebhookMessage{
-		Text:      notification.GetText(),
+		Text:      text,
 		Channel:   cfg.Channel,
 		Username:  cfg.Username,
 		IconEmoji: cfg.IconEmoji,

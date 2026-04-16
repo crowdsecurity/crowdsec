@@ -12,13 +12,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/trace"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/longpollclient"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -149,6 +148,8 @@ func (p *Papi) handleEvent(ctx context.Context, event longpollclient.Event, sync
 		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
 	}
 
+	metrics.PapiOrdersReceived.WithLabelValues(message.Header.OperationType, message.Header.OperationCmd).Inc()
+
 	logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 
 	err := operationFunc(ctx, message, p, sync)
@@ -234,8 +235,6 @@ func (p *Papi) PullOnce(ctx context.Context, since time.Time, sync bool) error {
 
 // Pull is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/PullPAPI")
-
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
@@ -309,8 +308,11 @@ func (p *Papi) Pull(ctx context.Context) error {
 
 			lastTimestamp = newTime
 
+			metrics.PapiLastPullTimestamp.SetToCurrentTime()
+
 			err = p.handleEvent(ctx, event, false)
 			if err != nil {
+				metrics.PapiInvalidOrdersReceived.Inc()
 				logger.Errorf("failed to handle event: %s", err)
 				continue
 			}
@@ -328,8 +330,6 @@ func (p *Papi) Pull(ctx context.Context) error {
 }
 
 func (p *Papi) SyncDecisions(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/syncDecisionsToCAPI")
-
 	var cache models.DecisionsDeleteRequest
 
 	ticker := time.NewTicker(p.SyncInterval)

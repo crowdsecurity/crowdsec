@@ -27,7 +27,7 @@ _CrowdSec is an open-source and participative security solution offering crowdso
 
 [CrowdSec Security Engine](https://doc.crowdsec.net/docs/next/intro/) is an all-in-one [IDS/IPS](https://doc.crowdsec.net/docs/next/log_processor/intro) and [WAF](https://doc.crowdsec.net/docs/next/appsec/intro).
 
-It detects bad behaviors by analyzing log sources and HTTP requests, and allows active remedation thanks to the [Remediation Components](https://doc.crowdsec.net/u/bouncers/intro).
+It detects bad behaviors by analyzing log sources and HTTP requests, and allows active remediation thanks to the [Remediation Components](https://doc.crowdsec.net/u/bouncers/intro).
 
 [Detection rules are available on our hub](https://hub.crowdsec.net) under MIT license.
 
@@ -35,7 +35,7 @@ It detects bad behaviors by analyzing log sources and HTTP requests, and allows 
 
 <a href="https://doc.crowdsec.net/docs/next/central_api/community_blocklist">
 
-The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. The Security Engine proactively block the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
+The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. The Security Engine proactively blocks the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
 
 [![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-1e7678f47cb672122cc847d068b6eadf.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
 
@@ -52,7 +52,7 @@ The "Community Blocklist" is a curated list of IP addresses identified as malici
 
 ## Outnumbering hackers all together
 
-By sharing the threat they faced, all users are protecting each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyze logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
+By sharing the threat they faced, all users are protecting each other (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyze logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
 CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
 

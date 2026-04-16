@@ -3,8 +3,8 @@ ifneq ($(firstword $(sort $(MAKE_VERSION) 4.1)),4.1)
     $(error Your make is too old ($(MAKE_VERSION)). Please install GNU make >= 4.1)
 endif
 
-include mk/platform.mk
-include mk/gmsl
+include build/mk/platform.mk
+include build/mk/gmsl/gmsl
 
 # By default, this build requires the C++ re2 library to be installed.
 #
@@ -20,8 +20,9 @@ include mk/gmsl
 # (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
-#expr_debug tag is required to enable the debug mode in expr
-GO_TAGS := netgo,osusergo,expr_debug
+# expr_debug tag is required to enable the debug mode in expr
+# nomsgpack builds gin without msgpack support, to reduce binary size
+GO_TAGS := netgo,osusergo,expr_debug,nomsgpack
 
 # By default, build with sqlite3.
 BUILD_SQLITE ?= mattn
@@ -361,9 +362,10 @@ else
 endif
 
 .PHONY: lint
-lint: check_golangci-lint  ## Run go linters for both linux and windows files.
-	GOOS=windows golangci-lint run --build-tags=windows,sqlite_modernc
+lint: check_golangci-lint  ## Run go linters for all platforms.
 	GOOS=linux   golangci-lint run
+	GOOS=windows golangci-lint run --build-tags=windows,sqlite_modernc
+	GOOS=freebsd golangci-lint run --build-tags=freebsd,sqlite_modernc
 
 check_docker:
 	@if ! docker info > /dev/null 2>&1; then \
@@ -425,11 +427,11 @@ release: check_release build package  ## Build a release tarball
 
 .PHONY: windows_installer
 windows_installer: build  ## Windows - build the installer
-	@.\make_installer.ps1 -version $(BUILD_VERSION)
+	@.\build\windows\make_installer.ps1 -version $(BUILD_VERSION)
 
 .PHONY: chocolatey
 chocolatey: windows_installer  ## Windows - build the chocolatey package
-	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
+	@.\build\windows\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
 # Include test/bats.mk only if it exists
 # to allow building without a test/ directory
@@ -440,4 +442,4 @@ else
 include test/bats.mk
 endif
 
-include mk/help.mk
+include build/mk/help.mk

@@ -6,8 +6,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 const (
@@ -79,11 +77,11 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {
 		log.Debugf("no console configuration to load")
 
-		c.ConsoleConfig.ShareCustomScenarios = ptr.Of(true)
-		c.ConsoleConfig.ShareTaintedScenarios = ptr.Of(true)
-		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
-		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
-		c.ConsoleConfig.ShareContext = ptr.Of(false)
+		c.ConsoleConfig.ShareCustomScenarios = new(true)
+		c.ConsoleConfig.ShareTaintedScenarios = new(true)
+		c.ConsoleConfig.ShareManualDecisions = new(false)
+		c.ConsoleConfig.ConsoleManagement = new(false)
+		c.ConsoleConfig.ShareContext = new(false)
 
 		return nil
 	}
@@ -100,27 +98,27 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 
 	if c.ConsoleConfig.ShareCustomScenarios == nil {
 		log.Debugf("no share_custom scenarios found, setting to true")
-		c.ConsoleConfig.ShareCustomScenarios = ptr.Of(true)
+		c.ConsoleConfig.ShareCustomScenarios = new(true)
 	}
 
 	if c.ConsoleConfig.ShareTaintedScenarios == nil {
 		log.Debugf("no share_tainted scenarios found, setting to true")
-		c.ConsoleConfig.ShareTaintedScenarios = ptr.Of(true)
+		c.ConsoleConfig.ShareTaintedScenarios = new(true)
 	}
 
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
-		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
+		c.ConsoleConfig.ShareManualDecisions = new(false)
 	}
 
 	if c.ConsoleConfig.ConsoleManagement == nil {
 		log.Debugf("no console_management found, setting to false")
-		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
+		c.ConsoleConfig.ConsoleManagement = new(false)
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {
 		log.Debugf("no 'context' found, setting to false")
-		c.ConsoleConfig.ShareContext = ptr.Of(false)
+		c.ConsoleConfig.ShareContext = new(false)
 	}
 
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)

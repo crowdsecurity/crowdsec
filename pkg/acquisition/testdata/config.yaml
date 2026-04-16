@@ -1,0 +1,6 @@
+# minimal configuration to satisfy appsec
+config_paths:
+  data_dir: /path/to/data
+api:
+  client:
+    insecure_skip_verify: false

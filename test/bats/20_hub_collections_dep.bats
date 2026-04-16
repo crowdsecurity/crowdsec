@@ -27,6 +27,12 @@ teardown() {
 
 #----------
 
+@test "cscli collections <unknown command>" {
+    rune -1 cscli collections foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli collections"'
+}
+
 @test "cscli collections (dependencies)" {
     # inject a dependency: smb requires sshd
     hub_dep=$(jq <"$INDEX_PATH" '. * {collections:{"crowdsecurity/smb":{collections:["crowdsecurity/sshd"]}}}')

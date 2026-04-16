@@ -9,7 +9,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -18,18 +17,7 @@ import (
 
 const journalctlCmd = "journalctl"
 
-func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error {
-	if acquisTomb != nil {
-		tombCtx, cancel := context.WithCancel(ctx)
-
-		go func() {
-			<-acquisTomb.Dying()
-			cancel()
-		}()
-
-		ctx = tombCtx
-	}
-
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	err := s.runJournalCtl(ctx, out)
 	s.logger.Debug("Oneshot acquisition is done")
 
@@ -165,7 +153,7 @@ func (s *Source) runJournalCtl(ctx context.Context, out chan pipeline.Event) err
 			s.logger.Debugf("getting one line: %s", line.Raw)
 
 			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": "journalctl", "acquis_type": line.Labels["type"]}).Inc()
+				metrics.JournalCtlDataSourceLinesRead.With(prometheus.Labels{"source": s.src, "datasource_type": ModuleName, "acquis_type": line.Labels["type"]}).Inc()
 			}
 
 			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)

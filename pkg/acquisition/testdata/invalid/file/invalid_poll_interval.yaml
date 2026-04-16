@@ -1,0 +1,9 @@
+# wantErr: datasource of type file: cannot parse FileAcquisition configuration: time: invalid duration "invalid"
+source: file
+labels:
+  type: sometype
+filenames:
+  - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: invalid
+

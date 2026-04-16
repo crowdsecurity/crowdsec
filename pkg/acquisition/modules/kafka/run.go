@@ -50,7 +50,7 @@ func (s *Source) ReadMessage(ctx context.Context, out chan pipeline.Event) error
 		s.logger.Tracef("line with message read from topic '%s': %+v", s.Config.Topic, l)
 
 		if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-			metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": s.Config.Topic, "datasource_type": "kafka", "acquis_type": l.Labels["type"]}).Inc()
+			metrics.KafkaDataSourceLinesRead.With(prometheus.Labels{"topic": s.Config.Topic, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
 		}
 
 		evt := pipeline.MakeEvent(s.Config.UseTimeMachine, pipeline.LOG, true)
@@ -81,7 +81,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.logger.Infof("start reader on brokers '%+v' with topic '%s'", s.Config.Brokers, s.Config.Topic)
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/kafka/live")
+		defer trace.ReportPanic()
 		return s.RunReader(ctx, out, t)
 	})
 

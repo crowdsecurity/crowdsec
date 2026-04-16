@@ -1,0 +1,10 @@
+# wantErr: datasource of type http: mtls is selected, but ca_cert is not provided
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: mtls
+tls:
+  server_cert: cert
+  server_key: key

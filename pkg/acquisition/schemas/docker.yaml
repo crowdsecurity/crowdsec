@@ -1,0 +1,194 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Docker datasource
+description: >
+  Schema for docker acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/docker.DockerConfiguration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: docker
+    description: >
+      Must be docker to bind this acquisition entry to the Docker datasource.
+  mode:
+    type: string
+    enum: [tail, cat]
+    default: tail
+    description: >
+      Acquisition mode (tail streams logs, cat performs a finite read).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: nginx).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec autop-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  check_interval:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Poll interval used by DSN-driven oneshot mode (deprecated in streaming configs).
+  follow_stdout:
+    type: boolean
+    default: true
+    description: >
+      Stream stdout logs from matching containers/services.
+  follow_stderr:
+    type: boolean
+    default: true
+    description: >
+      Stream stderr logs from matching containers/services.
+  since:
+    type: string
+    format: date-time
+    description: >
+      RFC3339 lower-bound timestamp; defaults to the current UTC time if omitted.
+  until:
+    type: string
+    format: date-time
+    description: >
+      RFC3339 upper-bound timestamp for finite reads.
+  docker_host:
+    type: string
+    description: >
+      Optional Docker API endpoint (unix://, tcp:// or npipe://). Defaults to client.FromEnv.
+  container_name:
+    $ref: "#/$defs/identifierList"
+    description: Exact container names to follow.
+  container_id:
+    $ref: "#/$defs/identifierList"
+    description: Exact container IDs to follow.
+  container_name_regexp:
+    $ref: "#/$defs/regexpList"
+    description: Go regular expressions to match container names.
+  container_id_regexp:
+    $ref: "#/$defs/regexpList"
+    description: Go regular expressions to match container IDs.
+  service_name:
+    $ref: "#/$defs/identifierList"
+    description: Exact Swarm service names to follow.
+  service_id:
+    $ref: "#/$defs/identifierList"
+    description: Exact Swarm service IDs to follow.
+  service_name_regexp:
+    $ref: "#/$defs/regexpList"
+    description: Go regular expressions to match service names.
+  service_id_regexp:
+    $ref: "#/$defs/regexpList"
+    description: Go regular expressions to match service IDs.
+  use_container_labels:
+    type: boolean
+    default: false
+    description: >
+      Populate CrowdSec labels from Docker container labels. Mutually exclusive
+      with explicit container selectors.
+  use_service_labels:
+    type: boolean
+    default: false
+    description: >
+      Populate CrowdSec labels from Docker service labels. Mutually exclusive
+      with explicit service selectors.
+required:
+  - source
+allOf:
+  - description: >
+      At least one explicit selector or label-driven selector is required,
+      matching hasContainerConfig/hasServiceConfig.
+    anyOf:
+      - required: [container_name]
+      - required: [container_id]
+      - required: [container_name_regexp]
+      - required: [container_id_regexp]
+      - required: [service_name]
+      - required: [service_id]
+      - required: [service_name_regexp]
+      - required: [service_id_regexp]
+      - properties:
+          use_container_labels:
+            const: true
+        required: [use_container_labels]
+      - properties:
+          use_service_labels:
+            const: true
+        required: [use_service_labels]
+  - if:
+      properties:
+        use_container_labels:
+          const: true
+      required: [use_container_labels]
+    then:
+      not:
+        anyOf:
+          - required: [container_name]
+          - required: [container_id]
+          - required: [container_name_regexp]
+          - required: [container_id_regexp]
+  - if:
+      properties:
+        use_service_labels:
+          const: true
+      required: [use_service_labels]
+    then:
+      not:
+        anyOf:
+          - required: [service_name]
+          - required: [service_id]
+          - required: [service_name_regexp]
+          - required: [service_id_regexp]
+examples:
+  - source: docker
+    mode: tail
+    labels:
+      type: nginx
+    container_name:
+      - web
+    follow_stderr: false
+  - source: docker
+    mode: cat
+    labels:
+      type: traefik
+    use_service_labels: true
+    follow_stdout: true
+$defs:
+  identifierList:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+      minLength: 1
+  regexpList:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+      minLength: 1
+      format: regex

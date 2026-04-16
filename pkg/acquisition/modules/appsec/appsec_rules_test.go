@@ -418,11 +418,7 @@ toto
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestAppsecRuleTransforms(t *testing.T) {
@@ -633,11 +629,8 @@ func TestAppsecRuleTransforms(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecRuleZones(t *testing.T) {
@@ -947,9 +940,6 @@ func TestAppsecRuleZones(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }

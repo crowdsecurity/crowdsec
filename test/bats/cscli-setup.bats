@@ -33,16 +33,19 @@ teardown() {
 
 #----------
 
+@test "cscli setup <unknown command>" {
+    # make sure that the unknown argument is not ignored and does not trigger
+    # interactive mode (possibly blocking a script)
+    rune -1 cscli setup foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli setup"'
+}
+
 @test "cscli setup --help" {
     rune -0 cscli help
     assert_line --regexp '^ +setup +Tools to configure crowdsec$'
 
     rune -0 cscli setup --help
-    assert_line 'Usage:'
-
-    # make sure that the unknown argument is not ignored and does not trigger interactive mode
-    # (possibly blocking a script)
-    rune -1 cscli setup blahblah
     assert_line 'Usage:'
 }
 

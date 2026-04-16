@@ -20,7 +20,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -75,7 +74,7 @@ type CTICfg struct {
 
 func (a *CTICfg) Load() error {
 	if a.Key == nil {
-		a.Enabled = ptr.Of(false)
+		a.Enabled = new(false)
 	}
 
 	if a.Key != nil && *a.Key == "" {
@@ -83,7 +82,7 @@ func (a *CTICfg) Load() error {
 	}
 
 	if a.Enabled == nil {
-		a.Enabled = ptr.Of(true)
+		a.Enabled = new(true)
 	}
 
 	if a.CacheTimeout == nil {
@@ -251,18 +250,25 @@ type LocalApiServerCfg struct {
 // inside LogDir. For "stdout" or "syslog", the access logger uses the same
 // output destination as the standard logger.
 func (c *LocalApiServerCfg) NewAccessLogger(cfg LogConfig, filename string) *log.Entry {
-	clog := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+	media := cfg.GetMedia()
+	logger := log.WithField("output", media)
 
-	if cfg.GetMedia() != "file" {
-		return clog
+	defer func() {
+		logger.Debug("starting access logger")
+	}()
+
+	accessLogger := logging.SubLogger(log.StandardLogger(), "lapi", c.LogLevel)
+
+	if media != "file" {
+		return accessLogger
 	}
 
-	logFile := filepath.Join(cfg.GetDir(), filename)
-	log.Debugf("starting router, logging to %s", logFile)
+	logPath := filepath.Join(cfg.GetDir(), filename)
+	logger = logger.WithField("file", logPath)
 
-	clog.Logger.SetOutput(cfg.NewRotatingLogger())
+	accessLogger.Logger.SetOutput(cfg.NewRotatingLogger(filename))
 
-	return clog
+	return accessLogger
 }
 
 func (c *LocalApiServerCfg) NewPAPILogger() *log.Entry {
@@ -342,7 +348,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
+		c.API.Server.Enable = new(true)
 	}
 
 	if !*c.API.Server.Enable {
@@ -372,15 +378,15 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	// Set default values for CAPI push/pull
 	if c.API.Server.OnlineClient != nil {
 		if c.API.Server.OnlineClient.PullConfig.Community == nil {
-			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Community = new(true)
 		}
 
 		if c.API.Server.OnlineClient.PullConfig.Blocklists == nil {
-			c.API.Server.OnlineClient.PullConfig.Blocklists = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Blocklists = new(true)
 		}
 
 		if c.API.Server.OnlineClient.Sharing == nil {
-			c.API.Server.OnlineClient.Sharing = ptr.Of(true)
+			c.API.Server.OnlineClient.Sharing = new(true)
 		}
 	}
 
@@ -510,7 +516,7 @@ func (c *Config) LoadAPIClient() error {
 func (c *LocalApiServerCfg) LoadAutoRegister() error {
 	if c.AutoRegister == nil {
 		c.AutoRegister = &LocalAPIAutoRegisterCfg{
-			Enable: ptr.Of(false),
+			Enable: new(false),
 		}
 
 		return nil
@@ -518,7 +524,7 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 
 	// Disable by default
 	if c.AutoRegister.Enable == nil {
-		c.AutoRegister.Enable = ptr.Of(false)
+		c.AutoRegister.Enable = new(false)
 	}
 
 	if !*c.AutoRegister.Enable {

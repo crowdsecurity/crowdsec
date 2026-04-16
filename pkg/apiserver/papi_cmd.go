@@ -9,8 +9,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -104,27 +102,52 @@ func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 		}
 
 		log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
+		decisionsToKeep := make([]*models.Decision, 0)
+		for _, decision := range alert.Decisions {
+			if decision.Value == nil {
+				continue
+			}
+			isAllowlisted, reason, err := p.DBClient.IsAllowlisted(ctx, *decision.Value)
+			if err != nil {
+				log.Errorf("Failed to check if decision '%s' is allowlisted: %s", *decision.Value, err)
+				// keep the decision in case of error during allowlist check
+				decisionsToKeep = append(decisionsToKeep, decision)
+				continue
+			}
+			if isAllowlisted {
+				log.Infof("Decision '%s' is allowlisted, removing it (%s)", *decision.Value, reason)
+				continue
+			}
+			decisionsToKeep = append(decisionsToKeep, decision)
+		}
+		alert.Decisions = decisionsToKeep
+
+		if len(alert.Decisions) == 0 {
+			log.Infof("All decisions are allowlisted for alert %s, skipping alert creation", alert.UUID)
+			return nil
+		}
 
 		/*Fix the alert with missing mandatory items*/
 		if alert.StartAt == nil || *alert.StartAt == "" {
 			log.Warnf("Alert %d has no StartAt, setting it to now", alert.ID)
-			alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+			alert.StartAt = new(time.Now().UTC().Format(time.RFC3339))
 		}
 
 		if alert.StopAt == nil || *alert.StopAt == "" {
 			log.Warnf("Alert %d has no StopAt, setting it to now", alert.ID)
-			alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+			alert.StopAt = new(time.Now().UTC().Format(time.RFC3339))
 		}
 
-		alert.EventsCount = ptr.Of(int32(0))
-		alert.Capacity = ptr.Of(int32(0))
-		alert.Leakspeed = ptr.Of("")
-		alert.Simulated = ptr.Of(false)
-		alert.ScenarioHash = ptr.Of("")
-		alert.ScenarioVersion = ptr.Of("")
-		alert.Message = ptr.Of("")
-		alert.Scenario = ptr.Of("")
+		alert.EventsCount = new(int32(0))
+		alert.Capacity = new(int32(0))
+		alert.Leakspeed = new("")
+		alert.Simulated = new(false)
+		alert.ScenarioHash = new("")
+		alert.ScenarioVersion = new("")
+		alert.Message = new("")
+		alert.Scenario = new("")
 		alert.Source = &models.Source{}
+		alert.Kind = types.PAPIAlertKind.String()
 
 		// if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
 		if len(alert.Decisions) >= 1 {
@@ -133,7 +156,7 @@ func AlertCmd(ctx context.Context, message *Message, p *Papi, sync bool) error {
 		} else {
 			log.Warningf("No decision found in alert for Polling API (%s : %s)", message.Header.Source.User, message.Header.Message)
 
-			alert.Source.Scope = ptr.Of(types.ConsoleOrigin)
+			alert.Source.Scope = new(types.ConsoleOrigin)
 			alert.Source.Value = &message.Header.Source.User
 		}
 

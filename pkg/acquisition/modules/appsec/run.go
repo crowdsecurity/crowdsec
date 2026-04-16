@@ -20,8 +20,6 @@ import (
 )
 
 func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/acquis/appsec/listenAndServe")
-
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
 	serverError := make(chan error, 2)
@@ -120,12 +118,12 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 }
 
 func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	apiClient, err := apiclient.GetLAPIClient()
+	lapiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
 	}
 
-	err = w.appsecAllowlistClient.Start(ctx, apiClient)
+	err = w.appsecAllowlistClient.Start(ctx, lapiClient)
 	if err != nil {
 		w.logger.Errorf("failed to fetch allowlists for appsec, disabling them: %s", err)
 	} else {
@@ -133,13 +131,13 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	}
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
+		defer trace.ReportPanic()
 
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
 
 			t.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
+				defer trace.ReportPanic()
 				return runner.Run(ctx, t)
 			})
 		}

@@ -486,7 +486,7 @@ func insertInOrderNoCase(sl []string, value string) []string {
 		return strings.ToLower(sl[i]) >= strings.ToLower(value)
 	})
 
-	return append(sl[:i], append([]string{value}, sl[i:]...)...)
+	return slices.Insert(sl, i, value)
 }
 
 func removeDuplicates(sl []string) []string {

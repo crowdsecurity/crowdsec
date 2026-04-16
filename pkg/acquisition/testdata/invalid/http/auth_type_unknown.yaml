@@ -1,0 +1,7 @@
+# wantErr: datasource of type http: invalid auth_type: must be one of basic_auth, headers, mtls
+source: http
+labels:
+  type: sometype
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: toto

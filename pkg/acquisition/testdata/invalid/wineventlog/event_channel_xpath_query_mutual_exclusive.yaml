@@ -1,0 +1,6 @@
+# wantErr: datasource of type wineventlog: event_channel and xpath_query are mutually exclusive
+source: wineventlog
+labels:
+  type: sometype
+event_channel: foo
+xpath_query: test

@@ -6,9 +6,9 @@ import (
 )
 
 type LogConfig interface {
-	GetFormat()         string
-	GetMedia()          string
-	NewRotatingLogger() *lumberjack.Logger
+	GetFormat()                        string
+	GetMedia()                         string
+	NewRotatingLogger(filename string) *lumberjack.Logger
 }
 
 // ExtLogger is a common interface for logrus.Logger and logrus.Entry.

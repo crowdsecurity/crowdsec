@@ -264,13 +264,17 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	}
 	lc.Logger.Infof("Connecting to %s", u)
 
-	conn, _, err := dialer.Dial(u, requestHeader)
+	conn, resp, err := dialer.Dial(u, requestHeader)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 	if err != nil {
 		lc.Logger.Errorf("Error connecting to websocket, err: %s", err)
 		return responseChan, errors.New("error connecting to websocket")
 	}
 
 	lc.t.Go(func() error {
+		defer conn.Close()
 		for {
 			jsonResponse := &LokiResponse{}
 

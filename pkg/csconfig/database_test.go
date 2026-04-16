@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestLoadDBConfig(t *testing.T) {
@@ -33,7 +32,7 @@ func TestLoadDBConfig(t *testing.T) {
 				Type:             "sqlite",
 				DbPath:           "./testdata/test.db",
 				MaxOpenConns:     10,
-				UseWal:           ptr.Of(true),
+				UseWal:           new(true),
 				DecisionBulkSize: defaultDecisionBulkSize,
 			},
 		},

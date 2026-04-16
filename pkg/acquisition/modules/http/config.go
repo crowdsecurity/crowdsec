@@ -10,28 +10,45 @@ import (
 	"os"
 	"time"
 
+	yaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type Configuration struct {
-	// IPFilter                       []string           `yaml:"ip_filter"`
-	// ChunkSize                      *int64             `yaml:"chunk_size"`
-	ListenAddr                        string             `yaml:"listen_addr"`
-	ListenSocket                      string             `yaml:"listen_socket"`
-	Path                              string             `yaml:"path"`
-	AuthType                          string             `yaml:"auth_type"`
-	BasicAuth                         *BasicAuthConfig   `yaml:"basic_auth"`
-	Headers                           *map[string]string `yaml:"headers"`
-	TLS                               *TLSConfig         `yaml:"tls"`
-	CustomStatusCode                  *int               `yaml:"custom_status_code"`
-	CustomHeaders                     *map[string]string `yaml:"custom_headers"`
-	MaxBodySize                       *int64             `yaml:"max_body_size"`
-	Timeout                           *time.Duration     `yaml:"timeout"`
-	configuration.DataSourceCommonCfg `yaml:",inline"`
+	// IPFilter                       []string          `yaml:"ip_filter"`
+	// ChunkSize                      *int64            `yaml:"chunk_size"`
+	ListenAddr                        string            `yaml:"listen_addr"`
+	ListenSocket                      string            `yaml:"listen_socket"`
+	Path                              string            `yaml:"path"`
+	AuthType                          string            `yaml:"auth_type"`
+	BasicAuth                         *BasicAuthConfig  `yaml:"basic_auth"`
+	Headers                           map[string]string `yaml:"headers"`
+	TLS                               *TLSConfig        `yaml:"tls"`
+	CustomStatusCode                  *int              `yaml:"custom_status_code"`
+	CustomHeaders                     map[string]string `yaml:"custom_headers"`
+	MaxBodySize                       *int64            `yaml:"max_body_size"`
+	Timeout                           *time.Duration    `yaml:"timeout"`
+	configuration.DataSourceCommonCfg                   `yaml:",inline"`
+}
+
+func ConfigurationFromYAML(y []byte) (Configuration, error) {
+	var cfg Configuration
+
+	if err := yaml.UnmarshalWithOptions(y, &cfg, yaml.Strict()); err != nil {
+		return cfg, fmt.Errorf("cannot parse: %s", yaml.FormatError(err, false, false))
+	}
+
+	cfg.SetDefaults()
+
+	err := cfg.Validate()
+	if err != nil {
+		return cfg, err
+	}
+
+	return cfg, nil
 }
 
 type BasicAuthConfig struct {
@@ -46,17 +63,23 @@ type TLSConfig struct {
 	CaCert             string `yaml:"ca_cert"`
 }
 
+func (c *Configuration) SetDefaults() {
+	if c.Mode == "" {
+		c.Mode = configuration.TAIL_MODE
+	}
+
+	if c.Path == "" {
+		c.Path = "/"
+	}
+}
+
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
-	s.Config = Configuration{}
-
-	err := yaml.Unmarshal(yamlConfig, &s.Config)
+	cfg, err := ConfigurationFromYAML(yamlConfig)
 	if err != nil {
-		return fmt.Errorf("cannot parse %s datasource configuration: %w", s.GetName(), err)
+		return err
 	}
 
-	if s.Config.Mode == "" {
-		s.Config.Mode = configuration.TAIL_MODE
-	}
+	s.Config = cfg
 
 	return nil
 }
@@ -64,10 +87,6 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 func (c *Configuration) Validate() error {
 	if c.ListenAddr == "" && c.ListenSocket == "" {
 		return errors.New("listen_addr or listen_socket is required")
-	}
-
-	if c.Path == "" {
-		c.Path = "/"
 	}
 
 	if c.Path[0] != '/' {
@@ -139,10 +158,6 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 		return err
 	}
 
-	if err := s.Config.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
-	}
-
 	return nil
 }
 
@@ -182,4 +197,3 @@ func (c *Configuration) NewTLSConfig() (*tls.Config, error) {
 
 	return &tlsConfig, nil
 }
-

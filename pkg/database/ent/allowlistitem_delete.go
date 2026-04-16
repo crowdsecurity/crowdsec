@@ -20,56 +20,56 @@ type AllowListItemDelete struct {
 }
 
 // Where appends a list predicates to the AllowListItemDelete builder.
-func (alid *AllowListItemDelete) Where(ps ...predicate.AllowListItem) *AllowListItemDelete {
-	alid.mutation.Where(ps...)
-	return alid
+func (_d *AllowListItemDelete) Where(ps ...predicate.AllowListItem) *AllowListItemDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (alid *AllowListItemDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, alid.sqlExec, alid.mutation, alid.hooks)
+func (_d *AllowListItemDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (alid *AllowListItemDelete) ExecX(ctx context.Context) int {
-	n, err := alid.Exec(ctx)
+func (_d *AllowListItemDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (alid *AllowListItemDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *AllowListItemDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(allowlistitem.Table, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
-	if ps := alid.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, alid.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	alid.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // AllowListItemDeleteOne is the builder for deleting a single AllowListItem entity.
 type AllowListItemDeleteOne struct {
-	alid *AllowListItemDelete
+	_d *AllowListItemDelete
 }
 
 // Where appends a list predicates to the AllowListItemDelete builder.
-func (alido *AllowListItemDeleteOne) Where(ps ...predicate.AllowListItem) *AllowListItemDeleteOne {
-	alido.alid.mutation.Where(ps...)
-	return alido
+func (_d *AllowListItemDeleteOne) Where(ps ...predicate.AllowListItem) *AllowListItemDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (alido *AllowListItemDeleteOne) Exec(ctx context.Context) error {
-	n, err := alido.alid.Exec(ctx)
+func (_d *AllowListItemDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (alido *AllowListItemDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (alido *AllowListItemDeleteOne) ExecX(ctx context.Context) {
-	if err := alido.Exec(ctx); err != nil {
+func (_d *AllowListItemDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

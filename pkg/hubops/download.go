@@ -139,7 +139,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				ToFile(destPath).
 				CompareContent().
 				BeforeRequest(func(req *http.Request) {
-					fmt.Printf("downloading %s\n", req.URL)
+					fmt.Fprintf(os.Stdout, "downloading %s\n", req.URL)
 				}).
 				WithLogger(log.WithField("url", dataS.SourceURL))
 
@@ -163,7 +163,7 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
 	i := c.Item
 
-	fmt.Printf("downloading %s\n", colorizeItemName(i.FQName()))
+	fmt.Fprintf(os.Stdout, "downloading %s\n", colorizeItemName(i.FQName()))
 
 	// ensure that target file is within target dir
 	finalPath, err := i.PathForDownload()

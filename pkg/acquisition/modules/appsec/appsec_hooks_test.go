@@ -407,11 +407,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+
+	runTests(t, tests)
 }
 
 func TestAppsecPreEvalHooks(t *testing.T) {
@@ -824,11 +821,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestAppsecRemediationConfigHooks(t *testing.T) {
@@ -917,11 +910,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
-	}
+	runTests(t, tests)
 }
 
 func TestOnMatchRemediationHooks(t *testing.T) {
@@ -1090,9 +1079,263 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			loadAppSecEngine(test, t)
-		})
+
+	runTests(t, tests)
+}
+
+func TestAppsecPhaseScopedHooks(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "inband on_match: change return code (phase-scoped, no IsInBand filter needed)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetReturnCode(413)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Len(t, responses, 1)
+				require.Equal(t, 413, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:             "inband on_match: set remediation (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, "captcha", responses[0].Action)
+			},
+		},
+		{
+			name:             "inband on_match: cancel event (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"CancelEvent()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				// CancelEvent() only cancels the LOG event, the APPSEC alert is still sent
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Len(t, responses, 1)
+			},
+		},
+		{
+			name:             "inband on_match with filter: only fires when filter matches (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:             "shared + inband on_match: both execute (shared runs first)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				// Shared hook: runs for both phases, sets remediation
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			inband_on_match: []appsec.Hook{
+				// Phase-scoped hook: overrides the return code
+				{Apply: []string{"SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// Shared hook set captcha, phase-scoped hook set return code 418
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:               "shared on_match break does not prevent phase-scoped hooks",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}, OnSuccess: "break"},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// Shared hook canceled LOG event with break, APPSEC alert still sent
+				// Phase-scoped hooks still run (break only stops shared hook list)
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:               "outofband on_match: send alert (phase-scoped)",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			outofband_on_match: []appsec.Hook{
+				{Apply: []string{"SendAlert()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				// outofband matched and sent an alert event
+				require.NotEmpty(t, events)
+				foundAppsecEvt := false
+				for _, evt := range events {
+					if evt.Type == pipeline.APPSEC {
+						foundAppsecEvt = true
+					}
+				}
+				require.True(t, foundAppsecEvt, "expected an APPSEC event from outofband match")
+			},
+		},
+		{
+			name:               "inband on_match with break+continue: break stops inband hooks",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				// break requires a filter to be present and match (sets has_match flag)
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('ban')"}}, // should not execute due to break
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// First hook ran (captcha + 418), second was skipped due to break
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
 	}
+
+	runTests(t, tests)
 }

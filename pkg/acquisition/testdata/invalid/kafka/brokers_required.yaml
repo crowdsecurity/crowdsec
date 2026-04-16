@@ -1,0 +1,4 @@
+# wantErr: datasource of type kafka: cannot create a kafka reader with an empty list of broker addresses
+source: kafka
+labels:
+  type: sometype

@@ -1,0 +1,3 @@
+source: docker
+service_name:
+ - web-service

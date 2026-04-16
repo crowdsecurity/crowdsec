@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 
@@ -69,7 +70,7 @@ func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[st
 		}
 
 		if nothingToDisplay {
-			fmt.Println("No items to display")
+			fmt.Fprintln(os.Stdout, "No items to display")
 		}
 	case "json":
 		type itemHubStatus struct {

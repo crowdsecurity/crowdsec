@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/fatih/color"
@@ -79,7 +80,7 @@ func (cli *cliMetrics) list() error {
 			return fmt.Errorf("failed to serialize metric types: %w", err)
 		}
 
-		fmt.Println(string(x))
+		fmt.Fprintln(os.Stdout, string(x))
 	default:
 		return fmt.Errorf("output format '%s' not supported for this command", outputFormat)
 	}

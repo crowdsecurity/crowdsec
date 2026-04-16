@@ -1,0 +1,5 @@
+# wantErr: datasource of type syslog: cannot parse: [5:14] cannot unmarshal string into Go struct field Configuration.Port of type int
+source: syslog
+labels:
+  type: sometype
+listen_port: asd

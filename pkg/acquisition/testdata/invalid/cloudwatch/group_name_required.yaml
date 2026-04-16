@@ -1,0 +1,5 @@
+# wantErr: datasource of type cloudwatch: group_name is mandatory for CloudwatchSource
+source: cloudwatch
+labels:
+  type: sometype
+

@@ -1,0 +1,5 @@
+# wantErr: datasource of type file: cannot parse FileAcquisition configuration: [5:1] unknown field "foobar"
+source: file
+labels:
+  type: sometype
+foobar: asd.log

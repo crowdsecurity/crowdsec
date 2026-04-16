@@ -88,6 +88,7 @@ body:
       label: Acquisition config
       value: |
         <details>
+
         ```console
         # On Linux:
         $ cat /etc/crowdsec/acquis.yaml /etc/crowdsec/acquis.d/*
@@ -96,6 +97,8 @@ body:
         # On Windows:
         C:\> Get-Content C:\ProgramData\CrowdSec\config\acquis.yaml
         # paste output here
+        ```
+
         </details>
 
   - type: textarea

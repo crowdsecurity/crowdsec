@@ -17,7 +17,7 @@ func (s *Source) GetUuid() string {
 }
 
 func (*Source) GetName() string {
-	return "syslog"
+	return ModuleName
 }
 
 func (s *Source) GetMode() string {

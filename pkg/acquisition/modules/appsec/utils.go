@@ -16,7 +16,6 @@ import (
 	"github.com/corazawaf/coraza/v3/collection"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/corazawaf/coraza/v3/types/variables"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
@@ -115,7 +114,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	source := models.Source{
 		Value: &sourceIP,
 		IP:    sourceIP,
-		Scope: ptr.Of(types.Ip),
+		Scope: new(types.Ip),
 	}
 
 	// Enrich source with GeoIP data
@@ -128,7 +127,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	evt.Overflow.Sources[sourceIP] = source
 
 	alert := models.Alert{}
-	alert.Capacity = ptr.Of(int32(1))
+	alert.Capacity = new(int32(1))
 	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -188,8 +187,8 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 
 	alert.Meta = metas
 
-	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
-	alert.Leakspeed = ptr.Of("")
+	alert.EventsCount = new(int32(len(alert.Events)))
+	alert.Leakspeed = new("")
 
 	var scenarioName string
 
@@ -221,9 +220,9 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 
 	// This is a modsec rule match
 	if scenarioName == "" && len(sevRules) > 0 {
-		// If from CRS (TX scores are set), use that as the name
+		// If from CRS (TX scores are set, and the global score is not 0), use that as the name
 		// If from a custom rule, use the log message from the 1st highest severity rule
-		if _, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok {
+		if score, ok := inEvt.Appsec.Vars["TX.anomaly_score"]; ok && score != "0" {
 			scenarioName = formatCRSMatch(inEvt.Appsec.Vars, inEvt.Appsec.HasInBandMatches, inEvt.Appsec.HasOutBandMatches)
 		} else {
 			if msg, msgOk := sevRules[0]["msg"].(string); msgOk {
@@ -239,11 +238,12 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		}
 	}
 
-	alert.Scenario = ptr.Of(scenarioName)
-	alert.ScenarioHash = ptr.Of(inEvt.Appsec.GetHash())
-	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
-	alert.Simulated = ptr.Of(false)
+	alert.Scenario = new(scenarioName)
+	alert.ScenarioHash = new(inEvt.Appsec.GetHash())
+	alert.ScenarioVersion = new(inEvt.Appsec.GetVersion())
+	alert.Simulated = new(false)
 	alert.Source = &source
+	alert.Kind = types.WAFAlertKind.String()
 
 	msg := ""
 
@@ -257,8 +257,8 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	msg += fmt.Sprintf("%s from %s (%s)", scenarioName,
 		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])
 	alert.Message = &msg
-	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+	alert.StartAt = new(time.Now().UTC().Format(time.RFC3339))
+	alert.StopAt = new(time.Now().UTC().Format(time.RFC3339))
 	evt.Overflow.APIAlerts = []models.Alert{alert}
 	evt.Overflow.Alert = &alert
 
@@ -305,40 +305,13 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid 
 		// should we add some info like listen addr/port/path ?
 		Labels:  labels,
 		Process: true,
-		Module:  "appsec",
-		Src:     "appsec",
+		Module:  ModuleName,
+		Src:     ModuleName,
 		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
 	}
 	evt.Appsec = pipeline.AppsecEvent{}
 
 	return evt, nil
-}
-
-func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
-	req := evt.Parsed["target_uri"]
-	if len(req) > 12 {
-		req = req[:10] + ".."
-	}
-
-	if evt.Meta["appsec_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     "appsec",
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else if evt.Parsed["outofband_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     "appsec",
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else {
-		logger.WithFields(log.Fields{
-			"module":     "appsec",
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	}
 }
 
 type ruleData struct {

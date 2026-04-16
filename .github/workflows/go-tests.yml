@@ -127,13 +127,13 @@ jobs:
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
         submodules: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
 
@@ -199,16 +199,21 @@ jobs:
       run: |
         make build BUILD_PROFILE=minimal
 
+    # check that the freebsd build is not broken
+    - name: "Build target: freebsd"
+      run: |
+        make build BUILD_STATIC=1 BUILD_RE2_WASM=1 BUILD_SQLITE=modernc GOOS=freebsd
+
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
       with:
         files: coverage.out
         flags: unit-linux
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
-        version: v2.6
+        version: v2.10
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false

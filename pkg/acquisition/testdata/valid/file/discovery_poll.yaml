@@ -1,0 +1,7 @@
+source: file
+labels:
+  type: sometype
+filenames:
+  - "tests/test.log"
+discovery_poll_enable: true
+discovery_poll_interval: "30s"
