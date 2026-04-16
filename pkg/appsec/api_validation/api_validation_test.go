@@ -829,38 +829,3 @@ func TestRequestBodyValidation(t *testing.T) {
 		})
 	}
 }
-
-func TestJWKSValidation(t *testing.T) {
-	tests := []struct {
-		name        string
-		schemaName  string
-		ref         string
-		wantErr     bool
-		expectedErr string
-		request     func() *http.Request
-	}{}
-
-	logger := log.New().WithField("test", "apivalidation")
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rv := NewRequestValidator(logger)
-			schemaFile, err := os.Open(filepath.Join(".", "test_schemas", tt.schemaName+".yaml"))
-			require.NoError(t, err)
-			defer schemaFile.Close()
-			schemaBytes, err := io.ReadAll(schemaFile)
-			require.NoError(t, err)
-
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
-			require.NoError(t, err)
-
-			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.expectedErr)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}

@@ -11,12 +11,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	legacyrouter "github.com/getkin/kin-openapi/routers/legacy"
-	"github.com/golang-jwt/jwt/v4" // We use v4 because gin-jwt uses it
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	ExtensionJWKSURI = "x-crowdsec-jwks_uri"
 )
 
 var (
@@ -58,17 +53,6 @@ func NewRequestValidator(logger *log.Entry) *RequestValidator {
 		openAPISchemas: make(map[string]SchemaData),
 		logger:         logger,
 	}
-}
-
-func (rv *RequestValidator) validateJWTToken(token string, jwksURI string) error {
-	rv.logger.Debugf("validating JWT token with JWKS URI %s", jwksURI)
-
-	_, err := jwt.Parse(token, nil)
-	if err != nil {
-		return fmt.Errorf("invalid JWT token: %v", err)
-	}
-
-	return nil
 }
 
 func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
@@ -144,21 +128,6 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 	}
 	if authTokenValue == "" {
 		return fmt.Errorf("auth token is required but not provided")
-	}
-
-	// If a JWKS URI is provided, attempt to validate the token
-	jwksURI := input.SecurityScheme.Extensions[ExtensionJWKSURI]
-	if jwksURI == nil {
-		// no JWKS URI, we can't validate the token
-		return nil
-	}
-	jwksURIStr, ok := jwksURI.(string)
-	if !ok {
-		return fmt.Errorf("invalid JWKS URI, expected string: %v", jwksURI)
-	}
-
-	if err := rv.validateJWTToken(authTokenValue, jwksURIStr); err != nil {
-		return err
 	}
 
 	return nil
