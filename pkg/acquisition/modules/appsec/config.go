@@ -189,6 +189,7 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	}
 
 	w.AppsecRuntime = appsecRuntime
+	w.AppsecRuntime.DataDir = w.hub.GetDataDir()
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -239,6 +240,7 @@ type AppsecRuntimeConfig struct {
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 
 	RequestValidator *apivalidation.RequestValidator
+	DataDir          string
 }
 
 type AppsecConfig struct {
@@ -916,17 +918,17 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	return bouncerStatusCode, resp
 }
 
-func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, schemaPath string) error {
-	//FIXME: should be relative to data dir
-	w.Logger.Debugf("loading schema %s for ref %s", schemaPath, ref)
-	f, err := os.Open(schemaPath)
-	if err != nil {
-		return fmt.Errorf("unable to open schema file %s : %s", schemaPath, err)
+const schemasSubDir = "schemas"
+
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string) error {
+	if !filepath.IsLocal(filename) {
+		return fmt.Errorf("schema filename %q must be relative to %s and stay within it", filename, schemasSubDir)
 	}
-	defer f.Close()
+	schemaPath := filepath.Join(w.DataDir, schemasSubDir, filename)
+	w.Logger.Debugf("loading schema %s for ref %s", schemaPath, ref)
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
-		return fmt.Errorf("unable to read schema file %s : %s", schemaPath, err)
+		return fmt.Errorf("unable to read schema file %s : %w", schemaPath, err)
 	}
 	return w.RequestValidator.LoadSchema(ref, string(schema))
 }
