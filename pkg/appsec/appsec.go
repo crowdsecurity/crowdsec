@@ -37,6 +37,7 @@ const (
 	hookPreEval
 	hookPostEval
 	hookOnMatch
+	hookOnChallenge
 )
 
 func (s hookStage) String() string {
@@ -49,6 +50,8 @@ func (s hookStage) String() string {
 		return "post_eval"
 	case hookOnMatch:
 		return "on_match"
+	case hookOnChallenge:
+		return "on_challenge"
 	default:
 		return "unknown"
 	}
@@ -107,6 +110,8 @@ func (h *Hook) Build(stage hookStage, patcher *appsecExprPatcher) error {
 		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	case hookOnMatch:
 		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{}, pipeline.Event{})
+	case hookOnChallenge:
+		ctx = GetOnChallengeEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -217,11 +222,13 @@ type AppsecSubEngineOpts struct {
 
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
 // Hooks defined here are automatically dispatched only during the corresponding phase.
+// on_challenge is in-band only; setting it under `outofband:` is rejected at Build() time.
 type AppsecPhaseConfig struct {
 	Rules             []string            `yaml:"rules"`
 	OnMatch           []Hook              `yaml:"on_match"`
 	PreEval           []Hook              `yaml:"pre_eval"`
 	PostEval          []Hook              `yaml:"post_eval"`
+	OnChallenge       []Hook              `yaml:"on_challenge"`
 	Options           AppsecSubEngineOpts `yaml:"options"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 }
@@ -237,10 +244,11 @@ type AppsecRuntimeConfig struct {
 	RemediationByTag   map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 	RemediationById    map[int]string
 
-	CompiledOnLoad []Hook     // runs once at startup, not phase-scoped
-	CommonHooks    PhaseHooks // apply to both phases
-	InBandHooks    PhaseHooks // only run during in-band
-	OutOfBandHooks PhaseHooks // only run during out-of-band
+	CompiledOnLoad      []Hook     // runs once at startup, not phase-scoped
+	CompiledOnChallenge []Hook     // in-band only; runs before pre_eval
+	CommonHooks         PhaseHooks // apply to both phases
+	InBandHooks         PhaseHooks // only run during in-band
+	OutOfBandHooks      PhaseHooks // only run during out-of-band
 
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
@@ -275,6 +283,7 @@ type AppsecConfig struct {
 	PreEval           []Hook              `yaml:"pre_eval"`
 	PostEval          []Hook              `yaml:"post_eval"`
 	OnMatch           []Hook              `yaml:"on_match"`
+	OnChallenge       []Hook              `yaml:"on_challenge"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
 	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
@@ -399,6 +408,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OnMatch = append(wc.OnMatch, tmp.OnMatch...)
 	}
 
+	if tmp.OnChallenge != nil {
+		wc.OnChallenge = append(wc.OnChallenge, tmp.OnChallenge...)
+	}
+
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
@@ -412,6 +425,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.InBand.OnMatch = append(wc.InBand.OnMatch, tmp.InBand.OnMatch...)
 		wc.InBand.PreEval = append(wc.InBand.PreEval, tmp.InBand.PreEval...)
 		wc.InBand.PostEval = append(wc.InBand.PostEval, tmp.InBand.PostEval...)
+		wc.InBand.OnChallenge = append(wc.InBand.OnChallenge, tmp.InBand.OnChallenge...)
 	}
 
 	if tmp.OutOfBand != nil {
@@ -422,6 +436,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OutOfBand.OnMatch = append(wc.OutOfBand.OnMatch, tmp.OutOfBand.OnMatch...)
 		wc.OutOfBand.PreEval = append(wc.OutOfBand.PreEval, tmp.OutOfBand.PreEval...)
 		wc.OutOfBand.PostEval = append(wc.OutOfBand.PostEval, tmp.OutOfBand.PostEval...)
+		wc.OutOfBand.OnChallenge = append(wc.OutOfBand.OnChallenge, tmp.OutOfBand.OnChallenge...)
 	}
 
 	// override other options
@@ -648,6 +663,27 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch, patcher); err != nil {
 			return nil, err
 		}
+
+		if len(wc.OutOfBand.OnChallenge) > 0 {
+			return nil, errors.New("on_challenge hooks are only valid in-band, not under outofband")
+		}
+	}
+
+	// on_challenge hooks: merge top-level and inband-scoped (both are in-band only).
+	onChallengeHooks := wc.OnChallenge
+	if wc.InBand != nil {
+		onChallengeHooks = append(onChallengeHooks, wc.InBand.OnChallenge...)
+	}
+
+	if ret.CompiledOnChallenge, err = buildHookList(onChallengeHooks, hookOnChallenge, patcher); err != nil {
+		return nil, err
+	}
+
+	// Defining any on_challenge hook implies we need the challenge runtime to
+	// validate cookies and submissions, even if the hook bodies never call
+	// SendChallenge() themselves.
+	if len(ret.CompiledOnChallenge) > 0 {
+		patcher.NeedWASMVM = true
 	}
 
 	// variable tracking
@@ -738,6 +774,74 @@ func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]inte
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
 	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
+}
+
+// ProcessOnChallengeRules is the in-band-only challenge entry point. It
+// handles the PoW worker JS path and the challenge submission path internally,
+// validates any existing challenge cookie to populate state.Fingerprint, and
+// runs the user-defined on_challenge hook expressions ONLY when there is a
+// fingerprint to inspect — i.e. on a valid submission or when a valid cookie
+// was presented. Requests with no cookie / invalid cookie / invalid submission
+// skip user hooks entirely (there's nothing to evaluate).
+func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState, request *ParsedRequest) error {
+	if w.ChallengeRuntime == nil {
+		return nil
+	}
+
+	var path string
+	if request.HTTPRequest.URL != nil {
+		path = request.HTTPRequest.URL.Path
+	}
+
+	// Serve the PoW worker JS (static asset). Skip user expressions.
+	if path == challenge.ChallengePowWorkerPath {
+		return w.setChallengeResponse(state, http.StatusOK, challenge.PowWorkerJS,
+			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+	}
+
+	// Challenge submission: validate, then run user hooks with the decrypted
+	// fingerprint before issuing the cookie. If a user hook drops the request
+	// or issues a fresh challenge, the cookie is not granted.
+	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
+		w.Logger.Debugf("validating challenge response")
+		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		if err != nil {
+			// TODO: find a way to propagate an event to the LP for use in scenarios
+			w.Logger.Errorf("challenge validation failed: %s", err)
+			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
+				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
+		}
+
+		state.Fingerprint = &fpData
+		if err := w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge"); err != nil {
+			return err
+		}
+
+		// If user hooks already shaped the response (drop or fresh challenge),
+		// don't overwrite it by issuing the cookie.
+		if state.RequireChallenge || state.DropInfo(request) != nil {
+			return nil
+		}
+
+		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
+			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
+	}
+
+	// Regular request: validate the existing cookie (if any) to populate fingerprint.
+	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
+		if fpData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data")
+			state.Fingerprint = fpData
+		}
+	}
+
+	// No fingerprint to inspect — skip user hooks. This avoids nil-deref inside
+	// expr filters like `fingerprint.Bot.X` when no cookie was presented.
+	if state.Fingerprint == nil {
+		return nil
+	}
+
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge")
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
@@ -969,48 +1073,23 @@ func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequ
 	return nil
 }
 
+// SendChallenge issues a challenge HTML page for the current request. Cookie
+// and submission handling live in ProcessOnChallengeRules; by the time this
+// runs, state.Fingerprint has already been populated if a valid cookie was
+// presented. If the caller already holds a valid fingerprint, SendChallenge is
+// a no-op so that naive `pre_eval: SendChallenge()` configs pass through
+// already-validated clients.
 func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
-	w.Logger.Debugf("sending challenge")
-
 	if w.ChallengeRuntime == nil {
 		return fmt.Errorf("challenge runtime not initialized")
 	}
 
-	// Check if the request has a challenge response
-	// If there's a challenge response, validate it
-	// If ok, generate cookie + return it (challenge remediation + meta refresh + cookie)
-	// If bad, return challenge page
-	// Finally, check for the challenge cookie
-	// If it's valid, just return
-	// If not, return the challenge HTML page
-
-	// Serve the PoW worker script (plain JS, not obfuscated)
-	if request.HTTPRequest.URL.Path == challenge.ChallengePowWorkerPath {
-		return w.setChallengeResponse(state, http.StatusOK, challenge.PowWorkerJS, map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+	if state.Fingerprint != nil {
+		w.Logger.Debugf("fingerprint already validated, skipping challenge issue")
+		return nil
 	}
 
-	if request.HTTPRequest.URL.Path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
-		w.Logger.Debugf("Validating challenge response")
-		body := bodyChallengeOK
-		cookie, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
-		if err != nil {
-			// TODO: find a way to propagate an event to the LP for use in scenarios
-			w.Logger.Errorf("Challenge validation failed: %s", err)
-			body = bodyChallengeFailed
-		}
-		return w.setChallengeResponse(state, http.StatusOK, body, map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, cookie)
-	}
-
-	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	if err == nil {
-		if fpData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
-			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data in transaction")
-			state.Fingerprint = fpData
-			return nil
-		}
-	}
-
-	w.Logger.Debugf("no valid challenge cookie found")
+	w.Logger.Debugf("sending challenge")
 
 	difficulty := 0 // 0 = use runtime default
 	if state.ChallengeDifficulty != nil {
@@ -1023,25 +1102,6 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	}
 	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
 }
-
-/*func (w *AppsecRuntimeConfig) ValidateChallenge(state *AppsecRequestState, request *ParsedRequest, conditions ...bool) (*challenge.ChallengeMatcher, error) {
-
-	httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName)
-	if err == nil && w.ChallengeRuntime != nil {
-		if _, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
-			w.Logger.Debugf("valid challenge cookie found, allowing request")
-			return challenge.NewChallengeMatcher(true), nil
-		}
-	}
-
-	if request.HTTPRequest.URL.Path != challenge.ChallengeSubmitPath || request.HTTPRequest.Method != http.MethodPost {
-		// If not a challenge submission, consider it valid
-		//
-		return challenge.NewChallengeMatcher(true), nil
-	}
-
-	return challenge.NewChallengeMatcher(true), nil
-}*/
 
 type BodyResponse struct {
 	Action          string              `json:"action"`

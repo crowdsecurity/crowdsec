@@ -326,6 +326,68 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	assert.Empty(t, rt.OutOfBandHooks.OnMatch)
 }
 
+func TestBuildOnChallengeTopLevelAndInband(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OnChallenge: []Hook{
+			{Apply: []string{"SetRemediation('allow')"}},
+		},
+		InBand: &AppsecPhaseConfig{
+			OnChallenge: []Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(418)"}},
+			},
+		},
+	}
+
+	hub := &cwhub.Hub{}
+	rt, err := cfg.Build(hub)
+	require.NoError(t, err)
+
+	// Both top-level and inband on_challenge hooks end up in CompiledOnChallenge.
+	require.Len(t, rt.CompiledOnChallenge, 2)
+	assert.NotNil(t, rt.CompiledOnChallenge[0].ApplyExpr)
+	assert.NotNil(t, rt.CompiledOnChallenge[1].FilterExpr)
+
+	// Defining on_challenge must force the challenge runtime on.
+	assert.True(t, rt.NeedWASMVM)
+}
+
+func TestBuildOnChallengeUnderOutofbandRejected(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OutOfBand: &AppsecPhaseConfig{
+			OnChallenge: []Hook{{Apply: []string{"SetRemediation('allow')"}}},
+		},
+	}
+
+	hub := &cwhub.Hub{}
+	_, err := cfg.Build(hub)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "on_challenge hooks are only valid in-band")
+}
+
+func TestLoadByPathOnChallengeYAML(t *testing.T) {
+	cfg := newTestConfig()
+	f := writeTempYAML(t, `
+name: test-on-challenge
+on_challenge:
+  - filter: "fingerprint != nil"
+    apply:
+      - SetRemediation('allow')
+inband:
+  on_challenge:
+    - apply:
+        - SendChallenge()
+`)
+
+	require.NoError(t, cfg.LoadByPath(f))
+	assert.Len(t, cfg.OnChallenge, 1)
+	require.NotNil(t, cfg.InBand)
+	assert.Len(t, cfg.InBand.OnChallenge, 1)
+}
+
 func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	cfg := AppsecConfig{
 		Logger:             log.NewEntry(log.StandardLogger()),

@@ -11,6 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -1333,6 +1334,119 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 				// First hook ran (captcha + 418), second was skipped due to break
 				require.Equal(t, "captcha", responses[0].Action)
 				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestAppsecOnChallengeHooks(t *testing.T) {
+	powWorkerURL, err := url.Parse(challenge.ChallengePowWorkerPath)
+	require.NoError(t, err)
+
+	tests := []appsecRuleTest{
+		{
+			name:             "pre_eval issues a challenge when no cookie is present",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.NotEmpty(t, responses[0].UserHTTPBodyContent)
+				require.Contains(t, responses[0].UserHeaders["Content-Type"], "text/html")
+			},
+		},
+		{
+			name:             "on_challenge: no cookie → user hooks skipped (filter would nil-deref)",
+			expected_load_ok: true,
+			// This filter would nil-deref if it ran without a fingerprint. The
+			// dispatcher must skip it when no cookie is present.
+			on_challenge: []appsec.Hook{
+				{Filter: "fingerprint.Bot.MismatchWebGLInWorker", Apply: []string{"DropRequest('bot')"}},
+			},
+			// Must reference SendChallenge() somewhere to force ChallengeRuntime init.
+			pre_eval: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt, "on_challenge must not fire without a fingerprint")
+			},
+		},
+		{
+			name:             "on_challenge: PoW worker path served, WAF evaluation skipped",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			// Force the challenge runtime to be initialized by referencing SendChallenge()
+			// in a hook that won't match this request.
+			on_challenge: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         challenge.ChallengePowWorkerPath,
+				Args:        url.Values{"foo": []string{"toto"}}, // would normally trigger rule1
+				HTTPRequest: &http.Request{Host: "example.com", URL: powWorkerURL},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Empty(t, events, "WAF should not have evaluated the infrastructure path")
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.Equal(t, challenge.PowWorkerJS, responses[0].UserHTTPBodyContent)
+				require.Contains(t, responses[0].UserHeaders["Content-Type"], "application/javascript")
+			},
+		},
+		{
+			name:             "on_challenge: invalid submission returns failed body, no hooks run",
+			expected_load_ok: true,
+			// Unconditional DropRequest in on_challenge must NOT fire on an
+			// invalid submission — the dispatcher returns the failed JSON
+			// body and skips user hooks.
+			on_challenge: []appsec.Hook{
+				{Apply: []string{"DropRequest('should not fire')"}},
+			},
+			// Force ChallengeRuntime init.
+			pre_eval: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "POST",
+				URI:         challenge.ChallengeSubmitPath,
+				HTTPRequest: func() *http.Request {
+					u, _ := url.Parse(challenge.ChallengeSubmitPath)
+					return &http.Request{Host: "example.com", URL: u, Method: "POST"}
+				}(),
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.JSONEq(t, `{"status":"failed"}`, responses[0].UserHTTPBodyContent)
+				require.False(t, responses[0].InBandInterrupt, "on_challenge hooks must not run on invalid submission")
 			},
 		},
 	}

@@ -80,6 +80,29 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 	}
 }
 
+func GetOnChallengeEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+	return map[string]interface{}{
+		"req":         request.HTTPRequest,
+		"IsInBand":    request.IsInBand,
+		"fingerprint": state.Fingerprint,
+		"SendChallenge": func() error {
+			return w.SendChallenge(state, request)
+		},
+		"SetRemediation": func(action string) error {
+			state.PendingAction = &action
+			return nil
+		},
+		"SetReturnCode": func(code int) error {
+			state.PendingHTTPCode = &code
+			return nil
+		},
+		"DropRequest": func(reason string) error { return w.DropRequest(state, request, reason) },
+		"SetChallengeDifficulty": func(level string) error {
+			return w.SetChallengeDifficultyPerRequest(state, level)
+		},
+	}
+}
+
 func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":                evt,
