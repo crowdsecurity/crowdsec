@@ -287,10 +287,8 @@ func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]
 	return nil
 }
 
-func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, filters map[string][]string) error {
+func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, now time.Time, filters map[string][]string) error {
 	var err error
-
-	now := time.Now().UTC()
 
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
@@ -380,7 +378,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		filters["scopes"] = []string{"ip,range"}
 	}
 
-	err = c.streamDecisions(gctx, bouncerInfo, filters)
+	err = c.streamDecisions(gctx, bouncerInfo, streamStartTime, filters)
 
 	if err == nil {
 		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
