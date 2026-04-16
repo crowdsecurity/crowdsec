@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -160,7 +161,10 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 	lastId := 0
 
 	ctx := gctx.Request.Context()
-	enc := json.NewEncoder(gctx.Writer)
+
+	// We write to a buffer instead of directly to the writer to avoid the \n added by enc.Encode()
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
 
 	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
@@ -183,7 +187,18 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 				needComma = true
 			}
 
+			buf.Reset()
 			if err := enc.Encode(formatOneDecision(d)); err != nil {
+				gctx.Writer.Flush()
+
+				return err
+			}
+			// Encode() appends a trailing newline; strip it to keep the wire format compact.
+			b := buf.Bytes()
+			if n := len(b); n > 0 && b[n-1] == '\n' {
+				b = b[:n-1]
+			}
+			if _, err := gctx.Writer.Write(b); err != nil {
 				gctx.Writer.Flush()
 
 				return err
@@ -212,7 +227,10 @@ func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]
 	lastId := 0
 
 	ctx := gctx.Request.Context()
-	enc := json.NewEncoder(gctx.Writer)
+
+	// We write to a buffer instead of directly to the writer to avoid the \n added by enc.Encode()
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
 
 	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
@@ -235,7 +253,18 @@ func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]
 				needComma = true
 			}
 
+			buf.Reset()
 			if err := enc.Encode(formatOneDecision(d)); err != nil {
+				gctx.Writer.Flush()
+
+				return err
+			}
+			// Encode() appends a trailing newline; strip it to keep the wire format compact.
+			b := buf.Bytes()
+			if n := len(b); n > 0 && b[n-1] == '\n' {
+				b = b[:n-1]
+			}
+			if _, err := gctx.Writer.Write(b); err != nil {
 				gctx.Writer.Flush()
 
 				return err
