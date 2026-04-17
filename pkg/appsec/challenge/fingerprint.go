@@ -30,6 +30,10 @@ func (fb *FlexBool) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (fb *FlexBool) Bool() bool {
+	return bool(*fb)
+}
+
 func (fi *FlexInt) UnmarshalJSON(data []byte) error {
 	// Try number first (most common case).
 	var n int
@@ -53,6 +57,10 @@ func (fi *FlexInt) UnmarshalJSON(data []byte) error {
 	*fi = FlexInt(parsed)
 
 	return nil
+}
+
+func (fi *FlexInt) Int() int {
+	return int(*fi)
 }
 
 /*
@@ -315,12 +323,12 @@ type fingerprintAutomation struct {
 	Selenium                     FlexBool `json:"selenium"`
 	CDP                          FlexBool `json:"cdp"`
 	Playwright                   FlexBool `json:"playwright"`
-	NavigatorPropertyDescriptors string `json:"navigatorPropertyDescriptors"`
+	NavigatorPropertyDescriptors string   `json:"navigatorPropertyDescriptors"`
 }
 
 type fingerprintDevice struct {
-	CPUCount          FlexInt                        `json:"cpuCount"`
-	Memory            FlexInt                        `json:"memory"`
+	CPUCount          FlexInt                       `json:"cpuCount"`
+	Memory            FlexInt                       `json:"memory"`
 	Platform          string                        `json:"platform"`
 	ScreenResolution  fingerprintScreenResolution   `json:"screenResolution"`
 	MultimediaDevices fingerprintMultimediaDevices  `json:"multimediaDevices"`
@@ -328,14 +336,14 @@ type fingerprintDevice struct {
 }
 
 type fingerprintScreenResolution struct {
-	Width               FlexInt `json:"width"`
-	Height              FlexInt `json:"height"`
-	PixelDepth          FlexInt `json:"pixelDepth"`
-	ColorDepth          FlexInt `json:"colorDepth"`
-	AvailableWidth      FlexInt `json:"availableWidth"`
-	AvailableHeight     FlexInt `json:"availableHeight"`
-	InnerWidth          FlexInt `json:"innerWidth"`
-	InnerHeight         FlexInt `json:"innerHeight"`
+	Width               FlexInt  `json:"width"`
+	Height              FlexInt  `json:"height"`
+	PixelDepth          FlexInt  `json:"pixelDepth"`
+	ColorDepth          FlexInt  `json:"colorDepth"`
+	AvailableWidth      FlexInt  `json:"availableWidth"`
+	AvailableHeight     FlexInt  `json:"availableHeight"`
+	InnerWidth          FlexInt  `json:"innerWidth"`
+	InnerHeight         FlexInt  `json:"innerHeight"`
 	HasMultipleDisplays FlexBool `json:"hasMultipleDisplays"`
 }
 
@@ -346,15 +354,15 @@ type fingerprintMultimediaDevices struct {
 }
 
 type fingerprintDeviceMediaQueries struct {
-	PrefersColorScheme         string `json:"prefersColorScheme"`
+	PrefersColorScheme         string   `json:"prefersColorScheme"`
 	PrefersReducedMotion       FlexBool `json:"prefersReducedMotion"`
 	PrefersReducedTransparency FlexBool `json:"prefersReducedTransparency"`
-	ColorGamut                 string `json:"colorGamut"`
-	Pointer                    string `json:"pointer"`
-	AnyPointer                 string `json:"anyPointer"`
+	ColorGamut                 string   `json:"colorGamut"`
+	Pointer                    string   `json:"pointer"`
+	AnyPointer                 string   `json:"anyPointer"`
 	Hover                      FlexBool `json:"hover"`
 	AnyHover                   FlexBool `json:"anyHover"`
-	ColorDepth                 FlexInt `json:"colorDepth"`
+	ColorDepth                 FlexInt  `json:"colorDepth"`
 }
 
 type fingerprintBrowser struct {
@@ -363,13 +371,13 @@ type fingerprintBrowser struct {
 	Plugins           fingerprintBrowserPlugins           `json:"plugins"`
 	Extensions        fingerprintBrowserExtensions        `json:"extensions"`
 	HighEntropyValues fingerprintBrowserHighEntropyValues `json:"highEntropyValues"`
-	ETSL              FlexInt                              `json:"etsl"`
+	ETSL              FlexInt                             `json:"etsl"`
 	Maths             string                              `json:"maths"`
 	ToSourceError     fingerprintBrowserToSourceError     `json:"toSourceError"`
 }
 
 type fingerprintBrowserFeatures struct {
-	Bitmask         string `json:"bitmask"`
+	Bitmask         string   `json:"bitmask"`
 	Chrome          FlexBool `json:"chrome"`
 	Brave           FlexBool `json:"brave"`
 	ApplePaySupport FlexBool `json:"applePaySupport"`
@@ -384,8 +392,8 @@ type fingerprintBrowserFeatures struct {
 
 type fingerprintBrowserPlugins struct {
 	IsValidPluginArray FlexBool `json:"isValidPluginArray"`
-	PluginCount        FlexInt `json:"pluginCount"`
-	PluginNamesHash    string `json:"pluginNamesHash"`
+	PluginCount        FlexInt  `json:"pluginCount"`
+	PluginNamesHash    string   `json:"pluginNamesHash"`
 	PluginConsistency1 FlexBool `json:"pluginConsistency1"`
 	PluginOverflow     FlexBool `json:"pluginOverflow"`
 }
@@ -396,14 +404,14 @@ type fingerprintBrowserExtensions struct {
 }
 
 type fingerprintBrowserHighEntropyValues struct {
-	Architecture    string                    `json:"architecture"`
-	Bitness         string                    `json:"bitness"`
-	Brands          FlexBrandVersions         `json:"brands"`
-	Mobile          FlexBool                  `json:"mobile"`
-	Model           string                    `json:"model"`
-	Platform        string                    `json:"platform"`
-	PlatformVersion string                    `json:"platformVersion"`
-	UAFullVersion   string                    `json:"uaFullVersion"`
+	Architecture    string            `json:"architecture"`
+	Bitness         string            `json:"bitness"`
+	Brands          FlexBrandVersions `json:"brands"`
+	Mobile          FlexBool          `json:"mobile"`
+	Model           string            `json:"model"`
+	Platform        string            `json:"platform"`
+	PlatformVersion string            `json:"platformVersion"`
+	UAFullVersion   string            `json:"uaFullVersion"`
 }
 
 type fingerprintBrandVersion struct {
@@ -429,7 +437,7 @@ func (f *FlexBrandVersions) UnmarshalJSON(data []byte) error {
 }
 
 type fingerprintBrowserToSourceError struct {
-	ToSourceError string `json:"toSourceError"`
+	ToSourceError string   `json:"toSourceError"`
 	HasToSource   FlexBool `json:"hasToSource"`
 }
 
@@ -453,16 +461,16 @@ type fingerprintGraphicsWebGPU struct {
 
 type fingerprintGraphicsCanvas struct {
 	HasModifiedCanvas FlexBool `json:"hasModifiedCanvas"`
-	CanvasFingerprint string `json:"canvasFingerprint"`
+	CanvasFingerprint string   `json:"canvasFingerprint"`
 }
 
 type fingerprintCodecs struct {
-	AudioCanPlayTypeHash     string `json:"audioCanPlayTypeHash"`
-	VideoCanPlayTypeHash     string `json:"videoCanPlayTypeHash"`
-	AudioMediaSourceHash     string `json:"audioMediaSourceHash"`
-	VideoMediaSourceHash     string `json:"videoMediaSourceHash"`
-	RTCAudioCapabilitiesHash string `json:"rtcAudioCapabilitiesHash"`
-	RTCVideoCapabilitiesHash string `json:"rtcVideoCapabilitiesHash"`
+	AudioCanPlayTypeHash     string   `json:"audioCanPlayTypeHash"`
+	VideoCanPlayTypeHash     string   `json:"videoCanPlayTypeHash"`
+	AudioMediaSourceHash     string   `json:"audioMediaSourceHash"`
+	VideoMediaSourceHash     string   `json:"videoMediaSourceHash"`
+	RTCAudioCapabilitiesHash string   `json:"rtcAudioCapabilitiesHash"`
+	RTCVideoCapabilitiesHash string   `json:"rtcVideoCapabilitiesHash"`
 	HasMediaSource           FlexBool `json:"hasMediaSource"`
 }
 
@@ -529,23 +537,23 @@ type fingerprintDetectionResult struct {
 }
 
 type fingerprintBotAlias struct {
-	HeadlessChromeScreenResolution bool `json:"headlessChromeScreenResolution"`
-	Webdriver                      bool `json:"webdriver"`
-	WebdriverWritable              bool `json:"webdriverWritable"`
-	Selenium                       bool `json:"selenium"`
-	CDP                            bool `json:"cdp"`
-	Playwright                     bool `json:"playwright"`
-	ImpossibleDeviceMemory         bool `json:"impossibleDeviceMemory"`
-	HighCPUCount                   bool `json:"highCPUCount"`
-	MissingChromeObject            bool `json:"missingChromeObject"`
-	WebdriverIframe                bool `json:"webdriverIframe"`
-	WebdriverWorker                bool `json:"webdriverWorker"`
-	MismatchWebGLInWorker          bool `json:"mismatchWebGLInWorker"`
-	MismatchPlatformIframe         bool `json:"mismatchPlatformIframe"`
-	MismatchPlatformWorker         bool `json:"mismatchPlatformWorker"`
-	SwiftshaderRenderer            bool `json:"swiftshaderRenderer"`
-	UTCTimezone                    bool `json:"utcTimezone"`
-	AnyDetected                    bool `json:"anyDetected"`
+	HeadlessChromeScreenResolution bool    `json:"headlessChromeScreenResolution"`
+	Webdriver                      bool    `json:"webdriver"`
+	WebdriverWritable              bool    `json:"webdriverWritable"`
+	Selenium                       bool    `json:"selenium"`
+	CDP                            bool    `json:"cdp"`
+	Playwright                     bool    `json:"playwright"`
+	ImpossibleDeviceMemory         bool    `json:"impossibleDeviceMemory"`
+	HighCPUCount                   bool    `json:"highCPUCount"`
+	MissingChromeObject            bool    `json:"missingChromeObject"`
+	WebdriverIframe                bool    `json:"webdriverIframe"`
+	WebdriverWorker                bool    `json:"webdriverWorker"`
+	MismatchWebGLInWorker          bool    `json:"mismatchWebGLInWorker"`
+	MismatchPlatformIframe         bool    `json:"mismatchPlatformIframe"`
+	MismatchPlatformWorker         bool    `json:"mismatchPlatformWorker"`
+	SwiftshaderRenderer            bool    `json:"swiftshaderRenderer"`
+	UTCTimezone                    bool    `json:"utcTimezone"`
+	AnyDetected                    bool    `json:"anyDetected"`
 	DetectedCount                  FlexInt `json:"detectedCount"`
 }
 
