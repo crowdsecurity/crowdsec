@@ -30,8 +30,8 @@ func (fb *FlexBool) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (fb *FlexBool) Bool() bool {
-	return bool(*fb)
+func (fb FlexBool) Bool() bool {
+	return bool(fb)
 }
 
 func (fi *FlexInt) UnmarshalJSON(data []byte) error {
@@ -59,8 +59,8 @@ func (fi *FlexInt) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (fi *FlexInt) Int() int {
-	return int(*fi)
+func (fi FlexInt) Int() int {
+	return int(fi)
 }
 
 /*
