@@ -1,6 +1,7 @@
 export const ERROR = 'ERROR';
 export const INIT = 'INIT';
 export const NA = 'NA';
+export const SKIPPED = 'SKIPPED';
 export const HIGH = 'high'
 export const LOW = 'low'
 export const MEDIUM = 'medium'
@@ -20,4 +21,9 @@ export function setObjectValues(object: any, value: any) {
     for (const key in object) {
         object[key] = value;
     }
+}
+
+
+export function isFirefox() {
+    return (navigator as any).buildID === "20181001000000";
 }

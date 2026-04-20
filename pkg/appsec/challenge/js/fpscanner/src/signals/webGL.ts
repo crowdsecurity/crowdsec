@@ -1,10 +1,15 @@
-import { ERROR, INIT, NA } from './utils';
+import { ERROR, INIT, NA, isFirefox, setObjectValues } from './utils';
 
 export function webGL() {
     const webGLData = {
         vendor: INIT,
         renderer: INIT,
     };
+
+    if (isFirefox()) {
+        setObjectValues(webGLData, NA);
+        return webGLData;
+    }
 
     try {
         var canvas = document.createElement('canvas');
@@ -13,12 +18,10 @@ export function webGL() {
             webGLData.vendor = ctx.getParameter(ctx.getExtension('WEBGL_debug_renderer_info').UNMASKED_VENDOR_WEBGL);
             webGLData.renderer = ctx.getParameter(ctx.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
         } else {
-            webGLData.vendor = NA;
-            webGLData.renderer = NA;
+            setObjectValues(webGLData, NA);
         }
     } catch (e) {
-        webGLData.vendor = ERROR;
-        webGLData.renderer = ERROR;
+        setObjectValues(webGLData, ERROR);
     }
 
     return webGLData;

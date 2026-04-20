@@ -107,6 +107,24 @@ message fingerprintBrowserFeatures {
   bool webAssembly = 9;
   bool buffer = 10;
   bool showModalDialog = 11;
+  bool safari = 12;
+  bool webkitPrefixedFunction = 13;
+  bool mozPrefixedFunction = 14;
+  bool usb = 15;
+  bool browserCapture = 16;
+  bool paymentRequestUpdateEvent = 17;
+  bool pressureObserver = 18;
+  bool audioSession = 19;
+  bool selectAudioOutput = 20;
+  bool barcodeDetector = 21;
+  bool battery = 22;
+  bool devicePosture = 23;
+  bool documentPictureInPicture = 24;
+  bool eyeDropper = 25;
+  bool editContext = 26;
+  bool fencedFrame = 27;
+  bool sanitizer = 28;
+  bool otpCredential = 29;
 }
 
 message fingerprintBrowserPlugins {
@@ -232,6 +250,11 @@ message fingerprintFastBotDetectionDetails {
   fingerprintDetectionResult hasMismatchPlatformWorker = 14;
   fingerprintDetectionResult hasSwiftshaderRenderer = 15;
   fingerprintDetectionResult hasUTCTimezone = 16;
+  fingerprintDetectionResult hasMismatchLanguages = 17;
+  fingerprintDetectionResult hasInconsistentEtsl = 18;
+  fingerprintDetectionResult hasBotUserAgent = 19;
+  fingerprintDetectionResult hasGPUMismatch = 20;
+  fingerprintDetectionResult hasPlatformMismatch = 21;
 }
 
 message fingerprintDetectionResult {
@@ -257,5 +280,10 @@ message fingerprintBotAlias {
   bool utcTimezone = 16;
   bool anyDetected = 17;
   int32 detectedCount = 18;
+  bool mismatchLanguages = 19;
+  bool inconsistentEtsl = 20;
+  bool botUserAgent = 21;
+  bool gpuMismatch = 22;
+  bool platformMismatch = 23;
 }
 

@@ -49,8 +49,13 @@ import { hasMismatchPlatformIframe } from './detections/hasMismatchPlatformIfram
 import { hasWebdriverWritable } from './detections/hasWebdriverWritable';
 import { hasSwiftshaderRenderer } from './detections/hasSwiftshaderRenderer';
 import { hasUTCTimezone } from './detections/hasUTCTimezone';
+import { hasMismatchLanguages } from './detections/hasMismatchLanguages';
+import { hasInconsistentEtsl } from './detections/hasInconsistentEtsl';
+import { hasBotUserAgent } from './detections/hasBotUserAgent';
+import { hasGPUMismatch } from './detections/hasGPUMismatch';
+import { hasPlatformMismatch } from './detections/hasPlatformMismatch';
 
-import { ERROR, HIGH, INIT, LOW, MEDIUM, hashCode } from './signals/utils';
+import { ERROR, HIGH, INIT, LOW, MEDIUM, SKIPPED, hashCode } from './signals/utils';
 import { encryptString } from './crypto-helpers';
 import { Fingerprint, FastBotDetectionDetails, DetectionRule, CollectFingerprintOptions } from './types';
 
@@ -118,6 +123,24 @@ class FingerprintScanner {
                         webAssembly: INIT,
                         buffer: INIT,
                         showModalDialog: INIT,
+                        safari: INIT,
+                        webkitPrefixedFunction: INIT,
+                        mozPrefixedFunction: INIT,
+                        usb: INIT,
+                        browserCapture: INIT,
+                        paymentRequestUpdateEvent: INIT,
+                        pressureObserver: INIT,
+                        audioSession: INIT,
+                        selectAudioOutput: INIT,
+                        barcodeDetector: INIT,
+                        battery: INIT,
+                        devicePosture: INIT,
+                        documentPictureInPicture: INIT,
+                        eyeDropper: INIT,
+                        editContext: INIT,
+                        fencedFrame: INIT,
+                        sanitizer: INIT,
+                        otpCredential: INIT,
                     },
                     plugins: {
                         isValidPluginArray: INIT,
@@ -227,6 +250,13 @@ class FingerprintScanner {
                 hasMismatchWebGLInWorker: { detected: false, severity: 'high' },
                 hasMismatchPlatformIframe: { detected: false, severity: 'high' },
                 hasMismatchPlatformWorker: { detected: false, severity: 'high' },
+                hasSwiftshaderRenderer: { detected: false, severity: 'low' },
+                hasUTCTimezone: { detected: false, severity: 'medium' },
+                hasMismatchLanguages: { detected: false, severity: 'low' },
+                hasInconsistentEtsl: { detected: false, severity: 'high' },
+                hasBotUserAgent: { detected: false, severity: 'high' },
+                hasGPUMismatch: { detected: false, severity: 'high' },
+                hasPlatformMismatch: { detected: false, severity: 'high' },
             },
         };
     }
@@ -248,10 +278,11 @@ class FingerprintScanner {
      * Bitmasks are extensible - new boolean fields are appended without breaking existing positions.
      * 
      * Sections:
-     * - det:  fastBotDetectionDetails bitmask (14 bits: headlessChromeScreenResolution, hasWebdriver, 
+     * - det:  fastBotDetectionDetails bitmask (21 bits: headlessChromeScreenResolution, hasWebdriver, 
      *         hasWebdriverWritable, hasSeleniumProperty, hasCDP, hasPlaywright, hasImpossibleDeviceMemory,
      *         hasHighCPUCount, hasMissingChromeObject, hasWebdriverIframe, hasWebdriverWorker,
-     *         hasMismatchWebGLInWorker, hasMismatchPlatformIframe, hasMismatchPlatformWorker)
+     *         hasMismatchWebGLInWorker, hasMismatchPlatformIframe, hasMismatchPlatformWorker,
+     *         hasMismatchLanguages, hasInconsistentEtsl, hasBotUserAgent, hasGPUMismatch, hasPlatformMismatch)
      * - auto: automation bitmask (5 bits: webdriver, webdriverWritable, selenium, cdp, playwright) + hash
      * - dev:  WIDTHxHEIGHT + cpu + mem + device bitmask + hash of all device signals
      * - brw:  features.bitmask + extensions.bitmask + plugins bitmask (3 bits) + hash of browser signals
@@ -268,7 +299,7 @@ class FingerprintScanner {
             // Section 1: Version
             const version = 'FS1';
 
-            // Section 2: Detection bitmask - all 14 fastBotDetectionDetails booleans
+            // Section 2: Detection bitmask - all 21 fastBotDetectionDetails booleans
             // Order matches FastBotDetectionDetails interface for consistency
             const detBitmask = [
                 det.headlessChromeScreenResolution.detected,
@@ -285,6 +316,14 @@ class FingerprintScanner {
                 det.hasMismatchWebGLInWorker.detected,
                 det.hasMismatchPlatformIframe.detected,
                 det.hasMismatchPlatformWorker.detected,
+                det.hasSwiftshaderRenderer.detected,
+                det.hasUTCTimezone.detected,
+                det.hasMismatchLanguages.detected,
+                det.hasInconsistentEtsl.detected,
+                det.hasBotUserAgent.detected,
+                det.hasGPUMismatch.detected,
+                det.hasPlatformMismatch.detected,
+                // Add other detection rules output here
             ].map(b => b ? '1' : '0').join('');
             const detSection = detBitmask;
 
@@ -384,11 +423,16 @@ class FingerprintScanner {
             const codHash = hashCode(codStr).slice(0, 6);
             const codSection = `${codBitmask}h${codHash}`;
 
-            // Section 8: Locale - language code + count + hash
+            // Section 8: Locale - language code + count + timezone + hash
             const primaryLang = typeof s.locale.languages.language === 'string'
                 ? s.locale.languages.language.slice(0, 2).toLowerCase()
                 : 'xx';
             const langCount = Array.isArray(s.locale.languages.languages) ? s.locale.languages.languages.length : 0;
+            // Sanitize timezone: replace / and spaces with - for fingerprint compatibility
+            const rawTimezone = typeof s.locale.internationalization.timezone === 'string'
+                ? s.locale.internationalization.timezone
+                : 'unknown';
+            const sanitizedTimezone = rawTimezone.replace(/[\/\s]/g, '-');
             const locStr = [
                 s.locale.internationalization.timezone,
                 s.locale.internationalization.localeLanguage,
@@ -396,7 +440,7 @@ class FingerprintScanner {
                 s.locale.languages.language,
             ].map(v => String(v)).join('|');
             const locHash = hashCode(locStr).slice(0, 4);
-            const locSection = `${primaryLang}${langCount}h${locHash}`;
+            const locSection = `${primaryLang}${langCount}t${sanitizedTimezone}_h${locHash}`;
 
             // Section 9: Contexts - mismatch bitmask + hash of all context signals
             const ctxBitmask = [
@@ -443,6 +487,17 @@ class FingerprintScanner {
         // Key is injected at build time via Vite's define option
         // Customers run: npx fpscanner build --key=their-key
         const key = __FP_ENCRYPTION_KEY__;
+        
+        // Runtime safety check: warn if using the default sentinel key
+        // Use a dynamic check that prevents build-time optimization
+        if (key.length > 20 && key.indexOf('DEFAULT') > 0 && key.indexOf('FPSCANNER') > 0) {
+            console.warn(
+                '[fpscanner] WARNING: Using default encryption key! ' +
+                'Run "npx fpscanner build --key=your-secret-key" to inject your own key. ' +
+                'See: https://github.com/antoinevastel/fpscanner#advanced-custom-builds'
+            );
+        }
+        
         const enc = await encryptString(JSON.stringify(fingerprint), key);
 
         return enc;
@@ -450,8 +505,7 @@ class FingerprintScanner {
 
     /**
      * Detection rules with name and severity.
-     * All rules are currently HIGH severity as they indicate bot-like behavior.
-     */
+    */
     private getDetectionRules(): DetectionRule[] {
         return [
             { name: 'headlessChromeScreenResolution', severity: HIGH, test: hasHeadlessChromeScreenResolution },
@@ -470,6 +524,11 @@ class FingerprintScanner {
             { name: 'hasMismatchPlatformWorker', severity: HIGH, test: hasMismatchPlatformWorker },
             { name: 'hasSwiftshaderRenderer', severity: LOW, test: hasSwiftshaderRenderer },
             { name: 'hasUTCTimezone', severity: MEDIUM, test: hasUTCTimezone },
+            { name: 'hasMismatchLanguages', severity: LOW, test: hasMismatchLanguages },
+            { name: 'hasInconsistentEtsl', severity: HIGH, test: hasInconsistentEtsl },
+            { name: 'hasBotUserAgent', severity: HIGH, test: hasBotUserAgent },
+            { name: 'hasGPUMismatch', severity: HIGH, test: hasGPUMismatch },
+            { name: 'hasPlatformMismatch', severity: HIGH, test: hasPlatformMismatch },
         ];
     }
 
@@ -490,6 +549,13 @@ class FingerprintScanner {
             hasMismatchWebGLInWorker: { detected: false, severity: 'high' },
             hasMismatchPlatformIframe: { detected: false, severity: 'high' },
             hasMismatchPlatformWorker: { detected: false, severity: 'high' },
+            hasSwiftshaderRenderer: { detected: false, severity: 'low' },
+            hasUTCTimezone: { detected: false, severity: 'medium' },
+            hasMismatchLanguages: { detected: false, severity: 'low' },
+            hasInconsistentEtsl: { detected: false, severity: 'high' },
+            hasBotUserAgent: { detected: false, severity: 'high' },
+            hasGPUMismatch: { detected: false, severity: 'high' },
+            hasPlatformMismatch: { detected: false, severity: 'high' },
         };
 
         for (const rule of rules) {
@@ -505,7 +571,7 @@ class FingerprintScanner {
     }
 
     async collectFingerprint(options: CollectFingerprintOptions = { encrypt: true }) {
-        const { encrypt = true } = options;
+        const { encrypt = true, skipWorker = false } = options;
         const s = this.fingerprint.signals;
 
         // Define all signal collection tasks to run in parallel
@@ -544,7 +610,18 @@ class FingerprintScanner {
             languages: this.collectSignal(languages),
             // Context signals
             iframe: this.collectSignal(iframe),
-            webWorker: this.collectSignal(worker),
+            webWorker: skipWorker
+                ? Promise.resolve({
+                    webdriver: SKIPPED,
+                    userAgent: SKIPPED,
+                    platform: SKIPPED,
+                    memory: SKIPPED,
+                    cpuCount: SKIPPED,
+                    language: SKIPPED,
+                    vendor: SKIPPED,
+                    renderer: SKIPPED,
+                })
+                : this.collectSignal(worker),
             // Meta signals
             nonce: this.collectSignal(nonce),
             time: this.collectSignal(time),
@@ -606,7 +683,6 @@ class FingerprintScanner {
 
         // Generate fsid after all signals and detections are collected
         this.fingerprint.fsid = this.generateFingerprintScannerId();
-        console.log(this.fingerprint);
 
         if (encrypt) {
             const encryptedFingerprint = await this.encryptFingerprint(JSON.stringify(this.fingerprint));

@@ -10,11 +10,13 @@ export function iframe() {
         language: INIT,
     };
     const iframe = document.createElement('iframe');
+    let iframeAdded = false;
 
     try {
         iframe.style.display = 'none';
         iframe.src = 'about:blank';
         document.body.appendChild(iframe);
+        iframeAdded = true;
 
         const iframeWindowNavigator = (iframe.contentWindow?.navigator as any);
 
@@ -27,7 +29,13 @@ export function iframe() {
     } catch (e) {
         setObjectValues(iframeData, ERROR);
     } finally {
-        document.body.removeChild(iframe);
+        if (iframeAdded) {
+            try {
+                document.body.removeChild(iframe);
+            } catch (_) {
+                // Ignore removal errors
+            }
+        }
     }
 
     return iframeData;

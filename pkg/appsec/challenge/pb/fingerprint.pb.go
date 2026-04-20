@@ -817,20 +817,38 @@ func (x *FingerprintBrowser) GetToSourceError() *FingerprintBrowserToSourceError
 }
 
 type FingerprintBrowserFeatures struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Bitmask         string                 `protobuf:"bytes,1,opt,name=bitmask,proto3" json:"bitmask,omitempty"`
-	Chrome          bool                   `protobuf:"varint,2,opt,name=chrome,proto3" json:"chrome,omitempty"`
-	Brave           bool                   `protobuf:"varint,3,opt,name=brave,proto3" json:"brave,omitempty"`
-	ApplePaySupport bool                   `protobuf:"varint,4,opt,name=applePaySupport,proto3" json:"applePaySupport,omitempty"`
-	Opera           bool                   `protobuf:"varint,5,opt,name=opera,proto3" json:"opera,omitempty"`
-	Serial          bool                   `protobuf:"varint,6,opt,name=serial,proto3" json:"serial,omitempty"`
-	AttachShadow    bool                   `protobuf:"varint,7,opt,name=attachShadow,proto3" json:"attachShadow,omitempty"`
-	Caches          bool                   `protobuf:"varint,8,opt,name=caches,proto3" json:"caches,omitempty"`
-	WebAssembly     bool                   `protobuf:"varint,9,opt,name=webAssembly,proto3" json:"webAssembly,omitempty"`
-	Buffer          bool                   `protobuf:"varint,10,opt,name=buffer,proto3" json:"buffer,omitempty"`
-	ShowModalDialog bool                   `protobuf:"varint,11,opt,name=showModalDialog,proto3" json:"showModalDialog,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Bitmask                   string                 `protobuf:"bytes,1,opt,name=bitmask,proto3" json:"bitmask,omitempty"`
+	Chrome                    bool                   `protobuf:"varint,2,opt,name=chrome,proto3" json:"chrome,omitempty"`
+	Brave                     bool                   `protobuf:"varint,3,opt,name=brave,proto3" json:"brave,omitempty"`
+	ApplePaySupport           bool                   `protobuf:"varint,4,opt,name=applePaySupport,proto3" json:"applePaySupport,omitempty"`
+	Opera                     bool                   `protobuf:"varint,5,opt,name=opera,proto3" json:"opera,omitempty"`
+	Serial                    bool                   `protobuf:"varint,6,opt,name=serial,proto3" json:"serial,omitempty"`
+	AttachShadow              bool                   `protobuf:"varint,7,opt,name=attachShadow,proto3" json:"attachShadow,omitempty"`
+	Caches                    bool                   `protobuf:"varint,8,opt,name=caches,proto3" json:"caches,omitempty"`
+	WebAssembly               bool                   `protobuf:"varint,9,opt,name=webAssembly,proto3" json:"webAssembly,omitempty"`
+	Buffer                    bool                   `protobuf:"varint,10,opt,name=buffer,proto3" json:"buffer,omitempty"`
+	ShowModalDialog           bool                   `protobuf:"varint,11,opt,name=showModalDialog,proto3" json:"showModalDialog,omitempty"`
+	Safari                    bool                   `protobuf:"varint,12,opt,name=safari,proto3" json:"safari,omitempty"`
+	WebkitPrefixedFunction    bool                   `protobuf:"varint,13,opt,name=webkitPrefixedFunction,proto3" json:"webkitPrefixedFunction,omitempty"`
+	MozPrefixedFunction       bool                   `protobuf:"varint,14,opt,name=mozPrefixedFunction,proto3" json:"mozPrefixedFunction,omitempty"`
+	Usb                       bool                   `protobuf:"varint,15,opt,name=usb,proto3" json:"usb,omitempty"`
+	BrowserCapture            bool                   `protobuf:"varint,16,opt,name=browserCapture,proto3" json:"browserCapture,omitempty"`
+	PaymentRequestUpdateEvent bool                   `protobuf:"varint,17,opt,name=paymentRequestUpdateEvent,proto3" json:"paymentRequestUpdateEvent,omitempty"`
+	PressureObserver          bool                   `protobuf:"varint,18,opt,name=pressureObserver,proto3" json:"pressureObserver,omitempty"`
+	AudioSession              bool                   `protobuf:"varint,19,opt,name=audioSession,proto3" json:"audioSession,omitempty"`
+	SelectAudioOutput         bool                   `protobuf:"varint,20,opt,name=selectAudioOutput,proto3" json:"selectAudioOutput,omitempty"`
+	BarcodeDetector           bool                   `protobuf:"varint,21,opt,name=barcodeDetector,proto3" json:"barcodeDetector,omitempty"`
+	Battery                   bool                   `protobuf:"varint,22,opt,name=battery,proto3" json:"battery,omitempty"`
+	DevicePosture             bool                   `protobuf:"varint,23,opt,name=devicePosture,proto3" json:"devicePosture,omitempty"`
+	DocumentPictureInPicture  bool                   `protobuf:"varint,24,opt,name=documentPictureInPicture,proto3" json:"documentPictureInPicture,omitempty"`
+	EyeDropper                bool                   `protobuf:"varint,25,opt,name=eyeDropper,proto3" json:"eyeDropper,omitempty"`
+	EditContext               bool                   `protobuf:"varint,26,opt,name=editContext,proto3" json:"editContext,omitempty"`
+	FencedFrame               bool                   `protobuf:"varint,27,opt,name=fencedFrame,proto3" json:"fencedFrame,omitempty"`
+	Sanitizer                 bool                   `protobuf:"varint,28,opt,name=sanitizer,proto3" json:"sanitizer,omitempty"`
+	OtpCredential             bool                   `protobuf:"varint,29,opt,name=otpCredential,proto3" json:"otpCredential,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *FingerprintBrowserFeatures) Reset() {
@@ -936,6 +954,132 @@ func (x *FingerprintBrowserFeatures) GetBuffer() bool {
 func (x *FingerprintBrowserFeatures) GetShowModalDialog() bool {
 	if x != nil {
 		return x.ShowModalDialog
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetSafari() bool {
+	if x != nil {
+		return x.Safari
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetWebkitPrefixedFunction() bool {
+	if x != nil {
+		return x.WebkitPrefixedFunction
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetMozPrefixedFunction() bool {
+	if x != nil {
+		return x.MozPrefixedFunction
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetUsb() bool {
+	if x != nil {
+		return x.Usb
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetBrowserCapture() bool {
+	if x != nil {
+		return x.BrowserCapture
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetPaymentRequestUpdateEvent() bool {
+	if x != nil {
+		return x.PaymentRequestUpdateEvent
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetPressureObserver() bool {
+	if x != nil {
+		return x.PressureObserver
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetAudioSession() bool {
+	if x != nil {
+		return x.AudioSession
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetSelectAudioOutput() bool {
+	if x != nil {
+		return x.SelectAudioOutput
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetBarcodeDetector() bool {
+	if x != nil {
+		return x.BarcodeDetector
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetBattery() bool {
+	if x != nil {
+		return x.Battery
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetDevicePosture() bool {
+	if x != nil {
+		return x.DevicePosture
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetDocumentPictureInPicture() bool {
+	if x != nil {
+		return x.DocumentPictureInPicture
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetEyeDropper() bool {
+	if x != nil {
+		return x.EyeDropper
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetEditContext() bool {
+	if x != nil {
+		return x.EditContext
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetFencedFrame() bool {
+	if x != nil {
+		return x.FencedFrame
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetSanitizer() bool {
+	if x != nil {
+		return x.Sanitizer
+	}
+	return false
+}
+
+func (x *FingerprintBrowserFeatures) GetOtpCredential() bool {
+	if x != nil {
+		return x.OtpCredential
 	}
 	return false
 }
@@ -1998,6 +2142,11 @@ type FingerprintFastBotDetectionDetails struct {
 	HasMismatchPlatformWorker      *FingerprintDetectionResult `protobuf:"bytes,14,opt,name=hasMismatchPlatformWorker,proto3" json:"hasMismatchPlatformWorker,omitempty"`
 	HasSwiftshaderRenderer         *FingerprintDetectionResult `protobuf:"bytes,15,opt,name=hasSwiftshaderRenderer,proto3" json:"hasSwiftshaderRenderer,omitempty"`
 	HasUTCTimezone                 *FingerprintDetectionResult `protobuf:"bytes,16,opt,name=hasUTCTimezone,proto3" json:"hasUTCTimezone,omitempty"`
+	HasMismatchLanguages           *FingerprintDetectionResult `protobuf:"bytes,17,opt,name=hasMismatchLanguages,proto3" json:"hasMismatchLanguages,omitempty"`
+	HasInconsistentEtsl            *FingerprintDetectionResult `protobuf:"bytes,18,opt,name=hasInconsistentEtsl,proto3" json:"hasInconsistentEtsl,omitempty"`
+	HasBotUserAgent                *FingerprintDetectionResult `protobuf:"bytes,19,opt,name=hasBotUserAgent,proto3" json:"hasBotUserAgent,omitempty"`
+	HasGPUMismatch                 *FingerprintDetectionResult `protobuf:"bytes,20,opt,name=hasGPUMismatch,proto3" json:"hasGPUMismatch,omitempty"`
+	HasPlatformMismatch            *FingerprintDetectionResult `protobuf:"bytes,21,opt,name=hasPlatformMismatch,proto3" json:"hasPlatformMismatch,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -2144,6 +2293,41 @@ func (x *FingerprintFastBotDetectionDetails) GetHasUTCTimezone() *FingerprintDet
 	return nil
 }
 
+func (x *FingerprintFastBotDetectionDetails) GetHasMismatchLanguages() *FingerprintDetectionResult {
+	if x != nil {
+		return x.HasMismatchLanguages
+	}
+	return nil
+}
+
+func (x *FingerprintFastBotDetectionDetails) GetHasInconsistentEtsl() *FingerprintDetectionResult {
+	if x != nil {
+		return x.HasInconsistentEtsl
+	}
+	return nil
+}
+
+func (x *FingerprintFastBotDetectionDetails) GetHasBotUserAgent() *FingerprintDetectionResult {
+	if x != nil {
+		return x.HasBotUserAgent
+	}
+	return nil
+}
+
+func (x *FingerprintFastBotDetectionDetails) GetHasGPUMismatch() *FingerprintDetectionResult {
+	if x != nil {
+		return x.HasGPUMismatch
+	}
+	return nil
+}
+
+func (x *FingerprintFastBotDetectionDetails) GetHasPlatformMismatch() *FingerprintDetectionResult {
+	if x != nil {
+		return x.HasPlatformMismatch
+	}
+	return nil
+}
+
 type FingerprintDetectionResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Detected      bool                   `protobuf:"varint,1,opt,name=detected,proto3" json:"detected,omitempty"`
@@ -2208,6 +2392,11 @@ type FingerprintBotAlias struct {
 	UtcTimezone                    bool                   `protobuf:"varint,16,opt,name=utcTimezone,proto3" json:"utcTimezone,omitempty"`
 	AnyDetected                    bool                   `protobuf:"varint,17,opt,name=anyDetected,proto3" json:"anyDetected,omitempty"`
 	DetectedCount                  int32                  `protobuf:"varint,18,opt,name=detectedCount,proto3" json:"detectedCount,omitempty"`
+	MismatchLanguages              bool                   `protobuf:"varint,19,opt,name=mismatchLanguages,proto3" json:"mismatchLanguages,omitempty"`
+	InconsistentEtsl               bool                   `protobuf:"varint,20,opt,name=inconsistentEtsl,proto3" json:"inconsistentEtsl,omitempty"`
+	BotUserAgent                   bool                   `protobuf:"varint,21,opt,name=botUserAgent,proto3" json:"botUserAgent,omitempty"`
+	GpuMismatch                    bool                   `protobuf:"varint,22,opt,name=gpuMismatch,proto3" json:"gpuMismatch,omitempty"`
+	PlatformMismatch               bool                   `protobuf:"varint,23,opt,name=platformMismatch,proto3" json:"platformMismatch,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -2368,6 +2557,41 @@ func (x *FingerprintBotAlias) GetDetectedCount() int32 {
 	return 0
 }
 
+func (x *FingerprintBotAlias) GetMismatchLanguages() bool {
+	if x != nil {
+		return x.MismatchLanguages
+	}
+	return false
+}
+
+func (x *FingerprintBotAlias) GetInconsistentEtsl() bool {
+	if x != nil {
+		return x.InconsistentEtsl
+	}
+	return false
+}
+
+func (x *FingerprintBotAlias) GetBotUserAgent() bool {
+	if x != nil {
+		return x.BotUserAgent
+	}
+	return false
+}
+
+func (x *FingerprintBotAlias) GetGpuMismatch() bool {
+	if x != nil {
+		return x.GpuMismatch
+	}
+	return false
+}
+
+func (x *FingerprintBotAlias) GetPlatformMismatch() bool {
+	if x != nil {
+		return x.PlatformMismatch
+	}
+	return false
+}
+
 var File_fingerprint_proto protoreflect.FileDescriptor
 
 const file_fingerprint_proto_rawDesc = "" +
@@ -2457,7 +2681,7 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\x11highEntropyValues\x18\x05 \x01(\v20.fingerprint.fingerprintBrowserHighEntropyValuesR\x11highEntropyValues\x12\x12\n" +
 	"\x04etsl\x18\x06 \x01(\x05R\x04etsl\x12\x14\n" +
 	"\x05maths\x18\a \x01(\tR\x05maths\x12R\n" +
-	"\rtoSourceError\x18\b \x01(\v2,.fingerprint.fingerprintBrowserToSourceErrorR\rtoSourceError\"\xdc\x02\n" +
+	"\rtoSourceError\x18\b \x01(\v2,.fingerprint.fingerprintBrowserToSourceErrorR\rtoSourceError\"\xa2\b\n" +
 	"\x1afingerprintBrowserFeatures\x12\x18\n" +
 	"\abitmask\x18\x01 \x01(\tR\abitmask\x12\x16\n" +
 	"\x06chrome\x18\x02 \x01(\bR\x06chrome\x12\x14\n" +
@@ -2470,7 +2694,27 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\vwebAssembly\x18\t \x01(\bR\vwebAssembly\x12\x16\n" +
 	"\x06buffer\x18\n" +
 	" \x01(\bR\x06buffer\x12(\n" +
-	"\x0fshowModalDialog\x18\v \x01(\bR\x0fshowModalDialog\"\xef\x01\n" +
+	"\x0fshowModalDialog\x18\v \x01(\bR\x0fshowModalDialog\x12\x16\n" +
+	"\x06safari\x18\f \x01(\bR\x06safari\x126\n" +
+	"\x16webkitPrefixedFunction\x18\r \x01(\bR\x16webkitPrefixedFunction\x120\n" +
+	"\x13mozPrefixedFunction\x18\x0e \x01(\bR\x13mozPrefixedFunction\x12\x10\n" +
+	"\x03usb\x18\x0f \x01(\bR\x03usb\x12&\n" +
+	"\x0ebrowserCapture\x18\x10 \x01(\bR\x0ebrowserCapture\x12<\n" +
+	"\x19paymentRequestUpdateEvent\x18\x11 \x01(\bR\x19paymentRequestUpdateEvent\x12*\n" +
+	"\x10pressureObserver\x18\x12 \x01(\bR\x10pressureObserver\x12\"\n" +
+	"\faudioSession\x18\x13 \x01(\bR\faudioSession\x12,\n" +
+	"\x11selectAudioOutput\x18\x14 \x01(\bR\x11selectAudioOutput\x12(\n" +
+	"\x0fbarcodeDetector\x18\x15 \x01(\bR\x0fbarcodeDetector\x12\x18\n" +
+	"\abattery\x18\x16 \x01(\bR\abattery\x12$\n" +
+	"\rdevicePosture\x18\x17 \x01(\bR\rdevicePosture\x12:\n" +
+	"\x18documentPictureInPicture\x18\x18 \x01(\bR\x18documentPictureInPicture\x12\x1e\n" +
+	"\n" +
+	"eyeDropper\x18\x19 \x01(\bR\n" +
+	"eyeDropper\x12 \n" +
+	"\veditContext\x18\x1a \x01(\bR\veditContext\x12 \n" +
+	"\vfencedFrame\x18\x1b \x01(\bR\vfencedFrame\x12\x1c\n" +
+	"\tsanitizer\x18\x1c \x01(\bR\tsanitizer\x12$\n" +
+	"\rotpCredential\x18\x1d \x01(\bR\rotpCredential\"\xef\x01\n" +
 	"\x19fingerprintBrowserPlugins\x12.\n" +
 	"\x12isValidPluginArray\x18\x01 \x01(\bR\x12isValidPluginArray\x12 \n" +
 	"\vpluginCount\x18\x02 \x01(\x05R\vpluginCount\x12(\n" +
@@ -2546,7 +2790,7 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\blanguage\x18\x04 \x01(\tR\blanguage\x12\x1a\n" +
 	"\bplatform\x18\x05 \x01(\tR\bplatform\x12\x16\n" +
 	"\x06memory\x18\x06 \x01(\x05R\x06memory\x12\x1a\n" +
-	"\bcpuCount\x18\a \x01(\x05R\bcpuCount\"\xdc\v\n" +
+	"\bcpuCount\x18\a \x01(\x05R\bcpuCount\"\x93\x0f\n" +
 	"\"fingerprintFastBotDetectionDetails\x12o\n" +
 	"\x1eheadlessChromeScreenResolution\x18\x01 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x1eheadlessChromeScreenResolution\x12K\n" +
 	"\fhasWebdriver\x18\x02 \x01(\v2'.fingerprint.fingerprintDetectionResultR\fhasWebdriver\x12[\n" +
@@ -2564,9 +2808,14 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\x19hasMismatchPlatformIframe\x18\r \x01(\v2'.fingerprint.fingerprintDetectionResultR\x19hasMismatchPlatformIframe\x12e\n" +
 	"\x19hasMismatchPlatformWorker\x18\x0e \x01(\v2'.fingerprint.fingerprintDetectionResultR\x19hasMismatchPlatformWorker\x12_\n" +
 	"\x16hasSwiftshaderRenderer\x18\x0f \x01(\v2'.fingerprint.fingerprintDetectionResultR\x16hasSwiftshaderRenderer\x12O\n" +
-	"\x0ehasUTCTimezone\x18\x10 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x0ehasUTCTimezone\"8\n" +
+	"\x0ehasUTCTimezone\x18\x10 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x0ehasUTCTimezone\x12[\n" +
+	"\x14hasMismatchLanguages\x18\x11 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x14hasMismatchLanguages\x12Y\n" +
+	"\x13hasInconsistentEtsl\x18\x12 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x13hasInconsistentEtsl\x12Q\n" +
+	"\x0fhasBotUserAgent\x18\x13 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x0fhasBotUserAgent\x12O\n" +
+	"\x0ehasGPUMismatch\x18\x14 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x0ehasGPUMismatch\x12Y\n" +
+	"\x13hasPlatformMismatch\x18\x15 \x01(\v2'.fingerprint.fingerprintDetectionResultR\x13hasPlatformMismatch\"8\n" +
 	"\x1afingerprintDetectionResult\x12\x1a\n" +
-	"\bdetected\x18\x01 \x01(\bR\bdetected\"\x9b\x06\n" +
+	"\bdetected\x18\x01 \x01(\bR\bdetected\"\xe7\a\n" +
 	"\x13fingerprintBotAlias\x12F\n" +
 	"\x1eheadlessChromeScreenResolution\x18\x01 \x01(\bR\x1eheadlessChromeScreenResolution\x12\x1c\n" +
 	"\twebdriver\x18\x02 \x01(\bR\twebdriver\x12,\n" +
@@ -2588,7 +2837,12 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\x13swiftshaderRenderer\x18\x0f \x01(\bR\x13swiftshaderRenderer\x12 \n" +
 	"\vutcTimezone\x18\x10 \x01(\bR\vutcTimezone\x12 \n" +
 	"\vanyDetected\x18\x11 \x01(\bR\vanyDetected\x12$\n" +
-	"\rdetectedCount\x18\x12 \x01(\x05R\rdetectedCountB\x06Z\x04.;pbb\x06proto3"
+	"\rdetectedCount\x18\x12 \x01(\x05R\rdetectedCount\x12,\n" +
+	"\x11mismatchLanguages\x18\x13 \x01(\bR\x11mismatchLanguages\x12*\n" +
+	"\x10inconsistentEtsl\x18\x14 \x01(\bR\x10inconsistentEtsl\x12\"\n" +
+	"\fbotUserAgent\x18\x15 \x01(\bR\fbotUserAgent\x12 \n" +
+	"\vgpuMismatch\x18\x16 \x01(\bR\vgpuMismatch\x12*\n" +
+	"\x10platformMismatch\x18\x17 \x01(\bR\x10platformMismatchB\x06Z\x04.;pbb\x06proto3"
 
 var (
 	file_fingerprint_proto_rawDescOnce sync.Once
@@ -2678,11 +2932,16 @@ var file_fingerprint_proto_depIdxs = []int32{
 	27, // 40: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchPlatformWorker:type_name -> fingerprint.fingerprintDetectionResult
 	27, // 41: fingerprint.fingerprintFastBotDetectionDetails.hasSwiftshaderRenderer:type_name -> fingerprint.fingerprintDetectionResult
 	27, // 42: fingerprint.fingerprintFastBotDetectionDetails.hasUTCTimezone:type_name -> fingerprint.fingerprintDetectionResult
-	43, // [43:43] is the sub-list for method output_type
-	43, // [43:43] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	27, // 43: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchLanguages:type_name -> fingerprint.fingerprintDetectionResult
+	27, // 44: fingerprint.fingerprintFastBotDetectionDetails.hasInconsistentEtsl:type_name -> fingerprint.fingerprintDetectionResult
+	27, // 45: fingerprint.fingerprintFastBotDetectionDetails.hasBotUserAgent:type_name -> fingerprint.fingerprintDetectionResult
+	27, // 46: fingerprint.fingerprintFastBotDetectionDetails.hasGPUMismatch:type_name -> fingerprint.fingerprintDetectionResult
+	27, // 47: fingerprint.fingerprintFastBotDetectionDetails.hasPlatformMismatch:type_name -> fingerprint.fingerprintDetectionResult
+	48, // [48:48] is the sub-list for method output_type
+	48, // [48:48] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_fingerprint_proto_init() }

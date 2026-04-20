@@ -5,5 +5,5 @@ export function hasImpossibleDeviceMemory(fingerprint: Fingerprint) {
         return false;
     }
 
-    return (fingerprint.signals.device.memory > 8 || fingerprint.signals.device.memory < 0.25);
+    return (fingerprint.signals.device.memory > 32 || fingerprint.signals.device.memory < 0.25);
 }

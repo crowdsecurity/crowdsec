@@ -377,17 +377,35 @@ type fingerprintBrowser struct {
 }
 
 type fingerprintBrowserFeatures struct {
-	Bitmask         string   `json:"bitmask"`
-	Chrome          FlexBool `json:"chrome"`
-	Brave           FlexBool `json:"brave"`
-	ApplePaySupport FlexBool `json:"applePaySupport"`
-	Opera           FlexBool `json:"opera"`
-	Serial          FlexBool `json:"serial"`
-	AttachShadow    FlexBool `json:"attachShadow"`
-	Caches          FlexBool `json:"caches"`
-	WebAssembly     FlexBool `json:"webAssembly"`
-	Buffer          FlexBool `json:"buffer"`
-	ShowModalDialog FlexBool `json:"showModalDialog"`
+	Bitmask                   string   `json:"bitmask"`
+	Chrome                    FlexBool `json:"chrome"`
+	Brave                     FlexBool `json:"brave"`
+	ApplePaySupport           FlexBool `json:"applePaySupport"`
+	Opera                     FlexBool `json:"opera"`
+	Serial                    FlexBool `json:"serial"`
+	AttachShadow              FlexBool `json:"attachShadow"`
+	Caches                    FlexBool `json:"caches"`
+	WebAssembly               FlexBool `json:"webAssembly"`
+	Buffer                    FlexBool `json:"buffer"`
+	ShowModalDialog           FlexBool `json:"showModalDialog"`
+	Safari                    FlexBool `json:"safari"`
+	WebkitPrefixedFunction    FlexBool `json:"webkitPrefixedFunction"`
+	MozPrefixedFunction       FlexBool `json:"mozPrefixedFunction"`
+	USB                       FlexBool `json:"usb"`
+	BrowserCapture            FlexBool `json:"browserCapture"`
+	PaymentRequestUpdateEvent FlexBool `json:"paymentRequestUpdateEvent"`
+	PressureObserver          FlexBool `json:"pressureObserver"`
+	AudioSession              FlexBool `json:"audioSession"`
+	SelectAudioOutput         FlexBool `json:"selectAudioOutput"`
+	BarcodeDetector           FlexBool `json:"barcodeDetector"`
+	Battery                   FlexBool `json:"battery"`
+	DevicePosture             FlexBool `json:"devicePosture"`
+	DocumentPictureInPicture  FlexBool `json:"documentPictureInPicture"`
+	EyeDropper                FlexBool `json:"eyeDropper"`
+	EditContext               FlexBool `json:"editContext"`
+	FencedFrame               FlexBool `json:"fencedFrame"`
+	Sanitizer                 FlexBool `json:"sanitizer"`
+	OTPCredential             FlexBool `json:"otpCredential"`
 }
 
 type fingerprintBrowserPlugins struct {
@@ -530,6 +548,11 @@ type fingerprintFastBotDetectionDetails struct {
 	HasMismatchPlatformWorker      fingerprintDetectionResult `json:"hasMismatchPlatformWorker"`
 	HasSwiftshaderRenderer         fingerprintDetectionResult `json:"hasSwiftshaderRenderer"`
 	HasUTCTimezone                 fingerprintDetectionResult `json:"hasUTCTimezone"`
+	HasMismatchLanguages           fingerprintDetectionResult `json:"hasMismatchLanguages"`
+	HasInconsistentEtsl            fingerprintDetectionResult `json:"hasInconsistentEtsl"`
+	HasBotUserAgent                fingerprintDetectionResult `json:"hasBotUserAgent"`
+	HasGPUMismatch                 fingerprintDetectionResult `json:"hasGPUMismatch"`
+	HasPlatformMismatch            fingerprintDetectionResult `json:"hasPlatformMismatch"`
 }
 
 type fingerprintDetectionResult struct {
@@ -553,6 +576,11 @@ type fingerprintBotAlias struct {
 	MismatchPlatformWorker         bool    `json:"mismatchPlatformWorker"`
 	SwiftshaderRenderer            bool    `json:"swiftshaderRenderer"`
 	UTCTimezone                    bool    `json:"utcTimezone"`
+	MismatchLanguages              bool    `json:"mismatchLanguages"`
+	InconsistentEtsl               bool    `json:"inconsistentEtsl"`
+	BotUserAgent                   bool    `json:"botUserAgent"`
+	GPUMismatch                    bool    `json:"gpuMismatch"`
+	PlatformMismatch               bool    `json:"platformMismatch"`
 	AnyDetected                    bool    `json:"anyDetected"`
 	DetectedCount                  FlexInt `json:"detectedCount"`
 }
@@ -589,6 +617,11 @@ func newFingerprintBotAlias(details fingerprintFastBotDetectionDetails) fingerpr
 		MismatchPlatformWorker:         bool(details.HasMismatchPlatformWorker.Detected),
 		SwiftshaderRenderer:            bool(details.HasSwiftshaderRenderer.Detected),
 		UTCTimezone:                    bool(details.HasUTCTimezone.Detected),
+		MismatchLanguages:              bool(details.HasMismatchLanguages.Detected),
+		InconsistentEtsl:               bool(details.HasInconsistentEtsl.Detected),
+		BotUserAgent:                   bool(details.HasBotUserAgent.Detected),
+		GPUMismatch:                    bool(details.HasGPUMismatch.Detected),
+		PlatformMismatch:               bool(details.HasPlatformMismatch.Detected),
 	}
 
 	if alias.HeadlessChromeScreenResolution {
@@ -637,6 +670,21 @@ func newFingerprintBotAlias(details fingerprintFastBotDetectionDetails) fingerpr
 		alias.DetectedCount++
 	}
 	if alias.UTCTimezone {
+		alias.DetectedCount++
+	}
+	if alias.MismatchLanguages {
+		alias.DetectedCount++
+	}
+	if alias.InconsistentEtsl {
+		alias.DetectedCount++
+	}
+	if alias.BotUserAgent {
+		alias.DetectedCount++
+	}
+	if alias.GPUMismatch {
+		alias.DetectedCount++
+	}
+	if alias.PlatformMismatch {
 		alias.DetectedCount++
 	}
 

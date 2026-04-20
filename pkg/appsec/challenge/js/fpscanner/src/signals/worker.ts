@@ -12,6 +12,16 @@ export async function worker() {
             cpuCount: INIT,
         };
 
+        let worker: Worker | null = null;
+        let workerUrl: string | null = null;
+        let timeoutId: number | null = null;
+
+        const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (worker) worker.terminate();
+            if (workerUrl) URL.revokeObjectURL(workerUrl);
+        };
+
         try {
             const workerCode = `try {
                 var fingerprintWorker = {};
@@ -27,8 +37,9 @@ export async function worker() {
                 fingerprintWorker.vendor = 'INIT';
                 fingerprintWorker.renderer = 'INIT';
                 var gl = canvas.getContext('webgl');
+                const isFirefox = navigator.userAgent.includes('Firefox');
                 try {
-                    if (gl) {
+                    if (gl && !isFirefox) {
                         var glExt = gl.getExtension('WEBGL_debug_renderer_info');
                         fingerprintWorker.vendor = gl.getParameter(glExt.UNMASKED_VENDOR_WEBGL);
                         fingerprintWorker.renderer = gl.getParameter(glExt.UNMASKED_RENDERER_WEBGL);
@@ -47,8 +58,15 @@ export async function worker() {
 
             
             const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const workerUrl = URL.createObjectURL(blob);
-            const worker = new Worker(workerUrl);
+            workerUrl = URL.createObjectURL(blob);
+            worker = new Worker(workerUrl);
+
+            // Set timeout to prevent infinite hang
+            timeoutId = window.setTimeout(() => {
+                cleanup();
+                setObjectValues(workerData, ERROR);
+                resolve(workerData);
+            }, 2000);
 
             worker.onmessage = function (e) {
                 try {
@@ -59,17 +77,23 @@ export async function worker() {
                     workerData.platform = e.data.platform;
                     workerData.memory = e.data.memory;
                     workerData.cpuCount = e.data.cpuCount;
-
-                    return resolve(workerData);
                 } catch (_) {
                     setObjectValues(workerData, ERROR);
-                    return resolve(workerData);
+                } finally {
+                    cleanup();
+                    resolve(workerData);
                 }
-            }
-        } catch (e) {
-            setObjectValues(workerData, ERROR);
+            };
 
-            return resolve(workerData);
+            worker.onerror = function () {
+                cleanup();
+                setObjectValues(workerData, ERROR);
+                resolve(workerData);
+            };
+        } catch (e) {
+            cleanup();
+            setObjectValues(workerData, ERROR);
+            resolve(workerData);
         }
 
     });
