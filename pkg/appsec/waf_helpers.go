@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -99,6 +100,20 @@ func GetOnChallengeEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, reques
 		"DropRequest": func(reason string) error { return w.DropRequest(state, request, reason) },
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
+		},
+
+		// EvaluateMismatches: aggregate fingerprint mismatch report. First
+		// call per request computes the report, caches it on state, and
+		// emits one Debug log line + per-signal Prometheus counter bumps;
+		// subsequent calls return the cached pointer so rules can chain
+		// `.High() >= 1 && .Has("cdp")` without redoing the work.
+		//
+		// Atomic helpers (fingerprint.UAMobileMismatch,
+		// fingerprint.AcceptLanguageMismatch(req),
+		// fingerprint.TimezoneCountryMismatch(country)) are methods on
+		// `fingerprint` and can still be called directly from rules.
+		"EvaluateMismatches": func() *challenge.MismatchReport {
+			return w.EvaluateMismatches(state, request)
 		},
 	}
 }
