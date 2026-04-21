@@ -66,3 +66,13 @@ var AppsecRuleHits = prometheus.NewCounterVec(
 	},
 	[]string{"rule_name", "type", "appsec_engine", "source"},
 )
+
+const AppsecFingerprintMismatchMetricName = "cs_appsec_fingerprint_mismatch_total"
+
+var AppsecFingerprintMismatch = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecFingerprintMismatchMetricName,
+		Help: "Count of fingerprint mismatch signals fired per reason and severity.",
+	},
+	[]string{"reason", "severity", "appsec_engine"},
+)
