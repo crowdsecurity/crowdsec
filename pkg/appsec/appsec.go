@@ -11,11 +11,15 @@ import (
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -35,6 +39,7 @@ const (
 	hookPreEval
 	hookPostEval
 	hookOnMatch
+	hookOnChallenge
 )
 
 func (s hookStage) String() string {
@@ -47,6 +52,8 @@ func (s hookStage) String() string {
 		return "post_eval"
 	case hookOnMatch:
 		return "on_match"
+	case hookOnChallenge:
+		return "on_challenge"
 	default:
 		return "unknown"
 	}
@@ -77,10 +84,14 @@ func (p *PhaseHooks) get(stage hookStage) []Hook {
 }
 
 const (
-	BanRemediation     = "ban"
-	CaptchaRemediation = "captcha"
-	AllowRemediation   = "allow"
+	BanRemediation       = "ban"
+	CaptchaRemediation   = "captcha"
+	AllowRemediation     = "allow"
+	ChallengeRemediation = "challenge"
 )
+
+const bodyChallengeOK = `{"status":"ok"}`
+const bodyChallengeFailed = `{"status":"failed"}`
 
 type phase int
 
@@ -89,21 +100,26 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(stage hookStage) error {
+func (h *Hook) Build(stage hookStage, patcher *appsecExprPatcher) error {
 	ctx := map[string]any{}
 
 	switch stage {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{}, pipeline.Event{})
+	case hookOnChallenge:
+		ctx = GetOnChallengeEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
+	if patcher != nil {
+		opts = append(opts, expr.Patch(patcher))
+	}
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
@@ -128,11 +144,14 @@ func (h *Hook) Build(stage hookStage) error {
 type AppsecTempResponse struct {
 	InBandInterrupt         bool
 	OutOfBandInterrupt      bool
-	Action                  string // allow, deny, captcha, log
-	UserHTTPResponseCode    int    // The response code to send to the user
-	BouncerHTTPResponseCode int    // The response code to send to the remediation component
-	SendEvent               bool   // do we send an internal event on rule match
-	SendAlert               bool   // do we send an alert on rule match
+	Action                  string                // allow, deny, captcha, challenge, log
+	UserHTTPResponseCode    int                   // The response code to send to the user
+	UserHTTPBodyContent     string                // The body content to send to the user, only for challenge response
+	UserHTTPCookies         []cookie.AppsecCookie // Raw Set-Cookie headers to send to the user.
+	UserHeaders             map[string][]string   // Headers to send to the user
+	BouncerHTTPResponseCode int                   // The response code to send to the remediation component
+	SendEvent               bool                  // do we send an internal event on rule match
+	SendAlert               bool                  // do we send an alert on rule match
 }
 
 type AppsecDropInfo struct {
@@ -150,6 +169,17 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	RequireChallenge    bool
+	Fingerprint         *challenge.FingerprintData
+	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
+	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
+
+	// LastMismatchReport caches the result of the EvaluateMismatches expr
+	// closure for the current request, so repeated calls from a single
+	// rule expression don't redo the work (or re-emit observability).
+	// nil until the first call.
+	LastMismatchReport *challenge.MismatchReport
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -164,8 +194,11 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.Response.UserHTTPResponseCode = cfg.UserPassedHTTPCode
 	s.Response.SendEvent = true
 	s.Response.SendAlert = true
+	s.Response.UserHTTPBodyContent = ""
+	s.Response.UserHTTPCookies = nil
 	s.PendingAction = nil
 	s.PendingHTTPCode = nil
+	s.RequireChallenge = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -198,11 +231,13 @@ type AppsecSubEngineOpts struct {
 
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
 // Hooks defined here are automatically dispatched only during the corresponding phase.
+// on_challenge is in-band only; setting it under `outofband:` is rejected at Build() time.
 type AppsecPhaseConfig struct {
 	Rules             []string            `yaml:"rules"`
 	OnMatch           []Hook              `yaml:"on_match"`
 	PreEval           []Hook              `yaml:"pre_eval"`
 	PostEval          []Hook              `yaml:"post_eval"`
+	OnChallenge       []Hook              `yaml:"on_challenge"`
 	Options           AppsecSubEngineOpts `yaml:"options"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 }
@@ -218,10 +253,11 @@ type AppsecRuntimeConfig struct {
 	RemediationByTag   map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 	RemediationById    map[int]string
 
-	CompiledOnLoad []Hook     // runs once at startup, not phase-scoped
-	CommonHooks    PhaseHooks // apply to both phases
-	InBandHooks    PhaseHooks // only run during in-band
-	OutOfBandHooks PhaseHooks // only run during out-of-band
+	CompiledOnLoad      []Hook     // runs once at startup, not phase-scoped
+	CompiledOnChallenge []Hook     // in-band only; runs before pre_eval
+	CommonHooks         PhaseHooks // apply to both phases
+	InBandHooks         PhaseHooks // only run during in-band
+	OutOfBandHooks      PhaseHooks // only run during out-of-band
 
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
@@ -235,6 +271,10 @@ type AppsecRuntimeConfig struct {
 
 	DisabledOutOfBandRuleIds   []int
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	// True if at least one of the hooks use `RequireValidChallenge`
+	NeedWASMVM       bool
+	ChallengeRuntime *challenge.ChallengeRuntime
 }
 
 type AppsecConfig struct {
@@ -252,6 +292,7 @@ type AppsecConfig struct {
 	PreEval           []Hook              `yaml:"pre_eval"`
 	PostEval          []Hook              `yaml:"post_eval"`
 	OnMatch           []Hook              `yaml:"on_match"`
+	OnChallenge       []Hook              `yaml:"on_challenge"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
 	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
@@ -376,6 +417,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OnMatch = append(wc.OnMatch, tmp.OnMatch...)
 	}
 
+	if tmp.OnChallenge != nil {
+		wc.OnChallenge = append(wc.OnChallenge, tmp.OnChallenge...)
+	}
+
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
@@ -389,6 +434,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.InBand.OnMatch = append(wc.InBand.OnMatch, tmp.InBand.OnMatch...)
 		wc.InBand.PreEval = append(wc.InBand.PreEval, tmp.InBand.PreEval...)
 		wc.InBand.PostEval = append(wc.InBand.PostEval, tmp.InBand.PostEval...)
+		wc.InBand.OnChallenge = append(wc.InBand.OnChallenge, tmp.InBand.OnChallenge...)
 	}
 
 	if tmp.OutOfBand != nil {
@@ -399,6 +445,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OutOfBand.OnMatch = append(wc.OutOfBand.OnMatch, tmp.OutOfBand.OnMatch...)
 		wc.OutOfBand.PreEval = append(wc.OutOfBand.PreEval, tmp.OutOfBand.PreEval...)
 		wc.OutOfBand.PostEval = append(wc.OutOfBand.PostEval, tmp.OutOfBand.PostEval...)
+		wc.OutOfBand.OnChallenge = append(wc.OutOfBand.OnChallenge, tmp.OutOfBand.OnChallenge...)
 	}
 
 	// override other options
@@ -468,7 +515,7 @@ func (wc *AppsecConfig) normalizePhaseScoped() {
 }
 
 // buildHookList validates and compiles a list of hooks of the given stage.
-func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
+func buildHookList(hooks []Hook, stage hookStage, patcher *appsecExprPatcher) ([]Hook, error) {
 	var compiled []Hook
 
 	for _, hook := range hooks {
@@ -476,7 +523,7 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stage, hook.OnSuccess)
 		}
 
-		if err := hook.Build(stage); err != nil {
+		if err := hook.Build(stage, patcher); err != nil {
 			return nil, fmt.Errorf("unable to build %s hook : %w", stage, err)
 		}
 
@@ -488,7 +535,7 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 
 // buildPhaseHooks compiles pre_eval / post_eval / on_match hook lists into a
 // PhaseHooks. phaseName is only used to wrap errors ("" for the shared section).
-func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook) (PhaseHooks, error) {
+func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook, patcher *appsecExprPatcher) (PhaseHooks, error) {
 	var (
 		out PhaseHooks
 		err error
@@ -501,15 +548,15 @@ func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook) (PhaseHooks, e
 		return fmt.Errorf("%s: %w", phaseName, e)
 	}
 
-	if out.PreEval, err = buildHookList(pre, hookPreEval); err != nil {
+	if out.PreEval, err = buildHookList(pre, hookPreEval, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.PostEval, err = buildHookList(post, hookPostEval); err != nil {
+	if out.PostEval, err = buildHookList(post, hookPostEval, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.OnMatch, err = buildHookList(onMatch, hookOnMatch); err != nil {
+	if out.OnMatch, err = buildHookList(onMatch, hookOnMatch, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
@@ -562,10 +609,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	// set the defaults
 	switch wc.DefaultRemediation {
-	case BanRemediation, CaptchaRemediation, AllowRemediation:
+	case BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation:
 		// those are the officially supported remediation(s)
 	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation)
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation)
 	}
 
 	ret.Name = wc.Name
@@ -600,29 +647,52 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
+	patcher := &appsecExprPatcher{}
+
 	// load hooks
 	var err error
 
-	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad); err != nil {
+	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad, nil); err != nil {
 		return nil, err
 	}
 
-	if ret.CommonHooks, err = buildPhaseHooks("", wc.PreEval, wc.PostEval, wc.OnMatch); err != nil {
+	if ret.CommonHooks, err = buildPhaseHooks("", wc.PreEval, wc.PostEval, wc.OnMatch, patcher); err != nil {
 		return nil, err
 	}
 
 	if wc.InBand != nil {
 		if ret.InBandHooks, err = buildPhaseHooks("inband",
-			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch); err != nil {
+			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch, patcher); err != nil {
 			return nil, err
 		}
 	}
 
 	if wc.OutOfBand != nil {
 		if ret.OutOfBandHooks, err = buildPhaseHooks("outofband",
-			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch); err != nil {
+			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch, patcher); err != nil {
 			return nil, err
 		}
+
+		if len(wc.OutOfBand.OnChallenge) > 0 {
+			return nil, errors.New("on_challenge hooks are only valid in-band, not under outofband")
+		}
+	}
+
+	// on_challenge hooks: merge top-level and inband-scoped (both are in-band only).
+	onChallengeHooks := wc.OnChallenge
+	if wc.InBand != nil {
+		onChallengeHooks = append(onChallengeHooks, wc.InBand.OnChallenge...)
+	}
+
+	if ret.CompiledOnChallenge, err = buildHookList(onChallengeHooks, hookOnChallenge, patcher); err != nil {
+		return nil, err
+	}
+
+	// Defining any on_challenge hook implies we need the challenge runtime to
+	// validate cookies and submissions, even if the hook bodies never call
+	// SendChallenge() themselves.
+	if len(ret.CompiledOnChallenge) > 0 {
+		patcher.NeedWASMVM = true
 	}
 
 	// variable tracking
@@ -634,6 +704,8 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 
 		ret.CompiledVariablesTracking = append(ret.CompiledVariablesTracking, compiledVariableRule)
 	}
+
+	ret.NeedWASMVM = patcher.NeedWASMVM
 
 	return ret, nil
 }
@@ -711,6 +783,66 @@ func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]inte
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
 	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
+}
+
+// ProcessOnChallengeRules is the in-band-only challenge entry point. It
+// handles the PoW worker JS path and the challenge submission path internally,
+// validates any existing challenge cookie to populate state.Fingerprint, and
+// runs the user-defined on_challenge hook expressions ONLY when there is a
+// fingerprint to inspect — i.e. on a valid submission or when a valid cookie
+// was presented. Requests with no cookie / invalid cookie / invalid submission
+// skip user hooks entirely (there's nothing to evaluate).
+func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState, request *ParsedRequest) error {
+	if w.ChallengeRuntime == nil {
+		return nil
+	}
+
+	var path string
+	if request.HTTPRequest.URL != nil {
+		path = request.HTTPRequest.URL.Path
+	}
+
+	// Serve the PoW worker JS (static asset). Skip user expressions.
+	if path == challenge.ChallengePowWorkerPath {
+		return w.setChallengeResponse(state, http.StatusOK, challenge.PowWorkerJS,
+			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+	}
+
+	// Challenge submission: validate and issue (or deny) the cookie. User hooks
+	// do NOT run here — they would overwrite the JSON submission response and
+	// confuse the client. Policy inspection of the fingerprint happens on the
+	// very next request, which will carry the cookie we just issued.
+	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
+		w.Logger.Debugf("validating challenge response")
+		ck, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		if err != nil {
+			// TODO: find a way to propagate an event to the LP for use in scenarios
+			w.Logger.Errorf("challenge validation failed: %s", err)
+			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
+				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
+		}
+		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
+			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
+	}
+
+	// Regular request: validate the existing cookie (if any) to populate
+	// fingerprint and remember the difficulty the client proved.
+	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
+		if cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data")
+			fp := cookieData.Fingerprint
+			state.Fingerprint = &fp
+			state.CookiePowDifficulty = cookieData.PowDifficulty
+		}
+	}
+
+	// No fingerprint to inspect — skip user hooks. This avoids nil-deref inside
+	// expr filters like `fingerprint.Bot.X` when no cookie was presented.
+	if state.Fingerprint == nil {
+		return nil
+	}
+
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge")
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
@@ -884,19 +1016,194 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) e
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) SetChallengeBody(state *AppsecRequestState, content string) error {
+	w.Logger.Debugf("setting challenge body content")
+	state.Response.UserHTTPBodyContent = content
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeCookie(state *AppsecRequestState, cookie cookie.AppsecCookie) error {
+	w.Logger.Debugf("adding challenge cookie")
+	state.Response.UserHTTPCookies = append(state.Response.UserHTTPCookies, cookie)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name string, value string) error {
+	w.Logger.Debugf("adding challenge headers")
+	if state.Response.UserHeaders == nil {
+		state.Response.UserHeaders = make(map[string][]string)
+	}
+	state.Response.UserHeaders[name] = append(state.Response.UserHeaders[name], value)
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
+	w.SetAction(state, ChallengeRemediation)
+	w.SetHTTPCode(state, code)
+	// FIXME: don't do this here, should be handled the same way as a block
+	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+	w.SetChallengeBody(state, body)
+	for name, value := range headers {
+		w.SetChallengeHeader(state, name, value)
+	}
+	if cookie != nil {
+		w.SetChallengeCookie(state, *cookie)
+	}
+	state.RequireChallenge = true
+	return nil
+}
+
+// SetChallengeDifficulty sets the default PoW difficulty on the runtime (used from on_load).
+func (w *AppsecRuntimeConfig) SetChallengeDifficulty(level string) error {
+	if w.ChallengeRuntime == nil {
+		return fmt.Errorf("challenge runtime not initialized")
+	}
+
+	return w.ChallengeRuntime.SetDifficulty(level)
+}
+
+// SetChallengeDifficultyPerRequest sets a per-request PoW difficulty override (used from pre_eval/post_eval).
+func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequestState, level string) error {
+	bits, err := challenge.DifficultyFromLevel(level)
+	if err != nil {
+		return err
+	}
+
+	state.ChallengeDifficulty = &bits
+
+	return nil
+}
+
+// SendChallenge issues a challenge HTML page for the current request. Cookie
+// and submission handling live in ProcessOnChallengeRules; by the time this
+// runs, state.Fingerprint has already been populated if a valid cookie was
+// presented. If the client already proved a PoW at least as hard as the
+// target difficulty for this request, SendChallenge is a no-op. When the
+// target difficulty is raised (e.g. on_challenge calls SetChallengeDifficulty
+// to punish a suspect fingerprint), the stored difficulty is lower than the
+// target and a fresh challenge is issued.
+// EvaluateMismatches runs all library-native + custom fingerprint mismatch
+// checks, caches the result on state, and emits one structured Debug log
+// line + one metric bump per fired signal on the first call of a given
+// request. Subsequent calls return the cached pointer so rules can reference
+// the report multiple times without redoing the work.
+func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, request *ParsedRequest) *challenge.MismatchReport {
+	if state.LastMismatchReport != nil {
+		return state.LastMismatchReport
+	}
+
+	country := exprhelpers.IPToCountryString(request.ClientIP)
+	report := state.Fingerprint.ComputeMismatchReport(request.HTTPRequest, country)
+
+	state.LastMismatchReport = report
+
+	if !report.Empty() {
+		w.emitMismatchObservability(state, request, report)
+	}
+
+	return report
+}
+
+// emitMismatchObservability logs the report at Debug level and bumps the
+// per-reason/severity Prometheus counter. Called exactly once per request
+// from EvaluateMismatches (guarded by state.LastMismatchReport being nil
+// on entry).
+func (w *AppsecRuntimeConfig) emitMismatchObservability(
+	state *AppsecRequestState,
+	request *ParsedRequest,
+	report *challenge.MismatchReport,
+) {
+	fsid := ""
+	if state.Fingerprint != nil {
+		fsid = state.Fingerprint.FSID
+	}
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"fsid":    fsid,
+			"source":  request.RemoteAddrNormalized,
+			"reasons": report.Reasons(),
+			"high":    report.High(),
+			"medium":  report.Medium(),
+			"low":     report.Low(),
+			"count":   report.Count(),
+		}).Debug("fingerprint mismatch")
+	}
+
+	for _, sig := range report.Signals {
+		metrics.AppsecFingerprintMismatch.With(prometheus.Labels{
+			"reason":        sig.Reason,
+			"severity":      sig.Severity,
+			"appsec_engine": request.AppsecEngine,
+		}).Inc()
+	}
+}
+
+func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	if w.ChallengeRuntime == nil {
+		return fmt.Errorf("challenge runtime not initialized")
+	}
+
+	target := w.ChallengeRuntime.Difficulty()
+	if state.ChallengeDifficulty != nil {
+		target = *state.ChallengeDifficulty
+	}
+
+	if state.Fingerprint != nil && state.CookiePowDifficulty >= target {
+		w.Logger.Debugf("client already proved difficulty %d >= target %d, skipping challenge issue",
+			state.CookiePowDifficulty, target)
+		return nil
+	}
+
+	w.Logger.Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
+
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent(), target)
+	if err != nil {
+		return fmt.Errorf("unable to get challenge page: %w", err)
+	}
+	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+}
+
 type BodyResponse struct {
-	Action     string `json:"action"`
-	HTTPStatus int    `json:"http_status"`
+	Action          string              `json:"action"`
+	HTTPStatus      int                 `json:"http_status"`
+	UserBodyContent string              `json:"user_body_content,omitempty"`
+	UserCookies     []string            `json:"user_cookies,omitempty"`
+	UserHeaders     map[string][]string `json:"user_headers,omitempty"`
 }
 
 func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) (int, BodyResponse) {
 	var bouncerStatusCode int
 
 	resp := BodyResponse{Action: response.Action}
-	if response.Action == AllowRemediation {
+
+	//spew.Dump("Generating response", response)
+
+	switch response.Action {
+	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
-	} else { // ban, captcha and anything else
+	case ChallengeRemediation:
+		resp.UserBodyContent = response.UserHTTPBodyContent
+		resp.UserCookies = make([]string, 0, len(response.UserHTTPCookies))
+		for _, cookie := range response.UserHTTPCookies {
+			resp.UserCookies = append(resp.UserCookies, cookie.String())
+		}
+		resp.UserHeaders = response.UserHeaders
+		// Return code are handled the same way for challenge/ban/captcha
+		// There's probably a less brittle way to do this, but falltrhough is easier
+		fallthrough
+	case BanRemediation, CaptchaRemediation:
+		resp.HTTPStatus = response.UserHTTPResponseCode
+		if resp.HTTPStatus == 0 {
+			resp.HTTPStatus = w.Config.UserBlockedHTTPCode
+		}
+		bouncerStatusCode = response.BouncerHTTPResponseCode
+		if bouncerStatusCode == 0 {
+			bouncerStatusCode = w.Config.BouncerBlockedHTTPCode
+		}
+	default:
+		// Custom remediations use the same status code logic as ban/captcha
 		resp.HTTPStatus = response.UserHTTPResponseCode
 		if resp.HTTPStatus == 0 {
 			resp.HTTPStatus = w.Config.UserBlockedHTTPCode

@@ -140,9 +140,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}
 
 	defer func() {
-		state.Tx.ProcessLogging()
 		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
-
 		err := r.AppsecRuntime.ProcessPostEvalRules(state, request)
 		if err != nil {
 			r.logger.Errorf("unable to process PostEval rules: %s", err)
@@ -156,10 +154,22 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		//FIXME: should we abort here ?
 	}
 
+	// User has requested valid challenge, but we did not find a valid cookie
+	// Immediately return, everything has been set already
+	if state.RequireChallenge {
+		r.logger.Infof("valid challenge required, skipping WAF evaluation")
+		return nil
+	}
+
 	if state.DropInfo(request) != nil {
 		r.logger.Debug("drop helper triggered during pre_eval, skipping WAF evaluation")
 		return nil
 	}
+
+	defer func() {
+		state.Tx.ProcessLogging()
+		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+	}()
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
@@ -220,14 +230,35 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	state.Tx = tx
-	// Even if we have no inband rules, we might have pre-eval or post-eval rules to process
+	// Even if we have no inband rules, we might have pre-eval, post-eval or on_challenge hooks to process
 	if len(r.AppsecRuntime.InBandRules) == 0 &&
 		len(r.AppsecRuntime.CommonHooks.PreEval) == 0 &&
 		len(r.AppsecRuntime.InBandHooks.PreEval) == 0 &&
 		len(r.AppsecRuntime.CommonHooks.PostEval) == 0 &&
-		len(r.AppsecRuntime.InBandHooks.PostEval) == 0 {
+		len(r.AppsecRuntime.InBandHooks.PostEval) == 0 &&
+		len(r.AppsecRuntime.CompiledOnChallenge) == 0 &&
+		r.AppsecRuntime.ChallengeRuntime == nil {
 		return nil
 	}
+
+	// on_challenge runs before any WAF work: it serves PoW infrastructure paths,
+	// validates submissions, and populates state.Fingerprint from the cookie.
+	if err := r.AppsecRuntime.ProcessOnChallengeRules(state, request); err != nil {
+		r.logger.Errorf("unable to process OnChallenge rules: %s", err)
+	}
+
+	// Infrastructure paths (PoW worker, challenge submit) already set up the
+	// full response — skip pre_eval, WAF evaluation and post_eval entirely.
+	if state.RequireChallenge {
+		r.logger.Debugf("challenge response set by on_challenge, skipping WAF evaluation")
+		return nil
+	}
+
+	if state.DropInfo(request) != nil {
+		r.logger.Debug("drop helper triggered during on_challenge, skipping WAF evaluation")
+		return nil
+	}
+
 	err := r.processRequest(state, request)
 	return err
 }
@@ -426,6 +457,9 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- state.Response
+
+	// TODO: what should we do with challenge remediation for OOB matches ?
+	// (captcha has no special treatment, but is also useless for OOB)
 
 	//Now let's process the out of band rules
 

@@ -532,6 +532,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "IPToCountry",
+		function: IPToCountry,
+		signature: []any{
+			new(func(string) string),
+		},
+	},
+	{
 		name:     "JA4H",
 		function: JA4H,
 		signature: []any{
