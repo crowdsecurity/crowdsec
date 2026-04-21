@@ -11,6 +11,7 @@ import (
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -172,6 +174,12 @@ type AppsecRequestState struct {
 	Fingerprint         *challenge.FingerprintData
 	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
 	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
+
+	// LastMismatchReport caches the result of the EvaluateMismatches expr
+	// closure for the current request, so repeated calls from a single
+	// rule expression don't redo the work (or re-emit observability).
+	// nil until the first call.
+	LastMismatchReport *challenge.MismatchReport
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -1074,6 +1082,63 @@ func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequ
 // target difficulty is raised (e.g. on_challenge calls SetChallengeDifficulty
 // to punish a suspect fingerprint), the stored difficulty is lower than the
 // target and a fresh challenge is issued.
+// EvaluateMismatches runs all library-native + custom fingerprint mismatch
+// checks, caches the result on state, and emits one structured Debug log
+// line + one metric bump per fired signal on the first call of a given
+// request. Subsequent calls return the cached pointer so rules can reference
+// the report multiple times without redoing the work.
+func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, request *ParsedRequest) *challenge.MismatchReport {
+	if state.LastMismatchReport != nil {
+		return state.LastMismatchReport
+	}
+
+	country := exprhelpers.IPToCountryString(request.ClientIP)
+	report := state.Fingerprint.ComputeMismatchReport(request.HTTPRequest, country)
+
+	state.LastMismatchReport = report
+
+	if !report.Empty() {
+		w.emitMismatchObservability(state, request, report)
+	}
+
+	return report
+}
+
+// emitMismatchObservability logs the report at Debug level and bumps the
+// per-reason/severity Prometheus counter. Called exactly once per request
+// from EvaluateMismatches (guarded by state.LastMismatchReport being nil
+// on entry).
+func (w *AppsecRuntimeConfig) emitMismatchObservability(
+	state *AppsecRequestState,
+	request *ParsedRequest,
+	report *challenge.MismatchReport,
+) {
+	fsid := ""
+	if state.Fingerprint != nil {
+		fsid = state.Fingerprint.FSID
+	}
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"fsid":    fsid,
+			"source":  request.RemoteAddrNormalized,
+			"reasons": report.Reasons(),
+			"high":    report.High(),
+			"medium":  report.Medium(),
+			"low":     report.Low(),
+			"count":   report.Count(),
+		}).Debug("fingerprint mismatch")
+	}
+
+	for _, sig := range report.Signals {
+		metrics.AppsecFingerprintMismatch.With(prometheus.Labels{
+			"reason":        sig.Reason,
+			"severity":      sig.Severity,
+			"appsec_engine": request.AppsecEngine,
+		}).Inc()
+	}
+}
+
 func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
 	if w.ChallengeRuntime == nil {
 		return fmt.Errorf("challenge runtime not initialized")
