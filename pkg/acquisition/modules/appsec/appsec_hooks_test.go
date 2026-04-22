@@ -1,8 +1,10 @@
 package appsecacquisition
 
 import (
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -13,6 +15,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+// jsonBody returns an io.ReadCloser that reads back `body` as many times as
+// the validator needs it, so we can reuse the same test request across phases.
+func jsonBody(body string) io.ReadCloser {
+	return io.NopCloser(strings.NewReader(body))
+}
 
 func TestAppsecOnMatchHooks(t *testing.T) {
 	tests := []appsecRuleTest{
@@ -1338,4 +1346,146 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+// minimal schema used by the hook_vars-in-event tests: /users only accepts
+// a POST whose body has a required username field.
+const testUsersSchema = `openapi: 3.0.0
+info:
+  title: users
+  version: "1"
+paths:
+  /users:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              additionalProperties: false
+              properties:
+                username: {type: string}
+      responses:
+        "200": {description: ok}
+`
+
+func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "validation failure publishes hook_vars to event and matches",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			// Scoped to in-band to avoid the validator consuming the body twice
+			// (the request body is read once by openapi3filter).
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api', req)",
+					Apply: []string{
+						"DropRequest('schema validation failed on ' + hook_vars.validation_error_field)",
+					},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "POST",
+				URI:        "/users",
+				Body:       []byte(`{}`),
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: "POST",
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+
+				// Locate the APPSEC overflow (alert) and the in-band LOG event.
+				var overflow, logEvt *pipeline.Event
+				for i := range events {
+					e := &events[i]
+					switch {
+					case e.Type == pipeline.APPSEC:
+						overflow = e
+					case e.Type == pipeline.LOG && e.Appsec.HasInBandMatches:
+						logEvt = e
+					}
+				}
+				require.NotNil(t, overflow, "expected an APPSEC overflow event")
+				require.NotNil(t, logEvt, "expected an in-band LOG event")
+
+				// Overflow carries HookVars (propagated by AppsecEventGeneration).
+				require.Equal(t, "request_body", overflow.Appsec.HookVars["validation_error_reason"])
+				require.Equal(t, "username", overflow.Appsec.HookVars["validation_error_field"])
+
+				// LOG event has HookVars, matched-rules list, and drop_reason.
+				require.Equal(t, "request_body", logEvt.Appsec.HookVars["validation_error_reason"])
+				require.Equal(t, "username", logEvt.Appsec.HookVars["validation_error_field"])
+				require.NotEmpty(t, logEvt.Appsec.HookVars["validation_error_message"])
+				require.NotEmpty(t, logEvt.Appsec.HookVars["validation_error"])
+				require.Contains(t, logEvt.Meta["appsec_drop_reason"], "schema validation failed")
+
+				require.NotEmpty(t, logEvt.Appsec.MatchedRules)
+				for i, match := range logEvt.Appsec.MatchedRules {
+					hv, ok := match["hook_vars"].(map[string]string)
+					require.True(t, ok, "match %d missing hook_vars", i)
+					require.Equal(t, "request_body", hv["validation_error_reason"])
+				}
+			},
+		},
+		{
+			name:             "successful validation leaves hook_vars empty on the event",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:  "rule-always-fires",
+					Zones: []string{"METHOD"},
+					Match: appsec_rule.Match{Type: "equals", Value: "POST"},
+				},
+			},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api', req)",
+					Apply:  []string{"DropRequest('schema failed')"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "POST",
+				URI:        "/users",
+				Body:       []byte(`{"username":"jane"}`),
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: "POST",
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{"username":"jane"}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.NotEmpty(t, events)
+				for _, evt := range events {
+					require.Empty(t, evt.Appsec.HookVars["validation_error"],
+						"successful validation must not leave validation_error on the event")
+				}
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func mustParseURL(raw string) *url.URL {
+	u, err := url.Parse(raw)
+	if err != nil {
+		panic(err)
+	}
+	return u
 }

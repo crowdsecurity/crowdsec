@@ -301,6 +301,10 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 		return
 	}
 
+	// Snapshot hook vars after on_match so any hook-published values are
+	// captured onto the event and onto each matched rule (for alert context).
+	copyHookVars(&evt, state)
+
 	// Should the in band match trigger an overflow ?
 	if state.Response.SendAlert {
 		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
@@ -315,6 +319,26 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	// Should the in band match trigger an event ?
 	if state.Response.SendEvent {
 		r.outChan <- evt
+	}
+}
+
+// copyHookVars snapshots the per-request HookVars onto the emitted event:
+//   - evt.Appsec.HookVars gets a shallow copy (state keeps mutating during the
+//     out-of-band phase, so the event must own its snapshot).
+//   - Each MatchedRule in evt.Appsec.MatchedRules gets the same snapshot
+//     under the "hook_vars" key, so alert-context expressions can access
+//     match.hook_vars.<key> alongside evt.Appsec.HookVars.<key>.
+func copyHookVars(evt *pipeline.Event, state *appsec.AppsecRequestState) {
+	if len(state.HookVars) == 0 {
+		return
+	}
+	snapshot := make(map[string]string, len(state.HookVars))
+	for k, v := range state.HookVars {
+		snapshot[k] = v
+	}
+	evt.Appsec.HookVars = snapshot
+	for i := range evt.Appsec.MatchedRules {
+		evt.Appsec.MatchedRules[i]["hook_vars"] = snapshot
 	}
 }
 
@@ -361,6 +385,8 @@ func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec
 		r.logger.Errorf("unable to process OnMatch rules: %s", err)
 		return
 	}
+
+	copyHookVars(&evt, state)
 
 	// The alert needs to be sent first:
 	// The event and the alert share the same internal map (parsed, meta, ...)

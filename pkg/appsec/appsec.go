@@ -97,10 +97,10 @@ const (
 func (h *Hook) Build(stage hookStage) error {
 	ctx := map[string]any{}
 
-	// Env builders for phase hooks dereference state (e.g. state.Vars), so we
-	// hand them a zero-value state with an initialized Vars map for compile-time
-	// expr setup. At runtime the real state is passed.
-	placeholderState := &AppsecRequestState{Vars: map[string]string{}}
+	// Env builders for phase hooks dereference state (e.g. state.HookVars), so
+	// we hand them a zero-value state with an initialized HookVars map for
+	// compile-time expr setup. At runtime the real state is passed.
+	placeholderState := &AppsecRequestState{HookVars: map[string]string{}}
 
 	switch stage {
 	case hookOnLoad:
@@ -161,12 +161,13 @@ type AppsecRequestState struct {
 	PendingAction   *string
 	PendingHTTPCode *int
 
-	// Vars is a per-request scratch space exposed to expr hooks as `vars`.
-	// Helpers (e.g. ValidateRequestWithSchema) publish string values here so
-	// that later hook expressions — including the `apply` block of the same
-	// hook — can read them. The map is allocated once in NewRequestState and
-	// persists across in-band/out-of-band phases.
-	Vars map[string]string
+	// HookVars is a per-request scratch space exposed to expr hooks as
+	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
+	// values here so that later hook expressions — including the `apply`
+	// block of the same hook — can read them. The map is allocated once in
+	// NewRequestState, persists across in-band/out-of-band phases, and is
+	// copied into pipeline.AppsecEvent.HookVars when an event is emitted.
+	HookVars map[string]string
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -285,7 +286,7 @@ type AppsecConfig struct {
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
 	state := AppsecRequestState{
-		Vars: make(map[string]string),
+		HookVars: make(map[string]string),
 	}
 	state.ResetResponse(w.Config)
 	return state
@@ -984,7 +985,7 @@ func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, erro
 	return out, nil
 }
 
-// validationErrorVarKeys lists the keys published into state.Vars by
+// validationErrorVarKeys lists the keys published into state.HookVars by
 // ValidateRequestWithSchema. Keeping them centralized makes it easy to reset
 // them all at the start of each validation call.
 var validationErrorVarKeys = []string{
@@ -999,13 +1000,13 @@ var validationErrorVarKeys = []string{
 // ValidateRequestWithSchema validates r against the OpenAPI schema registered
 // under ref. It returns true when the request is valid, false when it is not
 // (or when no schema is registered for ref). On failure, structured error
-// details are published into state.Vars under the "validation_error*" keys so
-// that subsequent hook expressions (typically the `apply` block of the same
+// details are published into state.HookVars under the "validation_error*" keys
+// so that subsequent hook expressions (typically the `apply` block of the same
 // hook) can build a drop reason or enrich an event. Each call also increments
-// metrics.AppsecValidationCounter labelled by schema_ref, outcome and reason.
+// the AppsecValidationOKCounter / AppsecValidationFailedCounter metric.
 func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string, r *http.Request) bool {
 	for _, k := range validationErrorVarKeys {
-		delete(state.Vars, k)
+		delete(state.HookVars, k)
 	}
 
 	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
@@ -1030,12 +1031,12 @@ func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, sta
 		}
 	}
 
-	state.Vars["validation_error"] = valErr.Error()
-	state.Vars["validation_error_reason"] = valErr.Reason
-	state.Vars["validation_error_field"] = valErr.Field
-	state.Vars["validation_error_message"] = valErr.Message
-	state.Vars["validation_error_value"] = valErr.Value
-	state.Vars["validation_error_expected"] = valErr.Expected
+	state.HookVars["validation_error"] = valErr.Error()
+	state.HookVars["validation_error_reason"] = valErr.Reason
+	state.HookVars["validation_error_field"] = valErr.Field
+	state.HookVars["validation_error_message"] = valErr.Message
+	state.HookVars["validation_error_value"] = valErr.Value
+	state.HookVars["validation_error_expected"] = valErr.Expected
 
 	metrics.AppsecValidationFailedCounter.With(prometheus.Labels{
 		"source":        request.RemoteAddrNormalized,
