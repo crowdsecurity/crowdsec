@@ -69,7 +69,7 @@ func TestValidateRequest(t *testing.T) {
 		ref         string
 		wantErr     bool
 		expectedErr string
-		request     func() *http.Request
+		request     func(t *testing.T) *http.Request
 	}{
 		{
 			name:        "invalid ref",
@@ -77,8 +77,8 @@ func TestValidateRequest(t *testing.T) {
 			ref:         "invalid",
 			wantErr:     true,
 			expectedErr: "no matching operation was found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com", http.NoBody)
 				return req
 			},
 		},
@@ -87,8 +87,8 @@ func TestValidateRequest(t *testing.T) {
 			schemaName: "basic",
 			ref:        "basic",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/ping", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/ping", http.NoBody)
 				return req
 			},
 		},
@@ -97,8 +97,8 @@ func TestValidateRequest(t *testing.T) {
 			schemaName: "basic_auth",
 			ref:        "basic_auth",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.SetBasicAuth("foo", "bar")
 				return req
 			},
@@ -109,8 +109,8 @@ func TestValidateRequest(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "authorization header not found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				return req
 			},
 		},
@@ -120,8 +120,8 @@ func TestValidateRequest(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "authorization header does not start with 'Basic '",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.Header.Set("Authorization", "asd")
 				return req
 			},
@@ -132,8 +132,8 @@ func TestValidateRequest(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "multiple Authorization headers found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.Header["Authorization"] = []string{"Basic foo", "Basic bar"}
 				return req
 			},
@@ -154,7 +154,7 @@ func TestValidateRequest(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request(t))
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -172,15 +172,15 @@ func TestSecurityRequirements(t *testing.T) {
 		ref         string
 		wantErr     bool
 		expectedErr string
-		request     func() *http.Request
+		request     func(t *testing.T) *http.Request
 	}{
 		{
 			name:       "basic auth - valid header",
 			schemaName: "basic_auth",
 			ref:        "basic_auth",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.SetBasicAuth("foo", "bar")
 				return req
 			},
@@ -191,8 +191,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "authorization header not found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				return req
 			},
 		},
@@ -202,8 +202,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "authorization header does not start with 'Basic '",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.Header.Set("Authorization", "asd")
 				return req
 			},
@@ -214,8 +214,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "basic_auth",
 			wantErr:     true,
 			expectedErr: "multiple Authorization headers found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/basic", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/basic", http.NoBody)
 				req.Header["Authorization"] = []string{"Basic foo", "Basic bar"}
 				return req
 			},
@@ -225,8 +225,8 @@ func TestSecurityRequirements(t *testing.T) {
 			schemaName: "bearer_auth",
 			ref:        "bearer_auth",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/bearer", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/bearer", http.NoBody)
 				req.Header.Set("Authorization", "Bearer foo")
 				return req
 			},
@@ -237,8 +237,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "bearer_auth",
 			wantErr:     true,
 			expectedErr: "authorization header not found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/bearer", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/bearer", http.NoBody)
 				return req
 			},
 		},
@@ -248,8 +248,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "bearer_auth",
 			wantErr:     true,
 			expectedErr: "authorization header does not start with 'Bearer '",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/bearer", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/bearer", http.NoBody)
 				req.Header.Set("Authorization", "asd")
 				return req
 			},
@@ -260,8 +260,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "bearer_auth",
 			wantErr:     true,
 			expectedErr: "multiple Authorization headers found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/bearer", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/bearer", http.NoBody)
 				req.Header["Authorization"] = []string{"Bearer foo", "Bearer bar"}
 				return req
 			},
@@ -271,9 +271,9 @@ func TestSecurityRequirements(t *testing.T) {
 			schemaName: "api_key",
 			ref:        "api_key",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/apikey", nil)
-				req.Header.Set("X-API-key", "foo")
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/apikey", http.NoBody)
+				req.Header.Set("X-API-key", "foo") //nolint:canonicalheader // intentional: exercise case-insensitive header lookup
 				return req
 			},
 		},
@@ -283,8 +283,8 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "api_key",
 			wantErr:     true,
 			expectedErr: "header x-api-key not found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/apikey", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/apikey", http.NoBody)
 				return req
 			},
 		},
@@ -294,10 +294,10 @@ func TestSecurityRequirements(t *testing.T) {
 			ref:         "api_key",
 			wantErr:     true,
 			expectedErr: "multiple headers with name x-api-key found",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/apikey", nil)
-				req.Header.Add("X-API-Key", "foo")
-				req.Header.Add("X-api-Key", "bar")
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/apikey", http.NoBody)
+				req.Header.Add("X-API-Key", "foo") //nolint:canonicalheader // intentional: exercise case-insensitive header lookup
+				req.Header.Add("X-api-Key", "bar") //nolint:canonicalheader // intentional: exercise case-insensitive header lookup
 				return req
 			},
 		},
@@ -317,7 +317,7 @@ func TestSecurityRequirements(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request(t))
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -335,15 +335,15 @@ func TestQueryParameterValidation(t *testing.T) {
 		ref         string
 		wantErr     bool
 		expectedErr string
-		request     func() *http.Request
+		request     func(t *testing.T) *http.Request
 	}{
 		{
 			name:       "valid query params - all provided",
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&offset=0&status=active&verified=true", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&offset=0&status=active&verified=true", http.NoBody)
 				return req
 			},
 		},
@@ -352,8 +352,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=50", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=50", http.NoBody)
 				return req
 			},
 		},
@@ -363,8 +363,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'limit' value is required but missing",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users", http.NoBody)
 				return req
 			},
 		},
@@ -374,8 +374,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'limit' number must be at least 1",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=0", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=0", http.NoBody)
 				return req
 			},
 		},
@@ -385,8 +385,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'limit' number must be at most 100",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=101", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=101", http.NoBody)
 				return req
 			},
 		},
@@ -396,8 +396,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'limit' value abc: an invalid integer",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=abc", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=abc", http.NoBody)
 				return req
 			},
 		},
@@ -407,8 +407,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'status' value is not one of the allowed values",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&status=deleted", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&status=deleted", http.NoBody)
 				return req
 			},
 		},
@@ -417,8 +417,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&status=inactive", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&status=inactive", http.NoBody)
 				return req
 			},
 		},
@@ -427,8 +427,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&email=user@example.com", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&email=user@example.com", http.NoBody)
 				return req
 			},
 		},
@@ -437,8 +437,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&verified=true", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&verified=true", http.NoBody)
 				return req
 			},
 		},
@@ -447,8 +447,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaName: "query_params",
 			ref:        "query_params",
 			wantErr:    false,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&verified=false", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&verified=false", http.NoBody)
 				return req
 			},
 		},
@@ -458,8 +458,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'verified' value maybe: an invalid boolean",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&verified=maybe", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&verified=maybe", http.NoBody)
 				return req
 			},
 		},
@@ -469,8 +469,8 @@ func TestQueryParameterValidation(t *testing.T) {
 			ref:         "query_params",
 			wantErr:     true,
 			expectedErr: "field 'age' number must be at most 150",
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/users?limit=10&age=200", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/users?limit=10&age=200", http.NoBody)
 				return req
 			},
 		},
@@ -490,7 +490,7 @@ func TestQueryParameterValidation(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request(t))
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)
@@ -508,16 +508,16 @@ func TestRequestBodyValidation(t *testing.T) {
 		ref         string
 		wantErr     bool
 		expectedErr string
-		request     func() *http.Request
+		request     func(t *testing.T) *http.Request
 	}{
 		{
 			name:       "valid user creation - all fields",
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    false,
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"john_doe","email":"john@example.com","age":25,"role":"user","active":true,"tags":["developer","go"],"metadata":{"team":"backend"}}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -527,9 +527,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    false,
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"jane_doe","email":"jane@example.com","age":30}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -540,9 +540,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"username\"",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"email":"test@example.com","age":25}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -553,9 +553,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"email\"",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","age":25}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -566,9 +566,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"age\"",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -579,9 +579,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "minimum string length is 3",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"ab","email":"test@example.com","age":25}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -592,9 +592,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "maximum string length is 20",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"this_username_is_way_too_long_and_exceeds_limit","email":"test@example.com","age":25}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -605,9 +605,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "doesn't match the regular expression",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"user-name!","email":"test@example.com","age":25}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -618,9 +618,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "number must be at least 18",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":17}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -631,9 +631,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "number must be at most 120",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":121}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -644,9 +644,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "value is not one of the allowed values",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":25,"role":"superuser"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -656,9 +656,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    false,
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":25,"role":"admin"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -669,9 +669,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "value must be an integer",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":"twenty-five"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -682,9 +682,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "value must be a boolean",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":25,"active":"yes"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -695,9 +695,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"unknown_field\" is unsupported",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":25,"unknown_field":"value"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -708,9 +708,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "EOF",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"testuser","email":"test@example.com","age":25`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -720,9 +720,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    false,
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"name":"Widget","price":29.99,"currency":"USD","dimensions":{"width":10.5,"height":20.3,"depth":5.1}}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/products", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/products", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -733,9 +733,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"width\"",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"name":"Widget","price":29.99,"dimensions":{"height":20.3}}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/products", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/products", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -746,9 +746,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "number must be at least 0.01",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"name":"Widget","price":-10.00}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/products", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/products", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -759,9 +759,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "doesn't match the regular expression",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"name":"Widget","price":29.99,"currency":"usd"}`
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/products", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/products", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -771,9 +771,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    false,
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"updated_user","email":"updated@example.com","age":35}`
-				req, _ := http.NewRequest(http.MethodPut, "http://example.com/users/123", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPut, "http://example.com/users/123", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -784,9 +784,9 @@ func TestRequestBodyValidation(t *testing.T) {
 			ref:         "request_body",
 			wantErr:     true,
 			expectedErr: "property \"extra_field\" is unsupported",
-			request: func() *http.Request {
+			request: func(t *testing.T) *http.Request {
 				body := `{"username":"updated_user","age":35,"extra_field":"not_allowed"}`
-				req, _ := http.NewRequest(http.MethodPut, "http://example.com/users/123", strings.NewReader(body))
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPut, "http://example.com/users/123", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -796,8 +796,8 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaName: "request_body",
 			ref:        "request_body",
 			wantErr:    true,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/users", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/users", http.NoBody)
 				req.Header.Set("Content-Type", "application/json")
 				return req
 			},
@@ -818,7 +818,7 @@ func TestRequestBodyValidation(t *testing.T) {
 			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
+			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request(t))
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.expectedErr != "" {
@@ -835,15 +835,15 @@ func TestRoutePolicy(t *testing.T) {
 	tests := []struct {
 		name        string
 		opts        *SchemaOptions
-		request     func() *http.Request
+		request     func(t *testing.T) *http.Request
 		wantErr     bool
 		expectedErr string
 	}{
 		{
 			name: "unknown path, default policy drops",
 			opts: nil,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/unknown", http.NoBody)
 				return req
 			},
 			wantErr:     true,
@@ -852,8 +852,8 @@ func TestRoutePolicy(t *testing.T) {
 		{
 			name: "unknown path, ignore policy passes",
 			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/unknown", http.NoBody)
 				return req
 			},
 			wantErr: false,
@@ -861,8 +861,8 @@ func TestRoutePolicy(t *testing.T) {
 		{
 			name: "unknown path, explicit drop policy drops",
 			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyDrop},
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/unknown", http.NoBody)
 				return req
 			},
 			wantErr:     true,
@@ -871,8 +871,8 @@ func TestRoutePolicy(t *testing.T) {
 		{
 			name: "method not allowed, default policy drops",
 			opts: nil,
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/ping", http.NoBody)
 				return req
 			},
 			wantErr:     true,
@@ -881,8 +881,8 @@ func TestRoutePolicy(t *testing.T) {
 		{
 			name: "method not allowed, ignore policy passes",
 			opts: &SchemaOptions{OnMethodNotAllowed: RoutePolicyIgnore},
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/ping", http.NoBody)
 				return req
 			},
 			wantErr: false,
@@ -890,8 +890,8 @@ func TestRoutePolicy(t *testing.T) {
 		{
 			name: "method not allowed with ignore path policy still drops",
 			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
-			request: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+			request: func(t *testing.T) *http.Request {
+				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/ping", http.NoBody)
 				return req
 			},
 			wantErr:     true,
@@ -909,7 +909,7 @@ func TestRoutePolicy(t *testing.T) {
 			err := rv.LoadSchema("basic", string(schemaBytes), tt.opts)
 			require.NoError(t, err)
 
-			err = rv.ValidateRequest(t.Context(), "basic", tt.request())
+			err = rv.ValidateRequest(t.Context(), "basic", tt.request(t))
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr)

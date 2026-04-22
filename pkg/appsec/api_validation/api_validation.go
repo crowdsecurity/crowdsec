@@ -193,25 +193,25 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 		case "basic":
 			values := input.RequestValidationInput.Request.Header["Authorization"]
 			if len(values) == 0 {
-				return fmt.Errorf("authorization header not found")
+				return errors.New("authorization header not found")
 			}
 			if len(values) > 1 {
-				return fmt.Errorf("multiple Authorization headers found")
+				return errors.New("multiple Authorization headers found")
 			}
 			if !strings.HasPrefix(values[0], "Basic ") {
-				return fmt.Errorf("authorization header does not start with 'Basic '")
+				return errors.New("authorization header does not start with 'Basic '")
 			}
 			authTokenValue = values[0][6:]
 		case "bearer":
 			values := input.RequestValidationInput.Request.Header["Authorization"]
 			if len(values) == 0 {
-				return fmt.Errorf("authorization header not found")
+				return errors.New("authorization header not found")
 			}
 			if len(values) > 1 {
-				return fmt.Errorf("multiple Authorization headers found")
+				return errors.New("multiple Authorization headers found")
 			}
 			if !strings.HasPrefix(values[0], "Bearer ") {
-				return fmt.Errorf("authorization header does not start with 'Bearer '")
+				return errors.New("authorization header does not start with 'Bearer '")
 			}
 			authTokenValue = values[0][7:]
 		}
@@ -257,7 +257,7 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 		return fmt.Errorf("unsupported security scheme type %s", input.SecurityScheme.Type)
 	}
 	if authTokenValue == "" {
-		return fmt.Errorf("auth token is required but not provided")
+		return errors.New("auth token is required but not provided")
 	}
 
 	return nil
@@ -265,7 +265,7 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 
 func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOptions) error {
 	if ref == "" {
-		return fmt.Errorf("ref cannot be empty")
+		return errors.New("ref cannot be empty")
 	}
 	rv.logger.Debugf("loading schema for ref %s", ref)
 

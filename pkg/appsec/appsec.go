@@ -1030,8 +1030,8 @@ func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, sta
 		return true
 	}
 
-	valErr, ok := err.(*apivalidation.ValidationError)
-	if !ok {
+	var valErr *apivalidation.ValidationError
+	if !errors.As(err, &valErr) {
 		// Non-ValidationError paths cover things like "no schema loaded for
 		// ref X". Log loudly and surface a synthetic entry so the hook can
 		// still build a message.

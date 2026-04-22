@@ -1389,13 +1389,13 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr: "1.2.3.4",
-				Method:     "POST",
+				Method:     http.MethodPost,
 				URI:        "/users",
 				Body:       []byte(`{}`),
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				HTTPRequest: &http.Request{
 					Host:   "example.com",
-					Method: "POST",
+					Method: http.MethodPost,
 					URL:    mustParseURL("http://example.com/users"),
 					Body:   jsonBody(`{}`),
 					Header: http.Header{"Content-Type": []string{"application/json"}},
@@ -1457,13 +1457,13 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr: "1.2.3.4",
-				Method:     "POST",
+				Method:     http.MethodPost,
 				URI:        "/users",
 				Body:       []byte(`{"username":"jane"}`),
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				HTTPRequest: &http.Request{
 					Host:   "example.com",
-					Method: "POST",
+					Method: http.MethodPost,
 					URL:    mustParseURL("http://example.com/users"),
 					Body:   jsonBody(`{"username":"jane"}`),
 					Header: http.Header{"Content-Type": []string{"application/json"}},

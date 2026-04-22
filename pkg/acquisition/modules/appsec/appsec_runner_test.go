@@ -87,9 +87,7 @@ func TestCopyHookVars(t *testing.T) {
 
 		m0 := evt.Appsec.MatchedRules[0]["hook_vars"].(map[string]string)
 		m1 := evt.Appsec.MatchedRules[1]["hook_vars"].(map[string]string)
-		require.Same(t, &m0, &m0, "sanity")
-		// Same map key pointer: mutating one would reflect in the other; we assert via
-		// structural equality and identity of the underlying header map.
+		// Matches share the same snapshot map: mutating one is observable via the other.
 		m0["extra"] = "y"
 		require.Equal(t, "y", m1["extra"], "matches should share the same snapshot map")
 	})
