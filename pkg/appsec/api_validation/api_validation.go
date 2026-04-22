@@ -18,6 +18,52 @@ var (
 	ErrInvalidSchemaName = errors.New("invalid schema name")
 )
 
+// RoutePolicy controls what the validator does when the router cannot match a
+// request against the loaded schema (either because the path is unknown or
+// because no method of the matched path accepts the request).
+type RoutePolicy string
+
+const (
+	// RoutePolicyDrop treats an unmatched route as a validation failure.
+	RoutePolicyDrop RoutePolicy = "drop"
+	// RoutePolicyIgnore lets the request through without validation when the
+	// router cannot match it.
+	RoutePolicyIgnore RoutePolicy = "ignore"
+)
+
+func (p RoutePolicy) validate() error {
+	switch p {
+	case RoutePolicyDrop, RoutePolicyIgnore:
+		return nil
+	}
+	return fmt.Errorf("invalid route policy %q (expected %q or %q)", p, RoutePolicyDrop, RoutePolicyIgnore)
+}
+
+// SchemaOptions configures per-schema validation behavior. A nil *SchemaOptions
+// passed to LoadSchema means "use defaults" (both policies = drop, matching
+// pre-option behavior).
+type SchemaOptions struct {
+	OnRouteNotFound    RoutePolicy
+	OnMethodNotAllowed RoutePolicy
+}
+
+func (o *SchemaOptions) withDefaults() SchemaOptions {
+	out := SchemaOptions{
+		OnRouteNotFound:    RoutePolicyDrop,
+		OnMethodNotAllowed: RoutePolicyDrop,
+	}
+	if o == nil {
+		return out
+	}
+	if o.OnRouteNotFound != "" {
+		out.OnRouteNotFound = o.OnRouteNotFound
+	}
+	if o.OnMethodNotAllowed != "" {
+		out.OnMethodNotAllowed = o.OnMethodNotAllowed
+	}
+	return out
+}
+
 // ValidationError provides detailed information about validation failures
 type ValidationError struct {
 	Reason        string
@@ -37,8 +83,9 @@ func (ve *ValidationError) Error() string {
 }
 
 type SchemaData struct {
-	Schema *openapi3.T
-	Router routers.Router
+	Schema  *openapi3.T
+	Router  routers.Router
+	Options SchemaOptions
 }
 
 type RequestValidator struct {
@@ -133,7 +180,7 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 	return nil
 }
 
-func (rv *RequestValidator) LoadSchema(ref string, schema string) error {
+func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOptions) error {
 	if ref == "" {
 		return fmt.Errorf("ref cannot be empty")
 	}
@@ -141,6 +188,14 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string) error {
 
 	if _, exists := rv.loaders[ref]; exists {
 		return fmt.Errorf("attempting to load a new schema for existing ref %s", ref)
+	}
+
+	options := opts.withDefaults()
+	if err := options.OnRouteNotFound.validate(); err != nil {
+		return fmt.Errorf("on_route_not_found: %w", err)
+	}
+	if err := options.OnMethodNotAllowed.validate(); err != nil {
+		return fmt.Errorf("on_method_not_allowed: %w", err)
 	}
 
 	loader := openapi3.NewLoader()
@@ -163,8 +218,9 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string) error {
 	}
 
 	rv.openAPISchemas[ref] = SchemaData{
-		Schema: doc,
-		Router: router,
+		Schema:  doc,
+		Router:  router,
+		Options: options,
 	}
 
 	rv.logger.Infof("loaded schema for ref %s", ref)
@@ -181,17 +237,23 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 
 	route, pathParam, err := schemaData.Router.FindRoute(r)
 	if err != nil {
-		//FIXME: allow the user to configure the behavior if no matching route is found:
-		// - Ignore the error and return
-		// - Drop the request
-
-		// From the kin-openapi package:
-		// // ErrPathNotFound is returned when no route match is found
-		// var ErrPathNotFound error = &RouteError{"no matching operation was found"}
-
-		// ErrMethodNotAllowed is returned when no method of the matched route matches
-		//var ErrMethodNotAllowed error = &RouteError{"method not allowed"}
-
+		// The legacy router returns a fresh *routers.RouteError rather than the
+		// exported sentinels, so we branch on Reason instead of errors.Is.
+		var routeErr *routers.RouteError
+		if errors.As(err, &routeErr) {
+			switch routeErr.Reason {
+			case routers.ErrPathNotFound.Error():
+				if schemaData.Options.OnRouteNotFound == RoutePolicyIgnore {
+					rv.logger.Debugf("no matching route for %s %s, ignoring per schema policy", r.Method, r.URL.Path)
+					return nil
+				}
+			case routers.ErrMethodNotAllowed.Error():
+				if schemaData.Options.OnMethodNotAllowed == RoutePolicyIgnore {
+					rv.logger.Debugf("method %s not allowed for %s, ignoring per schema policy", r.Method, r.URL.Path)
+					return nil
+				}
+			}
+		}
 		return fmt.Errorf("failed to find route for request: %w (error type: %T)", err, err)
 	}
 

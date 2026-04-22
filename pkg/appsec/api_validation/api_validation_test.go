@@ -50,7 +50,7 @@ func TestLoadSchema(t *testing.T) {
 			schemaBytes, err := io.ReadAll(schemaFile)
 			require.NoError(t, err)
 
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
+			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -150,7 +150,7 @@ func TestValidateRequest(t *testing.T) {
 			schemaBytes, err := io.ReadAll(schemaFile)
 			require.NoError(t, err)
 
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
+			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
 			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
@@ -313,7 +313,7 @@ func TestSecurityRequirements(t *testing.T) {
 			schemaBytes, err := io.ReadAll(schemaFile)
 			require.NoError(t, err)
 
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
+			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
 			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
@@ -486,7 +486,7 @@ func TestQueryParameterValidation(t *testing.T) {
 			schemaBytes, err := io.ReadAll(schemaFile)
 			require.NoError(t, err)
 
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
+			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
 			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
@@ -814,7 +814,7 @@ func TestRequestBodyValidation(t *testing.T) {
 			schemaBytes, err := io.ReadAll(schemaFile)
 			require.NoError(t, err)
 
-			err = rv.LoadSchema(tt.ref, string(schemaBytes))
+			err = rv.LoadSchema(tt.ref, string(schemaBytes), nil)
 			require.NoError(t, err)
 
 			err = rv.ValidateRequest(t.Context(), tt.ref, tt.request())
@@ -828,4 +828,104 @@ func TestRequestBodyValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRoutePolicy(t *testing.T) {
+	tests := []struct {
+		name        string
+		opts        *SchemaOptions
+		request     func() *http.Request
+		wantErr     bool
+		expectedErr string
+	}{
+		{
+			name: "unknown path, default policy drops",
+			opts: nil,
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+				return req
+			},
+			wantErr:     true,
+			expectedErr: "no matching operation was found",
+		},
+		{
+			name: "unknown path, ignore policy passes",
+			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+				return req
+			},
+			wantErr: false,
+		},
+		{
+			name: "unknown path, explicit drop policy drops",
+			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyDrop},
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodGet, "http://example.com/unknown", nil)
+				return req
+			},
+			wantErr:     true,
+			expectedErr: "no matching operation was found",
+		},
+		{
+			name: "method not allowed, default policy drops",
+			opts: nil,
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+				return req
+			},
+			wantErr:     true,
+			expectedErr: "method not allowed",
+		},
+		{
+			name: "method not allowed, ignore policy passes",
+			opts: &SchemaOptions{OnMethodNotAllowed: RoutePolicyIgnore},
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+				return req
+			},
+			wantErr: false,
+		},
+		{
+			name: "method not allowed with ignore path policy still drops",
+			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
+			request: func() *http.Request {
+				req, _ := http.NewRequest(http.MethodPost, "http://example.com/ping", nil)
+				return req
+			},
+			wantErr:     true,
+			expectedErr: "method not allowed",
+		},
+	}
+
+	logger := log.New().WithField("test", "apivalidation")
+	schemaBytes, err := os.ReadFile(filepath.Join(".", "test_schemas", "basic.yaml"))
+	require.NoError(t, err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rv := NewRequestValidator(logger)
+			err := rv.LoadSchema("basic", string(schemaBytes), tt.opts)
+			require.NoError(t, err)
+
+			err = rv.ValidateRequest(t.Context(), "basic", tt.request())
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestInvalidRoutePolicy(t *testing.T) {
+	logger := log.New().WithField("test", "apivalidation")
+	schemaBytes, err := os.ReadFile(filepath.Join(".", "test_schemas", "basic.yaml"))
+	require.NoError(t, err)
+
+	rv := NewRequestValidator(logger)
+	err = rv.LoadSchema("basic", string(schemaBytes), &SchemaOptions{OnRouteNotFound: "explode"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid route policy")
 }

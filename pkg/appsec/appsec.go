@@ -920,7 +920,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 
 const schemasSubDir = "schemas"
 
-func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string) error {
+func (w *AppsecRuntimeConfig) loadAPISchema(ref, filename string, opts *apivalidation.SchemaOptions) error {
 	if !filepath.IsLocal(filename) {
 		return fmt.Errorf("schema filename %q must be relative to %s and stay within it", filename, schemasSubDir)
 	}
@@ -930,7 +930,42 @@ func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string)
 	if err != nil {
 		return fmt.Errorf("unable to read schema file %s : %w", schemaPath, err)
 	}
-	return w.RequestValidator.LoadSchema(ref, string(schema))
+	return w.RequestValidator.LoadSchema(ref, string(schema), opts)
+}
+
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string) error {
+	return w.loadAPISchema(ref, filename, nil)
+}
+
+// LoadAPISchemaWithOptions behaves like LoadAPISchemaWithName but accepts a
+// map of policy overrides. Supported keys:
+//   - "on_route_not_found":    "drop" | "ignore"  (default: "drop")
+//   - "on_method_not_allowed": "drop" | "ignore"  (default: "drop")
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithOptions(ref string, filename string, opts map[string]any) error {
+	schemaOpts, err := parseSchemaOptions(opts)
+	if err != nil {
+		return err
+	}
+	return w.loadAPISchema(ref, filename, schemaOpts)
+}
+
+func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, error) {
+	out := &apivalidation.SchemaOptions{}
+	for k, v := range opts {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("schema option %q must be a string, got %T", k, v)
+		}
+		switch k {
+		case "on_route_not_found":
+			out.OnRouteNotFound = apivalidation.RoutePolicy(s)
+		case "on_method_not_allowed":
+			out.OnMethodNotAllowed = apivalidation.RoutePolicy(s)
+		default:
+			return nil, fmt.Errorf("unknown schema option %q", k)
+		}
+	}
+	return out, nil
 }
 
 func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
