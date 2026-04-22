@@ -66,3 +66,27 @@ var AppsecRuleHits = prometheus.NewCounterVec(
 	},
 	[]string{"rule_name", "type", "appsec_engine", "source"},
 )
+
+const AppsecValidationOKCounterMetricName = "cs_appsec_validation_ok_total"
+
+// AppsecValidationOKCounter counts successful OpenAPI schema validations.
+var AppsecValidationOKCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecValidationOKCounterMetricName,
+		Help: "Count of requests that passed OpenAPI schema validation, by schema_ref.",
+	},
+	[]string{"source", "appsec_engine", "schema_ref"},
+)
+
+const AppsecValidationFailedCounterMetricName = "cs_appsec_validation_failed_total"
+
+// AppsecValidationFailedCounter counts failed OpenAPI schema validations.
+// reason is one of a fixed set — "parameter", "request_body", "security",
+// "route_not_found", "method_not_allowed", "internal".
+var AppsecValidationFailedCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecValidationFailedCounterMetricName,
+		Help: "Count of requests that failed OpenAPI schema validation, by schema_ref and reason.",
+	},
+	[]string{"source", "appsec_engine", "schema_ref", "reason"},
+)

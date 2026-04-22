@@ -48,7 +48,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			return nil
 		},
 		"ValidateRequestWithSchema": func(ref string, r *http.Request) bool {
-			return w.ValidateRequestWithSchema(ctx, state, ref, r)
+			return w.ValidateRequestWithSchema(ctx, state, request, ref, r)
 		},
 	}
 }

@@ -247,10 +247,20 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 					rv.logger.Debugf("no matching route for %s %s, ignoring per schema policy", r.Method, r.URL.Path)
 					return nil
 				}
+				return &ValidationError{
+					Reason:        "route_not_found",
+					Message:       routeErr.Reason,
+					OriginalError: err,
+				}
 			case routers.ErrMethodNotAllowed.Error():
 				if schemaData.Options.OnMethodNotAllowed == RoutePolicyIgnore {
 					rv.logger.Debugf("method %s not allowed for %s, ignoring per schema policy", r.Method, r.URL.Path)
 					return nil
+				}
+				return &ValidationError{
+					Reason:        "method_not_allowed",
+					Message:       routeErr.Reason,
+					OriginalError: err,
 				}
 			}
 		}

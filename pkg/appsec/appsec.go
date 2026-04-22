@@ -14,11 +14,13 @@ import (
 	apivalidation "github.com/crowdsecurity/crowdsec/pkg/appsec/api_validation"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -999,22 +1001,28 @@ var validationErrorVarKeys = []string{
 // (or when no schema is registered for ref). On failure, structured error
 // details are published into state.Vars under the "validation_error*" keys so
 // that subsequent hook expressions (typically the `apply` block of the same
-// hook) can build a drop reason or enrich an event.
-func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, ref string, r *http.Request) bool {
+// hook) can build a drop reason or enrich an event. Each call also increments
+// metrics.AppsecValidationCounter labelled by schema_ref, outcome and reason.
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string, r *http.Request) bool {
 	for _, k := range validationErrorVarKeys {
 		delete(state.Vars, k)
 	}
 
 	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
 	if err == nil {
+		metrics.AppsecValidationOKCounter.With(prometheus.Labels{
+			"source":        request.RemoteAddrNormalized,
+			"appsec_engine": request.AppsecEngine,
+			"schema_ref":    ref,
+		}).Inc()
 		return true
 	}
 
 	valErr, ok := err.(*apivalidation.ValidationError)
 	if !ok {
 		// Non-ValidationError paths cover things like "no schema loaded for
-		// ref X" or unmatched routes under a drop policy. Log loudly and
-		// surface a synthetic entry so the hook can still build a message.
+		// ref X". Log loudly and surface a synthetic entry so the hook can
+		// still build a message.
 		w.Logger.Errorf("request validation failed: %s", err)
 		valErr = &apivalidation.ValidationError{
 			Reason:  "internal",
@@ -1028,6 +1036,13 @@ func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, sta
 	state.Vars["validation_error_message"] = valErr.Message
 	state.Vars["validation_error_value"] = valErr.Value
 	state.Vars["validation_error_expected"] = valErr.Expected
+
+	metrics.AppsecValidationFailedCounter.With(prometheus.Labels{
+		"source":        request.RemoteAddrNormalized,
+		"appsec_engine": request.AppsecEngine,
+		"schema_ref":    ref,
+		"reason":        valErr.Reason,
+	}).Inc()
 
 	return false
 }
