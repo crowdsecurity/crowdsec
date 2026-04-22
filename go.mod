@@ -34,7 +34,7 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/getkin/kin-openapi v0.133.0
+	github.com/getkin/kin-openapi v0.135.0
 	github.com/gin-contrib/gzip v1.2.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-co-op/gocron/v2 v2.20.0
@@ -207,8 +207,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
-	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
+	github.com/oasdiff/yaml v0.0.9 // indirect
+	github.com/oasdiff/yaml3 v0.0.9 // indirect
 	github.com/oklog/run v1.2.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
