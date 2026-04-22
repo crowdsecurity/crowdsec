@@ -279,7 +279,7 @@ func TestBuildPopulatesPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -311,7 +311,7 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -334,7 +334,7 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	assert.Len(t, rt.CompiledOnLoad, 1)

@@ -144,7 +144,7 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 
 	hub := cwhub.Hub{}
-	AppsecRuntime, err := appsecCfg.Build(&hub)
+	AppsecRuntime, err := appsecCfg.Build(t.Context(), &hub)
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}

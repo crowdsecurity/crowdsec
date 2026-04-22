@@ -94,8 +94,8 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(stage hookStage) error {
-	ctx := map[string]any{}
+func (h *Hook) Build(ctx context.Context, stage hookStage) error {
+	env := map[string]any{}
 
 	// Env builders for phase hooks dereference state (e.g. state.HookVars), so
 	// we hand them a zero-value state with an initialized HookVars map for
@@ -104,16 +104,16 @@ func (h *Hook) Build(stage hookStage) error {
 
 	switch stage {
 	case hookOnLoad:
-		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
+		env = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(context.Background(), &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetPreEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
+		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	}
 
-	opts := exprhelpers.GetExprOptions(ctx)
+	opts := exprhelpers.GetExprOptions(env)
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
@@ -491,7 +491,7 @@ func (wc *AppsecConfig) normalizePhaseScoped() {
 }
 
 // buildHookList validates and compiles a list of hooks of the given stage.
-func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
+func buildHookList(ctx context.Context, hooks []Hook, stage hookStage) ([]Hook, error) {
 	var compiled []Hook
 
 	for _, hook := range hooks {
@@ -499,7 +499,7 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stage, hook.OnSuccess)
 		}
 
-		if err := hook.Build(stage); err != nil {
+		if err := hook.Build(ctx, stage); err != nil {
 			return nil, fmt.Errorf("unable to build %s hook : %w", stage, err)
 		}
 
@@ -511,7 +511,7 @@ func buildHookList(hooks []Hook, stage hookStage) ([]Hook, error) {
 
 // buildPhaseHooks compiles pre_eval / post_eval / on_match hook lists into a
 // PhaseHooks. phaseName is only used to wrap errors ("" for the shared section).
-func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook) (PhaseHooks, error) {
+func buildPhaseHooks(ctx context.Context, phaseName string, pre, post, onMatch []Hook) (PhaseHooks, error) {
 	var (
 		out PhaseHooks
 		err error
@@ -524,15 +524,15 @@ func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook) (PhaseHooks, e
 		return fmt.Errorf("%s: %w", phaseName, e)
 	}
 
-	if out.PreEval, err = buildHookList(pre, hookPreEval); err != nil {
+	if out.PreEval, err = buildHookList(ctx, pre, hookPreEval); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.PostEval, err = buildHookList(post, hookPostEval); err != nil {
+	if out.PostEval, err = buildHookList(ctx, post, hookPostEval); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.OnMatch, err = buildHookList(onMatch, hookOnMatch); err != nil {
+	if out.OnMatch, err = buildHookList(ctx, onMatch, hookOnMatch); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
@@ -556,7 +556,7 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
+func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
 	ret.RequestValidator = apivalidation.NewRequestValidator(wc.Logger.WithField("component", "api_validator"))
@@ -628,23 +628,23 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	// load hooks
 	var err error
 
-	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad); err != nil {
+	if ret.CompiledOnLoad, err = buildHookList(ctx, wc.OnLoad, hookOnLoad); err != nil {
 		return nil, err
 	}
 
-	if ret.CommonHooks, err = buildPhaseHooks("", wc.PreEval, wc.PostEval, wc.OnMatch); err != nil {
+	if ret.CommonHooks, err = buildPhaseHooks(ctx, "", wc.PreEval, wc.PostEval, wc.OnMatch); err != nil {
 		return nil, err
 	}
 
 	if wc.InBand != nil {
-		if ret.InBandHooks, err = buildPhaseHooks("inband",
+		if ret.InBandHooks, err = buildPhaseHooks(ctx, "inband",
 			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch); err != nil {
 			return nil, err
 		}
 	}
 
 	if wc.OutOfBand != nil {
-		if ret.OutOfBandHooks, err = buildPhaseHooks("outofband",
+		if ret.OutOfBandHooks, err = buildPhaseHooks(ctx, "outofband",
 			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch); err != nil {
 			return nil, err
 		}

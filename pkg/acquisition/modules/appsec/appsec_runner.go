@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -333,9 +334,7 @@ func copyHookVars(evt *pipeline.Event, state *appsec.AppsecRequestState) {
 		return
 	}
 	snapshot := make(map[string]string, len(state.HookVars))
-	for k, v := range state.HookVars {
-		snapshot[k] = v
-	}
+	maps.Copy(snapshot, state.HookVars)
 	evt.Appsec.HookVars = snapshot
 	for i := range evt.Appsec.MatchedRules {
 		evt.Appsec.MatchedRules[i]["hook_vars"] = snapshot
