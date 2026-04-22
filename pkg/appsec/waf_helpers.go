@@ -28,6 +28,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
 		"req":                     request.HTTPRequest,
+		"vars":                    state.Vars,
 		"RemoveInBandRuleByID":    func(id int) error { return w.RemoveInbandRuleByID(state, id) },
 		"RemoveInBandRuleByName":  func(name string) error { return w.RemoveInbandRuleByName(state, name) },
 		"RemoveInBandRuleByTag":   func(tag string) error { return w.RemoveInbandRuleByTag(state, tag) },
@@ -46,8 +47,8 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"ValidateRequestWithSchema": func(ref string, r *http.Request) error {
-			return w.ValidateRequestWithSchema(ctx, state, ref, r, request)
+		"ValidateRequestWithSchema": func(ref string, r *http.Request) bool {
+			return w.ValidateRequestWithSchema(ctx, state, ref, r)
 		},
 	}
 }
@@ -58,6 +59,7 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
+		"vars":        state.Vars,
 	}
 }
 
@@ -65,6 +67,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 	return map[string]interface{}{
 		"evt":            evt,
 		"req":            request.HTTPRequest,
+		"vars":           state.Vars,
 		"IsInBand":       request.IsInBand,
 		"IsOutBand":      request.IsOutBand,
 		"SetRemediation": func(action string) error { return w.SetAction(state, action) },

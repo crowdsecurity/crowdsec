@@ -95,15 +95,20 @@ const (
 func (h *Hook) Build(stage hookStage) error {
 	ctx := map[string]any{}
 
+	// Env builders for phase hooks dereference state (e.g. state.Vars), so we
+	// hand them a zero-value state with an initialized Vars map for compile-time
+	// expr setup. At runtime the real state is passed.
+	placeholderState := &AppsecRequestState{Vars: map[string]string{}}
+
 	switch stage {
 	case hookOnLoad:
 		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(context.Background(), &AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPreEvalEnv(context.Background(), &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -153,6 +158,13 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	// Vars is a per-request scratch space exposed to expr hooks as `vars`.
+	// Helpers (e.g. ValidateRequestWithSchema) publish string values here so
+	// that later hook expressions — including the `apply` block of the same
+	// hook — can read them. The map is allocated once in NewRequestState and
+	// persists across in-band/out-of-band phases.
+	Vars map[string]string
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -270,7 +282,9 @@ type AppsecConfig struct {
 }
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
-	state := AppsecRequestState{}
+	state := AppsecRequestState{
+		Vars: make(map[string]string),
+	}
 	state.ResetResponse(w.Config)
 	return state
 }
@@ -968,17 +982,52 @@ func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, erro
 	return out, nil
 }
 
-func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, ref string, r *http.Request, parsedRequest *ParsedRequest) error {
-	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
-	if err != nil {
-		// Check if we have detailed validation error information
-		if valErr, ok := err.(*apivalidation.ValidationError); ok {
-			return w.DropRequest(state, parsedRequest, fmt.Sprintf("validation failed for %s: %s", valErr.Field, valErr.Message))
-		}
+// validationErrorVarKeys lists the keys published into state.Vars by
+// ValidateRequestWithSchema. Keeping them centralized makes it easy to reset
+// them all at the start of each validation call.
+var validationErrorVarKeys = []string{
+	"validation_error",
+	"validation_error_reason",
+	"validation_error_field",
+	"validation_error_message",
+	"validation_error_value",
+	"validation_error_expected",
+}
 
-		// Fallback for non-validation errors
-		w.Logger.Errorf("request validation failed: %s", err)
-		return w.DropRequest(state, parsedRequest, fmt.Sprintf("request validation failed: %s", err))
+// ValidateRequestWithSchema validates r against the OpenAPI schema registered
+// under ref. It returns true when the request is valid, false when it is not
+// (or when no schema is registered for ref). On failure, structured error
+// details are published into state.Vars under the "validation_error*" keys so
+// that subsequent hook expressions (typically the `apply` block of the same
+// hook) can build a drop reason or enrich an event.
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, ref string, r *http.Request) bool {
+	for _, k := range validationErrorVarKeys {
+		delete(state.Vars, k)
 	}
-	return nil
+
+	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
+	if err == nil {
+		return true
+	}
+
+	valErr, ok := err.(*apivalidation.ValidationError)
+	if !ok {
+		// Non-ValidationError paths cover things like "no schema loaded for
+		// ref X" or unmatched routes under a drop policy. Log loudly and
+		// surface a synthetic entry so the hook can still build a message.
+		w.Logger.Errorf("request validation failed: %s", err)
+		valErr = &apivalidation.ValidationError{
+			Reason:  "internal",
+			Message: err.Error(),
+		}
+	}
+
+	state.Vars["validation_error"] = valErr.Error()
+	state.Vars["validation_error_reason"] = valErr.Reason
+	state.Vars["validation_error_field"] = valErr.Field
+	state.Vars["validation_error_message"] = valErr.Message
+	state.Vars["validation_error_value"] = valErr.Value
+	state.Vars["validation_error_expected"] = valErr.Expected
+
+	return false
 }
