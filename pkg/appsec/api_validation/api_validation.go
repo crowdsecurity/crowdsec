@@ -88,6 +88,57 @@ type SchemaData struct {
 	Options SchemaOptions
 }
 
+// builtinBodyDecoders is the set of decoder identifiers we expose to users.
+// The names are intentionally stable (decoupled from kin-openapi's internal
+// symbol names), so the underlying library can rename/reshape its API without
+// forcing a user-visible config change. "zip" is deliberately excluded: the
+// kin-openapi zip decoder has no zip-bomb protection.
+var builtinBodyDecoders = map[string]openapi3filter.BodyDecoder{
+	"json":       openapi3filter.JSONBodyDecoder,
+	"urlencoded": openapi3filter.UrlencodedBodyDecoder,
+	"multipart":  openapi3filter.MultipartBodyDecoder,
+	"yaml":       openapi3filter.YamlBodyDecoder,
+	"csv":        openapi3filter.CsvBodyDecoder,
+	"plain":      openapi3filter.PlainBodyDecoder,
+	"file":       openapi3filter.FileBodyDecoder,
+}
+
+// kinDefaultContentTypes enumerates the content types kin-openapi pre-registers
+// in its package init. We drop all of them so we control exactly which body
+// decoders are reachable.
+var kinDefaultContentTypes = []string{
+	"application/json",
+	"application/json-patch+json",
+	"application/merge-patch+json",
+	"application/ld+json",
+	"application/hal+json",
+	"application/vnd.api+json",
+	"application/octet-stream",
+	"application/problem+json",
+	"application/x-www-form-urlencoded",
+	"application/x-yaml",
+	"application/yaml",
+	"application/zip",
+	"multipart/form-data",
+	"text/csv",
+	"text/plain",
+}
+
+// allowedDefaultContentTypes is the set we register by default in
+// NewRequestValidator. Anything else (yaml, plain text, csv, file uploads of
+// raw binary…) has to be opted into by the user via RegisterBodyDecoder.
+var allowedDefaultContentTypes = map[string]openapi3filter.BodyDecoder{
+	"application/json":                  openapi3filter.JSONBodyDecoder,
+	"application/json-patch+json":       openapi3filter.JSONBodyDecoder,
+	"application/merge-patch+json":      openapi3filter.JSONBodyDecoder,
+	"application/ld+json":               openapi3filter.JSONBodyDecoder,
+	"application/hal+json":              openapi3filter.JSONBodyDecoder,
+	"application/vnd.api+json":          openapi3filter.JSONBodyDecoder,
+	"application/problem+json":          openapi3filter.JSONBodyDecoder,
+	"application/x-www-form-urlencoded": openapi3filter.UrlencodedBodyDecoder,
+	"multipart/form-data":               openapi3filter.MultipartBodyDecoder,
+}
+
 type RequestValidator struct {
 	loaders        map[string]*openapi3.Loader
 	openAPISchemas map[string]SchemaData
@@ -95,11 +146,43 @@ type RequestValidator struct {
 }
 
 func NewRequestValidator(logger *log.Entry) *RequestValidator {
+	// kin-openapi keeps its body-decoder registry in a package-level global
+	// (openapi3filter.bodyDecoders). We cannot scope decoder availability per
+	// RequestValidator instance without forking the library. In a process with
+	// multiple appsec datasources, the registry is therefore shared — the last
+	// validator to reset + register defaults wins. Today this is fine (one
+	// appsec datasource per process is the norm). If per-datasource isolation
+	// is ever needed, pre-filtering request Content-Type against a per-
+	// validator allowlist before calling openapi3filter.ValidateRequest is the
+	// cleanest path forward.
+	for _, ct := range kinDefaultContentTypes {
+		openapi3filter.UnregisterBodyDecoder(ct)
+	}
+	for ct, decoder := range allowedDefaultContentTypes {
+		openapi3filter.RegisterBodyDecoder(ct, decoder)
+	}
+
 	return &RequestValidator{
 		loaders:        make(map[string]*openapi3.Loader),
 		openAPISchemas: make(map[string]SchemaData),
 		logger:         logger,
 	}
+}
+
+// RegisterBodyDecoder registers a decoder for the given Content-Type so that
+// a loaded OpenAPI schema can declare and validate requests of that type.
+// decoderName must be one of the built-in identifiers: "json", "urlencoded",
+// "multipart", "yaml", "csv", "plain", "file". Note that this mutates
+// kin-openapi's process-global decoder registry — see the note on
+// NewRequestValidator.
+func (rv *RequestValidator) RegisterBodyDecoder(contentType, decoderName string) error {
+	decoder, ok := builtinBodyDecoders[decoderName]
+	if !ok {
+		return fmt.Errorf("unknown body decoder %q", decoderName)
+	}
+	openapi3filter.RegisterBodyDecoder(contentType, decoder)
+	rv.logger.Debugf("registered body decoder %q for content type %q", decoderName, contentType)
+	return nil
 }
 
 func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
@@ -279,27 +362,6 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 			AuthenticationFunc: rv.authFunc,
 		},
 	}
-
-	//FIXME: this will automatically parse the request body
-	// The supported content types are:
-	//// 	RegisterBodyDecoder("application/json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/json-patch+json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/ld+json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/hal+json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/vnd.api+json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/octet-stream", FileBodyDecoder)
-	//RegisterBodyDecoder("application/problem+json", JSONBodyDecoder)
-	//RegisterBodyDecoder("application/x-www-form-urlencoded", urlencodedBodyDecoder)
-	//RegisterBodyDecoder("application/x-yaml", yamlBodyDecoder)
-	//RegisterBodyDecoder("application/yaml", yamlBodyDecoder)
-	//RegisterBodyDecoder("application/zip", zipFileBodyDecoder)
-	//RegisterBodyDecoder("multipart/form-data", multipartBodyDecoder)
-	//RegisterBodyDecoder("text/csv", csvBodyDecoder)
-	//RegisterBodyDecoder("text/plain", plainBodyDecoder)
-
-	// THe zip decoder seems a bit dangerous, as it does not seem to have protection against zip bombs
-	// Let's just disable it for now, we'll see what we want to do when the vuln is fixed
-	openapi3filter.UnregisterBodyDecoder("application/zip")
 
 	err = openapi3filter.ValidateRequest(ctx, input)
 	if err == nil {

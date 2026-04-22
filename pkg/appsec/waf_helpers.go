@@ -18,8 +18,9 @@ func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 		"SetRemediationByTag":     w.SetActionByTag,
 		"SetRemediationByID":      w.SetActionByID,
 		"SetRemediationByName":    w.SetActionByName,
-		"LoadAPISchemaWithName":    w.LoadAPISchemaWithName,
-		"LoadAPISchemaWithOptions": w.LoadAPISchemaWithOptions,
+		"LoadAPISchemaWithName":         w.LoadAPISchemaWithName,
+		"LoadAPISchemaWithOptions":      w.LoadAPISchemaWithOptions,
+		"RegisterAPISchemaBodyDecoder":  w.RegisterAPISchemaBodyDecoder,
 	}
 }
 

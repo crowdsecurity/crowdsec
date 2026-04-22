@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -928,4 +929,60 @@ func TestInvalidRoutePolicy(t *testing.T) {
 	err = rv.LoadSchema("basic", string(schemaBytes), &SchemaOptions{OnRouteNotFound: "explode"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid route policy")
+}
+
+func TestBodyDecoderRegistration(t *testing.T) {
+	logger := log.New().WithField("test", "apivalidation")
+
+	t.Run("unknown decoder name errors", func(t *testing.T) {
+		rv := NewRequestValidator(logger)
+		err := rv.RegisterBodyDecoder("application/foo", "bogus")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown body decoder")
+	})
+
+	t.Run("zip decoder is not exposed", func(t *testing.T) {
+		rv := NewRequestValidator(logger)
+		err := rv.RegisterBodyDecoder("application/zip", "zip")
+		require.Error(t, err, "zip must not be registrable via the public helper")
+	})
+
+	t.Run("NewRequestValidator re-registers only the default allowlist", func(t *testing.T) {
+		_ = NewRequestValidator(logger)
+
+		// Defaults must be present.
+		for _, ct := range []string{
+			"application/json",
+			"application/x-www-form-urlencoded",
+			"multipart/form-data",
+		} {
+			require.NotNil(t, openapi3filter.RegisteredBodyDecoder(ct),
+				"default content type %q should be registered after NewRequestValidator", ct)
+		}
+
+		// Kin's non-allowlisted defaults must be gone.
+		for _, ct := range []string{
+			"application/x-yaml",
+			"application/yaml",
+			"application/zip",
+			"text/csv",
+			"text/plain",
+			"application/octet-stream",
+		} {
+			require.Nil(t, openapi3filter.RegisteredBodyDecoder(ct),
+				"content type %q should not be registered by default", ct)
+		}
+	})
+
+	t.Run("user-registered decoder becomes available", func(t *testing.T) {
+		rv := NewRequestValidator(logger)
+		require.Nil(t, openapi3filter.RegisteredBodyDecoder("application/x-yaml"),
+			"sanity: yaml should not be registered by default")
+
+		require.NoError(t, rv.RegisterBodyDecoder("application/x-yaml", "yaml"))
+		require.NotNil(t, openapi3filter.RegisteredBodyDecoder("application/x-yaml"))
+
+		// Reset for subsequent tests.
+		_ = NewRequestValidator(logger)
+	})
 }

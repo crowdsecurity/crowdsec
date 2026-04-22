@@ -966,6 +966,17 @@ func (w *AppsecRuntimeConfig) LoadAPISchemaWithOptions(ref string, filename stri
 	return w.loadAPISchema(ref, filename, schemaOpts)
 }
 
+// RegisterAPISchemaBodyDecoder allows a user's on_load hook to add a Content-Type
+// to the set the API schema validator can decode. decoderName must be one of
+// the stable built-in identifiers exported by the api_validation package
+// ("json", "urlencoded", "multipart", "yaml", "csv", "plain", "file"). Note
+// that the underlying kin-openapi decoder registry is process-global: today
+// all appsec datasources in the same process share the same set of
+// registered body decoders.
+func (w *AppsecRuntimeConfig) RegisterAPISchemaBodyDecoder(contentType, decoderName string) error {
+	return w.RequestValidator.RegisterBodyDecoder(contentType, decoderName)
+}
+
 func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, error) {
 	out := &apivalidation.SchemaOptions{}
 	for k, v := range opts {
