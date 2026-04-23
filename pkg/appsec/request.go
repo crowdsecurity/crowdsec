@@ -291,62 +291,117 @@ func (r *ReqDumpFilter) ToJSON() error {
 	return nil
 }
 
+// forwardedHeaders are the X-Crowdsec-Appsec-* headers the bouncer supplies to the WAF.
+// They carry the original request's metadata and must be stripped before handing the request
+// off to Coraza so they aren't mistaken for client-supplied headers.
+var forwardedHeaders = []string{
+	IPHeaderName,
+	HostHeaderName,
+	URIHeaderName,
+	VerbHeaderName,
+	UserAgentHeaderName,
+	APIKeyHeaderName,
+	HTTPVersionHeaderName,
+	TransactionIDHeaderName,
+}
+
+// readRequestBody reads r.Body bounded by bodySettings.MaxSize, applies the oversize action, and
+// replaces r.Body with a buffered copy of what was kept so downstream code can still read it.
+// A timeout on Read is treated as end-of-body — whatever was received is returned without error.
+func readRequestBody(r *http.Request, bodySettings BodySettings, logger *log.Entry) (body []byte, truncated, exceeded bool, err error) {
+	if r.Body == nil {
+		return nil, false, false, nil
+	}
+
+	maxSize := bodySettings.MaxSize
+	if maxSize <= 0 {
+		maxSize = DefaultMaxBodySize
+	}
+
+	action := bodySettings.Action
+	if action == "" {
+		action = BodySizeActionDrop
+	}
+
+	// Always read from the actual stream — never trust Content-Length.
+	// Read up to maxSize+1 bytes so we can detect whether the body exceeds the limit.
+	body, err = io.ReadAll(io.LimitReader(r.Body, maxSize+1))
+	var netErr net.Error
+	hasTimedout := err != nil && errors.As(err, &netErr) && netErr.Timeout()
+	// ErrUnexpectedEOF can occur on POST requests without a body — accept what was read.
+	// A net.Error timeout means the read deadline fired; keep what we got and move on.
+	// Bouncers are semi-trusted; misbehaving ones would otherwise stall the WAF for seconds.
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !hasTimedout {
+		return nil, false, false, fmt.Errorf("unable to read body: %w", err)
+	}
+
+	if int64(len(body)) > maxSize {
+		// Drain remaining bytes so the client doesn't time out waiting for us to finish reading.
+		// The LimitReader stopped at maxSize+1, so r.Body may still have unread bytes.
+		_, _ = io.Copy(io.Discard, r.Body)
+
+		switch action {
+		case BodySizeActionDrop:
+			logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
+			body = nil
+			exceeded = true
+		case BodySizeActionAllow:
+			logger.Warnf("request body exceeds limit %d bytes, skipping body inspection", maxSize)
+			body = nil
+		case BodySizeActionPartial:
+			logger.Warnf("request body exceeds limit %d bytes, truncating", maxSize)
+			body = body[:maxSize]
+			truncated = true
+		}
+	}
+
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+	return body, truncated, exceeded, nil
+}
+
+// applyHTTPVersion parses the 2-character HTTP version header (e.g. "11" for HTTP/1.1, "20" for HTTP/2)
+// and updates r.Proto / r.ProtoMajor / r.ProtoMinor. Malformed values are logged and ignored.
+func applyHTTPVersion(r *http.Request, version string, logger *log.Entry) {
+	if len(version) != 2 ||
+		version[0] < '0' || version[0] > '9' ||
+		version[1] < '0' || version[1] > '9' {
+		logger.Warnf("Invalid value %s for HTTP version header", version)
+		return
+	}
+
+	r.ProtoMajor = int(version[0] - '0')
+	r.ProtoMinor = int(version[1] - '0')
+	if r.ProtoMajor == 2 && r.ProtoMinor == 0 {
+		r.Proto = "HTTP/2"
+	} else {
+		r.Proto = "HTTP/" + string(version[0]) + "." + string(version[1])
+	}
+}
+
+// normalizeRemoteAddr extracts the IP from a "host:port" address and returns its canonical form.
+// Returns the input unchanged (and logs) if the value can't be parsed.
+func normalizeRemoteAddr(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		log.Errorf("Invalid appsec remote IP source %v: %s", remoteAddr, err.Error())
+		return remoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		log.Errorf("Invalid appsec remote IP address source %v", remoteAddr)
+		return remoteAddr
+	}
+	return ip.String()
+}
+
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine.
 // bodySettings controls the maximum body size and what to do when the limit is exceeded.
 func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySettings BodySettings) (ParsedRequest, error) {
-	var (
-		err              error
-		body             []byte
-		bodyTruncated    bool
-		bodySizeExceeded bool
-	)
-
-	if r.Body != nil {
-		maxSize := bodySettings.MaxSize
-		if maxSize <= 0 {
-			maxSize = DefaultMaxBodySize
-		}
-
-		action := bodySettings.Action
-		if action == "" {
-			action = BodySizeActionDrop
-		}
-
-		var netErr net.Error
-		// Always read from the actual stream — never trust Content-Length.
-		// Read up to maxSize+1 bytes so we can detect whether the body exceeds the limit.
-		body, err = io.ReadAll(io.LimitReader(r.Body, maxSize+1))
-		hasTimedout := err != nil && errors.As(err, &netErr) && netErr.Timeout()
-		// io.ErrUnexpectedEOF can occur for POST request without a body, ignore it and use what was read as the body
-		// Timeout is coming from the config, which defaults to 1s. If the client send the body too slowly, use whatever we could read during the interval
-		// Bouncers are expected to be well behaved and send the body as fast as they can, this mostly handles POST requests with empty bodies
-		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !hasTimedout {
-			return ParsedRequest{}, fmt.Errorf("unable to read body: %w", err)
-		}
-
-		if int64(len(body)) > maxSize {
-			// Drain the remaining body so the client doesn't time out waiting for the server
-			// to finish reading. The LimitReader stopped at maxSize+1, so r.Body may still
-			// have unread bytes.
-			_, _ = io.Copy(io.Discard, r.Body)
-
-			switch action {
-			case BodySizeActionDrop:
-				logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
-				body = nil
-				bodySizeExceeded = true
-			case BodySizeActionAllow:
-				logger.Warnf("request body exceeds limit %d bytes, skipping body inspection", maxSize)
-				body = nil
-			case BodySizeActionPartial:
-				logger.Warnf("request body exceeds limit %d bytes, truncating", maxSize)
-				body = body[:maxSize]
-				bodyTruncated = true
-			}
-		}
-
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+	body, bodyTruncated, bodySizeExceeded, err := readRequestBody(r, bodySettings, logger)
+	if err != nil {
+		return ParsedRequest{}, err
 	}
+
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
@@ -363,63 +418,25 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 	}
 
 	clientHost := r.Header.Get(HostHeaderName)
-	if clientHost == "" { //this might be empty
+	if clientHost == "" {
 		logger.Debugf("missing '%s' header", HostHeaderName)
 	}
 
-	userAgent := r.Header.Get(UserAgentHeaderName) //This one is optional
+	userAgent := r.Header.Get(UserAgentHeaderName)
 
-	// Extract transaction ID from header if present, otherwise generate a new UUID
 	transactionID := r.Header.Get(TransactionIDHeaderName)
 	if transactionID == "" {
 		transactionID = uuid.New().String()
 	}
 
-	httpVersion := r.Header.Get(HTTPVersionHeaderName)
-	if httpVersion == "" {
+	if httpVersion := r.Header.Get(HTTPVersionHeaderName); httpVersion != "" {
+		applyHTTPVersion(r, httpVersion, logger)
+	} else {
 		logger.Debugf("missing '%s' header", HTTPVersionHeaderName)
 	}
 
-	if httpVersion != "" && len(httpVersion) == 2 &&
-		httpVersion[0] >= '0' && httpVersion[0] <= '9' &&
-		httpVersion[1] >= '0' && httpVersion[1] <= '9' {
-		major := httpVersion[0]
-		minor := httpVersion[1]
-
-		r.ProtoMajor = int(major - '0')
-		r.ProtoMinor = int(minor - '0')
-		if r.ProtoMajor == 2 && r.ProtoMinor == 0 {
-			r.Proto = "HTTP/2"
-		} else {
-			r.Proto = "HTTP/" + string(major) + "." + string(minor)
-		}
-	} else if httpVersion != "" {
-		logger.Warnf("Invalid value %s for HTTP version header", httpVersion)
-	}
-
-	// delete those headers before coraza process the request
-	delete(r.Header, IPHeaderName)
-	delete(r.Header, HostHeaderName)
-	delete(r.Header, URIHeaderName)
-	delete(r.Header, VerbHeaderName)
-	delete(r.Header, UserAgentHeaderName)
-	delete(r.Header, APIKeyHeaderName)
-	delete(r.Header, HTTPVersionHeaderName)
-	delete(r.Header, TransactionIDHeaderName)
-
-	originalHTTPRequest := r.Clone(r.Context())
-	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
-	originalHTTPRequest.RemoteAddr = clientIP
-	originalHTTPRequest.RequestURI = clientURI
-	originalHTTPRequest.Method = clientMethod
-	originalHTTPRequest.Host = clientHost
-	if userAgent != "" {
-		originalHTTPRequest.Header.Set("User-Agent", userAgent)
-		r.Header.Set("User-Agent", userAgent) //Override the UA in the original request, as this is what will be used by the waf engine
-	} else {
-		//If we don't have a forwarded UA, delete the one that was set by the remediation in both original and incoming
-		originalHTTPRequest.Header.Del("User-Agent")
-		r.Header.Del("User-Agent")
+	for _, h := range forwardedHeaders {
+		delete(r.Header, h)
 	}
 
 	parsedURL, err := url.Parse(clientURI)
@@ -427,25 +444,25 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
+	originalHTTPRequest := r.Clone(r.Context())
+	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
+	originalHTTPRequest.RemoteAddr = clientIP
+	originalHTTPRequest.RequestURI = clientURI
+	originalHTTPRequest.Method = clientMethod
+	originalHTTPRequest.Host = clientHost
 	originalHTTPRequest.URL = parsedURL
+	if userAgent != "" {
+		// Override the UA in the original request — this is what the WAF engine sees.
+		originalHTTPRequest.Header.Set("User-Agent", userAgent)
+		r.Header.Set("User-Agent", userAgent)
+	} else {
+		// No forwarded UA: drop any UA the remediation layer added, on both copies.
+		originalHTTPRequest.Header.Del("User-Agent")
+		r.Header.Del("User-Agent")
+	}
 
-	var remoteAddrNormalized string
 	if r.RemoteAddr == "@" {
 		r.RemoteAddr = "127.0.0.1:65535"
-	}
-	// TODO we need to implement forwrded headers
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
-		remoteAddrNormalized = r.RemoteAddr
-	} else {
-		ip := net.ParseIP(host)
-		if ip == nil {
-			log.Errorf("Invalid appsec remote IP address source %v", r.RemoteAddr)
-			remoteAddrNormalized = r.RemoteAddr
-		} else {
-			remoteAddrNormalized = ip.String()
-		}
 	}
 
 	return ParsedRequest{
@@ -465,7 +482,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		Args:                 exprhelpers.ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
-		RemoteAddrNormalized: remoteAddrNormalized,
+		RemoteAddrNormalized: normalizeRemoteAddr(r.RemoteAddr),
 		HTTPRequest:          originalHTTPRequest,
 	}, nil
 }
