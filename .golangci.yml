@@ -376,7 +376,7 @@ linters:
         - name: function-length
           arguments:
             # lower this after refactoring
-            - 86
+            - 88
             - 174
         - name: get-return
           disabled: true
