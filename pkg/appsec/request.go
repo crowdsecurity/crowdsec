@@ -19,13 +19,13 @@ import (
 )
 
 const (
-	URIHeaderName         = "X-Crowdsec-Appsec-Uri"
-	VerbHeaderName        = "X-Crowdsec-Appsec-Verb"
-	HostHeaderName        = "X-Crowdsec-Appsec-Host"
-	IPHeaderName          = "X-Crowdsec-Appsec-Ip"
-	APIKeyHeaderName      = "X-Crowdsec-Appsec-Api-Key"
-	UserAgentHeaderName   = "X-Crowdsec-Appsec-User-Agent"
-	HTTPVersionHeaderName = "X-Crowdsec-Appsec-Http-Version"
+	URIHeaderName           = "X-Crowdsec-Appsec-Uri"
+	VerbHeaderName          = "X-Crowdsec-Appsec-Verb"
+	HostHeaderName          = "X-Crowdsec-Appsec-Host"
+	IPHeaderName            = "X-Crowdsec-Appsec-Ip"
+	APIKeyHeaderName        = "X-Crowdsec-Appsec-Api-Key"
+	UserAgentHeaderName     = "X-Crowdsec-Appsec-User-Agent"
+	HTTPVersionHeaderName   = "X-Crowdsec-Appsec-Http-Version"
 	TransactionIDHeaderName = "X-Crowdsec-Appsec-Transaction-Id"
 )
 
@@ -312,12 +312,15 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 			action = BodySizeActionDrop
 		}
 
+		var netErr net.Error
 		// Always read from the actual stream — never trust Content-Length.
 		// Read up to maxSize+1 bytes so we can detect whether the body exceeds the limit.
 		body, err = io.ReadAll(io.LimitReader(r.Body, maxSize+1))
-		// io.ErrUnexpectedEOF means the connection was closed without a clean EOF (e.g. no
-		// Content-Length and no body). Treat whatever was read as the complete body.
-		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+		hasTimedout := err != nil && errors.As(err, &netErr) && netErr.Timeout()
+		// io.ErrUnexpectedEOF can occur for POST request without a body, ignore it and use what was read as the body
+		// Timeout is coming from the config, which defaults to 1s. If the client send the body too slowly, use whatever we could read during the interval
+		// Bouncers are expected to be well behaved and send the body as fast as they can, this mostly handles POST requests with empty bodies
+		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !hasTimedout {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %w", err)
 		}
 
