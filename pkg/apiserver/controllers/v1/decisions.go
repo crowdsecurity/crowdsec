@@ -168,6 +168,8 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 
 	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+	// callers reuse the same filters map across calls; clear any pagination cursor left by a previous call.
+	delete(filters, "id_gt")
 
 	for {
 		if lastId > 0 {
@@ -234,6 +236,8 @@ func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]
 
 	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+	// callers reuse the same filters map across calls; clear any pagination cursor left by a previous call.
+	delete(filters, "id_gt")
 
 	for {
 		if lastId > 0 {
