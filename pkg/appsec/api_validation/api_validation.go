@@ -185,6 +185,27 @@ func (rv *RequestValidator) RegisterBodyDecoder(contentType, decoderName string)
 	return nil
 }
 
+// warnUnsupportedSecuritySchemes scans a schema's declared security schemes
+// once at load time and warns for types the WAF cannot enforce (oauth2,
+// openIdConnect). Any request hitting a route guarded by such a scheme will
+// fail validation at runtime; the warning is emitted here so operators learn
+// about the gap during schema load rather than via per-request log spam.
+func (rv *RequestValidator) warnUnsupportedSecuritySchemes(ref string, doc *openapi3.T) {
+	if doc.Components == nil {
+		return
+	}
+	for name, schemeRef := range doc.Components.SecuritySchemes {
+		if schemeRef == nil || schemeRef.Value == nil {
+			continue
+		}
+		switch schemeRef.Value.Type {
+		case "oauth2", "openIdConnect":
+			rv.logger.Warnf("schema %q: security scheme %q (type %s) is not supported and will fail validation for any request that requires it",
+				ref, name, schemeRef.Value.Type)
+		}
+	}
+}
+
 func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	authTokenValue := ""
 	switch input.SecurityScheme.Type {
@@ -249,10 +270,10 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 		default:
 			return fmt.Errorf("unsupported apiKey location %s", input.SecurityScheme.In)
 		}
-	case "oauth2":
-		rv.logger.Warnf("oauth2 security scheme not supported")
-	case "openIdConnect":
-		rv.logger.Warnf("openIdConnect security scheme not supported")
+	case "oauth2", "openIdConnect":
+		// Warned at schema load (see warnUnsupportedSecuritySchemes); fail
+		// the auth check here since we cannot validate these from the WAF.
+		return fmt.Errorf("%s security scheme not supported", input.SecurityScheme.Type)
 	default:
 		return fmt.Errorf("unsupported security scheme type %s", input.SecurityScheme.Type)
 	}
@@ -294,6 +315,8 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOp
 	if err := doc.Validate(loader.Context, openapi3.DisableExamplesValidation()); err != nil {
 		return err
 	}
+
+	rv.warnUnsupportedSecuritySchemes(ref, doc)
 
 	router, err := legacyrouter.NewRouter(doc)
 	if err != nil {
