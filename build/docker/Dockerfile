@@ -34,7 +34,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 CGO_CFLAGS="-D_LARGEFILE64_
 # In case we need to remove agents here..
 # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-FROM docker.io/alpine:3.21 AS slim
+FROM docker.io/alpine:3.23 AS slim
 
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash rsync && \
     mkdir -p /staging/etc/crowdsec && \
