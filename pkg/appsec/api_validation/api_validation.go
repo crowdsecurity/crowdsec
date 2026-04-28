@@ -239,7 +239,7 @@ func (rv *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.
 	case "apiKey":
 		switch input.SecurityScheme.In {
 		case "query":
-			//FIXME: we probably want a more lax version
+			//Because we are checking for the presence of the API key, it probably does not matter if go drops parameters using ; as a separator
 			values := input.RequestValidationInput.Request.URL.Query()[input.SecurityScheme.Name]
 			if len(values) == 0 {
 				return fmt.Errorf("query parameter %s not found", input.SecurityScheme.Name)
@@ -307,13 +307,13 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOp
 
 	doc, err := loader.LoadFromData([]byte(schema))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load schema %s: %w", ref, err)
 	}
 
 	// Is it a valid OpenAPI schema?
-	// FIXME: look into opts
+	// TODO: look into opts, should we expose some of them to the user ?
 	if err := doc.Validate(loader.Context, openapi3.DisableExamplesValidation()); err != nil {
-		return err
+		return fmt.Errorf("failed to validate schema %s: %w", ref, err)
 	}
 
 	rv.warnUnsupportedSecuritySchemes(ref, doc)
@@ -375,12 +375,12 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 
 	input := &openapi3filter.RequestValidationInput{
 		Request:     r,
-		QueryParams: r.URL.Query(), //FIXME: we probably want a more lax version
+		QueryParams: r.URL.Query(),
 		Route:       route,
 		PathParams:  pathParam,
 		Options: &openapi3filter.Options{
-			// If true, all validation errors are returned. Should we stop at the 1st one ?
-			// Having to deal with multiple error will make creating a user-friendly event harder
+			// Stop at the 1st error, we are a WAF, not an actual schema validator
+			// And having multiple errors would make it harder to expose a proper event to the user
 			MultiError:         false,
 			AuthenticationFunc: rv.authFunc,
 		},
