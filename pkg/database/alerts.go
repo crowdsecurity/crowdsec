@@ -366,7 +366,7 @@ func (c *Client) UpdateCommunityBlocklist(ctx context.Context, alertItem *models
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
+func (c *Client) createDecisionBatch(ctx context.Context, client *ent.Client, simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := []*ent.DecisionCreate{}
 
 	for _, decisionItem := range decisions {
@@ -381,12 +381,12 @@ func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAt
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			rng, err = csnet.NewRange(*decisionItem.Value)
 			if err != nil {
-				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
+				c.Log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
 			}
 		}
 
-		newDecision := c.Ent.Decision.Create().
+		newDecision := client.Decision.Create().
 			SetUntil(stopAtTime.Add(duration)).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
@@ -408,7 +408,7 @@ func (c *Client) createDecisionBatch(ctx context.Context, simulated bool, stopAt
 		return nil, nil
 	}
 
-	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(ctx)
+	ret, err := client.Decision.CreateBulk(decisionCreate...).Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -541,10 +541,10 @@ func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.C
 	return client.Meta.CreateBulk(metaBulk...).Save(ctx)
 }
 
-func buildDecisions(ctx context.Context, logger log.FieldLogger, client *Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
+func (c *Client) buildDecisions(ctx context.Context, logger log.FieldLogger, client *ent.Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
 	decisions := []*ent.Decision{}
-	if err := slicetools.Batch(ctx, alertItem.Decisions, client.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
-		ret, err := client.createDecisionBatch(ctx, *alertItem.Simulated, stopAtTime, part)
+	if err := slicetools.Batch(ctx, alertItem.Decisions, c.decisionBulkSize, func(ctx context.Context, part []*models.Decision) error {
+		ret, err := c.createDecisionBatch(ctx, client, *alertItem.Simulated, stopAtTime, part)
 		if err != nil {
 			return fmt.Errorf("creating alert decisions: %w", err)
 		}
@@ -582,7 +582,7 @@ func retryOnBusy(fn func() error) error {
 	return fmt.Errorf("exceeded %d busy retries", maxLockRetries)
 }
 
-func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]string, error) {
+func (c *Client) saveAlerts(ctx context.Context, client *ent.Client, batch []alertCreatePlan) ([]string, error) {
 	if len(batch) == 0 {
 		log.Warningf("no alerts to create, discarded?")
 		return nil, nil
@@ -598,7 +598,7 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 		builders[i] = batch[i].builder
 	}
 
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(builders...).Save(ctx)
+	alertsCreateBulk, err := client.Alert.CreateBulk(builders...).Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("bulk creating alert: %w: %w", err, BulkError)
 	}
@@ -614,7 +614,7 @@ func saveAlerts(ctx context.Context, c *Client, batch []alertCreatePlan) ([]stri
 
 		if err := slicetools.Batch(ctx, d, c.decisionBulkSize, func(ctx context.Context, d2 []*ent.Decision) error {
 			return retryOnBusy(func() error {
-				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
+				_, err := client.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(ctx)
 				return err
 			})
 		}); err != nil {
@@ -631,11 +631,16 @@ type alertCreatePlan struct {
 }
 
 func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
+	tx, err := c.Ent.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creating alert transaction: %w: %w", err, BulkError)
+	}
+
+	txEnt := tx.Client()
+
 	batch := make([]alertCreatePlan, 0, len(alerts))
 
 	for _, alertItem := range alerts {
-		var err error
-
 		startAtTime, stopAtTime := parseAlertTimes(alertItem, c.Log)
 
 		// display proper alert in logs
@@ -643,19 +648,19 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 			c.Log.Info(disp)
 		}
 
-		events, err := buildEventCreates(ctx, c.Log, c.Ent, machineID, alertItem)
+		events, err := buildEventCreates(ctx, c.Log, txEnt, machineID, alertItem)
 		if err != nil {
-			return nil, fmt.Errorf("building events for alert %s: %w", alertItem.UUID, err)
+			return nil, rollbackOnError(tx, err, fmt.Sprintf("building events for alert %s", alertItem.UUID))
 		}
 
-		metas, err := buildMetaCreates(ctx, c.Log, c.Ent, alertItem)
+		metas, err := buildMetaCreates(ctx, c.Log, txEnt, alertItem)
 		if err != nil {
 			c.Log.Warningf("error creating alert meta: %s", err)
 		}
 
-		decisions, discardCount, err := buildDecisions(ctx, c.Log, c, alertItem, stopAtTime)
+		decisions, discardCount, err := c.buildDecisions(ctx, c.Log, txEnt, alertItem, stopAtTime)
 		if err != nil {
-			return nil, fmt.Errorf("building decisions for alert %s: %w", alertItem.UUID, err)
+			return nil, rollbackOnError(tx, err, fmt.Sprintf("building decisions for alert %s", alertItem.UUID))
 		}
 
 		// if all decisions were discarded, discard the alert too
@@ -664,7 +669,7 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 			continue
 		}
 
-		builder := c.Ent.Alert.
+		builder := txEnt.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
 			SetMessage(*alertItem.Message).
@@ -702,9 +707,13 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 	}
 
 	// Save alerts, then attach decisions with retry logic
-	ids, err := saveAlerts(ctx, c, batch)
+	ids, err := c.saveAlerts(ctx, txEnt, batch)
 	if err != nil {
-		return nil, err
+		return nil, rollbackOnError(tx, err, "saving alerts")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("committing alert transaction: %w: %w", err, BulkError)
 	}
 
 	return ids, nil

@@ -1,6 +1,14 @@
 package appsec
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"net/http"
+	"testing"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+)
 
 func TestBodyDumper(t *testing.T) {
 	tests := []struct {
@@ -173,6 +181,95 @@ func TestBodyDumper(t *testing.T) {
 					t.Fatalf("test %d (%s) failed, got %d, expected %d", idx, test.name, len(v), len(test.expect.Headers[k]))
 				}
 			}
+		})
+	}
+}
+
+func makeTestRequest(t *testing.T, body []byte) *http.Request {
+	t.Helper()
+
+	var bodyReader io.ReadCloser
+	if body != nil {
+		bodyReader = io.NopCloser(bytes.NewReader(body))
+	}
+
+	r := &http.Request{
+		RemoteAddr: "1.2.3.4:1234",
+		Body:       bodyReader,
+		Header: http.Header{
+			IPHeaderName:   []string{"1.2.3.4"},
+			URIHeaderName:  []string{"/test"},
+			VerbHeaderName: []string{"POST"},
+		},
+	}
+
+	return r
+}
+
+func TestNewParsedRequestFromRequestBodyLimit(t *testing.T) {
+	logger := log.WithField("test", "body-limit")
+
+	tests := []struct {
+		name             string
+		body             []byte
+		settings         BodySettings
+		expectBody       []byte // nil means expect empty/nil body
+		expectTruncated  bool
+		expectExceeded   bool
+	}{
+		{
+			name:     "no body",
+			body:     nil,
+			settings: BodySettings{MaxSize: 10, Action: BodySizeActionDrop},
+		},
+		{
+			name:       "within limit",
+			body:       bytes.Repeat([]byte("x"), 5),
+			settings:   BodySettings{MaxSize: 10, Action: BodySizeActionDrop},
+			expectBody: bytes.Repeat([]byte("x"), 5),
+		},
+		{
+			name:       "exactly at limit",
+			body:       bytes.Repeat([]byte("x"), 10),
+			settings:   BodySettings{MaxSize: 10, Action: BodySizeActionDrop},
+			expectBody: bytes.Repeat([]byte("x"), 10),
+		},
+		{
+			name:           "over limit – drop",
+			body:           bytes.Repeat([]byte("x"), 15),
+			settings:       BodySettings{MaxSize: 10, Action: BodySizeActionDrop},
+			expectExceeded: true,
+		},
+		{
+			name:            "over limit – partial",
+			body:            bytes.Repeat([]byte("x"), 15),
+			settings:        BodySettings{MaxSize: 10, Action: BodySizeActionPartial},
+			expectBody:      bytes.Repeat([]byte("x"), 10),
+			expectTruncated: true,
+		},
+		{
+			name:     "over limit – allow",
+			body:     bytes.Repeat([]byte("x"), 15),
+			settings: BodySettings{MaxSize: 10, Action: BodySizeActionAllow},
+		},
+		{
+			name:       "zero MaxSize uses default (small body fits)",
+			body:       bytes.Repeat([]byte("x"), 5),
+			settings:   BodySettings{},
+			expectBody: bytes.Repeat([]byte("x"), 5),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := makeTestRequest(t, test.body)
+
+			parsed, err := NewParsedRequestFromRequest(r, logger, test.settings)
+			require.NoError(t, err)
+
+			require.Equal(t, test.expectTruncated, parsed.BodyTruncated)
+			require.Equal(t, test.expectExceeded, parsed.BodySizeExceeded)
+			require.Equal(t, test.expectBody, parsed.Body)
 		})
 	}
 }

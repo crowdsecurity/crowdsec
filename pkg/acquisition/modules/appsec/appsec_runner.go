@@ -163,6 +163,20 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 		return nil
 	}
 
+	if request.BodySizeExceeded {
+		// DisableBodyInspection in pre_eval also opts out of the size-exceeded drop:
+		// the operator has explicitly accepted that this request's body will not be
+		// processed, so there is nothing to protect the WAF from.
+		if !state.DisableBodyInspection {
+			r.logger.Warnf("request body exceeded maximum allowed size, dropping request")
+			if err = r.AppsecRuntime.DropRequest(state, request, "request body exceeded maximum allowed size"); err != nil {
+				r.logger.Errorf("unable to drop request: %s", err)
+			}
+			return nil
+		}
+		r.logger.Debugf("request body exceeded maximum allowed size but body inspection is disabled, allowing request")
+	}
+
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
 	for k, v := range request.Args {
@@ -195,21 +209,26 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 		return nil
 	}
 
-	if len(request.Body) > 0 {
-		in, _, err = state.Tx.WriteRequestBody(request.Body)
-		if err != nil {
-			r.logger.Errorf("unable to write request body : %s", err)
-			return err
+	if state.DisableBodyInspection {
+		r.logger.Debugf("body inspection is disabled for this request, skipping body write")
+	} else {
+		if request.BodyTruncated {
+			r.logger.Warnf("request body was truncated to %d bytes (partial mode)", len(request.Body))
 		}
-		if in != nil {
-			return nil
+
+		if len(request.Body) > 0 {
+			in, _, err = state.Tx.WriteRequestBody(request.Body)
+			if err != nil {
+				r.logger.Warnf("unable to write request body: %s", err)
+			} else if in != nil {
+				return nil
+			}
 		}
 	}
 
 	in, err = state.Tx.ProcessRequestBody()
 	if err != nil {
-		r.logger.Errorf("unable to process request body : %s", err)
-		return err
+		r.logger.Warnf("unable to process request body: %s", err)
 	}
 
 	if in != nil {

@@ -9,18 +9,20 @@ import (
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
-		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
-		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
-		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
-		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
-		"RemoveOutBandRuleByTag":  w.DisableOutBandRuleByTag,
-		"RemoveOutBandRuleByName": w.DisableOutBandRuleByName,
-		"SetRemediationByTag":     w.SetActionByTag,
-		"SetRemediationByID":      w.SetActionByID,
-		"SetRemediationByName":    w.SetActionByName,
-		"LoadAPISchemaWithName":         w.LoadAPISchemaWithName,
-		"LoadAPISchemaWithOptions":      w.LoadAPISchemaWithOptions,
-		"RegisterAPISchemaBodyDecoder":  w.RegisterAPISchemaBodyDecoder,
+		"RemoveInBandRuleByID":         w.DisableInBandRuleByID,
+		"RemoveInBandRuleByTag":        w.DisableInBandRuleByTag,
+		"RemoveInBandRuleByName":       w.DisableInBandRuleByName,
+		"RemoveOutBandRuleByID":        w.DisableOutBandRuleByID,
+		"RemoveOutBandRuleByTag":       w.DisableOutBandRuleByTag,
+		"RemoveOutBandRuleByName":      w.DisableOutBandRuleByName,
+		"SetRemediationByTag":          w.SetActionByTag,
+		"SetRemediationByID":           w.SetActionByID,
+		"SetRemediationByName":         w.SetActionByName,
+		"LoadAPISchemaWithName":        w.LoadAPISchemaWithName,
+		"LoadAPISchemaWithOptions":     w.LoadAPISchemaWithOptions,
+		"RegisterAPISchemaBodyDecoder": w.RegisterAPISchemaBodyDecoder,
+		"SetMaxBodySize":               w.SetMaxBodySize,
+		"SetBodySizeExceededAction":    w.SetBodySizeExceededAction,
 	}
 }
 
@@ -51,6 +53,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"ValidateRequestWithSchema": func(ref string, r *http.Request) bool {
 			return w.ValidateRequestWithSchema(ctx, state, request, ref, r)
 		},
+		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 	}
 }
 

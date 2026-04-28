@@ -87,6 +87,18 @@ const (
 	AllowRemediation   = "allow"
 )
 
+const (
+	// BodySizeActionDrop drops the request when the body exceeds the maximum size.
+	BodySizeActionDrop = "drop"
+	// BodySizeActionPartial reads the body up to the maximum size and processes it.
+	BodySizeActionPartial = "partial"
+	// BodySizeActionAllow processes the request without inspecting the body.
+	BodySizeActionAllow = "allow"
+
+	// DefaultMaxBodySize is the default maximum body size (10MB).
+	DefaultMaxBodySize = int64(10 * 1024 * 1024)
+)
+
 type phase int
 
 const (
@@ -167,7 +179,8 @@ type AppsecRequestState struct {
 	// block of the same hook — can read them. The map is allocated once in
 	// NewRequestState, persists across in-band/out-of-band phases, and is
 	// copied into pipeline.AppsecEvent.HookVars when an event is emitted.
-	HookVars map[string]string
+	HookVars              map[string]string
+	DisableBodyInspection bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -214,6 +227,15 @@ type AppsecSubEngineOpts struct {
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
 }
 
+// BodySettings controls how oversized request bodies are handled.
+type BodySettings struct {
+	// MaxSize is the maximum allowed body size in bytes. Defaults to DefaultMaxBodySize (10MB).
+	MaxSize int64 `yaml:"max_body_size"`
+	// Action controls what happens when a body exceeds MaxSize:
+	// "drop" (default) - block the request, "partial" - inspect up to MaxSize bytes, "allow" - skip body inspection.
+	Action string `yaml:"body_size_exceeded_action"`
+}
+
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
 // Hooks defined here are automatically dispatched only during the corresponding phase.
 type AppsecPhaseConfig struct {
@@ -256,6 +278,8 @@ type AppsecRuntimeConfig struct {
 
 	RequestValidator *apivalidation.RequestValidator
 	DataDir          string
+	// BodySettings controls how oversized request bodies are handled. Settable via on_load hooks.
+	BodySettings BodySettings
 }
 
 type AppsecConfig struct {
@@ -596,6 +620,10 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
+	ret.BodySettings = BodySettings{
+		MaxSize: DefaultMaxBodySize,
+		Action:  BodySizeActionDrop,
+	}
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules
@@ -906,6 +934,42 @@ func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string
 func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
 	state.Response.UserHTTPResponseCode = code
+	return nil
+}
+
+// SetMaxBodySize sets the maximum allowed body size in bytes. Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetMaxBodySize(size int64) error {
+	if size <= 0 {
+		return errors.New("max_body_size must be a positive integer")
+	}
+
+	w.Logger.Debugf("setting max body size to %d bytes", size)
+	w.BodySettings.MaxSize = size
+
+	return nil
+}
+
+// SetBodySizeExceededAction sets what happens when the body exceeds the maximum size.
+// Valid values: "drop" (block request), "partial" (inspect up to max size), "allow" (skip body inspection).
+// Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetBodySizeExceededAction(action string) error {
+	switch action {
+	case BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow:
+		w.Logger.Debugf("setting body size exceeded action to %q", action)
+		w.BodySettings.Action = action
+
+		return nil
+	default:
+		return fmt.Errorf("invalid body_size_exceeded_action %q (must be %s, %s, or %s)", action, BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow)
+	}
+}
+
+// DisableBodyInspection prevents Coraza from processing the request body for the current request.
+// Intended for use in pre_eval hooks.
+func (w *AppsecRuntimeConfig) DisableBodyInspection(state *AppsecRequestState) error {
+	state.DisableBodyInspection = true
+	w.Logger.Debugf("body inspection disabled for this request")
+
 	return nil
 }
 

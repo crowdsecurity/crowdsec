@@ -57,6 +57,16 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{AlertsColumns[0]},
 			},
+			{
+				Name:    "alert_uuid",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[23]},
+			},
+			{
+				Name:    "alert_scenario",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[3]},
+			},
 		},
 	}
 	// AllowListsColumns holds the columns for the "allow_lists" table.
@@ -84,6 +94,11 @@ var (
 				Name:    "allowlist_name",
 				Unique:  true,
 				Columns: []*schema.Column{AllowListsColumns[3]},
+			},
+			{
+				Name:    "allowlist_allowlist_id",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListsColumns[6]},
 			},
 		},
 	}
@@ -117,6 +132,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{AllowListItemsColumns[6], AllowListItemsColumns[7]},
 			},
+			{
+				Name:    "allowlistitem_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListItemsColumns[3]},
+			},
 		},
 	}
 	// BouncersColumns holds the columns for the "bouncers" table.
@@ -143,6 +163,23 @@ var (
 		Name:       "bouncers",
 		Columns:    BouncersColumns,
 		PrimaryKey: []*schema.Column{BouncersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "bouncer_api_key_auth_type",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[10]},
+			},
+			{
+				Name:    "bouncer_api_key_ip_address",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[6]},
+			},
+			{
+				Name:    "bouncer_last_pull_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[9], BouncersColumns[1]},
+			},
+		},
 	}
 	// ConfigItemsColumns holds the columns for the "config_items" table.
 	ConfigItemsColumns = []*schema.Column{
@@ -282,6 +319,18 @@ var (
 		Name:       "machines",
 		Columns:    MachinesColumns,
 		PrimaryKey: []*schema.Column{MachinesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "machine_last_heartbeat_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{MachinesColumns[4], MachinesColumns[1]},
+			},
+			{
+				Name:    "machine_is_validated",
+				Unique:  false,
+				Columns: []*schema.Column{MachinesColumns[10]},
+			},
+		},
 	}
 	// MetaColumns holds the columns for the "meta" table.
 	MetaColumns = []*schema.Column{
