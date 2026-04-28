@@ -479,28 +479,22 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	state.Response.SendEvent = true
 	state.CurrentPhase = appsec.PhaseOutOfBand
 
-	//FIXME: This is a bit of a hack to avoid confusion with the transaction if we do not have any inband rules.
-	//We should probably have different transaction (or even different request object) for inband and out of band rules
-	if len(r.AppsecRuntime.OutOfBandRules) > 0 {
-		//to measure the time spent in the Application Security Engine for OutOfBand rules
-		startOutOfBandParsing := time.Now()
+	startOutOfBandParsing := time.Now()
 
-		err = r.ProcessOutOfBandRules(ctx, &state, request)
+	err = r.ProcessOutOfBandRules(ctx, &state, request)
+	if err != nil {
+		logger.Errorf("unable to process OutOfBand rules: %s", err)
+		err = state.Tx.Close()
 		if err != nil {
-			logger.Errorf("unable to process OutOfBand rules: %s", err)
-			err = state.Tx.Close()
-			if err != nil {
-				logger.Errorf("unable to close outband transaction: %s", err)
-			}
-			return
+			logger.Errorf("unable to close outband transaction: %s", err)
 		}
+		return
+	}
 
-		// time spent to process out of band rules
-		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
-		if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
-			r.handleOutBandInterrupt(ctx, &state, request)
-		}
+	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
+	metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
+	if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
+		r.handleOutBandInterrupt(ctx, &state, request)
 	}
 	err = state.Tx.Close()
 	if err != nil {
