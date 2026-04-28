@@ -206,7 +206,7 @@ func (rv *RequestValidator) warnUnsupportedSecuritySchemes(ref string, doc *open
 	}
 }
 
-func (_ *RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+func (*RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 	authTokenValue := ""
 	switch input.SecurityScheme.Type {
 	case "http":
