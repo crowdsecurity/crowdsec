@@ -2,7 +2,6 @@ package appsec
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -50,8 +49,8 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"ValidateRequestWithSchema": func(ref string, r *http.Request) bool {
-			return w.ValidateRequestWithSchema(ctx, state, request, ref, r)
+		"ValidateRequestWithSchema": func(ref string) bool {
+			return w.ValidateRequestWithSchema(ctx, state, request, ref)
 		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 	}

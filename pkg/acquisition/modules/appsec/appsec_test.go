@@ -30,7 +30,7 @@ type appsecRuleTest struct {
 	outofband_native_rules []string
 	// schemas registers OpenAPI schemas (ref → YAML content) on the
 	// RequestValidator after Build, so hooks can refer to them via
-	// ValidateRequestWithSchema(ref, req).
+	// ValidateRequestWithSchema(ref).
 	schemas                map[string]string
 	on_load                []appsec.Hook
 	pre_eval               []appsec.Hook

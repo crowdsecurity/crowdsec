@@ -1,9 +1,11 @@
 package appsec
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -1079,10 +1081,13 @@ var validationErrorVarKeys = []string{
 // so that subsequent hook expressions (typically the `apply` block of the same
 // hook) can build a drop reason or enrich an event. Each call also increments
 // the AppsecValidationOKCounter / AppsecValidationFailedCounter metric.
-func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string, r *http.Request) bool {
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string) bool {
 	for _, k := range validationErrorVarKeys {
 		delete(state.HookVars, k)
 	}
+
+	r := request.HTTPRequest.Clone(ctx)
+	r.Body = io.NopCloser(bytes.NewReader(request.Body))
 
 	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
 	if err == nil {

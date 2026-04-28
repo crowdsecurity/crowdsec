@@ -1381,7 +1381,7 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 			// (the request body is read once by openapi3filter).
 			inband_pre_eval: []appsec.Hook{
 				{
-					Filter: "!ValidateRequestWithSchema('users_api', req)",
+					Filter: "!ValidateRequestWithSchema('users_api')",
 					Apply: []string{
 						"DropRequest('schema validation failed on ' + hook_vars.validation_error_field)",
 					},
@@ -1451,7 +1451,7 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 			},
 			inband_pre_eval: []appsec.Hook{
 				{
-					Filter: "!ValidateRequestWithSchema('users_api', req)",
+					Filter: "!ValidateRequestWithSchema('users_api')",
 					Apply:  []string{"DropRequest('schema failed')"},
 				},
 			},
