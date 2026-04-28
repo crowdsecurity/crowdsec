@@ -79,5 +79,7 @@ func (Alert) Edges() []ent.Edge {
 func (Alert) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("id"),
+		index.Fields("uuid"),
+		index.Fields("scenario"),
 	}
 }
