@@ -6,7 +6,7 @@ var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
 var (
 	DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
-	ChunkedDecisionsStream  = &Feature{Name: "chunked_decisions_stream", Description: "Enable chunked decisions stream"}
+	ChunkedDecisionsStream  = &Feature{Name: "chunked_decisions_stream", Description: "Enable chunked decisions stream", State: DeprecatedState}
 	PapiClient              = &Feature{Name: "papi_client", Description: "Enable Polling API client", State: DeprecatedState}
 	// The state will be set to deprecated for linux only.
 	Re2GrokSupport = &Feature{Name: "re2_grok_support", Description: "Enable RE2 support for GROK patterns"}
