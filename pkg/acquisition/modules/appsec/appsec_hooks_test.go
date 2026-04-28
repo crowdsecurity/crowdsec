@@ -1539,6 +1539,57 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 				require.Contains(t, outbandLog.Parsed["appsec_drop_reason"], "outofband: request_body")
 			},
 		},
+		{
+			// A truncated body is partial bytes — for JSON, that means an
+			// incomplete document. The validator has no special-case for
+			// BodyTruncated; it parses what it gets and surfaces the parse
+			// error as a normal request_body validation failure. This is the
+			// fail-closed behavior we want: an attacker oversizing the body
+			// to slip past schema validation should not pass.
+			name:             "validation fails on a truncated JSON body",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('schema validation failed: ' + hook_vars.validation_error_message)"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				// Partial JSON — the closing brace and value were cut off
+				// past the truncation point.
+				Body:          []byte(`{"username":"jan`),
+				BodyTruncated: true,
+				Headers:       http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{"username":"jan`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt, "truncated body must fail validation and drop")
+
+				var inbandLog *pipeline.Event
+				for i := range events {
+					if events[i].Type == pipeline.LOG && events[i].Appsec.HasInBandMatches {
+						inbandLog = &events[i]
+						break
+					}
+				}
+				require.NotNil(t, inbandLog)
+				require.Equal(t, "request_body", inbandLog.Appsec.HookVars["validation_error_reason"])
+				require.NotEmpty(t, inbandLog.Appsec.HookVars["validation_error_message"],
+					"validator must surface the underlying JSON parse error")
+				require.Contains(t, inbandLog.Meta["appsec_drop_reason"], "schema validation failed:")
+			},
+		},
 	}
 
 	runTests(t, tests)
