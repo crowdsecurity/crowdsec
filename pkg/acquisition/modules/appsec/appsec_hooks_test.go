@@ -1377,8 +1377,6 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 			name:             "validation failure publishes hook_vars to event and matches",
 			expected_load_ok: true,
 			schemas:          map[string]string{"users_api": testUsersSchema},
-			// Scoped to in-band to avoid the validator consuming the body twice
-			// (the request body is read once by openapi3filter).
 			inband_pre_eval: []appsec.Hook{
 				{
 					Filter: "!ValidateRequestWithSchema('users_api')",
@@ -1475,6 +1473,70 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 					require.Empty(t, evt.Appsec.HookVars["validation_error"],
 						"successful validation must not leave validation_error on the event")
 				}
+			},
+		},
+		{
+			// Regression: ValidateRequestWithSchema must be safe to call from
+			// both in-band and out-of-band pre_eval on the same request.
+			// We use the failure path because the validator publishes
+			// validation_error_* keys to hook_vars only on failure — the
+			// per-phase appsec_drop_reason on each event is direct evidence
+			// that each phase's validation call ran against the body.
+			name:             "validation runs in both in-band and out-of-band on same request",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('inband: ' + hook_vars.validation_error_reason)"},
+				},
+			},
+			outofband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('outofband: ' + hook_vars.validation_error_reason)"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				Body:       []byte(`{}`), // missing required `username`
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				var inbandLog, outbandLog *pipeline.Event
+				for i := range events {
+					e := &events[i]
+					if e.Type != pipeline.LOG {
+						continue
+					}
+					switch {
+					case e.Appsec.HasInBandMatches:
+						inbandLog = e
+					case e.Appsec.HasOutBandMatches:
+						outbandLog = e
+					}
+				}
+				require.NotNil(t, inbandLog, "expected an in-band LOG event")
+				require.NotNil(t, outbandLog, "expected an out-of-band LOG event")
+
+				// Each phase ran the validator and produced its own failure
+				// signal — proves both calls reached the body. (HookVars is
+				// shared per-request, so the keys would be present on the
+				// out-of-band event regardless; the drop_reason is the
+				// per-phase, per-call evidence.)
+				require.Equal(t, "request_body", inbandLog.Appsec.HookVars["validation_error_reason"])
+				require.Contains(t, inbandLog.Meta["appsec_drop_reason"], "inband: request_body")
+				require.Equal(t, "request_body", outbandLog.Appsec.HookVars["validation_error_reason"])
+				require.Contains(t, outbandLog.Parsed["appsec_drop_reason"], "outofband: request_body")
 			},
 		},
 	}
