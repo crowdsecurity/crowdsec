@@ -121,7 +121,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
-func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
 	}
@@ -194,12 +194,13 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	// Now we can set up the logger
 	appsecCfg.SetUpLogger()
 
-	appsecRuntime, err := appsecCfg.Build(w.hub)
+	appsecRuntime, err := appsecCfg.Build(ctx, w.hub)
 	if err != nil {
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
 
 	w.AppsecRuntime = appsecRuntime
+	w.AppsecRuntime.DataDir = w.hub.GetDataDir()
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
 	if err != nil {

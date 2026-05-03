@@ -138,7 +138,7 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 			t.Go(func() error {
 				defer trace.ReportPanic()
-				return runner.Run(t)
+				return runner.Run(ctx, t)
 			})
 		}
 

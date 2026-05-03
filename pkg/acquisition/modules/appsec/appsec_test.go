@@ -28,6 +28,10 @@ type appsecRuleTest struct {
 	outofband_rules        []appsec_rule.CustomRule
 	inband_native_rules    []string
 	outofband_native_rules []string
+	// schemas registers OpenAPI schemas (ref → YAML content) on the
+	// RequestValidator after Build, so hooks can refer to them via
+	// ValidateRequestWithSchema(ref).
+	schemas                map[string]string
 	on_load                []appsec.Hook
 	pre_eval               []appsec.Hook
 	post_eval              []appsec.Hook
@@ -140,9 +144,14 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 
 	hub := cwhub.Hub{}
-	AppsecRuntime, err := appsecCfg.Build(&hub)
+	AppsecRuntime, err := appsecCfg.Build(t.Context(), &hub)
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
+	}
+	for ref, schemaYAML := range test.schemas {
+		if err := AppsecRuntime.RequestValidator.LoadSchema(ref, schemaYAML, nil); err != nil {
+			t.Fatalf("unable to load schema %q: %s", ref, err)
+		}
 	}
 	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules, NativeRules: nativeInbandRules}}
 	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules, NativeRules: nativeOutofbandRules}}
@@ -255,7 +264,8 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		}
 	}()
 
-	runner.handleRequest(&input)
+	runner.handleRequest(t.Context(), &input)
+	time.Sleep(50 * time.Millisecond)
 
 	// wait for the idle duration
 	<-done

@@ -110,6 +110,11 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	evt := pipeline.Event{}
 	evt.Type = pipeline.APPSEC
 	evt.Process = true
+	// Carry hook-published vars onto the overflow event so downstream
+	// consumers of the APPSEC alert (not just the LOG event) can see them.
+	if len(inEvt.Appsec.HookVars) > 0 {
+		evt.Appsec.HookVars = inEvt.Appsec.HookVars
+	}
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
 		Value: &sourceIP,
