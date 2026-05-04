@@ -45,7 +45,7 @@ func markInstalled(t *testing.T, hub *cwhub.Hub, name string) {
 
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, name)
 	require.NotNilf(t, item, "appsec-config %q missing from test hub", name)
-	item.State.LocalPath = filepath.Join("/fake/install", item.Type, name+".yaml")
+	item.State.LocalPath = filepath.Join("/", "fake", "install", item.Type, name+".yaml")
 }
 
 // hubFixture sets up a hub with three appsec-configs under crowdsecurity/* and
