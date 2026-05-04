@@ -1190,6 +1190,10 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 			resp.UserCookies = append(resp.UserCookies, cookie.String())
 		}
 		resp.UserHeaders = response.UserHeaders
+		// If there's no Content-Security-Policy header, add a default one to make sure that the JS code can be evaluated
+		if _, ok := resp.UserHeaders["Content-Security-Policy"]; !ok {
+			resp.UserHeaders["Content-Security-Policy"] = []string{challenge.DefaultChallengeCSP}
+		}
 		// Return code are handled the same way for challenge/ban/captcha
 		// There's probably a less brittle way to do this, but falltrhough is easier
 		fallthrough

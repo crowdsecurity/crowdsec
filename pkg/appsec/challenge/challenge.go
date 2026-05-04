@@ -39,6 +39,7 @@ const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 const ChallengeCookieName = "__crowdsec_challenge"
 const challengeJSCacheSize = 10
 const challengeJSRefreshInterval = 10 * time.Minute
+
 // PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
 // obfuscator runs ~500-5000 ops/sec, so keep these conservative.
 const (
@@ -50,6 +51,8 @@ const (
 
 	defaultPowDifficulty = PowDifficultyMedium
 )
+
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
 
 // FIXME
 const masterSecret = "SUPER_SECRET_KEY"
