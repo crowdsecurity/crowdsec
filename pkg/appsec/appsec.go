@@ -175,6 +175,14 @@ type AppsecRequestState struct {
 	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
 	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
 
+	// IsAllowlisted / AllowlistReason are set once per request by the runner
+	// from the appsec allowlist client. When IsAllowlisted is true, challenge
+	// issuance and on_challenge processing are skipped, and the block path
+	// (handleInBandInterrupt / handleOutBandInterrupt) reuses the cached
+	// verdict instead of re-querying the client.
+	IsAllowlisted    bool
+	AllowlistReason  string
+
 	// LastMismatchReport caches the result of the EvaluateMismatches expr
 	// closure for the current request, so repeated calls from a single
 	// rule expression don't redo the work (or re-emit observability).
@@ -797,6 +805,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		return nil
 	}
 
+	// Allowlisted clients never see a challenge, so don't issue cookies, don't
+	// serve the PoW worker JS and don't run on_challenge expressions for them.
+	if state.IsAllowlisted {
+		return nil
+	}
+
 	var path string
 	if request.HTTPRequest.URL != nil {
 		path = request.HTTPRequest.URL.Path
@@ -1140,6 +1154,11 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 }
 
 func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+	if state.IsAllowlisted {
+		w.Logger.Debugf("client is allowlisted, skipping challenge issue")
+		return nil
+	}
+
 	if w.ChallengeRuntime == nil {
 		return fmt.Errorf("challenge runtime not initialized")
 	}
