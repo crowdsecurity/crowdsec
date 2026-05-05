@@ -1022,8 +1022,9 @@ func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string)
 
 // LoadAPISchemaWithOptions behaves like LoadAPISchemaWithName but accepts a
 // map of policy overrides. Supported keys:
-//   - "on_route_not_found":    "drop" | "ignore"  (default: "drop")
-//   - "on_method_not_allowed": "drop" | "ignore"  (default: "drop")
+//   - "on_route_not_found":             "drop" | "ignore"  (default: "drop")
+//   - "on_method_not_allowed":          "drop" | "ignore"  (default: "drop")
+//   - "on_unsupported_security_scheme": "drop" | "ignore"  (default: "drop")
 func (w *AppsecRuntimeConfig) LoadAPISchemaWithOptions(ref string, filename string, opts map[string]any) error {
 	schemaOpts, err := parseSchemaOptions(opts)
 	if err != nil {
@@ -1052,9 +1053,11 @@ func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, erro
 		}
 		switch k {
 		case "on_route_not_found":
-			out.OnRouteNotFound = apivalidation.RoutePolicy(s)
+			out.OnRouteNotFound = apivalidation.Policy(s)
 		case "on_method_not_allowed":
-			out.OnMethodNotAllowed = apivalidation.RoutePolicy(s)
+			out.OnMethodNotAllowed = apivalidation.Policy(s)
+		case "on_unsupported_security_scheme":
+			out.OnUnsupportedSecurityScheme = apivalidation.Policy(s)
 		default:
 			return nil, fmt.Errorf("unknown schema option %q", k)
 		}

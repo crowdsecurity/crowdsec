@@ -18,39 +18,40 @@ var (
 	ErrInvalidSchemaName = errors.New("invalid schema name")
 )
 
-// RoutePolicy controls what the validator does when the router cannot match a
-// request against the loaded schema (either because the path is unknown or
-// because no method of the matched path accepts the request).
-type RoutePolicy string
+// Policy controls what the validator does when it encounters a condition it
+// cannot fully validate (unknown route, method not allowed for a matched
+// path, security scheme type the WAF cannot enforce).
+type Policy string
 
 const (
-	// RoutePolicyDrop treats an unmatched route as a validation failure.
-	RoutePolicyDrop RoutePolicy = "drop"
-	// RoutePolicyIgnore lets the request through without validation when the
-	// router cannot match it.
-	RoutePolicyIgnore RoutePolicy = "ignore"
+	// PolicyDrop treats the condition as a validation failure.
+	PolicyDrop Policy = "drop"
+	// PolicyIgnore lets the request through as if the condition had passed.
+	PolicyIgnore Policy = "ignore"
 )
 
-func (p RoutePolicy) validate() error {
+func (p Policy) validate() error {
 	switch p {
-	case RoutePolicyDrop, RoutePolicyIgnore:
+	case PolicyDrop, PolicyIgnore:
 		return nil
 	}
-	return fmt.Errorf("invalid route policy %q (expected %q or %q)", p, RoutePolicyDrop, RoutePolicyIgnore)
+	return fmt.Errorf("invalid policy %q (expected %q or %q)", p, PolicyDrop, PolicyIgnore)
 }
 
 // SchemaOptions configures per-schema validation behavior. A nil *SchemaOptions
-// passed to LoadSchema means "use defaults" (both policies = drop, matching
+// passed to LoadSchema means "use defaults" (all policies = drop, matching
 // pre-option behavior).
 type SchemaOptions struct {
-	OnRouteNotFound    RoutePolicy
-	OnMethodNotAllowed RoutePolicy
+	OnRouteNotFound             Policy
+	OnMethodNotAllowed          Policy
+	OnUnsupportedSecurityScheme Policy
 }
 
 func (o *SchemaOptions) withDefaults() SchemaOptions {
 	out := SchemaOptions{
-		OnRouteNotFound:    RoutePolicyDrop,
-		OnMethodNotAllowed: RoutePolicyDrop,
+		OnRouteNotFound:             PolicyDrop,
+		OnMethodNotAllowed:          PolicyDrop,
+		OnUnsupportedSecurityScheme: PolicyDrop,
 	}
 	if o == nil {
 		return out
@@ -60,6 +61,9 @@ func (o *SchemaOptions) withDefaults() SchemaOptions {
 	}
 	if o.OnMethodNotAllowed != "" {
 		out.OnMethodNotAllowed = o.OnMethodNotAllowed
+	}
+	if o.OnUnsupportedSecurityScheme != "" {
+		out.OnUnsupportedSecurityScheme = o.OnUnsupportedSecurityScheme
 	}
 	return out
 }
@@ -187,12 +191,16 @@ func (rv *RequestValidator) RegisterBodyDecoder(contentType, decoderName string)
 
 // warnUnsupportedSecuritySchemes scans a schema's declared security schemes
 // once at load time and warns for types the WAF cannot enforce (oauth2,
-// openIdConnect). Any request hitting a route guarded by such a scheme will
-// fail validation at runtime; the warning is emitted here so operators learn
-// about the gap during schema load rather than via per-request log spam.
-func (rv *RequestValidator) warnUnsupportedSecuritySchemes(ref string, doc *openapi3.T) {
+// openIdConnect). The warning is emitted here so operators learn about the
+// gap during schema load rather than via per-request log spam. Behavior at
+// request time depends on the OnUnsupportedSecurityScheme policy.
+func (rv *RequestValidator) warnUnsupportedSecuritySchemes(ref string, doc *openapi3.T, policy Policy) {
 	if doc.Components == nil {
 		return
+	}
+	action := "will fail validation"
+	if policy == PolicyIgnore {
+		action = "will be ignored (not validated)"
 	}
 	for name, schemeRef := range doc.Components.SecuritySchemes {
 		if schemeRef == nil || schemeRef.Value == nil {
@@ -200,88 +208,94 @@ func (rv *RequestValidator) warnUnsupportedSecuritySchemes(ref string, doc *open
 		}
 		switch schemeRef.Value.Type {
 		case "oauth2", "openIdConnect":
-			rv.logger.Warnf("schema %q: security scheme %q (type %s) is not supported and will fail validation for any request that requires it",
-				ref, name, schemeRef.Value.Type)
+			rv.logger.Warnf("schema %q: security scheme %q (type %s) is not supported and %s for any request that requires it",
+				ref, name, schemeRef.Value.Type, action)
 		}
 	}
 }
 
-func (*RequestValidator) authFunc(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
-	authTokenValue := ""
-	switch input.SecurityScheme.Type {
-	case "http":
-		switch input.SecurityScheme.Scheme {
-		case "basic":
-			values := input.RequestValidationInput.Request.Header["Authorization"]
-			if len(values) == 0 {
-				return errors.New("authorization header not found")
+func (*RequestValidator) authFunc(unsupportedPolicy Policy) openapi3filter.AuthenticationFunc {
+	return func(_ context.Context, input *openapi3filter.AuthenticationInput) error {
+		authTokenValue := ""
+		switch input.SecurityScheme.Type {
+		case "http":
+			switch input.SecurityScheme.Scheme {
+			case "basic":
+				values := input.RequestValidationInput.Request.Header["Authorization"]
+				if len(values) == 0 {
+					return errors.New("authorization header not found")
+				}
+				if len(values) > 1 {
+					return errors.New("multiple Authorization headers found")
+				}
+				if !strings.HasPrefix(values[0], "Basic ") {
+					return errors.New("authorization header does not start with 'Basic '")
+				}
+				authTokenValue = values[0][6:]
+			case "bearer":
+				values := input.RequestValidationInput.Request.Header["Authorization"]
+				if len(values) == 0 {
+					return errors.New("authorization header not found")
+				}
+				if len(values) > 1 {
+					return errors.New("multiple Authorization headers found")
+				}
+				if !strings.HasPrefix(values[0], "Bearer ") {
+					return errors.New("authorization header does not start with 'Bearer '")
+				}
+				authTokenValue = values[0][7:]
 			}
-			if len(values) > 1 {
-				return errors.New("multiple Authorization headers found")
+		case "apiKey":
+			switch input.SecurityScheme.In {
+			case "query":
+				//Because we are checking for the presence of the API key, it probably does not matter if go drops parameters using ; as a separator
+				values := input.RequestValidationInput.Request.URL.Query()[input.SecurityScheme.Name]
+				if len(values) == 0 {
+					return fmt.Errorf("query parameter %s not found", input.SecurityScheme.Name)
+				}
+				if len(values) > 1 {
+					return fmt.Errorf("multiple query parameters with name %s found", input.SecurityScheme.Name)
+				}
+				authTokenValue = values[0]
+			case "header":
+				canonicalHeaderName := http.CanonicalHeaderKey(input.SecurityScheme.Name)
+				values := input.RequestValidationInput.Request.Header[canonicalHeaderName]
+				if len(values) == 0 {
+					return fmt.Errorf("header %s not found", input.SecurityScheme.Name)
+				}
+				if len(values) > 1 {
+					return fmt.Errorf("multiple headers with name %s found", input.SecurityScheme.Name)
+				}
+				authTokenValue = values[0]
+			case "cookie":
+				cookieValues := input.RequestValidationInput.Request.CookiesNamed(input.SecurityScheme.Name)
+				if len(cookieValues) == 0 {
+					return fmt.Errorf("cookie %s not found", input.SecurityScheme.Name)
+				}
+				if len(cookieValues) > 1 {
+					return fmt.Errorf("multiple cookies with name %s found", input.SecurityScheme.Name)
+				}
+				authTokenValue = cookieValues[0].Value
+			default:
+				return fmt.Errorf("unsupported apiKey location %s", input.SecurityScheme.In)
 			}
-			if !strings.HasPrefix(values[0], "Basic ") {
-				return errors.New("authorization header does not start with 'Basic '")
+		case "oauth2", "openIdConnect":
+			if unsupportedPolicy == PolicyIgnore {
+				return nil
 			}
-			authTokenValue = values[0][6:]
-		case "bearer":
-			values := input.RequestValidationInput.Request.Header["Authorization"]
-			if len(values) == 0 {
-				return errors.New("authorization header not found")
-			}
-			if len(values) > 1 {
-				return errors.New("multiple Authorization headers found")
-			}
-			if !strings.HasPrefix(values[0], "Bearer ") {
-				return errors.New("authorization header does not start with 'Bearer '")
-			}
-			authTokenValue = values[0][7:]
-		}
-	case "apiKey":
-		switch input.SecurityScheme.In {
-		case "query":
-			//Because we are checking for the presence of the API key, it probably does not matter if go drops parameters using ; as a separator
-			values := input.RequestValidationInput.Request.URL.Query()[input.SecurityScheme.Name]
-			if len(values) == 0 {
-				return fmt.Errorf("query parameter %s not found", input.SecurityScheme.Name)
-			}
-			if len(values) > 1 {
-				return fmt.Errorf("multiple query parameters with name %s found", input.SecurityScheme.Name)
-			}
-			authTokenValue = values[0]
-		case "header":
-			canonicalHeaderName := http.CanonicalHeaderKey(input.SecurityScheme.Name)
-			values := input.RequestValidationInput.Request.Header[canonicalHeaderName]
-			if len(values) == 0 {
-				return fmt.Errorf("header %s not found", input.SecurityScheme.Name)
-			}
-			if len(values) > 1 {
-				return fmt.Errorf("multiple headers with name %s found", input.SecurityScheme.Name)
-			}
-			authTokenValue = values[0]
-		case "cookie":
-			cookieValues := input.RequestValidationInput.Request.CookiesNamed(input.SecurityScheme.Name)
-			if len(cookieValues) == 0 {
-				return fmt.Errorf("cookie %s not found", input.SecurityScheme.Name)
-			}
-			if len(cookieValues) > 1 {
-				return fmt.Errorf("multiple cookies with name %s found", input.SecurityScheme.Name)
-			}
-			authTokenValue = cookieValues[0].Value
+			return fmt.Errorf("%s security scheme not supported", input.SecurityScheme.Type)
 		default:
-			return fmt.Errorf("unsupported apiKey location %s", input.SecurityScheme.In)
+			if unsupportedPolicy == PolicyIgnore {
+				return nil
+			}
+			return fmt.Errorf("unsupported security scheme type %s", input.SecurityScheme.Type)
 		}
-	case "oauth2", "openIdConnect":
-		// Warned at schema load (see warnUnsupportedSecuritySchemes); fail
-		// the auth check here since we cannot validate these from the WAF.
-		return fmt.Errorf("%s security scheme not supported", input.SecurityScheme.Type)
-	default:
-		return fmt.Errorf("unsupported security scheme type %s", input.SecurityScheme.Type)
-	}
-	if authTokenValue == "" {
-		return errors.New("auth token is required but not provided")
-	}
+		if authTokenValue == "" {
+			return errors.New("auth token is required but not provided")
+		}
 
-	return nil
+		return nil
+	}
 }
 
 func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOptions) error {
@@ -301,6 +315,9 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOp
 	if err := options.OnMethodNotAllowed.validate(); err != nil {
 		return fmt.Errorf("on_method_not_allowed: %w", err)
 	}
+	if err := options.OnUnsupportedSecurityScheme.validate(); err != nil {
+		return fmt.Errorf("on_unsupported_security_scheme: %w", err)
+	}
 
 	loader := openapi3.NewLoader()
 	rv.loaders[ref] = loader
@@ -316,7 +333,7 @@ func (rv *RequestValidator) LoadSchema(ref string, schema string, opts *SchemaOp
 		return fmt.Errorf("failed to validate schema %s: %w", ref, err)
 	}
 
-	rv.warnUnsupportedSecuritySchemes(ref, doc)
+	rv.warnUnsupportedSecuritySchemes(ref, doc, options.OnUnsupportedSecurityScheme)
 
 	router, err := legacyrouter.NewRouter(doc)
 	if err != nil {
@@ -349,7 +366,7 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 		if errors.As(err, &routeErr) {
 			switch routeErr.Reason {
 			case routers.ErrPathNotFound.Error():
-				if schemaData.Options.OnRouteNotFound == RoutePolicyIgnore {
+				if schemaData.Options.OnRouteNotFound == PolicyIgnore {
 					rv.logger.Debugf("no matching route for %s %s, ignoring per schema policy", r.Method, r.URL.Path)
 					return nil
 				}
@@ -359,7 +376,7 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 					OriginalError: err,
 				}
 			case routers.ErrMethodNotAllowed.Error():
-				if schemaData.Options.OnMethodNotAllowed == RoutePolicyIgnore {
+				if schemaData.Options.OnMethodNotAllowed == PolicyIgnore {
 					rv.logger.Debugf("method %s not allowed for %s, ignoring per schema policy", r.Method, r.URL.Path)
 					return nil
 				}
@@ -382,7 +399,7 @@ func (rv *RequestValidator) ValidateRequest(ctx context.Context, ref string, r *
 			// Stop at the 1st error, we are a WAF, not an actual schema validator
 			// And having multiple errors would make it harder to expose a proper event to the user
 			MultiError:         false,
-			AuthenticationFunc: rv.authFunc,
+			AuthenticationFunc: rv.authFunc(schemaData.Options.OnUnsupportedSecurityScheme),
 		},
 	}
 

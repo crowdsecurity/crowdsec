@@ -851,7 +851,7 @@ func TestRoutePolicy(t *testing.T) {
 		},
 		{
 			name: "unknown path, ignore policy passes",
-			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
+			opts: &SchemaOptions{OnRouteNotFound: PolicyIgnore},
 			request: func(t *testing.T) *http.Request {
 				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/unknown", http.NoBody)
 				return req
@@ -860,7 +860,7 @@ func TestRoutePolicy(t *testing.T) {
 		},
 		{
 			name: "unknown path, explicit drop policy drops",
-			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyDrop},
+			opts: &SchemaOptions{OnRouteNotFound: PolicyDrop},
 			request: func(t *testing.T) *http.Request {
 				req, _ := http.NewRequestWithContext(t.Context(),http.MethodGet, "http://example.com/unknown", http.NoBody)
 				return req
@@ -880,7 +880,7 @@ func TestRoutePolicy(t *testing.T) {
 		},
 		{
 			name: "method not allowed, ignore policy passes",
-			opts: &SchemaOptions{OnMethodNotAllowed: RoutePolicyIgnore},
+			opts: &SchemaOptions{OnMethodNotAllowed: PolicyIgnore},
 			request: func(t *testing.T) *http.Request {
 				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/ping", http.NoBody)
 				return req
@@ -889,7 +889,7 @@ func TestRoutePolicy(t *testing.T) {
 		},
 		{
 			name: "method not allowed with ignore path policy still drops",
-			opts: &SchemaOptions{OnRouteNotFound: RoutePolicyIgnore},
+			opts: &SchemaOptions{OnRouteNotFound: PolicyIgnore},
 			request: func(t *testing.T) *http.Request {
 				req, _ := http.NewRequestWithContext(t.Context(),http.MethodPost, "http://example.com/ping", http.NoBody)
 				return req
@@ -925,10 +925,66 @@ func TestInvalidRoutePolicy(t *testing.T) {
 	schemaBytes, err := os.ReadFile(filepath.Join(".", "test_schemas", "basic.yaml"))
 	require.NoError(t, err)
 
-	rv := NewRequestValidator(logger)
-	err = rv.LoadSchema("basic", string(schemaBytes), &SchemaOptions{OnRouteNotFound: "explode"})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid route policy")
+	tests := []struct {
+		name string
+		opts *SchemaOptions
+	}{
+		{"on_route_not_found", &SchemaOptions{OnRouteNotFound: "explode"}},
+		{"on_method_not_allowed", &SchemaOptions{OnMethodNotAllowed: "explode"}},
+		{"on_unsupported_security_scheme", &SchemaOptions{OnUnsupportedSecurityScheme: "explode"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rv := NewRequestValidator(logger)
+			err := rv.LoadSchema("basic", string(schemaBytes), tt.opts)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid policy")
+		})
+	}
+}
+
+func TestUnsupportedSecuritySchemePolicy(t *testing.T) {
+	logger := log.New().WithField("test", "apivalidation")
+	schemaBytes, err := os.ReadFile(filepath.Join(".", "test_schemas", "oauth2.yaml"))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		opts    *SchemaOptions
+		wantErr bool
+	}{
+		{
+			name:    "default policy drops oauth2",
+			opts:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "explicit drop policy drops oauth2",
+			opts:    &SchemaOptions{OnUnsupportedSecurityScheme: PolicyDrop},
+			wantErr: true,
+		},
+		{
+			name:    "ignore policy lets oauth2 through",
+			opts:    &SchemaOptions{OnUnsupportedSecurityScheme: PolicyIgnore},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rv := NewRequestValidator(logger)
+			err := rv.LoadSchema("oauth2", string(schemaBytes), tt.opts)
+			require.NoError(t, err)
+
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/oauth", http.NoBody)
+			err = rv.ValidateRequest(t.Context(), "oauth2", req)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "oauth2 security scheme not supported")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestBodyDecoderRegistration(t *testing.T) {
