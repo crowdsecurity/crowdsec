@@ -1449,6 +1449,82 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				require.False(t, responses[0].InBandInterrupt, "on_challenge hooks must not run on invalid submission")
 			},
 		},
+		{
+			// Mock LAPI (see testAppSecEngine in appsec_test.go) exposes 5.4.3.2
+			// as an allowlisted IP. SendChallenge() must be a no-op for it: no
+			// challenge HTML, no Set-Cookie, response stays at the default pass
+			// action so the request goes through cleanly.
+			name:             "allowlisted IP: pre_eval SendChallenge() is suppressed",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.3.2",
+				RemoteAddr:  "5.4.3.2",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"allowlisted IP must not be challenged")
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Empty(t, responses[0].UserHTTPBodyContent, "no challenge HTML must be served")
+				require.Empty(t, responses[0].UserHTTPCookies, "no challenge cookie must be issued")
+				require.False(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			// Same allowlisted IP, but inside a /24 CIDR entry (5.4.4.0/24) —
+			// confirms range matches are honoured the same way as exact IPs.
+			name:             "allowlisted CIDR: pre_eval SendChallenge() is suppressed",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.4.42",
+				RemoteAddr:  "5.4.4.42",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Empty(t, responses[0].UserHTTPBodyContent)
+				require.Empty(t, responses[0].UserHTTPCookies)
+			},
+		},
+		{
+			// Allowlisted IPs hitting infrastructure paths must not get the PoW
+			// worker JS served either — ProcessOnChallengeRules short-circuits
+			// before the path-based branch, so the request flows through normal
+			// WAF processing.
+			name:             "allowlisted IP: PoW worker path is not served",
+			expected_load_ok: true,
+			// Reference SendChallenge() so ChallengeRuntime initialises.
+			on_challenge: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.3.2",
+				RemoteAddr:  "5.4.3.2",
+				Method:      "GET",
+				URI:         challenge.ChallengePowWorkerPath,
+				HTTPRequest: &http.Request{Host: "example.com", URL: powWorkerURL},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"allowlisted IP must not receive the PoW worker JS")
+				require.NotEqual(t, challenge.PowWorkerJS, responses[0].UserHTTPBodyContent)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
 	}
 
 	runTests(t, tests)

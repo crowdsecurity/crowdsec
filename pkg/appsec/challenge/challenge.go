@@ -52,7 +52,7 @@ const (
 	defaultPowDifficulty = PowDifficultyMedium
 )
 
-const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 // FIXME
 const masterSecret = "SUPER_SECRET_KEY"
