@@ -230,17 +230,6 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	state.Tx = tx
-
-	// Compute the allowlist verdict once per request. Used to skip challenge
-	// issuance (SendChallenge / ProcessOnChallengeRules) and reused by the
-	// block path in handleInBandInterrupt / handleOutBandInterrupt.
-	if r.appsecAllowlistsClient != nil {
-		if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
-			state.IsAllowlisted = true
-			state.AllowlistReason = reason
-		}
-	}
-
 	// Even if we have no inband rules, we might have pre-eval, post-eval or on_challenge hooks to process
 	if len(r.AppsecRuntime.InBandRules) == 0 &&
 		len(r.AppsecRuntime.CommonHooks.PreEval) == 0 &&
@@ -289,12 +278,6 @@ func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, r
 }
 
 func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
-
-	if state.IsAllowlisted {
-		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, state.AllowlistReason)
-		return
-	}
-
 	//create the associated event for crowdsec itself
 	evt, err := EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
@@ -361,12 +344,6 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 }
 
 func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
-
-	if state.IsAllowlisted {
-		r.logger.Infof("%s is allowlisted by %s, skipping", request.ClientIP, state.AllowlistReason)
-		return
-	}
-
 	evt, err := EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
 		//let's not interrupt the pipeline for this
@@ -432,6 +409,17 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	logger := r.logger.WithField("request_uuid", request.UUID)
 	logger.Debug("Request received in runner")
 	r.AppsecRuntime.ClearResponse(&state)
+
+	// Allowlisted IPs bypass every form of appsec processing (in-band rules,
+	// hooks, challenge issuance, on_challenge cookie validation, out-of-band
+	// rules). We send the default pass response straight back to the bouncer.
+	if r.appsecAllowlistsClient != nil {
+		if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
+			logger.Infof("%s is allowlisted by %s, skipping WAF processing", request.ClientIP, reason)
+			request.ResponseChannel <- state.Response
+			return
+		}
+	}
 
 	request.IsInBand = true
 	request.IsOutBand = false
