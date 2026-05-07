@@ -60,6 +60,9 @@ var htmlTemplate string
 //go:embed pow-worker.js
 var PowWorkerJS string
 
+//go:embed dynamic_module.js.tmpl
+var dynamicModuleTemplate string
+
 //go:embed js/obfuscate/index.wasm.gz
 var obfuscatorWasmGz []byte
 
@@ -96,6 +99,14 @@ type ChallengeRuntime struct {
 	// In distributed setups, every WAF instance with the same master_secret
 	// and rotation_interval derives bit-identical per-epoch keys.
 	keys *KeyRing
+
+	// dynamicModuleCache memoizes the obfuscated per-epoch key module so we
+	// only pay the wazero / javascript-obfuscator cost once per epoch. The
+	// dynamic module is small (~30 lines), so each obfuscation call costs a
+	// few seconds on first call and is then served from memory until the
+	// epoch advances. Stale entries are pruned on every Get.
+	dynamicModuleCache    map[int64]string
+	dynamicModuleCacheMu  sync.Mutex
 }
 
 // Option configures a ChallengeRuntime at construction time.
@@ -251,11 +262,12 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	challengeRuntime := &ChallengeRuntime{
-		r:                 r,
-		obfuscatorMod:     compiledMod,
-		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
-		powDifficulty:     defaultPowDifficulty,
-		keys:              keys,
+		r:                  r,
+		obfuscatorMod:      compiledMod,
+		obfuscatedJSCache:  make([]obfuscatedScript, 0, challengeJSCacheSize),
+		powDifficulty:      defaultPowDifficulty,
+		keys:               keys,
+		dynamicModuleCache: make(map[int64]string),
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -270,6 +282,14 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
 			return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
 		}
+	}
+
+	// Pre-warm the dynamic key module for the current epoch so the very
+	// first GetChallengePage call doesn't pay the ~5s obfuscation cost
+	// on the request-serving path. The dynamic module is small enough
+	// that this stays well under the startup budget.
+	if _, err := challengeRuntime.buildAndObfuscateDynamicModule(ctx); err != nil {
+		return nil, fmt.Errorf("warm dynamic key module: %w", err)
 	}
 
 	go challengeRuntime.challengeGenerator(ctx)
@@ -466,6 +486,60 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 // (`ts_nanos / 1e9 / rotation_seconds`), so verification is fully stateless:
 // any instance with the same master secret can derive the same epoch from the
 // same ts and validate the HMAC.
+// buildAndObfuscateDynamicModule renders the per-epoch dynamic key module
+// for the keyring's current epoch and runs it through the obfuscator.
+// Result is cached per-epoch so concurrent requests in the same epoch all
+// share the same obfuscation work.
+func (c *ChallengeRuntime) buildAndObfuscateDynamicModule(ctx context.Context) (string, error) {
+	epoch, signKey := c.keys.Current()
+
+	c.dynamicModuleCacheMu.Lock()
+	defer c.dynamicModuleCacheMu.Unlock()
+
+	if cached, ok := c.dynamicModuleCache[epoch]; ok {
+		return cached, nil
+	}
+
+	// Render the template. The hex-encoded key is embedded as a string
+	// literal which the obfuscator's string-array transform will encode and
+	// stash in a randomized lookup table. The hook name is reserved
+	// (preserved verbatim) so the static bundle and this dynamic module
+	// agree on the globalThis symbol.
+	tmpl, err := template.New("dynamic-module").Parse(dynamicModuleTemplate)
+	if err != nil {
+		return "", fmt.Errorf("parse dynamic module template: %w", err)
+	}
+	var rendered strings.Builder
+	if err := tmpl.Execute(&rendered, map[string]interface{}{
+		"Key":   hex.EncodeToString(signKey),
+		"Epoch": epoch,
+	}); err != nil {
+		return "", fmt.Errorf("render dynamic module template: %w", err)
+	}
+
+	obfuscated, err := c.ObfuscateJS(ctx, rendered.String())
+	if err != nil {
+		return "", fmt.Errorf("obfuscate dynamic module: %w", err)
+	}
+	if obfuscated == "" {
+		return "", fmt.Errorf("obfuscator produced empty dynamic module output")
+	}
+
+	// Prune any cached modules whose epoch has fallen out of the live window.
+	live := make(map[int64]bool, len(c.dynamicModuleCache))
+	for _, e := range c.keys.LiveEpochs() {
+		live[e] = true
+	}
+	for e := range c.dynamicModuleCache {
+		if !live[e] {
+			delete(c.dynamicModuleCache, e)
+		}
+	}
+
+	c.dynamicModuleCache[epoch] = obfuscated
+	return obfuscated, nil
+}
+
 func (c *ChallengeRuntime) computeTicket(ts string) string {
 	epoch := c.epochForTimestamp(ts)
 	signKey, ok := c.keys.SignKey(epoch)
@@ -523,21 +597,40 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 		}
 	}
 
-	// All per-request values: ticket, timestamp, PoW salt, PoW MAC.
+	// All per-request values: timestamp, PoW salt, PoW MAC.
 	// Fully stateless — no server-side storage, works across HA instances.
+	//
+	// The ticket is NO LONGER server-issued; the client computes it itself
+	// from the per-epoch key embedded in the dynamic key module (see
+	// dynamicModule below). This keeps the signing material inside the
+	// obfuscated payload — an attacker scraping HTML can no longer recover
+	// it for browser impersonation.
+	//
+	// The ticket the server expects is HMAC(ts, K_epoch). To satisfy
+	// computePowMAC's contract (it binds the salt to a specific ticket+ts)
+	// we still compute the same ticket here.
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
 	ticket := c.computeTicket(ts)
 	powSalt := generatePowPrefix()
 	powMAC := c.computePowMAC(powSalt, ticket, ts)
 
+	// Build and (cheaply) obfuscate the dynamic key module for the current
+	// epoch. The static bundle in obfuscatedJS.Code only carries the hook
+	// registration; the dynamic module is what carries the per-epoch K — so
+	// K never appears in plain HTML.
+	dynamicModule, err := c.buildAndObfuscateDynamicModule(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("build dynamic key module: %w", err)
+	}
+
 	var renderedPage strings.Builder
 
 	templateObj.Execute(&renderedPage, map[string]interface{}{
 		"JSChallenge":   obfuscatedJS.Code,
+		"DynamicModule": dynamicModule,
 		"PowDifficulty": difficulty,
 		"PowPrefix":     powSalt,
 		"PowMAC":        powMAC,
-		"Ticket":        ticket,
 		"Timestamp":     ts,
 	})
 	return renderedPage.String(), nil

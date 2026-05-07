@@ -387,9 +387,15 @@
       })();
     </script>
 
-    <script>var _powD={{.PowDifficulty}},_powP="{{.PowPrefix}}",_powM="{{.PowMAC}}",_t="{{.Ticket}}",_ts="{{.Timestamp}}"</script>
+    <!--
+      _powD/_powP/_powM/_ts are non-secret per-request protocol parameters.
+      The signing key is delivered separately by the obfuscated dynamic
+      key module below; the ticket is computed client-side from that key.
+    -->
+    <script>var _powD={{.PowDifficulty}},_powP="{{.PowPrefix}}",_powM="{{.PowMAC}}",_ts="{{.Timestamp}}"</script>
     <script type="module">
 {{.JSChallenge}}
+{{.DynamicModule}}
     </script>
 
     <script>

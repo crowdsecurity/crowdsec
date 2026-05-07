@@ -23,10 +23,21 @@ function writeStdout(str) {
 try {
   const sourceCode = readStdin();
 
-  const result = JavaScriptObfuscator.obfuscate(
-    sourceCode,
+  // Spread the high-obfuscation preset, then add reservedStrings so the
+  // sentinel that bridges the static bundle and the per-epoch dynamic key
+  // module (CSEC_CHALLENGE_HOOK_v1) survives the string-array transform
+  // identically in both bundles. Without this, the two independently-
+  // obfuscated artifacts wouldn't agree on the globalThis symbol they
+  // need to meet at.
+  const opts = Object.assign(
+    {},
     JavaScriptObfuscator.getOptionsByPreset("high-obfuscation"),
+    {
+      reservedStrings: ["__CSEC_CHALLENGE_HOOK_v1__"],
+    },
   );
+
+  const result = JavaScriptObfuscator.obfuscate(sourceCode, opts);
 
   writeStdout(result.getObfuscatedCode());
 } catch (e) {
