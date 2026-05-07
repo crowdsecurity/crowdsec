@@ -135,6 +135,46 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 		"ticket from an evicted epoch must not validate")
 }
 
+// TestCookie_AuthenticatedUserSurvivesRotation answers the operator
+// question "does rotating the secret kick existing authenticated users
+// back to a challenge?". The answer is no — cookies sealed under epoch N
+// continue to validate after rotations to N+1, N+2, ... up to the live
+// window's edge. Beyond that, users are re-challenged.
+//
+// This test exercises the round trip explicitly: seal a cookie, advance
+// the keyring by one rotation, open the cookie — must succeed.
+func TestCookie_AuthenticatedUserSurvivesRotation(t *testing.T) {
+	t0 := time.Now()
+	keys := newTestKeyRing(t, testSecret, time.Minute, t0)
+
+	// Seal a cookie under the current epoch.
+	envelope := &pb.ChallengeCookie{PowDifficulty: 12}
+	epoch, key := keys.CurrentCookie()
+	encoded, err := sealCookieV1(envelope, key, epoch, []byte("ua"))
+	require.NoError(t, err)
+
+	// Advance the keyring by one rotation interval. The cookie's epoch
+	// is now "previous" but still inside the live window.
+	keys.now = func() time.Time { return t0.Add(70 * time.Second) }
+
+	got, err := openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	require.NoError(t, err, "cookie should validate one rotation after issuance")
+	assert.Equal(t, int32(12), got.GetPowDifficulty())
+
+	// One more rotation: maxLive=3 means [current-2 ... current+skew]
+	// includes the original epoch when current = E0 + 2. Cookie still
+	// validates at the edge of the live window.
+	keys.now = func() time.Time { return t0.Add(130 * time.Second) }
+	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	require.NoError(t, err, "cookie should validate at the edge of the live window")
+
+	// One rotation more (current = E0 + 3): original epoch now evicted.
+	keys.now = func() time.Time { return t0.Add(190 * time.Second) }
+	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	require.Error(t, err, "cookie must be rejected once its epoch is out of window")
+	assert.ErrorIs(t, err, ErrCookieEpoch)
+}
+
 // TestEndToEnd_ValidateChallengeResponse_AcrossRotation walks the full
 // validation path (matches challenge, opens cookie) for a submission whose
 // ticket was issued under a previous-but-still-live epoch. Regression guard

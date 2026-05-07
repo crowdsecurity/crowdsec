@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -116,6 +117,59 @@ func TestSplitBundle_DynamicModuleRebuildsOnEpochAdvance(t *testing.T) {
 
 	assert.NotEqual(t, firstEpoch, secondEpoch, "epoch did not advance")
 	assert.NotEqual(t, first, second, "dynamic module did not change after epoch advance")
+}
+
+// TestSplitBundle_DynamicModuleConcurrentSingleflight is a regression
+// guard for the broken-pipe-at-rotation bug. N concurrent goroutines call
+// buildAndObfuscateDynamicModule for the same epoch; only ONE must
+// actually run the obfuscator (the others share its result via
+// singleflight). If we ever hold the cache mutex across the obfuscation
+// pass again, this test will time out OR show every caller doing its
+// own obfuscation.
+func TestSplitBundle_DynamicModuleConcurrentSingleflight(t *testing.T) {
+	keys := testKeyRing()
+	pinned := time.Now()
+	keys.now = func() time.Time { return pinned }
+	rt := newChallengeRuntimeForSplitTest(t, keys)
+
+	const N = 8
+	results := make([]string, N)
+	errs := make([]error, N)
+	var wg sync.WaitGroup
+	wg.Add(N)
+
+	start := time.Now()
+	for i := 0; i < N; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			out, err := rt.buildAndObfuscateDynamicModule(context.Background())
+			results[idx] = out
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	for i, err := range errs {
+		require.NoError(t, err, "goroutine %d failed", i)
+	}
+
+	// All callers must have observed the same obfuscation output. If any
+	// caller diverged, singleflight wasn't doing its job.
+	for i := 1; i < N; i++ {
+		require.Equal(t, results[0], results[i],
+			"goroutines %d and 0 saw different module bytes; singleflight is broken", i)
+	}
+
+	// Tighter bound: with N=8 goroutines and a single ~5s obfuscation,
+	// the wall-clock should be roughly one obfuscation, not N. We use
+	// 2x as the threshold to absorb scheduler noise; a regression where
+	// every caller runs its own obfuscation would push elapsed past
+	// N * 5s = 40s, way above the threshold.
+	t.Logf("8 concurrent buildAndObfuscateDynamicModule calls completed in %s", elapsed)
+	require.Less(t, elapsed, 15*time.Second,
+		"concurrent calls took %s; singleflight likely not coalescing (would expect 1 obfuscation, got serial)",
+		elapsed)
 }
 
 // TestSplitBundle_HTMLDoesNotContainSecret is the most important security
