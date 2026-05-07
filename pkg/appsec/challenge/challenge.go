@@ -54,9 +54,6 @@ const (
 
 const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
-// FIXME
-const masterSecret = "SUPER_SECRET_KEY"
-
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
@@ -85,13 +82,38 @@ var (
 )
 
 type ChallengeRuntime struct {
-	r              wazero.Runtime
-	obfuscatorMod  wazero.CompiledModule
+	r             wazero.Runtime
+	obfuscatorMod wazero.CompiledModule
 
 	obfuscatedJSCache []obfuscatedScript
 	cacheMutex        sync.RWMutex
 
 	powDifficulty int
+
+	// masterSecret is the long-lived shared secret used as the HMAC key for
+	// tickets/PoW MACs and as the HKDF input for cookie sealing. In a
+	// distributed setup all instances must share the same value so that a
+	// challenge issued by one instance validates against another.
+	masterSecret []byte
+}
+
+// Option configures a ChallengeRuntime at construction time.
+type Option func(*runtimeOptions)
+
+type runtimeOptions struct {
+	// masterSecret, if non-nil, overrides the secret-resolution path. The
+	// caller is responsible for ensuring it is at least minSecretBytes long.
+	masterSecret []byte
+}
+
+// WithMasterSecret sets the long-lived shared secret. In distributed
+// deployments this MUST be the same across all WAF instances. If not set,
+// NewChallengeRuntime generates a random secret at startup (suitable only for
+// single-instance deployments — restarts invalidate outstanding cookies).
+func WithMasterSecret(secret []byte) Option {
+	return func(o *runtimeOptions) {
+		o.masterSecret = secret
+	}
 }
 
 // DifficultyFromLevel resolves a named level ("low", "medium", "high") to
@@ -135,7 +157,26 @@ type obfuscatedScript struct {
 	uuid uuid.UUID // unique ID to track the script
 }
 
-func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
+func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
+	resolvedOpts := runtimeOptions{}
+	for _, opt := range opts {
+		opt(&resolvedOpts)
+	}
+
+	secret := resolvedOpts.masterSecret
+	if secret == nil {
+		var err error
+		secret, err = generateRandomSecret()
+		if err != nil {
+			return nil, err
+		}
+		log.Warn("no master secret configured for the WAF challenge runtime; generated an ephemeral random secret. " +
+			"Distributed (multi-WAF) deployments MUST configure a shared master_secret in the appsec config; " +
+			"single-instance deployments will see outstanding challenge cookies invalidated on restart.")
+	} else if len(secret) < minSecretBytes {
+		return nil, fmt.Errorf("master secret is %d bytes; minimum is %d", len(secret), minSecretBytes)
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
@@ -179,6 +220,7 @@ func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
 		obfuscatorMod:     compiledMod,
 		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
 		powDifficulty:     defaultPowDifficulty,
+		masterSecret:      secret,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -384,8 +426,8 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	return stdout.String(), nil
 }
 
-func computeTicket(ts string) string {
-	h := hmac.New(sha256.New, []byte(masterSecret))
+func (c *ChallengeRuntime) computeTicket(ts string) string {
+	h := hmac.New(sha256.New, c.masterSecret)
 	h.Write([]byte(ts))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -421,9 +463,9 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	// All per-request values: ticket, timestamp, PoW salt, PoW MAC.
 	// Fully stateless — no server-side storage, works across HA instances.
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket := computeTicket(ts)
+	ticket := c.computeTicket(ts)
 	powSalt := generatePowPrefix()
-	powMAC := computePowMAC(powSalt, ticket, ts)
+	powMAC := c.computePowMAC(powSalt, ticket, ts)
 
 	var renderedPage strings.Builder
 
@@ -449,9 +491,9 @@ func generatePowPrefix() string {
 
 // computePowMAC produces an HMAC that authenticates a PoW salt as server-generated
 // and bound to a specific ticket window. Stateless: any instance sharing the
-// masterSecret can verify it.
-func computePowMAC(salt, ticket, ts string) string {
-	h := hmac.New(sha256.New, []byte(masterSecret))
+// master secret can verify it.
+func (c *ChallengeRuntime) computePowMAC(salt, ticket, ts string) string {
+	h := hmac.New(sha256.New, c.masterSecret)
 	h.Write([]byte(salt))
 	h.Write([]byte(ticket))
 	h.Write([]byte(ts))
@@ -501,10 +543,10 @@ func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted strin
 
 // matchesChallenge verifies that the ticket/timestamp/PoW salt are authentically
 // server-generated and the timestamp is recent. Fully stateless — any instance
-// sharing masterSecret can verify.
-func matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
+// sharing the master secret can verify.
+func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
 	// Verify the ticket is an authentic HMAC of the timestamp.
-	expectedTicket := computeTicket(clientTS)
+	expectedTicket := c.computeTicket(clientTS)
 	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
 		return false
 	}
@@ -521,7 +563,7 @@ func matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string
 	}
 
 	// Verify the PoW salt MAC is authentic and bound to this ticket+timestamp.
-	expectedMAC := computePowMAC(clientPowSalt, clientTicket, clientTS)
+	expectedMAC := c.computePowMAC(clientPowSalt, clientTicket, clientTS)
 
 	return hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC))
 }
@@ -545,7 +587,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	}
 
 	// Verify ticket/timestamp match and PoW salt is authentically server-generated (stateless).
-	if !matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
+	if !c.matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
 	}
 
@@ -594,7 +636,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		PowDifficulty: int32(c.powDifficulty),
 	}
 
-	cookieValue, err := sealCookie(envelope, masterSecret, []byte(request.UserAgent()))
+	cookieValue, err := sealCookie(envelope, c.masterSecret, []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
@@ -620,7 +662,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	envelope, err := openCookie(ck.Value, masterSecret, []byte(userAgent))
+	envelope, err := openCookie(ck.Value, c.masterSecret, []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}

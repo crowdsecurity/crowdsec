@@ -23,8 +23,8 @@ var (
 
 const hkdfInfo = "crowdsec-challenge-cookie"
 
-func deriveKey(secret string) ([]byte, error) {
-	h := hkdf.New(sha256.New, []byte(secret), nil, []byte(hkdfInfo))
+func deriveKey(secret []byte) ([]byte, error) {
+	h := hkdf.New(sha256.New, secret, nil, []byte(hkdfInfo))
 	key := make([]byte, 32) // AES-256
 
 	if _, err := h.Read(key); err != nil {
@@ -34,7 +34,7 @@ func deriveKey(secret string) ([]byte, error) {
 	return key, nil
 }
 
-func sealCookie(envelope *pb.ChallengeCookie, secret string, aad []byte) (string, error) {
+func sealCookie(envelope *pb.ChallengeCookie, secret []byte, aad []byte) (string, error) {
 	plaintext, err := proto.Marshal(envelope)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
@@ -65,7 +65,7 @@ func sealCookie(envelope *pb.ChallengeCookie, secret string, aad []byte) (string
 	return base64.RawURLEncoding.EncodeToString(ciphertext), nil
 }
 
-func openCookie(encoded string, secret string, aad []byte) (*pb.ChallengeCookie, error) {
+func openCookie(encoded string, secret []byte, aad []byte) (*pb.ChallengeCookie, error) {
 	ciphertext, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode: %w", ErrCookieMalformed, err)

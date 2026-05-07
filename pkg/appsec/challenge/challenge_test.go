@@ -115,7 +115,7 @@ func TestDifficultyFromLevel(t *testing.T) {
 }
 
 func TestSetDifficulty(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: defaultPowDifficulty}
+	c := &ChallengeRuntime{powDifficulty: defaultPowDifficulty, masterSecret: testSecret}
 
 	assert.NoError(t, c.SetDifficulty("low"))
 	assert.Equal(t, PowDifficultyLow, c.powDifficulty)
@@ -149,48 +149,84 @@ func TestGetSessionKey(t *testing.T) {
 }
 
 func TestComputeTicket(t *testing.T) {
+	// Use a fixed test secret so the HMAC equality check is reproducible.
+	testSecret := []byte("0123456789abcdef0123456789abcdef")
+	c := &ChallengeRuntime{masterSecret: testSecret}
+
 	// Deterministic for same timestamp
-	t1 := computeTicket("12345")
-	t2 := computeTicket("12345")
+	t1 := c.computeTicket("12345")
+	t2 := c.computeTicket("12345")
 	assert.Equal(t, t1, t2)
 
 	// Different for different timestamps
-	t3 := computeTicket("67890")
+	t3 := c.computeTicket("67890")
 	assert.NotEqual(t, t1, t3)
 
 	// Matches expected HMAC-SHA256
-	h := hmac.New(sha256.New, []byte(masterSecret))
+	h := hmac.New(sha256.New, testSecret)
 	h.Write([]byte("12345"))
 	assert.Equal(t, fmt.Sprintf("%x", h.Sum(nil)), t1)
 }
 
 func TestMatchesChallenge(t *testing.T) {
+	c := &ChallengeRuntime{masterSecret: []byte("0123456789abcdef0123456789abcdef")}
+
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket := computeTicket(ts)
+	ticket := c.computeTicket(ts)
 	salt := generatePowPrefix()
-	mac := computePowMAC(salt, ticket, ts)
+	mac := c.computePowMAC(salt, ticket, ts)
 
 	// Valid challenge
-	assert.True(t, matchesChallenge(ticket, ts, salt, mac))
+	assert.True(t, c.matchesChallenge(ticket, ts, salt, mac))
 
 	// Wrong ticket
-	assert.False(t, matchesChallenge("wrong-ticket", ts, salt, mac))
+	assert.False(t, c.matchesChallenge("wrong-ticket", ts, salt, mac))
 
 	// Wrong timestamp (ticket doesn't match)
-	assert.False(t, matchesChallenge(ticket, "9999999999999999999", salt, mac))
+	assert.False(t, c.matchesChallenge(ticket, "9999999999999999999", salt, mac))
 
 	// Forged MAC
-	assert.False(t, matchesChallenge(ticket, ts, salt, "forged-mac"))
+	assert.False(t, c.matchesChallenge(ticket, ts, salt, "forged-mac"))
 
 	// MAC from different salt
 	otherSalt := generatePowPrefix()
-	assert.False(t, matchesChallenge(ticket, ts, otherSalt, mac))
+	assert.False(t, c.matchesChallenge(ticket, ts, otherSalt, mac))
 
 	// Expired timestamp (too old)
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*challengeJSRefreshInterval).UnixNano())
-	oldTicket := computeTicket(oldTS)
-	oldMAC := computePowMAC(salt, oldTicket, oldTS)
-	assert.False(t, matchesChallenge(oldTicket, oldTS, salt, oldMAC))
+	oldTicket := c.computeTicket(oldTS)
+	oldMAC := c.computePowMAC(salt, oldTicket, oldTS)
+	assert.False(t, c.matchesChallenge(oldTicket, oldTS, salt, oldMAC))
+
+	// Cross-secret rejection: a ticket signed by a different instance with a
+	// different master secret must NOT validate (this is the regression guard
+	// for distributed deployments — only instances sharing the same secret
+	// agree on signatures).
+	otherSecret := &ChallengeRuntime{masterSecret: []byte("ffffffffffffffffffffffffffffffff")}
+	otherTicket := otherSecret.computeTicket(ts)
+	otherMAC := otherSecret.computePowMAC(salt, otherTicket, ts)
+	assert.False(t, c.matchesChallenge(otherTicket, ts, salt, otherMAC))
+}
+
+// TestDistributedAgreement asserts that two ChallengeRuntime instances
+// configured with the same master_secret produce bit-identical tickets and
+// PoW MACs — the property that makes load-balanced deployments work.
+func TestDistributedAgreement(t *testing.T) {
+	secret := []byte("shared-secret-shared-secret-shar") // 32 bytes
+	a := &ChallengeRuntime{masterSecret: secret}
+	b := &ChallengeRuntime{masterSecret: secret}
+
+	// Use a freshness-window-valid timestamp so matchesChallenge accepts it.
+	ts := fmt.Sprintf("%d", time.Now().UnixNano())
+	salt := "deadbeefcafebabe"
+
+	assert.Equal(t, a.computeTicket(ts), b.computeTicket(ts))
+
+	ticket := a.computeTicket(ts)
+	assert.Equal(t, a.computePowMAC(salt, ticket, ts), b.computePowMAC(salt, ticket, ts))
+
+	// And a challenge issued by A validates against B.
+	assert.True(t, b.matchesChallenge(ticket, ts, salt, a.computePowMAC(salt, ticket, ts)))
 }
 
 // solvePoWGo is a Go implementation of the PoW solver matching the JS client.
@@ -232,18 +268,29 @@ func TestPoWVerification(t *testing.T) {
 	assert.True(t, hasLeadingZeroBits(powHash[:], difficulty))
 }
 
+// testSecret is a fixed master secret used by all test helpers below so that
+// tickets / MACs / cookies issued in one helper validate in another.
+var testSecret = []byte("test-secret-test-secret-test-sec") // 32 bytes
+
+// newTestRuntime returns a minimal ChallengeRuntime suitable for the helpers
+// in this file (no WASM, no obfuscation cache — those tests construct full
+// runtimes via NewChallengeRuntime).
+func newTestRuntime() *ChallengeRuntime {
+	return &ChallengeRuntime{masterSecret: testSecret}
+}
+
 // freshTicket generates a per-request ticket+timestamp pair (matching GetChallengePage).
 func freshTicket() (ticket, ts string) {
 	ts = fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket = computeTicket(ts)
+	ticket = newTestRuntime().computeTicket(ts)
 	return
 }
 
 // buildValidBody constructs a valid challenge POST body.
 func buildValidBody(difficulty int, ticket, ts string) string {
-	c := &ChallengeRuntime{}
+	c := newTestRuntime()
 	salt := generatePowPrefix()
-	powMAC := computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, ticket, ts)
 	nonce := solvePoWGo(salt, difficulty)
 	sessionKey := c.getSessionKey(ticket, nonce)
 
@@ -276,7 +323,7 @@ func buildValidBody(difficulty int, ticket, ts string) string {
 }
 
 func TestValidateChallengeResponse(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	body := buildValidBody(c.powDifficulty, ticket, ts)
 
@@ -290,7 +337,7 @@ func TestValidateChallengeResponse(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 
 	for range 20 {
 		ticket, ts := freshTicket()
@@ -304,10 +351,10 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	salt := generatePowPrefix()
-	powMAC := computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, ticket, ts)
 
 	body := url.Values{
 		"f":  {"dGVzdA=="},
@@ -327,7 +374,7 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 	// A submission that would otherwise pass at low difficulty is rejected
 	// outright when the runtime is set to impossible.
-	c := &ChallengeRuntime{powDifficulty: PowDifficultyImpossible}
+	c := &ChallengeRuntime{powDifficulty: PowDifficultyImpossible, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	body := buildValidBody(8, ticket, ts) // satisfies 8-bit PoW but not impossible
 
@@ -339,9 +386,9 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*challengeJSRefreshInterval).UnixNano())
-	oldTicket := computeTicket(oldTS)
+	oldTicket := c.computeTicket(oldTS)
 	body := buildValidBody(c.powDifficulty, oldTicket, oldTS)
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
@@ -352,10 +399,10 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	salt := generatePowPrefix()
-	powMAC := computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, ticket, ts)
 
 	body := url.Values{
 		"f":  {"dGVzdA=="},
@@ -373,7 +420,7 @@ func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	salt := generatePowPrefix()
 
@@ -393,10 +440,10 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 }
 
 func TestValidateChallengeResponse_InvalidHMAC(t *testing.T) {
-	c := &ChallengeRuntime{powDifficulty: 8}
+	c := &ChallengeRuntime{powDifficulty: 8, masterSecret: testSecret}
 	ticket, ts := freshTicket()
 	salt := generatePowPrefix()
-	powMAC := computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, ticket, ts)
 	nonce := solvePoWGo(salt, c.powDifficulty)
 
 	body := url.Values{

@@ -43,6 +43,15 @@ type Configuration struct {
 	AppsecConfigs                     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
+	// ChallengeMasterSecret is the long-lived secret used by the WAF
+	// challenge runtime to sign tickets / PoW MACs and seal challenge
+	// cookies. In a distributed (multi-WAF) deployment, all instances MUST
+	// share the same value so that a challenge issued by one instance
+	// validates against another. May be a hex-encoded byte string or a raw
+	// passphrase; minimum 32 bytes / characters. If unset, an ephemeral
+	// random secret is generated at startup (suitable for single-instance
+	// deployments only — restarts invalidate outstanding challenge cookies).
+	ChallengeMasterSecret             string         `yaml:"challenge_master_secret"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -191,7 +200,17 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	if appsecRuntime.NeedWASMVM {
 		logger.Info("Initializing WASM runtime for challenge obfuscation")
-		challengeRuntime, err := challenge.NewChallengeRuntime(ctx)
+
+		var challengeOpts []challenge.Option
+		if w.config.ChallengeMasterSecret != "" {
+			secret, err := challenge.ParseConfiguredSecret(w.config.ChallengeMasterSecret)
+			if err != nil {
+				return fmt.Errorf("invalid challenge_master_secret: %w", err)
+			}
+			challengeOpts = append(challengeOpts, challenge.WithMasterSecret(secret))
+		}
+
+		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)
 		if err != nil {
 			return fmt.Errorf("unable to create challenge runtime: %w", err)
 		}
