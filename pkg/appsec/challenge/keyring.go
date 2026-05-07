@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -154,20 +155,38 @@ func (k *KeyRing) deriveOrCache(epoch int64) epochKey {
 		return cached
 	}
 
+	start := time.Now()
 	derived := epochKey{
 		sign:   deriveEpochKey(k.masterSecret, epoch, keyringInfoSign),
 		cookie: deriveEpochKey(k.masterSecret, epoch, keyringInfoCookie),
 	}
+	derivationDuration := time.Since(start)
 
 	// Bound the cache so it can't grow without limit if the clock jumps.
 	// Anything outside the live window is safe to evict.
+	evicted := 0
 	for cachedEpoch := range k.cache {
 		if !k.isLive(cachedEpoch) {
 			delete(k.cache, cachedEpoch)
+			evicted++
 		}
 	}
 
 	k.cache[epoch] = derived
+
+	// One INFO line per fresh epoch derivation. HKDF itself is microseconds
+	// — we log it for distributed-troubleshooting visibility (every WAF
+	// instance with the same master_secret should log the same epoch
+	// numbers at the same wall-clock times) and to surface unexpected
+	// rotation churn (clock jumps, mis-sized live window, etc.).
+	log.WithFields(log.Fields{
+		"epoch":           epoch,
+		"current_epoch":   k.CurrentEpoch(),
+		"derivation_us":   derivationDuration.Microseconds(),
+		"cache_evicted":   evicted,
+		"cache_size":      len(k.cache),
+	}).Info("WAF challenge: derived per-epoch key")
+
 	return derived
 }
 
