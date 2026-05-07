@@ -66,13 +66,27 @@ var PowWorkerJS string
 //go:embed js/obfuscate/index.wasm.gz
 var obfuscatorWasmGz []byte
 
+// initialBundleGz is a pre-obfuscated challenge bundle produced at build time
+// by `go generate ./pkg/appsec/challenge/js/...`. It is used to seed the
+// challenge JS cache at startup so the service is ready to serve challenges
+// immediately, instead of waiting ~1 minute for the first variant to be
+// generated synchronously. Background generation continues to add fresh
+// variants and rotate them on the normal refresh interval.
+//
+//go:embed initial_bundle.js.gz
+var initialBundleGz []byte
+
 var (
 	obfuscatorWasm     []byte
 	obfuscatorWasmOnce sync.Once
+	initialBundle      string
+	initialBundleOnce  sync.Once
+	initialBundleErr   error
 )
 
 type ChallengeRuntime struct {
-	r wazero.Runtime
+	r              wazero.Runtime
+	obfuscatorMod  wazero.CompiledModule
 
 	obfuscatedJSCache []obfuscatedScript
 	cacheMutex        sync.RWMutex
@@ -151,19 +165,80 @@ func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
 		return nil, obfuscatorWasmErr
 	}
 
+	// Pre-compile the obfuscator WASM once. Without this, every ObfuscateJS
+	// call re-parses the WASM bytes (~4-5s of overhead per call). Compiling
+	// once and instantiating on each call drops per-call overhead to the
+	// instantiation cost alone.
+	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
+	}
+
 	challengeRuntime := &ChallengeRuntime{
 		r:                 r,
+		obfuscatorMod:     compiledMod,
 		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
 		powDifficulty:     defaultPowDifficulty,
 	}
 
-	if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
-		return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
+	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
+	// immediately ready to serve challenges. The background generator below
+	// continues to add fresh runtime-generated variants and rotates them on
+	// the normal refresh interval.
+	if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
+		// If the initial bundle is missing or corrupt, fall back to the old
+		// behavior of generating one variant synchronously. This keeps the
+		// service correct even if `go generate` was not run.
+		log.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
+		if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
+			return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
+		}
 	}
 
 	go challengeRuntime.challengeGenerator(ctx)
 
 	return challengeRuntime, nil
+}
+
+// seedCacheFromInitialBundle decompresses the build-time obfuscated bundle
+// (initial_bundle.js.gz) and inserts it into the cache as the first variant.
+// Cheap (~ms) — eliminates the ~1 minute synchronous obfuscation that startup
+// would otherwise pay.
+func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
+	initialBundleOnce.Do(func() {
+		if len(initialBundleGz) == 0 {
+			initialBundleErr = fmt.Errorf("baked-in initial_bundle.js.gz is empty (was `go generate` run?)")
+			return
+		}
+
+		gz, err := gzip.NewReader(bytes.NewReader(initialBundleGz))
+		if err != nil {
+			initialBundleErr = fmt.Errorf("gzip reader for initial bundle: %w", err)
+			return
+		}
+		defer gz.Close()
+
+		decoded, err := io.ReadAll(gz)
+		if err != nil {
+			initialBundleErr = fmt.Errorf("decompress initial bundle: %w", err)
+			return
+		}
+		initialBundle = string(decoded)
+	})
+
+	if initialBundleErr != nil {
+		return initialBundleErr
+	}
+	if initialBundle == "" {
+		return fmt.Errorf("initial bundle is empty after decompression")
+	}
+
+	c.appendCachedChallengeJS([]obfuscatedScript{{
+		Code: initialBundle,
+		uuid: uuid.New(),
+	}})
+
+	return nil
 }
 
 func (c *ChallengeRuntime) challengeGenerator(ctx context.Context) {
@@ -296,7 +371,7 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 		WithStdout(&stdout).
 		WithStderr(&stderr)
 
-	mod, err := c.r.InstantiateWithConfig(ctx, obfuscatorWasm, config)
+	mod, err := c.r.InstantiateModule(ctx, c.obfuscatorMod, config)
 	if err != nil {
 		if stderr.Len() > 0 {
 			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
