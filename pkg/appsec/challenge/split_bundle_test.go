@@ -75,8 +75,16 @@ func TestSplitBundle_DynamicModuleObfuscatesKey(t *testing.T) {
 
 // TestSplitBundle_DynamicModuleCachedPerEpoch confirms repeated calls in
 // the same epoch share the obfuscation cost (single-flight via cache).
+//
+// We pin the keyring's clock so the two calls are guaranteed to see the
+// same epoch — without this, the ~12s obfuscation cost can straddle a
+// rotation boundary on testKeyRing's 1-minute interval and the second
+// call ends up generating a different module under a different key.
 func TestSplitBundle_DynamicModuleCachedPerEpoch(t *testing.T) {
 	keys := testKeyRing()
+	pinned := time.Now()
+	keys.now = func() time.Time { return pinned }
+
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
 	first, err := rt.buildAndObfuscateDynamicModule(context.Background())
