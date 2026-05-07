@@ -51,7 +51,17 @@ type Configuration struct {
 	// passphrase; minimum 32 bytes / characters. If unset, an ephemeral
 	// random secret is generated at startup (suitable for single-instance
 	// deployments only — restarts invalidate outstanding challenge cookies).
-	ChallengeMasterSecret             string         `yaml:"challenge_master_secret"`
+	ChallengeMasterSecret string `yaml:"challenge_master_secret"`
+
+	// ChallengeKeyRotationInterval controls how often the per-epoch
+	// challenge key advances. All instances in a distributed setup MUST
+	// agree on this value to derive identical per-epoch keys.
+	ChallengeKeyRotationInterval *time.Duration `yaml:"challenge_key_rotation_interval"`
+
+	// ChallengeMaxLiveEpochs is how many past epochs (in addition to the
+	// current one) the keyring continues to accept. Sized so any submission
+	// within the freshness window has a non-evicted epoch.
+	ChallengeMaxLiveEpochs            int `yaml:"challenge_max_live_epochs"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -208,6 +218,12 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 				return fmt.Errorf("invalid challenge_master_secret: %w", err)
 			}
 			challengeOpts = append(challengeOpts, challenge.WithMasterSecret(secret))
+		}
+		if w.config.ChallengeKeyRotationInterval != nil {
+			challengeOpts = append(challengeOpts, challenge.WithRotationInterval(*w.config.ChallengeKeyRotationInterval))
+		}
+		if w.config.ChallengeMaxLiveEpochs > 0 {
+			challengeOpts = append(challengeOpts, challenge.WithMaxLiveEpochs(w.config.ChallengeMaxLiveEpochs))
 		}
 
 		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)

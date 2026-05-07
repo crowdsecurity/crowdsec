@@ -90,11 +90,12 @@ type ChallengeRuntime struct {
 
 	powDifficulty int
 
-	// masterSecret is the long-lived shared secret used as the HMAC key for
-	// tickets/PoW MACs and as the HKDF input for cookie sealing. In a
-	// distributed setup all instances must share the same value so that a
-	// challenge issued by one instance validates against another.
-	masterSecret []byte
+	// keys derives per-epoch sign+cookie keys from the configured long-lived
+	// secret. All HMAC and AEAD operations route through this so that
+	// rotation is a server-side bookkeeping change with no protocol impact.
+	// In distributed setups, every WAF instance with the same master_secret
+	// and rotation_interval derives bit-identical per-epoch keys.
+	keys *KeyRing
 }
 
 // Option configures a ChallengeRuntime at construction time.
@@ -104,6 +105,14 @@ type runtimeOptions struct {
 	// masterSecret, if non-nil, overrides the secret-resolution path. The
 	// caller is responsible for ensuring it is at least minSecretBytes long.
 	masterSecret []byte
+
+	// rotationInterval is the wall-clock period after which the per-epoch
+	// derived keys advance. Zero falls back to keyringDefaultRotation.
+	rotationInterval time.Duration
+
+	// maxLiveEpochs is how many past epochs (plus the current one) the
+	// keyring keeps acceptable. Zero falls back to keyringDefaultMaxLive.
+	maxLiveEpochs int
 }
 
 // WithMasterSecret sets the long-lived shared secret. In distributed
@@ -113,6 +122,23 @@ type runtimeOptions struct {
 func WithMasterSecret(secret []byte) Option {
 	return func(o *runtimeOptions) {
 		o.masterSecret = secret
+	}
+}
+
+// WithRotationInterval sets the per-epoch key rotation period. All instances
+// in a distributed setup MUST agree on this value to derive identical keys.
+func WithRotationInterval(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		o.rotationInterval = d
+	}
+}
+
+// WithMaxLiveEpochs sets how many past epochs (in addition to the current
+// one) the keyring continues to accept. Sized so any submission within the
+// freshness window has a non-evicted epoch.
+func WithMaxLiveEpochs(n int) Option {
+	return func(o *runtimeOptions) {
+		o.maxLiveEpochs = n
 	}
 }
 
@@ -177,11 +203,20 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("master secret is %d bytes; minimum is %d", len(secret), minSecretBytes)
 	}
 
+	rotationInterval := resolvedOpts.rotationInterval
+	if rotationInterval == 0 {
+		rotationInterval = keyringDefaultRotation
+	}
+
+	keys, err := NewKeyRing(secret, rotationInterval, resolvedOpts.maxLiveEpochs)
+	if err != nil {
+		return nil, fmt.Errorf("build challenge keyring: %w", err)
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
-	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
-	if err != nil {
+	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
 		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
 	}
 
@@ -220,7 +255,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		obfuscatorMod:     compiledMod,
 		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
 		powDifficulty:     defaultPowDifficulty,
-		masterSecret:      secret,
+		keys:              keys,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -426,11 +461,39 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	return stdout.String(), nil
 }
 
+// computeTicket signs the timestamp with the per-epoch signing key derived
+// from the master secret. The epoch is computed from the timestamp itself
+// (`ts_nanos / 1e9 / rotation_seconds`), so verification is fully stateless:
+// any instance with the same master secret can derive the same epoch from the
+// same ts and validate the HMAC.
 func (c *ChallengeRuntime) computeTicket(ts string) string {
-	h := hmac.New(sha256.New, c.masterSecret)
+	epoch := c.epochForTimestamp(ts)
+	signKey, ok := c.keys.SignKey(epoch)
+	if !ok {
+		// Falling back to the current key on out-of-window timestamps avoids
+		// accidentally producing a structurally valid signature for a stale
+		// timestamp; verification will reject the resulting ticket on the same
+		// liveness check.
+		_, signKey = c.keys.Current()
+	}
+
+	h := hmac.New(sha256.New, signKey)
 	h.Write([]byte(ts))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// epochForTimestamp converts a nanosecond UnixNano string (the format used in
+// challenge.go's ts) into the keyring's epoch identifier. Uses the same
+// rotation interval as the keyring so two instances always agree.
+func (c *ChallengeRuntime) epochForTimestamp(ts string) int64 {
+	tsVal, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil || tsVal <= 0 {
+		// Caller will reject the ticket via the liveness check anyway; return
+		// an out-of-window sentinel epoch.
+		return -1
+	}
+	return tsVal / int64(time.Second) / int64(c.keys.rotationInterval/time.Second)
 }
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
@@ -489,11 +552,17 @@ func generatePowPrefix() string {
 	return hex.EncodeToString(buf)
 }
 
-// computePowMAC produces an HMAC that authenticates a PoW salt as server-generated
-// and bound to a specific ticket window. Stateless: any instance sharing the
-// master secret can verify it.
+// computePowMAC produces an HMAC that authenticates a PoW salt as server-
+// generated and bound to a specific ticket window. Signed with the same
+// per-epoch key as the ticket so a single keyring lookup verifies both.
 func (c *ChallengeRuntime) computePowMAC(salt, ticket, ts string) string {
-	h := hmac.New(sha256.New, c.masterSecret)
+	epoch := c.epochForTimestamp(ts)
+	signKey, ok := c.keys.SignKey(epoch)
+	if !ok {
+		_, signKey = c.keys.Current()
+	}
+
+	h := hmac.New(sha256.New, signKey)
 	h.Write([]byte(salt))
 	h.Write([]byte(ticket))
 	h.Write([]byte(ts))
@@ -544,16 +613,15 @@ func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted strin
 // matchesChallenge verifies that the ticket/timestamp/PoW salt are authentically
 // server-generated and the timestamp is recent. Fully stateless — any instance
 // sharing the master secret can verify.
+//
+// Both the ticket and the PoW MAC are signed with the per-epoch key derived
+// from `ts`. Liveness is enforced twice: first via the keyring (the epoch
+// derived from `ts` must be in the live window) and second via the
+// challenge-JS refresh window. The keyring window is the actual freshness
+// guarantee; the JS-refresh check is a (looser) backstop.
 func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
-	// Verify the ticket is an authentic HMAC of the timestamp.
-	expectedTicket := c.computeTicket(clientTS)
-	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
-		return false
-	}
-
-	// Verify the timestamp is recent (within 2 refresh intervals for safety).
 	tsVal, err := strconv.ParseInt(clientTS, 10, 64)
-	if err != nil {
+	if err != nil || tsVal <= 0 {
 		return false
 	}
 
@@ -562,10 +630,34 @@ func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSal
 		return false
 	}
 
+	epoch := c.epochForTimestamp(clientTS)
+	signKey, ok := c.keys.SignKey(epoch)
+	if !ok {
+		// Epoch fell out of the live window — reject without leaking a usable
+		// "signature mismatch" vs "stale epoch" distinction via timing.
+		return false
+	}
+
+	// Verify the ticket is an authentic HMAC of the timestamp under K_epoch.
+	expectedTicket := hmacSHA256Hex(signKey, []byte(clientTS))
+	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
+		return false
+	}
+
 	// Verify the PoW salt MAC is authentic and bound to this ticket+timestamp.
-	expectedMAC := c.computePowMAC(clientPowSalt, clientTicket, clientTS)
+	macIn := make([]byte, 0, len(clientPowSalt)+len(clientTicket)+len(clientTS))
+	macIn = append(macIn, clientPowSalt...)
+	macIn = append(macIn, clientTicket...)
+	macIn = append(macIn, clientTS...)
+	expectedMAC := hmacSHA256Hex(signKey, macIn)
 
 	return hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC))
+}
+
+func hmacSHA256Hex(key, msg []byte) string {
+	h := hmac.New(sha256.New, key)
+	h.Write(msg)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
@@ -636,7 +728,11 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		PowDifficulty: int32(c.powDifficulty),
 	}
 
-	cookieValue, err := sealCookie(envelope, c.masterSecret, []byte(request.UserAgent()))
+	// Seal under the current epoch's cookie key. The cookie wire format
+	// includes the epoch tag so the same key (or a subsequent rotation
+	// while the epoch is still in the live window) opens it.
+	cookieEpoch, cookieKey := c.keys.CurrentCookie()
+	cookieValue, err := sealCookieV1(envelope, cookieKey, cookieEpoch, []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
@@ -662,7 +758,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	envelope, err := openCookie(ck.Value, c.masterSecret, []byte(userAgent))
+	envelope, err := openCookieV1(ck.Value, c.keys.CookieKey, c.keys.LiveEpochs(), []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}
