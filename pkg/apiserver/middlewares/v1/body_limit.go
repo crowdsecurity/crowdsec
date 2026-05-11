@@ -13,10 +13,10 @@ const (
 	AuthenticatedBodyLimit   int64 = 50 * 1024 * 1024 // 50 MiB
 )
 
-func BodyLimit(max int64) gin.HandlerFunc {
+func BodyLimit(maxSize int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Body != nil {
-			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, max)
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSize)
 		}
 		c.Next()
 	}
