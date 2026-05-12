@@ -25,7 +25,7 @@ func TestCookieV1_RoundTrip(t *testing.T) {
 	encoded, err := sealCookieV1(envelope, key, epoch, aad)
 	require.NoError(t, err)
 
-	got, err := openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), aad)
+	got, err := openCookie(encoded, keys.CookieKey, aad)
 	require.NoError(t, err)
 	assert.Equal(t, int32(12), got.GetPowDifficulty())
 }
@@ -48,7 +48,7 @@ func TestCookieV1_EpochTagBoundToAAD(t *testing.T) {
 	tampered[8] ^= 0x01
 	tamperedEncoded := base64.RawURLEncoding.EncodeToString(tampered)
 
-	_, err = openCookieV1(tamperedEncoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	_, err = openCookie(tamperedEncoded, keys.CookieKey, []byte("ua"))
 	require.Error(t, err, "tampering with the epoch byte must invalidate the cookie")
 }
 
@@ -66,7 +66,7 @@ func TestCookieV1_OutOfWindowRejected(t *testing.T) {
 	// jumping past current+4 leaves epoch out of window).
 	keys.now = func() time.Time { return t0.Add(10 * time.Minute) }
 
-	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrCookieEpoch, "out-of-window epoch should produce ErrCookieEpoch")
 }
@@ -80,8 +80,25 @@ func TestCookieV1_UAMismatchRejected(t *testing.T) {
 	encoded, err := sealCookieV1(&pb.ChallengeCookie{}, key, epoch, []byte("ua-A"))
 	require.NoError(t, err)
 
-	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua-B"))
+	_, err = openCookie(encoded, keys.CookieKey, []byte("ua-B"))
 	assert.ErrorIs(t, err, ErrCookieSignature)
+}
+
+// TestCookie_UnknownVersionRejected makes the version-byte dispatch
+// explicit: a cookie with an unknown leading byte is rejected with the
+// dedicated ErrCookieVersion sentinel rather than being attempted as
+// some other format. This is the extension point for any future cookie
+// schema (e.g. a v2 that decouples cookie key from epoch).
+func TestCookie_UnknownVersionRejected(t *testing.T) {
+	keys := testKeyRing()
+
+	// Forge: version byte 0xFE followed by random-looking junk.
+	raw := append([]byte{0xFE}, []byte("0123456789abcdefghijklmnop")...)
+	encoded := base64.RawURLEncoding.EncodeToString(raw)
+
+	_, err := openCookie(encoded, keys.CookieKey, []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrCookieVersion, "unknown version byte must produce ErrCookieVersion")
 }
 
 // TestRotation_TicketSurvives_WithinLiveWindow exercises the most important
@@ -157,7 +174,7 @@ func TestCookie_AuthenticatedUserSurvivesRotation(t *testing.T) {
 	// is now "previous" but still inside the live window.
 	keys.now = func() time.Time { return t0.Add(70 * time.Second) }
 
-	got, err := openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	got, err := openCookie(encoded, keys.CookieKey, []byte("ua"))
 	require.NoError(t, err, "cookie should validate one rotation after issuance")
 	assert.Equal(t, int32(12), got.GetPowDifficulty())
 
@@ -165,12 +182,12 @@ func TestCookie_AuthenticatedUserSurvivesRotation(t *testing.T) {
 	// includes the original epoch when current = E0 + 2. Cookie still
 	// validates at the edge of the live window.
 	keys.now = func() time.Time { return t0.Add(130 * time.Second) }
-	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
 	require.NoError(t, err, "cookie should validate at the edge of the live window")
 
 	// One rotation more (current = E0 + 3): original epoch now evicted.
 	keys.now = func() time.Time { return t0.Add(190 * time.Second) }
-	_, err = openCookieV1(encoded, keys.CookieKey, keys.LiveEpochs(), []byte("ua"))
+	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
 	require.Error(t, err, "cookie must be rejected once its epoch is out of window")
 	assert.ErrorIs(t, err, ErrCookieEpoch)
 }

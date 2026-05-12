@@ -1018,7 +1018,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	envelope, err := openCookieV1(ck.Value, c.keys.CookieKey, c.keys.LiveEpochs(), []byte(userAgent))
+	envelope, err := openCookie(ck.Value, c.keys.CookieKey, []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}

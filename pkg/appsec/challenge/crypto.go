@@ -21,19 +21,19 @@ var (
 	ErrCookieSignature = errors.New("invalid cookie signature")
 	ErrCookiePayload   = errors.New("invalid cookie payload")
 	ErrCookieEpoch     = errors.New("cookie epoch outside live window")
+	ErrCookieVersion   = errors.New("unknown cookie version")
 )
 
 const hkdfInfo = "crowdsec-challenge-cookie"
 
-// Cookie wire format:
+// Cookie wire format. A single version byte at offset 0 lets us evolve the
+// format without flag-day-style cookie invalidation. New formats add a new
+// case in openCookie's switch.
 //
-//   v1 (current): cookieVersionV1 || epoch_be8 || nonce || ciphertext
-//   v0 (legacy):  nonce || ciphertext
+//   v1: cookieVersionV1 || epoch_be8 || nonce || ciphertext
 //
-// The version byte distinguishes v1 from v0 — v0 nonces are 12 random bytes,
-// so the probability of a v0 cookie's first byte happening to match
-// cookieVersionV1 is 1/256. The epoch is bound into the AAD so a sealed
-// cookie can't be replayed under a different epoch tag.
+// The epoch is bound into the AAD so a sealed cookie can't be replayed
+// under a different epoch tag.
 const cookieVersionV1 byte = 0x01
 
 func deriveKey(secret []byte) ([]byte, error) {
@@ -96,23 +96,25 @@ func sealCookieV1(envelope *pb.ChallengeCookie, epochKey []byte, epoch int64, aa
 // KeyRing.CookieKey.
 type keyResolver func(epoch int64) ([]byte, bool)
 
-// openCookieV1 decodes a v1 cookie. If the wire format does not start with
-// cookieVersionV1 it is treated as a legacy v0 cookie and decoded with
-// openCookieV0Fallback (which tries every live key in turn).
-func openCookieV1(encoded string, resolveKey keyResolver, liveEpochs []int64, aad []byte) (*pb.ChallengeCookie, error) {
+// openCookie decodes a sealed cookie, dispatching on the version byte.
+// Unknown versions are rejected with ErrCookieVersion — there is no legacy
+// fallback because the cookie format has never shipped to users in any
+// earlier form.
+func openCookie(encoded string, resolveKey keyResolver, aad []byte) (*pb.ChallengeCookie, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode: %w", ErrCookieMalformed, err)
 	}
-
-	if len(raw) >= 1 && raw[0] == cookieVersionV1 {
-		return openCookieV1Bytes(raw, resolveKey, aad)
+	if len(raw) < 1 {
+		return nil, fmt.Errorf("%w: empty cookie", ErrCookieMalformed)
 	}
 
-	// Pre-v1 fallback: try every live epoch's key. After all currently-issued
-	// v0 cookies have expired (default 2h cookie TTL, so within hours of
-	// deploy), this branch is only ever taken on adversarial input.
-	return openCookieV0Fallback(raw, resolveKey, liveEpochs, aad)
+	switch raw[0] {
+	case cookieVersionV1:
+		return openCookieV1Bytes(raw, resolveKey, aad)
+	default:
+		return nil, fmt.Errorf("%w: 0x%02x", ErrCookieVersion, raw[0])
+	}
 }
 
 func openCookieV1Bytes(raw []byte, resolveKey keyResolver, aad []byte) (*pb.ChallengeCookie, error) {
@@ -129,36 +131,7 @@ func openCookieV1Bytes(raw []byte, resolveKey keyResolver, aad []byte) (*pb.Chal
 		return nil, fmt.Errorf("%w: epoch %d", ErrCookieEpoch, epoch)
 	}
 
-	envelope, err := openCookieAESGCM(body, key, bindEpochToAAD(aad, epoch))
-	if err != nil {
-		return nil, err
-	}
-	return envelope, nil
-}
-
-func openCookieV0Fallback(raw []byte, resolveKey keyResolver, liveEpochs []int64, aad []byte) (*pb.ChallengeCookie, error) {
-	if len(liveEpochs) == 0 {
-		return nil, fmt.Errorf("%w: no live keys to try v0 decode", ErrCookieSignature)
-	}
-
-	// Try newest-first so steady-state legacy cookies (issued just before
-	// upgrade to v1) decode on the first attempt.
-	for i := len(liveEpochs) - 1; i >= 0; i-- {
-		key, ok := resolveKey(liveEpochs[i])
-		if !ok {
-			continue
-		}
-		envelope, err := openCookieAESGCM(raw, key, aad)
-		if err == nil {
-			return envelope, nil
-		}
-		// On signature failure keep trying; bail on structural errors.
-		if !errors.Is(err, ErrCookieSignature) {
-			return nil, err
-		}
-	}
-
-	return nil, fmt.Errorf("%w: no live key opened the cookie", ErrCookieSignature)
+	return openCookieAESGCM(body, key, bindEpochToAAD(aad, epoch))
 }
 
 func openCookieAESGCM(body []byte, epochKey []byte, aad []byte) (*pb.ChallengeCookie, error) {
