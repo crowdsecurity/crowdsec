@@ -66,7 +66,7 @@ type Configuration struct {
 	// ChallengeCookieTTL controls how long a successful-challenge cookie
 	// stays valid. Decoupled from the keyring rotation window so cookies
 	// can be long-lived (e.g. 24h) without widening the per-epoch ticket-
-	// forgery exposure. Defaults to 2h when unset.
+	// forgery exposure. Defaults to 12h when unset.
 	ChallengeCookieTTL                *time.Duration `yaml:"challenge_cookie_ttl"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }

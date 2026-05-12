@@ -45,7 +45,7 @@ const challengeJSRefreshInterval = 10 * time.Minute
 // default. Decoupled from the keyring rotation window: an operator can
 // configure long cookies (e.g. 24h) without widening the ticket-forgery
 // exposure window (keyring live window, default 15m).
-const defaultCookieTTL = 2 * time.Hour
+const defaultCookieTTL = 12 * time.Hour
 
 // PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
 // obfuscator runs ~500-5000 ops/sec, so keep these conservative.
