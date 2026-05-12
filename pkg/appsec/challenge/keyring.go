@@ -20,23 +20,23 @@ import (
 // Two independent derivation contexts are used:
 //
 //   - "epoch-sign":   per-epoch HMAC key for ticket / PoW MAC signing.
-//                     Rotates with the keyring (tight forgery window).
+//     Rotates with the keyring (tight forgery window).
 //   - "cookie-master": single long-lived AES key for cookie sealing.
-//                     Lifetime equals master_secret's lifetime; cookie
-//                     expiration is enforced by an explicit not_after
-//                     timestamp inside the sealed envelope (see crypto.go).
+//     Lifetime equals master_secret's lifetime; cookie
+//     expiration is enforced by an explicit not_after
+//     timestamp inside the sealed envelope (see crypto.go).
 //
 // The two contexts produce cryptographically independent keys: leaking
 // one tells the attacker nothing about the other.
 const (
-	keyringHKDFSalt          = "crowdsec-challenge-keyring-v1"
-	keyringInfoSign          = "epoch-sign"
-	keyringInfoMasterCookie  = "cookie-master"
-	keyringDerivedKeyBytes   = 32 // 256-bit keys throughout
-	keyringClockSkew         = 1  // accept currentEpoch + 1
-	keyringDefaultMaxLive    = 3  // currentEpoch and 2 prior
-	keyringDefaultRotation   = 5 * time.Minute
-	keyringMinRotation       = 30 * time.Second
+	keyringHKDFSalt         = "crowdsec-challenge-keyring-v1"
+	keyringInfoSign         = "epoch-sign"
+	keyringInfoMasterCookie = "cookie-master"
+	keyringDerivedKeyBytes  = 32 // 256-bit keys throughout
+	keyringClockSkew        = 1  // accept currentEpoch + 1
+	keyringDefaultMaxLive   = 3  // currentEpoch and 2 prior
+	keyringDefaultRotation  = 5 * time.Minute
+	keyringMinRotation      = 30 * time.Second
 )
 
 // KeyRing produces keys deterministically from a shared master secret. Two
@@ -48,7 +48,7 @@ const (
 //
 //   - Per-epoch signing key (rotates on rotationInterval). Used for ticket
 //     HMAC and PoW MAC. Live window:
-//       [currentEpoch - maxLive + 1 ... currentEpoch + clockSkew]
+//     [currentEpoch - maxLive + 1 ... currentEpoch + clockSkew]
 //     Epochs outside the window are rejected, bounding ticket forgery
 //     exposure to maxLive * rotationInterval.
 //
@@ -71,7 +71,7 @@ type KeyRing struct {
 	now func() time.Time // overridable for tests
 
 	mu    sync.RWMutex
-	cache map[int64][]byte // epoch -> sign key (cookie key no longer per-epoch)
+	cache map[int64][]byte // epoch -> per-epoch sign key
 }
 
 // NewKeyRing constructs a KeyRing. masterSecret must be at least minSecretBytes

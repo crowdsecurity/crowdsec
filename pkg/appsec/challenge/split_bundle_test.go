@@ -52,7 +52,7 @@ func TestSplitBundle_DynamicModuleObfuscatesKey(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	got, err := rt.buildAndObfuscateDynamicModule(context.Background())
+	got, err := rt.currentDynamicModule(context.Background())
 	require.NoError(t, err)
 	require.NotEmpty(t, got)
 
@@ -88,30 +88,30 @@ func TestSplitBundle_DynamicModuleCachedPerEpoch(t *testing.T) {
 
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	first, err := rt.buildAndObfuscateDynamicModule(context.Background())
+	first, err := rt.currentDynamicModule(context.Background())
 	require.NoError(t, err)
 
-	second, err := rt.buildAndObfuscateDynamicModule(context.Background())
+	second, err := rt.currentDynamicModule(context.Background())
 	require.NoError(t, err)
 
 	assert.Equal(t, first, second, "second call must return the cached module byte-for-byte")
 }
 
 // TestSplitBundle_DynamicModuleRebuildsOnEpochAdvance asserts that when the
-// keyring rolls to a new epoch, buildAndObfuscateDynamicModule produces a
+// keyring rolls to a new epoch, currentDynamicModule produces a
 // fresh module embedding the new key.
 func TestSplitBundle_DynamicModuleRebuildsOnEpochAdvance(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	first, err := rt.buildAndObfuscateDynamicModule(context.Background())
+	first, err := rt.currentDynamicModule(context.Background())
 	require.NoError(t, err)
 	firstEpoch, _ := keys.Current()
 
 	// Advance the keyring's clock past the rotation interval.
 	keys.now = func() time.Time { return time.Now().Add(2 * time.Minute) }
 
-	second, err := rt.buildAndObfuscateDynamicModule(context.Background())
+	second, err := rt.currentDynamicModule(context.Background())
 	require.NoError(t, err)
 	secondEpoch, _ := keys.Current()
 
@@ -119,13 +119,13 @@ func TestSplitBundle_DynamicModuleRebuildsOnEpochAdvance(t *testing.T) {
 	assert.NotEqual(t, first, second, "dynamic module did not change after epoch advance")
 }
 
-// TestSplitBundle_DynamicModuleConcurrentSingleflight is a regression
-// guard for the broken-pipe-at-rotation bug. N concurrent goroutines call
-// buildAndObfuscateDynamicModule for the same epoch; only ONE must
-// actually run the obfuscator (the others share its result via
+// TestSplitBundle_DynamicModuleConcurrentSingleflight asserts that concurrent
+// callers for the same epoch share a single obfuscation pass via singleflight.
+// N concurrent goroutines call currentDynamicModule for the same epoch; only
+// ONE must actually run the obfuscator (the others share its result via
 // singleflight). If we ever hold the cache mutex across the obfuscation
-// pass again, this test will time out OR show every caller doing its
-// own obfuscation.
+// pass, this test will time out OR show every caller doing its own
+// obfuscation.
 func TestSplitBundle_DynamicModuleConcurrentSingleflight(t *testing.T) {
 	keys := testKeyRing()
 	pinned := time.Now()
@@ -142,7 +142,7 @@ func TestSplitBundle_DynamicModuleConcurrentSingleflight(t *testing.T) {
 	for i := 0; i < N; i++ {
 		go func(idx int) {
 			defer wg.Done()
-			out, err := rt.buildAndObfuscateDynamicModule(context.Background())
+			out, err := rt.currentDynamicModule(context.Background())
 			results[idx] = out
 			errs[idx] = err
 		}(i)
@@ -166,14 +166,14 @@ func TestSplitBundle_DynamicModuleConcurrentSingleflight(t *testing.T) {
 	// 2x as the threshold to absorb scheduler noise; a regression where
 	// every caller runs its own obfuscation would push elapsed past
 	// N * 5s = 40s, way above the threshold.
-	t.Logf("8 concurrent buildAndObfuscateDynamicModule calls completed in %s", elapsed)
+	t.Logf("8 concurrent currentDynamicModule calls completed in %s", elapsed)
 	require.Less(t, elapsed, 15*time.Second,
 		"concurrent calls took %s; singleflight likely not coalescing (would expect 1 obfuscation, got serial)",
 		elapsed)
 }
 
-// TestSplitBundle_HTMLDoesNotContainSecret is the most important security
-// regression guard for MVP-4: the HTML challenge page MUST NOT contain the
+// TestSplitBundle_HTMLDoesNotContainSecret is the core security invariant
+// of the split-bundle design: the HTML challenge page MUST NOT contain the
 // per-epoch sign key in plain (hex) form. If it does, an attacker can
 // scrape it and forge tickets without running the obfuscated bundle —
 // exactly the failure mode the split-bundle protocol was designed to fix.

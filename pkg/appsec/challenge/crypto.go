@@ -31,18 +31,18 @@ const hkdfInfo = "crowdsec-challenge-cookie"
 // format without flag-day-style cookie invalidation. New formats add a new
 // case in openCookie's switch.
 //
-//   v0: cookieVersionV0 || nonce(12) || ciphertext
+//	v0: cookieVersionV0 || nonce(12) || ciphertext
 //
-//       Sealed under KeyRing.MasterCookieKey() — a long-lived AES-GCM key
-//       derived from master_secret with no epoch dependency. Cookie
-//       expiration is enforced by an explicit unix-seconds not_after
-//       timestamp prepended to the plaintext BEFORE encryption, so any
-//       tampering with the expiration invalidates the AEAD tag. AAD is
-//       the User-Agent.
+//	    Sealed under KeyRing.MasterCookieKey() — a long-lived AES-GCM key
+//	    derived from master_secret with no epoch dependency. Cookie
+//	    expiration is enforced by an explicit unix-seconds not_after
+//	    timestamp prepended to the plaintext BEFORE encryption, so any
+//	    tampering with the expiration invalidates the AEAD tag. AAD is
+//	    the User-Agent.
 //
-//       Decoupling the cookie key from the epoch keyring is what lets us
-//       have e.g. 24h cookies while keeping ticket-signing keys rotating
-//       every few minutes — the two security windows are independent.
+//	    Decoupling the cookie key from the epoch keyring is what lets us
+//	    have e.g. 24h cookies while keeping ticket-signing keys rotating
+//	    every few minutes — the two security windows are independent.
 const cookieVersionV0 byte = 0x00
 
 // cookiePlaintextHeaderLen is the size of the not_after_be8 prefix that
