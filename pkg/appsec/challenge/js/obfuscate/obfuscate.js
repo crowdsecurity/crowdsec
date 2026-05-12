@@ -29,11 +29,19 @@ try {
   // identically in both bundles. Without this, the two independently-
   // obfuscated artifacts wouldn't agree on the globalThis symbol they
   // need to meet at.
+  //
+  // disableConsoleOutput is forced off because fpscanner's CDP detection
+  // (signals/cdp.ts) relies on `console.log(err)` triggering DevTools'
+  // eager access of `err.stack`, which in turn fires our overridden
+  // `Error.prepareStackTrace`. The preset's default `true` rewrites the
+  // call into a no-op stub and the detection silently always reports
+  // false. Leave it off so the side-channel works.
   const opts = Object.assign(
     {},
     JavaScriptObfuscator.getOptionsByPreset("high-obfuscation"),
     {
       reservedStrings: ["__CSEC_CHALLENGE_HOOK_v1__"],
+      disableConsoleOutput: false,
     },
   );
 
