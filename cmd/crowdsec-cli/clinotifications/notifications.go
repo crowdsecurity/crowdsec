@@ -22,8 +22,6 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -321,34 +319,34 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				return nil
 			})
 			alert := &models.Alert{
-				Capacity: ptr.Of(int32(0)),
+				Capacity: new(int32(0)),
 				Decisions: []*models.Decision{{
-					Duration: ptr.Of("4h"),
-					Scope:    ptr.Of("Ip"),
-					Value:    ptr.Of("10.10.10.10"),
-					Type:     ptr.Of("ban"),
-					Scenario: ptr.Of("test alert"),
-					Origin:   ptr.Of(types.CscliOrigin),
+					Duration: new("4h"),
+					Scope:    new("Ip"),
+					Value:    new("10.10.10.10"),
+					Type:     new("ban"),
+					Scenario: new("test alert"),
+					Origin:   new(types.CscliOrigin),
 				}},
 				Events:          []*models.Event{},
-				EventsCount:     ptr.Of(int32(1)),
-				Leakspeed:       ptr.Of("0"),
-				Message:         ptr.Of("test alert"),
-				ScenarioHash:    ptr.Of(""),
-				Scenario:        ptr.Of("test alert"),
-				ScenarioVersion: ptr.Of(""),
-				Simulated:       ptr.Of(false),
+				EventsCount:     new(int32(1)),
+				Leakspeed:       new("0"),
+				Message:         new("test alert"),
+				ScenarioHash:    new(""),
+				Scenario:        new("test alert"),
+				ScenarioVersion: new(""),
+				Simulated:       new(false),
 				Source: &models.Source{
 					AsName:   "",
 					AsNumber: "",
 					Cn:       "",
 					IP:       "10.10.10.10",
 					Range:    "",
-					Scope:    ptr.Of("Ip"),
-					Value:    ptr.Of("10.10.10.10"),
+					Scope:    new("Ip"),
+					Value:    new("10.10.10.10"),
 				},
-				StartAt:   ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-				StopAt:    ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+				StartAt:   new(time.Now().UTC().Format(time.RFC3339)),
+				StopAt:    new(time.Now().UTC().Format(time.RFC3339)),
 				CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			}
 			if err := yaml.Unmarshal([]byte(alertOverride), alert); err != nil {
@@ -368,8 +366,8 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
-		"JSON string used to override alert fields in the generic alert " +
-		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+		"JSON string used to override alert fields in the generic alert "+
+			"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }
@@ -489,8 +487,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 		},
 	}
 	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "",
-		"JSON string used to override alert fields in the reinjected alert " +
-		"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+		"JSON string used to override alert fields in the reinjected alert "+
+			"(see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmd
 }

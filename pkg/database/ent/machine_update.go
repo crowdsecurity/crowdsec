@@ -25,307 +25,307 @@ type MachineUpdate struct {
 }
 
 // Where appends a list predicates to the MachineUpdate builder.
-func (mu *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
-	mu.mutation.Where(ps...)
-	return mu
+func (_u *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (mu *MachineUpdate) SetUpdatedAt(t time.Time) *MachineUpdate {
-	mu.mutation.SetUpdatedAt(t)
-	return mu
+func (_u *MachineUpdate) SetUpdatedAt(v time.Time) *MachineUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetLastPush sets the "last_push" field.
-func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
-	mu.mutation.SetLastPush(t)
-	return mu
+func (_u *MachineUpdate) SetLastPush(v time.Time) *MachineUpdate {
+	_u.mutation.SetLastPush(v)
+	return _u
 }
 
 // SetNillableLastPush sets the "last_push" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetLastPush(*t)
+func (_u *MachineUpdate) SetNillableLastPush(v *time.Time) *MachineUpdate {
+	if v != nil {
+		_u.SetLastPush(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearLastPush clears the value of the "last_push" field.
-func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
-	mu.mutation.ClearLastPush()
-	return mu
+func (_u *MachineUpdate) ClearLastPush() *MachineUpdate {
+	_u.mutation.ClearLastPush()
+	return _u
 }
 
 // SetLastHeartbeat sets the "last_heartbeat" field.
-func (mu *MachineUpdate) SetLastHeartbeat(t time.Time) *MachineUpdate {
-	mu.mutation.SetLastHeartbeat(t)
-	return mu
+func (_u *MachineUpdate) SetLastHeartbeat(v time.Time) *MachineUpdate {
+	_u.mutation.SetLastHeartbeat(v)
+	return _u
 }
 
 // SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableLastHeartbeat(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetLastHeartbeat(*t)
+func (_u *MachineUpdate) SetNillableLastHeartbeat(v *time.Time) *MachineUpdate {
+	if v != nil {
+		_u.SetLastHeartbeat(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearLastHeartbeat clears the value of the "last_heartbeat" field.
-func (mu *MachineUpdate) ClearLastHeartbeat() *MachineUpdate {
-	mu.mutation.ClearLastHeartbeat()
-	return mu
+func (_u *MachineUpdate) ClearLastHeartbeat() *MachineUpdate {
+	_u.mutation.ClearLastHeartbeat()
+	return _u
 }
 
 // SetPassword sets the "password" field.
-func (mu *MachineUpdate) SetPassword(s string) *MachineUpdate {
-	mu.mutation.SetPassword(s)
-	return mu
+func (_u *MachineUpdate) SetPassword(v string) *MachineUpdate {
+	_u.mutation.SetPassword(v)
+	return _u
 }
 
 // SetNillablePassword sets the "password" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillablePassword(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetPassword(*s)
+func (_u *MachineUpdate) SetNillablePassword(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetPassword(*v)
 	}
-	return mu
+	return _u
 }
 
 // SetIpAddress sets the "ipAddress" field.
-func (mu *MachineUpdate) SetIpAddress(s string) *MachineUpdate {
-	mu.mutation.SetIpAddress(s)
-	return mu
+func (_u *MachineUpdate) SetIpAddress(v string) *MachineUpdate {
+	_u.mutation.SetIpAddress(v)
+	return _u
 }
 
 // SetNillableIpAddress sets the "ipAddress" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableIpAddress(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetIpAddress(*s)
+func (_u *MachineUpdate) SetNillableIpAddress(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetIpAddress(*v)
 	}
-	return mu
+	return _u
 }
 
 // SetScenarios sets the "scenarios" field.
-func (mu *MachineUpdate) SetScenarios(s string) *MachineUpdate {
-	mu.mutation.SetScenarios(s)
-	return mu
+func (_u *MachineUpdate) SetScenarios(v string) *MachineUpdate {
+	_u.mutation.SetScenarios(v)
+	return _u
 }
 
 // SetNillableScenarios sets the "scenarios" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableScenarios(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetScenarios(*s)
+func (_u *MachineUpdate) SetNillableScenarios(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetScenarios(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearScenarios clears the value of the "scenarios" field.
-func (mu *MachineUpdate) ClearScenarios() *MachineUpdate {
-	mu.mutation.ClearScenarios()
-	return mu
+func (_u *MachineUpdate) ClearScenarios() *MachineUpdate {
+	_u.mutation.ClearScenarios()
+	return _u
 }
 
 // SetVersion sets the "version" field.
-func (mu *MachineUpdate) SetVersion(s string) *MachineUpdate {
-	mu.mutation.SetVersion(s)
-	return mu
+func (_u *MachineUpdate) SetVersion(v string) *MachineUpdate {
+	_u.mutation.SetVersion(v)
+	return _u
 }
 
 // SetNillableVersion sets the "version" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableVersion(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetVersion(*s)
+func (_u *MachineUpdate) SetNillableVersion(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearVersion clears the value of the "version" field.
-func (mu *MachineUpdate) ClearVersion() *MachineUpdate {
-	mu.mutation.ClearVersion()
-	return mu
+func (_u *MachineUpdate) ClearVersion() *MachineUpdate {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // SetIsValidated sets the "isValidated" field.
-func (mu *MachineUpdate) SetIsValidated(b bool) *MachineUpdate {
-	mu.mutation.SetIsValidated(b)
-	return mu
+func (_u *MachineUpdate) SetIsValidated(v bool) *MachineUpdate {
+	_u.mutation.SetIsValidated(v)
+	return _u
 }
 
 // SetNillableIsValidated sets the "isValidated" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableIsValidated(b *bool) *MachineUpdate {
-	if b != nil {
-		mu.SetIsValidated(*b)
+func (_u *MachineUpdate) SetNillableIsValidated(v *bool) *MachineUpdate {
+	if v != nil {
+		_u.SetIsValidated(*v)
 	}
-	return mu
+	return _u
 }
 
 // SetAuthType sets the "auth_type" field.
-func (mu *MachineUpdate) SetAuthType(s string) *MachineUpdate {
-	mu.mutation.SetAuthType(s)
-	return mu
+func (_u *MachineUpdate) SetAuthType(v string) *MachineUpdate {
+	_u.mutation.SetAuthType(v)
+	return _u
 }
 
 // SetNillableAuthType sets the "auth_type" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableAuthType(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetAuthType(*s)
+func (_u *MachineUpdate) SetNillableAuthType(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetAuthType(*v)
 	}
-	return mu
+	return _u
 }
 
 // SetOsname sets the "osname" field.
-func (mu *MachineUpdate) SetOsname(s string) *MachineUpdate {
-	mu.mutation.SetOsname(s)
-	return mu
+func (_u *MachineUpdate) SetOsname(v string) *MachineUpdate {
+	_u.mutation.SetOsname(v)
+	return _u
 }
 
 // SetNillableOsname sets the "osname" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableOsname(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetOsname(*s)
+func (_u *MachineUpdate) SetNillableOsname(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetOsname(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearOsname clears the value of the "osname" field.
-func (mu *MachineUpdate) ClearOsname() *MachineUpdate {
-	mu.mutation.ClearOsname()
-	return mu
+func (_u *MachineUpdate) ClearOsname() *MachineUpdate {
+	_u.mutation.ClearOsname()
+	return _u
 }
 
 // SetOsfamily sets the "osfamily" field.
-func (mu *MachineUpdate) SetOsfamily(s string) *MachineUpdate {
-	mu.mutation.SetOsfamily(s)
-	return mu
+func (_u *MachineUpdate) SetOsfamily(v string) *MachineUpdate {
+	_u.mutation.SetOsfamily(v)
+	return _u
 }
 
 // SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableOsfamily(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetOsfamily(*s)
+func (_u *MachineUpdate) SetNillableOsfamily(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetOsfamily(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearOsfamily clears the value of the "osfamily" field.
-func (mu *MachineUpdate) ClearOsfamily() *MachineUpdate {
-	mu.mutation.ClearOsfamily()
-	return mu
+func (_u *MachineUpdate) ClearOsfamily() *MachineUpdate {
+	_u.mutation.ClearOsfamily()
+	return _u
 }
 
 // SetOsversion sets the "osversion" field.
-func (mu *MachineUpdate) SetOsversion(s string) *MachineUpdate {
-	mu.mutation.SetOsversion(s)
-	return mu
+func (_u *MachineUpdate) SetOsversion(v string) *MachineUpdate {
+	_u.mutation.SetOsversion(v)
+	return _u
 }
 
 // SetNillableOsversion sets the "osversion" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableOsversion(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetOsversion(*s)
+func (_u *MachineUpdate) SetNillableOsversion(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetOsversion(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearOsversion clears the value of the "osversion" field.
-func (mu *MachineUpdate) ClearOsversion() *MachineUpdate {
-	mu.mutation.ClearOsversion()
-	return mu
+func (_u *MachineUpdate) ClearOsversion() *MachineUpdate {
+	_u.mutation.ClearOsversion()
+	return _u
 }
 
 // SetFeatureflags sets the "featureflags" field.
-func (mu *MachineUpdate) SetFeatureflags(s string) *MachineUpdate {
-	mu.mutation.SetFeatureflags(s)
-	return mu
+func (_u *MachineUpdate) SetFeatureflags(v string) *MachineUpdate {
+	_u.mutation.SetFeatureflags(v)
+	return _u
 }
 
 // SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableFeatureflags(s *string) *MachineUpdate {
-	if s != nil {
-		mu.SetFeatureflags(*s)
+func (_u *MachineUpdate) SetNillableFeatureflags(v *string) *MachineUpdate {
+	if v != nil {
+		_u.SetFeatureflags(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearFeatureflags clears the value of the "featureflags" field.
-func (mu *MachineUpdate) ClearFeatureflags() *MachineUpdate {
-	mu.mutation.ClearFeatureflags()
-	return mu
+func (_u *MachineUpdate) ClearFeatureflags() *MachineUpdate {
+	_u.mutation.ClearFeatureflags()
+	return _u
 }
 
 // SetHubstate sets the "hubstate" field.
-func (mu *MachineUpdate) SetHubstate(ms map[string][]schema.ItemState) *MachineUpdate {
-	mu.mutation.SetHubstate(ms)
-	return mu
+func (_u *MachineUpdate) SetHubstate(v map[string][]schema.ItemState) *MachineUpdate {
+	_u.mutation.SetHubstate(v)
+	return _u
 }
 
 // ClearHubstate clears the value of the "hubstate" field.
-func (mu *MachineUpdate) ClearHubstate() *MachineUpdate {
-	mu.mutation.ClearHubstate()
-	return mu
+func (_u *MachineUpdate) ClearHubstate() *MachineUpdate {
+	_u.mutation.ClearHubstate()
+	return _u
 }
 
 // SetDatasources sets the "datasources" field.
-func (mu *MachineUpdate) SetDatasources(m map[string]int64) *MachineUpdate {
-	mu.mutation.SetDatasources(m)
-	return mu
+func (_u *MachineUpdate) SetDatasources(v map[string]int64) *MachineUpdate {
+	_u.mutation.SetDatasources(v)
+	return _u
 }
 
 // ClearDatasources clears the value of the "datasources" field.
-func (mu *MachineUpdate) ClearDatasources() *MachineUpdate {
-	mu.mutation.ClearDatasources()
-	return mu
+func (_u *MachineUpdate) ClearDatasources() *MachineUpdate {
+	_u.mutation.ClearDatasources()
+	return _u
 }
 
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
-func (mu *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
-	mu.mutation.AddAlertIDs(ids...)
-	return mu
+func (_u *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
+	_u.mutation.AddAlertIDs(ids...)
+	return _u
 }
 
 // AddAlerts adds the "alerts" edges to the Alert entity.
-func (mu *MachineUpdate) AddAlerts(a ...*Alert) *MachineUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *MachineUpdate) AddAlerts(v ...*Alert) *MachineUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return mu.AddAlertIDs(ids...)
+	return _u.AddAlertIDs(ids...)
 }
 
 // Mutation returns the MachineMutation object of the builder.
-func (mu *MachineUpdate) Mutation() *MachineMutation {
-	return mu.mutation
+func (_u *MachineUpdate) Mutation() *MachineMutation {
+	return _u.mutation
 }
 
 // ClearAlerts clears all "alerts" edges to the Alert entity.
-func (mu *MachineUpdate) ClearAlerts() *MachineUpdate {
-	mu.mutation.ClearAlerts()
-	return mu
+func (_u *MachineUpdate) ClearAlerts() *MachineUpdate {
+	_u.mutation.ClearAlerts()
+	return _u
 }
 
 // RemoveAlertIDs removes the "alerts" edge to Alert entities by IDs.
-func (mu *MachineUpdate) RemoveAlertIDs(ids ...int) *MachineUpdate {
-	mu.mutation.RemoveAlertIDs(ids...)
-	return mu
+func (_u *MachineUpdate) RemoveAlertIDs(ids ...int) *MachineUpdate {
+	_u.mutation.RemoveAlertIDs(ids...)
+	return _u
 }
 
 // RemoveAlerts removes "alerts" edges to Alert entities.
-func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *MachineUpdate) RemoveAlerts(v ...*Alert) *MachineUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return mu.RemoveAlertIDs(ids...)
+	return _u.RemoveAlertIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
-	mu.defaults()
-	return withHooks(ctx, mu.sqlSave, mu.mutation, mu.hooks)
+func (_u *MachineUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (mu *MachineUpdate) SaveX(ctx context.Context) int {
-	affected, err := mu.Save(ctx)
+func (_u *MachineUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -333,29 +333,29 @@ func (mu *MachineUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (mu *MachineUpdate) Exec(ctx context.Context) error {
-	_, err := mu.Save(ctx)
+func (_u *MachineUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mu *MachineUpdate) ExecX(ctx context.Context) {
-	if err := mu.Exec(ctx); err != nil {
+func (_u *MachineUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (mu *MachineUpdate) defaults() {
-	if _, ok := mu.mutation.UpdatedAt(); !ok {
+func (_u *MachineUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := machine.UpdateDefaultUpdatedAt()
-		mu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (mu *MachineUpdate) check() error {
-	if v, ok := mu.mutation.Scenarios(); ok {
+func (_u *MachineUpdate) check() error {
+	if v, ok := _u.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
 			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
@@ -363,94 +363,94 @@ func (mu *MachineUpdate) check() error {
 	return nil
 }
 
-func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := mu.check(); err != nil {
-		return n, err
+func (_u *MachineUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
-	if ps := mu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := mu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := mu.mutation.LastPush(); ok {
+	if value, ok := _u.mutation.LastPush(); ok {
 		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
 	}
-	if mu.mutation.LastPushCleared() {
+	if _u.mutation.LastPushCleared() {
 		_spec.ClearField(machine.FieldLastPush, field.TypeTime)
 	}
-	if value, ok := mu.mutation.LastHeartbeat(); ok {
+	if value, ok := _u.mutation.LastHeartbeat(); ok {
 		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 	}
-	if mu.mutation.LastHeartbeatCleared() {
+	if _u.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
 	}
-	if value, ok := mu.mutation.Password(); ok {
+	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := mu.mutation.IpAddress(); ok {
+	if value, ok := _u.mutation.IpAddress(); ok {
 		_spec.SetField(machine.FieldIpAddress, field.TypeString, value)
 	}
-	if value, ok := mu.mutation.Scenarios(); ok {
+	if value, ok := _u.mutation.Scenarios(); ok {
 		_spec.SetField(machine.FieldScenarios, field.TypeString, value)
 	}
-	if mu.mutation.ScenariosCleared() {
+	if _u.mutation.ScenariosCleared() {
 		_spec.ClearField(machine.FieldScenarios, field.TypeString)
 	}
-	if value, ok := mu.mutation.Version(); ok {
+	if value, ok := _u.mutation.Version(); ok {
 		_spec.SetField(machine.FieldVersion, field.TypeString, value)
 	}
-	if mu.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		_spec.ClearField(machine.FieldVersion, field.TypeString)
 	}
-	if value, ok := mu.mutation.IsValidated(); ok {
+	if value, ok := _u.mutation.IsValidated(); ok {
 		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 	}
-	if value, ok := mu.mutation.AuthType(); ok {
+	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 	}
-	if value, ok := mu.mutation.Osname(); ok {
+	if value, ok := _u.mutation.Osname(); ok {
 		_spec.SetField(machine.FieldOsname, field.TypeString, value)
 	}
-	if mu.mutation.OsnameCleared() {
+	if _u.mutation.OsnameCleared() {
 		_spec.ClearField(machine.FieldOsname, field.TypeString)
 	}
-	if value, ok := mu.mutation.Osfamily(); ok {
+	if value, ok := _u.mutation.Osfamily(); ok {
 		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
 	}
-	if mu.mutation.OsfamilyCleared() {
+	if _u.mutation.OsfamilyCleared() {
 		_spec.ClearField(machine.FieldOsfamily, field.TypeString)
 	}
-	if value, ok := mu.mutation.Osversion(); ok {
+	if value, ok := _u.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
 	}
-	if mu.mutation.OsversionCleared() {
+	if _u.mutation.OsversionCleared() {
 		_spec.ClearField(machine.FieldOsversion, field.TypeString)
 	}
-	if value, ok := mu.mutation.Featureflags(); ok {
+	if value, ok := _u.mutation.Featureflags(); ok {
 		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
 	}
-	if mu.mutation.FeatureflagsCleared() {
+	if _u.mutation.FeatureflagsCleared() {
 		_spec.ClearField(machine.FieldFeatureflags, field.TypeString)
 	}
-	if value, ok := mu.mutation.Hubstate(); ok {
+	if value, ok := _u.mutation.Hubstate(); ok {
 		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
 	}
-	if mu.mutation.HubstateCleared() {
+	if _u.mutation.HubstateCleared() {
 		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
 	}
-	if value, ok := mu.mutation.Datasources(); ok {
+	if value, ok := _u.mutation.Datasources(); ok {
 		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
 	}
-	if mu.mutation.DatasourcesCleared() {
+	if _u.mutation.DatasourcesCleared() {
 		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
-	if mu.mutation.AlertsCleared() {
+	if _u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -463,7 +463,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := mu.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !mu.mutation.AlertsCleared() {
+	if nodes := _u.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !_u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -479,7 +479,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := mu.mutation.AlertsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -495,7 +495,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -503,8 +503,8 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	mu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // MachineUpdateOne is the builder for updating a single Machine entity.
@@ -516,314 +516,314 @@ type MachineUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
-	muo.mutation.SetUpdatedAt(t)
-	return muo
+func (_u *MachineUpdateOne) SetUpdatedAt(v time.Time) *MachineUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetLastPush sets the "last_push" field.
-func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
-	muo.mutation.SetLastPush(t)
-	return muo
+func (_u *MachineUpdateOne) SetLastPush(v time.Time) *MachineUpdateOne {
+	_u.mutation.SetLastPush(v)
+	return _u
 }
 
 // SetNillableLastPush sets the "last_push" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetLastPush(*t)
+func (_u *MachineUpdateOne) SetNillableLastPush(v *time.Time) *MachineUpdateOne {
+	if v != nil {
+		_u.SetLastPush(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearLastPush clears the value of the "last_push" field.
-func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
-	muo.mutation.ClearLastPush()
-	return muo
+func (_u *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
+	_u.mutation.ClearLastPush()
+	return _u
 }
 
 // SetLastHeartbeat sets the "last_heartbeat" field.
-func (muo *MachineUpdateOne) SetLastHeartbeat(t time.Time) *MachineUpdateOne {
-	muo.mutation.SetLastHeartbeat(t)
-	return muo
+func (_u *MachineUpdateOne) SetLastHeartbeat(v time.Time) *MachineUpdateOne {
+	_u.mutation.SetLastHeartbeat(v)
+	return _u
 }
 
 // SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableLastHeartbeat(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetLastHeartbeat(*t)
+func (_u *MachineUpdateOne) SetNillableLastHeartbeat(v *time.Time) *MachineUpdateOne {
+	if v != nil {
+		_u.SetLastHeartbeat(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearLastHeartbeat clears the value of the "last_heartbeat" field.
-func (muo *MachineUpdateOne) ClearLastHeartbeat() *MachineUpdateOne {
-	muo.mutation.ClearLastHeartbeat()
-	return muo
+func (_u *MachineUpdateOne) ClearLastHeartbeat() *MachineUpdateOne {
+	_u.mutation.ClearLastHeartbeat()
+	return _u
 }
 
 // SetPassword sets the "password" field.
-func (muo *MachineUpdateOne) SetPassword(s string) *MachineUpdateOne {
-	muo.mutation.SetPassword(s)
-	return muo
+func (_u *MachineUpdateOne) SetPassword(v string) *MachineUpdateOne {
+	_u.mutation.SetPassword(v)
+	return _u
 }
 
 // SetNillablePassword sets the "password" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillablePassword(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetPassword(*s)
+func (_u *MachineUpdateOne) SetNillablePassword(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetPassword(*v)
 	}
-	return muo
+	return _u
 }
 
 // SetIpAddress sets the "ipAddress" field.
-func (muo *MachineUpdateOne) SetIpAddress(s string) *MachineUpdateOne {
-	muo.mutation.SetIpAddress(s)
-	return muo
+func (_u *MachineUpdateOne) SetIpAddress(v string) *MachineUpdateOne {
+	_u.mutation.SetIpAddress(v)
+	return _u
 }
 
 // SetNillableIpAddress sets the "ipAddress" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableIpAddress(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetIpAddress(*s)
+func (_u *MachineUpdateOne) SetNillableIpAddress(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetIpAddress(*v)
 	}
-	return muo
+	return _u
 }
 
 // SetScenarios sets the "scenarios" field.
-func (muo *MachineUpdateOne) SetScenarios(s string) *MachineUpdateOne {
-	muo.mutation.SetScenarios(s)
-	return muo
+func (_u *MachineUpdateOne) SetScenarios(v string) *MachineUpdateOne {
+	_u.mutation.SetScenarios(v)
+	return _u
 }
 
 // SetNillableScenarios sets the "scenarios" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableScenarios(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetScenarios(*s)
+func (_u *MachineUpdateOne) SetNillableScenarios(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetScenarios(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearScenarios clears the value of the "scenarios" field.
-func (muo *MachineUpdateOne) ClearScenarios() *MachineUpdateOne {
-	muo.mutation.ClearScenarios()
-	return muo
+func (_u *MachineUpdateOne) ClearScenarios() *MachineUpdateOne {
+	_u.mutation.ClearScenarios()
+	return _u
 }
 
 // SetVersion sets the "version" field.
-func (muo *MachineUpdateOne) SetVersion(s string) *MachineUpdateOne {
-	muo.mutation.SetVersion(s)
-	return muo
+func (_u *MachineUpdateOne) SetVersion(v string) *MachineUpdateOne {
+	_u.mutation.SetVersion(v)
+	return _u
 }
 
 // SetNillableVersion sets the "version" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableVersion(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetVersion(*s)
+func (_u *MachineUpdateOne) SetNillableVersion(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearVersion clears the value of the "version" field.
-func (muo *MachineUpdateOne) ClearVersion() *MachineUpdateOne {
-	muo.mutation.ClearVersion()
-	return muo
+func (_u *MachineUpdateOne) ClearVersion() *MachineUpdateOne {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // SetIsValidated sets the "isValidated" field.
-func (muo *MachineUpdateOne) SetIsValidated(b bool) *MachineUpdateOne {
-	muo.mutation.SetIsValidated(b)
-	return muo
+func (_u *MachineUpdateOne) SetIsValidated(v bool) *MachineUpdateOne {
+	_u.mutation.SetIsValidated(v)
+	return _u
 }
 
 // SetNillableIsValidated sets the "isValidated" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableIsValidated(b *bool) *MachineUpdateOne {
-	if b != nil {
-		muo.SetIsValidated(*b)
+func (_u *MachineUpdateOne) SetNillableIsValidated(v *bool) *MachineUpdateOne {
+	if v != nil {
+		_u.SetIsValidated(*v)
 	}
-	return muo
+	return _u
 }
 
 // SetAuthType sets the "auth_type" field.
-func (muo *MachineUpdateOne) SetAuthType(s string) *MachineUpdateOne {
-	muo.mutation.SetAuthType(s)
-	return muo
+func (_u *MachineUpdateOne) SetAuthType(v string) *MachineUpdateOne {
+	_u.mutation.SetAuthType(v)
+	return _u
 }
 
 // SetNillableAuthType sets the "auth_type" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableAuthType(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetAuthType(*s)
+func (_u *MachineUpdateOne) SetNillableAuthType(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetAuthType(*v)
 	}
-	return muo
+	return _u
 }
 
 // SetOsname sets the "osname" field.
-func (muo *MachineUpdateOne) SetOsname(s string) *MachineUpdateOne {
-	muo.mutation.SetOsname(s)
-	return muo
+func (_u *MachineUpdateOne) SetOsname(v string) *MachineUpdateOne {
+	_u.mutation.SetOsname(v)
+	return _u
 }
 
 // SetNillableOsname sets the "osname" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableOsname(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetOsname(*s)
+func (_u *MachineUpdateOne) SetNillableOsname(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetOsname(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearOsname clears the value of the "osname" field.
-func (muo *MachineUpdateOne) ClearOsname() *MachineUpdateOne {
-	muo.mutation.ClearOsname()
-	return muo
+func (_u *MachineUpdateOne) ClearOsname() *MachineUpdateOne {
+	_u.mutation.ClearOsname()
+	return _u
 }
 
 // SetOsfamily sets the "osfamily" field.
-func (muo *MachineUpdateOne) SetOsfamily(s string) *MachineUpdateOne {
-	muo.mutation.SetOsfamily(s)
-	return muo
+func (_u *MachineUpdateOne) SetOsfamily(v string) *MachineUpdateOne {
+	_u.mutation.SetOsfamily(v)
+	return _u
 }
 
 // SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableOsfamily(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetOsfamily(*s)
+func (_u *MachineUpdateOne) SetNillableOsfamily(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetOsfamily(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearOsfamily clears the value of the "osfamily" field.
-func (muo *MachineUpdateOne) ClearOsfamily() *MachineUpdateOne {
-	muo.mutation.ClearOsfamily()
-	return muo
+func (_u *MachineUpdateOne) ClearOsfamily() *MachineUpdateOne {
+	_u.mutation.ClearOsfamily()
+	return _u
 }
 
 // SetOsversion sets the "osversion" field.
-func (muo *MachineUpdateOne) SetOsversion(s string) *MachineUpdateOne {
-	muo.mutation.SetOsversion(s)
-	return muo
+func (_u *MachineUpdateOne) SetOsversion(v string) *MachineUpdateOne {
+	_u.mutation.SetOsversion(v)
+	return _u
 }
 
 // SetNillableOsversion sets the "osversion" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableOsversion(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetOsversion(*s)
+func (_u *MachineUpdateOne) SetNillableOsversion(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetOsversion(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearOsversion clears the value of the "osversion" field.
-func (muo *MachineUpdateOne) ClearOsversion() *MachineUpdateOne {
-	muo.mutation.ClearOsversion()
-	return muo
+func (_u *MachineUpdateOne) ClearOsversion() *MachineUpdateOne {
+	_u.mutation.ClearOsversion()
+	return _u
 }
 
 // SetFeatureflags sets the "featureflags" field.
-func (muo *MachineUpdateOne) SetFeatureflags(s string) *MachineUpdateOne {
-	muo.mutation.SetFeatureflags(s)
-	return muo
+func (_u *MachineUpdateOne) SetFeatureflags(v string) *MachineUpdateOne {
+	_u.mutation.SetFeatureflags(v)
+	return _u
 }
 
 // SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableFeatureflags(s *string) *MachineUpdateOne {
-	if s != nil {
-		muo.SetFeatureflags(*s)
+func (_u *MachineUpdateOne) SetNillableFeatureflags(v *string) *MachineUpdateOne {
+	if v != nil {
+		_u.SetFeatureflags(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearFeatureflags clears the value of the "featureflags" field.
-func (muo *MachineUpdateOne) ClearFeatureflags() *MachineUpdateOne {
-	muo.mutation.ClearFeatureflags()
-	return muo
+func (_u *MachineUpdateOne) ClearFeatureflags() *MachineUpdateOne {
+	_u.mutation.ClearFeatureflags()
+	return _u
 }
 
 // SetHubstate sets the "hubstate" field.
-func (muo *MachineUpdateOne) SetHubstate(ms map[string][]schema.ItemState) *MachineUpdateOne {
-	muo.mutation.SetHubstate(ms)
-	return muo
+func (_u *MachineUpdateOne) SetHubstate(v map[string][]schema.ItemState) *MachineUpdateOne {
+	_u.mutation.SetHubstate(v)
+	return _u
 }
 
 // ClearHubstate clears the value of the "hubstate" field.
-func (muo *MachineUpdateOne) ClearHubstate() *MachineUpdateOne {
-	muo.mutation.ClearHubstate()
-	return muo
+func (_u *MachineUpdateOne) ClearHubstate() *MachineUpdateOne {
+	_u.mutation.ClearHubstate()
+	return _u
 }
 
 // SetDatasources sets the "datasources" field.
-func (muo *MachineUpdateOne) SetDatasources(m map[string]int64) *MachineUpdateOne {
-	muo.mutation.SetDatasources(m)
-	return muo
+func (_u *MachineUpdateOne) SetDatasources(v map[string]int64) *MachineUpdateOne {
+	_u.mutation.SetDatasources(v)
+	return _u
 }
 
 // ClearDatasources clears the value of the "datasources" field.
-func (muo *MachineUpdateOne) ClearDatasources() *MachineUpdateOne {
-	muo.mutation.ClearDatasources()
-	return muo
+func (_u *MachineUpdateOne) ClearDatasources() *MachineUpdateOne {
+	_u.mutation.ClearDatasources()
+	return _u
 }
 
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
-func (muo *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
-	muo.mutation.AddAlertIDs(ids...)
-	return muo
+func (_u *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
+	_u.mutation.AddAlertIDs(ids...)
+	return _u
 }
 
 // AddAlerts adds the "alerts" edges to the Alert entity.
-func (muo *MachineUpdateOne) AddAlerts(a ...*Alert) *MachineUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *MachineUpdateOne) AddAlerts(v ...*Alert) *MachineUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return muo.AddAlertIDs(ids...)
+	return _u.AddAlertIDs(ids...)
 }
 
 // Mutation returns the MachineMutation object of the builder.
-func (muo *MachineUpdateOne) Mutation() *MachineMutation {
-	return muo.mutation
+func (_u *MachineUpdateOne) Mutation() *MachineMutation {
+	return _u.mutation
 }
 
 // ClearAlerts clears all "alerts" edges to the Alert entity.
-func (muo *MachineUpdateOne) ClearAlerts() *MachineUpdateOne {
-	muo.mutation.ClearAlerts()
-	return muo
+func (_u *MachineUpdateOne) ClearAlerts() *MachineUpdateOne {
+	_u.mutation.ClearAlerts()
+	return _u
 }
 
 // RemoveAlertIDs removes the "alerts" edge to Alert entities by IDs.
-func (muo *MachineUpdateOne) RemoveAlertIDs(ids ...int) *MachineUpdateOne {
-	muo.mutation.RemoveAlertIDs(ids...)
-	return muo
+func (_u *MachineUpdateOne) RemoveAlertIDs(ids ...int) *MachineUpdateOne {
+	_u.mutation.RemoveAlertIDs(ids...)
+	return _u
 }
 
 // RemoveAlerts removes "alerts" edges to Alert entities.
-func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *MachineUpdateOne) RemoveAlerts(v ...*Alert) *MachineUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return muo.RemoveAlertIDs(ids...)
+	return _u.RemoveAlertIDs(ids...)
 }
 
 // Where appends a list predicates to the MachineUpdate builder.
-func (muo *MachineUpdateOne) Where(ps ...predicate.Machine) *MachineUpdateOne {
-	muo.mutation.Where(ps...)
-	return muo
+func (_u *MachineUpdateOne) Where(ps ...predicate.Machine) *MachineUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (muo *MachineUpdateOne) Select(field string, fields ...string) *MachineUpdateOne {
-	muo.fields = append([]string{field}, fields...)
-	return muo
+func (_u *MachineUpdateOne) Select(field string, fields ...string) *MachineUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Machine entity.
-func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
-	muo.defaults()
-	return withHooks(ctx, muo.sqlSave, muo.mutation, muo.hooks)
+func (_u *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (muo *MachineUpdateOne) SaveX(ctx context.Context) *Machine {
-	node, err := muo.Save(ctx)
+func (_u *MachineUpdateOne) SaveX(ctx context.Context) *Machine {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -831,29 +831,29 @@ func (muo *MachineUpdateOne) SaveX(ctx context.Context) *Machine {
 }
 
 // Exec executes the query on the entity.
-func (muo *MachineUpdateOne) Exec(ctx context.Context) error {
-	_, err := muo.Save(ctx)
+func (_u *MachineUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
-	if err := muo.Exec(ctx); err != nil {
+func (_u *MachineUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (muo *MachineUpdateOne) defaults() {
-	if _, ok := muo.mutation.UpdatedAt(); !ok {
+func (_u *MachineUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := machine.UpdateDefaultUpdatedAt()
-		muo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (muo *MachineUpdateOne) check() error {
-	if v, ok := muo.mutation.Scenarios(); ok {
+func (_u *MachineUpdateOne) check() error {
+	if v, ok := _u.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
 			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
@@ -861,17 +861,17 @@ func (muo *MachineUpdateOne) check() error {
 	return nil
 }
 
-func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
-	if err := muo.check(); err != nil {
+func (_u *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
-	id, ok := muo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Machine.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := muo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, machine.FieldID)
 		for _, f := range fields {
@@ -883,89 +883,89 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			}
 		}
 	}
-	if ps := muo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := muo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := muo.mutation.LastPush(); ok {
+	if value, ok := _u.mutation.LastPush(); ok {
 		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
 	}
-	if muo.mutation.LastPushCleared() {
+	if _u.mutation.LastPushCleared() {
 		_spec.ClearField(machine.FieldLastPush, field.TypeTime)
 	}
-	if value, ok := muo.mutation.LastHeartbeat(); ok {
+	if value, ok := _u.mutation.LastHeartbeat(); ok {
 		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 	}
-	if muo.mutation.LastHeartbeatCleared() {
+	if _u.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
 	}
-	if value, ok := muo.mutation.Password(); ok {
+	if value, ok := _u.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)
 	}
-	if value, ok := muo.mutation.IpAddress(); ok {
+	if value, ok := _u.mutation.IpAddress(); ok {
 		_spec.SetField(machine.FieldIpAddress, field.TypeString, value)
 	}
-	if value, ok := muo.mutation.Scenarios(); ok {
+	if value, ok := _u.mutation.Scenarios(); ok {
 		_spec.SetField(machine.FieldScenarios, field.TypeString, value)
 	}
-	if muo.mutation.ScenariosCleared() {
+	if _u.mutation.ScenariosCleared() {
 		_spec.ClearField(machine.FieldScenarios, field.TypeString)
 	}
-	if value, ok := muo.mutation.Version(); ok {
+	if value, ok := _u.mutation.Version(); ok {
 		_spec.SetField(machine.FieldVersion, field.TypeString, value)
 	}
-	if muo.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		_spec.ClearField(machine.FieldVersion, field.TypeString)
 	}
-	if value, ok := muo.mutation.IsValidated(); ok {
+	if value, ok := _u.mutation.IsValidated(); ok {
 		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 	}
-	if value, ok := muo.mutation.AuthType(); ok {
+	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 	}
-	if value, ok := muo.mutation.Osname(); ok {
+	if value, ok := _u.mutation.Osname(); ok {
 		_spec.SetField(machine.FieldOsname, field.TypeString, value)
 	}
-	if muo.mutation.OsnameCleared() {
+	if _u.mutation.OsnameCleared() {
 		_spec.ClearField(machine.FieldOsname, field.TypeString)
 	}
-	if value, ok := muo.mutation.Osfamily(); ok {
+	if value, ok := _u.mutation.Osfamily(); ok {
 		_spec.SetField(machine.FieldOsfamily, field.TypeString, value)
 	}
-	if muo.mutation.OsfamilyCleared() {
+	if _u.mutation.OsfamilyCleared() {
 		_spec.ClearField(machine.FieldOsfamily, field.TypeString)
 	}
-	if value, ok := muo.mutation.Osversion(); ok {
+	if value, ok := _u.mutation.Osversion(); ok {
 		_spec.SetField(machine.FieldOsversion, field.TypeString, value)
 	}
-	if muo.mutation.OsversionCleared() {
+	if _u.mutation.OsversionCleared() {
 		_spec.ClearField(machine.FieldOsversion, field.TypeString)
 	}
-	if value, ok := muo.mutation.Featureflags(); ok {
+	if value, ok := _u.mutation.Featureflags(); ok {
 		_spec.SetField(machine.FieldFeatureflags, field.TypeString, value)
 	}
-	if muo.mutation.FeatureflagsCleared() {
+	if _u.mutation.FeatureflagsCleared() {
 		_spec.ClearField(machine.FieldFeatureflags, field.TypeString)
 	}
-	if value, ok := muo.mutation.Hubstate(); ok {
+	if value, ok := _u.mutation.Hubstate(); ok {
 		_spec.SetField(machine.FieldHubstate, field.TypeJSON, value)
 	}
-	if muo.mutation.HubstateCleared() {
+	if _u.mutation.HubstateCleared() {
 		_spec.ClearField(machine.FieldHubstate, field.TypeJSON)
 	}
-	if value, ok := muo.mutation.Datasources(); ok {
+	if value, ok := _u.mutation.Datasources(); ok {
 		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
 	}
-	if muo.mutation.DatasourcesCleared() {
+	if _u.mutation.DatasourcesCleared() {
 		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
 	}
-	if muo.mutation.AlertsCleared() {
+	if _u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -978,7 +978,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := muo.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !muo.mutation.AlertsCleared() {
+	if nodes := _u.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !_u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -994,7 +994,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := muo.mutation.AlertsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -1010,10 +1010,10 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Machine{config: muo.config}
+	_node = &Machine{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -1021,6 +1021,6 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		return nil, err
 	}
-	muo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

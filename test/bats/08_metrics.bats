@@ -65,6 +65,13 @@ teardown() {
     assert_stderr --partial "prometheus is not enabled, can't show metrics"
 }
 
+@test "cscli metrics (missing db_config)" {
+    # See https://github.com/crowdsecurity/crowdsec/issues/4450
+    config_set 'del(.db_config)'
+    rune -0 cscli metrics
+    refute_stderr --partial "panic"
+}
+
 @test "cscli metrics" {
     rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status

@@ -9,8 +9,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
@@ -99,7 +97,7 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.Crowdsec.Enable = ptr.Of(true)
+		c.Crowdsec.Enable = new(true)
 	}
 
 	if !*c.Crowdsec.Enable {
