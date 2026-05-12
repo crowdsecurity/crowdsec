@@ -51,13 +51,16 @@ func TestKeyRing_DeterministicAcrossInstances(t *testing.T) {
 	assert.Equal(t, epochA, epochB)
 	assert.True(t, bytes.Equal(signA, signB), "sign keys diverge across instances")
 
-	cookieA, _ := a.CookieKey(epochA)
-	cookieB, _ := b.CookieKey(epochB)
-	assert.True(t, bytes.Equal(cookieA, cookieB), "cookie keys diverge across instances")
+	// The master cookie key is independent of epoch and must also agree
+	// across instances configured with the same master secret.
+	assert.True(t, bytes.Equal(a.MasterCookieKey(), b.MasterCookieKey()),
+		"master cookie keys diverge across instances")
 
-	// Sign and cookie keys for the same epoch must NOT be the same — they
-	// derive from the same secret with different HKDF info strings.
-	assert.False(t, bytes.Equal(signA, cookieA), "sign and cookie keys must differ for the same epoch")
+	// Sign and master cookie keys derive from the same secret with
+	// different HKDF info strings, so they MUST differ. If they didn't,
+	// a leaked sign key would also forge cookies (and vice versa).
+	assert.False(t, bytes.Equal(signA, a.MasterCookieKey()),
+		"sign and master cookie keys must differ — domain separation is the whole point")
 }
 
 func TestKeyRing_RotatesAtIntervalBoundary(t *testing.T) {
@@ -143,44 +146,27 @@ func TestKeyRing_KnownVectors(t *testing.T) {
 	k, err := NewKeyRing(secret, time.Minute, 3)
 	require.NoError(t, err)
 
-	cases := []struct {
-		epoch    int64
-		context  string
-		wantHex  string
-		wantNote string
-	}{
-		{
-			epoch:    0,
-			context:  keyringInfoSign,
-			wantHex:  hex.EncodeToString(deriveEpochKey(secret, 0, keyringInfoSign)),
-			wantNote: "epoch 0 sign",
-		},
-		{
-			epoch:    0,
-			context:  keyringInfoCookie,
-			wantHex:  hex.EncodeToString(deriveEpochKey(secret, 0, keyringInfoCookie)),
-			wantNote: "epoch 0 cookie",
-		},
-	}
+	// Sign key for epoch 0 must derive deterministically.
+	want := hex.EncodeToString(deriveEpochKey(secret, 0, keyringInfoSign))
+	got := hex.EncodeToString(deriveEpochKey(k.masterSecret, 0, keyringInfoSign))
+	assert.Equal(t, want, got, "epoch 0 sign key derivation must be deterministic")
 
-	for _, tc := range cases {
-		got := deriveEpochKey(k.masterSecret, tc.epoch, tc.context)
-		assert.Equal(t, tc.wantHex, hex.EncodeToString(got), tc.wantNote)
+	// Master cookie key (no epoch component) must also be deterministic.
+	wantCookie := hex.EncodeToString(deriveMasterCookieKey(secret))
+	gotCookie := hex.EncodeToString(k.MasterCookieKey())
+	assert.Equal(t, wantCookie, gotCookie, "master cookie key derivation must be deterministic")
 
-		// Sanity: derivation is itself deterministic across calls.
-		got2 := deriveEpochKey(k.masterSecret, tc.epoch, tc.context)
-		assert.Equal(t, hex.EncodeToString(got), hex.EncodeToString(got2), "derivation not deterministic")
-	}
-
-	// Cross-context separation: same epoch, different context → different bytes.
+	// Cross-context separation: sign key for any epoch must NOT equal the
+	// master cookie key. Domain separation is the whole point of using
+	// distinct HKDF info strings.
 	signKey := deriveEpochKey(secret, 42, keyringInfoSign)
-	cookieKey := deriveEpochKey(secret, 42, keyringInfoCookie)
+	cookieKey := deriveMasterCookieKey(secret)
 	assert.NotEqual(t, hex.EncodeToString(signKey), hex.EncodeToString(cookieKey),
-		"sign and cookie contexts must produce different keys")
+		"sign and master-cookie contexts must produce different keys")
 
 	// Cross-epoch separation: same context, different epoch → different bytes.
 	e0 := deriveEpochKey(secret, 0, keyringInfoSign)
 	e1 := deriveEpochKey(secret, 1, keyringInfoSign)
 	assert.NotEqual(t, hex.EncodeToString(e0), hex.EncodeToString(e1),
-		"adjacent epochs must produce different keys")
+		"adjacent epochs must produce different sign keys")
 }

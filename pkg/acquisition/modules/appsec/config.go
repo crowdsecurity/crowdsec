@@ -61,7 +61,13 @@ type Configuration struct {
 	// ChallengeMaxLiveEpochs is how many past epochs (in addition to the
 	// current one) the keyring continues to accept. Sized so any submission
 	// within the freshness window has a non-evicted epoch.
-	ChallengeMaxLiveEpochs            int `yaml:"challenge_max_live_epochs"`
+	ChallengeMaxLiveEpochs int `yaml:"challenge_max_live_epochs"`
+
+	// ChallengeCookieTTL controls how long a successful-challenge cookie
+	// stays valid. Decoupled from the keyring rotation window so cookies
+	// can be long-lived (e.g. 24h) without widening the per-epoch ticket-
+	// forgery exposure. Defaults to 2h when unset.
+	ChallengeCookieTTL                *time.Duration `yaml:"challenge_cookie_ttl"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -224,6 +230,9 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		}
 		if w.config.ChallengeMaxLiveEpochs > 0 {
 			challengeOpts = append(challengeOpts, challenge.WithMaxLiveEpochs(w.config.ChallengeMaxLiveEpochs))
+		}
+		if w.config.ChallengeCookieTTL != nil {
+			challengeOpts = append(challengeOpts, challenge.WithCookieTTL(*w.config.ChallengeCookieTTL))
 		}
 
 		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -13,82 +14,185 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCookieV1_RoundTrip seals a cookie under epoch N's key and opens it
-// using the keyring's resolver — the basic positive case.
-func TestCookieV1_RoundTrip(t *testing.T) {
+// TestCookieV0_RoundTrip is the basic positive case: seal under the master
+// cookie key with an explicit not_after one hour in the future, open
+// immediately, fingerprint comes back.
+func TestCookieV0_RoundTrip(t *testing.T) {
 	keys := testKeyRing()
-	epoch, key := keys.CurrentCookie()
-
 	envelope := &pb.ChallengeCookie{PowDifficulty: 12}
-	aad := []byte("test-ua")
+	notAfter := time.Now().Add(time.Hour).Unix()
 
-	encoded, err := sealCookieV1(envelope, key, epoch, aad)
+	encoded, err := sealCookieV0(envelope, keys.MasterCookieKey(), notAfter, []byte("ua"))
 	require.NoError(t, err)
 
-	got, err := openCookie(encoded, keys.CookieKey, aad)
+	got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
 	require.NoError(t, err)
 	assert.Equal(t, int32(12), got.GetPowDifficulty())
 }
 
-// TestCookieV1_EpochTagBoundToAAD asserts that the AEAD AAD includes the
-// epoch — flipping the epoch tag in the wire format must invalidate the
-// AEAD signature, not just shift to a different decryption key.
-func TestCookieV1_EpochTagBoundToAAD(t *testing.T) {
+// TestCookieV0_ExpiredRejected confirms the not_after timestamp embedded
+// inside the encrypted envelope is enforced on open.
+func TestCookieV0_ExpiredRejected(t *testing.T) {
 	keys := testKeyRing()
-	epoch, key := keys.CurrentCookie()
 
-	encoded, err := sealCookieV1(&pb.ChallengeCookie{PowDifficulty: 7}, key, epoch, []byte("ua"))
+	// notAfter is one hour in the past — the cookie was already expired
+	// when issued (this is what a stale cookie sent by a slow client would
+	// look like on the server).
+	pastNotAfter := time.Now().Add(-time.Hour).Unix()
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, []byte("ua"))
+	require.NoError(t, err)
+
+	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrCookieExpired,
+		"expired cookie must produce ErrCookieExpired, got %v", err)
+}
+
+// TestCookieV0_TamperedExpirationRejected is the security-critical test for
+// the design choice of putting not_after INSIDE the encrypted envelope. Any
+// flip of a byte in the ciphertext (including bytes covering the not_after
+// header) must invalidate the AEAD tag, not just shift the apparent
+// expiration time.
+func TestCookieV0_TamperedExpirationRejected(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, []byte("ua"))
 	require.NoError(t, err)
 
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)
 	require.NoError(t, err)
 
-	// Flip the epoch byte at offset 8 (last byte of the be8-encoded epoch).
+	// Wire layout: version(1) || nonce(12) || ciphertext(...)
+	// The first byte of ciphertext corresponds to the first byte of
+	// plaintext, which is the high byte of not_after_be8. Flipping it
+	// MUST invalidate the AEAD tag.
 	tampered := append([]byte(nil), raw...)
-	tampered[8] ^= 0x01
+	tampered[1+12] ^= 0x80 // flip MSB of not_after's high byte
 	tamperedEncoded := base64.RawURLEncoding.EncodeToString(tampered)
 
-	_, err = openCookie(tamperedEncoded, keys.CookieKey, []byte("ua"))
-	require.Error(t, err, "tampering with the epoch byte must invalidate the cookie")
+	_, err = openCookie(tamperedEncoded, keys.MasterCookieKey(), []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrCookieSignature,
+		"tampering with the not_after region must produce ErrCookieSignature (AEAD tag failure)")
 }
 
-// TestCookieV1_OutOfWindowRejected ensures a cookie sealed under an epoch
-// that has fallen out of the live window is rejected with the typed error.
-func TestCookieV1_OutOfWindowRejected(t *testing.T) {
-	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+// TestCookieV0_UAMismatchRejected confirms the User-Agent AAD binding.
+func TestCookieV0_UAMismatchRejected(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, []byte("ua-A"))
+	require.NoError(t, err)
+
+	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua-B"))
+	assert.ErrorIs(t, err, ErrCookieSignature)
+}
+
+// TestCookieV0_SurvivesArbitraryRotation is the headline test for the v0
+// design: a cookie sealed under the long-lived master cookie key remains
+// valid across as many ticket-signing-key rotations as the keyring goes
+// through. The previous design tied cookie validity to the same live
+// window as ticket signing; this one decouples them completely.
+//
+// We advance the keyring's clock (forcing it to derive a stream of new
+// epoch signing keys) and confirm that openCookie — which depends only
+// on the master cookie key, not on any epoch — keeps working.
+func TestCookieV0_SurvivesArbitraryRotation(t *testing.T) {
+	t0 := time.Now()
 	keys := newTestKeyRing(t, testSecret, time.Minute, t0)
 
-	epoch, key := keys.CurrentCookie()
-	encoded, err := sealCookieV1(&pb.ChallengeCookie{PowDifficulty: 9}, key, epoch, []byte("ua"))
+	// notAfter is well in the future from real wall-clock time, so the
+	// in-envelope expiration check (which uses real time.Now()) won't
+	// reject the cookie.
+	notAfter := t0.Add(24 * time.Hour).Unix()
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 9}, keys.MasterCookieKey(), notAfter, []byte("ua"))
 	require.NoError(t, err)
 
-	// Fast-forward beyond the live window (maxLive=3 + skew=1 means
-	// jumping past current+4 leaves epoch out of window).
-	keys.now = func() time.Time { return t0.Add(10 * time.Minute) }
+	// Roll the keyring's clock forward — this triggers per-epoch sign-key
+	// derivations and (with maxLive=3) evictions. None of that affects
+	// the master cookie key, so the cookie keeps validating.
+	for _, advance := range []time.Duration{
+		1 * time.Minute,
+		10 * time.Minute,
+		1 * time.Hour,
+		6 * time.Hour,
+		23 * time.Hour,
+	} {
+		keys.now = func() time.Time { return t0.Add(advance) }
 
-	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrCookieEpoch, "out-of-window epoch should produce ErrCookieEpoch")
+		// Touching keys.Current() forces a derivation under the new
+		// keyring time, simulating real rotation activity.
+		_, _ = keys.Current()
+
+		got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
+		require.NoError(t, err,
+			"cookie should still validate after %s of keyring rotation; got %v", advance, err)
+		assert.Equal(t, int32(9), got.GetPowDifficulty())
+	}
 }
 
-// TestCookieV1_UAMismatchRejected confirms the existing User-Agent AAD binding
-// still holds under the v1 format.
-func TestCookieV1_UAMismatchRejected(t *testing.T) {
+// TestCookieV0_ExpiryEnforcedAgainstWallClock is the counterpart to the
+// rotation test: cookie expiration uses real wall-clock time (not the
+// keyring's overridable now), so we seal a cookie with notAfter already
+// in the past and confirm rejection.
+func TestCookieV0_ExpiryEnforcedAgainstWallClock(t *testing.T) {
 	keys := testKeyRing()
-	epoch, key := keys.CurrentCookie()
 
-	encoded, err := sealCookieV1(&pb.ChallengeCookie{}, key, epoch, []byte("ua-A"))
+	pastNotAfter := time.Now().Add(-time.Minute).Unix()
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, []byte("ua"))
 	require.NoError(t, err)
 
-	_, err = openCookie(encoded, keys.CookieKey, []byte("ua-B"))
-	assert.ErrorIs(t, err, ErrCookieSignature)
+	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrCookieExpired)
+}
+
+// TestCookieV0_MasterSecretChangeInvalidates is the expected counter-property
+// to SurvivesArbitraryRotation: if the operator rotates the master secret
+// (a manual config change), every outstanding cookie is invalidated.
+func TestCookieV0_MasterSecretChangeInvalidates(t *testing.T) {
+	notAfter := time.Now().Add(time.Hour).Unix()
+
+	keysA, err := NewKeyRing(bytes.Repeat([]byte{0xaa}, 32), time.Minute, 3)
+	require.NoError(t, err)
+	keysB, err := NewKeyRing(bytes.Repeat([]byte{0xbb}, 32), time.Minute, 3)
+	require.NoError(t, err)
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keysA.MasterCookieKey(), notAfter, []byte("ua"))
+	require.NoError(t, err)
+
+	_, err = openCookie(encoded, keysB.MasterCookieKey(), []byte("ua"))
+	assert.ErrorIs(t, err, ErrCookieSignature,
+		"cookie sealed under secret A must not decrypt under secret B")
+}
+
+// TestCookieV0_DistributedSetup_TwoInstances confirms cookies issued by
+// instance A validate against instance B as long as both share the same
+// master secret. This is the multi-WAF deployment invariant.
+func TestCookieV0_DistributedSetup_TwoInstances(t *testing.T) {
+	secret := bytes.Repeat([]byte{0xcc}, 32)
+	a, err := NewKeyRing(secret, time.Minute, 3)
+	require.NoError(t, err)
+	b, err := NewKeyRing(secret, time.Minute, 3)
+	require.NoError(t, err)
+
+	assert.True(t, bytes.Equal(a.MasterCookieKey(), b.MasterCookieKey()),
+		"two instances with the same master_secret must derive the same master cookie key")
+
+	notAfter := time.Now().Add(time.Hour).Unix()
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 14}, a.MasterCookieKey(), notAfter, []byte("ua"))
+	require.NoError(t, err)
+
+	got, err := openCookie(encoded, b.MasterCookieKey(), []byte("ua"))
+	require.NoError(t, err, "cookie issued by A must validate against B (same master_secret)")
+	assert.Equal(t, int32(14), got.GetPowDifficulty())
 }
 
 // TestCookie_UnknownVersionRejected makes the version-byte dispatch
 // explicit: a cookie with an unknown leading byte is rejected with the
-// dedicated ErrCookieVersion sentinel rather than being attempted as
-// some other format. This is the extension point for any future cookie
-// schema (e.g. a v2 that decouples cookie key from epoch).
+// dedicated ErrCookieVersion sentinel. This is the extension point for
+// any future cookie schema bump.
 func TestCookie_UnknownVersionRejected(t *testing.T) {
 	keys := testKeyRing()
 
@@ -96,7 +200,7 @@ func TestCookie_UnknownVersionRejected(t *testing.T) {
 	raw := append([]byte{0xFE}, []byte("0123456789abcdefghijklmnop")...)
 	encoded := base64.RawURLEncoding.EncodeToString(raw)
 
-	_, err := openCookie(encoded, keys.CookieKey, []byte("ua"))
+	_, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrCookieVersion, "unknown version byte must produce ErrCookieVersion")
 }
@@ -152,53 +256,12 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 		"ticket from an evicted epoch must not validate")
 }
 
-// TestCookie_AuthenticatedUserSurvivesRotation answers the operator
-// question "does rotating the secret kick existing authenticated users
-// back to a challenge?". The answer is no — cookies sealed under epoch N
-// continue to validate after rotations to N+1, N+2, ... up to the live
-// window's edge. Beyond that, users are re-challenged.
-//
-// This test exercises the round trip explicitly: seal a cookie, advance
-// the keyring by one rotation, open the cookie — must succeed.
-func TestCookie_AuthenticatedUserSurvivesRotation(t *testing.T) {
-	t0 := time.Now()
-	keys := newTestKeyRing(t, testSecret, time.Minute, t0)
-
-	// Seal a cookie under the current epoch.
-	envelope := &pb.ChallengeCookie{PowDifficulty: 12}
-	epoch, key := keys.CurrentCookie()
-	encoded, err := sealCookieV1(envelope, key, epoch, []byte("ua"))
-	require.NoError(t, err)
-
-	// Advance the keyring by one rotation interval. The cookie's epoch
-	// is now "previous" but still inside the live window.
-	keys.now = func() time.Time { return t0.Add(70 * time.Second) }
-
-	got, err := openCookie(encoded, keys.CookieKey, []byte("ua"))
-	require.NoError(t, err, "cookie should validate one rotation after issuance")
-	assert.Equal(t, int32(12), got.GetPowDifficulty())
-
-	// One more rotation: maxLive=3 means [current-2 ... current+skew]
-	// includes the original epoch when current = E0 + 2. Cookie still
-	// validates at the edge of the live window.
-	keys.now = func() time.Time { return t0.Add(130 * time.Second) }
-	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
-	require.NoError(t, err, "cookie should validate at the edge of the live window")
-
-	// One rotation more (current = E0 + 3): original epoch now evicted.
-	keys.now = func() time.Time { return t0.Add(190 * time.Second) }
-	_, err = openCookie(encoded, keys.CookieKey, []byte("ua"))
-	require.Error(t, err, "cookie must be rejected once its epoch is out of window")
-	assert.ErrorIs(t, err, ErrCookieEpoch)
-}
-
-// TestEndToEnd_ValidateChallengeResponse_AcrossRotation walks the full
-// validation path (matches challenge, opens cookie) for a submission whose
-// ticket was issued under a previous-but-still-live epoch. Regression guard
-// for keyring + cookie-v1 wired together.
-func TestEndToEnd_ValidateChallengeResponse_AcrossRotation(t *testing.T) {
+// TestEndToEnd_ValidateChallengeResponse walks the full validation path
+// (matches challenge, opens cookie). Regression guard for keyring +
+// cookie-v0 wired together.
+func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	keys := testKeyRing()
-	c := &ChallengeRuntime{keys: keys, powDifficulty: 8}
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour}
 
 	ticket, ts := freshTicket()
 	body := buildValidBody(c.powDifficulty, ticket, ts)
@@ -211,8 +274,8 @@ func TestEndToEnd_ValidateChallengeResponse_AcrossRotation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ck)
 
-	// The cookie must now decode through the cookie-v1 path. Round-trip it
-	// through ValidCookie to make sure the integration is correct.
+	// Round-trip the cookie through the public ValidCookie API to confirm
+	// the full Seal → parse Set-Cookie → Open path is correct.
 	parsed, err := http.ParseSetCookie(ck.String())
 	require.NoError(t, err)
 
@@ -221,27 +284,40 @@ func TestEndToEnd_ValidateChallengeResponse_AcrossRotation(t *testing.T) {
 	assert.Equal(t, 8, got.PowDifficulty)
 }
 
+// TestCookieV0_BrowserTTLMatchesServerTTL guards the gotcha mentioned in
+// the v0 design discussion: if the browser drops the cookie before the
+// server stops accepting it (or vice versa), users get unexpected
+// re-challenges. The Set-Cookie Max-Age MUST match the server-side
+// cookieTTL.
+func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
+	keys := testKeyRing()
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute}
+
+	ticket, ts := freshTicket()
+	body := buildValidBody(c.powDifficulty, ticket, ts)
+
+	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "test-agent")
+
+	ck, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	require.NoError(t, err)
+
+	parsed, err := http.ParseSetCookie(ck.String())
+	require.NoError(t, err)
+
+	// MaxAge is a count of seconds; compare to our cookieTTL.
+	// The cookie helper computes MaxAge as
+	//   int(time.Until(Expires).Seconds())
+	// where Expires was set from time.Now()+TTL on a slightly earlier
+	// time.Now() reading. Sub-second elapsed time between the two reads
+	// can shave a full second off after truncation, so we allow ±2s.
+	expected := int((90 * time.Minute).Seconds())
+	assert.InDelta(t, expected, parsed.MaxAge, 2,
+		"browser-side Max-Age (%d) should be within 2s of server-side cookieTTL (%d)",
+		parsed.MaxAge, expected)
+}
+
 func strconvI64(n int64) string {
-	// avoid pulling strconv into another helper file
-	const digits = "0123456789"
-	if n == 0 {
-		return "0"
-	}
-	negative := n < 0
-	if negative {
-		n = -n
-	}
-	var buf bytes.Buffer
-	for n > 0 {
-		buf.WriteByte(digits[n%10])
-		n /= 10
-	}
-	out := buf.Bytes()
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
-	}
-	if negative {
-		return "-" + string(out)
-	}
-	return string(out)
+	return strconv.FormatInt(n, 10)
 }

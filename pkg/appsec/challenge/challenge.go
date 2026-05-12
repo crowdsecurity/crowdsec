@@ -41,6 +41,12 @@ const ChallengeCookieName = "__crowdsec_challenge"
 const challengeJSCacheSize = 10
 const challengeJSRefreshInterval = 10 * time.Minute
 
+// defaultCookieTTL is how long a successful challenge cookie is valid by
+// default. Decoupled from the keyring rotation window: an operator can
+// configure long cookies (e.g. 24h) without widening the ticket-forgery
+// exposure window (keyring live window, default 15m).
+const defaultCookieTTL = 2 * time.Hour
+
 // PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
 // obfuscator runs ~500-5000 ops/sec, so keep these conservative.
 const (
@@ -123,6 +129,12 @@ type ChallengeRuntime struct {
 	// pre-warm work for the same epoch.
 	nextEpochWarmed   int64
 	nextEpochWarmedMu sync.Mutex
+
+	// cookieTTL controls how long a successful-challenge cookie remains
+	// valid. Enforced by an explicit not_after timestamp inside the
+	// sealed envelope (see crypto.go), NOT by keyring eviction, so it
+	// can be much larger than the ticket-signing live window.
+	cookieTTL time.Duration
 }
 
 // Option configures a ChallengeRuntime at construction time.
@@ -140,6 +152,10 @@ type runtimeOptions struct {
 	// maxLiveEpochs is how many past epochs (plus the current one) the
 	// keyring keeps acceptable. Zero falls back to keyringDefaultMaxLive.
 	maxLiveEpochs int
+
+	// cookieTTL controls how long an issued challenge cookie remains
+	// valid. Zero falls back to defaultCookieTTL.
+	cookieTTL time.Duration
 }
 
 // WithMasterSecret sets the long-lived shared secret. In distributed
@@ -166,6 +182,18 @@ func WithRotationInterval(d time.Duration) Option {
 func WithMaxLiveEpochs(n int) Option {
 	return func(o *runtimeOptions) {
 		o.maxLiveEpochs = n
+	}
+}
+
+// WithCookieTTL sets how long an issued challenge cookie remains valid.
+// Decoupled from the per-epoch keyring window so cookies can be long-lived
+// (e.g. 24h) while ticket-signing keys still rotate on a tight schedule.
+// Zero or negative values are ignored (defaultCookieTTL is used).
+func WithCookieTTL(ttl time.Duration) Option {
+	return func(o *runtimeOptions) {
+		if ttl > 0 {
+			o.cookieTTL = ttl
+		}
 	}
 }
 
@@ -240,6 +268,11 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("build challenge keyring: %w", err)
 	}
 
+	cookieTTL := resolvedOpts.cookieTTL
+	if cookieTTL <= 0 {
+		cookieTTL = defaultCookieTTL
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
@@ -284,6 +317,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		powDifficulty:      defaultPowDifficulty,
 		keys:               keys,
 		dynamicModuleCache: make(map[int64]string),
+		cookieTTL:          cookieTTL,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -991,13 +1025,18 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// Seal under the current epoch's cookie key. The cookie wire format
 	// includes the epoch tag so the same key (or a subsequent rotation
 	// while the epoch is still in the live window) opens it.
-	cookieEpoch, cookieKey := c.keys.CurrentCookie()
-	cookieValue, err := sealCookieV1(envelope, cookieKey, cookieEpoch, []byte(request.UserAgent()))
+	// Seal under the long-lived master cookie key; the sealed envelope
+	// embeds an explicit not_after timestamp so the server-side validity
+	// window is exactly c.cookieTTL, independent of the keyring's per-
+	// epoch rotation cadence. The browser-side Max-Age below is set to
+	// the same TTL so the browser drops the cookie at the same moment.
+	notAfter := time.Now().Add(c.cookieTTL).Unix()
+	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(2 * time.Hour).Value(cookieValue)
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
@@ -1018,7 +1057,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	envelope, err := openCookie(ck.Value, c.keys.CookieKey, []byte(userAgent))
+	envelope, err := openCookie(ck.Value, c.keys.MasterCookieKey(), []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}

@@ -11,49 +11,67 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// EpochSalt and the per-context info strings define the HKDF derivation used
-// to produce per-epoch keys from the long-lived master secret. They are part
-// of the wire protocol — changing them silently would invalidate every
-// outstanding ticket and cookie across a fleet upgrade. Bump the version
-// suffix when intentionally rotating.
+// keyringHKDFSalt and the per-context info strings define the HKDF
+// derivations used to turn the long-lived master secret into operational
+// keys. They are part of the wire protocol — changing them silently would
+// invalidate every outstanding ticket and cookie across a fleet upgrade.
+// Bump the version suffix when intentionally rotating.
+//
+// Two independent derivation contexts are used:
+//
+//   - "epoch-sign":   per-epoch HMAC key for ticket / PoW MAC signing.
+//                     Rotates with the keyring (tight forgery window).
+//   - "cookie-master": single long-lived AES key for cookie sealing.
+//                     Lifetime equals master_secret's lifetime; cookie
+//                     expiration is enforced by an explicit not_after
+//                     timestamp inside the sealed envelope (see crypto.go).
+//
+// The two contexts produce cryptographically independent keys: leaking
+// one tells the attacker nothing about the other.
 const (
-	keyringHKDFSalt        = "crowdsec-challenge-keyring-v1"
-	keyringInfoSign        = "epoch-sign"        // for HMAC ticket / PoW MAC keys
-	keyringInfoCookie      = "epoch-cookie"      // for AES-GCM cookie sealing
-	keyringDerivedKeyBytes = 32                  // 256-bit keys throughout
-	keyringClockSkew       = 1                   // accept currentEpoch + 1
-	keyringDefaultMaxLive  = 3                   // currentEpoch and 2 prior
-	keyringDefaultRotation = 5 * time.Minute     // rotation cadence
-	keyringMinRotation     = 30 * time.Second    // floor for sanity
+	keyringHKDFSalt          = "crowdsec-challenge-keyring-v1"
+	keyringInfoSign          = "epoch-sign"
+	keyringInfoMasterCookie  = "cookie-master"
+	keyringDerivedKeyBytes   = 32 // 256-bit keys throughout
+	keyringClockSkew         = 1  // accept currentEpoch + 1
+	keyringDefaultMaxLive    = 3  // currentEpoch and 2 prior
+	keyringDefaultRotation   = 5 * time.Minute
+	keyringMinRotation       = 30 * time.Second
 )
 
-// epochKey bundles the two derived keys for a single epoch so a single map
-// lookup answers both "sign this" and "seal this cookie".
-type epochKey struct {
-	sign   []byte // HMAC-SHA256 key for tickets / PoW MACs
-	cookie []byte // raw key fed to crypto.go's HKDF for AES-256-GCM
-}
-
-// KeyRing produces per-epoch keys deterministically from a shared master
-// secret. Two instances configured with the same masterSecret and rotation
-// interval derive bit-identical keys for the same epoch — the property that
-// lets distributed (multi-WAF) deployments sign and verify each other's
-// challenges without coordination.
+// KeyRing produces keys deterministically from a shared master secret. Two
+// instances configured with the same masterSecret derive bit-identical
+// keys — the property that lets distributed (multi-WAF) deployments sign
+// and verify each other's challenges and cookies without coordination.
 //
-// Live window: KeyRing.Get returns a key for any epoch in
-// [currentEpoch - maxLive + 1 ... currentEpoch + clockSkew]. Epochs outside
-// that window are rejected to bound the verification cost an attacker can
-// extract by submitting arbitrarily-stale or far-future epoch tags.
+// Two key families with different lifetimes:
+//
+//   - Per-epoch signing key (rotates on rotationInterval). Used for ticket
+//     HMAC and PoW MAC. Live window:
+//       [currentEpoch - maxLive + 1 ... currentEpoch + clockSkew]
+//     Epochs outside the window are rejected, bounding ticket forgery
+//     exposure to maxLive * rotationInterval.
+//
+//   - Long-lived master cookie key (no rotation). Used for AES-GCM cookie
+//     sealing. Cookie expiration is enforced by an explicit not_after
+//     timestamp inside the sealed envelope, NOT by key eviction — so
+//     cookie TTL can be much larger than the ticket window without
+//     widening ticket forgery exposure.
 type KeyRing struct {
 	masterSecret     []byte
 	rotationInterval time.Duration
 	maxLive          int
 	clockSkew        int
 
+	// masterCookieKey is the long-lived cookie-sealing key; derived once
+	// at construction. Pointer-receiver methods read it without locking
+	// because it's never mutated after NewKeyRing returns.
+	masterCookieKey []byte
+
 	now func() time.Time // overridable for tests
 
 	mu    sync.RWMutex
-	cache map[int64]epochKey
+	cache map[int64][]byte // epoch -> sign key (cookie key no longer per-epoch)
 }
 
 // NewKeyRing constructs a KeyRing. masterSecret must be at least minSecretBytes
@@ -76,8 +94,9 @@ func NewKeyRing(masterSecret []byte, rotationInterval time.Duration, maxLive int
 		rotationInterval: rotationInterval,
 		maxLive:          maxLive,
 		clockSkew:        keyringClockSkew,
+		masterCookieKey:  deriveMasterCookieKey(masterSecret),
 		now:              time.Now,
-		cache:            make(map[int64]epochKey),
+		cache:            make(map[int64][]byte),
 	}, nil
 }
 
@@ -91,15 +110,7 @@ func (k *KeyRing) CurrentEpoch() int64 {
 // outbound material right now.
 func (k *KeyRing) Current() (int64, []byte) {
 	epoch := k.CurrentEpoch()
-	key := k.deriveOrCache(epoch)
-	return epoch, key.sign
-}
-
-// CurrentCookie returns the epoch and cookie-sealing key for new cookies.
-func (k *KeyRing) CurrentCookie() (int64, []byte) {
-	epoch := k.CurrentEpoch()
-	key := k.deriveOrCache(epoch)
-	return epoch, key.cookie
+	return epoch, k.deriveOrCache(epoch)
 }
 
 // SignKey returns the HMAC key for an epoch if it's within the live window;
@@ -108,21 +119,19 @@ func (k *KeyRing) SignKey(epoch int64) ([]byte, bool) {
 	if !k.isLive(epoch) {
 		return nil, false
 	}
-	return k.deriveOrCache(epoch).sign, true
+	return k.deriveOrCache(epoch), true
 }
 
-// CookieKey returns the AES-key-input for an epoch if it's within the live
-// window; returns (nil, false) otherwise.
-func (k *KeyRing) CookieKey(epoch int64) ([]byte, bool) {
-	if !k.isLive(epoch) {
-		return nil, false
-	}
-	return k.deriveOrCache(epoch).cookie, true
+// MasterCookieKey returns the long-lived AES-key-input for cookie sealing.
+// Does not depend on epoch; same value for the lifetime of the master
+// secret. Cookie expiration is enforced via an explicit not_after timestamp
+// inside the sealed envelope (see crypto.go).
+func (k *KeyRing) MasterCookieKey() []byte {
+	return k.masterCookieKey
 }
 
 // LiveEpochs returns every epoch currently in the live window, oldest first.
-// Useful for try-decrypt fallbacks when a cookie predates the format that
-// carries an explicit epoch.
+// Used by callers that need to enumerate the acceptable ticket-signing epochs.
 func (k *KeyRing) LiveEpochs() []int64 {
 	current := k.CurrentEpoch()
 	out := make([]int64, 0, k.maxLive+k.clockSkew)
@@ -137,9 +146,10 @@ func (k *KeyRing) isLive(epoch int64) bool {
 	return epoch >= current-int64(k.maxLive-1) && epoch <= current+int64(k.clockSkew)
 }
 
-// deriveOrCache returns the cached epochKey or derives and stores it.
-// Pure function of (masterSecret, epoch) so two instances always agree.
-func (k *KeyRing) deriveOrCache(epoch int64) epochKey {
+// deriveOrCache returns the cached per-epoch signing key or derives and
+// stores it. Pure function of (masterSecret, epoch) so two instances
+// always agree.
+func (k *KeyRing) deriveOrCache(epoch int64) []byte {
 	k.mu.RLock()
 	if cached, ok := k.cache[epoch]; ok {
 		k.mu.RUnlock()
@@ -156,10 +166,7 @@ func (k *KeyRing) deriveOrCache(epoch int64) epochKey {
 	}
 
 	start := time.Now()
-	derived := epochKey{
-		sign:   deriveEpochKey(k.masterSecret, epoch, keyringInfoSign),
-		cookie: deriveEpochKey(k.masterSecret, epoch, keyringInfoCookie),
-	}
+	derived := deriveEpochKey(k.masterSecret, epoch, keyringInfoSign)
 	derivationDuration := time.Since(start)
 
 	// Bound the cache so it can't grow without limit if the clock jumps.
@@ -180,11 +187,11 @@ func (k *KeyRing) deriveOrCache(epoch int64) epochKey {
 	// numbers at the same wall-clock times) and to surface unexpected
 	// rotation churn (clock jumps, mis-sized live window, etc.).
 	log.WithFields(log.Fields{
-		"epoch":           epoch,
-		"current_epoch":   k.CurrentEpoch(),
-		"derivation_us":   derivationDuration.Microseconds(),
-		"cache_evicted":   evicted,
-		"cache_size":      len(k.cache),
+		"epoch":         epoch,
+		"current_epoch": k.CurrentEpoch(),
+		"derivation_us": derivationDuration.Microseconds(),
+		"cache_evicted": evicted,
+		"cache_size":    len(k.cache),
 	}).Info("WAF challenge: derived per-epoch key")
 
 	return derived
@@ -205,6 +212,22 @@ func deriveEpochKey(masterSecret []byte, epoch int64, context string) []byte {
 	binary.BigEndian.PutUint64(epochBytes[:], uint64(epoch))
 	info = append(info, epochBytes[:]...)
 
+	return hkdfExtract(masterSecret, info)
+}
+
+// deriveMasterCookieKey performs HKDF-SHA256 with no epoch component, so
+// the output depends only on the master secret. Identical across all
+// instances sharing the master, stable for the lifetime of the master.
+// Cookie expiration is enforced separately by a not_after timestamp
+// inside the sealed envelope (see crypto.go).
+func deriveMasterCookieKey(masterSecret []byte) []byte {
+	return hkdfExtract(masterSecret, []byte(keyringInfoMasterCookie))
+}
+
+// hkdfExtract is the shared HKDF-SHA256 call used by both derivation
+// helpers. Salt is the fixed keyringHKDFSalt; info is caller-supplied
+// (already disambiguated by context).
+func hkdfExtract(masterSecret []byte, info []byte) []byte {
 	r := hkdf.New(sha256.New, masterSecret, []byte(keyringHKDFSalt), info)
 
 	out := make([]byte, keyringDerivedKeyBytes)
