@@ -452,6 +452,16 @@
             statusText.textContent = "Verification failed";
             statusText.style.color = "var(--error)";
             if (statusSub) statusSub.textContent = "Please try again";
+            return;
+          }
+
+          if (s === "rejected") {
+            stopDots();
+            coin.className = "fail";
+            statusText.textContent = "Verification rejected";
+            statusText.style.color = "var(--error)";
+            if (statusSub) statusSub.textContent = "Your browser was identified as automated or unsafe.";
+            if (openBtn) openBtn.style.display = "none";
           }
         }
 

@@ -55,6 +55,9 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
+		"GrantChallengeCookie": func(reason string) error {
+			return w.GrantChallengeCookie(state, request, reason)
+		},
 		/*"ValidateChallenge": func(conditions ...bool) (*challenge.ChallengeMatcher, error) {
 			return w.ValidateChallenge(state, request, conditions...)
 		},*/
@@ -112,6 +115,30 @@ func GetOnChallengeEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, reques
 		// fingerprint.AcceptLanguageMismatch(req),
 		// fingerprint.TimezoneCountryMismatch(country)) are methods on
 		// `fingerprint` and can still be called directly from rules.
+		"EvaluateMismatches": func() *challenge.MismatchReport {
+			return w.EvaluateMismatches(state, request)
+		},
+	}
+}
+
+// GetOnChallengeSubmitEnv is the env exposed to on_challenge_submit hooks.
+// Deliberately narrow: the hook fires once during the challenge submission
+// JSON response, so anything that would change the response shape
+// (SendChallenge, SetRemediation, SetReturnCode, SetChallengeDifficulty,
+// DropRequest) is intentionally omitted to avoid breaking the client-side
+// JS handler. Operators wanting to escalate or block at the next request
+// should do so via pre_eval.
+func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+	return map[string]interface{}{
+		"req":         request.HTTPRequest,
+		"IsInBand":    request.IsInBand,
+		"fingerprint": state.Fingerprint,
+		"RejectSubmission": func(reason string) error {
+			return w.RejectSubmission(state, reason)
+		},
+		"GrantChallengeCookie": func(reason string) error {
+			return w.GrantChallengeCookie(state, request, reason)
+		},
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)
 		},

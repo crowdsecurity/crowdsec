@@ -305,6 +305,19 @@ type FingerprintData struct {
 	FastBotDetection        FlexBool                           `json:"fastBotDetection"`
 	FastBotDetectionDetails fingerprintFastBotDetectionDetails `json:"fastBotDetectionDetails"`
 	Bot                     fingerprintBotAlias                `json:"-"`
+
+	// Allowlisted is true on cookies minted by GrantChallengeCookie (operator
+	// bypass for trusted bots like Googlebot) — these cookies never went
+	// through a real challenge submission and carry no measured signals.
+	// AllowlistReason is the operator-supplied free-form string identifying
+	// why the bypass was granted, exposed to on_challenge expressions so
+	// per-route policy can distinguish bypass categories.
+	//
+	// Both fields live in the cookie's AEAD plaintext header (see
+	// crypto.go), NOT in the protobuf envelope. They are populated by
+	// ValidCookie / GrantChallengeCookie and zero for normal cookies.
+	Allowlisted     bool   `json:"-"`
+	AllowlistReason string `json:"-"`
 }
 
 type fingerprintSignals struct {

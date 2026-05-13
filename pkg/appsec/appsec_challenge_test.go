@@ -237,3 +237,99 @@ func TestProcessOnChallengeRulesInvalidSubmissionSkipsUserHooks(t *testing.T) {
 	assert.JSONEq(t, bodyChallengeFailed, state.Response.UserHTTPBodyContent)
 	assert.Nil(t, state.PendingAction, "user hooks must not run on invalid submission")
 }
+
+// TestRejectSubmissionSetsState confirms the helper sets the state field;
+// downstream ProcessOnChallengeRules submit branch keys off this to refuse
+// cookie issuance.
+func TestRejectSubmissionSetsState(t *testing.T) {
+	rt := &AppsecRuntimeConfig{
+		Logger: log.NewEntry(log.StandardLogger()),
+		Config: &AppsecConfig{},
+	}
+	state := &AppsecRequestState{}
+
+	require.NoError(t, rt.RejectSubmission(state, "bot detected"))
+	require.NotNil(t, state.SubmissionRejection)
+	assert.Equal(t, "bot detected", state.SubmissionRejection.Reason)
+
+	// Empty reason gets a default placeholder.
+	state2 := &AppsecRequestState{}
+	require.NoError(t, rt.RejectSubmission(state2, ""))
+	assert.Equal(t, "submission rejected by on_challenge_submit", state2.SubmissionRejection.Reason)
+}
+
+// TestGrantChallengeCookieSetsStateAndCookie confirms the helper mints a
+// cookie, populates state.Fingerprint with the allowlist marker, and sets
+// the bypass flag that suppresses SendChallenge later in the request.
+func TestGrantChallengeCookieSetsStateAndCookie(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/", nil)
+
+	require.NoError(t, rt.GrantChallengeCookie(state, req, "Googlebot/2.1"))
+
+	require.NotNil(t, state.Fingerprint)
+	assert.True(t, state.Fingerprint.Allowlisted)
+	assert.Equal(t, "Googlebot/2.1", state.Fingerprint.AllowlistReason)
+	assert.True(t, state.ChallengeBypassed, "ChallengeBypassed must be set to suppress later SendChallenge")
+	require.Len(t, state.Response.UserHTTPCookies, 1, "allowlist cookie must be appended")
+}
+
+// TestSendChallengeNoOpAfterGrantChallengeCookie covers the bypass guard:
+// after GrantChallengeCookie sets ChallengeBypassed, a subsequent
+// SendChallenge call in the same request is a no-op (must not overwrite
+// the response with a challenge page).
+func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/", nil)
+	require.NoError(t, rt.GrantChallengeCookie(state, req, "ua-pass"))
+	require.True(t, state.ChallengeBypassed)
+
+	cookiesBefore := len(state.Response.UserHTTPCookies)
+	bodyBefore := state.Response.UserHTTPBodyContent
+
+	require.NoError(t, rt.SendChallenge(state, req))
+
+	assert.False(t, state.RequireChallenge, "RequireChallenge must NOT be set when bypass is active")
+	assert.Equal(t, cookiesBefore, len(state.Response.UserHTTPCookies), "cookie set must be unchanged")
+	assert.Equal(t, bodyBefore, state.Response.UserHTTPBodyContent, "challenge body must not be written")
+}
+
+// TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag asserts the
+// cookie-valid branch of ProcessOnChallengeRules copies the Allowlisted +
+// AllowlistReason fields from the decoded cookie into state.Fingerprint.
+func TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	// Mint an allowlist cookie via the public helper, then re-attach it to a
+	// regular request and run the dispatcher.
+	mintReq := newInBandRequest(http.MethodGet, "/", nil)
+	ck, err := rt.ChallengeRuntime.SealAllowlistCookie(mintReq.HTTPRequest, "test-bypass")
+	require.NoError(t, err)
+
+	u, _ := url.Parse("/protected")
+	getReq := &ParsedRequest{
+		HTTPRequest: &http.Request{
+			Method: http.MethodGet,
+			URL:    u,
+			Header: http.Header{
+				"User-Agent": []string{"go-test"},
+				"Cookie":     []string{challenge.ChallengeCookieName + "=" + ck.Val},
+			},
+		},
+		IsInBand: true,
+	}
+
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	require.NoError(t, rt.ProcessOnChallengeRules(state, getReq))
+	require.NotNil(t, state.Fingerprint, "valid allowlist cookie must populate fingerprint")
+	assert.True(t, state.Fingerprint.Allowlisted)
+	assert.Equal(t, "test-bypass", state.Fingerprint.AllowlistReason)
+}

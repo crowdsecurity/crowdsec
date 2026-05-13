@@ -430,7 +430,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// epoch rotation cadence. The browser-side Max-Age below is set to
 	// the same TTL so the browser drops the cookie at the same moment.
 	notAfter := time.Now().Add(c.cookieTTL).Unix()
-	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, []byte(request.UserAgent()))
+	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
@@ -443,12 +443,46 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	return ck, fpData, nil
 }
 
+// SealAllowlistCookie mints an allowlist-bypass challenge cookie carrying
+// no measured fingerprint and the operator-supplied reason. Used by the
+// GrantChallengeCookie expr helper to let trusted bots (Googlebot, …)
+// skip the challenge UI while still being subject to on_challenge rules
+// (which can short-circuit on fingerprint.Allowlisted).
+//
+// The cookie's not_after honors c.cookieTTL, same as a real-submission
+// cookie. reason is bounded by MaxAllowlistReasonLen (crypto.go) — longer
+// strings are rejected with ErrAllowlistReasonSize.
+func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason string) (*cookie.AppsecCookie, error) {
+	if c == nil {
+		return nil, fmt.Errorf("challenge runtime not initialized")
+	}
+
+	notAfter := time.Now().Add(c.cookieTTL).Unix()
+	cookieValue, err := sealCookieV0(&pb.ChallengeCookie{}, c.keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte(request.UserAgent()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
+	}
+
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
+	if request.URL.Scheme == "https" {
+		ck = ck.Secure()
+	}
+
+	return ck, nil
+}
+
 // CookieData bundles the decrypted fingerprint with cookie-envelope metadata
-// (currently just the proven PoW difficulty) so callers can make re-challenge
-// decisions without touching the fingerprint struct.
+// so callers can make re-challenge decisions without touching the fingerprint
+// struct.
+//
+// Allowlisted and AllowlistReason carry the operator-bypass marker for
+// cookies minted by SealAllowlistCookie; they are zero for cookies issued
+// after a real challenge submission.
 type CookieData struct {
-	Fingerprint   FingerprintData
-	PowDifficulty int
+	Fingerprint     FingerprintData
+	PowDifficulty   int
+	Allowlisted     bool
+	AllowlistReason string
 }
 
 func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*CookieData, error) {
@@ -462,7 +496,9 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 	}
 
 	return &CookieData{
-		Fingerprint:   fingerprintDataFromProto(envelope.GetFingerprint()),
-		PowDifficulty: int(envelope.GetPowDifficulty()),
+		Fingerprint:     fingerprintDataFromProto(envelope.Envelope.GetFingerprint()),
+		PowDifficulty:   int(envelope.Envelope.GetPowDifficulty()),
+		Allowlisted:     envelope.Allowlisted,
+		AllowlistReason: envelope.AllowlistReason,
 	}, nil
 }

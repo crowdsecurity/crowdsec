@@ -22,12 +22,12 @@ func TestCookieV0_RoundTrip(t *testing.T) {
 	envelope := &pb.ChallengeCookie{PowDifficulty: 12}
 	notAfter := time.Now().Add(time.Hour).Unix()
 
-	encoded, err := sealCookieV0(envelope, keys.MasterCookieKey(), notAfter, []byte("ua"))
+	encoded, err := sealCookieV0(envelope, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
 	require.NoError(t, err)
-	assert.Equal(t, int32(12), got.GetPowDifficulty())
+	assert.Equal(t, int32(12), got.Envelope.GetPowDifficulty())
 }
 
 // TestCookieV0_ExpiredRejected confirms the not_after timestamp embedded
@@ -39,7 +39,7 @@ func TestCookieV0_ExpiredRejected(t *testing.T) {
 	// when issued (this is what a stale cookie sent by a slow client would
 	// look like on the server).
 	pastNotAfter := time.Now().Add(-time.Hour).Unix()
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
@@ -57,7 +57,7 @@ func TestCookieV0_TamperedExpirationRejected(t *testing.T) {
 	keys := testKeyRing()
 	notAfter := time.Now().Add(time.Hour).Unix()
 
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)
@@ -82,7 +82,7 @@ func TestCookieV0_UAMismatchRejected(t *testing.T) {
 	keys := testKeyRing()
 	notAfter := time.Now().Add(time.Hour).Unix()
 
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, []byte("ua-A"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua-A"))
 	require.NoError(t, err)
 
 	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua-B"))
@@ -106,7 +106,7 @@ func TestCookieV0_SurvivesArbitraryRotation(t *testing.T) {
 	// in-envelope expiration check (which uses real time.Now()) won't
 	// reject the cookie.
 	notAfter := t0.Add(24 * time.Hour).Unix()
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 9}, keys.MasterCookieKey(), notAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 9}, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	// Roll the keyring's clock forward — this triggers per-epoch sign-key
@@ -128,7 +128,7 @@ func TestCookieV0_SurvivesArbitraryRotation(t *testing.T) {
 		got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
 		require.NoError(t, err,
 			"cookie should still validate after %s of keyring rotation; got %v", advance, err)
-		assert.Equal(t, int32(9), got.GetPowDifficulty())
+		assert.Equal(t, int32(9), got.Envelope.GetPowDifficulty())
 	}
 }
 
@@ -140,7 +140,7 @@ func TestCookieV0_ExpiryEnforcedAgainstWallClock(t *testing.T) {
 	keys := testKeyRing()
 
 	pastNotAfter := time.Now().Add(-time.Minute).Unix()
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), pastNotAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
@@ -159,7 +159,7 @@ func TestCookieV0_MasterSecretChangeInvalidates(t *testing.T) {
 	keysB, err := NewKeyRing(bytes.Repeat([]byte{0xbb}, 32), time.Minute, 3)
 	require.NoError(t, err)
 
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keysA.MasterCookieKey(), notAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keysA.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	_, err = openCookie(encoded, keysB.MasterCookieKey(), []byte("ua"))
@@ -181,12 +181,12 @@ func TestCookieV0_DistributedSetup_TwoInstances(t *testing.T) {
 		"two instances with the same master_secret must derive the same master cookie key")
 
 	notAfter := time.Now().Add(time.Hour).Unix()
-	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 14}, a.MasterCookieKey(), notAfter, []byte("ua"))
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 14}, a.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
 	require.NoError(t, err)
 
 	got, err := openCookie(encoded, b.MasterCookieKey(), []byte("ua"))
 	require.NoError(t, err, "cookie issued by A must validate against B (same master_secret)")
-	assert.Equal(t, int32(14), got.GetPowDifficulty())
+	assert.Equal(t, int32(14), got.Envelope.GetPowDifficulty())
 }
 
 // TestCookie_UnknownVersionRejected makes the version-byte dispatch
@@ -320,4 +320,71 @@ func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 
 func strconvI64(n int64) string {
 	return strconv.FormatInt(n, 10)
+}
+
+// TestCookieV0_AllowlistRoundTrip seals an allowlist cookie (Allowlisted bit
+// + reason) and confirms the open path returns both fields.
+func TestCookieV0_AllowlistRoundTrip(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+	reason := "Googlebot/2.1 (compatible)"
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte("ua"))
+	require.NoError(t, err)
+
+	got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
+	require.NoError(t, err)
+	assert.True(t, got.Allowlisted, "allowlist flag should round-trip true")
+	assert.Equal(t, reason, got.AllowlistReason, "reason should round-trip verbatim")
+}
+
+// TestCookieV0_AllowlistFlagDefaultsFalse confirms a regular (non-allowlist)
+// cookie reports Allowlisted=false and empty reason after open.
+func TestCookieV0_AllowlistFlagDefaultsFalse(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{PowDifficulty: 12}, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
+	require.NoError(t, err)
+
+	got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"))
+	require.NoError(t, err)
+	assert.False(t, got.Allowlisted, "default flag must be false")
+	assert.Empty(t, got.AllowlistReason)
+}
+
+// TestCookieV0_AllowlistReasonTooLong asserts the seal path rejects reasons
+// larger than MaxAllowlistReasonLen with the typed error.
+func TestCookieV0_AllowlistReasonTooLong(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+	oversize := bytes.Repeat([]byte("x"), MaxAllowlistReasonLen+1)
+
+	_, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, string(oversize), []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrAllowlistReasonSize)
+}
+
+// TestCookieV0_TamperedFlagsRejected confirms the flags byte is INSIDE the
+// AEAD envelope: any modification invalidates the GCM tag.
+func TestCookieV0_TamperedFlagsRejected(t *testing.T) {
+	keys := testKeyRing()
+	notAfter := time.Now().Add(time.Hour).Unix()
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{}, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"))
+	require.NoError(t, err)
+
+	raw, err := base64.RawURLEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+
+	// Wire layout: version(1) || nonce(12) || ciphertext(...). The 9th
+	// byte of ciphertext (offset 1+12+8 = 21) covers the flags_byte of
+	// the plaintext. Flipping any bit there should fail the AEAD tag.
+	tampered := append([]byte(nil), raw...)
+	tampered[1+12+8] ^= 0x01
+	tamperedEncoded := base64.RawURLEncoding.EncodeToString(tampered)
+
+	_, err = openCookie(tamperedEncoded, keys.MasterCookieKey(), []byte("ua"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrCookieSignature)
 }
