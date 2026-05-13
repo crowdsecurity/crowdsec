@@ -258,15 +258,17 @@ func TestRejectSubmissionSetsState(t *testing.T) {
 	assert.Equal(t, "submission rejected by on_challenge_submit", state2.SubmissionRejection.Reason)
 }
 
-// TestGrantChallengeCookieSetsStateAndCookie confirms the helper mints a
-// cookie, populates state.Fingerprint with the allowlist marker, and sets
-// the bypass flag that suppresses SendChallenge later in the request.
-func TestGrantChallengeCookieSetsStateAndCookie(t *testing.T) {
+// TestGrantChallengeCookieIssuesRedirect confirms the helper mints a
+// cookie, stamps allowlist fingerprint + bypass state, and produces a
+// 307 challenge response carrying the Location header and Set-Cookie
+// back to the visitor. The 307 is necessary because GenerateResponse
+// only serialises UserCookies on ChallengeRemediation responses.
+func TestGrantChallengeCookieIssuesRedirect(t *testing.T) {
 	rt := newChallengeTestRuntime(t, nil)
 	state := &AppsecRequestState{}
 	state.ResetResponse(rt.Config)
 
-	req := newInBandRequest(http.MethodGet, "/", nil)
+	req := newInBandRequest(http.MethodGet, "/protected?a=1", nil)
 
 	require.NoError(t, rt.GrantChallengeCookie(state, req, "Googlebot/2.1"))
 
@@ -274,13 +276,45 @@ func TestGrantChallengeCookieSetsStateAndCookie(t *testing.T) {
 	assert.True(t, state.Fingerprint.Allowlisted)
 	assert.Equal(t, "Googlebot/2.1", state.Fingerprint.AllowlistReason)
 	assert.True(t, state.ChallengeBypassed, "ChallengeBypassed must be set to suppress later SendChallenge")
+
+	assert.Equal(t, ChallengeRemediation, state.Response.Action, "must produce a challenge-action response so the cookie is serialised")
+	assert.Equal(t, http.StatusTemporaryRedirect, state.Response.UserHTTPResponseCode, "must be a 307 redirect")
+	assert.True(t, state.RequireChallenge, "RequireChallenge must be flagged so the wire response carries the cookie")
+
 	require.Len(t, state.Response.UserHTTPCookies, 1, "allowlist cookie must be appended")
+	require.NotNil(t, state.Response.UserHeaders)
+	require.Contains(t, state.Response.UserHeaders, "Location")
+	assert.Equal(t, []string{"/protected?a=1"}, state.Response.UserHeaders["Location"])
+	assert.Equal(t, challenge.GrantRedirectBody, state.Response.UserHTTPBodyContent, "body must be the redirect fallback page")
+}
+
+// TestGrantAllowlistCookieInlineNoRedirect confirms the submit-phase
+// variant attaches the cookie without producing a redirect response.
+// on_challenge_submit returns the challenge-submit JSON envelope the
+// client is already awaiting; a 307 would break the client JS state
+// machine.
+func TestGrantAllowlistCookieInlineNoRedirect(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodPost, challenge.ChallengeSubmitPath, nil)
+
+	require.NoError(t, rt.GrantAllowlistCookieInline(state, req, "submit-allowlist"))
+
+	require.NotNil(t, state.Fingerprint)
+	assert.True(t, state.Fingerprint.Allowlisted)
+	assert.Equal(t, "submit-allowlist", state.Fingerprint.AllowlistReason)
+	assert.True(t, state.ChallengeBypassed)
+	require.Len(t, state.Response.UserHTTPCookies, 1, "cookie must ride on the existing envelope")
+	assert.NotEqual(t, http.StatusTemporaryRedirect, state.Response.UserHTTPResponseCode, "inline variant must NOT emit a redirect status")
+	assert.NotContains(t, state.Response.UserHeaders, "Location", "inline variant must not set Location")
 }
 
 // TestSendChallengeNoOpAfterGrantChallengeCookie covers the bypass guard:
 // after GrantChallengeCookie sets ChallengeBypassed, a subsequent
 // SendChallenge call in the same request is a no-op (must not overwrite
-// the response with a challenge page).
+// the 307 redirect response body with a challenge page).
 func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
 	rt := newChallengeTestRuntime(t, nil)
 	state := &AppsecRequestState{}
@@ -292,12 +326,13 @@ func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
 
 	cookiesBefore := len(state.Response.UserHTTPCookies)
 	bodyBefore := state.Response.UserHTTPBodyContent
+	statusBefore := state.Response.UserHTTPResponseCode
 
 	require.NoError(t, rt.SendChallenge(state, req))
 
-	assert.False(t, state.RequireChallenge, "RequireChallenge must NOT be set when bypass is active")
 	assert.Equal(t, cookiesBefore, len(state.Response.UserHTTPCookies), "cookie set must be unchanged")
-	assert.Equal(t, bodyBefore, state.Response.UserHTTPBodyContent, "challenge body must not be written")
+	assert.Equal(t, bodyBefore, state.Response.UserHTTPBodyContent, "redirect body must not be overwritten")
+	assert.Equal(t, statusBefore, state.Response.UserHTTPResponseCode, "redirect status must not be overwritten")
 }
 
 // TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag asserts the

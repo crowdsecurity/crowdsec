@@ -1266,45 +1266,31 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 	return nil
 }
 
-// GrantChallengeCookie mints an allowlist-bypass cookie for the current
-// request and sets state so the rest of the request pipeline treats the
-// visitor as if they had passed a challenge — without ever serving the
-// challenge HTML. Used to allowlist trusted bots (Googlebot, monitoring
-// probes) at pre_eval time.
+// mintAllowlistCookie does the per-request bookkeeping shared by every
+// phase variant of GrantChallengeCookie: seals a v0 allowlist cookie,
+// stamps a synthetic Allowlisted fingerprint, and flips
+// state.ChallengeBypassed so any later SendChallenge in the same request
+// is a no-op. The caller is responsible for deciding HOW the sealed
+// cookie is delivered to the visitor (redirect response from
+// pre_eval/post_eval, inline attachment on the challenge-submit
+// envelope from on_challenge_submit).
 //
-// Effects:
-//   - Seals a v0 cookie with Allowlisted=true + reason inside the AEAD
-//     plaintext header; appends it to state.Response.UserHTTPCookies via
-//     SetChallengeCookie.
-//   - Sets state.Fingerprint to a zero-valued FingerprintData carrying
-//     Allowlisted=true + AllowlistReason=reason so on_challenge rules can
-//     short-circuit on the *current* request (no 1-request lag).
-//   - Sets state.ChallengeBypassed=true so any later SendChallenge call
-//     in the same request is a no-op.
-//
-// Note: this DELIBERATELY overwrites any prior state.Fingerprint set by
-// the cookie-valid branch of ProcessOnChallengeRules. If a visitor with a
-// real-submission cookie also matches a pre_eval allowlist rule, the
-// operator-explicit allowlist wins — their measured fingerprint is
-// replaced with the synthetic {Allowlisted:true} marker for this request
-// and the cookie they receive next is the bypass cookie. This is the
-// "operator allowlist takes precedence" model; if you need to preserve
-// real signals across the override, filter on req.Headers in pre_eval
-// BEFORE the visitor reaches the allowlist rule.
+// This DELIBERATELY overwrites any prior state.Fingerprint set by the
+// cookie-valid branch of ProcessOnChallengeRules: the operator-explicit
+// allowlist wins over a real submission. See the GrantChallengeCookie
+// doc-comment for the full precedence rationale.
 //
 // Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
 // MaxAllowlistReasonLen.
-func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string) (*cookie.AppsecCookie, error) {
 	if w.ChallengeRuntime == nil {
-		return fmt.Errorf("challenge runtime not initialized")
+		return nil, fmt.Errorf("challenge runtime not initialized")
 	}
 
 	ck, err := w.ChallengeRuntime.SealAllowlistCookie(request.HTTPRequest, reason)
 	if err != nil {
-		return fmt.Errorf("unable to seal allowlist cookie: %w", err)
+		return nil, fmt.Errorf("unable to seal allowlist cookie: %w", err)
 	}
-
-	w.SetChallengeCookie(state, *ck)
 
 	state.Fingerprint = &challenge.FingerprintData{
 		Allowlisted:     true,
@@ -1312,10 +1298,92 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 	}
 	state.ChallengeBypassed = true
 
+	return ck, nil
+}
+
+// GrantChallengeCookie mints an allowlist-bypass cookie and issues an
+// HTTP 307 challenge response that carries it back to the visitor. Used
+// from pre_eval and post_eval, where the request is still on its way to
+// the origin and we have a free hand to redirect.
+//
+// Why a redirect and not a silent allow: the bouncer protocol only
+// serialises UserCookies / UserHeaders on a ChallengeRemediation response
+// (see GenerateResponse switch); a plain AllowRemediation drops the
+// Set-Cookie on the floor. A 307 Temporary Redirect to the same URL is
+// the minimal-friction shape that:
+//   - returns a challenge-action response (cookie is actually emitted),
+//   - preserves the original method + body (unlike 302/303),
+//   - bounces the visitor back through the WAF with the cookie present
+//     so ProcessOnChallengeRules' allowlist branch short-circuits and
+//     they reach the origin transparently on the second hop.
+//
+// Effects:
+//   - Calls mintAllowlistCookie to seal the cookie and stamp
+//     state.Fingerprint / state.ChallengeBypassed.
+//   - Builds a 307 challenge response via setChallengeResponse with
+//     Location set to the original request URI and a small static HTML
+//     body as a no-JS fallback.
+//
+// Note on precedence: see mintAllowlistCookie — an operator-driven
+// allowlist deliberately overwrites any prior fingerprint set by a
+// real-submission cookie. The "operator allowlist takes precedence"
+// model; filter on req.Headers in pre_eval BEFORE the allowlist rule
+// if you need to preserve real signals.
+//
+// Returns ErrAllowlistReasonSize if the reason exceeds
+// MaxAllowlistReasonLen.
+func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason)
+	if err != nil {
+		return err
+	}
+
+	headers := map[string]string{
+		"Location":      request.HTTPRequest.URL.RequestURI(),
+		"Content-Type":  "text/html; charset=utf-8",
+		"Cache-Control": "no-store",
+	}
+
+	w.Logger.WithFields(log.Fields{
+		"reason":   reason,
+		"ua":       request.HTTPRequest.UserAgent(),
+		"location": headers["Location"],
+	}).Info("granted allowlist challenge cookie via 307 redirect")
+
+	return w.setChallengeResponse(state, http.StatusTemporaryRedirect, challenge.GrantRedirectBody, headers, ck)
+}
+
+// GrantAllowlistCookieInline mints an allowlist-bypass cookie and
+// attaches it to the in-flight challenge-submit response envelope without
+// changing the response shape. Used from on_challenge_submit: the client
+// is already mid-fetch() to the submit endpoint and expects the
+// challenge-submit JSON envelope back, so a redirect is not an option
+// (it would break the client-side JS state machine).
+//
+// Effects:
+//   - Calls mintAllowlistCookie to seal the cookie and stamp
+//     state.Fingerprint / state.ChallengeBypassed.
+//   - Appends the sealed cookie to state.Response.UserHTTPCookies via
+//     SetChallengeCookie so it rides on the submit response (which is
+//     already a ChallengeRemediation, so UserCookies IS serialised here).
+//
+// Same precedence semantics as GrantChallengeCookie: see
+// mintAllowlistCookie.
+//
+// Returns ErrAllowlistReasonSize if the reason exceeds
+// MaxAllowlistReasonLen.
+func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason)
+	if err != nil {
+		return err
+	}
+
+	w.SetChallengeCookie(state, *ck)
+
 	w.Logger.WithFields(log.Fields{
 		"reason": reason,
 		"ua":     request.HTTPRequest.UserAgent(),
-	}).Info("granted allowlist challenge cookie")
+	}).Info("granted allowlist challenge cookie inline (submit phase)")
 
 	return nil
 }

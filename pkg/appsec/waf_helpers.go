@@ -77,6 +77,9 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
+		"GrantChallengeCookie": func(reason string) error {
+			return w.GrantChallengeCookie(state, request, reason)
+		},
 		"fingerprint": state.Fingerprint,
 		/*"ValidateChallenge": func(name string, conditions ...bool) (*challenge.ChallengeMatcher, error) {
 			return w.ValidateChallenge(state, request, conditions...)
@@ -136,8 +139,12 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		"RejectSubmission": func(reason string) error {
 			return w.RejectSubmission(state, reason)
 		},
+		// In on_challenge_submit the response is the challenge-submit JSON
+		// envelope the client is already awaiting; a 307 redirect would
+		// break its state machine. Route to the inline variant that
+		// attaches the cookie to the existing envelope.
 		"GrantChallengeCookie": func(reason string) error {
-			return w.GrantChallengeCookie(state, request, reason)
+			return w.GrantAllowlistCookieInline(state, request, reason)
 		},
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)

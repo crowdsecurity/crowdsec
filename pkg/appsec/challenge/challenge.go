@@ -43,6 +43,15 @@ const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inlin
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
+// grantRedirectBody is served as the body of the 307 challenge response
+// produced by GrantChallengeCookie. The browser follows the Location
+// header without ever rendering this; it is a no-JS fallback for
+// hand-rolled HTTP clients that don't auto-redirect. Static (no
+// per-request data) so no parsing is needed.
+//
+//go:embed grant_redirect.html.tmpl
+var GrantRedirectBody string
+
 //go:embed pow-worker.js
 var PowWorkerJS string
 
