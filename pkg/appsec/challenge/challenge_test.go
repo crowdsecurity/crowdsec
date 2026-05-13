@@ -81,8 +81,8 @@ func TestHasLeadingZeroBits(t *testing.T) {
 }
 
 func TestGeneratePowPrefix(t *testing.T) {
-	p1 := generatePowPrefix()
-	p2 := generatePowPrefix()
+	p1 := mustGeneratePowPrefix(t)
+	p2 := mustGeneratePowPrefix(t)
 
 	assert.Len(t, p1, 32) // 16 bytes = 32 hex chars
 	assert.Len(t, p2, 32)
@@ -184,7 +184,7 @@ func TestMatchesChallenge(t *testing.T) {
 
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
 	ticket := c.computeTicket(ts)
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	mac := c.computePowMAC(salt, ticket, ts)
 
 	// Valid challenge
@@ -200,7 +200,7 @@ func TestMatchesChallenge(t *testing.T) {
 	assert.False(t, c.matchesChallenge(ticket, ts, salt, "forged-mac"))
 
 	// MAC from different salt
-	otherSalt := generatePowPrefix()
+	otherSalt := mustGeneratePowPrefix(t)
 	assert.False(t, c.matchesChallenge(ticket, ts, otherSalt, mac))
 
 	// Expired timestamp (too old)
@@ -274,7 +274,7 @@ func formatBase36(n int) string {
 }
 
 func TestPoWVerification(t *testing.T) {
-	prefix := generatePowPrefix()
+	prefix := mustGeneratePowPrefix(t)
 	difficulty := 8
 
 	nonce := solvePoWGo(prefix, difficulty)
@@ -317,10 +317,20 @@ func freshTicket() (ticket, ts string) {
 	return
 }
 
+// mustGeneratePowPrefix is the test-only wrapper around generatePowPrefix
+// that aborts the test if crypto/rand fails (which would mean the test
+// machine is broken in a way that invalidates the run anyway).
+func mustGeneratePowPrefix(tb testing.TB) string {
+	tb.Helper()
+	p, err := generatePowPrefix()
+	require.NoError(tb, err)
+	return p
+}
+
 // buildValidBody constructs a valid challenge POST body.
-func buildValidBody(difficulty int, ticket, ts string) string {
+func buildValidBody(tb testing.TB, difficulty int, ticket, ts string) string {
 	c := newTestRuntime()
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(tb)
 	powMAC := c.computePowMAC(salt, ticket, ts)
 	nonce := solvePoWGo(salt, difficulty)
 	sessionKey := c.getSessionKey(ticket, nonce)
@@ -356,7 +366,7 @@ func buildValidBody(difficulty int, ticket, ts string) string {
 func TestValidateChallengeResponse(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	ticket, ts := freshTicket()
-	body := buildValidBody(c.powDifficulty, ticket, ts)
+	body := buildValidBody(t, c.powDifficulty, ticket, ts)
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -372,7 +382,7 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 
 	for range 20 {
 		ticket, ts := freshTicket()
-		body := buildValidBody(c.powDifficulty, ticket, ts)
+		body := buildValidBody(t, c.powDifficulty, ticket, ts)
 		req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 		req.Header.Set("User-Agent", "test-agent")
 
@@ -384,7 +394,7 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	ticket, ts := freshTicket()
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	powMAC := c.computePowMAC(salt, ticket, ts)
 
 	body := url.Values{
@@ -407,7 +417,7 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 	// outright when the runtime is set to impossible.
 	c := newTestRuntimeWithDifficulty(PowDifficultyImpossible)
 	ticket, ts := freshTicket()
-	body := buildValidBody(8, ticket, ts) // satisfies 8-bit PoW but not impossible
+	body := buildValidBody(t, 8, ticket, ts) // satisfies 8-bit PoW but not impossible
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -420,7 +430,7 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*challengeJSRefreshInterval).UnixNano())
 	oldTicket := c.computeTicket(oldTS)
-	body := buildValidBody(c.powDifficulty, oldTicket, oldTS)
+	body := buildValidBody(t, c.powDifficulty, oldTicket, oldTS)
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -432,7 +442,7 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	ticket, ts := freshTicket()
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	powMAC := c.computePowMAC(salt, ticket, ts)
 
 	body := url.Values{
@@ -453,7 +463,7 @@ func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
 func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	ticket, ts := freshTicket()
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 
 	body := url.Values{
 		"f":  {"dGVzdA=="},
@@ -473,7 +483,7 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 func TestValidateChallengeResponse_InvalidHMAC(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	ticket, ts := freshTicket()
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	powMAC := c.computePowMAC(salt, ticket, ts)
 	nonce := solvePoWGo(salt, c.powDifficulty)
 

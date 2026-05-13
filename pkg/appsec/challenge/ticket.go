@@ -58,13 +58,19 @@ func (c *ChallengeRuntime) epochForTimestamp(ts string) int64 {
 	return tsVal / int64(time.Second) / int64(c.keys.rotationInterval/time.Second)
 }
 
-func generatePowPrefix() string {
+// generatePowPrefix returns a freshly-generated 16-byte random PoW salt
+// rendered as a hex string. Errors from crypto/rand.Read indicate a broken
+// kernel entropy pool, which is recoverable at the request layer (we can
+// reject the current challenge and let the client retry) — returning the
+// error rather than panicking keeps a single failing request from taking
+// down the whole WAF.
+func generatePowPrefix() (string, error) {
 	buf := make([]byte, 16)
 	if _, err := crand.Read(buf); err != nil {
-		panic(fmt.Sprintf("failed to generate PoW prefix: %v", err))
+		return "", fmt.Errorf("generate PoW prefix: %w", err)
 	}
 
-	return hex.EncodeToString(buf)
+	return hex.EncodeToString(buf), nil
 }
 
 // computePowMAC produces an HMAC that authenticates a PoW salt as server-

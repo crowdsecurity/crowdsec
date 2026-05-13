@@ -1282,6 +1282,16 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 //   - Sets state.ChallengeBypassed=true so any later SendChallenge call
 //     in the same request is a no-op.
 //
+// Note: this DELIBERATELY overwrites any prior state.Fingerprint set by
+// the cookie-valid branch of ProcessOnChallengeRules. If a visitor with a
+// real-submission cookie also matches a pre_eval allowlist rule, the
+// operator-explicit allowlist wins — their measured fingerprint is
+// replaced with the synthetic {Allowlisted:true} marker for this request
+// and the cookie they receive next is the bypass cookie. This is the
+// "operator allowlist takes precedence" model; if you need to preserve
+// real signals across the override, filter on req.Headers in pre_eval
+// BEFORE the visitor reaches the allowlist rule.
+//
 // Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
 // MaxAllowlistReasonLen.
 func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string) error {

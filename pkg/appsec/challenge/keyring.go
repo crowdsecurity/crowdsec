@@ -227,13 +227,21 @@ func deriveMasterCookieKey(masterSecret []byte) []byte {
 // hkdfExtract is the shared HKDF-SHA256 call used by both derivation
 // helpers. Salt is the fixed keyringHKDFSalt; info is caller-supplied
 // (already disambiguated by context).
+//
+// The Read at a 32-byte fixed output with SHA-256 is documented as
+// infallible: HKDF-Expand only fails when asked for more than
+// 255 * HashLen bytes, and 32 is well under SHA-256's 8160-byte limit.
+// A non-nil error here is therefore an invariant violation (e.g. the
+// runtime/crypto stack itself is broken), not a recoverable runtime
+// condition. Panic is appropriate: the alternative would be threading
+// a (string, error) return through every derivation site to handle a
+// case the standard library guarantees cannot occur.
 func hkdfExtract(masterSecret []byte, info []byte) []byte {
 	r := hkdf.New(sha256.New, masterSecret, []byte(keyringHKDFSalt), info)
 
 	out := make([]byte, keyringDerivedKeyBytes)
 	if _, err := r.Read(out); err != nil {
-		// HKDF cannot fail at this length with SHA-256; treat as unrecoverable.
-		panic(fmt.Sprintf("keyring: hkdf read failed: %v", err))
+		panic(fmt.Sprintf("keyring: hkdf read failed (should be unreachable): %v", err))
 	}
 	return out
 }

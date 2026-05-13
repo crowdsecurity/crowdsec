@@ -222,7 +222,7 @@ func TestRotation_TicketSurvives_WithinLiveWindow(t *testing.T) {
 	c := &ChallengeRuntime{keys: keys}
 	tsStr := strconvI64(t0.UnixNano())
 	ticket := c.computeTicket(tsStr)
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	mac := c.computePowMAC(salt, ticket, tsStr)
 
 	// Roll the keyring clock forward one rotation interval — the ticket's
@@ -245,7 +245,7 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 	c := &ChallengeRuntime{keys: keys}
 	tsStr := strconvI64(t0.UnixNano())
 	ticket := c.computeTicket(tsStr)
-	salt := generatePowPrefix()
+	salt := mustGeneratePowPrefix(t)
 	mac := c.computePowMAC(salt, ticket, tsStr)
 
 	// Jump the keyring's clock past the live window (maxLive=3 + skew=1 =
@@ -264,7 +264,7 @@ func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour}
 
 	ticket, ts := freshTicket()
-	body := buildValidBody(c.powDifficulty, ticket, ts)
+	body := buildValidBody(t, c.powDifficulty, ticket, ts)
 
 	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute}
 
 	ticket, ts := freshTicket()
-	body := buildValidBody(c.powDifficulty, ticket, ts)
+	body := buildValidBody(t, c.powDifficulty, ticket, ts)
 
 	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)

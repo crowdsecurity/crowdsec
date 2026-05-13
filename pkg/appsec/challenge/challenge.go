@@ -85,6 +85,11 @@ type ChallengeRuntime struct {
 	// sealed envelope (see crypto.go), NOT by keyring eviction, so it
 	// can be much larger than the ticket-signing live window.
 	cookieTTL time.Duration
+
+	// htmlTpl is the parsed challenge HTML template. Parsed once at
+	// construction and reused by every GetChallengePage call so we don't
+	// re-parse on the request-serving path.
+	htmlTpl *template.Template
 }
 
 // Option configures a ChallengeRuntime at construction time.
@@ -255,6 +260,15 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
 	}
 
+	// We use text/template instead of html/template because the data we send
+	// is pretty much hardcoded and trusted; html/template would escape the JS
+	// we inject. Parsed once here so GetChallengePage doesn't re-parse on
+	// every request.
+	htmlTpl, err := template.New("challenge").Parse(htmlTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("parse challenge html template: %w", err)
+	}
+
 	challengeRuntime := &ChallengeRuntime{
 		r:                  r,
 		obfuscatorMod:      compiledMod,
@@ -263,6 +277,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		keys:               keys,
 		dynamicModuleCache: make(map[int64]string),
 		cookieTTL:          cookieTTL,
+		htmlTpl:            htmlTpl,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -302,13 +317,6 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 		difficulty = c.powDifficulty
 	}
 
-	// We are using text/template instead of html/template because the data we send is pretty much hardcoded and trusted.
-	// Using html/template would escape the JS code we are adding, making it unusable.
-	templateObj, err := template.New("challenge").Parse(htmlTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse challenge template: %w", err)
-	}
-
 	obfuscatedJS := c.getCachedChallengeJS()
 	if obfuscatedJS.Code == "" {
 		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
@@ -329,7 +337,10 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	// bind the PoW salt to ts via computePowMAC.
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
 	ticket := c.computeTicket(ts)
-	powSalt := generatePowPrefix()
+	powSalt, err := generatePowPrefix()
+	if err != nil {
+		return "", fmt.Errorf("generate PoW salt: %w", err)
+	}
 	powMAC := c.computePowMAC(powSalt, ticket, ts)
 
 	// Build and (cheaply) obfuscate the dynamic key module for the current
@@ -343,14 +354,16 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 
 	var renderedPage strings.Builder
 
-	templateObj.Execute(&renderedPage, map[string]interface{}{
+	if err := c.htmlTpl.Execute(&renderedPage, map[string]interface{}{
 		"JSChallenge":   obfuscatedJS.Code,
 		"DynamicModule": dynamicModule,
 		"PowDifficulty": difficulty,
 		"PowPrefix":     powSalt,
 		"PowMAC":        powMAC,
 		"Timestamp":     ts,
-	})
+	}); err != nil {
+		return "", fmt.Errorf("render challenge page: %w", err)
+	}
 	return renderedPage.String(), nil
 }
 
