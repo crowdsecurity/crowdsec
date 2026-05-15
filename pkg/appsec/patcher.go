@@ -16,6 +16,7 @@ var challengeRuntimeCallees = map[string]struct{}{
 	"SendChallenge":        {},
 	"GrantChallengeCookie": {},
 	"RejectSubmission":     {},
+	"LogAccepted":          {},
 }
 
 func (p *appsecExprPatcher) Visit(node *ast.Node) {

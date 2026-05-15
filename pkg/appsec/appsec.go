@@ -208,6 +208,15 @@ type AppsecRequestState struct {
 	// the allowlist cookie itself, not by this flag.
 	ChallengeBypassed bool
 
+	// HooksHalted is flipped by terminal hook actions (currently
+	// RejectSubmission and the inline GrantChallengeCookie variant
+	// exposed in on_challenge_submit) to short-circuit later rules in
+	// the same phase. Without this, a `LogAccepted` rule following a
+	// `RejectSubmission` rule with `filter: "true"` would emit a
+	// contradictory accept-log line for an already-rejected submission.
+	// Per-request only; cleared by ResetResponse.
+	HooksHalted bool
+
 	// LastMismatchReport caches the result of the EvaluateMismatches expr
 	// closure for the current request, so repeated calls from a single
 	// rule expression don't redo the work (or re-emit observability).
@@ -234,6 +243,7 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.RequireChallenge = false
 	s.SubmissionRejection = nil
 	s.ChallengeBypassed = false
+	s.HooksHalted = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -791,10 +801,22 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 }
 
 // processHooks runs a list of compiled hooks with the given environment.
-func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string) error {
+//
+// state, when non-nil, is consulted between rule iterations: if
+// state.HooksHalted is true (set by a terminal expr helper such as
+// RejectSubmission or the on_challenge_submit GrantChallengeCookie),
+// remaining rules in this phase are skipped. ProcessOnLoadRules and
+// the non-submit phases pass nil — they have no terminal actions
+// today.
+func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState) error {
 	has_match := false
 
 	for _, rule := range hooks {
+		if state != nil && state.HooksHalted {
+			w.Logger.Debugf("hooks halted by a terminal action; skipping remaining %s rules", hookType)
+			break
+		}
+
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
@@ -839,7 +861,7 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
-	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load")
+	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load", nil)
 }
 
 // runPhaseHooks runs the common hooks for the given stage, then dispatches to
@@ -847,15 +869,15 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, request *ParsedRequest) error {
 	label := stage.String()
 
-	if err := w.processHooks(w.CommonHooks.get(stage), env, label); err != nil {
+	if err := w.processHooks(w.CommonHooks.get(stage), env, label, nil); err != nil {
 		return err
 	}
 
 	switch {
 	case request.IsInBand:
-		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]")
+		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]", nil)
 	case request.IsOutBand:
-		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]")
+		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]", nil)
 	}
 
 	return nil
@@ -905,13 +927,16 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		// the freshly-decrypted fingerprint via the env.
 		state.Fingerprint = &fpData
 
-		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit"); err != nil {
+		fpData.LogAccepted(w.Logger, log.InfoLevel, request.RemoteAddrNormalized, "challenge submission validated")
+
+		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
 			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
 		}
 
 		if state.SubmissionRejection != nil {
-			w.Logger.WithField("reason", state.SubmissionRejection.Reason).
-				Info("on_challenge_submit rejected submission, refusing to issue cookie")
+			// The expr-side RejectSubmission helper emits the reject log
+			// itself (with the operator-chosen verbosity), so we don't
+			// re-log here — just serve the rejection envelope.
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -924,12 +949,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 	// fingerprint and remember the difficulty the client proved.
 	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
 		if cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
-			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data")
 			fp := cookieData.Fingerprint
 			fp.Allowlisted = cookieData.Allowlisted
 			fp.AllowlistReason = cookieData.AllowlistReason
 			state.Fingerprint = &fp
 			state.CookiePowDifficulty = cookieData.PowDifficulty
+			fp.LogAccepted(w.Logger, log.DebugLevel, request.RemoteAddrNormalized, "valid challenge cookie")
 		}
 	}
 
@@ -939,7 +964,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge")
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge", nil)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
@@ -1369,11 +1394,12 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 		"Cache-Control": "no-store",
 	}
 
-	w.Logger.WithFields(log.Fields{
-		"reason":   reason,
-		"ua":       request.HTTPRequest.UserAgent(),
-		"location": headers["Location"],
-	}).Info("granted allowlist challenge cookie via 307 redirect")
+	state.Fingerprint.LogAccepted(
+		w.Logger.WithField("location", headers["Location"]),
+		log.InfoLevel,
+		request.RemoteAddrNormalized,
+		"granted allowlist challenge cookie via 307 redirect",
+	)
 
 	return w.setChallengeResponse(state, http.StatusTemporaryRedirect, challenge.GrantRedirectBody, headers, ck)
 }
@@ -1408,10 +1434,7 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 
 	w.SetChallengeCookie(state, *ck)
 
-	w.Logger.WithFields(log.Fields{
-		"reason": reason,
-		"ua":     request.HTTPRequest.UserAgent(),
-	}).Info("granted allowlist challenge cookie inline (submit phase)")
+	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
 
 	return nil
 }

@@ -599,12 +599,9 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, fmt.Errorf("failed to decrypt fingerprint: %w", err)
 	}
 
-	log.Errorf("challenge response: %s", fingerprint)
-
 	var fpData FingerprintData
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
-		log.Errorf("fp: %s", fingerprint)
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
 

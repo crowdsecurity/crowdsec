@@ -355,6 +355,31 @@ the runtime-global `cookie_ttl` for that single cookie only. Empty / missing
 falls back to the runtime default; malformed / non-positive surfaces as an
 expression error so authors see a precise diagnostic.
 
+### 1.10 Decision logging
+
+Accept / reject decisions go through `FingerprintData.LogAccepted` /
+`LogRejected` in [`fingerprint_helpers.go`](fingerprint_helpers.go).
+Both are nil-safe; the caller picks the log level (Debug for
+per-request sites, Info for rarer / operator-authored events).
+
+The asymmetry to remember when reading these helpers: **accept logs
+always emit the baseline flags** (`is_bot`, `allowlisted`) so a clean
+acceptance is explicit, while **reject logs emit only positive
+information** — `"headless": false` is noise on a forensic artefact.
+`signals` is enumerated by walking `libDetections`, so it cannot
+drift from `MismatchReport.Reasons()`.
+
+For submit-phase events the verbosity is operator-controlled via the
+expr helpers `RejectSubmission(reason, verbosity?)` and
+`LogAccepted(msg, verbosity?)` (see §3.2); both helpers log at Info,
+and the verbosity argument tunes only the field-set richness, not the
+level. `ValidateChallengeResponse` in `challenge.go` is deliberately
+silent on the success path — the caller in `appsec.go` (and the expr
+wrappers in `waf_helpers.go`) own the `*log.Entry`, so they own the
+accept / reject log.
+
+For the field reference and example output, see §3.1.
+
 ---
 
 ## 2. Review guidelines
@@ -569,11 +594,67 @@ inband:
 
   on_challenge_submit:
     # Catch automation that solves the PoW but fails atomic fingerprint
-    # consistency checks. Refuse to issue a cookie for these.
+    # consistency checks. Refuse to issue a cookie for these and dump
+    # the full fingerprint detail into the reject log.
     - filter: "fingerprint.UAMobileMismatch() || fingerprint.AcceptLanguageMismatch(req)"
       apply:
-        - RejectSubmission("ua_or_lang_mismatch")
+        - RejectSubmission("ua_or_lang_mismatch", "verbose")
+
+    # Clean submission: log the acceptance with default-verbosity fields
+    # so operators have an auditable accept event per visitor.
+    - filter: "true"
+      apply:
+        - LogAccepted("challenge submission accepted")
 ```
+
+#### What the decision logs look like
+
+Every fingerprint accept / reject above produces a structured log
+entry via `FingerprintData.LogAccepted` / `LogRejected`. Operators
+correlate on `fsid` / `source` and can index these directly.
+
+Examples at the default `"info"` verbosity (what the expr helpers
+`LogAccepted` / `RejectSubmission` emit when called without a second
+argument):
+
+```
+level=info msg="challenge submission accepted" source=203.0.113.7 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false is_mobile=false
+level=info msg="on_challenge_submit rejected" source=203.0.113.7 fsid=FS1_abc reason=ua_or_lang_mismatch ua="Mozilla/5.0…" platform=macOS signals="[cdp]" automation=true
+level=info msg="granted allowlist challenge cookie via 307 redirect" source=66.249.66.1 location=/ ua="Googlebot/2.1" allowlisted=true allowlist_reason=Googlebot signals="[]"
+level=debug msg="valid challenge cookie" source=203.0.113.7 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false
+```
+
+The verbosity string (`"minimal"`, `"info"` default, `"verbose"`) is
+passed as the optional last argument to both `LogAccepted` and
+`RejectSubmission`. Bad values emit a warning and fall back to
+`"info"`.
+
+**Always present (`"minimal"` verbosity):**
+
+| Field | Type | Notes |
+|---|---|---|
+| `source` | string | Client IP (`request.RemoteAddrNormalized`) — same field name as `fingerprint mismatch` logs for correlation |
+| `fsid` | string | Per-fingerprint identifier; omitted when empty |
+| `ua` | string | Browser-reported User-Agent; omitted when empty |
+| `platform` | string | High-entropy client-hint platform, falling back to `navigator.platform`; omitted when empty |
+| `is_bot` | bool (accept) / only-if-true (reject) | Library fast-bot verdict |
+| `signals` | `[]string` | Names of library bot signals that fired (e.g. `["cdp", "headless_screen_resolution"]`); empty on clean fingerprints. Enumerated from `libDetections`, so always in sync with `MismatchReport.Reasons()` |
+| `allowlisted` | bool (accept) / only-if-true (reject) | True for cookies minted by `GrantChallengeCookie` |
+| `allowlist_reason` | string | Present only when `allowlisted == true` and the reason is non-empty |
+| `reason` | string | **Reject-only**, always present. The operator-facing cause (e.g. the string passed to `RejectSubmission`) |
+
+**`"info"` verbosity adds** `is_mobile` plus the category roll-ups
+(`automation` / `headless` / `mismatch` / `impossible_device`); the
+roll-ups only appear when they fired.
+
+**`"verbose"` verbosity adds** `timezone`, `language`, `cpu_count`,
+`memory`, `url`, `nonce`, `fp_time`. Zero / empty values are omitted.
+
+Custom mismatches (`UAMobileMismatch`, `AcceptLanguageMismatch`,
+`TimezoneCountryMismatch`) are **not** in `signals` — they need
+request / geo context and are emitted separately on the `fingerprint
+mismatch` line, with their own `reasons` field. Correlate on `fsid` /
+`source`.
 
 ### 3.2 YAML field reference
 
@@ -597,7 +678,8 @@ inband:
 | `SendChallenge()` | `pre_eval`, `post_eval`, `on_challenge` | Serve a challenge page (no-op if visitor already passed an equal-or-harder PoW, or `ChallengeBypassed`) |
 | `GrantChallengeCookie(reason, ttl?)` | `pre_eval`, `post_eval` | Mint allowlist cookie + 307 redirect |
 | `GrantChallengeCookie(reason, ttl?)` | `on_challenge_submit` | Mint allowlist cookie inline on submit response |
-| `RejectSubmission(reason)` | `on_challenge_submit` | Refuse to issue cookie for an otherwise-valid submission |
+| `RejectSubmission(reason, verbosity?)` | `on_challenge_submit` | Refuse to issue cookie for an otherwise-valid submission; emits an Info reject log immediately. `verbosity ∈ {minimal, info (default), verbose}` controls how much fingerprint detail rides on the log; bad values warn and fall back to info |
+| `LogAccepted(msg, verbosity?)` | `on_challenge_submit` | Emit an Info accept log with the current fingerprint. Same `verbosity` vocabulary as `RejectSubmission`. No-op when no fingerprint is present |
 | `SetChallengeDifficulty(level)` | `on_load` | Set runtime default (`"disabled"`, `"low"`, `"medium"`, `"high"`, `"impossible"`) |
 | `SetChallengeDifficulty(level)` | `pre_eval`, `post_eval`, `on_challenge` | Per-request override (does NOT change runtime default) |
 | `EvaluateMismatches()` | `on_challenge`, `on_challenge_submit` | Returns `MismatchReport`; cached per request |
@@ -691,3 +773,4 @@ the keyring tolerates one rotation interval of clock skew, no more.
   cannot solve. It functions as a soft block: visitors see a challenge
   loop instead of a 403, which is often the desired UX for ambiguous
   cases.
+
