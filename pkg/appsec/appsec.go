@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
@@ -338,6 +339,13 @@ type AppsecConfig struct {
 	InBand    *AppsecPhaseConfig `yaml:"inband"`
 	OutOfBand *AppsecPhaseConfig `yaml:"outofband"`
 
+	// Challenge carries the WAF challenge / bot-detection runtime tuning.
+	// All fields are optional; unset fields fall back to the runtime
+	// defaults at NewChallengeRuntime time. When multiple appsec-configs
+	// are loaded, each later config's non-nil fields override the earlier
+	// values (see LoadByPath).
+	Challenge *challenge.Config `yaml:"challenge"`
+
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
 }
@@ -516,6 +524,16 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	if tmp.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
 		wc.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBandOptions.RequestBodyInMemoryLimit
+	}
+
+	// Merge challenge tuning field by field so multiple appsec-configs can
+	// each contribute a disjoint subset without one wiping out the others.
+	// Each non-nil field in tmp overrides the corresponding field in wc.
+	if tmp.Challenge != nil {
+		if wc.Challenge == nil {
+			wc.Challenge = &challenge.Config{}
+		}
+		wc.Challenge.MergeFrom(tmp.Challenge)
 	}
 
 	return nil
@@ -1280,14 +1298,17 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 // allowlist wins over a real submission. See the GrantChallengeCookie
 // doc-comment for the full precedence rationale.
 //
+// ttlOverride, if non-nil, sets a per-call validity window for the sealed
+// cookie instead of the runtime-global cookie_ttl.
+//
 // Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
 // MaxAllowlistReasonLen.
-func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string) (*cookie.AppsecCookie, error) {
+func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if w.ChallengeRuntime == nil {
 		return nil, fmt.Errorf("challenge runtime not initialized")
 	}
 
-	ck, err := w.ChallengeRuntime.SealAllowlistCookie(request.HTTPRequest, reason)
+	ck, err := w.ChallengeRuntime.SealAllowlistCookie(request.HTTPRequest, reason, ttlOverride)
 	if err != nil {
 		return nil, fmt.Errorf("unable to seal allowlist cookie: %w", err)
 	}
@@ -1330,10 +1351,14 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 // model; filter on req.Headers in pre_eval BEFORE the allowlist rule
 // if you need to preserve real signals.
 //
+// ttlOverride, if non-nil, sets a per-call validity window for the issued
+// cookie instead of the runtime-global cookie_ttl. Hook authors pass it via
+// the optional second argument on the GrantChallengeCookie expr helper.
+//
 // Returns ErrAllowlistReasonSize if the reason exceeds
 // MaxAllowlistReasonLen.
-func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string) error {
-	ck, err := w.mintAllowlistCookie(state, request, reason)
+func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
 		return err
 	}
@@ -1370,10 +1395,13 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 // Same precedence semantics as GrantChallengeCookie: see
 // mintAllowlistCookie.
 //
+// ttlOverride, if non-nil, sets a per-call validity window for the issued
+// cookie instead of the runtime-global cookie_ttl.
+//
 // Returns ErrAllowlistReasonSize if the reason exceeds
 // MaxAllowlistReasonLen.
-func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string) error {
-	ck, err := w.mintAllowlistCookie(state, request, reason)
+func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
 		return err
 	}

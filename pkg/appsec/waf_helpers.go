@@ -1,10 +1,39 @@
 package appsec
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+// parseChallengeCookieTTLArg interprets the optional TTL argument to the
+// GrantChallengeCookie expr helper. Zero variadic args means "use the
+// runtime default" and yields a nil override. A single non-empty string is
+// parsed with time.ParseDuration (e.g. "1h", "30m"). More than one TTL
+// argument or an unparseable value is reported as an error so hook authors
+// get a precise diagnostic at evaluation time rather than a silent fallback.
+func parseChallengeCookieTTLArg(ttl []string) (*time.Duration, error) {
+	if len(ttl) == 0 {
+		return nil, nil
+	}
+	if len(ttl) > 1 {
+		return nil, fmt.Errorf("GrantChallengeCookie accepts at most one TTL argument, got %d", len(ttl))
+	}
+	if ttl[0] == "" {
+		return nil, nil
+	}
+	d, err := time.ParseDuration(ttl[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid GrantChallengeCookie TTL %q: %w", ttl[0], err)
+	}
+	if d <= 0 {
+		return nil, fmt.Errorf("GrantChallengeCookie TTL must be positive, got %s", d)
+	}
+	return &d, nil
+}
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
@@ -55,8 +84,12 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
-		"GrantChallengeCookie": func(reason string) error {
-			return w.GrantChallengeCookie(state, request, reason)
+		"GrantChallengeCookie": func(reason string, ttl ...string) error {
+			ttlOverride, err := parseChallengeCookieTTLArg(ttl)
+			if err != nil {
+				return err
+			}
+			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
 		/*"ValidateChallenge": func(conditions ...bool) (*challenge.ChallengeMatcher, error) {
 			return w.ValidateChallenge(state, request, conditions...)
@@ -77,8 +110,12 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
-		"GrantChallengeCookie": func(reason string) error {
-			return w.GrantChallengeCookie(state, request, reason)
+		"GrantChallengeCookie": func(reason string, ttl ...string) error {
+			ttlOverride, err := parseChallengeCookieTTLArg(ttl)
+			if err != nil {
+				return err
+			}
+			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
 		"fingerprint": state.Fingerprint,
 		/*"ValidateChallenge": func(name string, conditions ...bool) (*challenge.ChallengeMatcher, error) {
@@ -143,8 +180,12 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		// envelope the client is already awaiting; a 307 redirect would
 		// break its state machine. Route to the inline variant that
 		// attaches the cookie to the existing envelope.
-		"GrantChallengeCookie": func(reason string) error {
-			return w.GrantAllowlistCookieInline(state, request, reason)
+		"GrantChallengeCookie": func(reason string, ttl ...string) error {
+			ttlOverride, err := parseChallengeCookieTTLArg(ttl)
+			if err != nil {
+				return err
+			}
+			return w.GrantAllowlistCookieInline(state, request, reason, ttlOverride)
 		},
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)

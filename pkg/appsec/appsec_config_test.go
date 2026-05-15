@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -386,6 +387,50 @@ inband:
 	assert.Len(t, cfg.OnChallenge, 1)
 	require.NotNil(t, cfg.InBand)
 	assert.Len(t, cfg.InBand.OnChallenge, 1)
+}
+
+// TestLoadByPathChallengeBlockMergesAcrossFiles confirms that a `challenge:`
+// block in an appsec-config YAML is parsed onto AppsecConfig.Challenge, and
+// that loading a second config with a disjoint subset of fields *merges*
+// rather than replacing — fields set in earlier configs survive when not
+// touched by later ones, and overlapping fields take the later value.
+func TestLoadByPathChallengeBlockMergesAcrossFiles(t *testing.T) {
+	cfg := newTestConfig()
+
+	first := writeTempYAML(t, `
+name: base
+challenge:
+  master_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  key_rotation_interval: 5m
+  max_live_epochs: 3
+  cookie_ttl: 12h
+`)
+	require.NoError(t, cfg.LoadByPath(first))
+	require.NotNil(t, cfg.Challenge)
+	require.NotNil(t, cfg.Challenge.MasterSecret)
+	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
+	assert.Equal(t, 3, *cfg.Challenge.MaxLiveEpochs)
+	assert.Equal(t, 12*time.Hour, *cfg.Challenge.CookieTTL)
+
+	// Second config overrides CookieTTL and adds library obfuscation fields,
+	// leaving master_secret / rotation / max_live_epochs from the first
+	// config untouched. This is the multi-config last-wins-per-field
+	// behaviour collections rely on.
+	second := writeTempYAML(t, `
+name: overlay
+challenge:
+  cookie_ttl: 1h
+  library_obfuscation_enabled: true
+  library_obfuscation_pool_size: 2
+`)
+	require.NoError(t, cfg.LoadByPath(second))
+	require.NotNil(t, cfg.Challenge)
+	assert.Equal(t, 1*time.Hour, *cfg.Challenge.CookieTTL, "later config overrides cookie_ttl")
+	require.NotNil(t, cfg.Challenge.MasterSecret, "master_secret from first config must survive")
+	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
+	require.NotNil(t, cfg.Challenge.LibraryObfuscationEnabled)
+	assert.True(t, *cfg.Challenge.LibraryObfuscationEnabled, "new field from second config appears")
+	assert.Equal(t, 2, *cfg.Challenge.LibraryObfuscationPoolSize)
 }
 
 func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {

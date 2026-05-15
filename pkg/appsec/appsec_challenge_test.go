@@ -270,7 +270,7 @@ func TestGrantChallengeCookieIssuesRedirect(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, "/protected?a=1", nil)
 
-	require.NoError(t, rt.GrantChallengeCookie(state, req, "Googlebot/2.1"))
+	require.NoError(t, rt.GrantChallengeCookie(state, req, "Googlebot/2.1", nil))
 
 	require.NotNil(t, state.Fingerprint)
 	assert.True(t, state.Fingerprint.Allowlisted)
@@ -300,7 +300,7 @@ func TestGrantAllowlistCookieInlineNoRedirect(t *testing.T) {
 
 	req := newInBandRequest(http.MethodPost, challenge.ChallengeSubmitPath, nil)
 
-	require.NoError(t, rt.GrantAllowlistCookieInline(state, req, "submit-allowlist"))
+	require.NoError(t, rt.GrantAllowlistCookieInline(state, req, "submit-allowlist", nil))
 
 	require.NotNil(t, state.Fingerprint)
 	assert.True(t, state.Fingerprint.Allowlisted)
@@ -321,7 +321,7 @@ func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
 	state.ResetResponse(rt.Config)
 
 	req := newInBandRequest(http.MethodGet, "/", nil)
-	require.NoError(t, rt.GrantChallengeCookie(state, req, "ua-pass"))
+	require.NoError(t, rt.GrantChallengeCookie(state, req, "ua-pass", nil))
 	require.True(t, state.ChallengeBypassed)
 
 	cookiesBefore := len(state.Response.UserHTTPCookies)
@@ -344,7 +344,7 @@ func TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag(t *testing.T) {
 	// Mint an allowlist cookie via the public helper, then re-attach it to a
 	// regular request and run the dispatcher.
 	mintReq := newInBandRequest(http.MethodGet, "/", nil)
-	ck, err := rt.ChallengeRuntime.SealAllowlistCookie(mintReq.HTTPRequest, "test-bypass")
+	ck, err := rt.ChallengeRuntime.SealAllowlistCookie(mintReq.HTTPRequest, "test-bypass", nil)
 	require.NoError(t, err)
 
 	u, _ := url.Parse("/protected")

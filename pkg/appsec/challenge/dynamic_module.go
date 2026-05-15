@@ -1,3 +1,21 @@
+// Package challenge dynamic_module.go handles the **sensitive** per-epoch
+// sign-key module — the small JS that embeds the current epoch's HMAC
+// key (~30 lines, expanded to ~10-30KB after obfuscation). This is the
+// actual cryptographic material protected by the challenge runtime;
+// obfuscation here is doing real work, not cosmetic byte variance.
+//
+// The module is rebuilt whenever the keyring advances to a new epoch
+// (default cadence: 5 minutes via keyringDefaultRotation). To give
+// per-visitor variance in how the same key is embedded, the runtime
+// keeps a small pool of cryptoPoolSize variants per epoch — each
+// variant is an independent obfuscation of the same input. Default
+// pool size is 1, preserving the historical single-variant-per-epoch
+// behaviour; operators that want per-visitor variance for the
+// sensitive code can raise WithCryptoObfuscationPoolSize.
+//
+// For the **non-sensitive** library bundle (public fpscanner / PoW
+// worker glue, controlled by WithLibraryObfuscationEnabled), see
+// static_bundle.go.
 package challenge
 
 import (
@@ -5,6 +23,7 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"fmt"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"text/template"
@@ -33,9 +52,10 @@ func (c *ChallengeRuntime) preWarmLeadTime() time.Duration {
 }
 
 // dynamicModulePreWarmer runs in the background and obfuscates the next
-// epoch's dynamic key module shortly before the rotation boundary, so the
-// first request after a rotation finds the module already cached and pays
-// no obfuscation latency on the request-serving path.
+// epoch's dynamic key module (all cryptoPoolSize variants) shortly before
+// the rotation boundary, so the first request after a rotation finds the
+// module already cached and pays no obfuscation latency on the
+// request-serving path.
 //
 // The ticker goroutine calls dynamicModuleForEpoch synchronously. The
 // singleflight inside that call coalesces a real request that arrives
@@ -70,6 +90,7 @@ func (c *ChallengeRuntime) dynamicModulePreWarmer(ctx context.Context) {
 				"epoch":               nextEpoch,
 				"current_epoch":       current,
 				"seconds_to_boundary": int64(nextBoundary.Sub(now).Seconds()),
+				"pool_size":           c.cryptoPoolSize,
 			}).Info("WAF challenge: pre-warming dynamic key module for upcoming epoch")
 
 			if _, err := c.dynamicModuleForEpoch(ctx, nextEpoch); err != nil {
@@ -80,16 +101,17 @@ func (c *ChallengeRuntime) dynamicModulePreWarmer(ctx context.Context) {
 	}
 }
 
-// dynamicModuleForEpoch returns the obfuscated per-epoch key module for the
-// given epoch, deriving the per-epoch key on demand from the keyring. The
-// result is cached; concurrent calls for the same epoch are coalesced via
-// singleflight so only one obfuscation runs even under a thundering-herd
-// arrival pattern at a rotation boundary.
+// dynamicModuleForEpoch returns the slice of obfuscated per-epoch key
+// module variants for the given epoch, deriving the per-epoch key on
+// demand from the keyring and generating cryptoPoolSize obfuscations of
+// it. The result is cached; concurrent calls for the same epoch are
+// coalesced via singleflight so only one batch obfuscation runs even
+// under a thundering-herd arrival pattern at a rotation boundary.
 //
-// The cache mutex is only held for the fast read/write of the map, never
-// across the obfuscation call — concurrent requests for the same epoch
-// coalesce via singleflight rather than serialize on the mutex.
-func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int64) (string, error) {
+// The cache mutex is only held for the fast read/write of the map,
+// never across the obfuscation calls — concurrent requests for the same
+// epoch coalesce via singleflight rather than serialize on the mutex.
+func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int64) ([]string, error) {
 	// Fast path: cached.
 	c.dynamicModuleCacheMu.RLock()
 	if cached, ok := c.dynamicModuleCache[epoch]; ok {
@@ -99,9 +121,9 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 	c.dynamicModuleCacheMu.RUnlock()
 
 	// Slow path: deduplicate concurrent obfuscation calls for the same
-	// epoch. Only one goroutine runs the obfuscator; the others block on
-	// the singleflight result. The key is the epoch itself, formatted as
-	// a string.
+	// epoch. Only one goroutine runs the obfuscator batch; the others
+	// block on the singleflight result. The key is the epoch itself,
+	// formatted as a string.
 	key := strconv.FormatInt(epoch, 10)
 	v, err, _ := c.dynamicModuleSF.Do(key, func() (interface{}, error) {
 		// Re-check the cache inside the singleflight callback in case
@@ -116,38 +138,58 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 
 		signKey, ok := c.keys.SignKey(epoch)
 		if !ok {
-			return "", fmt.Errorf("epoch %d is outside the keyring live window", epoch)
+			return nil, fmt.Errorf("epoch %d is outside the keyring live window", epoch)
 		}
 
 		tmpl, err := template.New("dynamic-module").Parse(dynamicModuleTemplate)
 		if err != nil {
-			return "", fmt.Errorf("parse dynamic module template: %w", err)
+			return nil, fmt.Errorf("parse dynamic module template: %w", err)
 		}
 		var rendered strings.Builder
 		if err := tmpl.Execute(&rendered, map[string]interface{}{
 			"Key":   hex.EncodeToString(signKey),
 			"Epoch": epoch,
 		}); err != nil {
-			return "", fmt.Errorf("render dynamic module template: %w", err)
+			return nil, fmt.Errorf("render dynamic module template: %w", err)
 		}
-		inputSize := rendered.Len()
+		input := rendered.String()
+		inputSize := len(input)
 
-		obfuscateStart := time.Now()
-		obfuscated, err := c.ObfuscateJS(ctx, rendered.String())
-		obfuscateDuration := time.Since(obfuscateStart)
-		if err != nil {
-			return "", fmt.Errorf("obfuscate dynamic module: %w", err)
+		poolSize := c.cryptoPoolSize
+		if poolSize < 1 {
+			poolSize = 1
 		}
-		if obfuscated == "" {
-			return "", fmt.Errorf("obfuscator produced empty dynamic module output")
+
+		variants := make([]string, 0, poolSize)
+		batchStart := time.Now()
+		for i := 0; i < poolSize; i++ {
+			obfuscateStart := time.Now()
+			obfuscated, err := c.ObfuscateJS(ctx, input)
+			obfuscateDuration := time.Since(obfuscateStart)
+			if err != nil {
+				return nil, fmt.Errorf("obfuscate dynamic module variant %d/%d: %w", i+1, poolSize, err)
+			}
+			if obfuscated == "" {
+				return nil, fmt.Errorf("obfuscator produced empty dynamic module output (variant %d/%d)", i+1, poolSize)
+			}
+
+			log.WithFields(log.Fields{
+				"epoch":        epoch,
+				"variant":      i,
+				"input_bytes":  inputSize,
+				"output_bytes": len(obfuscated),
+				"duration_ms":  obfuscateDuration.Milliseconds(),
+			}).Debug("WAF challenge: obfuscated dynamic key module variant")
+
+			variants = append(variants, obfuscated)
 		}
 
 		log.WithFields(log.Fields{
-			"epoch":        epoch,
-			"input_bytes":  inputSize,
-			"output_bytes": len(obfuscated),
-			"duration_ms":  obfuscateDuration.Milliseconds(),
-		}).Info("WAF challenge: obfuscated dynamic key module for new epoch")
+			"epoch":       epoch,
+			"variants":    poolSize,
+			"batch_ms":    time.Since(batchStart).Milliseconds(),
+			"input_bytes": inputSize,
+		}).Info("WAF challenge: obfuscated dynamic key module batch for new epoch")
 
 		c.dynamicModuleCacheMu.Lock()
 		// Prune any cached modules whose epoch has fallen out of the
@@ -161,22 +203,34 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 				delete(c.dynamicModuleCache, e)
 			}
 		}
-		c.dynamicModuleCache[epoch] = obfuscated
+		c.dynamicModuleCache[epoch] = variants
 		c.dynamicModuleCacheMu.Unlock()
 
-		return obfuscated, nil
+		return variants, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return v.([]string), nil
+}
+
+// currentDynamicModule returns one of the obfuscated dynamic-module
+// variants for the keyring's current epoch, selected uniformly at
+// random. When the pool size is 1 (default), every render returns the
+// same variant; when raised via WithCryptoObfuscationPoolSize, each
+// render picks one of the N variants of the same epoch key.
+func (c *ChallengeRuntime) currentDynamicModule(ctx context.Context) (string, error) {
+	epoch, _ := c.keys.Current()
+	variants, err := c.dynamicModuleForEpoch(ctx, epoch)
 	if err != nil {
 		return "", err
 	}
-
-	return v.(string), nil
-}
-
-// currentDynamicModule returns (or builds) the dynamic key module for the
-// keyring's current epoch. Thin wrapper around dynamicModuleForEpoch that
-// hides the "look up the current epoch" boilerplate from callers.
-func (c *ChallengeRuntime) currentDynamicModule(ctx context.Context) (string, error) {
-	epoch, _ := c.keys.Current()
-	return c.dynamicModuleForEpoch(ctx, epoch)
+	if len(variants) == 0 {
+		return "", fmt.Errorf("dynamic module pool is empty for epoch %d", epoch)
+	}
+	if len(variants) == 1 {
+		return variants[0], nil
+	}
+	return variants[rand.IntN(len(variants))], nil
 }

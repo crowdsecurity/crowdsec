@@ -23,6 +23,15 @@ const (
 	defaultPowDifficulty = PowDifficultyMedium
 )
 
+// ticketAgeBackstop is a loose ceiling on accepted ticket age in
+// matchesChallenge. The actual freshness gate is the keyring live
+// window (rotationInterval × maxLiveEpochs); this is a separate ceiling
+// that protects against operators configuring an unusually wide live
+// window. Loose enough not to interfere with real submissions on slow
+// clients (high-difficulty PoW) but tight enough to bound replay
+// surface in pathological configurations.
+const ticketAgeBackstop = 20 * time.Minute
+
 // computeTicket signs the timestamp with the per-epoch signing key derived
 // from the master secret. The epoch is computed from the timestamp itself
 // (`ts_nanos / 1e9 / rotation_seconds`), so verification is fully stateless:
@@ -147,7 +156,7 @@ func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSal
 	}
 
 	age := time.Since(time.Unix(0, tsVal))
-	if age < 0 || age > 2*challengeJSRefreshInterval {
+	if age < 0 || age > ticketAgeBackstop {
 		return false
 	}
 

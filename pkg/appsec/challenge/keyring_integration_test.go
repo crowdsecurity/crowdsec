@@ -214,7 +214,7 @@ func TestCookie_UnknownVersionRejected(t *testing.T) {
 // matchesChallenge uses time.Since on the wall clock (not the keyring's
 // overridable now), so we anchor t0 at the real current time and only
 // override the keyring's clock — small enough offsets stay inside the
-// challengeJSRefreshInterval freshness check.
+// ticketAgeBackstop freshness check.
 func TestRotation_TicketSurvives_WithinLiveWindow(t *testing.T) {
 	t0 := time.Now()
 	keys := newTestKeyRing(t, testSecret, time.Minute, t0)

@@ -24,11 +24,12 @@ import (
 // removes that registration this test fires before any user notices.
 func TestSplitBundle_HookSentinelInBakedBundle(t *testing.T) {
 	rt := &ChallengeRuntime{
-		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
+		libraryBundlePool: make([]obfuscatedScript, 0, libraryBundlePoolDefaultSize),
+		libraryPoolSize:   libraryBundlePoolDefaultSize,
 	}
 	require.NoError(t, rt.seedCacheFromInitialBundle())
 
-	bundle := rt.obfuscatedJSCache[0].Code
+	bundle := rt.libraryBundlePool[0].Code
 	require.NotEmpty(t, bundle)
 
 	count := strings.Count(bundle, hookSentinel)
@@ -211,7 +212,7 @@ func newChallengeRuntimeForSplitTest(t *testing.T, keys *KeyRing) *ChallengeRunt
 	// Reset the dynamic module cache because the constructor pre-warmed it
 	// with rt.keys (which we just swapped). The next call regenerates.
 	rt.dynamicModuleCacheMu.Lock()
-	rt.dynamicModuleCache = make(map[int64]string)
+	rt.dynamicModuleCache = make(map[int64][]string)
 	rt.dynamicModuleCacheMu.Unlock()
 	return rt
 }

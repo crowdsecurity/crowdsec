@@ -204,7 +204,7 @@ func TestMatchesChallenge(t *testing.T) {
 	assert.False(t, c.matchesChallenge(ticket, ts, otherSalt, mac))
 
 	// Expired timestamp (too old)
-	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*challengeJSRefreshInterval).UnixNano())
+	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
 	oldTicket := c.computeTicket(oldTS)
 	oldMAC := c.computePowMAC(salt, oldTicket, oldTS)
 	assert.False(t, c.matchesChallenge(oldTicket, oldTS, salt, oldMAC))
@@ -428,7 +428,7 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 
 func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*challengeJSRefreshInterval).UnixNano())
+	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
 	oldTicket := c.computeTicket(oldTS)
 	body := buildValidBody(t, c.powDifficulty, oldTicket, oldTS)
 

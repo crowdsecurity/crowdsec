@@ -33,41 +33,17 @@ var DefaultAuthCacheDuration = (1 * time.Minute)
 
 // configuration structure of the acquis for the application security engine
 type Configuration struct {
-	ListenAddr                        string         `yaml:"listen_addr"`
-	ListenSocket                      string         `yaml:"listen_socket"`
-	CertFilePath                      string         `yaml:"cert_file"`
-	KeyFilePath                       string         `yaml:"key_file"`
-	Path                              string         `yaml:"path"`
-	Routines                          int            `yaml:"routines"`
-	AppsecConfig                      string         `yaml:"appsec_config"`
-	AppsecConfigs                     []string       `yaml:"appsec_configs"`
-	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
-	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
-	// ChallengeMasterSecret is the long-lived secret used by the WAF
-	// challenge runtime to sign tickets / PoW MACs and seal challenge
-	// cookies. In a distributed (multi-WAF) deployment, all instances MUST
-	// share the same value so that a challenge issued by one instance
-	// validates against another. May be a hex-encoded byte string or a raw
-	// passphrase; minimum 32 bytes / characters. If unset, an ephemeral
-	// random secret is generated at startup (suitable for single-instance
-	// deployments only — restarts invalidate outstanding challenge cookies).
-	ChallengeMasterSecret string `yaml:"challenge_master_secret"`
+	ListenAddr        string         `yaml:"listen_addr"`
+	ListenSocket      string         `yaml:"listen_socket"`
+	CertFilePath      string         `yaml:"cert_file"`
+	KeyFilePath       string         `yaml:"key_file"`
+	Path              string         `yaml:"path"`
+	Routines          int            `yaml:"routines"`
+	AppsecConfig      string         `yaml:"appsec_config"`
+	AppsecConfigs     []string       `yaml:"appsec_configs"`
+	AppsecConfigPath  string         `yaml:"appsec_config_path"`
+	AuthCacheDuration *time.Duration `yaml:"auth_cache_duration"`
 
-	// ChallengeKeyRotationInterval controls how often the per-epoch
-	// challenge key advances. All instances in a distributed setup MUST
-	// agree on this value to derive identical per-epoch keys.
-	ChallengeKeyRotationInterval *time.Duration `yaml:"challenge_key_rotation_interval"`
-
-	// ChallengeMaxLiveEpochs is how many past epochs (in addition to the
-	// current one) the keyring continues to accept. Sized so any submission
-	// within the freshness window has a non-evicted epoch.
-	ChallengeMaxLiveEpochs int `yaml:"challenge_max_live_epochs"`
-
-	// ChallengeCookieTTL controls how long a successful-challenge cookie
-	// stays valid. Decoupled from the keyring rotation window so cookies
-	// can be long-lived (e.g. 24h) without widening the per-epoch ticket-
-	// forgery exposure. Defaults to 12h when unset.
-	ChallengeCookieTTL                *time.Duration `yaml:"challenge_cookie_ttl"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -217,22 +193,9 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	if appsecRuntime.NeedWASMVM {
 		logger.Info("Initializing WASM runtime for challenge obfuscation")
 
-		var challengeOpts []challenge.Option
-		if w.config.ChallengeMasterSecret != "" {
-			secret, err := challenge.ParseConfiguredSecret(w.config.ChallengeMasterSecret)
-			if err != nil {
-				return fmt.Errorf("invalid challenge_master_secret: %w", err)
-			}
-			challengeOpts = append(challengeOpts, challenge.WithMasterSecret(secret))
-		}
-		if w.config.ChallengeKeyRotationInterval != nil {
-			challengeOpts = append(challengeOpts, challenge.WithRotationInterval(*w.config.ChallengeKeyRotationInterval))
-		}
-		if w.config.ChallengeMaxLiveEpochs > 0 {
-			challengeOpts = append(challengeOpts, challenge.WithMaxLiveEpochs(w.config.ChallengeMaxLiveEpochs))
-		}
-		if w.config.ChallengeCookieTTL != nil {
-			challengeOpts = append(challengeOpts, challenge.WithCookieTTL(*w.config.ChallengeCookieTTL))
+		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge)
+		if err != nil {
+			return fmt.Errorf("unable to build challenge options: %w", err)
 		}
 
 		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)

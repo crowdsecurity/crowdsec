@@ -1,3 +1,21 @@
+// Package challenge static_bundle.go handles the **library bundle** —
+// the public, non-sensitive JavaScript shipped to the visitor (fpscanner,
+// PoW worker glue, IndexedDB persistence, fetch handlers). The source
+// lives in pkg/appsec/challenge/js/fpscanner/bundle.js and is freely
+// readable in the open-source repo, so obfuscation here is not
+// protecting a secret — it only buys per-visitor byte variance against
+// naive signature-based scrapers.
+//
+// At startup the pool is seeded with `initial_bundle.js.gz`, a variant
+// produced at build time via `go generate`. Runtime re-obfuscation of
+// this bundle is **opt-in** via WithLibraryObfuscationEnabled because
+// each pass costs ~1 minute of CPU; when enabled, the refresher trickles
+// in one new variant per tick (oldest evicted) so steady-state cost is
+// bounded to a single obfuscation per
+// WithLibraryObfuscationRefreshInterval.
+//
+// For the **sensitive** path (per-epoch HMAC sign key), see
+// dynamic_module.go.
 package challenge
 
 import (
@@ -17,12 +35,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// initialBundleGz is a pre-obfuscated challenge bundle produced at build time
-// by `go generate ./pkg/appsec/challenge/js/...`. It is used to seed the
-// challenge JS cache at startup so the service is ready to serve challenges
-// immediately, instead of waiting ~1 minute for the first variant to be
-// generated synchronously. Background generation continues to add fresh
-// variants and rotate them on the normal refresh interval.
+// initialBundleGz is a pre-obfuscated library bundle produced at build time
+// by `go generate ./pkg/appsec/challenge/js/...`. It seeds the library
+// bundle pool at startup so the service is immediately ready to serve
+// challenges without waiting ~1 minute for the first variant to be
+// obfuscated synchronously. When library obfuscation is enabled, the
+// background refresher continues to add fresh runtime-generated variants
+// at the configured cadence.
 //
 //go:embed initial_bundle.js.gz
 var initialBundleGz []byte
@@ -39,9 +58,9 @@ type obfuscatedScript struct {
 }
 
 // seedCacheFromInitialBundle decompresses the build-time obfuscated bundle
-// (initial_bundle.js.gz) and inserts it into the cache as the first variant.
-// Cheap (~ms) — eliminates the ~1 minute synchronous obfuscation that startup
-// would otherwise pay.
+// (initial_bundle.js.gz) and inserts it into the library bundle pool as
+// the first variant. Cheap (~ms) — eliminates the ~1 minute synchronous
+// obfuscation that startup would otherwise pay.
 func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 	initialBundleOnce.Do(func() {
 		decompressStart := time.Now()
@@ -79,7 +98,7 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 		return fmt.Errorf("initial bundle is empty after decompression")
 	}
 
-	c.appendCachedChallengeJS([]obfuscatedScript{{
+	c.appendLibraryBundle([]obfuscatedScript{{
 		Code: initialBundle,
 		uuid: uuid.New(),
 	}})
@@ -87,28 +106,30 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 	return nil
 }
 
-// challengeGenerator is the background goroutine that keeps the static-
-// bundle cache fresh. It fills the cache to capacity on startup, then
-// regenerates the full set on each refresh tick.
-func (c *ChallengeRuntime) challengeGenerator(ctx context.Context) {
-	// Startup warm-up: grow the cache in background until full.
-	if err := c.fillCacheToCapacity(ctx); err != nil {
-		log.Errorf("failed to prefill challenge JS cache: %v", err)
-	}
-
-	ticker := time.NewTicker(challengeJSRefreshInterval)
+// libraryBundlePoolRefresher is the background goroutine that trickles
+// new obfuscated library-bundle variants into the pool on the configured
+// refresh interval. Spawned only when WithLibraryObfuscationEnabled is
+// set (default off) — when disabled, the runtime serves only the
+// baked-in initial bundle and pays no runtime obfuscator cost.
+//
+// Each tick generates exactly one new variant (~1 minute of CPU) and
+// appends it; appendLibraryBundle's trim caps total pool size at
+// libraryPoolSize, evicting the oldest entry. Full pool rotation
+// therefore takes libraryPoolSize × refreshInterval.
+func (c *ChallengeRuntime) libraryBundlePoolRefresher(ctx context.Context) {
+	ticker := time.NewTicker(c.libraryRefreshInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			variants, err := c.generateChallengeVariants(ctx, challengeJSCacheSize)
+			variants, err := c.generateLibraryBundleVariants(ctx, 1)
 			if err != nil {
-				log.Errorf("failed to regenerate full challenge JS cache: %v", err)
+				log.Errorf("failed to refresh library bundle pool: %v", err)
 				continue
 			}
 
-			c.replaceCachedChallengeJS(variants)
+			c.appendLibraryBundle(variants)
 		case <-ctx.Done():
 			return
 		}
@@ -122,18 +143,29 @@ func (c *ChallengeRuntime) buildChallengeBundle() string {
 	).Replace(challengejs.FPScannerBundle)
 }
 
+// generateAndCacheChallengeJS is the synchronous fallback used when the
+// baked-in initial bundle is missing or corrupt at startup. It pays the
+// ~1 minute obfuscation cost in the foreground — undesirable but
+// preferable to starting up with an empty pool when `go generate` was
+// not run. Steady-state operation never hits this path.
 func (c *ChallengeRuntime) generateAndCacheChallengeJS(ctx context.Context) error {
-	variants, err := c.generateChallengeVariants(ctx, 1)
+	variants, err := c.generateLibraryBundleVariants(ctx, 1)
 	if err != nil {
 		return err
 	}
 
-	c.appendCachedChallengeJS(variants)
+	c.appendLibraryBundle(variants)
 
 	return nil
 }
 
-func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count int) ([]obfuscatedScript, error) {
+// generateLibraryBundleVariants runs the obfuscator `count` times on the
+// library bundle and returns the resulting variants. Each obfuscation is
+// the expensive (~1 minute) full-bundle pass — callers should generally
+// pass count=1 and rely on the trickle pattern to grow the pool over
+// time. The exception is the synchronous fallback path used when the
+// baked-in bundle is unavailable.
+func (c *ChallengeRuntime) generateLibraryBundleVariants(ctx context.Context, count int) ([]obfuscatedScript, error) {
 	if count <= 0 {
 		return []obfuscatedScript{}, nil
 	}
@@ -156,56 +188,33 @@ func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count 
 	return variants, nil
 }
 
-func (c *ChallengeRuntime) fillCacheToCapacity(ctx context.Context) error {
-	c.cacheMutex.RLock()
-	missing := challengeJSCacheSize - len(c.obfuscatedJSCache)
-	c.cacheMutex.RUnlock()
-
-	if missing <= 0 {
-		return nil
-	}
-
-	variants, err := c.generateChallengeVariants(ctx, missing)
-	if err != nil {
-		return err
-	}
-
-	c.appendCachedChallengeJS(variants)
-	return nil
-}
-
-func (c *ChallengeRuntime) appendCachedChallengeJS(variants []obfuscatedScript) {
+func (c *ChallengeRuntime) appendLibraryBundle(variants []obfuscatedScript) {
 	if len(variants) == 0 {
 		return
 	}
 
-	c.cacheMutex.Lock()
-	c.obfuscatedJSCache = append(c.obfuscatedJSCache, variants...)
-	if len(c.obfuscatedJSCache) > challengeJSCacheSize {
-		c.obfuscatedJSCache = c.obfuscatedJSCache[len(c.obfuscatedJSCache)-challengeJSCacheSize:]
+	c.libraryBundlePoolMu.Lock()
+	c.libraryBundlePool = append(c.libraryBundlePool, variants...)
+	if len(c.libraryBundlePool) > c.libraryPoolSize {
+		c.libraryBundlePool = c.libraryBundlePool[len(c.libraryBundlePool)-c.libraryPoolSize:]
 	}
-	c.cacheMutex.Unlock()
+	c.libraryBundlePoolMu.Unlock()
 }
 
-func (c *ChallengeRuntime) replaceCachedChallengeJS(variants []obfuscatedScript) {
-	if len(variants) == 0 {
-		return
-	}
+// getLibraryBundle picks one variant from the library bundle pool at
+// random. When the pool holds a single variant (default state: just the
+// baked-in initial bundle), every render returns the same bundle. When
+// the pool has grown via the refresher (opt-in), each render selects
+// uniformly across the variants for per-visitor byte variance.
+func (c *ChallengeRuntime) getLibraryBundle() obfuscatedScript {
+	c.libraryBundlePoolMu.RLock()
+	defer c.libraryBundlePoolMu.RUnlock()
 
-	c.cacheMutex.Lock()
-	c.obfuscatedJSCache = append([]obfuscatedScript(nil), variants...)
-	c.cacheMutex.Unlock()
-}
-
-func (c *ChallengeRuntime) getCachedChallengeJS() obfuscatedScript {
-	c.cacheMutex.RLock()
-	defer c.cacheMutex.RUnlock()
-
-	cacheSize := len(c.obfuscatedJSCache)
-	if cacheSize == 0 {
+	poolSize := len(c.libraryBundlePool)
+	if poolSize == 0 {
 		return obfuscatedScript{}
 	}
 
-	idx := rand.IntN(cacheSize)
-	return c.obfuscatedJSCache[idx]
+	idx := rand.IntN(poolSize)
+	return c.libraryBundlePool[idx]
 }

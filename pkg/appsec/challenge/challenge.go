@@ -29,8 +29,30 @@ const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
 const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
 const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 const ChallengeCookieName = "__crowdsec_challenge"
-const challengeJSCacheSize = 10
-const challengeJSRefreshInterval = 10 * time.Minute
+
+// libraryBundlePoolDefaultSize is the default number of distinct
+// runtime-obfuscated variants of the static library bundle to keep when
+// runtime library obfuscation is enabled. The library bundle contains
+// public, non-sensitive code (fpscanner, PoW worker glue), so the
+// per-visitor byte variance this pool buys is only useful against naive
+// signature-based scrapers. Used only when WithLibraryObfuscationEnabled
+// is set.
+const libraryBundlePoolDefaultSize = 3
+
+// libraryBundleRefreshDefaultInterval is the default cadence at which a
+// single new library-bundle variant is obfuscated and added to the pool
+// (oldest evicted) when runtime library obfuscation is enabled. One
+// obfuscation per tick regardless of pool size — full pool rotation
+// takes pool_size × refresh_interval.
+const libraryBundleRefreshDefaultInterval = time.Hour
+
+// cryptoObfuscationPoolDefaultSize is the default number of distinct
+// obfuscations of the per-epoch sign-key module to keep per live epoch.
+// Each variant is an obfuscation of the *same* key material, so the
+// pool gives per-visitor variance in how the key is embedded without
+// changing the underlying key. Default 1 preserves the historical
+// single-variant-per-epoch behaviour.
+const cryptoObfuscationPoolDefaultSize = 1
 
 // defaultCookieTTL is how long a successful challenge cookie is valid by
 // default. Decoupled from the keyring rotation window: an operator can
@@ -59,8 +81,25 @@ type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
 
-	obfuscatedJSCache []obfuscatedScript
-	cacheMutex        sync.RWMutex
+	// libraryObfuscationEnabled gates the background pool refresher for the
+	// library bundle. When false (the default), the runtime serves only the
+	// baked-in obfuscated bundle (`initial_bundle.js.gz`) and the refresher
+	// goroutine is not spawned — no runtime obfuscator cost for the static
+	// bundle in steady state. When true, libraryBundlePoolRefresher trickles
+	// in one new obfuscated variant per tick.
+	libraryObfuscationEnabled bool
+	libraryPoolSize           int
+	libraryRefreshInterval    time.Duration
+
+	// libraryBundlePool holds up to libraryPoolSize obfuscated variants of
+	// the static library bundle (fpscanner / PoW worker glue). Always seeded
+	// at startup with the baked-in initial_bundle.js.gz. When library
+	// obfuscation is enabled, the refresher goroutine appends new variants
+	// and trims oldest entries past libraryPoolSize. The serving path picks
+	// one variant at random per challenge render for per-visitor byte
+	// variance.
+	libraryBundlePool   []obfuscatedScript
+	libraryBundlePoolMu sync.RWMutex
 
 	powDifficulty int
 
@@ -72,20 +111,27 @@ type ChallengeRuntime struct {
 	// and rotation_interval derives bit-identical keys.
 	keys *KeyRing
 
-	// dynamicModuleCache memoizes the obfuscated per-epoch key module so we
-	// only pay the wazero / javascript-obfuscator cost once per epoch. The
-	// dynamic module is small (~30 lines), so each obfuscation call costs a
-	// few seconds on first call and is then served from memory until the
-	// epoch advances. Stale entries are pruned on every Get.
+	// cryptoPoolSize is the number of distinct obfuscations of the per-epoch
+	// sign-key module to keep per live epoch. Each variant obfuscates the
+	// *same* key material differently, so the pool gives per-visitor byte
+	// variance in how the key is embedded without changing the underlying
+	// secret. Default cryptoObfuscationPoolDefaultSize (1) preserves the
+	// historical single-variant-per-epoch behaviour.
+	cryptoPoolSize int
+
+	// dynamicModuleCache memoizes the obfuscated per-epoch key module
+	// variants. Each epoch maps to a slice of cryptoPoolSize obfuscated
+	// renderings of the same epoch key — currentDynamicModule picks one at
+	// random per render.
 	//
 	// dynamicModuleSF de-duplicates concurrent obfuscation requests for the
-	// same epoch: if N requests hit a freshly-rotated epoch simultaneously,
-	// only one runs the obfuscator and the others wait for its result. The
-	// cache mutex is only held for the fast read/write of the map, never
-	// across the multi-second obfuscation pass, so concurrent requests at a
-	// rotation boundary observe at most one obfuscation latency rather than
-	// N serialized ones.
-	dynamicModuleCache   map[int64]string
+	// same epoch+variant slot: if N requests hit a freshly-rotated epoch
+	// simultaneously, only one runs the obfuscator per slot and the others
+	// wait for its result. The cache mutex is only held for the fast
+	// read/write of the map, never across the multi-second obfuscation
+	// pass, so concurrent requests at a rotation boundary observe at most
+	// one obfuscation latency per slot rather than N serialized ones.
+	dynamicModuleCache   map[int64][]string
 	dynamicModuleCacheMu sync.RWMutex
 	dynamicModuleSF      singleflight.Group
 
@@ -120,6 +166,29 @@ type runtimeOptions struct {
 	// cookieTTL controls how long an issued challenge cookie remains
 	// valid. Zero falls back to defaultCookieTTL.
 	cookieTTL time.Duration
+
+	// cryptoObfuscationPoolSize is the number of distinct obfuscations of
+	// the per-epoch sign-key module to keep per live epoch. Zero falls
+	// back to cryptoObfuscationPoolDefaultSize.
+	cryptoObfuscationPoolSize int
+
+	// libraryObfuscationEnabled gates the background re-obfuscation of the
+	// static library bundle. False (the default) means: serve only the
+	// baked-in initial bundle, no refresher goroutine.
+	libraryObfuscationEnabled bool
+
+	// libraryObfuscationPoolSize is the max number of runtime-obfuscated
+	// variants of the library bundle to keep when library obfuscation is
+	// enabled. Zero falls back to libraryBundlePoolDefaultSize. Ignored
+	// when libraryObfuscationEnabled is false.
+	libraryObfuscationPoolSize int
+
+	// libraryObfuscationRefreshInterval is the cadence at which a single
+	// new library-bundle variant is obfuscated and added to the pool when
+	// library obfuscation is enabled. Zero falls back to
+	// libraryBundleRefreshDefaultInterval. Ignored when
+	// libraryObfuscationEnabled is false.
+	libraryObfuscationRefreshInterval time.Duration
 }
 
 // WithMasterSecret sets the long-lived shared secret. In distributed
@@ -157,6 +226,57 @@ func WithCookieTTL(ttl time.Duration) Option {
 	return func(o *runtimeOptions) {
 		if ttl > 0 {
 			o.cookieTTL = ttl
+		}
+	}
+}
+
+// WithCryptoObfuscationPoolSize sets how many distinct obfuscations of
+// the per-epoch sign-key module to keep per live epoch. Each variant
+// obfuscates the same key material; the serving path picks one at
+// random per challenge render for per-visitor byte variance. Default 1
+// (cryptoObfuscationPoolDefaultSize) preserves the historical
+// single-variant-per-epoch behaviour. Values below 1 are ignored.
+func WithCryptoObfuscationPoolSize(n int) Option {
+	return func(o *runtimeOptions) {
+		if n >= 1 {
+			o.cryptoObfuscationPoolSize = n
+		}
+	}
+}
+
+// WithLibraryObfuscationEnabled gates the background re-obfuscation of
+// the static library bundle (fpscanner, PoW worker glue). Off by default
+// — the runtime serves only the baked-in obfuscated bundle and pays no
+// runtime obfuscator cost for the static path. Enable only if you want
+// runtime per-visitor byte variance on top of the build-time obfuscation
+// for the public library code.
+func WithLibraryObfuscationEnabled(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.libraryObfuscationEnabled = enabled
+	}
+}
+
+// WithLibraryObfuscationPoolSize sets the max number of runtime-
+// obfuscated variants of the library bundle to keep when library
+// obfuscation is enabled. Ignored when disabled. Values below 1 are
+// ignored; zero falls back to libraryBundlePoolDefaultSize.
+func WithLibraryObfuscationPoolSize(n int) Option {
+	return func(o *runtimeOptions) {
+		if n >= 1 {
+			o.libraryObfuscationPoolSize = n
+		}
+	}
+}
+
+// WithLibraryObfuscationRefreshInterval sets the cadence at which a
+// single new library-bundle variant is obfuscated and added to the pool
+// when library obfuscation is enabled. One obfuscation per tick
+// regardless of pool size — full pool rotation takes pool_size ×
+// refresh_interval. Ignored when disabled. Values ≤ 0 are ignored.
+func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		if d > 0 {
+			o.libraryObfuscationRefreshInterval = d
 		}
 	}
 }
@@ -232,6 +352,21 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL = defaultCookieTTL
 	}
 
+	cryptoPoolSize := resolvedOpts.cryptoObfuscationPoolSize
+	if cryptoPoolSize <= 0 {
+		cryptoPoolSize = cryptoObfuscationPoolDefaultSize
+	}
+
+	libraryPoolSize := resolvedOpts.libraryObfuscationPoolSize
+	if libraryPoolSize <= 0 {
+		libraryPoolSize = libraryBundlePoolDefaultSize
+	}
+
+	libraryRefreshInterval := resolvedOpts.libraryObfuscationRefreshInterval
+	if libraryRefreshInterval <= 0 {
+		libraryRefreshInterval = libraryBundleRefreshDefaultInterval
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
@@ -279,14 +414,18 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	challengeRuntime := &ChallengeRuntime{
-		r:                  r,
-		obfuscatorMod:      compiledMod,
-		obfuscatedJSCache:  make([]obfuscatedScript, 0, challengeJSCacheSize),
-		powDifficulty:      defaultPowDifficulty,
-		keys:               keys,
-		dynamicModuleCache: make(map[int64]string),
-		cookieTTL:          cookieTTL,
-		htmlTpl:            htmlTpl,
+		r:                         r,
+		obfuscatorMod:             compiledMod,
+		libraryObfuscationEnabled: resolvedOpts.libraryObfuscationEnabled,
+		libraryPoolSize:           libraryPoolSize,
+		libraryRefreshInterval:    libraryRefreshInterval,
+		libraryBundlePool:         make([]obfuscatedScript, 0, libraryPoolSize),
+		powDifficulty:             defaultPowDifficulty,
+		keys:                      keys,
+		cryptoPoolSize:            cryptoPoolSize,
+		dynamicModuleCache:        make(map[int64][]string),
+		cookieTTL:                 cookieTTL,
+		htmlTpl:                   htmlTpl,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -311,7 +450,18 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("warm dynamic key module: %w", err)
 	}
 
-	go challengeRuntime.challengeGenerator(ctx)
+	// The library-bundle refresher is gated on opt-in: the static bundle is
+	// public code (the source is in the repo) and the baked-in obfuscated
+	// variant is already served at request time, so runtime regeneration
+	// only buys per-visitor byte variance on top of build-time obfuscation
+	// and is not worth its ~minute-of-CPU-per-obfuscation cost by default.
+	if resolvedOpts.libraryObfuscationEnabled {
+		go challengeRuntime.libraryBundlePoolRefresher(ctx)
+	}
+	// The dynamic-module pre-warmer is always on — the per-epoch sign key
+	// must be re-obfuscated whenever the keyring rotates, regardless of
+	// the library-side pool config. Cost is bounded (one obfuscation per
+	// epoch per pool variant, default 1).
 	go challengeRuntime.dynamicModulePreWarmer(ctx)
 
 	return challengeRuntime, nil
@@ -326,12 +476,12 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 		difficulty = c.powDifficulty
 	}
 
-	obfuscatedJS := c.getCachedChallengeJS()
+	obfuscatedJS := c.getLibraryBundle()
 	if obfuscatedJS.Code == "" {
 		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
 			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
 		}
-		obfuscatedJS = c.getCachedChallengeJS()
+		obfuscatedJS = c.getLibraryBundle()
 		if obfuscatedJS.Code == "" {
 			return "", fmt.Errorf("challenge JS cache is empty")
 		}
@@ -471,21 +621,30 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 // skip the challenge UI while still being subject to on_challenge rules
 // (which can short-circuit on fingerprint.Allowlisted).
 //
-// The cookie's not_after honors c.cookieTTL, same as a real-submission
-// cookie. reason is bounded by MaxAllowlistReasonLen (crypto.go) — longer
-// strings are rejected with ErrAllowlistReasonSize.
-func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason string) (*cookie.AppsecCookie, error) {
+// The cookie's not_after honors c.cookieTTL by default; pass a non-nil
+// ttlOverride (must be > 0) to use a different validity window for this
+// specific cookie. The browser-side Max-Age and the sealed not_after are
+// derived from the same effective TTL so they stay in sync.
+//
+// reason is bounded by MaxAllowlistReasonLen (crypto.go) — longer strings
+// are rejected with ErrAllowlistReasonSize.
+func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if c == nil {
 		return nil, fmt.Errorf("challenge runtime not initialized")
 	}
 
-	notAfter := time.Now().Add(c.cookieTTL).Unix()
+	ttl := c.cookieTTL
+	if ttlOverride != nil && *ttlOverride > 0 {
+		ttl = *ttlOverride
+	}
+
+	notAfter := time.Now().Add(ttl).Unix()
 	cookieValue, err := sealCookieV0(&pb.ChallengeCookie{}, c.keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte(request.UserAgent()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(ttl).Value(cookieValue)
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
