@@ -1,3 +1,11 @@
+// keyring.go derives and rotates the per-epoch HMAC signing keys (and the
+// long-lived AES cookie-sealing key) from the master secret using HKDF.
+// Epoch advances on a fixed cadence (keyringDefaultRotation, 5m); past
+// epochs stay valid for the configured live window so in-flight tickets
+// don't get invalidated at the boundary. The cookie key is derived once and
+// reused — cookie expiration is enforced by an explicit not_after stamp
+// inside the sealed envelope (see crypto.go), not by key rotation.
+
 package challenge
 
 import (

@@ -1,3 +1,9 @@
+// obfuscator.go embeds the wasm build of `javascript-obfuscator` and exposes
+// a single thread-safe entry point (ObfuscateJS) used by both the static and
+// dynamic bundle paths. The compiled wazero module is shared across calls;
+// each ObfuscateJS invocation instantiates a fresh module instance with its
+// own stdin/stdout buffers so concurrent obfuscations don't collide.
+
 package challenge
 
 import (

@@ -122,9 +122,6 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			}
 			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
-		/*"ValidateChallenge": func(conditions ...bool) (*challenge.ChallengeMatcher, error) {
-			return w.ValidateChallenge(state, request, conditions...)
-		},*/
 		"fingerprint": state.Fingerprint,
 	}
 }
@@ -149,9 +146,6 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
 		"fingerprint": state.Fingerprint,
-		/*"ValidateChallenge": func(name string, conditions ...bool) (*challenge.ChallengeMatcher, error) {
-			return w.ValidateChallenge(state, request, conditions...)
-		},*/
 	}
 }
 

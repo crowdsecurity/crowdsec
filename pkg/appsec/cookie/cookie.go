@@ -1,3 +1,9 @@
+// Package cookie holds the AppsecCookie value type and its builder helpers.
+// The AppsecCookie shape is what WAF rules manipulate via the expr
+// environment (`AppsecCookie(name).Secure().HttpOnly()...`) and what the
+// challenge runtime hands back to the bouncer; encoding to/from
+// http.SetCookie strings is also done here.
+
 package cookie
 
 import (
@@ -17,6 +23,10 @@ const (
 	SameSiteNone   = "None"
 )
 
+// AppsecCookie is the value-type passed around through expr rules to build
+// up a Set-Cookie header. Rule authors construct it via cookie.AppsecCookie(name)
+// and chain the builder methods below; the final String() call renders it
+// to a Set-Cookie-compatible string.
 type AppsecCookie struct {
 	Name         string
 	Expiration   int64
@@ -51,11 +61,13 @@ func (c *AppsecCookie) withDefaults() *AppsecCookie {
 	return c
 }
 
+// Value sets the cookie's value.
 func (c *AppsecCookie) Value(value string) *AppsecCookie {
 	c.Val = value
 	return c
 }
 
+// Path sets the cookie Path attribute; empty input restores the default ("/").
 func (c *AppsecCookie) Path(path string) *AppsecCookie {
 	if path == "" {
 		path = defaultCookiePath
@@ -65,21 +77,27 @@ func (c *AppsecCookie) Path(path string) *AppsecCookie {
 	return c
 }
 
+// Domain sets the cookie Domain attribute. Leave unset to scope the cookie
+// to the request host.
 func (c *AppsecCookie) Domain(domain string) *AppsecCookie {
 	c.DomainName = domain
 	return c
 }
 
+// Secure marks the cookie Secure. Required when SameSite=None.
 func (c *AppsecCookie) Secure() *AppsecCookie {
 	c.SecureFlag = true
 	return c
 }
 
+// HttpOnly marks the cookie HttpOnly so it cannot be read from JS.
 func (c *AppsecCookie) HttpOnly() *AppsecCookie {
 	c.HttpOnlyFlag = true
 	return c
 }
 
+// SameSite sets the SameSite mode (Lax / Strict / None). Unknown values are
+// passed through verbatim; validation happens on String() rendering.
 func (c *AppsecCookie) SameSite(mode string) *AppsecCookie {
 	c.SameSiteMode = mode
 	return c

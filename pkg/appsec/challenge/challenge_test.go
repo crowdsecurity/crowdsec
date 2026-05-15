@@ -327,16 +327,26 @@ func mustGeneratePowPrefix(tb testing.TB) string {
 	return p
 }
 
-// buildValidBody constructs a valid challenge POST body.
+// buildValidBody constructs a valid challenge POST body with an empty
+// fingerprint. Existing tests rely on this signature; for tests that need
+// to assert fingerprint round-trip through the seal/unseal chain, use
+// buildValidBodyWithFingerprint.
 func buildValidBody(tb testing.TB, difficulty int, ticket, ts string) string {
+	return buildValidBodyWithFingerprint(tb, difficulty, ticket, ts, FingerprintData{})
+}
+
+// buildValidBodyWithFingerprint mirrors buildValidBody but lets the caller
+// supply a populated FingerprintData so tests can assert that the submitted
+// payload survives the full encrypt → HMAC → decrypt → unmarshal chain.
+func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, ticket, ts string, fp FingerprintData) string {
 	c := newTestRuntime()
 	salt := mustGeneratePowPrefix(tb)
 	powMAC := c.computePowMAC(salt, ticket, ts)
 	nonce := solvePoWGo(salt, difficulty)
 	sessionKey := c.getSessionKey(ticket, nonce)
 
-	fp := FingerprintData{}
-	fpJSON, _ := json.Marshal(fp)
+	fpJSON, err := json.Marshal(fp)
+	require.NoError(tb, err)
 
 	keyBytes := []byte(sessionKey)
 	encrypted := make([]byte, len(fpJSON))
@@ -375,6 +385,56 @@ func TestValidateChallengeResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ck)
 	assert.NotNil(t, fpResult)
+}
+
+// TestValidateChallengeResponse_FingerprintRoundTrip is the explicit
+// happy-path guard for the full client→server seal/unseal chain. Other
+// ValidateChallengeResponse tests only assert that a well-formed submission
+// is accepted; this one verifies that the FingerprintData the browser
+// submits is the same FingerprintData the server gets back, then survives
+// the cookie Seal → Open round-trip too. Regression guard for any future
+// change to encryption, HMAC keying, or proto conversion.
+func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
+	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour}
+
+	submitted := FingerprintData{
+		FSID:             "fsid-abcdef",
+		Nonce:            "client-nonce-xyz",
+		Time:             1700000000,
+		URL:              "https://example.com/protected",
+		FastBotDetection: FlexBool(false),
+	}
+
+	ticket, ts := freshTicket()
+	body := buildValidBodyWithFingerprint(t, c.powDifficulty, ticket, ts, submitted)
+
+	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "test-agent")
+
+	ck, decoded, err := c.ValidateChallengeResponse(req, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, ck)
+
+	// The fingerprint returned by ValidateChallengeResponse must match what
+	// the browser submitted (XOR'd, base64'd, then decrypted server-side).
+	assert.Equal(t, submitted.FSID, decoded.FSID)
+	assert.Equal(t, submitted.Nonce, decoded.Nonce)
+	assert.Equal(t, submitted.Time, decoded.Time)
+	assert.Equal(t, submitted.URL, decoded.URL)
+
+	// The sealed cookie must round-trip through ValidCookie and yield the
+	// same fingerprint contents — guards the proto conversion + AES-GCM
+	// seal/unseal chain.
+	parsed, err := http.ParseSetCookie(ck.String())
+	require.NoError(t, err)
+
+	cd, err := c.ValidCookie(parsed, "test-agent")
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	assert.Equal(t, submitted.FSID, cd.Fingerprint.FSID)
+	assert.Equal(t, submitted.URL, cd.Fingerprint.URL)
+	assert.Equal(t, c.powDifficulty, cd.PowDifficulty)
 }
 
 func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {

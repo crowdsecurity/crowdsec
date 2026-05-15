@@ -1,3 +1,10 @@
+// fingerprint.go holds the wire-shape structs the JS fingerprint bundle
+// returns: FlexInt / FlexBool tolerant primitives and the nested
+// FingerprintData / fingerprintBotAlias structures that mirror the JSON
+// payload one-to-one. Handwritten accessors live in fingerprint_helpers.go,
+// proto ↔ struct conversion in fingerprint_proto.go, and mismatch detection
+// methods in fingerprint_mismatch.go.
+
 package challenge
 
 import (
@@ -296,6 +303,13 @@ func (fi FlexInt) Int() int {
 }
 */
 
+// FingerprintData is the deserialized payload produced by the JS
+// fingerprint bundle and (after a successful challenge) carried inside the
+// sealed challenge cookie. It is the value exposed to rule authors via the
+// `fingerprint` variable in expr environments. The struct mirrors the JSON
+// wire shape one-to-one; FlexInt/FlexBool primitives tolerate the bundle's
+// occasional "error string instead of value" outputs without aborting the
+// whole submission.
 type FingerprintData struct {
 	Signals                 fingerprintSignals                 `json:"signals"`
 	FSID                    string                             `json:"fsid"`

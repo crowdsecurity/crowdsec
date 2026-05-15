@@ -1,3 +1,10 @@
+// crypto.go implements AES-GCM cookie sealing/unsealing for the challenge
+// cookie envelope: a versioned, integrity-protected blob carrying the
+// fingerprint proto bytes plus a not_after expiration timestamp. The
+// encryption key comes from the keyring (cookie-master derivation, long
+// lifetime); rotation is handled by the keyring, not by this file. All
+// helpers here are pure functions over byte slices — no IO, no globals.
+
 package challenge
 
 import (

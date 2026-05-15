@@ -1,3 +1,10 @@
+// config.go defines the YAML-facing challenge configuration and its
+// merge/translation semantics. All Config fields are pointers so multiple
+// appsec-config files can each contribute a disjoint subset; MergeFrom
+// composes them without one wiping the others. Once merged, ToOptions
+// translates the Config into the runtime's functional-option list
+// (NewChallengeRuntime(...))).
+
 package challenge
 
 import (

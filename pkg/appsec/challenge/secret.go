@@ -1,3 +1,8 @@
+// secret.go parses and validates the master-secret used by the keyring, and
+// generates a random fallback when none is configured. The secret is the
+// trust anchor for every per-epoch HMAC key and the cookie-sealing AES key,
+// so any change here is wire-protocol-affecting.
+
 package challenge
 
 import (

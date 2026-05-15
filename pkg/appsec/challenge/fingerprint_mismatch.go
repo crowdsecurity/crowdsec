@@ -1,3 +1,10 @@
+// fingerprint_mismatch.go implements the *atomic* mismatch checks: small,
+// composable predicates on FingerprintData (UA-vs-viewport, UA-language vs
+// Accept-Language, timezone vs GeoIP country, etc.) that rules can call
+// directly. The aggregate report and the lookup tables that map these
+// signals to stable reason keys + severities live in
+// fingerprint_mismatch_data.go.
+
 package challenge
 
 import (

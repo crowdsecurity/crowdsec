@@ -1,3 +1,16 @@
+// Package challenge implements the AppSec WAF challenge mode: a PoW-gated
+// landing page, a fingerprint collection bundle, and the surrounding key
+// rotation + cookie machinery. This file holds the runtime orchestration
+// (lifecycle, HTTP entry points, template rendering, hook plumbing) and
+// delegates specialized concerns to sibling files in the same package:
+//
+//   - keyring.go / crypto.go / ticket.go — per-epoch HKDF keys, AES-GCM
+//     cookie seal/unseal, ticket signing
+//   - static_bundle.go                   — public fpscanner/JS bundle
+//   - dynamic_module.go                  — sensitive per-epoch sign-key module
+//   - obfuscator.go                      — wazero wrapper around the JS obfuscator
+//   - fingerprint*.go                    — fingerprint wire shape + helpers + mismatch report
+//   - config.go / secret.go              — YAML config + master-secret handling
 package challenge
 
 import (
@@ -25,9 +38,17 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
-const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
-const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
+// Internal URL paths the challenge runtime intercepts. Bouncers MUST forward
+// these to the WAF unmodified; they are served by the appsec dispatcher
+// (pkg/appsec/appsec.go) rather than by the protected origin.
+const (
+	ChallengeJSPath        = "/crowdsec-internal/challenge/challenge.js"
+	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
+	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
+)
+
+// ChallengeCookieName is the name of the sealed cookie carrying the
+// successfully-validated fingerprint between requests.
 const ChallengeCookieName = "__crowdsec_challenge"
 
 // libraryBundlePoolDefaultSize is the default ceiling for the library
@@ -60,6 +81,10 @@ const cryptoObfuscationPoolDefaultSize = 1
 // exposure window (keyring live window, default 15m).
 const defaultCookieTTL = 12 * time.Hour
 
+// DefaultChallengeCSP is the Content-Security-Policy header used on the
+// challenge page when the operator hasn't configured a custom one. Allows
+// inline script/style (the challenge runtime injects both) and blob workers
+// (the PoW worker is loaded from a blob URL).
 const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 //go:embed challenge.html.tmpl
@@ -74,9 +99,17 @@ var htmlTemplate string
 //go:embed grant_redirect.html.tmpl
 var GrantRedirectBody string
 
+// PowWorkerJS is the JavaScript PoW worker shipped to the browser at
+// ChallengePowWorkerPath. Served as-is — obfuscation here would only slow
+// down the per-visitor PoW loop without adding security value.
+//
 //go:embed pow-worker.js
 var PowWorkerJS string
 
+// ChallengeRuntime is the per-process state for the challenge mode: wazero
+// instance, signing/cookie keys, obfuscation pools, fingerprint key
+// rotation. One instance is shared across all appsec runners (see
+// pkg/acquisition/modules/appsec/config.go). Construct via NewChallengeRuntime.
 type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
@@ -324,6 +357,15 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 	return nil
 }
 
+// NewChallengeRuntime builds and starts a ChallengeRuntime. It initializes
+// the wazero runtime, decompresses the baked-in library bundle, derives the
+// master secret + keyring, pre-warms the dynamic-module cache, and (if
+// configured) spawns the background obfuscation refresher. The returned
+// instance is safe for concurrent use across all appsec runners.
+//
+// Pass functional options (WithMasterSecret, WithKeyringRotationInterval,
+// WithLibraryRuntimeObfuscationEnabled, ...) to override defaults; see the
+// options in this file for individual semantics.
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
 	resolvedOpts := runtimeOptions{}
 	for _, opt := range opts {
@@ -543,6 +585,14 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	return renderedPage.String(), nil
 }
 
+// ValidateChallengeResponse parses a POST body submitted by the browser to
+// ChallengeSubmitPath and runs the full validation chain: ticket HMAC
+// verification (key looked up by epoch, must be in the live window), PoW
+// solution against the published difficulty, timestamp freshness, and
+// fingerprint decryption. On success it returns the sealed challenge
+// cookie and the decrypted FingerprintData; any failure returns a non-nil
+// error and the caller should refuse the request without leaking which
+// stage failed.
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
 	if err != nil {
@@ -680,6 +730,13 @@ type CookieData struct {
 	AllowlistReason string
 }
 
+// ValidCookie unseals and validates an incoming challenge cookie. It checks
+// the cookie envelope (version, AES-GCM tag), the not_after expiration
+// stamp, and binds the cookie to the supplied User-Agent — UA-pinning makes
+// a stolen cookie useless to a different client. Returns the decoded
+// CookieData on success; any failure (tampered, expired, UA-mismatch,
+// unknown version) returns a non-nil error and the caller should treat the
+// request as if no cookie was presented.
 func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*CookieData, error) {
 	if ck == nil {
 		return nil, fmt.Errorf("nil cookie")

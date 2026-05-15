@@ -457,8 +457,10 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- state.Response
 
-	// TODO: what should we do with challenge remediation for OOB matches ?
-	// (captcha has no special treatment, but is also useless for OOB)
+	// Challenge remediation is intentionally a no-op for OOB matches: the inband
+	// response has already been sent to the visitor at this point, so there is
+	// nothing left to challenge. OOB matches still feed alerts/events.
+	// (captcha gets the same treatment for the same reason.)
 
 	//Now let's process the out of band rules
 

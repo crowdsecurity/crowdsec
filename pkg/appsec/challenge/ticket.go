@@ -1,3 +1,11 @@
+// ticket.go produces and verifies the short-lived "ticket" handed to the
+// browser at challenge time: a random nonce + difficulty + issued-at
+// timestamp, HMAC-signed with the current epoch's signing key. The browser
+// solves the PoW (leading-zero-bits) over the ticket and posts the solution
+// back; ValidateChallengeResponse (in challenge.go) re-verifies the HMAC and
+// the PoW. Difficulty levels are tuned for pure-JS SHA-256 through the
+// obfuscated runtime, see DifficultyBits below.
+
 package challenge
 
 import (

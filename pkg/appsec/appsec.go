@@ -917,7 +917,9 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		w.Logger.Debugf("validating challenge response")
 		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
-			// TODO: find a way to propagate an event to the LP for use in scenarios
+			// Failed validations are logged but not surfaced to the local processor as
+			// events today; if/when we want scenarios to fire on repeated failed
+			// submissions, this is the hook point.
 			w.Logger.Errorf("challenge validation failed: %s", err)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
@@ -1160,7 +1162,8 @@ func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name
 func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
 	w.SetAction(state, ChallengeRemediation)
 	w.SetHTTPCode(state, code)
-	// FIXME: don't do this here, should be handled the same way as a block
+	// Initial response state defaults BouncerHTTPResponseCode to the "passed" code (see InitRequestState);
+	// override it here so the bouncer gets the blocked code while the visitor still receives the challenge page.
 	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
 	w.SetChallengeBody(state, body)
 	for name, value := range headers {
