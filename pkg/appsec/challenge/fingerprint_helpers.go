@@ -229,32 +229,38 @@ func resolveVerbosity(verbosity []FingerprintLogVerbosity) FingerprintLogVerbosi
 // LogAccepted emits a single structured log line for a fingerprint we
 // are accepting (valid cookie, successful submission, allowlist grant).
 //
-// ip is the client source address (typically request.RemoteAddrNormalized)
-// and is logged as "source", matching the existing convention in
-// emitMismatchObservability. The caller picks the level — typically Debug
-// for per-request sites and Info for rarer events. verbosity defaults to
-// FingerprintLogMinimal.
-func (f *FingerprintData) LogAccepted(logger *log.Entry, level log.Level, ip, msg string, verbosity ...FingerprintLogVerbosity) {
+// clientIP is the real visitor address (typically request.ClientIP, set
+// by the bouncer via X-Forwarded-For or equivalent) and is logged as
+// "source". bouncerIP is the connection-level peer of the appsec listener
+// (typically request.RemoteAddrNormalized) and is logged as "bouncer".
+// Both are needed: operators correlate visitor behaviour on "source", but
+// "bouncer" is what they use to debug which gateway forwarded the request
+// (multi-WAF setups, misconfigured X-Forwarded-For chains, etc.).
+//
+// The caller picks the level — typically Debug for per-request sites and
+// Info for rarer events. verbosity defaults to FingerprintLogMinimal.
+func (f *FingerprintData) LogAccepted(logger *log.Entry, level log.Level, clientIP, bouncerIP, msg string, verbosity ...FingerprintLogVerbosity) {
 	if f == nil || logger == nil {
 		return
 	}
 
-	emitFingerprintLog(logger.WithFields(f.logFieldsAccept(ip, resolveVerbosity(verbosity))), level, msg)
+	emitFingerprintLog(logger.WithFields(f.logFieldsAccept(clientIP, bouncerIP, resolveVerbosity(verbosity))), level, msg)
 }
 
 // LogRejected emits a single structured log line for a fingerprint we
 // are rejecting.
 //
 // reason is the operator-facing rejection cause and is always included
-// regardless of verbosity. ip is logged as "source". Only positive
+// regardless of verbosity. clientIP is logged as "source", bouncerIP as
+// "bouncer" — see LogAccepted for the rationale. Only positive
 // information is included — negative facts ("not headless", "0 mismatches")
 // are omitted because they are noise on a reject log.
-func (f *FingerprintData) LogRejected(logger *log.Entry, level log.Level, ip, reason, msg string, verbosity ...FingerprintLogVerbosity) {
+func (f *FingerprintData) LogRejected(logger *log.Entry, level log.Level, clientIP, bouncerIP, reason, msg string, verbosity ...FingerprintLogVerbosity) {
 	if f == nil || logger == nil {
 		return
 	}
 
-	emitFingerprintLog(logger.WithFields(f.logFieldsReject(ip, reason, resolveVerbosity(verbosity))), level, msg)
+	emitFingerprintLog(logger.WithFields(f.logFieldsReject(clientIP, bouncerIP, reason, resolveVerbosity(verbosity))), level, msg)
 }
 
 // emitFingerprintLog dispatches a message to the right logrus method for
@@ -277,14 +283,14 @@ func emitFingerprintLog(entry *log.Entry, level log.Level, msg string) {
 
 // logFieldsAccept builds the structured field set for an accept log.
 // Empty-string fields are omitted so partial fingerprints stay compact.
-func (f *FingerprintData) logFieldsAccept(ip string, v FingerprintLogVerbosity) log.Fields {
+func (f *FingerprintData) logFieldsAccept(clientIP, bouncerIP string, v FingerprintLogVerbosity) log.Fields {
 	fields := log.Fields{
 		"is_bot":      f.IsBot(),
 		"signals":     f.BotSignals(),
 		"allowlisted": f.Allowlisted,
 	}
 
-	addCommonFingerprintFields(fields, f, ip)
+	addCommonFingerprintFields(fields, f, clientIP, bouncerIP)
 
 	if f.Allowlisted && f.AllowlistReason != "" {
 		fields["allowlist_reason"] = f.AllowlistReason
@@ -303,13 +309,13 @@ func (f *FingerprintData) logFieldsAccept(ip string, v FingerprintLogVerbosity) 
 
 // logFieldsReject builds the structured field set for a reject log. Only
 // positive signals/flags are included; negative facts are dropped.
-func (f *FingerprintData) logFieldsReject(ip, reason string, v FingerprintLogVerbosity) log.Fields {
+func (f *FingerprintData) logFieldsReject(clientIP, bouncerIP, reason string, v FingerprintLogVerbosity) log.Fields {
 	fields := log.Fields{
 		"reason":  reason,
 		"signals": f.BotSignals(),
 	}
 
-	addCommonFingerprintFields(fields, f, ip)
+	addCommonFingerprintFields(fields, f, clientIP, bouncerIP)
 
 	if f.IsBot() {
 		fields["is_bot"] = true
@@ -356,9 +362,13 @@ func (f *FingerprintData) logFieldsReject(ip, reason string, v FingerprintLogVer
 // and reject logs. Empty strings are omitted so partial / synthetic
 // fingerprints (e.g. allowlist cookies with no measured signals) don't
 // log noisy empty keys.
-func addCommonFingerprintFields(fields log.Fields, f *FingerprintData, ip string) {
-	if ip != "" {
-		fields["source"] = ip
+func addCommonFingerprintFields(fields log.Fields, f *FingerprintData, clientIP, bouncerIP string) {
+	if clientIP != "" {
+		fields["source"] = clientIP
+	}
+
+	if bouncerIP != "" {
+		fields["bouncer"] = bouncerIP
 	}
 
 	if f.FSID != "" {

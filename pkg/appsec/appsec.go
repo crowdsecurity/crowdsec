@@ -927,8 +927,6 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		// the freshly-decrypted fingerprint via the env.
 		state.Fingerprint = &fpData
 
-		fpData.LogAccepted(w.Logger, log.InfoLevel, request.RemoteAddrNormalized, "challenge submission validated")
-
 		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
 			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
 		}
@@ -954,7 +952,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			fp.AllowlistReason = cookieData.AllowlistReason
 			state.Fingerprint = &fp
 			state.CookiePowDifficulty = cookieData.PowDifficulty
-			fp.LogAccepted(w.Logger, log.DebugLevel, request.RemoteAddrNormalized, "valid challenge cookie")
+			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, "valid challenge cookie")
 		}
 	}
 
@@ -1243,7 +1241,8 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
 			"fsid":    fsid,
-			"source":  request.RemoteAddrNormalized,
+			"source":  request.ClientIP,
+			"bouncer": request.RemoteAddrNormalized,
 			"reasons": report.Reasons(),
 			"high":    report.High(),
 			"medium":  report.Medium(),
@@ -1397,6 +1396,7 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 	state.Fingerprint.LogAccepted(
 		w.Logger.WithField("location", headers["Location"]),
 		log.InfoLevel,
+		request.ClientIP,
 		request.RemoteAddrNormalized,
 		"granted allowlist challenge cookie via 307 redirect",
 	)
@@ -1434,7 +1434,7 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 
 	w.SetChallengeCookie(state, *ck)
 
-	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
+	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
 
 	return nil
 }

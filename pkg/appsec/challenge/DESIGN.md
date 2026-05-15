@@ -618,10 +618,10 @@ Examples at the default `"info"` verbosity (what the expr helpers
 argument):
 
 ```
-level=info msg="challenge submission accepted" source=203.0.113.7 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false is_mobile=false
-level=info msg="on_challenge_submit rejected" source=203.0.113.7 fsid=FS1_abc reason=ua_or_lang_mismatch ua="Mozilla/5.0…" platform=macOS signals="[cdp]" automation=true
-level=info msg="granted allowlist challenge cookie via 307 redirect" source=66.249.66.1 location=/ ua="Googlebot/2.1" allowlisted=true allowlist_reason=Googlebot signals="[]"
-level=debug msg="valid challenge cookie" source=203.0.113.7 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false
+level=info msg="challenge submission accepted" source=203.0.113.7 bouncer=10.0.0.5 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false is_mobile=false
+level=info msg="on_challenge_submit rejected" source=203.0.113.7 bouncer=10.0.0.5 fsid=FS1_abc reason=ua_or_lang_mismatch ua="Mozilla/5.0…" platform=macOS signals="[cdp]" automation=true
+level=info msg="granted allowlist challenge cookie via 307 redirect" source=66.249.66.1 bouncer=10.0.0.5 location=/ ua="Googlebot/2.1" allowlisted=true allowlist_reason=Googlebot signals="[]"
+level=debug msg="valid challenge cookie" source=203.0.113.7 bouncer=10.0.0.5 fsid=FS1_abc ua="Mozilla/5.0…" platform=macOS is_bot=false signals="[]" allowlisted=false
 ```
 
 The verbosity string (`"minimal"`, `"info"` default, `"verbose"`) is
@@ -633,7 +633,8 @@ passed as the optional last argument to both `LogAccepted` and
 
 | Field | Type | Notes |
 |---|---|---|
-| `source` | string | Client IP (`request.RemoteAddrNormalized`) — same field name as `fingerprint mismatch` logs for correlation |
+| `source` | string | Real visitor IP (`request.ClientIP`, set by the bouncer via X-Forwarded-For or equivalent). Same field name as `fingerprint mismatch` logs for correlation |
+| `bouncer` | string | Connection-level peer of the appsec listener (`request.RemoteAddrNormalized`) — the bouncer / gateway that forwarded the request. Useful in multi-WAF setups or when debugging an X-Forwarded-For chain |
 | `fsid` | string | Per-fingerprint identifier; omitted when empty |
 | `ua` | string | Browser-reported User-Agent; omitted when empty |
 | `platform` | string | High-entropy client-hint platform, falling back to `navigator.platform`; omitted when empty |
