@@ -9,15 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestLibraryObfuscationDisabledByDefault asserts that the default
+// TestLibraryRuntimeObfuscationDisabledByDefault asserts that the default
 // NewChallengeRuntime path does NOT spawn the library-bundle refresher
-// goroutine. Combined with the seedCacheFromInitialBundle step, this
-// confirms steady-state CPU on the library path is zero: only the
-// baked-in variant is served and no background obfuscation runs.
-func TestLibraryObfuscationDisabledByDefault(t *testing.T) {
+// goroutine. The library is still obfuscated (build-time, via
+// initial_bundle.js.gz); this only confirms that steady-state CPU on the
+// library path is zero — only the baked-in variant is served and no
+// background obfuscation runs.
+func TestLibraryRuntimeObfuscationDisabledByDefault(t *testing.T) {
 	rt, err := NewChallengeRuntime(context.Background())
 	require.NoError(t, err)
-	require.False(t, rt.libraryObfuscationEnabled, "library obfuscation must be disabled by default")
+	require.False(t, rt.libraryRuntimeObfuscationEnabled, "library runtime obfuscation must be disabled by default")
 
 	// Pool holds exactly the seeded baked-in variant, nothing more.
 	rt.libraryBundlePoolMu.RLock()
@@ -34,19 +35,19 @@ func TestLibraryObfuscationDisabledByDefault(t *testing.T) {
 	rt.libraryBundlePoolMu.RLock()
 	poolLenAfter := len(rt.libraryBundlePool)
 	rt.libraryBundlePoolMu.RUnlock()
-	assert.Equal(t, 1, poolLenAfter, "pool must NOT grow when library obfuscation is disabled")
+	assert.Equal(t, 1, poolLenAfter, "pool must NOT grow when runtime library obfuscation is disabled")
 }
 
-// TestLibraryObfuscationEnabledTrickle asserts that when the library
-// pool is enabled, the refresher trickles one new variant per tick
-// (rather than the old behaviour of regenerating all N variants at
-// once). The pool grows from 1 (seeded) toward the configured size
+// TestLibraryRuntimeObfuscationEnabledTrickle asserts that when runtime
+// library obfuscation is enabled, the refresher trickles one new variant
+// per tick (rather than the old behaviour of regenerating all N variants
+// at once). The pool grows from 1 (seeded) toward the configured size
 // across multiple ticks.
 //
 // This is the regression guard for the production CPU pegging: if the
 // refresher ever again does a batch regen, this test will see the
 // pool jump from 1 → N in one tick instead of trickling.
-func TestLibraryObfuscationEnabledTrickle(t *testing.T) {
+func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("library obfuscation runs the full bundle through wazero (~minute per tick); skipped in -short")
 	}
@@ -55,7 +56,7 @@ func TestLibraryObfuscationEnabledTrickle(t *testing.T) {
 	// does one full-bundle obfuscation, but we only wait for the FIRST
 	// successful tick (pool goes 1 → 2) before asserting.
 	rt, err := NewChallengeRuntime(context.Background(),
-		WithLibraryObfuscationEnabled(true),
+		WithLibraryRuntimeObfuscationEnabled(true),
 		WithLibraryObfuscationPoolSize(3),
 		WithLibraryObfuscationRefreshInterval(1*time.Second),
 	)

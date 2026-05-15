@@ -39,19 +39,25 @@ type Config struct {
 	// the per-epoch sign-key module to keep per live epoch. Default 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
-	// LibraryObfuscationEnabled gates the background re-obfuscation of the
-	// static library bundle. Off by default — the runtime serves only the
-	// baked-in obfuscated bundle.
-	LibraryObfuscationEnabled *bool `yaml:"library_obfuscation_enabled"`
+	// LibraryRuntimeObfuscationEnabled gates the background re-obfuscation
+	// of the static library bundle at runtime. The library bundle is ALWAYS
+	// obfuscated at build time via `go generate` (initial_bundle.js.gz) —
+	// this flag only controls whether additional runtime-generated variants
+	// are produced and added to the pool over time. Off by default: the
+	// runtime serves only the baked-in obfuscated bundle and pays no
+	// runtime obfuscator cost for the static path.
+	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
 
-	// LibraryObfuscationPoolSize is the max number of runtime-obfuscated
-	// variants of the library bundle to keep when library obfuscation is
-	// enabled. Ignored when disabled. Default 3.
+	// LibraryObfuscationPoolSize is the max number of obfuscated variants
+	// of the library bundle to keep. Default 1 — only the baked-in
+	// initial bundle. Bumping this above 1 only has effect when runtime
+	// obfuscation is enabled (otherwise no source produces additional
+	// variants); misconfiguration is clamped to 1 with a startup warning.
 	LibraryObfuscationPoolSize *int `yaml:"library_obfuscation_pool_size"`
 
 	// LibraryObfuscationRefreshInterval is the cadence at which a single
 	// new library-bundle variant is obfuscated and added to the pool when
-	// library obfuscation is enabled. Ignored when disabled. Default 1h.
+	// runtime obfuscation is enabled. Ignored when disabled. Default 1h.
 	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
 }
 
@@ -83,8 +89,8 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
 	}
-	if other.LibraryObfuscationEnabled != nil {
-		c.LibraryObfuscationEnabled = other.LibraryObfuscationEnabled
+	if other.LibraryRuntimeObfuscationEnabled != nil {
+		c.LibraryRuntimeObfuscationEnabled = other.LibraryRuntimeObfuscationEnabled
 	}
 	if other.LibraryObfuscationPoolSize != nil {
 		c.LibraryObfuscationPoolSize = other.LibraryObfuscationPoolSize
@@ -125,8 +131,8 @@ func BuildOptions(c *Config) ([]Option, error) {
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))
 	}
-	if c.LibraryObfuscationEnabled != nil {
-		opts = append(opts, WithLibraryObfuscationEnabled(*c.LibraryObfuscationEnabled))
+	if c.LibraryRuntimeObfuscationEnabled != nil {
+		opts = append(opts, WithLibraryRuntimeObfuscationEnabled(*c.LibraryRuntimeObfuscationEnabled))
 	}
 	if c.LibraryObfuscationPoolSize != nil && *c.LibraryObfuscationPoolSize > 0 {
 		opts = append(opts, WithLibraryObfuscationPoolSize(*c.LibraryObfuscationPoolSize))

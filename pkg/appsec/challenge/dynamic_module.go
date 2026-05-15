@@ -14,7 +14,7 @@
 // sensitive code can raise WithCryptoObfuscationPoolSize.
 //
 // For the **non-sensitive** library bundle (public fpscanner / PoW
-// worker glue, controlled by WithLibraryObfuscationEnabled), see
+// worker glue, controlled by WithLibraryRuntimeObfuscationEnabled), see
 // static_bundle.go.
 package challenge
 

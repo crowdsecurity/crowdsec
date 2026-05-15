@@ -8,10 +8,10 @@
 //
 // At startup the pool is seeded with `initial_bundle.js.gz`, a variant
 // produced at build time via `go generate`. Runtime re-obfuscation of
-// this bundle is **opt-in** via WithLibraryObfuscationEnabled because
-// each pass costs ~1 minute of CPU; when enabled, the refresher trickles
-// in one new variant per tick (oldest evicted) so steady-state cost is
-// bounded to a single obfuscation per
+// this bundle is **opt-in** via WithLibraryRuntimeObfuscationEnabled
+// because each pass costs ~1 minute of CPU; when enabled, the refresher
+// trickles in one new variant per tick (oldest evicted) so steady-state
+// cost is bounded to a single obfuscation per
 // WithLibraryObfuscationRefreshInterval.
 //
 // For the **sensitive** path (per-epoch HMAC sign key), see
@@ -108,8 +108,8 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 
 // libraryBundlePoolRefresher is the background goroutine that trickles
 // new obfuscated library-bundle variants into the pool on the configured
-// refresh interval. Spawned only when WithLibraryObfuscationEnabled is
-// set (default off) — when disabled, the runtime serves only the
+// refresh interval. Spawned only when WithLibraryRuntimeObfuscationEnabled
+// is set (default off) — when disabled, the runtime serves only the
 // baked-in initial bundle and pays no runtime obfuscator cost.
 //
 // Each tick generates exactly one new variant (~1 minute of CPU) and

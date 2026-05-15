@@ -30,14 +30,14 @@ const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
 const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 const ChallengeCookieName = "__crowdsec_challenge"
 
-// libraryBundlePoolDefaultSize is the default number of distinct
-// runtime-obfuscated variants of the static library bundle to keep when
-// runtime library obfuscation is enabled. The library bundle contains
-// public, non-sensitive code (fpscanner, PoW worker glue), so the
-// per-visitor byte variance this pool buys is only useful against naive
-// signature-based scrapers. Used only when WithLibraryObfuscationEnabled
-// is set.
-const libraryBundlePoolDefaultSize = 3
+// libraryBundlePoolDefaultSize is the default ceiling for the library
+// bundle pool. The library bundle is always obfuscated at build time
+// (initial_bundle.js.gz); with runtime obfuscation off (the default), the
+// pool only ever contains that single baked-in variant — so a default of
+// 1 matches reality. With runtime obfuscation enabled
+// (WithLibraryRuntimeObfuscationEnabled), this becomes the steady-state
+// ceiling that the background refresher trickles new variants into.
+const libraryBundlePoolDefaultSize = 1
 
 // libraryBundleRefreshDefaultInterval is the default cadence at which a
 // single new library-bundle variant is obfuscated and added to the pool
@@ -81,15 +81,17 @@ type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
 
-	// libraryObfuscationEnabled gates the background pool refresher for the
-	// library bundle. When false (the default), the runtime serves only the
-	// baked-in obfuscated bundle (`initial_bundle.js.gz`) and the refresher
-	// goroutine is not spawned — no runtime obfuscator cost for the static
-	// bundle in steady state. When true, libraryBundlePoolRefresher trickles
-	// in one new obfuscated variant per tick.
-	libraryObfuscationEnabled bool
-	libraryPoolSize           int
-	libraryRefreshInterval    time.Duration
+	// libraryRuntimeObfuscationEnabled gates the background pool refresher
+	// for the library bundle. The library bundle is ALWAYS obfuscated at
+	// build time (initial_bundle.js.gz); when this flag is false (the
+	// default), the runtime serves only that baked-in variant and the
+	// refresher goroutine is not spawned — no runtime obfuscator cost for
+	// the static bundle in steady state. When true,
+	// libraryBundlePoolRefresher trickles in one new runtime-obfuscated
+	// variant per tick.
+	libraryRuntimeObfuscationEnabled bool
+	libraryPoolSize                  int
+	libraryRefreshInterval           time.Duration
 
 	// libraryBundlePool holds up to libraryPoolSize obfuscated variants of
 	// the static library bundle (fpscanner / PoW worker glue). Always seeded
@@ -172,22 +174,25 @@ type runtimeOptions struct {
 	// back to cryptoObfuscationPoolDefaultSize.
 	cryptoObfuscationPoolSize int
 
-	// libraryObfuscationEnabled gates the background re-obfuscation of the
-	// static library bundle. False (the default) means: serve only the
-	// baked-in initial bundle, no refresher goroutine.
-	libraryObfuscationEnabled bool
+	// libraryRuntimeObfuscationEnabled gates the background re-obfuscation
+	// of the static library bundle at runtime. The library bundle is
+	// ALWAYS obfuscated at build time; this flag only adds further runtime
+	// variants. False (the default) means: serve only the baked-in initial
+	// bundle, no refresher goroutine.
+	libraryRuntimeObfuscationEnabled bool
 
-	// libraryObfuscationPoolSize is the max number of runtime-obfuscated
-	// variants of the library bundle to keep when library obfuscation is
-	// enabled. Zero falls back to libraryBundlePoolDefaultSize. Ignored
-	// when libraryObfuscationEnabled is false.
+	// libraryObfuscationPoolSize is the max number of obfuscated variants
+	// of the library bundle to keep. Zero falls back to
+	// libraryBundlePoolDefaultSize. Values > 1 only have effect when
+	// runtime obfuscation is enabled; otherwise no source produces
+	// additional variants and the runtime warns + clamps to 1.
 	libraryObfuscationPoolSize int
 
 	// libraryObfuscationRefreshInterval is the cadence at which a single
 	// new library-bundle variant is obfuscated and added to the pool when
-	// library obfuscation is enabled. Zero falls back to
+	// runtime obfuscation is enabled. Zero falls back to
 	// libraryBundleRefreshDefaultInterval. Ignored when
-	// libraryObfuscationEnabled is false.
+	// libraryRuntimeObfuscationEnabled is false.
 	libraryObfuscationRefreshInterval time.Duration
 }
 
@@ -244,15 +249,17 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 	}
 }
 
-// WithLibraryObfuscationEnabled gates the background re-obfuscation of
-// the static library bundle (fpscanner, PoW worker glue). Off by default
-// — the runtime serves only the baked-in obfuscated bundle and pays no
-// runtime obfuscator cost for the static path. Enable only if you want
-// runtime per-visitor byte variance on top of the build-time obfuscation
-// for the public library code.
-func WithLibraryObfuscationEnabled(enabled bool) Option {
+// WithLibraryRuntimeObfuscationEnabled gates the background re-obfuscation
+// of the static library bundle (fpscanner, PoW worker glue) at runtime.
+// The bundle is ALWAYS obfuscated at build time; this flag only controls
+// whether additional runtime-generated variants are produced. Off by
+// default — the runtime serves only the baked-in obfuscated bundle and
+// pays no runtime obfuscator cost for the static path. Enable only if you
+// want per-visitor byte variance on top of the build-time obfuscation for
+// the public library code.
+func WithLibraryRuntimeObfuscationEnabled(enabled bool) Option {
 	return func(o *runtimeOptions) {
-		o.libraryObfuscationEnabled = enabled
+		o.libraryRuntimeObfuscationEnabled = enabled
 	}
 }
 
@@ -362,6 +369,16 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		libraryPoolSize = libraryBundlePoolDefaultSize
 	}
 
+	// Clamp pool size to 1 when runtime obfuscation is off: the only source
+	// of variants in that mode is the baked-in initial bundle (one entry),
+	// so any larger ceiling would leave empty slots forever. Warn so the
+	// operator notices the misconfiguration without having the runtime fail
+	// to start.
+	if !resolvedOpts.libraryRuntimeObfuscationEnabled && libraryPoolSize > 1 {
+		log.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
+		libraryPoolSize = 1
+	}
+
 	libraryRefreshInterval := resolvedOpts.libraryObfuscationRefreshInterval
 	if libraryRefreshInterval <= 0 {
 		libraryRefreshInterval = libraryBundleRefreshDefaultInterval
@@ -414,18 +431,18 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	challengeRuntime := &ChallengeRuntime{
-		r:                         r,
-		obfuscatorMod:             compiledMod,
-		libraryObfuscationEnabled: resolvedOpts.libraryObfuscationEnabled,
-		libraryPoolSize:           libraryPoolSize,
-		libraryRefreshInterval:    libraryRefreshInterval,
-		libraryBundlePool:         make([]obfuscatedScript, 0, libraryPoolSize),
-		powDifficulty:             defaultPowDifficulty,
-		keys:                      keys,
-		cryptoPoolSize:            cryptoPoolSize,
-		dynamicModuleCache:        make(map[int64][]string),
-		cookieTTL:                 cookieTTL,
-		htmlTpl:                   htmlTpl,
+		r:                                r,
+		obfuscatorMod:                    compiledMod,
+		libraryRuntimeObfuscationEnabled: resolvedOpts.libraryRuntimeObfuscationEnabled,
+		libraryPoolSize:                  libraryPoolSize,
+		libraryRefreshInterval:           libraryRefreshInterval,
+		libraryBundlePool:                make([]obfuscatedScript, 0, libraryPoolSize),
+		powDifficulty:                    defaultPowDifficulty,
+		keys:                             keys,
+		cryptoPoolSize:                   cryptoPoolSize,
+		dynamicModuleCache:               make(map[int64][]string),
+		cookieTTL:                        cookieTTL,
+		htmlTpl:                          htmlTpl,
 	}
 
 	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
@@ -455,7 +472,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// variant is already served at request time, so runtime regeneration
 	// only buys per-visitor byte variance on top of build-time obfuscation
 	// and is not worth its ~minute-of-CPU-per-obfuscation cost by default.
-	if resolvedOpts.libraryObfuscationEnabled {
+	if resolvedOpts.libraryRuntimeObfuscationEnabled {
 		go challengeRuntime.libraryBundlePoolRefresher(ctx)
 	}
 	// The dynamic-module pre-warmer is always on — the per-epoch sign key

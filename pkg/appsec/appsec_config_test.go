@@ -420,7 +420,7 @@ challenge:
 name: overlay
 challenge:
   cookie_ttl: 1h
-  library_obfuscation_enabled: true
+  library_runtime_obfuscation_enabled: true
   library_obfuscation_pool_size: 2
 `)
 	require.NoError(t, cfg.LoadByPath(second))
@@ -428,9 +428,27 @@ challenge:
 	assert.Equal(t, 1*time.Hour, *cfg.Challenge.CookieTTL, "later config overrides cookie_ttl")
 	require.NotNil(t, cfg.Challenge.MasterSecret, "master_secret from first config must survive")
 	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
-	require.NotNil(t, cfg.Challenge.LibraryObfuscationEnabled)
-	assert.True(t, *cfg.Challenge.LibraryObfuscationEnabled, "new field from second config appears")
+	require.NotNil(t, cfg.Challenge.LibraryRuntimeObfuscationEnabled)
+	assert.True(t, *cfg.Challenge.LibraryRuntimeObfuscationEnabled, "new field from second config appears")
 	assert.Equal(t, 2, *cfg.Challenge.LibraryObfuscationPoolSize)
+}
+
+// TestLoadByPathRejectsStaleLibraryObfuscationEnabledKey confirms that an
+// appsec-config carrying the pre-rename `library_obfuscation_enabled`
+// YAML key fails to parse (strict YAML mode). This is the desired loud-
+// failure surface for stale configs after the rename to
+// `library_runtime_obfuscation_enabled`.
+func TestLoadByPathRejectsStaleLibraryObfuscationEnabledKey(t *testing.T) {
+	cfg := newTestConfig()
+	f := writeTempYAML(t, `
+name: stale
+challenge:
+  library_obfuscation_enabled: true
+`)
+	err := cfg.LoadByPath(f)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "library_obfuscation_enabled",
+		"strict YAML parse error must name the unknown field")
 }
 
 func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
