@@ -249,6 +249,21 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{DecisionsColumns[16]},
 			},
+			{
+				Name:    "decision_alert_decisions_type",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[16], DecisionsColumns[5]},
+			},
+			{
+				Name:    "decision_alert_decisions_origin",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[16], DecisionsColumns[13]},
+			},
+			{
+				Name:    "decision_alert_decisions_until",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[16], DecisionsColumns[3]},
+			},
 		},
 	}
 	// EventsColumns holds the columns for the "events" table.

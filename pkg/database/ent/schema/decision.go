@@ -57,5 +57,8 @@ func (Decision) Indexes() []ent.Index {
 		index.Fields("value"),
 		index.Fields("until"),
 		index.Fields("alert_decisions"),
+		index.Fields("alert_decisions", "type"),
+		index.Fields("alert_decisions", "origin"),
+		index.Fields("alert_decisions", "until"),
 	}
 }
