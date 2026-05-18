@@ -279,7 +279,7 @@ func TestBuildPopulatesPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -311,7 +311,7 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -326,6 +326,27 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	assert.Empty(t, rt.OutOfBandHooks.OnMatch)
 }
 
+func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
+	cases := []string{
+		"../escape.yaml",
+		"../../etc/passwd",
+		"/etc/passwd",
+	}
+
+	for _, filename := range cases {
+		t.Run(filename, func(t *testing.T) {
+			rt := &AppsecRuntimeConfig{
+				Logger:  log.NewEntry(log.StandardLogger()),
+				DataDir: t.TempDir(),
+			}
+
+			err := rt.LoadAPISchemaWithName("ref", filename)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "must be relative to schemas")
+		})
+	}
+}
+
 func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	cfg := AppsecConfig{
 		Logger:             log.NewEntry(log.StandardLogger()),
@@ -334,7 +355,7 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	assert.Len(t, rt.CompiledOnLoad, 1)

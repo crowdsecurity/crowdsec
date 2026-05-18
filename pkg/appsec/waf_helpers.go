@@ -1,30 +1,36 @@
 package appsec
 
 import (
+	"context"
+
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
-		"RemoveInBandRuleByID":       w.DisableInBandRuleByID,
-		"RemoveInBandRuleByTag":      w.DisableInBandRuleByTag,
-		"RemoveInBandRuleByName":     w.DisableInBandRuleByName,
-		"RemoveOutBandRuleByID":      w.DisableOutBandRuleByID,
-		"RemoveOutBandRuleByTag":     w.DisableOutBandRuleByTag,
-		"RemoveOutBandRuleByName":    w.DisableOutBandRuleByName,
-		"SetRemediationByTag":        w.SetActionByTag,
-		"SetRemediationByID":         w.SetActionByID,
-		"SetRemediationByName":       w.SetActionByName,
-		"SetMaxBodySize":             w.SetMaxBodySize,
-		"SetBodySizeExceededAction":  w.SetBodySizeExceededAction,
+		"RemoveInBandRuleByID":         w.DisableInBandRuleByID,
+		"RemoveInBandRuleByTag":        w.DisableInBandRuleByTag,
+		"RemoveInBandRuleByName":       w.DisableInBandRuleByName,
+		"RemoveOutBandRuleByID":        w.DisableOutBandRuleByID,
+		"RemoveOutBandRuleByTag":       w.DisableOutBandRuleByTag,
+		"RemoveOutBandRuleByName":      w.DisableOutBandRuleByName,
+		"SetRemediationByTag":          w.SetActionByTag,
+		"SetRemediationByID":           w.SetActionByID,
+		"SetRemediationByName":         w.SetActionByName,
+		"LoadAPISchemaWithName":        w.LoadAPISchemaWithName,
+		"LoadAPISchemaWithOptions":     w.LoadAPISchemaWithOptions,
+		"RegisterAPISchemaBodyDecoder": w.RegisterAPISchemaBodyDecoder,
+		"SetMaxBodySize":               w.SetMaxBodySize,
+		"SetBodySizeExceededAction":    w.SetBodySizeExceededAction,
 	}
 }
 
-func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
 		"req":                     request.HTTPRequest,
+		"hook_vars":               state.HookVars,
 		"RemoveInBandRuleByID":    func(id int) error { return w.RemoveInbandRuleByID(state, id) },
 		"RemoveInBandRuleByName":  func(name string) error { return w.RemoveInbandRuleByName(state, name) },
 		"RemoveInBandRuleByTag":   func(tag string) error { return w.RemoveInbandRuleByTag(state, tag) },
@@ -43,6 +49,9 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			state.PendingHTTPCode = &code
 			return nil
 		},
+		"ValidateRequestWithSchema": func(ref string) bool {
+			return w.ValidateRequestWithSchema(ctx, state, request, ref)
+		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 	}
 }
@@ -53,6 +62,7 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
+		"hook_vars":   state.HookVars,
 	}
 }
 
@@ -60,6 +70,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 	return map[string]interface{}{
 		"evt":            evt,
 		"req":            request.HTTPRequest,
+		"hook_vars":      state.HookVars,
 		"IsInBand":       request.IsInBand,
 		"IsOutBand":      request.IsOutBand,
 		"SetRemediation": func(action string) error { return w.SetAction(state, action) },
