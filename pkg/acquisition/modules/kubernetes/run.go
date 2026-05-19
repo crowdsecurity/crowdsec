@@ -212,7 +212,6 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 	}
 }
 
-//dev/	source := pod.Namespace + "/" + pod.Name + "/" + cont.Name
 
 func (s *Source) processLine(line string, source string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event) error {
 	l := pipeline.Line{

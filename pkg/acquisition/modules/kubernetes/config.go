@@ -57,6 +57,9 @@ func (c *Configuration) Validate() error {
 	if c.Selector == "" {
 		return errors.New("selector must be set in kubernetes acquisition")
 	}
+	if c.Mode != configuration.TAIL_MODE {
+		return fmt.Errorf("unsupported mode %q in kubernetes acquisition, only %q is supported", c.Mode, configuration.TAIL_MODE)
+	}
 	return nil
 }
 
