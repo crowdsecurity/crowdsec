@@ -48,8 +48,9 @@ func (c *Configuration) SetDefaults() {
 		c.Mode = configuration.TAIL_MODE
 	}
 	if c.KubeConfigFile == "" {
-		home, _ := os.UserHomeDir()
-		c.KubeConfigFile = filepath.Join(home, ".kube", "config")
+		if home, err := os.UserHomeDir(); err == nil {
+			c.KubeConfigFile = filepath.Join(home, ".kube", "config")
+		}
 	}
 }
 
@@ -79,12 +80,13 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Entry, metricsLevel metrics.AcquisitionMetricsLevel) error {
+	s.logger = logger
+
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
 
-	s.logger = logger
 	s.metricsLevel = metricsLevel
 
 	return nil
