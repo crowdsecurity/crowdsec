@@ -226,7 +226,7 @@ func (s *Source) processLine(line string, source string, labels map[string]strin
 	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
 		metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 	}
-	evt := pipeline.MakeEvent(true, pipeline.LOG, true)
+	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
 	evt.Line = l
 	evt.Process = true
 	evt.Type = pipeline.LOG
