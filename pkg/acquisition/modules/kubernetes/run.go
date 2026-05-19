@@ -212,7 +212,6 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 	}
 }
 
-
 func (s *Source) processLine(line string, source string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event) error {
 	l := pipeline.Line{
 		Raw:     line,
@@ -232,7 +231,6 @@ func (s *Source) processLine(line string, source string, labels map[string]strin
 	out <- evt
 	s.logger.Tracef("got one line from %s: %s", source, line)
 	return nil
-
 }
 
 func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) context.CancelFunc {
