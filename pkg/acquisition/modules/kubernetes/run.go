@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
@@ -53,7 +54,11 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
 	}
 
+	informerCtx, cancelInformer := context.WithCancel(ctx)
+	defer cancelInformer()
+
 	cancels := map[types.UID]context.CancelFunc{}
+	watchErrCh := make(chan error, 1)
 
 	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
 		informers.WithNamespace(s.config.Namespace),
@@ -66,6 +71,26 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		}),
 	)
 	inf := f.Core().V1().Pods().Informer()
+	if err := inf.SetWatchErrorHandler(func(_ *cache.Reflector, watchErr error) {
+		fields := log.Fields{
+			"namespace": s.config.Namespace,
+			"selector":  s.config.Selector,
+			"unique_id": s.config.UniqueId,
+			"error":     watchErr,
+		}
+		if apierrors.IsUnauthorized(watchErr) {
+			s.logger.WithFields(fields).Error("kubernetes informer received Unauthorized, forcing datasource restart")
+			select {
+			case watchErrCh <- fmt.Errorf("kubernetes informer unauthorized for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, watchErr):
+			default:
+			}
+			cancelInformer()
+			return
+		}
+		s.logger.WithFields(fields).Warn("kubernetes informer watch error")
+	}); err != nil {
+		return fmt.Errorf("while setting watch error handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+	}
 
 	// We ignore the ResourceEventHandlerRegistration returned by
 	// AddEventHandler since we don't need to remove the handlers until shutdown,
@@ -79,7 +104,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		AddFunc: func(obj any) {
 			p := obj.(*corev1.Pod)
 			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
-			s.tailPod(ctx, cs, p, out, &wg, &mu, cancels)
+			s.tailPod(informerCtx, cs, p, out, &wg, &mu, cancels)
 		},
 		UpdateFunc: func(oldObj, newObj any) {
 			oldP := oldObj.(*corev1.Pod)
@@ -91,7 +116,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 				s.logger.Tracef("UPDATE %s", podRef(newP))
 			}
 
-			s.tailPod(ctx, cs, newP, out, &wg, &mu, cancels)
+			s.tailPod(informerCtx, cs, newP, out, &wg, &mu, cancels)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
@@ -112,12 +137,27 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	if err != nil {
 		return fmt.Errorf("while adding event handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
 	}
-	f.Start(ctx.Done())
-	if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
+	f.Start(informerCtx.Done())
+	if !cache.WaitForCacheSync(informerCtx.Done(), inf.HasSynced) {
+		select {
+		case watchErr := <-watchErrCh:
+			return watchErr
+		default:
+		}
 		return fmt.Errorf("cache sync failed for namespace=%q selector=%q unique_id=%q", s.config.Namespace, s.config.Selector, s.config.UniqueId)
 	}
 
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case watchErr := <-watchErrCh:
+		mu.Lock()
+		for _, c := range cancels {
+			c()
+		}
+		mu.Unlock()
+		wg.Wait()
+		return watchErr
+	}
 	mu.Lock()
 	for _, c := range cancels {
 		c()
@@ -163,6 +203,11 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		err := fn()
 		if err != nil {
 			return err
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(time.Second):
 		}
 	}
 }
