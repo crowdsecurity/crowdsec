@@ -13,12 +13,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	logtest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -199,6 +200,36 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "127.0.0.1")
+}
+
+func TestCreateAllowlistedAlertIngestionDisabled(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, fflag.DisableAllowlistIngestion.Set(true))
+	t.Cleanup(func() { _ = fflag.DisableAllowlistIngestion.Set(false) })
+
+	lapi := SetupLAPITest(t, ctx)
+
+	allowlist, err := lapi.DBClient.CreateAllowList(ctx, "test", "test", "", false)
+	require.NoError(t, err)
+	added, err := lapi.DBClient.AddToAllowlist(ctx, allowlist, []*models.AllowlistItem{
+		{Value: "10.0.0.0/24"},
+		{Value: "127.0.0.1"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, added)
+
+	// Source 10.0.0.42 is inside the allowlisted 10.0.0.0/24. Without the
+	// flag this alert is filtered (see TestCreateAllowlistedAlert). With
+	// the flag enabled the allowlist lookup is skipped, so the alert must
+	// be ingested instead of dropped.
+	alertContent := GetAlertReaderFromFile(t, "./tests/alert_allowlisted.json")
+	w := lapi.RecordResponse(t, ctx, http.MethodPost, "/v1/alerts", alertContent, "password")
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "10.0.0.42")
 }
 
 func TestCreateAlertChannels(t *testing.T) {

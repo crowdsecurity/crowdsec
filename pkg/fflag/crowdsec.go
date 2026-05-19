@@ -11,9 +11,10 @@ var (
 	// The state will be set to deprecated for linux only.
 	Re2GrokSupport = &Feature{Name: "re2_grok_support", Description: "Enable RE2 support for GROK patterns"}
 	// This one is only available on OS where RE2 support is enabled by default (linux only at the moment)
-	Re2DisableGrokSupport  = &Feature{Name: "re2_disable_grok_support", Description: "Disable RE2 support for GROK patterns (linux only)"}
-	Re2RegexpInfileSupport = &Feature{Name: "re2_regexp_in_file_support", Description: "Enable RE2 support for RegexpInFile expr helper"}
-	PProfBlockProfile      = &Feature{Name: "pprof_block_profile", Description: "Enable pprof block/mutex profiling. Do not use unless instructed by CrowdSec support"}
+	Re2DisableGrokSupport     = &Feature{Name: "re2_disable_grok_support", Description: "Disable RE2 support for GROK patterns (linux only)"}
+	Re2RegexpInfileSupport    = &Feature{Name: "re2_regexp_in_file_support", Description: "Enable RE2 support for RegexpInFile expr helper"}
+	PProfBlockProfile         = &Feature{Name: "pprof_block_profile", Description: "Enable pprof block/mutex profiling. Do not use unless instructed by CrowdSec support"}
+	DisableAllowlistIngestion = &Feature{Name: "disable_allowlist_ingestion", Description: "Skip the allowlist lookup during alert ingestion"}
 )
 
 //revive:disable:if-return
@@ -35,6 +36,10 @@ func RegisterAllFeatures() error {
 	}
 
 	if err := Crowdsec.RegisterFeature(PProfBlockProfile); err != nil {
+		return err
+	}
+
+	if err := Crowdsec.RegisterFeature(DisableAllowlistIngestion); err != nil {
 		return err
 	}
 

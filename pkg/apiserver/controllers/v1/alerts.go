@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -125,6 +126,10 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 }
 
 func (c *Controller) isAllowListed(ctx context.Context, alert *models.Alert) (bool, string) {
+	if fflag.DisableAllowlistIngestion.IsEnabled() {
+		return false, ""
+	}
+
 	// If we have decisions, it comes from cscli that already checked the allowlist
 	if len(alert.Decisions) > 0 {
 		return false, ""
