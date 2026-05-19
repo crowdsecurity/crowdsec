@@ -954,7 +954,16 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			fp.AllowlistReason = cookieData.AllowlistReason
 			state.Fingerprint = &fp
 			state.CookiePowDifficulty = cookieData.PowDifficulty
-			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, "valid challenge cookie")
+			// An allowlist cookie minted on a prior request must short-circuit
+			// SendChallenge on every replay, exactly like a GrantChallengeCookie
+			// call within the current request would. Without this, the visitor
+			// gets re-challenged on each hop and the cookie achieves nothing.
+			msg := "valid challenge cookie"
+			if cookieData.Allowlisted {
+				state.ChallengeBypassed = true
+				msg = "valid allowlist challenge cookie — bypassing challenge"
+			}
+			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, msg)
 		}
 	}
 
