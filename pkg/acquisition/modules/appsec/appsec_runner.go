@@ -157,7 +157,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	// User has requested valid challenge, but we did not find a valid cookie
 	// Immediately return, everything has been set already
 	if state.RequireChallenge {
-		r.logger.Infof("serving challenge")
+		r.logger.Debug("serving challenge")
 		return nil
 	}
 
