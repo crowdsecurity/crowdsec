@@ -64,33 +64,10 @@ properties:
     type: string
     description: >
       Path to a kubeconfig file to use when running outside the cluster.
-  auth:
-    type: object
-    minProperties: 1
-    additionalProperties: false
+  kube_context:
+    type: string
     description: >
-      Inline Kubernetes client authentication overriding kubeconfig defaults.
-      Mirrors clientcmd/api.Cluster and AuthInfo fields; keys match kubeconfig
-      file entries (for example server, certificate-authority, client-certificate,
-      token, exec, auth-provider, ...).
-    properties:
-      cluster:
-        type: object
-        additionalProperties: true
-        description: >
-          Optional cluster stanza (clientcmd/api.Cluster) with fields such as
-          server, certificate-authority, tls-server-name, or
-          insecure-skip-tls-verify.
-      user:
-        type: object
-        additionalProperties: true
-        description: >
-          Optional user stanza (clientcmd/api.AuthInfo) with fields such as
-          client-certificate, client-key, token, token-file, exec or auth-provider.
+      Name of the kubeconfig context to use when multiple contexts are available.
 required:
   - source
   - selector
-allOf:
-  - description: auth and kube_config are mutually exclusive.
-    not:
-      required: [auth, kube_config]
