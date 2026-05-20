@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"maps"
 	"net/netip"
 	"time"
 
@@ -43,6 +44,16 @@ type Event struct {
 	Appsec        AppsecEvent  `json:"Appsec,omitempty"        yaml:"Appsec,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `json:"Meta,omitempty" yaml:"Meta,omitempty"`
+}
+
+func (e *Event) CopyForBucket() Event {
+	out := *e
+	out.Parsed = maps.Clone(e.Parsed)
+	out.Enriched = maps.Clone(e.Enriched)
+	out.Unmarshaled = maps.Clone(e.Unmarshaled)
+	out.Meta = maps.Clone(e.Meta)
+
+	return out
 }
 
 func MakeEvent(timeMachine bool, evtType int, process bool) Event {
