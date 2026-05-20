@@ -18,8 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -171,13 +169,13 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 		}
 
 		decisions[i] = &models.Decision{
-			Value:     ptr.Of(d.Value),
-			Duration:  ptr.Of(d.Duration),
-			Origin:    ptr.Of(types.CscliImportOrigin),
-			Scenario:  ptr.Of(d.Scenario),
-			Type:      ptr.Of(d.Type),
-			Scope:     ptr.Of(d.Scope),
-			Simulated: ptr.Of(false),
+			Value:     new(d.Value),
+			Duration:  new(d.Duration),
+			Origin:    new(types.CscliImportOrigin),
+			Scenario:  new(d.Scenario),
+			Type:      new(d.Type),
+			Scope:     new(d.Scope),
+			Simulated: new(false),
 		}
 	}
 
@@ -227,23 +225,24 @@ func (cli *cliDecisions) import_(ctx context.Context, input string, duration str
 	for chunk := range slices.Chunk(actualDecisions, batch) {
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-			Scenario:  ptr.Of(fmt.Sprintf("import %s: %d IPs", input, len(chunk))),
+			Scenario:  new(fmt.Sprintf("import %s: %d IPs", input, len(chunk))),
 
-			Message: ptr.Of(""),
+			Message: new(""),
 			Events:  []*models.Event{},
 			Source: &models.Source{
-				Scope: ptr.Of(""),
-				Value: ptr.Of(""),
+				Scope: new(""),
+				Value: new(""),
 			},
-			StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-			StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-			Capacity:        ptr.Of(int32(0)),
-			Simulated:       ptr.Of(false),
-			EventsCount:     ptr.Of(int32(len(chunk))),
-			Leakspeed:       ptr.Of(""),
-			ScenarioHash:    ptr.Of(""),
-			ScenarioVersion: ptr.Of(""),
+			StartAt:         new(time.Now().UTC().Format(time.RFC3339)),
+			StopAt:          new(time.Now().UTC().Format(time.RFC3339)),
+			Capacity:        new(int32(0)),
+			Simulated:       new(false),
+			EventsCount:     new(int32(len(chunk))),
+			Leakspeed:       new(""),
+			ScenarioHash:    new(""),
+			ScenarioVersion: new(""),
 			Decisions:       chunk,
+			Kind:            types.CscliAlertKind.String(),
 		}
 
 		_, _, err = cli.client.Alerts.Add(ctx, models.AddAlertsRequest{&importAlert})

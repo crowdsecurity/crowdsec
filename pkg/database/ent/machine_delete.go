@@ -20,56 +20,56 @@ type MachineDelete struct {
 }
 
 // Where appends a list predicates to the MachineDelete builder.
-func (md *MachineDelete) Where(ps ...predicate.Machine) *MachineDelete {
-	md.mutation.Where(ps...)
-	return md
+func (_d *MachineDelete) Where(ps ...predicate.Machine) *MachineDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (md *MachineDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, md.sqlExec, md.mutation, md.hooks)
+func (_d *MachineDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (md *MachineDelete) ExecX(ctx context.Context) int {
-	n, err := md.Exec(ctx)
+func (_d *MachineDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (md *MachineDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *MachineDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(machine.Table, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
-	if ps := md.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, md.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	md.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // MachineDeleteOne is the builder for deleting a single Machine entity.
 type MachineDeleteOne struct {
-	md *MachineDelete
+	_d *MachineDelete
 }
 
 // Where appends a list predicates to the MachineDelete builder.
-func (mdo *MachineDeleteOne) Where(ps ...predicate.Machine) *MachineDeleteOne {
-	mdo.md.mutation.Where(ps...)
-	return mdo
+func (_d *MachineDeleteOne) Where(ps ...predicate.Machine) *MachineDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (mdo *MachineDeleteOne) Exec(ctx context.Context) error {
-	n, err := mdo.md.Exec(ctx)
+func (_d *MachineDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (mdo *MachineDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mdo *MachineDeleteOne) ExecX(ctx context.Context) {
-	if err := mdo.Exec(ctx); err != nil {
+func (_d *MachineDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

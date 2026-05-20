@@ -3,21 +3,56 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    open-pull-requests-limit: 10
     labels:
       - "kind/dependencies"
       - "github-actions"
+    groups:
+      github-actions:
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    open-pull-requests-limit: 10
     labels:
       - "kind/dependencies"
       - "go"
+    groups:
+      gomod:
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "uv"
-    directory: "/"
+    directory: "/build/docker/test"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    open-pull-requests-limit: 10
     labels:
       - "kind/dependencies"
       - "python"
+    groups:
+      uv:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/build/docker"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "kind/dependencies"
+      - "docker"
+    groups:
+      docker:
+        update-types:
+          - "minor"
+          - "patch"

@@ -121,6 +121,7 @@ func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
+	dataFileMap = make(map[string]*fileMapEntry)
 	dbClient = databaseClient
 
 	XMLCacheInit()
@@ -135,6 +136,7 @@ func ResetDataFiles() {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileRegexCache = make(map[string]gcache.Cache)
+	dataFileMap = make(map[string]*fileMapEntry)
 }
 
 func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
@@ -234,10 +236,25 @@ func FileInit(directory string, filename string, fileType string) error {
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
+		case "map":
+			if err := fileMapInit(filename, scanner.Text()); err != nil {
+				return err
+			}
 		}
 	}
 
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Build the match index eagerly so errors surface at load time.
+	if fileType == "map" {
+		if entry, ok := dataFileMap[filename]; ok {
+			entry.buildIndex()
+		}
+	}
+
+	return nil
 }
 
 // Expr helpers
@@ -303,6 +320,8 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 		}
 	case "string":
 		_, ok = dataFile[filename]
+	case "map":
+		_, ok = dataFileMap[filename]
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
 	}

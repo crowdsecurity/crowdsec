@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -225,7 +223,7 @@ func TestValidateContextExpr(t *testing.T) {
 			exprs: []string{
 				"evt.invalid.source_ip",
 			},
-			expectedErr: ptr.Of("compilation of 'evt.invalid.source_ip' failed: type pipeline.Event has no field invalid"),
+			expectedErr: new("compilation of 'evt.invalid.source_ip' failed: type pipeline.Event has no field invalid"),
 		},
 	}
 	for _, test := range tests {
@@ -387,7 +385,7 @@ func TestAppsecEventToContext(t *testing.T) {
 
 	for _, test := range tests {
 		// reset cache
-		alertContext = Context{}
+		alertContext.Store(nil)
 		// compile
 		if err := NewAlertContext(test.contextToSend, 100); err != nil {
 			t.Fatalf("failed to compile %s: %s", test.name, err)
@@ -434,7 +432,7 @@ func TestEvalAlertContextRules(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			contextDict := make(map[string][]string)
 
-			alertContext = Context{}
+			alertContext.Store(nil)
 			if err := NewAlertContext(test.contextToSend, 100); err != nil {
 				t.Fatalf("failed to compile %s: %s", test.name, err)
 			}

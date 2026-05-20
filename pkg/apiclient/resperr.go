@@ -40,19 +40,19 @@ func CheckResponse(r *http.Response) error {
 
 	data, err := io.ReadAll(r.Body)
 	if err != nil || len(data) == 0 {
-		ret.Message = ptr.Of(fmt.Sprintf("http code %d, no response body", r.StatusCode))
+		ret.Message = new(fmt.Sprintf("http code %d, no response body", r.StatusCode))
 		return ret
 	}
 
 	switch r.StatusCode {
 	case http.StatusUnprocessableEntity:
-		ret.Message = ptr.Of(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
+		ret.Message = new(fmt.Sprintf("http code %d, invalid request: %s", r.StatusCode, string(data)))
 	default:
 		// try to unmarshal and if there are no 'message' or 'errors' fields, display the body as is,
 		// the API is following a different convention
 		err := json.Unmarshal(data, ret)
 		if err != nil || (ret.Message == nil && ret.Errors == "") {
-			ret.Message = ptr.Of(fmt.Sprintf("http code %d, response: %s", r.StatusCode, string(data)))
+			ret.Message = new(fmt.Sprintf("http code %d, response: %s", r.StatusCode, string(data)))
 			return ret
 		}
 	}

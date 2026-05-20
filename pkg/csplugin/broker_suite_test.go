@@ -42,7 +42,7 @@ func (s *PluginSuite) SetupSuite() {
 
 	t := s.T()
 
-	s.buildDir, err = os.MkdirTemp("", "cs_plugin_test_build")
+	s.buildDir = t.TempDir()
 	require.NoError(t, err)
 
 	s.builtBinary = filepath.Join(s.buildDir, "notification-dummy")

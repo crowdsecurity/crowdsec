@@ -105,6 +105,9 @@
                         <File Id="sentinel.yaml" Source="cmd\notification-sentinel\sentinel.yaml" Name="sentinel.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
+                        <File Id="file.yaml" Source="cmd\notification-file\file.yaml" Name="file.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
                      </Component>
                   </Directory>
                   <Directory Id="PatternsDir" Name="patterns" />
@@ -131,6 +134,7 @@
                      <File Id="notification_http.exe" Source="cmd\notification-http\notification-http.exe" />
                      <File Id="notification_splunk.exe" Source="cmd\notification-splunk\notification-splunk.exe" />
                      <File Id="notification_sentinel.exe" Source="cmd\notification-sentinel\notification-sentinel.exe" />
+                     <File Id="notification_file.exe" Source="cmd\notification-file\notification-file.exe" />
                   </Component>
                </Directory>
             </Directory>

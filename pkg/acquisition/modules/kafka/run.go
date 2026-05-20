@@ -81,7 +81,7 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	s.logger.Infof("start reader on brokers '%+v' with topic '%s'", s.Config.Brokers, s.Config.Topic)
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/kafka/live")
+		defer trace.ReportPanic()
 		return s.RunReader(ctx, out, t)
 	})
 

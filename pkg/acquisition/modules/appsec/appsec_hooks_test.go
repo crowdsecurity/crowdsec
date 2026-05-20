@@ -1,8 +1,10 @@
 package appsecacquisition
 
 import (
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -13,6 +15,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+// jsonBody returns an io.ReadCloser that reads back `body` as many times as
+// the validator needs it, so we can reuse the same test request across phases.
+func jsonBody(body string) io.ReadCloser {
+	return io.NopCloser(strings.NewReader(body))
+}
 
 func TestAppsecOnMatchHooks(t *testing.T) {
 	tests := []appsecRuleTest{
@@ -1081,4 +1089,516 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+func TestAppsecPhaseScopedHooks(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "inband on_match: change return code (phase-scoped, no IsInBand filter needed)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetReturnCode(413)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Len(t, responses, 1)
+				require.Equal(t, 413, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:             "inband on_match: set remediation (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, "captcha", responses[0].Action)
+			},
+		},
+		{
+			name:             "inband on_match: cancel event (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"CancelEvent()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				// CancelEvent() only cancels the LOG event, the APPSEC alert is still sent
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Len(t, responses, 1)
+			},
+		},
+		{
+			name:             "inband on_match with filter: only fires when filter matches (phase-scoped)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:             "shared + inband on_match: both execute (shared runs first)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				// Shared hook: runs for both phases, sets remediation
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			inband_on_match: []appsec.Hook{
+				// Phase-scoped hook: overrides the return code
+				{Apply: []string{"SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// Shared hook set captcha, phase-scoped hook set return code 418
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:               "shared on_match break does not prevent phase-scoped hooks",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}, OnSuccess: "break"},
+			},
+			inband_on_match: []appsec.Hook{
+				{Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// Shared hook canceled LOG event with break, APPSEC alert still sent
+				// Phase-scoped hooks still run (break only stops shared hook list)
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.APPSEC, events[0].Type)
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+		{
+			name:               "outofband on_match: send alert (phase-scoped)",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			outofband_on_match: []appsec.Hook{
+				{Apply: []string{"SendAlert()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				// outofband matched and sent an alert event
+				require.NotEmpty(t, events)
+				foundAppsecEvt := false
+				for _, evt := range events {
+					if evt.Type == pipeline.APPSEC {
+						foundAppsecEvt = true
+					}
+				}
+				require.True(t, foundAppsecEvt, "expected an APPSEC event from outofband match")
+			},
+		},
+		{
+			name:               "inband on_match with break+continue: break stops inband hooks",
+			expected_load_ok:   true,
+			DefaultRemediation: appsec.AllowRemediation,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			inband_on_match: []appsec.Hook{
+				// break requires a filter to be present and match (sets has_match flag)
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('captcha')", "SetReturnCode(418)"}, OnSuccess: "break"},
+				{Filter: "evt.Appsec.HasInBandMatches == true", Apply: []string{"SetRemediation('ban')"}}, // should not execute due to break
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				// First hook ran (captcha + 418), second was skipped due to break
+				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, 418, responses[0].UserHTTPResponseCode)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+// minimal schema used by the hook_vars-in-event tests: /users only accepts
+// a POST whose body has a required username field.
+const testUsersSchema = `openapi: 3.0.0
+info:
+  title: users
+  version: "1"
+paths:
+  /users:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              additionalProperties: false
+              properties:
+                username: {type: string}
+      responses:
+        "200": {description: ok}
+`
+
+func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "validation failure publishes hook_vars to event and matches",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply: []string{
+						"DropRequest('schema validation failed on ' + hook_vars.validation_error_field)",
+					},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				Body:       []byte(`{}`),
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+
+				// Locate the APPSEC overflow (alert) and the in-band LOG event.
+				var overflow, logEvt *pipeline.Event
+				for i := range events {
+					e := &events[i]
+					switch {
+					case e.Type == pipeline.APPSEC:
+						overflow = e
+					case e.Type == pipeline.LOG && e.Appsec.HasInBandMatches:
+						logEvt = e
+					}
+				}
+				require.NotNil(t, overflow, "expected an APPSEC overflow event")
+				require.NotNil(t, logEvt, "expected an in-band LOG event")
+
+				// Overflow carries HookVars (propagated by AppsecEventGeneration).
+				require.Equal(t, "request_body", overflow.Appsec.HookVars["validation_error_reason"])
+				require.Equal(t, "username", overflow.Appsec.HookVars["validation_error_field"])
+
+				// LOG event has HookVars, matched-rules list, and drop_reason.
+				require.Equal(t, "request_body", logEvt.Appsec.HookVars["validation_error_reason"])
+				require.Equal(t, "username", logEvt.Appsec.HookVars["validation_error_field"])
+				require.NotEmpty(t, logEvt.Appsec.HookVars["validation_error_message"])
+				require.NotEmpty(t, logEvt.Appsec.HookVars["validation_error"])
+				require.Contains(t, logEvt.Meta["appsec_drop_reason"], "schema validation failed")
+
+				require.NotEmpty(t, logEvt.Appsec.MatchedRules)
+				for i, match := range logEvt.Appsec.MatchedRules {
+					hv, ok := match["hook_vars"].(map[string]string)
+					require.True(t, ok, "match %d missing hook_vars", i)
+					require.Equal(t, "request_body", hv["validation_error_reason"])
+				}
+			},
+		},
+		{
+			name:             "successful validation leaves hook_vars empty on the event",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:  "rule-always-fires",
+					Zones: []string{"METHOD"},
+					Match: appsec_rule.Match{Type: "equals", Value: "POST"},
+				},
+			},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('schema failed')"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				Body:       []byte(`{"username":"jane"}`),
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{"username":"jane"}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.NotEmpty(t, events)
+				for _, evt := range events {
+					require.Empty(t, evt.Appsec.HookVars["validation_error"],
+						"successful validation must not leave validation_error on the event")
+				}
+			},
+		},
+		{
+			// Regression: ValidateRequestWithSchema must be safe to call from
+			// both in-band and out-of-band pre_eval on the same request.
+			// We use the failure path because the validator publishes
+			// validation_error_* keys to hook_vars only on failure — the
+			// per-phase appsec_drop_reason on each event is direct evidence
+			// that each phase's validation call ran against the body.
+			name:             "validation runs in both in-band and out-of-band on same request",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('inband: ' + hook_vars.validation_error_reason)"},
+				},
+			},
+			outofband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('outofband: ' + hook_vars.validation_error_reason)"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				Body:       []byte(`{}`), // missing required `username`
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{}`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				var inbandLog, outbandLog *pipeline.Event
+				for i := range events {
+					e := &events[i]
+					if e.Type != pipeline.LOG {
+						continue
+					}
+					switch {
+					case e.Appsec.HasInBandMatches:
+						inbandLog = e
+					case e.Appsec.HasOutBandMatches:
+						outbandLog = e
+					}
+				}
+				require.NotNil(t, inbandLog, "expected an in-band LOG event")
+				require.NotNil(t, outbandLog, "expected an out-of-band LOG event")
+
+				// Each phase ran the validator and produced its own failure
+				// signal — proves both calls reached the body. (HookVars is
+				// shared per-request, so the keys would be present on the
+				// out-of-band event regardless; the drop_reason is the
+				// per-phase, per-call evidence.)
+				require.Equal(t, "request_body", inbandLog.Appsec.HookVars["validation_error_reason"])
+				require.Contains(t, inbandLog.Meta["appsec_drop_reason"], "inband: request_body")
+				require.Equal(t, "request_body", outbandLog.Appsec.HookVars["validation_error_reason"])
+				require.Contains(t, outbandLog.Parsed["appsec_drop_reason"], "outofband: request_body")
+			},
+		},
+		{
+			// A truncated body is partial bytes — for JSON, that means an
+			// incomplete document. The validator has no special-case for
+			// BodyTruncated; it parses what it gets and surfaces the parse
+			// error as a normal request_body validation failure. This is the
+			// fail-closed behavior we want: an attacker oversizing the body
+			// to slip past schema validation should not pass.
+			name:             "validation fails on a truncated JSON body",
+			expected_load_ok: true,
+			schemas:          map[string]string{"users_api": testUsersSchema},
+			inband_pre_eval: []appsec.Hook{
+				{
+					Filter: "!ValidateRequestWithSchema('users_api')",
+					Apply:  []string{"DropRequest('schema validation failed: ' + hook_vars.validation_error_message)"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     http.MethodPost,
+				URI:        "/users",
+				// Partial JSON — the closing brace and value were cut off
+				// past the truncation point.
+				Body:          []byte(`{"username":"jan`),
+				BodyTruncated: true,
+				Headers:       http.Header{"Content-Type": []string{"application/json"}},
+				HTTPRequest: &http.Request{
+					Host:   "example.com",
+					Method: http.MethodPost,
+					URL:    mustParseURL("http://example.com/users"),
+					Body:   jsonBody(`{"username":"jan`),
+					Header: http.Header{"Content-Type": []string{"application/json"}},
+				},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt, "truncated body must fail validation and drop")
+
+				var inbandLog *pipeline.Event
+				for i := range events {
+					if events[i].Type == pipeline.LOG && events[i].Appsec.HasInBandMatches {
+						inbandLog = &events[i]
+						break
+					}
+				}
+				require.NotNil(t, inbandLog)
+				require.Equal(t, "request_body", inbandLog.Appsec.HookVars["validation_error_reason"])
+				require.NotEmpty(t, inbandLog.Appsec.HookVars["validation_error_message"],
+					"validator must surface the underlying JSON parse error")
+				require.Contains(t, inbandLog.Meta["appsec_drop_reason"], "schema validation failed:")
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func mustParseURL(raw string) *url.URL {
+	u, err := url.Parse(raw)
+	if err != nil {
+		panic(err)
+	}
+	return u
 }

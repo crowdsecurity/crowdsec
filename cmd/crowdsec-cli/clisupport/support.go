@@ -26,7 +26,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
@@ -34,6 +33,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -462,6 +462,10 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.NewDumpCmd())
@@ -663,7 +667,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) erro
 func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 	var (
 		outFile string
-		fast bool
+		fast    bool
 	)
 
 	cmd := &cobra.Command{

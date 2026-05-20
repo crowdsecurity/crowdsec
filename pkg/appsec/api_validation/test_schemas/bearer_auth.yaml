@@ -1,0 +1,21 @@
+openapi: 3.0.0
+info:
+  title: Sample API
+  description: Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.
+  version: 0.1.9
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+
+paths:
+  /bearer:
+    get:
+      summary: test bearer auth
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK

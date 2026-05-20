@@ -24,6 +24,12 @@ teardown() {
 
 #----------
 
+@test "cscli lapi <unknown command>" {
+    rune -1 cscli lapi foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli lapi"'
+}
+
 @test "cscli lapi status" {
     rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status

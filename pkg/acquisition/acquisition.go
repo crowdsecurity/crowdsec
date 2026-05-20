@@ -8,10 +8,10 @@ import (
 	"io"
 	"maps"
 	"os"
-	"time"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cenkalti/backoff/v5"
 	"github.com/expr-lang/expr"
@@ -50,7 +50,7 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
 
-var transformRuntimes  = map[string]*vm.Program{}
+var transformRuntimes = map[string]*vm.Program{}
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
@@ -207,10 +207,10 @@ func detectType(r io.Reader) (string, error) {
 }
 
 type ParsedSourceConfig struct {
-	Common    configuration.DataSourceCommonCfg
-	Source    types.DataSource
-	Transform *vm.Program
-	SourceMissing bool      // the "source" field was missing, and detected
+	Common           configuration.DataSourceCommonCfg
+	Source           types.DataSource
+	Transform        *vm.Program
+	SourceMissing    bool   // the "source" field was missing, and detected
 	SourceOverridden string // the "source" field was not missing, but didn't match the detected one
 }
 
@@ -298,7 +298,7 @@ func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s: %w", sub.TransformExpr, sub.Source, err)
 		}
- 
+
 		parsed.Transform = vm
 	}
 
@@ -462,8 +462,6 @@ func transform(
 	transformRuntime *vm.Program,
 	logger *log.Entry,
 ) {
-	defer trace.CatchPanic("crowdsec/acquis")
-
 	logger.Info("transformer started")
 
 	for {
@@ -580,7 +578,6 @@ func runRestartableStream(
 	return nil
 }
 
-
 func acquireSource(
 	ctx context.Context,
 	source types.DataSource,
@@ -630,7 +627,7 @@ func StartAcquisition(
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		acquisTomb.Go(func() error {
-			defer trace.CatchPanic("crowdsec/acquis")
+			defer trace.ReportPanic()
 
 			outChan := output
 
@@ -647,6 +644,7 @@ func StartAcquisition(
 				})
 
 				acquisTomb.Go(func() error {
+					defer trace.ReportPanic()
 					transform(outChan, output, acquisTomb, transformRuntime, transformLogger)
 					return nil
 				})
