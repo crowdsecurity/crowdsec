@@ -212,8 +212,7 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 	}
 }
 
-
-func (s *Source) processLine(line string, source string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event) error {
+func (s *Source) processLine(line string, source string, out chan pipeline.Event) error {
 	l := pipeline.Line{
 		Raw:     line,
 		Labels:  s.config.Labels,
