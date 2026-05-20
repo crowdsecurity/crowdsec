@@ -27,6 +27,12 @@ teardown() {
 
 #----------
 
+@test "cscli hub <unknown command>" {
+    rune -1 cscli hub foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli hub"'
+}
+
 @test "cscli hub list" {
     hub_purge_all
 
@@ -194,8 +200,10 @@ teardown() {
     assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
 }
 
-@test "cscli hub foobar" {
-    rune -1 cscli hub foobar
-    assert_output --partial "Usage:"
-    assert_stderr --partial 'unknown command "foobar" for "cscli hub"'
+@test "cscli waf aliases for hub items" {
+    rune -0 cscli waf-configs list -o json
+    rune -0 jq -e '."appsec-configs"' <(output)
+
+    rune -0 cscli waf-rules list -o json
+    rune -0 jq -e '."appsec-rules"' <(output)
 }

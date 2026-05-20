@@ -23,45 +23,45 @@ type ConfigItemUpdate struct {
 }
 
 // Where appends a list predicates to the ConfigItemUpdate builder.
-func (ciu *ConfigItemUpdate) Where(ps ...predicate.ConfigItem) *ConfigItemUpdate {
-	ciu.mutation.Where(ps...)
-	return ciu
+func (_u *ConfigItemUpdate) Where(ps ...predicate.ConfigItem) *ConfigItemUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ciu *ConfigItemUpdate) SetUpdatedAt(t time.Time) *ConfigItemUpdate {
-	ciu.mutation.SetUpdatedAt(t)
-	return ciu
+func (_u *ConfigItemUpdate) SetUpdatedAt(v time.Time) *ConfigItemUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetValue sets the "value" field.
-func (ciu *ConfigItemUpdate) SetValue(s string) *ConfigItemUpdate {
-	ciu.mutation.SetValue(s)
-	return ciu
+func (_u *ConfigItemUpdate) SetValue(v string) *ConfigItemUpdate {
+	_u.mutation.SetValue(v)
+	return _u
 }
 
 // SetNillableValue sets the "value" field if the given value is not nil.
-func (ciu *ConfigItemUpdate) SetNillableValue(s *string) *ConfigItemUpdate {
-	if s != nil {
-		ciu.SetValue(*s)
+func (_u *ConfigItemUpdate) SetNillableValue(v *string) *ConfigItemUpdate {
+	if v != nil {
+		_u.SetValue(*v)
 	}
-	return ciu
+	return _u
 }
 
 // Mutation returns the ConfigItemMutation object of the builder.
-func (ciu *ConfigItemUpdate) Mutation() *ConfigItemMutation {
-	return ciu.mutation
+func (_u *ConfigItemUpdate) Mutation() *ConfigItemMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (ciu *ConfigItemUpdate) Save(ctx context.Context) (int, error) {
-	ciu.defaults()
-	return withHooks(ctx, ciu.sqlSave, ciu.mutation, ciu.hooks)
+func (_u *ConfigItemUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ciu *ConfigItemUpdate) SaveX(ctx context.Context) int {
-	affected, err := ciu.Save(ctx)
+func (_u *ConfigItemUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -69,42 +69,42 @@ func (ciu *ConfigItemUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (ciu *ConfigItemUpdate) Exec(ctx context.Context) error {
-	_, err := ciu.Save(ctx)
+func (_u *ConfigItemUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ciu *ConfigItemUpdate) ExecX(ctx context.Context) {
-	if err := ciu.Exec(ctx); err != nil {
+func (_u *ConfigItemUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ciu *ConfigItemUpdate) defaults() {
-	if _, ok := ciu.mutation.UpdatedAt(); !ok {
+func (_u *ConfigItemUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := configitem.UpdateDefaultUpdatedAt()
-		ciu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *ConfigItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(configitem.Table, configitem.Columns, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
-	if ps := ciu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ciu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ciu.mutation.Value(); ok {
+	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, ciu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{configitem.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -112,8 +112,8 @@ func (ciu *ConfigItemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	ciu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // ConfigItemUpdateOne is the builder for updating a single ConfigItem entity.
@@ -125,52 +125,52 @@ type ConfigItemUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ciuo *ConfigItemUpdateOne) SetUpdatedAt(t time.Time) *ConfigItemUpdateOne {
-	ciuo.mutation.SetUpdatedAt(t)
-	return ciuo
+func (_u *ConfigItemUpdateOne) SetUpdatedAt(v time.Time) *ConfigItemUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetValue sets the "value" field.
-func (ciuo *ConfigItemUpdateOne) SetValue(s string) *ConfigItemUpdateOne {
-	ciuo.mutation.SetValue(s)
-	return ciuo
+func (_u *ConfigItemUpdateOne) SetValue(v string) *ConfigItemUpdateOne {
+	_u.mutation.SetValue(v)
+	return _u
 }
 
 // SetNillableValue sets the "value" field if the given value is not nil.
-func (ciuo *ConfigItemUpdateOne) SetNillableValue(s *string) *ConfigItemUpdateOne {
-	if s != nil {
-		ciuo.SetValue(*s)
+func (_u *ConfigItemUpdateOne) SetNillableValue(v *string) *ConfigItemUpdateOne {
+	if v != nil {
+		_u.SetValue(*v)
 	}
-	return ciuo
+	return _u
 }
 
 // Mutation returns the ConfigItemMutation object of the builder.
-func (ciuo *ConfigItemUpdateOne) Mutation() *ConfigItemMutation {
-	return ciuo.mutation
+func (_u *ConfigItemUpdateOne) Mutation() *ConfigItemMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the ConfigItemUpdate builder.
-func (ciuo *ConfigItemUpdateOne) Where(ps ...predicate.ConfigItem) *ConfigItemUpdateOne {
-	ciuo.mutation.Where(ps...)
-	return ciuo
+func (_u *ConfigItemUpdateOne) Where(ps ...predicate.ConfigItem) *ConfigItemUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (ciuo *ConfigItemUpdateOne) Select(field string, fields ...string) *ConfigItemUpdateOne {
-	ciuo.fields = append([]string{field}, fields...)
-	return ciuo
+func (_u *ConfigItemUpdateOne) Select(field string, fields ...string) *ConfigItemUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated ConfigItem entity.
-func (ciuo *ConfigItemUpdateOne) Save(ctx context.Context) (*ConfigItem, error) {
-	ciuo.defaults()
-	return withHooks(ctx, ciuo.sqlSave, ciuo.mutation, ciuo.hooks)
+func (_u *ConfigItemUpdateOne) Save(ctx context.Context) (*ConfigItem, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ciuo *ConfigItemUpdateOne) SaveX(ctx context.Context) *ConfigItem {
-	node, err := ciuo.Save(ctx)
+func (_u *ConfigItemUpdateOne) SaveX(ctx context.Context) *ConfigItem {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -178,34 +178,34 @@ func (ciuo *ConfigItemUpdateOne) SaveX(ctx context.Context) *ConfigItem {
 }
 
 // Exec executes the query on the entity.
-func (ciuo *ConfigItemUpdateOne) Exec(ctx context.Context) error {
-	_, err := ciuo.Save(ctx)
+func (_u *ConfigItemUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ciuo *ConfigItemUpdateOne) ExecX(ctx context.Context) {
-	if err := ciuo.Exec(ctx); err != nil {
+func (_u *ConfigItemUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ciuo *ConfigItemUpdateOne) defaults() {
-	if _, ok := ciuo.mutation.UpdatedAt(); !ok {
+func (_u *ConfigItemUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := configitem.UpdateDefaultUpdatedAt()
-		ciuo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem, err error) {
+func (_u *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem, err error) {
 	_spec := sqlgraph.NewUpdateSpec(configitem.Table, configitem.Columns, sqlgraph.NewFieldSpec(configitem.FieldID, field.TypeInt))
-	id, ok := ciuo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "ConfigItem.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := ciuo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, configitem.FieldID)
 		for _, f := range fields {
@@ -217,23 +217,23 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 			}
 		}
 	}
-	if ps := ciuo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ciuo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(configitem.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ciuo.mutation.Value(); ok {
+	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(configitem.FieldValue, field.TypeString, value)
 	}
-	_node = &ConfigItem{config: ciuo.config}
+	_node = &ConfigItem{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, ciuo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{configitem.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -241,6 +241,6 @@ func (ciuo *ConfigItemUpdateOne) sqlSave(ctx context.Context) (_node *ConfigItem
 		}
 		return nil, err
 	}
-	ciuo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

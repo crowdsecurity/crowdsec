@@ -23,233 +23,233 @@ type BouncerUpdate struct {
 }
 
 // Where appends a list predicates to the BouncerUpdate builder.
-func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
-	bu.mutation.Where(ps...)
-	return bu
+func (_u *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
-	bu.mutation.SetUpdatedAt(t)
-	return bu
+func (_u *BouncerUpdate) SetUpdatedAt(v time.Time) *BouncerUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAPIKey sets the "api_key" field.
-func (bu *BouncerUpdate) SetAPIKey(s string) *BouncerUpdate {
-	bu.mutation.SetAPIKey(s)
-	return bu
+func (_u *BouncerUpdate) SetAPIKey(v string) *BouncerUpdate {
+	_u.mutation.SetAPIKey(v)
+	return _u
 }
 
 // SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableAPIKey(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetAPIKey(*s)
+func (_u *BouncerUpdate) SetNillableAPIKey(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetAPIKey(*v)
 	}
-	return bu
+	return _u
 }
 
 // SetRevoked sets the "revoked" field.
-func (bu *BouncerUpdate) SetRevoked(b bool) *BouncerUpdate {
-	bu.mutation.SetRevoked(b)
-	return bu
+func (_u *BouncerUpdate) SetRevoked(v bool) *BouncerUpdate {
+	_u.mutation.SetRevoked(v)
+	return _u
 }
 
 // SetNillableRevoked sets the "revoked" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableRevoked(b *bool) *BouncerUpdate {
-	if b != nil {
-		bu.SetRevoked(*b)
+func (_u *BouncerUpdate) SetNillableRevoked(v *bool) *BouncerUpdate {
+	if v != nil {
+		_u.SetRevoked(*v)
 	}
-	return bu
+	return _u
 }
 
 // SetIPAddress sets the "ip_address" field.
-func (bu *BouncerUpdate) SetIPAddress(s string) *BouncerUpdate {
-	bu.mutation.SetIPAddress(s)
-	return bu
+func (_u *BouncerUpdate) SetIPAddress(v string) *BouncerUpdate {
+	_u.mutation.SetIPAddress(v)
+	return _u
 }
 
 // SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableIPAddress(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetIPAddress(*s)
+func (_u *BouncerUpdate) SetNillableIPAddress(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetIPAddress(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearIPAddress clears the value of the "ip_address" field.
-func (bu *BouncerUpdate) ClearIPAddress() *BouncerUpdate {
-	bu.mutation.ClearIPAddress()
-	return bu
+func (_u *BouncerUpdate) ClearIPAddress() *BouncerUpdate {
+	_u.mutation.ClearIPAddress()
+	return _u
 }
 
 // SetType sets the "type" field.
-func (bu *BouncerUpdate) SetType(s string) *BouncerUpdate {
-	bu.mutation.SetType(s)
-	return bu
+func (_u *BouncerUpdate) SetType(v string) *BouncerUpdate {
+	_u.mutation.SetType(v)
+	return _u
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableType(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetType(*s)
+func (_u *BouncerUpdate) SetNillableType(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetType(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearType clears the value of the "type" field.
-func (bu *BouncerUpdate) ClearType() *BouncerUpdate {
-	bu.mutation.ClearType()
-	return bu
+func (_u *BouncerUpdate) ClearType() *BouncerUpdate {
+	_u.mutation.ClearType()
+	return _u
 }
 
 // SetVersion sets the "version" field.
-func (bu *BouncerUpdate) SetVersion(s string) *BouncerUpdate {
-	bu.mutation.SetVersion(s)
-	return bu
+func (_u *BouncerUpdate) SetVersion(v string) *BouncerUpdate {
+	_u.mutation.SetVersion(v)
+	return _u
 }
 
 // SetNillableVersion sets the "version" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableVersion(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetVersion(*s)
+func (_u *BouncerUpdate) SetNillableVersion(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearVersion clears the value of the "version" field.
-func (bu *BouncerUpdate) ClearVersion() *BouncerUpdate {
-	bu.mutation.ClearVersion()
-	return bu
+func (_u *BouncerUpdate) ClearVersion() *BouncerUpdate {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // SetLastPull sets the "last_pull" field.
-func (bu *BouncerUpdate) SetLastPull(t time.Time) *BouncerUpdate {
-	bu.mutation.SetLastPull(t)
-	return bu
+func (_u *BouncerUpdate) SetLastPull(v time.Time) *BouncerUpdate {
+	_u.mutation.SetLastPull(v)
+	return _u
 }
 
 // SetNillableLastPull sets the "last_pull" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableLastPull(t *time.Time) *BouncerUpdate {
-	if t != nil {
-		bu.SetLastPull(*t)
+func (_u *BouncerUpdate) SetNillableLastPull(v *time.Time) *BouncerUpdate {
+	if v != nil {
+		_u.SetLastPull(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearLastPull clears the value of the "last_pull" field.
-func (bu *BouncerUpdate) ClearLastPull() *BouncerUpdate {
-	bu.mutation.ClearLastPull()
-	return bu
+func (_u *BouncerUpdate) ClearLastPull() *BouncerUpdate {
+	_u.mutation.ClearLastPull()
+	return _u
 }
 
 // SetAuthType sets the "auth_type" field.
-func (bu *BouncerUpdate) SetAuthType(s string) *BouncerUpdate {
-	bu.mutation.SetAuthType(s)
-	return bu
+func (_u *BouncerUpdate) SetAuthType(v string) *BouncerUpdate {
+	_u.mutation.SetAuthType(v)
+	return _u
 }
 
 // SetNillableAuthType sets the "auth_type" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableAuthType(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetAuthType(*s)
+func (_u *BouncerUpdate) SetNillableAuthType(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetAuthType(*v)
 	}
-	return bu
+	return _u
 }
 
 // SetOsname sets the "osname" field.
-func (bu *BouncerUpdate) SetOsname(s string) *BouncerUpdate {
-	bu.mutation.SetOsname(s)
-	return bu
+func (_u *BouncerUpdate) SetOsname(v string) *BouncerUpdate {
+	_u.mutation.SetOsname(v)
+	return _u
 }
 
 // SetNillableOsname sets the "osname" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableOsname(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetOsname(*s)
+func (_u *BouncerUpdate) SetNillableOsname(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetOsname(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearOsname clears the value of the "osname" field.
-func (bu *BouncerUpdate) ClearOsname() *BouncerUpdate {
-	bu.mutation.ClearOsname()
-	return bu
+func (_u *BouncerUpdate) ClearOsname() *BouncerUpdate {
+	_u.mutation.ClearOsname()
+	return _u
 }
 
 // SetOsfamily sets the "osfamily" field.
-func (bu *BouncerUpdate) SetOsfamily(s string) *BouncerUpdate {
-	bu.mutation.SetOsfamily(s)
-	return bu
+func (_u *BouncerUpdate) SetOsfamily(v string) *BouncerUpdate {
+	_u.mutation.SetOsfamily(v)
+	return _u
 }
 
 // SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableOsfamily(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetOsfamily(*s)
+func (_u *BouncerUpdate) SetNillableOsfamily(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetOsfamily(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearOsfamily clears the value of the "osfamily" field.
-func (bu *BouncerUpdate) ClearOsfamily() *BouncerUpdate {
-	bu.mutation.ClearOsfamily()
-	return bu
+func (_u *BouncerUpdate) ClearOsfamily() *BouncerUpdate {
+	_u.mutation.ClearOsfamily()
+	return _u
 }
 
 // SetOsversion sets the "osversion" field.
-func (bu *BouncerUpdate) SetOsversion(s string) *BouncerUpdate {
-	bu.mutation.SetOsversion(s)
-	return bu
+func (_u *BouncerUpdate) SetOsversion(v string) *BouncerUpdate {
+	_u.mutation.SetOsversion(v)
+	return _u
 }
 
 // SetNillableOsversion sets the "osversion" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableOsversion(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetOsversion(*s)
+func (_u *BouncerUpdate) SetNillableOsversion(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetOsversion(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearOsversion clears the value of the "osversion" field.
-func (bu *BouncerUpdate) ClearOsversion() *BouncerUpdate {
-	bu.mutation.ClearOsversion()
-	return bu
+func (_u *BouncerUpdate) ClearOsversion() *BouncerUpdate {
+	_u.mutation.ClearOsversion()
+	return _u
 }
 
 // SetFeatureflags sets the "featureflags" field.
-func (bu *BouncerUpdate) SetFeatureflags(s string) *BouncerUpdate {
-	bu.mutation.SetFeatureflags(s)
-	return bu
+func (_u *BouncerUpdate) SetFeatureflags(v string) *BouncerUpdate {
+	_u.mutation.SetFeatureflags(v)
+	return _u
 }
 
 // SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableFeatureflags(s *string) *BouncerUpdate {
-	if s != nil {
-		bu.SetFeatureflags(*s)
+func (_u *BouncerUpdate) SetNillableFeatureflags(v *string) *BouncerUpdate {
+	if v != nil {
+		_u.SetFeatureflags(*v)
 	}
-	return bu
+	return _u
 }
 
 // ClearFeatureflags clears the value of the "featureflags" field.
-func (bu *BouncerUpdate) ClearFeatureflags() *BouncerUpdate {
-	bu.mutation.ClearFeatureflags()
-	return bu
+func (_u *BouncerUpdate) ClearFeatureflags() *BouncerUpdate {
+	_u.mutation.ClearFeatureflags()
+	return _u
 }
 
 // Mutation returns the BouncerMutation object of the builder.
-func (bu *BouncerUpdate) Mutation() *BouncerMutation {
-	return bu.mutation
+func (_u *BouncerUpdate) Mutation() *BouncerMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
-	bu.defaults()
-	return withHooks(ctx, bu.sqlSave, bu.mutation, bu.hooks)
+func (_u *BouncerUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (bu *BouncerUpdate) SaveX(ctx context.Context) int {
-	affected, err := bu.Save(ctx)
+func (_u *BouncerUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -257,96 +257,96 @@ func (bu *BouncerUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (bu *BouncerUpdate) Exec(ctx context.Context) error {
-	_, err := bu.Save(ctx)
+func (_u *BouncerUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bu *BouncerUpdate) ExecX(ctx context.Context) {
-	if err := bu.Exec(ctx); err != nil {
+func (_u *BouncerUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (bu *BouncerUpdate) defaults() {
-	if _, ok := bu.mutation.UpdatedAt(); !ok {
+func (_u *BouncerUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
-		bu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *BouncerUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(bouncer.Table, bouncer.Columns, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
-	if ps := bu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := bu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := bu.mutation.APIKey(); ok {
+	if value, ok := _u.mutation.APIKey(); ok {
 		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
 	}
-	if value, ok := bu.mutation.Revoked(); ok {
+	if value, ok := _u.mutation.Revoked(); ok {
 		_spec.SetField(bouncer.FieldRevoked, field.TypeBool, value)
 	}
-	if value, ok := bu.mutation.IPAddress(); ok {
+	if value, ok := _u.mutation.IPAddress(); ok {
 		_spec.SetField(bouncer.FieldIPAddress, field.TypeString, value)
 	}
-	if bu.mutation.IPAddressCleared() {
+	if _u.mutation.IPAddressCleared() {
 		_spec.ClearField(bouncer.FieldIPAddress, field.TypeString)
 	}
-	if value, ok := bu.mutation.GetType(); ok {
+	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(bouncer.FieldType, field.TypeString, value)
 	}
-	if bu.mutation.TypeCleared() {
+	if _u.mutation.TypeCleared() {
 		_spec.ClearField(bouncer.FieldType, field.TypeString)
 	}
-	if value, ok := bu.mutation.Version(); ok {
+	if value, ok := _u.mutation.Version(); ok {
 		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 	}
-	if bu.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
 	}
-	if value, ok := bu.mutation.LastPull(); ok {
+	if value, ok := _u.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
-	if bu.mutation.LastPullCleared() {
+	if _u.mutation.LastPullCleared() {
 		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
 	}
-	if value, ok := bu.mutation.AuthType(); ok {
+	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
-	if value, ok := bu.mutation.Osname(); ok {
+	if value, ok := _u.mutation.Osname(); ok {
 		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
 	}
-	if bu.mutation.OsnameCleared() {
+	if _u.mutation.OsnameCleared() {
 		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
 	}
-	if value, ok := bu.mutation.Osfamily(); ok {
+	if value, ok := _u.mutation.Osfamily(); ok {
 		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
 	}
-	if bu.mutation.OsfamilyCleared() {
+	if _u.mutation.OsfamilyCleared() {
 		_spec.ClearField(bouncer.FieldOsfamily, field.TypeString)
 	}
-	if value, ok := bu.mutation.Osversion(); ok {
+	if value, ok := _u.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
 	}
-	if bu.mutation.OsversionCleared() {
+	if _u.mutation.OsversionCleared() {
 		_spec.ClearField(bouncer.FieldOsversion, field.TypeString)
 	}
-	if value, ok := bu.mutation.Featureflags(); ok {
+	if value, ok := _u.mutation.Featureflags(); ok {
 		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
 	}
-	if bu.mutation.FeatureflagsCleared() {
+	if _u.mutation.FeatureflagsCleared() {
 		_spec.ClearField(bouncer.FieldFeatureflags, field.TypeString)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -354,8 +354,8 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	bu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // BouncerUpdateOne is the builder for updating a single Bouncer entity.
@@ -367,240 +367,240 @@ type BouncerUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
-	buo.mutation.SetUpdatedAt(t)
-	return buo
+func (_u *BouncerUpdateOne) SetUpdatedAt(v time.Time) *BouncerUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAPIKey sets the "api_key" field.
-func (buo *BouncerUpdateOne) SetAPIKey(s string) *BouncerUpdateOne {
-	buo.mutation.SetAPIKey(s)
-	return buo
+func (_u *BouncerUpdateOne) SetAPIKey(v string) *BouncerUpdateOne {
+	_u.mutation.SetAPIKey(v)
+	return _u
 }
 
 // SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableAPIKey(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetAPIKey(*s)
+func (_u *BouncerUpdateOne) SetNillableAPIKey(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetAPIKey(*v)
 	}
-	return buo
+	return _u
 }
 
 // SetRevoked sets the "revoked" field.
-func (buo *BouncerUpdateOne) SetRevoked(b bool) *BouncerUpdateOne {
-	buo.mutation.SetRevoked(b)
-	return buo
+func (_u *BouncerUpdateOne) SetRevoked(v bool) *BouncerUpdateOne {
+	_u.mutation.SetRevoked(v)
+	return _u
 }
 
 // SetNillableRevoked sets the "revoked" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableRevoked(b *bool) *BouncerUpdateOne {
-	if b != nil {
-		buo.SetRevoked(*b)
+func (_u *BouncerUpdateOne) SetNillableRevoked(v *bool) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetRevoked(*v)
 	}
-	return buo
+	return _u
 }
 
 // SetIPAddress sets the "ip_address" field.
-func (buo *BouncerUpdateOne) SetIPAddress(s string) *BouncerUpdateOne {
-	buo.mutation.SetIPAddress(s)
-	return buo
+func (_u *BouncerUpdateOne) SetIPAddress(v string) *BouncerUpdateOne {
+	_u.mutation.SetIPAddress(v)
+	return _u
 }
 
 // SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableIPAddress(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetIPAddress(*s)
+func (_u *BouncerUpdateOne) SetNillableIPAddress(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetIPAddress(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearIPAddress clears the value of the "ip_address" field.
-func (buo *BouncerUpdateOne) ClearIPAddress() *BouncerUpdateOne {
-	buo.mutation.ClearIPAddress()
-	return buo
+func (_u *BouncerUpdateOne) ClearIPAddress() *BouncerUpdateOne {
+	_u.mutation.ClearIPAddress()
+	return _u
 }
 
 // SetType sets the "type" field.
-func (buo *BouncerUpdateOne) SetType(s string) *BouncerUpdateOne {
-	buo.mutation.SetType(s)
-	return buo
+func (_u *BouncerUpdateOne) SetType(v string) *BouncerUpdateOne {
+	_u.mutation.SetType(v)
+	return _u
 }
 
 // SetNillableType sets the "type" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableType(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetType(*s)
+func (_u *BouncerUpdateOne) SetNillableType(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetType(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearType clears the value of the "type" field.
-func (buo *BouncerUpdateOne) ClearType() *BouncerUpdateOne {
-	buo.mutation.ClearType()
-	return buo
+func (_u *BouncerUpdateOne) ClearType() *BouncerUpdateOne {
+	_u.mutation.ClearType()
+	return _u
 }
 
 // SetVersion sets the "version" field.
-func (buo *BouncerUpdateOne) SetVersion(s string) *BouncerUpdateOne {
-	buo.mutation.SetVersion(s)
-	return buo
+func (_u *BouncerUpdateOne) SetVersion(v string) *BouncerUpdateOne {
+	_u.mutation.SetVersion(v)
+	return _u
 }
 
 // SetNillableVersion sets the "version" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableVersion(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetVersion(*s)
+func (_u *BouncerUpdateOne) SetNillableVersion(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearVersion clears the value of the "version" field.
-func (buo *BouncerUpdateOne) ClearVersion() *BouncerUpdateOne {
-	buo.mutation.ClearVersion()
-	return buo
+func (_u *BouncerUpdateOne) ClearVersion() *BouncerUpdateOne {
+	_u.mutation.ClearVersion()
+	return _u
 }
 
 // SetLastPull sets the "last_pull" field.
-func (buo *BouncerUpdateOne) SetLastPull(t time.Time) *BouncerUpdateOne {
-	buo.mutation.SetLastPull(t)
-	return buo
+func (_u *BouncerUpdateOne) SetLastPull(v time.Time) *BouncerUpdateOne {
+	_u.mutation.SetLastPull(v)
+	return _u
 }
 
 // SetNillableLastPull sets the "last_pull" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableLastPull(t *time.Time) *BouncerUpdateOne {
-	if t != nil {
-		buo.SetLastPull(*t)
+func (_u *BouncerUpdateOne) SetNillableLastPull(v *time.Time) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetLastPull(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearLastPull clears the value of the "last_pull" field.
-func (buo *BouncerUpdateOne) ClearLastPull() *BouncerUpdateOne {
-	buo.mutation.ClearLastPull()
-	return buo
+func (_u *BouncerUpdateOne) ClearLastPull() *BouncerUpdateOne {
+	_u.mutation.ClearLastPull()
+	return _u
 }
 
 // SetAuthType sets the "auth_type" field.
-func (buo *BouncerUpdateOne) SetAuthType(s string) *BouncerUpdateOne {
-	buo.mutation.SetAuthType(s)
-	return buo
+func (_u *BouncerUpdateOne) SetAuthType(v string) *BouncerUpdateOne {
+	_u.mutation.SetAuthType(v)
+	return _u
 }
 
 // SetNillableAuthType sets the "auth_type" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableAuthType(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetAuthType(*s)
+func (_u *BouncerUpdateOne) SetNillableAuthType(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetAuthType(*v)
 	}
-	return buo
+	return _u
 }
 
 // SetOsname sets the "osname" field.
-func (buo *BouncerUpdateOne) SetOsname(s string) *BouncerUpdateOne {
-	buo.mutation.SetOsname(s)
-	return buo
+func (_u *BouncerUpdateOne) SetOsname(v string) *BouncerUpdateOne {
+	_u.mutation.SetOsname(v)
+	return _u
 }
 
 // SetNillableOsname sets the "osname" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableOsname(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetOsname(*s)
+func (_u *BouncerUpdateOne) SetNillableOsname(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetOsname(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearOsname clears the value of the "osname" field.
-func (buo *BouncerUpdateOne) ClearOsname() *BouncerUpdateOne {
-	buo.mutation.ClearOsname()
-	return buo
+func (_u *BouncerUpdateOne) ClearOsname() *BouncerUpdateOne {
+	_u.mutation.ClearOsname()
+	return _u
 }
 
 // SetOsfamily sets the "osfamily" field.
-func (buo *BouncerUpdateOne) SetOsfamily(s string) *BouncerUpdateOne {
-	buo.mutation.SetOsfamily(s)
-	return buo
+func (_u *BouncerUpdateOne) SetOsfamily(v string) *BouncerUpdateOne {
+	_u.mutation.SetOsfamily(v)
+	return _u
 }
 
 // SetNillableOsfamily sets the "osfamily" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableOsfamily(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetOsfamily(*s)
+func (_u *BouncerUpdateOne) SetNillableOsfamily(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetOsfamily(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearOsfamily clears the value of the "osfamily" field.
-func (buo *BouncerUpdateOne) ClearOsfamily() *BouncerUpdateOne {
-	buo.mutation.ClearOsfamily()
-	return buo
+func (_u *BouncerUpdateOne) ClearOsfamily() *BouncerUpdateOne {
+	_u.mutation.ClearOsfamily()
+	return _u
 }
 
 // SetOsversion sets the "osversion" field.
-func (buo *BouncerUpdateOne) SetOsversion(s string) *BouncerUpdateOne {
-	buo.mutation.SetOsversion(s)
-	return buo
+func (_u *BouncerUpdateOne) SetOsversion(v string) *BouncerUpdateOne {
+	_u.mutation.SetOsversion(v)
+	return _u
 }
 
 // SetNillableOsversion sets the "osversion" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableOsversion(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetOsversion(*s)
+func (_u *BouncerUpdateOne) SetNillableOsversion(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetOsversion(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearOsversion clears the value of the "osversion" field.
-func (buo *BouncerUpdateOne) ClearOsversion() *BouncerUpdateOne {
-	buo.mutation.ClearOsversion()
-	return buo
+func (_u *BouncerUpdateOne) ClearOsversion() *BouncerUpdateOne {
+	_u.mutation.ClearOsversion()
+	return _u
 }
 
 // SetFeatureflags sets the "featureflags" field.
-func (buo *BouncerUpdateOne) SetFeatureflags(s string) *BouncerUpdateOne {
-	buo.mutation.SetFeatureflags(s)
-	return buo
+func (_u *BouncerUpdateOne) SetFeatureflags(v string) *BouncerUpdateOne {
+	_u.mutation.SetFeatureflags(v)
+	return _u
 }
 
 // SetNillableFeatureflags sets the "featureflags" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableFeatureflags(s *string) *BouncerUpdateOne {
-	if s != nil {
-		buo.SetFeatureflags(*s)
+func (_u *BouncerUpdateOne) SetNillableFeatureflags(v *string) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetFeatureflags(*v)
 	}
-	return buo
+	return _u
 }
 
 // ClearFeatureflags clears the value of the "featureflags" field.
-func (buo *BouncerUpdateOne) ClearFeatureflags() *BouncerUpdateOne {
-	buo.mutation.ClearFeatureflags()
-	return buo
+func (_u *BouncerUpdateOne) ClearFeatureflags() *BouncerUpdateOne {
+	_u.mutation.ClearFeatureflags()
+	return _u
 }
 
 // Mutation returns the BouncerMutation object of the builder.
-func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
-	return buo.mutation
+func (_u *BouncerUpdateOne) Mutation() *BouncerMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the BouncerUpdate builder.
-func (buo *BouncerUpdateOne) Where(ps ...predicate.Bouncer) *BouncerUpdateOne {
-	buo.mutation.Where(ps...)
-	return buo
+func (_u *BouncerUpdateOne) Where(ps ...predicate.Bouncer) *BouncerUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (buo *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpdateOne {
-	buo.fields = append([]string{field}, fields...)
-	return buo
+func (_u *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Bouncer entity.
-func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
-	buo.defaults()
-	return withHooks(ctx, buo.sqlSave, buo.mutation, buo.hooks)
+func (_u *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (buo *BouncerUpdateOne) SaveX(ctx context.Context) *Bouncer {
-	node, err := buo.Save(ctx)
+func (_u *BouncerUpdateOne) SaveX(ctx context.Context) *Bouncer {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -608,34 +608,34 @@ func (buo *BouncerUpdateOne) SaveX(ctx context.Context) *Bouncer {
 }
 
 // Exec executes the query on the entity.
-func (buo *BouncerUpdateOne) Exec(ctx context.Context) error {
-	_, err := buo.Save(ctx)
+func (_u *BouncerUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
-	if err := buo.Exec(ctx); err != nil {
+func (_u *BouncerUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (buo *BouncerUpdateOne) defaults() {
-	if _, ok := buo.mutation.UpdatedAt(); !ok {
+func (_u *BouncerUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := bouncer.UpdateDefaultUpdatedAt()
-		buo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err error) {
+func (_u *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err error) {
 	_spec := sqlgraph.NewUpdateSpec(bouncer.Table, bouncer.Columns, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
-	id, ok := buo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Bouncer.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := buo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, bouncer.FieldID)
 		for _, f := range fields {
@@ -647,77 +647,77 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 			}
 		}
 	}
-	if ps := buo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := buo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bouncer.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := buo.mutation.APIKey(); ok {
+	if value, ok := _u.mutation.APIKey(); ok {
 		_spec.SetField(bouncer.FieldAPIKey, field.TypeString, value)
 	}
-	if value, ok := buo.mutation.Revoked(); ok {
+	if value, ok := _u.mutation.Revoked(); ok {
 		_spec.SetField(bouncer.FieldRevoked, field.TypeBool, value)
 	}
-	if value, ok := buo.mutation.IPAddress(); ok {
+	if value, ok := _u.mutation.IPAddress(); ok {
 		_spec.SetField(bouncer.FieldIPAddress, field.TypeString, value)
 	}
-	if buo.mutation.IPAddressCleared() {
+	if _u.mutation.IPAddressCleared() {
 		_spec.ClearField(bouncer.FieldIPAddress, field.TypeString)
 	}
-	if value, ok := buo.mutation.GetType(); ok {
+	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(bouncer.FieldType, field.TypeString, value)
 	}
-	if buo.mutation.TypeCleared() {
+	if _u.mutation.TypeCleared() {
 		_spec.ClearField(bouncer.FieldType, field.TypeString)
 	}
-	if value, ok := buo.mutation.Version(); ok {
+	if value, ok := _u.mutation.Version(); ok {
 		_spec.SetField(bouncer.FieldVersion, field.TypeString, value)
 	}
-	if buo.mutation.VersionCleared() {
+	if _u.mutation.VersionCleared() {
 		_spec.ClearField(bouncer.FieldVersion, field.TypeString)
 	}
-	if value, ok := buo.mutation.LastPull(); ok {
+	if value, ok := _u.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 	}
-	if buo.mutation.LastPullCleared() {
+	if _u.mutation.LastPullCleared() {
 		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
 	}
-	if value, ok := buo.mutation.AuthType(); ok {
+	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
-	if value, ok := buo.mutation.Osname(); ok {
+	if value, ok := _u.mutation.Osname(); ok {
 		_spec.SetField(bouncer.FieldOsname, field.TypeString, value)
 	}
-	if buo.mutation.OsnameCleared() {
+	if _u.mutation.OsnameCleared() {
 		_spec.ClearField(bouncer.FieldOsname, field.TypeString)
 	}
-	if value, ok := buo.mutation.Osfamily(); ok {
+	if value, ok := _u.mutation.Osfamily(); ok {
 		_spec.SetField(bouncer.FieldOsfamily, field.TypeString, value)
 	}
-	if buo.mutation.OsfamilyCleared() {
+	if _u.mutation.OsfamilyCleared() {
 		_spec.ClearField(bouncer.FieldOsfamily, field.TypeString)
 	}
-	if value, ok := buo.mutation.Osversion(); ok {
+	if value, ok := _u.mutation.Osversion(); ok {
 		_spec.SetField(bouncer.FieldOsversion, field.TypeString, value)
 	}
-	if buo.mutation.OsversionCleared() {
+	if _u.mutation.OsversionCleared() {
 		_spec.ClearField(bouncer.FieldOsversion, field.TypeString)
 	}
-	if value, ok := buo.mutation.Featureflags(); ok {
+	if value, ok := _u.mutation.Featureflags(); ok {
 		_spec.SetField(bouncer.FieldFeatureflags, field.TypeString, value)
 	}
-	if buo.mutation.FeatureflagsCleared() {
+	if _u.mutation.FeatureflagsCleared() {
 		_spec.ClearField(bouncer.FieldFeatureflags, field.TypeString)
 	}
-	_node = &Bouncer{config: buo.config}
+	_node = &Bouncer{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -725,6 +725,6 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 		}
 		return nil, err
 	}
-	buo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

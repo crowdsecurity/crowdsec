@@ -15,6 +15,7 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type LongPollClient struct {
@@ -184,6 +185,7 @@ func (c *LongPollClient) pollEvents(ctx context.Context) error {
 					c.logger.Debug("context canceled, stopping polling")
 					return nil
 				}
+				metrics.PapiPollErrors.Inc()
 				c.logger.Errorf("failed to poll: %s, retrying in %s", err, currentBackoff)
 				select {
 				case <-c.t.Dying():

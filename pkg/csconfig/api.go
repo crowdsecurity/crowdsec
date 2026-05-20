@@ -20,7 +20,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -75,7 +74,7 @@ type CTICfg struct {
 
 func (a *CTICfg) Load() error {
 	if a.Key == nil {
-		a.Enabled = ptr.Of(false)
+		a.Enabled = new(false)
 	}
 
 	if a.Key != nil && *a.Key == "" {
@@ -83,7 +82,7 @@ func (a *CTICfg) Load() error {
 	}
 
 	if a.Enabled == nil {
-		a.Enabled = ptr.Of(true)
+		a.Enabled = new(true)
 	}
 
 	if a.CacheTimeout == nil {
@@ -349,7 +348,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
+		c.API.Server.Enable = new(true)
 	}
 
 	if !*c.API.Server.Enable {
@@ -379,15 +378,15 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	// Set default values for CAPI push/pull
 	if c.API.Server.OnlineClient != nil {
 		if c.API.Server.OnlineClient.PullConfig.Community == nil {
-			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Community = new(true)
 		}
 
 		if c.API.Server.OnlineClient.PullConfig.Blocklists == nil {
-			c.API.Server.OnlineClient.PullConfig.Blocklists = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Blocklists = new(true)
 		}
 
 		if c.API.Server.OnlineClient.Sharing == nil {
-			c.API.Server.OnlineClient.Sharing = ptr.Of(true)
+			c.API.Server.OnlineClient.Sharing = new(true)
 		}
 	}
 
@@ -517,7 +516,7 @@ func (c *Config) LoadAPIClient() error {
 func (c *LocalApiServerCfg) LoadAutoRegister() error {
 	if c.AutoRegister == nil {
 		c.AutoRegister = &LocalAPIAutoRegisterCfg{
-			Enable: ptr.Of(false),
+			Enable: new(false),
 		}
 
 		return nil
@@ -525,7 +524,7 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 
 	// Disable by default
 	if c.AutoRegister.Enable == nil {
-		c.AutoRegister.Enable = ptr.Of(false)
+		c.AutoRegister.Enable = new(false)
 	}
 
 	if !*c.AutoRegister.Enable {

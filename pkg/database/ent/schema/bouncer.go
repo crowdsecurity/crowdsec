@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -42,4 +43,12 @@ func (Bouncer) Fields() []ent.Field {
 // Edges of the Bouncer.
 func (Bouncer) Edges() []ent.Edge {
 	return nil
+}
+
+func (Bouncer) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("api_key", "auth_type"),
+		index.Fields("api_key", "ip_address"),
+		index.Fields("last_pull", "created_at"),
+	}
 }

@@ -984,6 +984,9 @@ definitions:
         type: array
         items:
           type: string
+      kind:
+        type: string
+        description: Origin of the alert (crowdsec,waf,bot-detection,...)
     required:
       - scenario
       - scenario_hash

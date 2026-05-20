@@ -17,7 +17,7 @@ func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsRespon
 	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
 
-	header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
+	header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "kind"}
 	if printMachine {
 		header = append(header, "machine")
 	}
@@ -40,6 +40,7 @@ func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsRespon
 			alertItem.Source.GetAsNumberName(),
 			decisionsFromAlert(alertItem),
 			*alertItem.StartAt,
+			alertItem.Kind,
 		}
 
 		if printMachine {

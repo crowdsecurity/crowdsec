@@ -108,3 +108,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.En
 		decisionBulkSize: config.DecisionBulkSize,
 	}, nil
 }
+
+func (c *Client) Close() error {
+	return c.Ent.Close()
+}

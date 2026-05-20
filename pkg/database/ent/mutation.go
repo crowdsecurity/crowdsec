@@ -82,6 +82,7 @@ type AlertMutation struct {
 	simulated          *bool
 	uuid               *string
 	remediation        *bool
+	kind               *string
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
@@ -1405,6 +1406,55 @@ func (m *AlertMutation) ResetRemediation() {
 	delete(m.clearedFields, alert.FieldRemediation)
 }
 
+// SetKind sets the "kind" field.
+func (m *AlertMutation) SetKind(s string) {
+	m.kind = &s
+}
+
+// Kind returns the value of the "kind" field in the mutation.
+func (m *AlertMutation) Kind() (r string, exists bool) {
+	v := m.kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKind returns the old "kind" field's value of the Alert entity.
+// If the Alert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AlertMutation) OldKind(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+	}
+	return oldValue.Kind, nil
+}
+
+// ClearKind clears the value of the "kind" field.
+func (m *AlertMutation) ClearKind() {
+	m.kind = nil
+	m.clearedFields[alert.FieldKind] = struct{}{}
+}
+
+// KindCleared returns if the "kind" field was cleared in this mutation.
+func (m *AlertMutation) KindCleared() bool {
+	_, ok := m.clearedFields[alert.FieldKind]
+	return ok
+}
+
+// ResetKind resets all changes to the "kind" field.
+func (m *AlertMutation) ResetKind() {
+	m.kind = nil
+	delete(m.clearedFields, alert.FieldKind)
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by id.
 func (m *AlertMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -1640,7 +1690,7 @@ func (m *AlertMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AlertMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, alert.FieldCreatedAt)
 	}
@@ -1713,6 +1763,9 @@ func (m *AlertMutation) Fields() []string {
 	if m.remediation != nil {
 		fields = append(fields, alert.FieldRemediation)
 	}
+	if m.kind != nil {
+		fields = append(fields, alert.FieldKind)
+	}
 	return fields
 }
 
@@ -1769,6 +1822,8 @@ func (m *AlertMutation) Field(name string) (ent.Value, bool) {
 		return m.UUID()
 	case alert.FieldRemediation:
 		return m.Remediation()
+	case alert.FieldKind:
+		return m.Kind()
 	}
 	return nil, false
 }
@@ -1826,6 +1881,8 @@ func (m *AlertMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldUUID(ctx)
 	case alert.FieldRemediation:
 		return m.OldRemediation(ctx)
+	case alert.FieldKind:
+		return m.OldKind(ctx)
 	}
 	return nil, fmt.Errorf("unknown Alert field %s", name)
 }
@@ -2003,6 +2060,13 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRemediation(v)
 		return nil
+	case alert.FieldKind:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKind(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
 }
@@ -2144,6 +2208,9 @@ func (m *AlertMutation) ClearedFields() []string {
 	if m.FieldCleared(alert.FieldRemediation) {
 		fields = append(fields, alert.FieldRemediation)
 	}
+	if m.FieldCleared(alert.FieldKind) {
+		fields = append(fields, alert.FieldKind)
+	}
 	return fields
 }
 
@@ -2217,6 +2284,9 @@ func (m *AlertMutation) ClearField(name string) error {
 		return nil
 	case alert.FieldRemediation:
 		m.ClearRemediation()
+		return nil
+	case alert.FieldKind:
+		m.ClearKind()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert nullable field %s", name)
@@ -2297,6 +2367,9 @@ func (m *AlertMutation) ResetField(name string) error {
 		return nil
 	case alert.FieldRemediation:
 		m.ResetRemediation()
+		return nil
+	case alert.FieldKind:
+		m.ResetKind()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)

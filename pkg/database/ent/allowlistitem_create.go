@@ -24,166 +24,166 @@ type AllowListItemCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (alic *AllowListItemCreate) SetCreatedAt(t time.Time) *AllowListItemCreate {
-	alic.mutation.SetCreatedAt(t)
-	return alic
+func (_c *AllowListItemCreate) SetCreatedAt(v time.Time) *AllowListItemCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableCreatedAt(t *time.Time) *AllowListItemCreate {
-	if t != nil {
-		alic.SetCreatedAt(*t)
+func (_c *AllowListItemCreate) SetNillableCreatedAt(v *time.Time) *AllowListItemCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (alic *AllowListItemCreate) SetUpdatedAt(t time.Time) *AllowListItemCreate {
-	alic.mutation.SetUpdatedAt(t)
-	return alic
+func (_c *AllowListItemCreate) SetUpdatedAt(v time.Time) *AllowListItemCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableUpdatedAt(t *time.Time) *AllowListItemCreate {
-	if t != nil {
-		alic.SetUpdatedAt(*t)
+func (_c *AllowListItemCreate) SetNillableUpdatedAt(v *time.Time) *AllowListItemCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetExpiresAt sets the "expires_at" field.
-func (alic *AllowListItemCreate) SetExpiresAt(t time.Time) *AllowListItemCreate {
-	alic.mutation.SetExpiresAt(t)
-	return alic
+func (_c *AllowListItemCreate) SetExpiresAt(v time.Time) *AllowListItemCreate {
+	_c.mutation.SetExpiresAt(v)
+	return _c
 }
 
 // SetNillableExpiresAt sets the "expires_at" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableExpiresAt(t *time.Time) *AllowListItemCreate {
-	if t != nil {
-		alic.SetExpiresAt(*t)
+func (_c *AllowListItemCreate) SetNillableExpiresAt(v *time.Time) *AllowListItemCreate {
+	if v != nil {
+		_c.SetExpiresAt(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetComment sets the "comment" field.
-func (alic *AllowListItemCreate) SetComment(s string) *AllowListItemCreate {
-	alic.mutation.SetComment(s)
-	return alic
+func (_c *AllowListItemCreate) SetComment(v string) *AllowListItemCreate {
+	_c.mutation.SetComment(v)
+	return _c
 }
 
 // SetNillableComment sets the "comment" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableComment(s *string) *AllowListItemCreate {
-	if s != nil {
-		alic.SetComment(*s)
+func (_c *AllowListItemCreate) SetNillableComment(v *string) *AllowListItemCreate {
+	if v != nil {
+		_c.SetComment(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetValue sets the "value" field.
-func (alic *AllowListItemCreate) SetValue(s string) *AllowListItemCreate {
-	alic.mutation.SetValue(s)
-	return alic
+func (_c *AllowListItemCreate) SetValue(v string) *AllowListItemCreate {
+	_c.mutation.SetValue(v)
+	return _c
 }
 
 // SetStartIP sets the "start_ip" field.
-func (alic *AllowListItemCreate) SetStartIP(i int64) *AllowListItemCreate {
-	alic.mutation.SetStartIP(i)
-	return alic
+func (_c *AllowListItemCreate) SetStartIP(v int64) *AllowListItemCreate {
+	_c.mutation.SetStartIP(v)
+	return _c
 }
 
 // SetNillableStartIP sets the "start_ip" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableStartIP(i *int64) *AllowListItemCreate {
-	if i != nil {
-		alic.SetStartIP(*i)
+func (_c *AllowListItemCreate) SetNillableStartIP(v *int64) *AllowListItemCreate {
+	if v != nil {
+		_c.SetStartIP(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetEndIP sets the "end_ip" field.
-func (alic *AllowListItemCreate) SetEndIP(i int64) *AllowListItemCreate {
-	alic.mutation.SetEndIP(i)
-	return alic
+func (_c *AllowListItemCreate) SetEndIP(v int64) *AllowListItemCreate {
+	_c.mutation.SetEndIP(v)
+	return _c
 }
 
 // SetNillableEndIP sets the "end_ip" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableEndIP(i *int64) *AllowListItemCreate {
-	if i != nil {
-		alic.SetEndIP(*i)
+func (_c *AllowListItemCreate) SetNillableEndIP(v *int64) *AllowListItemCreate {
+	if v != nil {
+		_c.SetEndIP(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetStartSuffix sets the "start_suffix" field.
-func (alic *AllowListItemCreate) SetStartSuffix(i int64) *AllowListItemCreate {
-	alic.mutation.SetStartSuffix(i)
-	return alic
+func (_c *AllowListItemCreate) SetStartSuffix(v int64) *AllowListItemCreate {
+	_c.mutation.SetStartSuffix(v)
+	return _c
 }
 
 // SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableStartSuffix(i *int64) *AllowListItemCreate {
-	if i != nil {
-		alic.SetStartSuffix(*i)
+func (_c *AllowListItemCreate) SetNillableStartSuffix(v *int64) *AllowListItemCreate {
+	if v != nil {
+		_c.SetStartSuffix(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetEndSuffix sets the "end_suffix" field.
-func (alic *AllowListItemCreate) SetEndSuffix(i int64) *AllowListItemCreate {
-	alic.mutation.SetEndSuffix(i)
-	return alic
+func (_c *AllowListItemCreate) SetEndSuffix(v int64) *AllowListItemCreate {
+	_c.mutation.SetEndSuffix(v)
+	return _c
 }
 
 // SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableEndSuffix(i *int64) *AllowListItemCreate {
-	if i != nil {
-		alic.SetEndSuffix(*i)
+func (_c *AllowListItemCreate) SetNillableEndSuffix(v *int64) *AllowListItemCreate {
+	if v != nil {
+		_c.SetEndSuffix(*v)
 	}
-	return alic
+	return _c
 }
 
 // SetIPSize sets the "ip_size" field.
-func (alic *AllowListItemCreate) SetIPSize(i int64) *AllowListItemCreate {
-	alic.mutation.SetIPSize(i)
-	return alic
+func (_c *AllowListItemCreate) SetIPSize(v int64) *AllowListItemCreate {
+	_c.mutation.SetIPSize(v)
+	return _c
 }
 
 // SetNillableIPSize sets the "ip_size" field if the given value is not nil.
-func (alic *AllowListItemCreate) SetNillableIPSize(i *int64) *AllowListItemCreate {
-	if i != nil {
-		alic.SetIPSize(*i)
+func (_c *AllowListItemCreate) SetNillableIPSize(v *int64) *AllowListItemCreate {
+	if v != nil {
+		_c.SetIPSize(*v)
 	}
-	return alic
+	return _c
 }
 
 // AddAllowlistIDs adds the "allowlist" edge to the AllowList entity by IDs.
-func (alic *AllowListItemCreate) AddAllowlistIDs(ids ...int) *AllowListItemCreate {
-	alic.mutation.AddAllowlistIDs(ids...)
-	return alic
+func (_c *AllowListItemCreate) AddAllowlistIDs(ids ...int) *AllowListItemCreate {
+	_c.mutation.AddAllowlistIDs(ids...)
+	return _c
 }
 
 // AddAllowlist adds the "allowlist" edges to the AllowList entity.
-func (alic *AllowListItemCreate) AddAllowlist(a ...*AllowList) *AllowListItemCreate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_c *AllowListItemCreate) AddAllowlist(v ...*AllowList) *AllowListItemCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return alic.AddAllowlistIDs(ids...)
+	return _c.AddAllowlistIDs(ids...)
 }
 
 // Mutation returns the AllowListItemMutation object of the builder.
-func (alic *AllowListItemCreate) Mutation() *AllowListItemMutation {
-	return alic.mutation
+func (_c *AllowListItemCreate) Mutation() *AllowListItemMutation {
+	return _c.mutation
 }
 
 // Save creates the AllowListItem in the database.
-func (alic *AllowListItemCreate) Save(ctx context.Context) (*AllowListItem, error) {
-	alic.defaults()
-	return withHooks(ctx, alic.sqlSave, alic.mutation, alic.hooks)
+func (_c *AllowListItemCreate) Save(ctx context.Context) (*AllowListItem, error) {
+	_c.defaults()
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (alic *AllowListItemCreate) SaveX(ctx context.Context) *AllowListItem {
-	v, err := alic.Save(ctx)
+func (_c *AllowListItemCreate) SaveX(ctx context.Context) *AllowListItem {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -191,50 +191,50 @@ func (alic *AllowListItemCreate) SaveX(ctx context.Context) *AllowListItem {
 }
 
 // Exec executes the query.
-func (alic *AllowListItemCreate) Exec(ctx context.Context) error {
-	_, err := alic.Save(ctx)
+func (_c *AllowListItemCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (alic *AllowListItemCreate) ExecX(ctx context.Context) {
-	if err := alic.Exec(ctx); err != nil {
+func (_c *AllowListItemCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (alic *AllowListItemCreate) defaults() {
-	if _, ok := alic.mutation.CreatedAt(); !ok {
+func (_c *AllowListItemCreate) defaults() {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := allowlistitem.DefaultCreatedAt()
-		alic.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := alic.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := allowlistitem.DefaultUpdatedAt()
-		alic.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (alic *AllowListItemCreate) check() error {
-	if _, ok := alic.mutation.CreatedAt(); !ok {
+func (_c *AllowListItemCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "AllowListItem.created_at"`)}
 	}
-	if _, ok := alic.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "AllowListItem.updated_at"`)}
 	}
-	if _, ok := alic.mutation.Value(); !ok {
+	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "AllowListItem.value"`)}
 	}
 	return nil
 }
 
-func (alic *AllowListItemCreate) sqlSave(ctx context.Context) (*AllowListItem, error) {
-	if err := alic.check(); err != nil {
+func (_c *AllowListItemCreate) sqlSave(ctx context.Context) (*AllowListItem, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := alic.createSpec()
-	if err := sqlgraph.CreateNode(ctx, alic.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -242,58 +242,58 @@ func (alic *AllowListItemCreate) sqlSave(ctx context.Context) (*AllowListItem, e
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	alic.mutation.id = &_node.ID
-	alic.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (alic *AllowListItemCreate) createSpec() (*AllowListItem, *sqlgraph.CreateSpec) {
+func (_c *AllowListItemCreate) createSpec() (*AllowListItem, *sqlgraph.CreateSpec) {
 	var (
-		_node = &AllowListItem{config: alic.config}
+		_node = &AllowListItem{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(allowlistitem.Table, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = alic.conflict
-	if value, ok := alic.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(allowlistitem.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := alic.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlistitem.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := alic.mutation.ExpiresAt(); ok {
+	if value, ok := _c.mutation.ExpiresAt(); ok {
 		_spec.SetField(allowlistitem.FieldExpiresAt, field.TypeTime, value)
 		_node.ExpiresAt = value
 	}
-	if value, ok := alic.mutation.Comment(); ok {
+	if value, ok := _c.mutation.Comment(); ok {
 		_spec.SetField(allowlistitem.FieldComment, field.TypeString, value)
 		_node.Comment = value
 	}
-	if value, ok := alic.mutation.Value(); ok {
+	if value, ok := _c.mutation.Value(); ok {
 		_spec.SetField(allowlistitem.FieldValue, field.TypeString, value)
 		_node.Value = value
 	}
-	if value, ok := alic.mutation.StartIP(); ok {
+	if value, ok := _c.mutation.StartIP(); ok {
 		_spec.SetField(allowlistitem.FieldStartIP, field.TypeInt64, value)
 		_node.StartIP = value
 	}
-	if value, ok := alic.mutation.EndIP(); ok {
+	if value, ok := _c.mutation.EndIP(); ok {
 		_spec.SetField(allowlistitem.FieldEndIP, field.TypeInt64, value)
 		_node.EndIP = value
 	}
-	if value, ok := alic.mutation.StartSuffix(); ok {
+	if value, ok := _c.mutation.StartSuffix(); ok {
 		_spec.SetField(allowlistitem.FieldStartSuffix, field.TypeInt64, value)
 		_node.StartSuffix = value
 	}
-	if value, ok := alic.mutation.EndSuffix(); ok {
+	if value, ok := _c.mutation.EndSuffix(); ok {
 		_spec.SetField(allowlistitem.FieldEndSuffix, field.TypeInt64, value)
 		_node.EndSuffix = value
 	}
-	if value, ok := alic.mutation.IPSize(); ok {
+	if value, ok := _c.mutation.IPSize(); ok {
 		_spec.SetField(allowlistitem.FieldIPSize, field.TypeInt64, value)
 		_node.IPSize = value
 	}
-	if nodes := alic.mutation.AllowlistIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.AllowlistIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
@@ -328,10 +328,10 @@ func (alic *AllowListItemCreate) createSpec() (*AllowListItem, *sqlgraph.CreateS
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (alic *AllowListItemCreate) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertOne {
-	alic.conflict = opts
+func (_c *AllowListItemCreate) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertOne {
+	_c.conflict = opts
 	return &AllowListItemUpsertOne{
-		create: alic,
+		create: _c,
 	}
 }
 
@@ -341,10 +341,10 @@ func (alic *AllowListItemCreate) OnConflict(opts ...sql.ConflictOption) *AllowLi
 //	client.AllowListItem.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (alic *AllowListItemCreate) OnConflictColumns(columns ...string) *AllowListItemUpsertOne {
-	alic.conflict = append(alic.conflict, sql.ConflictColumns(columns...))
+func (_c *AllowListItemCreate) OnConflictColumns(columns ...string) *AllowListItemUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &AllowListItemUpsertOne{
-		create: alic,
+		create: _c,
 	}
 }
 
@@ -534,16 +534,16 @@ type AllowListItemCreateBulk struct {
 }
 
 // Save creates the AllowListItem entities in the database.
-func (alicb *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListItem, error) {
-	if alicb.err != nil {
-		return nil, alicb.err
+func (_c *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListItem, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(alicb.builders))
-	nodes := make([]*AllowListItem, len(alicb.builders))
-	mutators := make([]Mutator, len(alicb.builders))
-	for i := range alicb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*AllowListItem, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := alicb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*AllowListItemMutation)
@@ -557,12 +557,12 @@ func (alicb *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListIte
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, alicb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = alicb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, alicb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -586,7 +586,7 @@ func (alicb *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListIte
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, alicb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -594,8 +594,8 @@ func (alicb *AllowListItemCreateBulk) Save(ctx context.Context) ([]*AllowListIte
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (alicb *AllowListItemCreateBulk) SaveX(ctx context.Context) []*AllowListItem {
-	v, err := alicb.Save(ctx)
+func (_c *AllowListItemCreateBulk) SaveX(ctx context.Context) []*AllowListItem {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -603,14 +603,14 @@ func (alicb *AllowListItemCreateBulk) SaveX(ctx context.Context) []*AllowListIte
 }
 
 // Exec executes the query.
-func (alicb *AllowListItemCreateBulk) Exec(ctx context.Context) error {
-	_, err := alicb.Save(ctx)
+func (_c *AllowListItemCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (alicb *AllowListItemCreateBulk) ExecX(ctx context.Context) {
-	if err := alicb.Exec(ctx); err != nil {
+func (_c *AllowListItemCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -630,10 +630,10 @@ func (alicb *AllowListItemCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (alicb *AllowListItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertBulk {
-	alicb.conflict = opts
+func (_c *AllowListItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *AllowListItemUpsertBulk {
+	_c.conflict = opts
 	return &AllowListItemUpsertBulk{
-		create: alicb,
+		create: _c,
 	}
 }
 
@@ -643,10 +643,10 @@ func (alicb *AllowListItemCreateBulk) OnConflict(opts ...sql.ConflictOption) *Al
 //	client.AllowListItem.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (alicb *AllowListItemCreateBulk) OnConflictColumns(columns ...string) *AllowListItemUpsertBulk {
-	alicb.conflict = append(alicb.conflict, sql.ConflictColumns(columns...))
+func (_c *AllowListItemCreateBulk) OnConflictColumns(columns ...string) *AllowListItemUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &AllowListItemUpsertBulk{
-		create: alicb,
+		create: _c,
 	}
 }
 

@@ -26,7 +26,12 @@ type MatchedRule map[string]any
 type AppsecEvent struct {
 	HasInBandMatches, HasOutBandMatches bool
 	MatchedRules
+	// Vars holds Coraza-owned variables (e.g. TX.* anomaly scores) captured
+	// from the transaction state.
 	Vars map[string]string
+	// HookVars mirrors the per-request scratch space populated by CrowdSec
+	// hook expressions (exposed in expr as `hook_vars`)
+	HookVars map[string]string
 }
 type Field string
 

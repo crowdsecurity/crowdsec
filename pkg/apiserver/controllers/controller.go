@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	middlewaresv1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -110,13 +111,16 @@ func (c *Controller) NewV1() error {
 		ctx.AbortWithStatus(http.StatusMethodNotAllowed)
 	})
 
+	unauthBodyLimit := middlewaresv1.BodyLimit(middlewaresv1.UnauthenticatedBodyLimit)
+	authBodyLimit := middlewaresv1.BodyLimit(middlewaresv1.AuthenticatedBodyLimit)
+
 	groupV1 := c.Router.Group("/v1")
-	groupV1.POST("/watchers", c.HandlerV1.AbortRemoteIf(c.DisableRemoteLapiRegistration), c.HandlerV1.CreateMachine)
-	groupV1.POST("/watchers/login", c.HandlerV1.Middlewares.JWT.Middleware.LoginHandler)
+	groupV1.POST("/watchers", unauthBodyLimit, c.HandlerV1.AbortRemoteIf(c.DisableRemoteLapiRegistration), c.HandlerV1.CreateMachine)
+	groupV1.POST("/watchers/login", unauthBodyLimit, c.HandlerV1.Middlewares.JWT.Middleware.LoginHandler)
 
 	jwtAuth := groupV1.Group("")
 	jwtAuth.GET("/refresh_token", c.HandlerV1.Middlewares.JWT.Middleware.RefreshHandler)
-	jwtAuth.Use(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware)
+	jwtAuth.Use(authBodyLimit, c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware)
 	{
 		jwtAuth.POST("/alerts", c.HandlerV1.CreateAlert)
 		jwtAuth.GET("/alerts", c.HandlerV1.FindAlerts)
@@ -137,7 +141,7 @@ func (c *Controller) NewV1() error {
 	}
 
 	apiKeyAuth := groupV1.Group("")
-	apiKeyAuth.Use(c.HandlerV1.Middlewares.APIKey.Middleware, v1.PrometheusBouncersMiddleware)
+	apiKeyAuth.Use(authBodyLimit, c.HandlerV1.Middlewares.APIKey.Middleware, v1.PrometheusBouncersMiddleware)
 	{
 		apiKeyAuth.GET("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
@@ -146,7 +150,7 @@ func (c *Controller) NewV1() error {
 	}
 
 	eitherAuth := groupV1.Group("")
-	eitherAuth.Use(eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.Middleware))
+	eitherAuth.Use(authBodyLimit, eitherAuthMiddleware(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), c.HandlerV1.Middlewares.APIKey.Middleware))
 	{
 		eitherAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}

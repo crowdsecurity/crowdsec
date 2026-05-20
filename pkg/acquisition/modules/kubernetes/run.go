@@ -172,8 +172,8 @@ func (s *Source) Dump() any {
 	return s
 }
 
-func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, labels map[string]string, metricsLevel metrics.AcquisitionMetricsLevel, out chan pipeline.Event,
-	onLine func(string, string, map[string]string, metrics.AcquisitionMetricsLevel, chan pipeline.Event) error) error {
+func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
+	onLine func(string, string, chan pipeline.Event) error) error {
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	fn := func() error {
 		if err := ctx.Err(); err != nil {
@@ -190,7 +190,7 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 			if err := ctx.Err(); err != nil {
 				return nil
 			}
-			if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, labels, metricsLevel, out); err != nil {
+			if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
 				return err
 			}
 		}
@@ -244,7 +244,7 @@ func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, 
 		var cw sync.WaitGroup
 		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
-				err := s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, s.config.Labels, s.metricsLevel, out, s.processLine)
+				err := s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, out, s.processLine)
 				if err != nil {
 					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
 				} else {

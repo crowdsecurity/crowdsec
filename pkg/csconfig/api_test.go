@@ -12,7 +12,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -53,7 +52,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 			name: "valid configuration with insecure skip verify",
 			input: &LocalApiClientCfg{
 				CredentialsFilePath: "./testdata/lapi-secrets.yaml",
-				InsecureSkipVerify:  ptr.Of(false),
+				InsecureSkipVerify:  new(false),
 			},
 			expected: &ApiCredentialsCfg{
 				URL:      "http://localhost:8080/",
@@ -188,23 +187,23 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
-				Enable:    ptr.Of(true),
+				Enable:    new(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
 					DbPath:           "./testdata/test.db",
 					Type:             "sqlite",
 					MaxOpenConns:     DEFAULT_MAX_OPEN_CONNS,
-					UseWal:           ptr.Of(true), // autodetected
+					UseWal:           new(true), // autodetected
 					DecisionBulkSize: defaultDecisionBulkSize,
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{
-					ShareManualDecisions:  ptr.Of(false),
-					ShareTaintedScenarios: ptr.Of(true),
-					ShareCustomScenarios:  ptr.Of(true),
-					ShareContext:          ptr.Of(false),
-					ConsoleManagement:     ptr.Of(false),
+					ShareManualDecisions:  new(false),
+					ShareTaintedScenarios: new(true),
+					ShareCustomScenarios:  new(true),
+					ShareContext:          new(false),
+					ConsoleManagement:     new(false),
 				},
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",
@@ -214,10 +213,10 @@ func TestLoadAPIServer(t *testing.T) {
 						Password: "testpassword",
 						PapiURL:  PAPIBaseURL,
 					},
-					Sharing: ptr.Of(true),
+					Sharing: new(true),
 					PullConfig: CapiPullConfig{
-						Community:  ptr.Of(true),
-						Blocklists: ptr.Of(true),
+						Community:  new(true),
+						Blocklists: new(true),
 					},
 				},
 				Profiles:               tmpLAPI.Profiles,
@@ -225,7 +224,7 @@ func TestLoadAPIServer(t *testing.T) {
 				UseForwardedForHeaders: false,
 				PapiLogLevel:           logLevel,
 				AutoRegister: &LocalAPIAutoRegisterCfg{
-					Enable:              ptr.Of(false),
+					Enable:              new(false),
 					Token:               "",
 					AllowedRanges:       nil,
 					AllowedRangesParsed: nil,
@@ -250,7 +249,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
-				Enable:       ptr.Of(true),
+				Enable:       new(true),
 				PapiLogLevel: logLevel,
 			},
 			expectedErr: "no database configuration provided",

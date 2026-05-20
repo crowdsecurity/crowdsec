@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -180,9 +182,13 @@ func LoadOrStoreBucketFromHolder(
 	actual, stored := buckets.LoadOrStore(partitionKey, fresh_bucket)
 	if !stored {
 		go func() {
+			defer trace.ReportPanic()
 			ctx, cancel := context.WithCancel(ctx)
 			fresh_bucket.cancel = cancel
 			fresh_bucket.LeakRoutine(ctx, buckets)
+			// Always call cancel to avoid leaks
+			// In case of replay, cancel() may be called by the GC func (eg, for an underflow), but cancel is safe to call multiple times
+			cancel()
 		}()
 		leaky = fresh_bucket
 		// once the created goroutine is ready to process event, we can return it

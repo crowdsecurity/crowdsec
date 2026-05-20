@@ -34,6 +34,10 @@ func (cli *cliSimulation) NewCommand() *cobra.Command {
 cscli simulation enable crowdsecurity/ssh-bf
 cscli simulation disable crowdsecurity/ssh-bf`,
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			return cli.cfg().LoadSimulation()
 		},
@@ -169,8 +173,6 @@ func (cli *cliSimulation) newStatusCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(_ *cobra.Command, _ []string) {
 			cli.status()
-		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		},
 	}
 

@@ -24,6 +24,12 @@ teardown() {
 
 #----------
 
+@test "cscli notifications <unknown command>" {
+    rune -1 cscli notifications foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli notifications"'
+}
+
 @test "cscli notifications list" {
     rune -0 cscli notifications list
     assert_output --partial "Name"

@@ -237,6 +237,8 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			} else {
 				predicates = append(predicates, alert.Not(alert.HasDecisions()))
 			}
+		case "kind":
+			predicates = append(predicates, alert.KindEQ(value[0]))
 		case "limit":
 			continue
 		case "sort":

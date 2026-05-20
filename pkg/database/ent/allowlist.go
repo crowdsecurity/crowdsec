@@ -75,7 +75,7 @@ func (*AllowList) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the AllowList fields.
-func (al *AllowList) assignValues(columns []string, values []any) error {
+func (_m *AllowList) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -86,45 +86,45 @@ func (al *AllowList) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			al.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case allowlist.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				al.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case allowlist.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				al.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case allowlist.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				al.Name = value.String
+				_m.Name = value.String
 			}
 		case allowlist.FieldFromConsole:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field from_console", values[i])
 			} else if value.Valid {
-				al.FromConsole = value.Bool
+				_m.FromConsole = value.Bool
 			}
 		case allowlist.FieldDescription:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field description", values[i])
 			} else if value.Valid {
-				al.Description = value.String
+				_m.Description = value.String
 			}
 		case allowlist.FieldAllowlistID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field allowlist_id", values[i])
 			} else if value.Valid {
-				al.AllowlistID = value.String
+				_m.AllowlistID = value.String
 			}
 		default:
-			al.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -132,55 +132,55 @@ func (al *AllowList) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the AllowList.
 // This includes values selected through modifiers, order, etc.
-func (al *AllowList) Value(name string) (ent.Value, error) {
-	return al.selectValues.Get(name)
+func (_m *AllowList) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryAllowlistItems queries the "allowlist_items" edge of the AllowList entity.
-func (al *AllowList) QueryAllowlistItems() *AllowListItemQuery {
-	return NewAllowListClient(al.config).QueryAllowlistItems(al)
+func (_m *AllowList) QueryAllowlistItems() *AllowListItemQuery {
+	return NewAllowListClient(_m.config).QueryAllowlistItems(_m)
 }
 
 // Update returns a builder for updating this AllowList.
 // Note that you need to call AllowList.Unwrap() before calling this method if this AllowList
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (al *AllowList) Update() *AllowListUpdateOne {
-	return NewAllowListClient(al.config).UpdateOne(al)
+func (_m *AllowList) Update() *AllowListUpdateOne {
+	return NewAllowListClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the AllowList entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (al *AllowList) Unwrap() *AllowList {
-	_tx, ok := al.config.driver.(*txDriver)
+func (_m *AllowList) Unwrap() *AllowList {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: AllowList is not a transactional entity")
 	}
-	al.config.driver = _tx.drv
-	return al
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (al *AllowList) String() string {
+func (_m *AllowList) String() string {
 	var builder strings.Builder
 	builder.WriteString("AllowList(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", al.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(al.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(al.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(al.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("from_console=")
-	builder.WriteString(fmt.Sprintf("%v", al.FromConsole))
+	builder.WriteString(fmt.Sprintf("%v", _m.FromConsole))
 	builder.WriteString(", ")
 	builder.WriteString("description=")
-	builder.WriteString(al.Description)
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("allowlist_id=")
-	builder.WriteString(al.AllowlistID)
+	builder.WriteString(_m.AllowlistID)
 	builder.WriteByte(')')
 	return builder.String()
 }

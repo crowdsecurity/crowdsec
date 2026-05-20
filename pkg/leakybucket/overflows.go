@@ -317,6 +317,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
 		Simulated:       &leaky.Factory.Simulated,
+		Kind:            types.CrowdsecAlertKind.String(),
 	}
 
 	if leaky.Factory == nil {

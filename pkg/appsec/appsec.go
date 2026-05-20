@@ -1,21 +1,28 @@
 package appsec
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
+	apivalidation "github.com/crowdsecurity/crowdsec/pkg/appsec/api_validation"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -28,17 +35,70 @@ type Hook struct {
 	ApplyExpr []*vm.Program `yaml:"-"`
 }
 
+type hookStage int
+
 const (
-	hookOnLoad = iota
+	hookOnLoad hookStage = iota
 	hookPreEval
 	hookPostEval
 	hookOnMatch
 )
 
+func (s hookStage) String() string {
+	switch s {
+	case hookOnLoad:
+		return "on_load"
+	case hookPreEval:
+		return "pre_eval"
+	case hookPostEval:
+		return "post_eval"
+	case hookOnMatch:
+		return "on_match"
+	default:
+		return "unknown"
+	}
+}
+
+// PhaseHooks bundles the three phase-scoped hook lists (pre_eval, post_eval,
+// on_match) that run during request evaluation. OnLoad is excluded because it
+// runs once at startup and is not phase-scoped.
+type PhaseHooks struct {
+	PreEval  []Hook
+	PostEval []Hook
+	OnMatch  []Hook
+}
+
+// get returns the hook list for a given stage, or nil for stages that are not
+// phase-scoped (hookOnLoad or unknown).
+func (p *PhaseHooks) get(stage hookStage) []Hook {
+	switch stage {
+	case hookPreEval:
+		return p.PreEval
+	case hookPostEval:
+		return p.PostEval
+	case hookOnMatch:
+		return p.OnMatch
+	default:
+		return nil
+	}
+}
+
 const (
 	BanRemediation     = "ban"
 	CaptchaRemediation = "captcha"
 	AllowRemediation   = "allow"
+)
+
+const (
+	// BodySizeActionDrop drops the request when the body exceeds the maximum size.
+	BodySizeActionDrop = "drop"
+	// BodySizeActionPartial reads the body up to the maximum size and processes it.
+	BodySizeActionPartial = "partial"
+	// BodySizeActionAllow processes the request without inspecting the body.
+	BodySizeActionAllow = "allow"
+
+	// DefaultMaxBodySize is the default maximum body size (10MB).
+	DefaultMaxBodySize = int64(10 * 1024 * 1024)
 )
 
 type phase int
@@ -48,21 +108,26 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(hookStage int) error {
-	ctx := map[string]any{}
+func (h *Hook) Build(ctx context.Context, stage hookStage) error {
+	env := map[string]any{}
 
-	switch hookStage {
+	// Env builders for phase hooks dereference state (e.g. state.HookVars), so
+	// we hand them a zero-value state with an initialized HookVars map for
+	// compile-time expr setup. At runtime the real state is passed.
+	placeholderState := &AppsecRequestState{HookVars: map[string]string{}}
+
+	switch stage {
 	case hookOnLoad:
-		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
+		env = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		env = GetPreEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{})
+		env = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, nil, &ParsedRequest{}, pipeline.Event{})
+		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	}
 
-	opts := exprhelpers.GetExprOptions(ctx)
+	opts := exprhelpers.GetExprOptions(env)
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) // FIXME: opts
 		if err != nil {
@@ -109,6 +174,15 @@ type AppsecRequestState struct {
 
 	PendingAction   *string
 	PendingHTTPCode *int
+
+	// HookVars is a per-request scratch space exposed to expr hooks as
+	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
+	// values here so that later hook expressions — including the `apply`
+	// block of the same hook — can read them. The map is allocated once in
+	// NewRequestState, persists across in-band/out-of-band phases, and is
+	// copied into pipeline.AppsecEvent.HookVars when an event is emitted.
+	HookVars              map[string]string
+	DisableBodyInspection bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -155,6 +229,26 @@ type AppsecSubEngineOpts struct {
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
 }
 
+// BodySettings controls how oversized request bodies are handled.
+type BodySettings struct {
+	// MaxSize is the maximum allowed body size in bytes. Defaults to DefaultMaxBodySize (10MB).
+	MaxSize int64 `yaml:"max_body_size"`
+	// Action controls what happens when a body exceeds MaxSize:
+	// "drop" (default) - block the request, "partial" - inspect up to MaxSize bytes, "allow" - skip body inspection.
+	Action string `yaml:"body_size_exceeded_action"`
+}
+
+// AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
+// Hooks defined here are automatically dispatched only during the corresponding phase.
+type AppsecPhaseConfig struct {
+	Rules             []string            `yaml:"rules"`
+	OnMatch           []Hook              `yaml:"on_match"`
+	PreEval           []Hook              `yaml:"pre_eval"`
+	PostEval          []Hook              `yaml:"post_eval"`
+	Options           AppsecSubEngineOpts `yaml:"options"`
+	VariablesTracking []string            `yaml:"variables_tracking"`
+}
+
 // runtime version of AppsecConfig
 type AppsecRuntimeConfig struct {
 	Name           string
@@ -162,13 +256,15 @@ type AppsecRuntimeConfig struct {
 
 	InBandRules []AppsecCollection
 
-	DefaultRemediation        string
-	RemediationByTag          map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
-	RemediationById           map[int]string
-	CompiledOnLoad            []Hook
-	CompiledPreEval           []Hook
-	CompiledPostEval          []Hook
-	CompiledOnMatch           []Hook
+	DefaultRemediation string
+	RemediationByTag   map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	RemediationById    map[int]string
+
+	CompiledOnLoad []Hook     // runs once at startup, not phase-scoped
+	CommonHooks    PhaseHooks // apply to both phases
+	InBandHooks    PhaseHooks // only run during in-band
+	OutOfBandHooks PhaseHooks // only run during out-of-band
+
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
 	// CorazaLogger              debuglog.Logger
@@ -181,6 +277,11 @@ type AppsecRuntimeConfig struct {
 
 	DisabledOutOfBandRuleIds   []int
 	DisabledOutOfBandRulesTags []string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	RequestValidator *apivalidation.RequestValidator
+	DataDir          string
+	// BodySettings controls how oversized request bodies are handled. Settable via on_load hooks.
+	BodySettings BodySettings
 }
 
 type AppsecConfig struct {
@@ -202,12 +303,17 @@ type AppsecConfig struct {
 	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
 	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
 
+	InBand    *AppsecPhaseConfig `yaml:"inband"`
+	OutOfBand *AppsecPhaseConfig `yaml:"outofband"`
+
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
 }
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
-	state := AppsecRequestState{}
+	state := AppsecRequestState{
+		HookVars: make(map[string]string),
+	}
 	state.ResetResponse(w.Config)
 	return state
 }
@@ -286,6 +392,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		return fmt.Errorf("unable to parse yaml file %s : %w", file, err)
 	}
 
+	// Normalize phase-scoped sections: merge rules, options, and variables_tracking
+	// into flat fields. Hooks stay in the phase sections for Build() to compile separately.
+	tmp.normalizePhaseScoped()
+
 	if wc.Name == "" && tmp.Name != "" {
 		wc.Name = tmp.Name
 	}
@@ -319,6 +429,27 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
 
+	// Append phase-scoped hooks
+	if tmp.InBand != nil {
+		if wc.InBand == nil {
+			wc.InBand = &AppsecPhaseConfig{}
+		}
+
+		wc.InBand.OnMatch = append(wc.InBand.OnMatch, tmp.InBand.OnMatch...)
+		wc.InBand.PreEval = append(wc.InBand.PreEval, tmp.InBand.PreEval...)
+		wc.InBand.PostEval = append(wc.InBand.PostEval, tmp.InBand.PostEval...)
+	}
+
+	if tmp.OutOfBand != nil {
+		if wc.OutOfBand == nil {
+			wc.OutOfBand = &AppsecPhaseConfig{}
+		}
+
+		wc.OutOfBand.OnMatch = append(wc.OutOfBand.OnMatch, tmp.OutOfBand.OnMatch...)
+		wc.OutOfBand.PreEval = append(wc.OutOfBand.PreEval, tmp.OutOfBand.PreEval...)
+		wc.OutOfBand.PostEval = append(wc.OutOfBand.PostEval, tmp.OutOfBand.PostEval...)
+	}
+
 	// override other options
 	wc.LogLevel = tmp.LogLevel
 
@@ -348,6 +479,92 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	return nil
 }
 
+// normalizePhaseScoped merges rules, options, and variables_tracking from
+// phase-scoped sections (inband/outofband) into the flat top-level fields.
+// Hooks are left in the phase sections for Build() to compile separately.
+func (wc *AppsecConfig) normalizePhaseScoped() {
+	if wc.InBand != nil {
+		wc.InBandRules = append(wc.InBandRules, wc.InBand.Rules...)
+		wc.InBand.Rules = nil
+
+		if wc.InBand.Options.DisableBodyInspection {
+			wc.InbandOptions.DisableBodyInspection = true
+		}
+
+		if wc.InBand.Options.RequestBodyInMemoryLimit != nil {
+			wc.InbandOptions.RequestBodyInMemoryLimit = wc.InBand.Options.RequestBodyInMemoryLimit
+		}
+
+		wc.VariablesTracking = append(wc.VariablesTracking, wc.InBand.VariablesTracking...)
+		wc.InBand.VariablesTracking = nil
+	}
+
+	if wc.OutOfBand != nil {
+		wc.OutOfBandRules = append(wc.OutOfBandRules, wc.OutOfBand.Rules...)
+		wc.OutOfBand.Rules = nil
+
+		if wc.OutOfBand.Options.DisableBodyInspection {
+			wc.OutOfBandOptions.DisableBodyInspection = true
+		}
+
+		if wc.OutOfBand.Options.RequestBodyInMemoryLimit != nil {
+			wc.OutOfBandOptions.RequestBodyInMemoryLimit = wc.OutOfBand.Options.RequestBodyInMemoryLimit
+		}
+
+		wc.VariablesTracking = append(wc.VariablesTracking, wc.OutOfBand.VariablesTracking...)
+		wc.OutOfBand.VariablesTracking = nil
+	}
+}
+
+// buildHookList validates and compiles a list of hooks of the given stage.
+func buildHookList(ctx context.Context, hooks []Hook, stage hookStage) ([]Hook, error) {
+	var compiled []Hook
+
+	for _, hook := range hooks {
+		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
+			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stage, hook.OnSuccess)
+		}
+
+		if err := hook.Build(ctx, stage); err != nil {
+			return nil, fmt.Errorf("unable to build %s hook : %w", stage, err)
+		}
+
+		compiled = append(compiled, hook)
+	}
+
+	return compiled, nil
+}
+
+// buildPhaseHooks compiles pre_eval / post_eval / on_match hook lists into a
+// PhaseHooks. phaseName is only used to wrap errors ("" for the shared section).
+func buildPhaseHooks(ctx context.Context, phaseName string, pre, post, onMatch []Hook) (PhaseHooks, error) {
+	var (
+		out PhaseHooks
+		err error
+	)
+
+	wrap := func(e error) error {
+		if phaseName == "" || e == nil {
+			return e
+		}
+		return fmt.Errorf("%s: %w", phaseName, e)
+	}
+
+	if out.PreEval, err = buildHookList(ctx, pre, hookPreEval); err != nil {
+		return PhaseHooks{}, wrap(err)
+	}
+
+	if out.PostEval, err = buildHookList(ctx, post, hookPostEval); err != nil {
+		return PhaseHooks{}, wrap(err)
+	}
+
+	if out.OnMatch, err = buildHookList(ctx, onMatch, hookOnMatch); err != nil {
+		return PhaseHooks{}, wrap(err)
+	}
+
+	return out, nil
+}
+
 func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	item := hub.GetItem(cwhub.APPSEC_CONFIGS, configName)
 
@@ -365,8 +582,10 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
+func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
+
+	ret.RequestValidator = apivalidation.NewRequestValidator(wc.Logger.WithField("component", "api_validator"))
 
 	if wc.BouncerBlockedHTTPCode == 0 {
 		wc.BouncerBlockedHTTPCode = http.StatusForbidden
@@ -403,6 +622,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
+	ret.BodySettings = BodySettings{
+		MaxSize: DefaultMaxBodySize,
+		Action:  BodySizeActionDrop,
+	}
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules
@@ -433,56 +656,28 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
 	// load hooks
-	for _, hook := range wc.OnLoad {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for on_load hook : %s", hook.OnSuccess)
-		}
+	var err error
 
-		err := hook.Build(hookOnLoad)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
-		}
-
-		ret.CompiledOnLoad = append(ret.CompiledOnLoad, hook)
+	if ret.CompiledOnLoad, err = buildHookList(ctx, wc.OnLoad, hookOnLoad); err != nil {
+		return nil, err
 	}
 
-	for _, hook := range wc.PreEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for pre_eval hook : %s", hook.OnSuccess)
-		}
-
-		err := hook.Build(hookPreEval)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
-		}
-
-		ret.CompiledPreEval = append(ret.CompiledPreEval, hook)
+	if ret.CommonHooks, err = buildPhaseHooks(ctx, "", wc.PreEval, wc.PostEval, wc.OnMatch); err != nil {
+		return nil, err
 	}
 
-	for _, hook := range wc.PostEval {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for post_eval hook : %s", hook.OnSuccess)
+	if wc.InBand != nil {
+		if ret.InBandHooks, err = buildPhaseHooks(ctx, "inband",
+			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch); err != nil {
+			return nil, err
 		}
-
-		err := hook.Build(hookPostEval)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
-		}
-
-		ret.CompiledPostEval = append(ret.CompiledPostEval, hook)
 	}
 
-	for _, hook := range wc.OnMatch {
-		if hook.OnSuccess != "" && hook.OnSuccess != "continue" && hook.OnSuccess != "break" {
-			return nil, fmt.Errorf("invalid 'on_success' for on_match hook : %s", hook.OnSuccess)
+	if wc.OutOfBand != nil {
+		if ret.OutOfBandHooks, err = buildPhaseHooks(ctx, "outofband",
+			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch); err != nil {
+			return nil, err
 		}
-
-		err := hook.Build(hookOnMatch)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
-		}
-
-		ret.CompiledOnMatch = append(ret.CompiledOnMatch, hook)
 	}
 
 	// variable tracking
@@ -498,14 +693,15 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	return ret, nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
+// processHooks runs a list of compiled hooks with the given environment.
+func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string) error {
 	has_match := false
 
-	for _, rule := range w.CompiledOnLoad {
+	for _, rule := range hooks {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run appsec on_load filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec %s filter %s : %w", hookType, rule.Filter, err)
 			}
 
 			switch t := output.(type) {
@@ -523,15 +719,15 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 		}
 
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				w.Logger.Errorf("unable to apply appsec on_load expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, err)
 				continue
 			}
 
 			switch t := o.(type) {
 			case error:
-				w.Logger.Errorf("unable to apply appsec on_load expr: %s", t)
+				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, t)
 				continue
 			default:
 			}
@@ -540,150 +736,44 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 		if has_match && rule.OnSuccess == "break" {
 			break
 		}
+	}
+
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
+	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load")
+}
+
+// runPhaseHooks runs the common hooks for the given stage, then dispatches to
+// the in-band or out-of-band phase hooks depending on the request band.
+func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, request *ParsedRequest) error {
+	label := stage.String()
+
+	if err := w.processHooks(w.CommonHooks.get(stage), env, label); err != nil {
+		return err
+	}
+
+	switch {
+	case request.IsInBand:
+		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]")
+	case request.IsOutBand:
+		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]")
 	}
 
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	has_match := false
-
-	for _, rule := range w.CompiledOnMatch {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec on_match filter %s : %w", rule.Filter, err)
-			}
-
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
-
-			has_match = true
-		}
-
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, state, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec on_match expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec on_match expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
-	}
-
-	return nil
+	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
 }
 
-func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	has_match := false
-
-	for _, rule := range w.CompiledPreEval {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
-			}
-
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
-
-			has_match = true
-		}
-		// here means there is no filter or the filter matched
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
-	}
-
-	return nil
+func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
+	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(ctx, w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	has_match := false
-
-	for _, rule := range w.CompiledPostEval {
-		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
-			}
-
-			switch t := output.(type) {
-			case bool:
-				if !t {
-					w.Logger.Debugf("filter didnt match")
-					continue
-				}
-			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
-				continue
-			}
-
-			has_match = true
-		}
-		// here means there is no filter or the filter matched
-		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, state, request), w.Logger, w.Logger.Level >= log.DebugLevel)
-			if err != nil {
-				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", err)
-				continue
-			}
-
-			switch t := o.(type) {
-			case error:
-				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", t)
-				continue
-			default:
-			}
-		}
-
-		if has_match && rule.OnSuccess == "break" {
-			break
-		}
-	}
-
-	return nil
+	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
@@ -849,6 +939,42 @@ func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) e
 	return nil
 }
 
+// SetMaxBodySize sets the maximum allowed body size in bytes. Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetMaxBodySize(size int64) error {
+	if size <= 0 {
+		return errors.New("max_body_size must be a positive integer")
+	}
+
+	w.Logger.Debugf("setting max body size to %d bytes", size)
+	w.BodySettings.MaxSize = size
+
+	return nil
+}
+
+// SetBodySizeExceededAction sets what happens when the body exceeds the maximum size.
+// Valid values: "drop" (block request), "partial" (inspect up to max size), "allow" (skip body inspection).
+// Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetBodySizeExceededAction(action string) error {
+	switch action {
+	case BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow:
+		w.Logger.Debugf("setting body size exceeded action to %q", action)
+		w.BodySettings.Action = action
+
+		return nil
+	default:
+		return fmt.Errorf("invalid body_size_exceeded_action %q (must be %s, %s, or %s)", action, BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow)
+	}
+}
+
+// DisableBodyInspection prevents Coraza from processing the request body for the current request.
+// Intended for use in pre_eval hooks.
+func (w *AppsecRuntimeConfig) DisableBodyInspection(state *AppsecRequestState) error {
+	state.DisableBodyInspection = true
+	w.Logger.Debugf("body inspection disabled for this request")
+
+	return nil
+}
+
 type BodyResponse struct {
 	Action     string `json:"action"`
 	HTTPStatus int    `json:"http_status"`
@@ -873,4 +999,134 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	}
 
 	return bouncerStatusCode, resp
+}
+
+const schemasSubDir = "schemas"
+
+func (w *AppsecRuntimeConfig) loadAPISchema(ref, filename string, opts *apivalidation.SchemaOptions) error {
+	if !filepath.IsLocal(filename) {
+		return fmt.Errorf("schema filename %q must be relative to %s and stay within it", filename, schemasSubDir)
+	}
+	schemaPath := filepath.Join(w.DataDir, schemasSubDir, filename)
+	w.Logger.Debugf("loading schema %s for ref %s", schemaPath, ref)
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		return fmt.Errorf("unable to read schema file %s : %w", schemaPath, err)
+	}
+	return w.RequestValidator.LoadSchema(ref, string(schema), opts)
+}
+
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string) error {
+	return w.loadAPISchema(ref, filename, nil)
+}
+
+// LoadAPISchemaWithOptions behaves like LoadAPISchemaWithName but accepts a
+// map of policy overrides. Supported keys:
+//   - "on_route_not_found":             "drop" | "ignore"  (default: "drop")
+//   - "on_method_not_allowed":          "drop" | "ignore"  (default: "drop")
+//   - "on_unsupported_security_scheme": "drop" | "ignore"  (default: "drop")
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithOptions(ref string, filename string, opts map[string]any) error {
+	schemaOpts, err := parseSchemaOptions(opts)
+	if err != nil {
+		return err
+	}
+	return w.loadAPISchema(ref, filename, schemaOpts)
+}
+
+// RegisterAPISchemaBodyDecoder allows a user's on_load hook to add a Content-Type
+// to the set the API schema validator can decode. decoderName must be one of
+// the stable built-in identifiers exported by the api_validation package
+// ("json", "urlencoded", "multipart", "yaml", "csv", "plain", "file"). Note
+// that the underlying kin-openapi decoder registry is process-global: today
+// all appsec datasources in the same process share the same set of
+// registered body decoders.
+func (w *AppsecRuntimeConfig) RegisterAPISchemaBodyDecoder(contentType, decoderName string) error {
+	return w.RequestValidator.RegisterBodyDecoder(contentType, decoderName)
+}
+
+func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, error) {
+	out := &apivalidation.SchemaOptions{}
+	for k, v := range opts {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("schema option %q must be a string, got %T", k, v)
+		}
+		switch k {
+		case "on_route_not_found":
+			out.OnRouteNotFound = apivalidation.Policy(s)
+		case "on_method_not_allowed":
+			out.OnMethodNotAllowed = apivalidation.Policy(s)
+		case "on_unsupported_security_scheme":
+			out.OnUnsupportedSecurityScheme = apivalidation.Policy(s)
+		default:
+			return nil, fmt.Errorf("unknown schema option %q", k)
+		}
+	}
+	return out, nil
+}
+
+// validationErrorVarKeys lists the keys published into state.HookVars by
+// ValidateRequestWithSchema. Keeping them centralized makes it easy to reset
+// them all at the start of each validation call.
+var validationErrorVarKeys = []string{
+	"validation_error",
+	"validation_error_reason",
+	"validation_error_field",
+	"validation_error_message",
+	"validation_error_value",
+	"validation_error_expected",
+}
+
+// ValidateRequestWithSchema validates r against the OpenAPI schema registered
+// under ref. It returns true when the request is valid, false when it is not
+// (or when no schema is registered for ref). On failure, structured error
+// details are published into state.HookVars under the "validation_error*" keys
+// so that subsequent hook expressions (typically the `apply` block of the same
+// hook) can build a drop reason or enrich an event. Each call also increments
+// the AppsecValidationOKCounter / AppsecValidationFailedCounter metric.
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string) bool {
+	for _, k := range validationErrorVarKeys {
+		delete(state.HookVars, k)
+	}
+
+	r := request.HTTPRequest.Clone(ctx)
+	r.Body = io.NopCloser(bytes.NewReader(request.Body))
+
+	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
+	if err == nil {
+		metrics.AppsecValidationOKCounter.With(prometheus.Labels{
+			"source":        request.RemoteAddrNormalized,
+			"appsec_engine": request.AppsecEngine,
+			"schema_ref":    ref,
+		}).Inc()
+		return true
+	}
+
+	var valErr *apivalidation.ValidationError
+	if !errors.As(err, &valErr) {
+		// Non-ValidationError paths cover things like "no schema loaded for
+		// ref X". Log loudly and surface a synthetic entry so the hook can
+		// still build a message.
+		w.Logger.Errorf("request validation failed: %s", err)
+		valErr = &apivalidation.ValidationError{
+			Reason:  "internal",
+			Message: err.Error(),
+		}
+	}
+
+	state.HookVars["validation_error"] = valErr.Error()
+	state.HookVars["validation_error_reason"] = valErr.Reason
+	state.HookVars["validation_error_field"] = valErr.Field
+	state.HookVars["validation_error_message"] = valErr.Message
+	state.HookVars["validation_error_value"] = valErr.Value
+	state.HookVars["validation_error_expected"] = valErr.Expected
+
+	metrics.AppsecValidationFailedCounter.With(prometheus.Labels{
+		"source":        request.RemoteAddrNormalized,
+		"appsec_engine": request.AppsecEngine,
+		"schema_ref":    ref,
+		"reason":        valErr.Reason,
+	}).Inc()
+
+	return false
 }

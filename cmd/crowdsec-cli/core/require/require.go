@@ -81,6 +81,10 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DBClient(ctx context.Context, dbcfg *csconfig.DatabaseCfg) (*database.Client, error) {
+	if dbcfg == nil {
+		return nil, errors.New("no database configuration provided")
+	}
+
 	db, err := database.NewClient(ctx, dbcfg, dbcfg.NewLogger())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)

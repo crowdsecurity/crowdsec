@@ -31,21 +31,21 @@ import (
 
 var (
 	// tombs for the parser, buckets and outputs.
-	acquisTomb    tomb.Tomb
-	outputsTomb   tomb.Tomb
-	apiTomb       tomb.Tomb
-	crowdsecTomb  tomb.Tomb
-	pluginTomb    tomb.Tomb
+	acquisTomb   tomb.Tomb
+	outputsTomb  tomb.Tomb
+	apiTomb      tomb.Tomb
+	crowdsecTomb tomb.Tomb
+	pluginTomb   tomb.Tomb
 
 	flags Flags
 
 	// the state of the buckets
 	holders []leakybucket.BucketFactory
 
-	logLines   chan pipeline.Event
-	inEvents  chan pipeline.Event
-	outEvents chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
-	pluginBroker      csplugin.PluginBroker
+	logLines     chan pipeline.Event
+	inEvents     chan pipeline.Event
+	outEvents    chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
+	pluginBroker csplugin.PluginBroker
 )
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
