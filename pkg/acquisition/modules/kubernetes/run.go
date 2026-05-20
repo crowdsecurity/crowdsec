@@ -231,7 +231,6 @@ func (s *Source) processLine(line string, source string, out chan pipeline.Event
 	out <- evt
 	s.logger.Tracef("got one line from %s: %s", source, line)
 	return nil
-
 }
 
 func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) context.CancelFunc {
