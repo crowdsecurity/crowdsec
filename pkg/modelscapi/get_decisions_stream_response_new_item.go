@@ -7,6 +7,7 @@ package modelscapi
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -68,11 +69,15 @@ func (m *GetDecisionsStreamResponseNewItem) validateDecisions(formats strfmt.Reg
 
 		if m.Decisions[i] != nil {
 			if err := m.Decisions[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("decisions" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -125,11 +130,15 @@ func (m *GetDecisionsStreamResponseNewItem) contextValidateDecisions(ctx context
 			}
 
 			if err := m.Decisions[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("decisions" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}

@@ -86,9 +86,6 @@ teardown() {
     assert_output - <<-EOT
 	validation failure list:
 	remediation_components.0.metrics.0.items in body is required
-	validation failure list:
-	remediation_components.0.metrics.0.meta.utc_now_timestamp in body is required
-	remediation_components.0.metrics.0.meta.window_size_seconds in body is required
 	EOT
 }
 
