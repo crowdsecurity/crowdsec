@@ -49,8 +49,26 @@ endif
 # for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
 BUILD_STATIC ?= 0
 
+# Enable this to run the data race detector in staging builds or bats tests.
+# Mutually exclusive with BUILD_STATIC, slows down the execution (tests take 4x as long)
+RACE_DETECT ?= 1
+
 # List of notification plugins to build
 PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
+
+# Configure race detector.
+
+GORACE_OPTS :=
+GORACE :=
+
+ifeq ($(RACE_DETECT),1)
+  GORACE_OPTS := -race
+  export GORACE := halt_on_error=0 exitcode=66 strip_path_prefix=$(shell pwd)/ log_path=/tmp/race
+  export CGO_ENABLED := 1
+endif
+
+export GORACE_OPTS
+export GORACE
 
 #--------------------------------------
 
