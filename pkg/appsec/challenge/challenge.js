@@ -123,6 +123,20 @@ function hmacSHA256Hex(keyStr, msgStr) {
   return toHex(hmacSHA256(encode(keyStr), encode(msgStr)));
 }
 
+// hexToBytes decodes a hex string into a Uint8Array. Used to materialize the
+// per-epoch HMAC key delivered as hex by the dynamic module.
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return out;
+}
+
+function hmacSHA256HexKey(keyHex, msgStr) {
+  return toHex(hmacSHA256(hexToBytes(keyHex), encode(msgStr)));
+}
+
 // --- Proof-of-Work (offloaded to Web Worker) ---
 
 const powWorkerPath = "__CROWDSEC_POW_WORKER_PATH__";
@@ -186,10 +200,20 @@ function encryptFingerprint(key, fingerprint) {
   return btoa(binaryString);
 }
 
-// --- Template-injected values (replaced server-side before obfuscation) ---
+// --- Non-secret per-request values (plain template injection) ---
+//
+// _ts, _powP, _powM, _powD are set on `globalThis` by a small plain <script>
+// tag rendered by the server before this module loads. They are NOT secrets:
+//   _ts   — current server time (forgeable but freshness-windowed)
+//   _powP — random PoW salt (must be server-issued so clients can't pick favorable salts)
+//   _powM — HMAC binding (_powP, _ts) under the server's per-epoch sign key
+//   _powD — PoW difficulty (a number)
+//
+// What IS secret: the per-epoch K used to derive the ticket and submission
+// HMAC. K is delivered by the dynamic key module (re-obfuscated each
+// rotation) which calls the hook below with { key, epoch }.
 
 const ts = typeof _ts !== "undefined" ? _ts : "";
-const ticket = typeof _t !== "undefined" ? _t : "";
 const powPrefix = typeof _powP !== "undefined" ? _powP : "";
 const powMAC = typeof _powM !== "undefined" ? _powM : "";
 const powDifficulty = typeof _powD !== "undefined" ? _powD : 12;
@@ -211,27 +235,54 @@ function reportChallengeStatus(status) {
 }
 
 // --- Main flow ---
-// PoW runs in a Web Worker while fingerprint collection runs on the main thread.
-// Both run in parallel; the main thread stays responsive for event collection.
+// The static bundle exposes a hook on globalThis. The dynamic key module
+// (loaded after this static bundle) calls the hook with { key, epoch }.
+// All cryptographic operations that depend on the per-epoch key live here:
+// the static bundle never sees a hardcoded K, only the per-call argument.
+//
+// The hook name is a sentinel that survives JS obfuscation via the
+// `reservedStrings` option — the same literal must appear in both the
+// static bundle and the dynamic module so they meet on globalThis.
 
-const [nonce, fpResult] = await Promise.all([
-  solvePoWAsync(powPrefix, powDifficulty),
-  new FingerprintScanner().collectFingerprint({ encrypt: false }),
-]);
+const CSEC_HOOK_NAME = "__CSEC_CHALLENGE_HOOK_v1__";
 
-const sessionKey = sha256Hex(ticket + nonce);
-const f = encryptFingerprint(sessionKey, JSON.stringify(fpResult));
-const h = hmacSHA256Hex(sessionKey, f + ts + ticket + nonce);
-fetch(submitPath, {
-  method: "POST",
-  credentials: "same-origin",
-  body: new URLSearchParams({ f: f, t: ticket, ts: ts, h: h, n: nonce, p: powPrefix, m: powMAC }),
-})
-  .then((response) => response.json())
-  .then((data) => {
-    const status = typeof data?.status === "string" ? data.status : "fail";
-    reportChallengeStatus(status);
+async function runChallenge(epochKey) {
+  const [nonce, fpResult] = await Promise.all([
+    solvePoWAsync(powPrefix, powDifficulty),
+    new FingerprintScanner().collectFingerprint({ encrypt: false }),
+  ]);
+
+  // Client derives the ticket using the per-epoch key — the secret never
+  // appears in plaintext HTML, only in the obfuscated dynamic module.
+  // epochKey is hex-encoded; HMAC over the raw bytes.
+  const ticket = hmacSHA256HexKey(epochKey, ts);
+
+  const sessionKey = sha256Hex(ticket + nonce);
+  const f = encryptFingerprint(sessionKey, JSON.stringify(fpResult));
+  const h = hmacSHA256Hex(sessionKey, f + ts + ticket + nonce);
+
+  return fetch(submitPath, {
+    method: "POST",
+    credentials: "same-origin",
+    body: new URLSearchParams({ f: f, t: ticket, ts: ts, h: h, n: nonce, p: powPrefix, m: powMAC }),
   })
-  .catch(() => {
+    .then((response) => response.json())
+    .then((data) => {
+      const status = typeof data?.status === "string" ? data.status : "fail";
+      reportChallengeStatus(status);
+    })
+    .catch(() => {
+      reportChallengeStatus("fail");
+    });
+}
+
+// Register the hook. The dynamic module (loaded after this) reads the same
+// CSEC_HOOK_NAME string and invokes runChallenge with the per-epoch key.
+globalThis[CSEC_HOOK_NAME] = function (params) {
+  // Defensive: the dynamic module must pass a non-empty string key.
+  if (!params || typeof params.key !== "string" || params.key.length === 0) {
     reportChallengeStatus("fail");
-  });
+    return;
+  }
+  runChallenge(params.key);
+};

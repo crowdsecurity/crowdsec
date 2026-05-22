@@ -23,10 +23,29 @@ function writeStdout(str) {
 try {
   const sourceCode = readStdin();
 
-  const result = JavaScriptObfuscator.obfuscate(
-    sourceCode,
+  // Spread the high-obfuscation preset, then add reservedStrings so the
+  // sentinel that bridges the static bundle and the per-epoch dynamic key
+  // module (CSEC_CHALLENGE_HOOK_v1) survives the string-array transform
+  // identically in both bundles. Without this, the two independently-
+  // obfuscated artifacts wouldn't agree on the globalThis symbol they
+  // need to meet at.
+  //
+  // disableConsoleOutput is forced off because fpscanner's CDP detection
+  // (signals/cdp.ts) relies on `console.log(err)` triggering DevTools'
+  // eager access of `err.stack`, which in turn fires our overridden
+  // `Error.prepareStackTrace`. The preset's default `true` rewrites the
+  // call into a no-op stub and the detection silently always reports
+  // false. Leave it off so the side-channel works.
+  const opts = Object.assign(
+    {},
     JavaScriptObfuscator.getOptionsByPreset("high-obfuscation"),
+    {
+      reservedStrings: ["__CSEC_CHALLENGE_HOOK_v1__"],
+      disableConsoleOutput: false,
+    },
   );
+
+  const result = JavaScriptObfuscator.obfuscate(sourceCode, opts);
 
   writeStdout(result.getObfuscatedCode());
 } catch (e) {

@@ -1,3 +1,10 @@
+// fingerprint.go holds the wire-shape structs the JS fingerprint bundle
+// returns: FlexInt / FlexBool tolerant primitives and the nested
+// FingerprintData / fingerprintBotAlias structures that mirror the JSON
+// payload one-to-one. Handwritten accessors live in fingerprint_helpers.go,
+// proto ↔ struct conversion in fingerprint_proto.go, and mismatch detection
+// methods in fingerprint_mismatch.go.
+
 package challenge
 
 import (
@@ -296,6 +303,13 @@ func (fi FlexInt) Int() int {
 }
 */
 
+// FingerprintData is the deserialized payload produced by the JS
+// fingerprint bundle and (after a successful challenge) carried inside the
+// sealed challenge cookie. It is the value exposed to rule authors via the
+// `fingerprint` variable in expr environments. The struct mirrors the JSON
+// wire shape one-to-one; FlexInt/FlexBool primitives tolerate the bundle's
+// occasional "error string instead of value" outputs without aborting the
+// whole submission.
 type FingerprintData struct {
 	Signals                 fingerprintSignals                 `json:"signals"`
 	FSID                    string                             `json:"fsid"`
@@ -305,6 +319,19 @@ type FingerprintData struct {
 	FastBotDetection        FlexBool                           `json:"fastBotDetection"`
 	FastBotDetectionDetails fingerprintFastBotDetectionDetails `json:"fastBotDetectionDetails"`
 	Bot                     fingerprintBotAlias                `json:"-"`
+
+	// Allowlisted is true on cookies minted by GrantChallengeCookie (operator
+	// bypass for trusted bots like Googlebot) — these cookies never went
+	// through a real challenge submission and carry no measured signals.
+	// AllowlistReason is the operator-supplied free-form string identifying
+	// why the bypass was granted, exposed to on_challenge expressions so
+	// per-route policy can distinguish bypass categories.
+	//
+	// Both fields live in the cookie's AEAD plaintext header (see
+	// crypto.go), NOT in the protobuf envelope. They are populated by
+	// ValidCookie / GrantChallengeCookie and zero for normal cookies.
+	Allowlisted     bool   `json:"-"`
+	AllowlistReason string `json:"-"`
 }
 
 type fingerprintSignals struct {

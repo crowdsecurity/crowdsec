@@ -1,3 +1,10 @@
+// fingerprint_mismatch_data.go is the static lookup data backing the
+// mismatch report: stable reason keys, severity labels, and the slice that
+// binds each fpscanner-native signal to the bool it reads from the
+// FingerprintData wire shape. Atomic detection methods live in
+// fingerprint_mismatch.go; the aggregate report builder lives in
+// fingerprint_helpers.go.
+
 package challenge
 
 import (
@@ -46,11 +53,11 @@ const (
 // libDetection binds an fpscanner-native signal to the bot-alias bool that
 // carries its `detected` flag, together with our severity label for it.
 //
-// TODO: the fpscanner library ships each check with its own severity in the
-// JSON payload. We don't unmarshal `severity` today (the struct only carries
-// `detected`), so the severity values below are a mirror of what the library
-// defaults to. When `fingerprintDetectionResult` grows a Severity field, we
-// can drop the Severity column here and read it from the payload instead.
+// Note: the fpscanner library ships each check with its own severity in the
+// JSON payload, but `fingerprintDetectionResult` only unmarshals `detected`
+// today, so the severity values below mirror the library defaults. The day
+// we extend the struct with a Severity field, this column can be dropped
+// and read from the payload instead.
 type libDetection struct {
 	Key      string
 	Severity string

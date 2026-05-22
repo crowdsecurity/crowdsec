@@ -1,3 +1,9 @@
+// fingerprint_proto.go bridges the protobuf-encoded fingerprint payload
+// (pb.FingerprintData, the wire format used inside the encrypted cookie) and
+// the FingerprintData struct used at runtime. Unexported helpers only; the
+// conversion is mechanical field-by-field and intentionally verbose to keep
+// it auditable.
+
 package challenge
 
 import (

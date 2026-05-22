@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/expr-lang/expr"
@@ -40,6 +41,7 @@ const (
 	hookPostEval
 	hookOnMatch
 	hookOnChallenge
+	hookOnChallengeSubmit
 )
 
 func (s hookStage) String() string {
@@ -54,6 +56,8 @@ func (s hookStage) String() string {
 		return "on_match"
 	case hookOnChallenge:
 		return "on_challenge"
+	case hookOnChallengeSubmit:
+		return "on_challenge_submit"
 	default:
 		return "unknown"
 	}
@@ -93,6 +97,14 @@ const (
 const bodyChallengeOK = `{"status":"ok"}`
 const bodyChallengeFailed = `{"status":"failed"}`
 
+// bodyChallengeRejected is returned when an on_challenge_submit hook calls
+// RejectSubmission to refuse cookie issuance after a cryptographically
+// valid submission. The client-side JS handler renders a terminal "your
+// browser was rejected" UI with no retry CTA (vs. "failed" which prompts
+// a retry). The server-side reason string is logged but NOT echoed to
+// the client to avoid leaking detection logic.
+const bodyChallengeRejected = `{"status":"rejected"}`
+
 type phase int
 
 const (
@@ -114,6 +126,8 @@ func (h *Hook) Build(stage hookStage, patcher *appsecExprPatcher) error {
 		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{}, pipeline.Event{})
 	case hookOnChallenge:
 		ctx = GetOnChallengeEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
+	case hookOnChallengeSubmit:
+		ctx = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
 	}
 
 	opts := exprhelpers.GetExprOptions(ctx)
@@ -159,6 +173,14 @@ type AppsecDropInfo struct {
 	Interruption *corazatypes.Interruption
 }
 
+// SubmissionRejectInfo signals that an on_challenge_submit hook called
+// RejectSubmission to refuse cookie issuance for a cryptographically valid
+// submission. ProcessOnChallengeRules inspects this on the submit-path
+// branch and, if set, serves bodyChallengeRejected with no Set-Cookie.
+type SubmissionRejectInfo struct {
+	Reason string
+}
+
 type AppsecRequestState struct {
 	Tx           ExtendedTransaction
 	CurrentPhase phase
@@ -174,6 +196,26 @@ type AppsecRequestState struct {
 	Fingerprint         *challenge.FingerprintData
 	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
 	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
+
+	// SubmissionRejection is set by RejectSubmission inside an
+	// on_challenge_submit hook to refuse cookie issuance for the current
+	// challenge submission. nil for any other phase / outcome.
+	SubmissionRejection *SubmissionRejectInfo
+
+	// ChallengeBypassed is set by GrantChallengeCookie to suppress later
+	// SendChallenge calls in the same request. Per-request only; cleared
+	// on ResetResponse. The bypass for subsequent requests is carried by
+	// the allowlist cookie itself, not by this flag.
+	ChallengeBypassed bool
+
+	// HooksHalted is flipped by terminal hook actions (currently
+	// RejectSubmission and the inline GrantChallengeCookie variant
+	// exposed in on_challenge_submit) to short-circuit later rules in
+	// the same phase. Without this, a `LogAccepted` rule following a
+	// `RejectSubmission` rule with `filter: "true"` would emit a
+	// contradictory accept-log line for an already-rejected submission.
+	// Per-request only; cleared by ResetResponse.
+	HooksHalted bool
 
 	// LastMismatchReport caches the result of the EvaluateMismatches expr
 	// closure for the current request, so repeated calls from a single
@@ -199,6 +241,9 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.PendingAction = nil
 	s.PendingHTTPCode = nil
 	s.RequireChallenge = false
+	s.SubmissionRejection = nil
+	s.ChallengeBypassed = false
+	s.HooksHalted = false
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -231,13 +276,15 @@ type AppsecSubEngineOpts struct {
 
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
 // Hooks defined here are automatically dispatched only during the corresponding phase.
-// on_challenge is in-band only; setting it under `outofband:` is rejected at Build() time.
+// on_challenge and on_challenge_submit are in-band only; setting them under
+// `outofband:` is rejected at Build() time.
 type AppsecPhaseConfig struct {
 	Rules             []string            `yaml:"rules"`
 	OnMatch           []Hook              `yaml:"on_match"`
 	PreEval           []Hook              `yaml:"pre_eval"`
 	PostEval          []Hook              `yaml:"post_eval"`
 	OnChallenge       []Hook              `yaml:"on_challenge"`
+	OnChallengeSubmit []Hook              `yaml:"on_challenge_submit"`
 	Options           AppsecSubEngineOpts `yaml:"options"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 }
@@ -253,11 +300,12 @@ type AppsecRuntimeConfig struct {
 	RemediationByTag   map[string]string // Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 	RemediationById    map[int]string
 
-	CompiledOnLoad      []Hook     // runs once at startup, not phase-scoped
-	CompiledOnChallenge []Hook     // in-band only; runs before pre_eval
-	CommonHooks         PhaseHooks // apply to both phases
-	InBandHooks         PhaseHooks // only run during in-band
-	OutOfBandHooks      PhaseHooks // only run during out-of-band
+	CompiledOnLoad            []Hook     // runs once at startup, not phase-scoped
+	CompiledOnChallenge       []Hook     // in-band only; runs before pre_eval
+	CompiledOnChallengeSubmit []Hook     // in-band only; runs at /submit POST after validation
+	CommonHooks               PhaseHooks // apply to both phases
+	InBandHooks               PhaseHooks // only run during in-band
+	OutOfBandHooks            PhaseHooks // only run during out-of-band
 
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *AppsecConfig
@@ -293,12 +341,20 @@ type AppsecConfig struct {
 	PostEval          []Hook              `yaml:"post_eval"`
 	OnMatch           []Hook              `yaml:"on_match"`
 	OnChallenge       []Hook              `yaml:"on_challenge"`
+	OnChallengeSubmit []Hook              `yaml:"on_challenge_submit"`
 	VariablesTracking []string            `yaml:"variables_tracking"`
 	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
 	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
 
 	InBand    *AppsecPhaseConfig `yaml:"inband"`
 	OutOfBand *AppsecPhaseConfig `yaml:"outofband"`
+
+	// Challenge carries the WAF challenge / bot-detection runtime tuning.
+	// All fields are optional; unset fields fall back to the runtime
+	// defaults at NewChallengeRuntime time. When multiple appsec-configs
+	// are loaded, each later config's non-nil fields override the earlier
+	// values (see LoadByPath).
+	Challenge *challenge.Config `yaml:"challenge"`
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
@@ -421,6 +477,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OnChallenge = append(wc.OnChallenge, tmp.OnChallenge...)
 	}
 
+	if tmp.OnChallengeSubmit != nil {
+		wc.OnChallengeSubmit = append(wc.OnChallengeSubmit, tmp.OnChallengeSubmit...)
+	}
+
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
 	}
@@ -435,6 +495,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.InBand.PreEval = append(wc.InBand.PreEval, tmp.InBand.PreEval...)
 		wc.InBand.PostEval = append(wc.InBand.PostEval, tmp.InBand.PostEval...)
 		wc.InBand.OnChallenge = append(wc.InBand.OnChallenge, tmp.InBand.OnChallenge...)
+		wc.InBand.OnChallengeSubmit = append(wc.InBand.OnChallengeSubmit, tmp.InBand.OnChallengeSubmit...)
 	}
 
 	if tmp.OutOfBand != nil {
@@ -446,6 +507,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.OutOfBand.PreEval = append(wc.OutOfBand.PreEval, tmp.OutOfBand.PreEval...)
 		wc.OutOfBand.PostEval = append(wc.OutOfBand.PostEval, tmp.OutOfBand.PostEval...)
 		wc.OutOfBand.OnChallenge = append(wc.OutOfBand.OnChallenge, tmp.OutOfBand.OnChallenge...)
+		wc.OutOfBand.OnChallengeSubmit = append(wc.OutOfBand.OnChallengeSubmit, tmp.OutOfBand.OnChallengeSubmit...)
 	}
 
 	// override other options
@@ -472,6 +534,16 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	if tmp.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
 		wc.OutOfBandOptions.RequestBodyInMemoryLimit = tmp.OutOfBandOptions.RequestBodyInMemoryLimit
+	}
+
+	// Merge challenge tuning field by field so multiple appsec-configs can
+	// each contribute a disjoint subset without one wiping out the others.
+	// Each non-nil field in tmp overrides the corresponding field in wc.
+	if tmp.Challenge != nil {
+		if wc.Challenge == nil {
+			wc.Challenge = &challenge.Config{}
+		}
+		wc.Challenge.MergeFrom(tmp.Challenge)
 	}
 
 	return nil
@@ -676,6 +748,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 		if len(wc.OutOfBand.OnChallenge) > 0 {
 			return nil, errors.New("on_challenge hooks are only valid in-band, not under outofband")
 		}
+
+		if len(wc.OutOfBand.OnChallengeSubmit) > 0 {
+			return nil, errors.New("on_challenge_submit hooks are only valid in-band, not under outofband")
+		}
 	}
 
 	// on_challenge hooks: merge top-level and inband-scoped (both are in-band only).
@@ -695,6 +771,20 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 		patcher.NeedWASMVM = true
 	}
 
+	// on_challenge_submit hooks: same merge pattern; in-band only.
+	onChallengeSubmitHooks := wc.OnChallengeSubmit
+	if wc.InBand != nil {
+		onChallengeSubmitHooks = append(onChallengeSubmitHooks, wc.InBand.OnChallengeSubmit...)
+	}
+
+	if ret.CompiledOnChallengeSubmit, err = buildHookList(onChallengeSubmitHooks, hookOnChallengeSubmit, patcher); err != nil {
+		return nil, err
+	}
+
+	if len(ret.CompiledOnChallengeSubmit) > 0 {
+		patcher.NeedWASMVM = true
+	}
+
 	// variable tracking
 	for _, variable := range wc.VariablesTracking {
 		compiledVariableRule, err := regexp.Compile(variable)
@@ -711,10 +801,22 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 }
 
 // processHooks runs a list of compiled hooks with the given environment.
-func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string) error {
+//
+// state, when non-nil, is consulted between rule iterations: if
+// state.HooksHalted is true (set by a terminal expr helper such as
+// RejectSubmission or the on_challenge_submit GrantChallengeCookie),
+// remaining rules in this phase are skipped. ProcessOnLoadRules and
+// the non-submit phases pass nil — they have no terminal actions
+// today.
+func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState) error {
 	has_match := false
 
 	for _, rule := range hooks {
+		if state != nil && state.HooksHalted {
+			w.Logger.Debugf("hooks halted by a terminal action; skipping remaining %s rules", hookType)
+			break
+		}
+
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
@@ -759,7 +861,7 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
-	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load")
+	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load", nil)
 }
 
 // runPhaseHooks runs the common hooks for the given stage, then dispatches to
@@ -767,15 +869,15 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, request *ParsedRequest) error {
 	label := stage.String()
 
-	if err := w.processHooks(w.CommonHooks.get(stage), env, label); err != nil {
+	if err := w.processHooks(w.CommonHooks.get(stage), env, label, nil); err != nil {
 		return err
 	}
 
 	switch {
 	case request.IsInBand:
-		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]")
+		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]", nil)
 	case request.IsOutBand:
-		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]")
+		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]", nil)
 	}
 
 	return nil
@@ -808,19 +910,37 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
 	}
 
-	// Challenge submission: validate and issue (or deny) the cookie. User hooks
-	// do NOT run here — they would overwrite the JSON submission response and
-	// confuse the client. Policy inspection of the fingerprint happens on the
-	// very next request, which will carry the cookie we just issued.
+	// Challenge submission: validate, give on_challenge_submit hooks a chance
+	// to reject the submission, then issue (or deny) the cookie. Per-route
+	// on_challenge inspection happens on subsequent cookie-bearing requests.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("validating challenge response")
-		ck, _, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
-			// TODO: find a way to propagate an event to the LP for use in scenarios
+			// Failed validations are logged but not surfaced to the local processor as
+			// events today; if/when we want scenarios to fire on repeated failed
+			// submissions, this is the hook point.
 			w.Logger.Errorf("challenge validation failed: %s", err)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
+
+		// Populate state.Fingerprint so on_challenge_submit expressions see
+		// the freshly-decrypted fingerprint via the env.
+		state.Fingerprint = &fpData
+
+		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
+			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
+		}
+
+		if state.SubmissionRejection != nil {
+			// The expr-side RejectSubmission helper emits the reject log
+			// itself (with the operator-chosen verbosity), so we don't
+			// re-log here — just serve the rejection envelope.
+			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
+				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
+		}
+
 		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
 	}
@@ -829,10 +949,21 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 	// fingerprint and remember the difficulty the client proved.
 	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
 		if cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
-			w.Logger.Debugf("valid challenge cookie found, setting fingerprint data")
 			fp := cookieData.Fingerprint
+			fp.Allowlisted = cookieData.Allowlisted
+			fp.AllowlistReason = cookieData.AllowlistReason
 			state.Fingerprint = &fp
 			state.CookiePowDifficulty = cookieData.PowDifficulty
+			// An allowlist cookie minted on a prior request must short-circuit
+			// SendChallenge on every replay, exactly like a GrantChallengeCookie
+			// call within the current request would. Without this, the visitor
+			// gets re-challenged on each hop and the cookie achieves nothing.
+			msg := "valid challenge cookie"
+			if cookieData.Allowlisted {
+				state.ChallengeBypassed = true
+				msg = "valid allowlist challenge cookie — bypassing challenge"
+			}
+			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, msg)
 		}
 	}
 
@@ -842,7 +973,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge")
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge", nil)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
@@ -1040,7 +1171,8 @@ func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name
 func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
 	w.SetAction(state, ChallengeRemediation)
 	w.SetHTTPCode(state, code)
-	// FIXME: don't do this here, should be handled the same way as a block
+	// Initial response state defaults BouncerHTTPResponseCode to the "passed" code (see InitRequestState);
+	// override it here so the bouncer gets the blocked code while the visitor still receives the challenge page.
 	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
 	w.SetChallengeBody(state, body)
 	for name, value := range headers {
@@ -1121,7 +1253,8 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
 			"fsid":    fsid,
-			"source":  request.RemoteAddrNormalized,
+			"source":  request.ClientIP,
+			"bouncer": request.RemoteAddrNormalized,
 			"reasons": report.Reasons(),
 			"high":    report.High(),
 			"medium":  report.Medium(),
@@ -1144,6 +1277,13 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 		return fmt.Errorf("challenge runtime not initialized")
 	}
 
+	// GrantChallengeCookie earlier in the same request already minted an
+	// allowlist cookie; refuse to overwrite it with a challenge page.
+	if state.ChallengeBypassed {
+		w.Logger.Debugf("SendChallenge no-op: allowlist cookie already granted this request")
+		return nil
+	}
+
 	target := w.ChallengeRuntime.Difficulty()
 	if state.ChallengeDifficulty != nil {
 		target = *state.ChallengeDifficulty
@@ -1162,6 +1302,153 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
 	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+}
+
+// RejectSubmission flags the in-flight challenge submission so the
+// ProcessOnChallengeRules submit-path branch refuses to issue a cookie and
+// returns bodyChallengeRejected. Exposed ONLY in the on_challenge_submit
+// hook env — calling it from any other phase is a no-op (the field is
+// inspected only at submit time).
+//
+// The reason string is logged server-side and NOT echoed to the client.
+func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "submission rejected by on_challenge_submit"
+	}
+	state.SubmissionRejection = &SubmissionRejectInfo{Reason: reason}
+	return nil
+}
+
+// mintAllowlistCookie does the per-request bookkeeping shared by every
+// phase variant of GrantChallengeCookie: seals a v0 allowlist cookie,
+// stamps a synthetic Allowlisted fingerprint, and flips
+// state.ChallengeBypassed so any later SendChallenge in the same request
+// is a no-op. The caller is responsible for deciding HOW the sealed
+// cookie is delivered to the visitor (redirect response from
+// pre_eval/post_eval, inline attachment on the challenge-submit
+// envelope from on_challenge_submit).
+//
+// This DELIBERATELY overwrites any prior state.Fingerprint set by the
+// cookie-valid branch of ProcessOnChallengeRules: the operator-explicit
+// allowlist wins over a real submission. See the GrantChallengeCookie
+// doc-comment for the full precedence rationale.
+//
+// ttlOverride, if non-nil, sets a per-call validity window for the sealed
+// cookie instead of the runtime-global cookie_ttl.
+//
+// Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
+// MaxAllowlistReasonLen.
+func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
+	if w.ChallengeRuntime == nil {
+		return nil, fmt.Errorf("challenge runtime not initialized")
+	}
+
+	ck, err := w.ChallengeRuntime.SealAllowlistCookie(request.HTTPRequest, reason, ttlOverride)
+	if err != nil {
+		return nil, fmt.Errorf("unable to seal allowlist cookie: %w", err)
+	}
+
+	state.Fingerprint = &challenge.FingerprintData{
+		Allowlisted:     true,
+		AllowlistReason: reason,
+	}
+	state.ChallengeBypassed = true
+
+	return ck, nil
+}
+
+// GrantChallengeCookie mints an allowlist-bypass cookie and issues an
+// HTTP 307 challenge response that carries it back to the visitor. Used
+// from pre_eval and post_eval, where the request is still on its way to
+// the origin and we have a free hand to redirect.
+//
+// Why a redirect and not a silent allow: the bouncer protocol only
+// serialises UserCookies / UserHeaders on a ChallengeRemediation response
+// (see GenerateResponse switch); a plain AllowRemediation drops the
+// Set-Cookie on the floor. A 307 Temporary Redirect to the same URL is
+// the minimal-friction shape that:
+//   - returns a challenge-action response (cookie is actually emitted),
+//   - preserves the original method + body (unlike 302/303),
+//   - bounces the visitor back through the WAF with the cookie present
+//     so ProcessOnChallengeRules' allowlist branch short-circuits and
+//     they reach the origin transparently on the second hop.
+//
+// Effects:
+//   - Calls mintAllowlistCookie to seal the cookie and stamp
+//     state.Fingerprint / state.ChallengeBypassed.
+//   - Builds a 307 challenge response via setChallengeResponse with
+//     Location set to the original request URI and a small static HTML
+//     body as a no-JS fallback.
+//
+// Note on precedence: see mintAllowlistCookie — an operator-driven
+// allowlist deliberately overwrites any prior fingerprint set by a
+// real-submission cookie. The "operator allowlist takes precedence"
+// model; filter on req.Headers in pre_eval BEFORE the allowlist rule
+// if you need to preserve real signals.
+//
+// ttlOverride, if non-nil, sets a per-call validity window for the issued
+// cookie instead of the runtime-global cookie_ttl. Hook authors pass it via
+// the optional second argument on the GrantChallengeCookie expr helper.
+//
+// Returns ErrAllowlistReasonSize if the reason exceeds
+// MaxAllowlistReasonLen.
+func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
+	if err != nil {
+		return err
+	}
+
+	headers := map[string]string{
+		"Location":      request.HTTPRequest.URL.RequestURI(),
+		"Content-Type":  "text/html; charset=utf-8",
+		"Cache-Control": "no-store",
+	}
+
+	state.Fingerprint.LogAccepted(
+		w.Logger.WithField("location", headers["Location"]),
+		log.InfoLevel,
+		request.ClientIP,
+		request.RemoteAddrNormalized,
+		"granted allowlist challenge cookie via 307 redirect",
+	)
+
+	return w.setChallengeResponse(state, http.StatusTemporaryRedirect, challenge.GrantRedirectBody, headers, ck)
+}
+
+// GrantAllowlistCookieInline mints an allowlist-bypass cookie and
+// attaches it to the in-flight challenge-submit response envelope without
+// changing the response shape. Used from on_challenge_submit: the client
+// is already mid-fetch() to the submit endpoint and expects the
+// challenge-submit JSON envelope back, so a redirect is not an option
+// (it would break the client-side JS state machine).
+//
+// Effects:
+//   - Calls mintAllowlistCookie to seal the cookie and stamp
+//     state.Fingerprint / state.ChallengeBypassed.
+//   - Appends the sealed cookie to state.Response.UserHTTPCookies via
+//     SetChallengeCookie so it rides on the submit response (which is
+//     already a ChallengeRemediation, so UserCookies IS serialised here).
+//
+// Same precedence semantics as GrantChallengeCookie: see
+// mintAllowlistCookie.
+//
+// ttlOverride, if non-nil, sets a per-call validity window for the issued
+// cookie instead of the runtime-global cookie_ttl.
+//
+// Returns ErrAllowlistReasonSize if the reason exceeds
+// MaxAllowlistReasonLen.
+func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
+	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
+	if err != nil {
+		return err
+	}
+
+	w.SetChallengeCookie(state, *ck)
+
+	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
+
+	return nil
 }
 
 type BodyResponse struct {

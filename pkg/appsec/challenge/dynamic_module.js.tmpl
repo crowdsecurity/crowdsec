@@ -1,0 +1,32 @@
+// dynamic_module.js.tmpl is the template for the per-epoch dynamic module
+// that is obfuscated at runtime when the keyring rotates. It is small (a
+// few dozen lines) so the obfuscation cost is bounded — the heavyweight
+// fingerprint scanner / crypto code lives in the static bundle and is
+// pre-obfuscated at build time.
+//
+// The {{.Key}} placeholder is replaced with the hex-encoded per-epoch HMAC
+// key. {{.Epoch}} is the integer epoch identifier. The hook name string
+// MUST match the CSEC_HOOK_NAME constant in challenge.js so the static
+// bundle and dynamic module agree on the global symbol after obfuscation.
+//
+// reservedStrings registration in obfuscate.js prevents the obfuscator's
+// string-array transform from rewriting the hook name (which would break
+// the cross-bundle handshake). The KEY string is intentionally NOT
+// reserved — we want the obfuscator to encode it.
+(function () {
+  var hookName = "__CSEC_CHALLENGE_HOOK_v1__";
+  var key = "{{.Key}}";
+  var epoch = {{.Epoch}};
+
+  // The static bundle registers the hook synchronously at module load. If
+  // for some reason it is not present yet, retry on a microtask.
+  function invoke() {
+    var hook = globalThis[hookName];
+    if (typeof hook === "function") {
+      hook({ key: key, epoch: epoch });
+      return;
+    }
+    setTimeout(invoke, 10);
+  }
+  invoke();
+})();

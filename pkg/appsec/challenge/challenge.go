@@ -1,3 +1,16 @@
+// Package challenge implements the AppSec WAF challenge mode: a PoW-gated
+// landing page, a fingerprint collection bundle, and the surrounding key
+// rotation + cookie machinery. This file holds the runtime orchestration
+// (lifecycle, HTTP entry points, template rendering, hook plumbing) and
+// delegates specialized concerns to sibling files in the same package:
+//
+//   - keyring.go / crypto.go / ticket.go — per-epoch HKDF keys, AES-GCM
+//     cookie seal/unseal, ticket signing
+//   - static_bundle.go                   — public fpscanner/JS bundle
+//   - dynamic_module.go                  — sensitive per-epoch sign-key module
+//   - obfuscator.go                      — wazero wrapper around the JS obfuscator
+//   - fingerprint*.go                    — fingerprint wire shape + helpers + mismatch report
+//   - config.go / secret.go              — YAML config + master-secret handling
 package challenge
 
 import (
@@ -5,79 +18,307 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/hmac"
-	crand "crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
-	_ "embed"
-
-	"text/template"
-
-	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"golang.org/x/sync/singleflight"
 )
 
-const ChallengeJSPath = "/crowdsec-internal/challenge/challenge.js"
-const ChallengeSubmitPath = "/crowdsec-internal/challenge/submit"
-const ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
-const ChallengeCookieName = "__crowdsec_challenge"
-const challengeJSCacheSize = 10
-const challengeJSRefreshInterval = 10 * time.Minute
-
-// PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
-// obfuscator runs ~500-5000 ops/sec, so keep these conservative.
+// Internal URL paths the challenge runtime intercepts. Bouncers MUST forward
+// these to the WAF unmodified; they are served by the appsec dispatcher
+// (pkg/appsec/appsec.go) rather than by the protected origin.
 const (
-	PowDifficultyDisabled   = 0   // no PoW required, nonce "0" always valid
-	PowDifficultyLow        = 10  // ~1024 avg iterations ≈ 0.2-2s
-	PowDifficultyMedium     = 12  // ~4096 avg iterations ≈ 1-8s
-	PowDifficultyHigh       = 15  // ~32768 avg iterations ≈ 7-60s
-	PowDifficultyImpossible = 256 // full SHA-256 width: clients cannot solve, server always rejects
-
-	defaultPowDifficulty = PowDifficultyMedium
+	ChallengeJSPath        = "/crowdsec-internal/challenge/challenge.js"
+	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
+	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 )
 
-const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
+// ChallengeCookieName is the name of the sealed cookie carrying the
+// successfully-validated fingerprint between requests.
+const ChallengeCookieName = "__crowdsec_challenge"
 
-// FIXME
-const masterSecret = "SUPER_SECRET_KEY"
+// libraryBundlePoolDefaultSize is the default ceiling for the library
+// bundle pool. The library bundle is always obfuscated at build time
+// (initial_bundle.js.gz); with runtime obfuscation off (the default), the
+// pool only ever contains that single baked-in variant — so a default of
+// 1 matches reality. With runtime obfuscation enabled
+// (WithLibraryRuntimeObfuscationEnabled), this becomes the steady-state
+// ceiling that the background refresher trickles new variants into.
+const libraryBundlePoolDefaultSize = 1
+
+// libraryBundleRefreshDefaultInterval is the default cadence at which a
+// single new library-bundle variant is obfuscated and added to the pool
+// (oldest evicted) when runtime library obfuscation is enabled. One
+// obfuscation per tick regardless of pool size — full pool rotation
+// takes pool_size × refresh_interval.
+const libraryBundleRefreshDefaultInterval = time.Hour
+
+// cryptoObfuscationPoolDefaultSize is the default number of distinct
+// obfuscations of the per-epoch sign-key module to keep per live epoch.
+// Each variant is an obfuscation of the *same* key material, so the
+// pool gives per-visitor variance in how the key is embedded without
+// changing the underlying key. Default 1 preserves the historical
+// single-variant-per-epoch behaviour.
+const cryptoObfuscationPoolDefaultSize = 1
+
+// defaultCookieTTL is how long a successful challenge cookie is valid by
+// default. Decoupled from the keyring rotation window: an operator can
+// configure long cookies (e.g. 24h) without widening the ticket-forgery
+// exposure window (keyring live window, default 15m).
+const defaultCookieTTL = 12 * time.Hour
+
+// DefaultChallengeCSP is the Content-Security-Policy header used on the
+// challenge page when the operator hasn't configured a custom one. Allows
+// inline script/style (the challenge runtime injects both) and blob workers
+// (the PoW worker is loaded from a blob URL).
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
+// grantRedirectBody is served as the body of the 307 challenge response
+// produced by GrantChallengeCookie. The browser follows the Location
+// header without ever rendering this; it is a no-JS fallback for
+// hand-rolled HTTP clients that don't auto-redirect. Static (no
+// per-request data) so no parsing is needed.
+//
+//go:embed grant_redirect.html.tmpl
+var GrantRedirectBody string
+
+// PowWorkerJS is the JavaScript PoW worker shipped to the browser at
+// ChallengePowWorkerPath. Served as-is — obfuscation here would only slow
+// down the per-visitor PoW loop without adding security value.
+//
 //go:embed pow-worker.js
 var PowWorkerJS string
 
-//go:embed js/obfuscate/index.wasm.gz
-var obfuscatorWasmGz []byte
-
-var (
-	obfuscatorWasm     []byte
-	obfuscatorWasmOnce sync.Once
-)
-
+// ChallengeRuntime is the per-process state for the challenge mode: wazero
+// instance, signing/cookie keys, obfuscation pools, fingerprint key
+// rotation. One instance is shared across all appsec runners (see
+// pkg/acquisition/modules/appsec/config.go). Construct via NewChallengeRuntime.
 type ChallengeRuntime struct {
-	r wazero.Runtime
+	r             wazero.Runtime
+	obfuscatorMod wazero.CompiledModule
 
-	obfuscatedJSCache []obfuscatedScript
-	cacheMutex        sync.RWMutex
+	// libraryRuntimeObfuscationEnabled gates the background pool refresher
+	// for the library bundle. The library bundle is ALWAYS obfuscated at
+	// build time (initial_bundle.js.gz); when this flag is false (the
+	// default), the runtime serves only that baked-in variant and the
+	// refresher goroutine is not spawned — no runtime obfuscator cost for
+	// the static bundle in steady state. When true,
+	// libraryBundlePoolRefresher trickles in one new runtime-obfuscated
+	// variant per tick.
+	libraryRuntimeObfuscationEnabled bool
+	libraryPoolSize                  int
+	libraryRefreshInterval           time.Duration
+
+	// libraryBundlePool holds up to libraryPoolSize obfuscated variants of
+	// the static library bundle (fpscanner / PoW worker glue). Always seeded
+	// at startup with the baked-in initial_bundle.js.gz. When library
+	// obfuscation is enabled, the refresher goroutine appends new variants
+	// and trims oldest entries past libraryPoolSize. The serving path picks
+	// one variant at random per challenge render for per-visitor byte
+	// variance.
+	libraryBundlePool   []obfuscatedScript
+	libraryBundlePoolMu sync.RWMutex
 
 	powDifficulty int
+
+	// keys derives per-epoch sign keys (HMAC for tickets / PoW MACs) and the
+	// long-lived master cookie key from the configured master secret. All
+	// HMAC and AEAD operations route through this so that ticket rotation
+	// is a server-side bookkeeping change with no protocol impact. In
+	// distributed setups, every WAF instance with the same master_secret
+	// and rotation_interval derives bit-identical keys.
+	keys *KeyRing
+
+	// cryptoPoolSize is the number of distinct obfuscations of the per-epoch
+	// sign-key module to keep per live epoch. Each variant obfuscates the
+	// *same* key material differently, so the pool gives per-visitor byte
+	// variance in how the key is embedded without changing the underlying
+	// secret. Default cryptoObfuscationPoolDefaultSize (1) preserves the
+	// historical single-variant-per-epoch behaviour.
+	cryptoPoolSize int
+
+	// dynamicModuleCache memoizes the obfuscated per-epoch key module
+	// variants. Each epoch maps to a slice of cryptoPoolSize obfuscated
+	// renderings of the same epoch key — currentDynamicModule picks one at
+	// random per render.
+	//
+	// dynamicModuleSF de-duplicates concurrent obfuscation requests for the
+	// same epoch+variant slot: if N requests hit a freshly-rotated epoch
+	// simultaneously, only one runs the obfuscator per slot and the others
+	// wait for its result. The cache mutex is only held for the fast
+	// read/write of the map, never across the multi-second obfuscation
+	// pass, so concurrent requests at a rotation boundary observe at most
+	// one obfuscation latency per slot rather than N serialized ones.
+	dynamicModuleCache   map[int64][]string
+	dynamicModuleCacheMu sync.RWMutex
+	dynamicModuleSF      singleflight.Group
+
+	// cookieTTL controls how long a successful-challenge cookie remains
+	// valid. Enforced by an explicit not_after timestamp inside the
+	// sealed envelope (see crypto.go), NOT by keyring eviction, so it
+	// can be much larger than the ticket-signing live window.
+	cookieTTL time.Duration
+
+	// htmlTpl is the parsed challenge HTML template. Parsed once at
+	// construction and reused by every GetChallengePage call so we don't
+	// re-parse on the request-serving path.
+	htmlTpl *template.Template
+}
+
+// Option configures a ChallengeRuntime at construction time.
+type Option func(*runtimeOptions)
+
+type runtimeOptions struct {
+	// masterSecret, if non-nil, overrides the secret-resolution path. The
+	// caller is responsible for ensuring it is at least minSecretBytes long.
+	masterSecret []byte
+
+	// rotationInterval is the wall-clock period after which the per-epoch
+	// derived keys advance. Zero falls back to keyringDefaultRotation.
+	rotationInterval time.Duration
+
+	// maxLiveEpochs is how many past epochs (plus the current one) the
+	// keyring keeps acceptable. Zero falls back to keyringDefaultMaxLive.
+	maxLiveEpochs int
+
+	// cookieTTL controls how long an issued challenge cookie remains
+	// valid. Zero falls back to defaultCookieTTL.
+	cookieTTL time.Duration
+
+	// cryptoObfuscationPoolSize is the number of distinct obfuscations of
+	// the per-epoch sign-key module to keep per live epoch. Zero falls
+	// back to cryptoObfuscationPoolDefaultSize.
+	cryptoObfuscationPoolSize int
+
+	// libraryRuntimeObfuscationEnabled gates the background re-obfuscation
+	// of the static library bundle at runtime. The library bundle is
+	// ALWAYS obfuscated at build time; this flag only adds further runtime
+	// variants. False (the default) means: serve only the baked-in initial
+	// bundle, no refresher goroutine.
+	libraryRuntimeObfuscationEnabled bool
+
+	// libraryObfuscationPoolSize is the max number of obfuscated variants
+	// of the library bundle to keep. Zero falls back to
+	// libraryBundlePoolDefaultSize. Values > 1 only have effect when
+	// runtime obfuscation is enabled; otherwise no source produces
+	// additional variants and the runtime warns + clamps to 1.
+	libraryObfuscationPoolSize int
+
+	// libraryObfuscationRefreshInterval is the cadence at which a single
+	// new library-bundle variant is obfuscated and added to the pool when
+	// runtime obfuscation is enabled. Zero falls back to
+	// libraryBundleRefreshDefaultInterval. Ignored when
+	// libraryRuntimeObfuscationEnabled is false.
+	libraryObfuscationRefreshInterval time.Duration
+}
+
+// WithMasterSecret sets the long-lived shared secret. In distributed
+// deployments this MUST be the same across all WAF instances. If not set,
+// NewChallengeRuntime generates a random secret at startup (suitable only for
+// single-instance deployments — restarts invalidate outstanding cookies).
+func WithMasterSecret(secret []byte) Option {
+	return func(o *runtimeOptions) {
+		o.masterSecret = secret
+	}
+}
+
+// WithRotationInterval sets the per-epoch key rotation period. All instances
+// in a distributed setup MUST agree on this value to derive identical keys.
+func WithRotationInterval(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		o.rotationInterval = d
+	}
+}
+
+// WithMaxLiveEpochs sets how many past epochs (in addition to the current
+// one) the keyring continues to accept. Sized so any submission within the
+// freshness window has a non-evicted epoch.
+func WithMaxLiveEpochs(n int) Option {
+	return func(o *runtimeOptions) {
+		o.maxLiveEpochs = n
+	}
+}
+
+// WithCookieTTL sets how long an issued challenge cookie remains valid.
+// Decoupled from the per-epoch keyring window so cookies can be long-lived
+// (e.g. 24h) while ticket-signing keys still rotate on a tight schedule.
+// Zero or negative values are ignored (defaultCookieTTL is used).
+func WithCookieTTL(ttl time.Duration) Option {
+	return func(o *runtimeOptions) {
+		if ttl > 0 {
+			o.cookieTTL = ttl
+		}
+	}
+}
+
+// WithCryptoObfuscationPoolSize sets how many distinct obfuscations of
+// the per-epoch sign-key module to keep per live epoch. Each variant
+// obfuscates the same key material; the serving path picks one at
+// random per challenge render for per-visitor byte variance. Default 1
+// (cryptoObfuscationPoolDefaultSize) preserves the historical
+// single-variant-per-epoch behaviour. Values below 1 are ignored.
+func WithCryptoObfuscationPoolSize(n int) Option {
+	return func(o *runtimeOptions) {
+		if n >= 1 {
+			o.cryptoObfuscationPoolSize = n
+		}
+	}
+}
+
+// WithLibraryRuntimeObfuscationEnabled gates the background re-obfuscation
+// of the static library bundle (fpscanner, PoW worker glue) at runtime.
+// The bundle is ALWAYS obfuscated at build time; this flag only controls
+// whether additional runtime-generated variants are produced. Off by
+// default — the runtime serves only the baked-in obfuscated bundle and
+// pays no runtime obfuscator cost for the static path. Enable only if you
+// want per-visitor byte variance on top of the build-time obfuscation for
+// the public library code.
+func WithLibraryRuntimeObfuscationEnabled(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.libraryRuntimeObfuscationEnabled = enabled
+	}
+}
+
+// WithLibraryObfuscationPoolSize sets the max number of runtime-
+// obfuscated variants of the library bundle to keep when library
+// obfuscation is enabled. Ignored when disabled. Values below 1 are
+// ignored; zero falls back to libraryBundlePoolDefaultSize.
+func WithLibraryObfuscationPoolSize(n int) Option {
+	return func(o *runtimeOptions) {
+		if n >= 1 {
+			o.libraryObfuscationPoolSize = n
+		}
+	}
+}
+
+// WithLibraryObfuscationRefreshInterval sets the cadence at which a
+// single new library-bundle variant is obfuscated and added to the pool
+// when library obfuscation is enabled. One obfuscation per tick
+// regardless of pool size — full pool rotation takes pool_size ×
+// refresh_interval. Ignored when disabled. Values ≤ 0 are ignored.
+func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		if d > 0 {
+			o.libraryObfuscationRefreshInterval = d
+		}
+	}
 }
 
 // DifficultyFromLevel resolves a named level ("low", "medium", "high") to
@@ -116,17 +357,79 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 	return nil
 }
 
-type obfuscatedScript struct {
-	Code string    // the obfuscated JS code
-	uuid uuid.UUID // unique ID to track the script
-}
+// NewChallengeRuntime builds and starts a ChallengeRuntime. It initializes
+// the wazero runtime, decompresses the baked-in library bundle, derives the
+// master secret + keyring, pre-warms the dynamic-module cache, and (if
+// configured) spawns the background obfuscation refresher. The returned
+// instance is safe for concurrent use across all appsec runners.
+//
+// Pass functional options (WithMasterSecret, WithKeyringRotationInterval,
+// WithLibraryRuntimeObfuscationEnabled, ...) to override defaults; see the
+// options in this file for individual semantics.
+func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
+	resolvedOpts := runtimeOptions{}
+	for _, opt := range opts {
+		opt(&resolvedOpts)
+	}
 
-func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
+	secret := resolvedOpts.masterSecret
+	if secret == nil {
+		var err error
+		secret, err = generateRandomSecret()
+		if err != nil {
+			return nil, err
+		}
+		log.Warn("no master secret configured for the WAF challenge runtime; generated an ephemeral random secret. " +
+			"Distributed (multi-WAF) deployments MUST configure a shared master_secret in the appsec config; " +
+			"single-instance deployments will see outstanding challenge cookies invalidated on restart.")
+	} else if len(secret) < minSecretBytes {
+		return nil, fmt.Errorf("master secret is %d bytes; minimum is %d", len(secret), minSecretBytes)
+	}
+
+	rotationInterval := resolvedOpts.rotationInterval
+	if rotationInterval == 0 {
+		rotationInterval = keyringDefaultRotation
+	}
+
+	keys, err := NewKeyRing(secret, rotationInterval, resolvedOpts.maxLiveEpochs)
+	if err != nil {
+		return nil, fmt.Errorf("build challenge keyring: %w", err)
+	}
+
+	cookieTTL := resolvedOpts.cookieTTL
+	if cookieTTL <= 0 {
+		cookieTTL = defaultCookieTTL
+	}
+
+	cryptoPoolSize := resolvedOpts.cryptoObfuscationPoolSize
+	if cryptoPoolSize <= 0 {
+		cryptoPoolSize = cryptoObfuscationPoolDefaultSize
+	}
+
+	libraryPoolSize := resolvedOpts.libraryObfuscationPoolSize
+	if libraryPoolSize <= 0 {
+		libraryPoolSize = libraryBundlePoolDefaultSize
+	}
+
+	// Clamp pool size to 1 when runtime obfuscation is off: the only source
+	// of variants in that mode is the baked-in initial bundle (one entry),
+	// so any larger ceiling would leave empty slots forever. Warn so the
+	// operator notices the misconfiguration without having the runtime fail
+	// to start.
+	if !resolvedOpts.libraryRuntimeObfuscationEnabled && libraryPoolSize > 1 {
+		log.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
+		libraryPoolSize = 1
+	}
+
+	libraryRefreshInterval := resolvedOpts.libraryObfuscationRefreshInterval
+	if libraryRefreshInterval <= 0 {
+		libraryRefreshInterval = libraryBundleRefreshDefaultInterval
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
-	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
-	if err != nil {
+	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
 		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
 	}
 
@@ -151,169 +454,76 @@ func NewChallengeRuntime(ctx context.Context) (*ChallengeRuntime, error) {
 		return nil, obfuscatorWasmErr
 	}
 
+	// Pre-compile the obfuscator WASM once. Without this, every ObfuscateJS
+	// call re-parses the WASM bytes (~4-5s of overhead per call). Compiling
+	// once and instantiating on each call drops per-call overhead to the
+	// instantiation cost alone.
+	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
+	}
+
+	// We use text/template instead of html/template because the data we send
+	// is pretty much hardcoded and trusted; html/template would escape the JS
+	// we inject. Parsed once here so GetChallengePage doesn't re-parse on
+	// every request.
+	htmlTpl, err := template.New("challenge").Parse(htmlTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("parse challenge html template: %w", err)
+	}
+
 	challengeRuntime := &ChallengeRuntime{
-		r:                 r,
-		obfuscatedJSCache: make([]obfuscatedScript, 0, challengeJSCacheSize),
-		powDifficulty:     defaultPowDifficulty,
+		r:                                r,
+		obfuscatorMod:                    compiledMod,
+		libraryRuntimeObfuscationEnabled: resolvedOpts.libraryRuntimeObfuscationEnabled,
+		libraryPoolSize:                  libraryPoolSize,
+		libraryRefreshInterval:           libraryRefreshInterval,
+		libraryBundlePool:                make([]obfuscatedScript, 0, libraryPoolSize),
+		powDifficulty:                    defaultPowDifficulty,
+		keys:                             keys,
+		cryptoPoolSize:                   cryptoPoolSize,
+		dynamicModuleCache:               make(map[int64][]string),
+		cookieTTL:                        cookieTTL,
+		htmlTpl:                          htmlTpl,
 	}
 
-	if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
-		return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
+	// Seed the cache from the baked-in pre-obfuscated bundle so the service is
+	// immediately ready to serve challenges. The background generator below
+	// continues to add fresh runtime-generated variants and rotates them on
+	// the normal refresh interval.
+	if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
+		// If the initial bundle is missing or corrupt, fall back to the old
+		// behavior of generating one variant synchronously. This keeps the
+		// service correct even if `go generate` was not run.
+		log.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
+		if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
+			return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
+		}
 	}
 
-	go challengeRuntime.challengeGenerator(ctx)
+	// Pre-warm the dynamic key module for the current epoch so the very
+	// first GetChallengePage call doesn't pay the ~5s obfuscation cost
+	// on the request-serving path. The dynamic module is small enough
+	// that this stays well under the startup budget.
+	if _, err := challengeRuntime.currentDynamicModule(ctx); err != nil {
+		return nil, fmt.Errorf("warm dynamic key module: %w", err)
+	}
+
+	// The library-bundle refresher is gated on opt-in: the static bundle is
+	// public code (the source is in the repo) and the baked-in obfuscated
+	// variant is already served at request time, so runtime regeneration
+	// only buys per-visitor byte variance on top of build-time obfuscation
+	// and is not worth its ~minute-of-CPU-per-obfuscation cost by default.
+	if resolvedOpts.libraryRuntimeObfuscationEnabled {
+		go challengeRuntime.libraryBundlePoolRefresher(ctx)
+	}
+	// The dynamic-module pre-warmer is always on — the per-epoch sign key
+	// must be re-obfuscated whenever the keyring rotates, regardless of
+	// the library-side pool config. Cost is bounded (one obfuscation per
+	// epoch per pool variant, default 1).
+	go challengeRuntime.dynamicModulePreWarmer(ctx)
 
 	return challengeRuntime, nil
-}
-
-func (c *ChallengeRuntime) challengeGenerator(ctx context.Context) {
-	// Startup warm-up: grow the cache in background until full.
-	if err := c.fillCacheToCapacity(ctx); err != nil {
-		log.Errorf("failed to prefill challenge JS cache: %v", err)
-	}
-
-	ticker := time.NewTicker(challengeJSRefreshInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			variants, err := c.generateChallengeVariants(ctx, challengeJSCacheSize)
-			if err != nil {
-				log.Errorf("failed to regenerate full challenge JS cache: %v", err)
-				continue
-			}
-
-			c.replaceCachedChallengeJS(variants)
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (c *ChallengeRuntime) buildChallengeBundle() string {
-	return strings.NewReplacer(
-		"__CROWDSEC_SUBMIT_PATH__", ChallengeSubmitPath,
-		"__CROWDSEC_POW_WORKER_PATH__", ChallengePowWorkerPath,
-	).Replace(challengejs.FPScannerBundle)
-}
-
-func (c *ChallengeRuntime) generateAndCacheChallengeJS(ctx context.Context) error {
-	variants, err := c.generateChallengeVariants(ctx, 1)
-	if err != nil {
-		return err
-	}
-
-	c.appendCachedChallengeJS(variants)
-
-	return nil
-}
-
-func (c *ChallengeRuntime) generateChallengeVariants(ctx context.Context, count int) ([]obfuscatedScript, error) {
-	if count <= 0 {
-		return []obfuscatedScript{}, nil
-	}
-
-	variants := make([]obfuscatedScript, 0, count)
-
-	bundle := c.buildChallengeBundle()
-
-	for range count {
-		o := obfuscatedScript{}
-		o.uuid = uuid.New()
-		obfuscatedJS, err := c.ObfuscateJS(ctx, bundle)
-		if err != nil {
-			return nil, err
-		}
-		o.Code = obfuscatedJS
-		variants = append(variants, o)
-	}
-
-	return variants, nil
-}
-
-func (c *ChallengeRuntime) fillCacheToCapacity(ctx context.Context) error {
-	c.cacheMutex.RLock()
-	missing := challengeJSCacheSize - len(c.obfuscatedJSCache)
-	c.cacheMutex.RUnlock()
-
-	if missing <= 0 {
-		return nil
-	}
-
-	variants, err := c.generateChallengeVariants(ctx, missing)
-	if err != nil {
-		return err
-	}
-
-	c.appendCachedChallengeJS(variants)
-	return nil
-}
-
-func (c *ChallengeRuntime) appendCachedChallengeJS(variants []obfuscatedScript) {
-	if len(variants) == 0 {
-		return
-	}
-
-	c.cacheMutex.Lock()
-	c.obfuscatedJSCache = append(c.obfuscatedJSCache, variants...)
-	if len(c.obfuscatedJSCache) > challengeJSCacheSize {
-		c.obfuscatedJSCache = c.obfuscatedJSCache[len(c.obfuscatedJSCache)-challengeJSCacheSize:]
-	}
-	c.cacheMutex.Unlock()
-}
-
-func (c *ChallengeRuntime) replaceCachedChallengeJS(variants []obfuscatedScript) {
-	if len(variants) == 0 {
-		return
-	}
-
-	c.cacheMutex.Lock()
-	c.obfuscatedJSCache = append([]obfuscatedScript(nil), variants...)
-	c.cacheMutex.Unlock()
-}
-
-func (c *ChallengeRuntime) getCachedChallengeJS() obfuscatedScript {
-	c.cacheMutex.RLock()
-	defer c.cacheMutex.RUnlock()
-
-	cacheSize := len(c.obfuscatedJSCache)
-	if cacheSize == 0 {
-		return obfuscatedScript{}
-	}
-
-	idx := rand.IntN(cacheSize)
-	return c.obfuscatedJSCache[idx]
-}
-
-func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (string, error) {
-	stdin := bytes.NewReader([]byte(inputJS))
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	config := wazero.NewModuleConfig().
-		WithStdin(stdin).
-		WithStdout(&stdout).
-		WithStderr(&stderr)
-
-	mod, err := c.r.InstantiateWithConfig(ctx, obfuscatorWasm, config)
-	if err != nil {
-		if stderr.Len() > 0 {
-			return "", fmt.Errorf("wasm runtime error: %v | stderr: %s", err, stderr.String())
-		}
-		return "", fmt.Errorf("wasm instantiation error: %v", err)
-	}
-
-	mod.Close(ctx)
-
-	return stdout.String(), nil
-}
-
-func computeTicket(ts string) string {
-	h := hmac.New(sha256.New, []byte(masterSecret))
-	h.Write([]byte(ts))
-
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
@@ -325,132 +535,64 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 		difficulty = c.powDifficulty
 	}
 
-	// We are using text/template instead of html/template because the data we send is pretty much hardcoded and trusted.
-	// Using html/template would escape the JS code we are adding, making it unusable.
-	templateObj, err := template.New("challenge").Parse(htmlTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse challenge template: %w", err)
-	}
-
-	obfuscatedJS := c.getCachedChallengeJS()
+	obfuscatedJS := c.getLibraryBundle()
 	if obfuscatedJS.Code == "" {
 		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
 			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
 		}
-		obfuscatedJS = c.getCachedChallengeJS()
+		obfuscatedJS = c.getLibraryBundle()
 		if obfuscatedJS.Code == "" {
 			return "", fmt.Errorf("challenge JS cache is empty")
 		}
 	}
 
-	// All per-request values: ticket, timestamp, PoW salt, PoW MAC.
+	// All per-request values: timestamp, PoW salt, PoW MAC.
 	// Fully stateless — no server-side storage, works across HA instances.
+	//
+	// The client recomputes the ticket itself from the per-epoch key
+	// embedded in the dynamic key module (so the signing material never
+	// appears in plain HTML). The server-side ticket here is only used to
+	// bind the PoW salt to ts via computePowMAC.
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket := computeTicket(ts)
-	powSalt := generatePowPrefix()
-	powMAC := computePowMAC(powSalt, ticket, ts)
+	ticket := c.computeTicket(ts)
+	powSalt, err := generatePowPrefix()
+	if err != nil {
+		return "", fmt.Errorf("generate PoW salt: %w", err)
+	}
+	powMAC := c.computePowMAC(powSalt, ticket, ts)
+
+	// Build and (cheaply) obfuscate the dynamic key module for the current
+	// epoch. The static bundle in obfuscatedJS.Code only carries the hook
+	// registration; the dynamic module is what carries the per-epoch K — so
+	// K never appears in plain HTML.
+	dynamicModule, err := c.currentDynamicModule(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("build dynamic key module: %w", err)
+	}
 
 	var renderedPage strings.Builder
 
-	templateObj.Execute(&renderedPage, map[string]interface{}{
+	if err := c.htmlTpl.Execute(&renderedPage, map[string]interface{}{
 		"JSChallenge":   obfuscatedJS.Code,
+		"DynamicModule": dynamicModule,
 		"PowDifficulty": difficulty,
 		"PowPrefix":     powSalt,
 		"PowMAC":        powMAC,
-		"Ticket":        ticket,
 		"Timestamp":     ts,
-	})
+	}); err != nil {
+		return "", fmt.Errorf("render challenge page: %w", err)
+	}
 	return renderedPage.String(), nil
 }
 
-func generatePowPrefix() string {
-	buf := make([]byte, 16)
-	if _, err := crand.Read(buf); err != nil {
-		panic(fmt.Sprintf("failed to generate PoW prefix: %v", err))
-	}
-
-	return hex.EncodeToString(buf)
-}
-
-// computePowMAC produces an HMAC that authenticates a PoW salt as server-generated
-// and bound to a specific ticket window. Stateless: any instance sharing the
-// masterSecret can verify it.
-func computePowMAC(salt, ticket, ts string) string {
-	h := hmac.New(sha256.New, []byte(masterSecret))
-	h.Write([]byte(salt))
-	h.Write([]byte(ticket))
-	h.Write([]byte(ts))
-
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-func hasLeadingZeroBits(hash []byte, bits int) bool {
-	fullBytes := bits / 8
-	remainBits := bits % 8
-
-	for i := range fullBytes {
-		if hash[i] != 0 {
-			return false
-		}
-	}
-
-	if remainBits > 0 {
-		mask := byte(0xFF << (8 - remainBits))
-		if hash[fullBytes]&mask != 0 {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (c *ChallengeRuntime) getSessionKey(ticket string, nonce string) string {
-	hash := sha256.Sum256([]byte(ticket + nonce))
-	return fmt.Sprintf("%x", hash)
-}
-
-func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted string) (string, error) {
-	encryptedBytes, err := base64.StdEncoding.DecodeString(encrypted)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode encrypted fingerprint: %w", err)
-	}
-
-	decryptedBytes := make([]byte, len(encryptedBytes))
-
-	for i := range encryptedBytes {
-		decryptedBytes[i] = encryptedBytes[i] ^ sessionKey[i%len(sessionKey)]
-	}
-
-	return string(decryptedBytes), nil
-}
-
-// matchesChallenge verifies that the ticket/timestamp/PoW salt are authentically
-// server-generated and the timestamp is recent. Fully stateless — any instance
-// sharing masterSecret can verify.
-func matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
-	// Verify the ticket is an authentic HMAC of the timestamp.
-	expectedTicket := computeTicket(clientTS)
-	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
-		return false
-	}
-
-	// Verify the timestamp is recent (within 2 refresh intervals for safety).
-	tsVal, err := strconv.ParseInt(clientTS, 10, 64)
-	if err != nil {
-		return false
-	}
-
-	age := time.Since(time.Unix(0, tsVal))
-	if age < 0 || age > 2*challengeJSRefreshInterval {
-		return false
-	}
-
-	// Verify the PoW salt MAC is authentic and bound to this ticket+timestamp.
-	expectedMAC := computePowMAC(clientPowSalt, clientTicket, clientTS)
-
-	return hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC))
-}
-
+// ValidateChallengeResponse parses a POST body submitted by the browser to
+// ChallengeSubmitPath and runs the full validation chain: ticket HMAC
+// verification (key looked up by epoch, must be in the live window), PoW
+// solution against the published difficulty, timestamp freshness, and
+// fingerprint decryption. On success it returns the sealed challenge
+// cookie and the decrypted FingerprintData; any failure returns a non-nil
+// error and the caller should refuse the request without leaking which
+// stage failed.
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
 	if err != nil {
@@ -470,7 +612,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	}
 
 	// Verify ticket/timestamp match and PoW salt is authentically server-generated (stateless).
-	if !matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
+	if !c.matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
 	}
 
@@ -510,7 +652,6 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	var fpData FingerprintData
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
-		log.Errorf("fp: %s", fingerprint)
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
 	}
 
@@ -519,12 +660,18 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		PowDifficulty: int32(c.powDifficulty),
 	}
 
-	cookieValue, err := sealCookie(envelope, masterSecret, []byte(request.UserAgent()))
+	// Seal under the long-lived master cookie key; the sealed envelope
+	// embeds an explicit not_after timestamp so the server-side validity
+	// window is exactly c.cookieTTL, independent of the keyring's per-
+	// epoch rotation cadence. The browser-side Max-Age below is set to
+	// the same TTL so the browser drops the cookie at the same moment.
+	notAfter := time.Now().Add(c.cookieTTL).Unix()
+	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()))
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(2 * time.Hour).Value(cookieValue)
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
@@ -532,26 +679,78 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	return ck, fpData, nil
 }
 
-// CookieData bundles the decrypted fingerprint with cookie-envelope metadata
-// (currently just the proven PoW difficulty) so callers can make re-challenge
-// decisions without touching the fingerprint struct.
-type CookieData struct {
-	Fingerprint   FingerprintData
-	PowDifficulty int
+// SealAllowlistCookie mints an allowlist-bypass challenge cookie carrying
+// no measured fingerprint and the operator-supplied reason. Used by the
+// GrantChallengeCookie expr helper to let trusted bots (Googlebot, …)
+// skip the challenge UI while still being subject to on_challenge rules
+// (which can short-circuit on fingerprint.Allowlisted).
+//
+// The cookie's not_after honors c.cookieTTL by default; pass a non-nil
+// ttlOverride (must be > 0) to use a different validity window for this
+// specific cookie. The browser-side Max-Age and the sealed not_after are
+// derived from the same effective TTL so they stay in sync.
+//
+// reason is bounded by MaxAllowlistReasonLen (crypto.go) — longer strings
+// are rejected with ErrAllowlistReasonSize.
+func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
+	if c == nil {
+		return nil, fmt.Errorf("challenge runtime not initialized")
+	}
+
+	ttl := c.cookieTTL
+	if ttlOverride != nil && *ttlOverride > 0 {
+		ttl = *ttlOverride
+	}
+
+	notAfter := time.Now().Add(ttl).Unix()
+	cookieValue, err := sealCookieV0(&pb.ChallengeCookie{}, c.keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte(request.UserAgent()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
+	}
+
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(ttl).Value(cookieValue)
+	if request.URL.Scheme == "https" {
+		ck = ck.Secure()
+	}
+
+	return ck, nil
 }
 
+// CookieData bundles the decrypted fingerprint with cookie-envelope metadata
+// so callers can make re-challenge decisions without touching the fingerprint
+// struct.
+//
+// Allowlisted and AllowlistReason carry the operator-bypass marker for
+// cookies minted by SealAllowlistCookie; they are zero for cookies issued
+// after a real challenge submission.
+type CookieData struct {
+	Fingerprint     FingerprintData
+	PowDifficulty   int
+	Allowlisted     bool
+	AllowlistReason string
+}
+
+// ValidCookie unseals and validates an incoming challenge cookie. It checks
+// the cookie envelope (version, AES-GCM tag), the not_after expiration
+// stamp, and binds the cookie to the supplied User-Agent — UA-pinning makes
+// a stolen cookie useless to a different client. Returns the decoded
+// CookieData on success; any failure (tampered, expired, UA-mismatch,
+// unknown version) returns a non-nil error and the caller should treat the
+// request as if no cookie was presented.
 func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*CookieData, error) {
 	if ck == nil {
 		return nil, fmt.Errorf("nil cookie")
 	}
 
-	envelope, err := openCookie(ck.Value, masterSecret, []byte(userAgent))
+	envelope, err := openCookie(ck.Value, c.keys.MasterCookieKey(), []byte(userAgent))
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}
 
 	return &CookieData{
-		Fingerprint:   fingerprintDataFromProto(envelope.GetFingerprint()),
-		PowDifficulty: int(envelope.GetPowDifficulty()),
+		Fingerprint:     fingerprintDataFromProto(envelope.Envelope.GetFingerprint()),
+		PowDifficulty:   int(envelope.Envelope.GetPowDifficulty()),
+		Allowlisted:     envelope.Allowlisted,
+		AllowlistReason: envelope.AllowlistReason,
 	}, nil
 }

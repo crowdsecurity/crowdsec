@@ -33,16 +33,17 @@ var DefaultAuthCacheDuration = (1 * time.Minute)
 
 // configuration structure of the acquis for the application security engine
 type Configuration struct {
-	ListenAddr                        string         `yaml:"listen_addr"`
-	ListenSocket                      string         `yaml:"listen_socket"`
-	CertFilePath                      string         `yaml:"cert_file"`
-	KeyFilePath                       string         `yaml:"key_file"`
-	Path                              string         `yaml:"path"`
-	Routines                          int            `yaml:"routines"`
-	AppsecConfig                      string         `yaml:"appsec_config"`
-	AppsecConfigs                     []string       `yaml:"appsec_configs"`
-	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
-	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
+	ListenAddr        string         `yaml:"listen_addr"`
+	ListenSocket      string         `yaml:"listen_socket"`
+	CertFilePath      string         `yaml:"cert_file"`
+	KeyFilePath       string         `yaml:"key_file"`
+	Path              string         `yaml:"path"`
+	Routines          int            `yaml:"routines"`
+	AppsecConfig      string         `yaml:"appsec_config"`
+	AppsecConfigs     []string       `yaml:"appsec_configs"`
+	AppsecConfigPath  string         `yaml:"appsec_config_path"`
+	AuthCacheDuration *time.Duration `yaml:"auth_cache_duration"`
+
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -191,7 +192,13 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	if appsecRuntime.NeedWASMVM {
 		logger.Info("Initializing WASM runtime for challenge obfuscation")
-		challengeRuntime, err := challenge.NewChallengeRuntime(ctx)
+
+		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge)
+		if err != nil {
+			return fmt.Errorf("unable to build challenge options: %w", err)
+		}
+
+		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)
 		if err != nil {
 			return fmt.Errorf("unable to create challenge runtime: %w", err)
 		}
