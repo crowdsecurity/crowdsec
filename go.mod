@@ -205,6 +205,9 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/nats-io/nats.go v1.52.0 // indirect
+	github.com/nats-io/nkeys v0.4.15 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oasdiff/yaml v0.0.9 // indirect
 	github.com/oasdiff/yaml3 v0.0.12 // indirect

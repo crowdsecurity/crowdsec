@@ -1,0 +1,34 @@
+type: nats          # Don't change
+name: nats_default  # Must match the registered plugin in the profile
+
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
+
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the NATS message body
+format: |
+  {{.|toJson}}
+
+# NATS server URL (required)
+url: nats://localhost:4222
+
+# NATS subject to publish to (required)
+subject: notify.crowdsec
+
+# Authentication: use token or credentials file (at least one required if server has auth)
+# token: <NATS_AUTH_TOKEN>
+# credentials: /path/to/nats.creds
+
+---
+# 
+# type: nats
+# name: nats_second_notification
+# ...
