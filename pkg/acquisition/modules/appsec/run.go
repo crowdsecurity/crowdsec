@@ -133,6 +133,8 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	t.Go(func() error {
 		defer trace.ReportPanic()
 
+		w.AppsecRuntime.OutChan = out
+
 		for _, runner := range w.AppsecRunners {
 			runner.outChan = out
 

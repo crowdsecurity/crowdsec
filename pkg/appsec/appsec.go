@@ -323,6 +323,26 @@ type AppsecRuntimeConfig struct {
 	// True if at least one of the hooks use `RequireValidChallenge`
 	NeedWASMVM       bool
 	ChallengeRuntime *challenge.ChallengeRuntime
+
+	// OutChan is the pipeline output channel challenge lifecycle events are sent
+	// on, and Labels are the datasource labels stamped on those events. Both are
+	// wired by the appsec datasource at startup; nil OutChan disables emission
+	// (e.g. in unit tests with no datasource).
+	OutChan chan pipeline.Event
+	Labels  map[string]string
+}
+
+// emitChallengeEvent builds and sends a challenge lifecycle event to the
+// pipeline. It is a no-op when no output channel is wired. Challenge handling is
+// an in-band concern, so we never emit during the out-of-band phase — a common
+// pre_eval/post_eval hook calling SendChallenge() runs in both phases, and the
+// out-of-band invocation is already a no-op for the client.
+func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info ChallengeEventInfo) {
+	if w.OutChan == nil || !request.IsInBand {
+		return
+	}
+
+	w.OutChan <- ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 }
 
 type AppsecConfig struct {
@@ -915,12 +935,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 	// on_challenge inspection happens on subsequent cookie-bearing requests.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("validating challenge response")
+		w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
+
 		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
-			// Failed validations are logged but not surfaced to the local processor as
-			// events today; if/when we want scenarios to fire on repeated failed
-			// submissions, this is the hook point.
 			w.Logger.Errorf("challenge validation failed: %s", err)
+			w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonFailed, FailReason: err.Error()})
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -937,9 +957,20 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			// The expr-side RejectSubmission helper emits the reject log
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
+			w.emitChallengeEvent(request, ChallengeEventInfo{
+				Reason:      ChallengeReasonFailed,
+				FailReason:  "submission rejected: " + state.SubmissionRejection.Reason,
+				Fingerprint: &fpData,
+			})
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
+
+		w.emitChallengeEvent(request, ChallengeEventInfo{
+			Reason:      ChallengeReasonSolved,
+			Difficulty:  state.CookiePowDifficulty,
+			Fingerprint: &fpData,
+		})
 
 		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
@@ -1301,7 +1332,18 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 	if err != nil {
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
-	return w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil)
+
+	if err := w.setChallengeResponse(state, http.StatusOK, challengePage, map[string]string{"Content-Type": "text/html", "Cache-Control": "no-cache, no-store"}, nil); err != nil {
+		return err
+	}
+
+	w.emitChallengeEvent(request, ChallengeEventInfo{
+		Reason:      ChallengeReasonRequested,
+		Difficulty:  target,
+		Fingerprint: state.Fingerprint,
+	})
+
+	return nil
 }
 
 // RejectSubmission flags the in-flight challenge submission so the

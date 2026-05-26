@@ -283,37 +283,6 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 	return true
 }
 
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
-	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
-	// def needs fixing
-	evt.Stage = "s00-raw"
-	evt.Parsed = map[string]string{
-		"source_ip":           r.ClientIP,
-		"target_host":         r.Host,
-		"target_uri":          r.URI,
-		"method":              r.Method,
-		"req_uuid":            txUuid,
-		"source":              "crowdsec-appsec",
-		"remediation_cmpt_ip": r.RemoteAddrNormalized,
-		// TBD:
-		// http_status
-		// user_agent
-
-	}
-	evt.Line = pipeline.Line{
-		Time: time.Now(),
-		// should we add some info like listen addr/port/path ?
-		Labels:  labels,
-		Process: true,
-		Module:  ModuleName,
-		Src:     ModuleName,
-		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
-	}
-	evt.Appsec = pipeline.AppsecEvent{}
-
-	return evt, nil
-}
-
 type ruleData struct {
 	ID           int
 	Name         string

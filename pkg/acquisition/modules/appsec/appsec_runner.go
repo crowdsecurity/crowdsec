@@ -279,7 +279,7 @@ func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, r
 
 func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
 	//create the associated event for crowdsec itself
-	evt, err := EventFromRequest(request, r.Labels, state.Tx.ID())
+	evt, err := appsec.EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
 		//let's not interrupt the pipeline for this
 		r.logger.Errorf("unable to create event from request : %s", err)
@@ -344,7 +344,7 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 }
 
 func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
-	evt, err := EventFromRequest(request, r.Labels, state.Tx.ID())
+	evt, err := appsec.EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
 		//let's not interrupt the pipeline for this
 		r.logger.Errorf("unable to create event from request : %s", err)

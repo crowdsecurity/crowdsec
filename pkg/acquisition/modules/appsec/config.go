@@ -206,6 +206,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	}
 
 	w.AppsecRuntime = appsecRuntime
+	w.AppsecRuntime.Labels = w.config.Labels
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
 	if err != nil {

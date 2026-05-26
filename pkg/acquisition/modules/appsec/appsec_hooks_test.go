@@ -1363,6 +1363,12 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
 				require.NotEmpty(t, responses[0].UserHTTPBodyContent)
 				require.Contains(t, responses[0].UserHeaders["Content-Type"], "text/html")
+				// Issuing the challenge page must emit a single "requested" event
+				// on a source distinct from the WAF one.
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.LOG, events[0].Type)
+				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
+				require.Equal(t, string(appsec.ChallengeReasonRequested), events[0].Parsed["challenge_event"])
 			},
 		},
 		{
@@ -1447,6 +1453,12 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
 				require.JSONEq(t, `{"status":"failed"}`, responses[0].UserHTTPBodyContent)
 				require.False(t, responses[0].InBandInterrupt, "on_challenge hooks must not run on invalid submission")
+				// A submission attempt emits "submitted", then "failed" (with a reason).
+				require.Len(t, events, 2)
+				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
+				require.Equal(t, string(appsec.ChallengeReasonSubmitted), events[0].Parsed["challenge_event"])
+				require.Equal(t, string(appsec.ChallengeReasonFailed), events[1].Parsed["challenge_event"])
+				require.NotEmpty(t, events[1].Parsed["challenge_fail_reason"])
 			},
 		},
 		{

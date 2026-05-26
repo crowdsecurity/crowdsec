@@ -163,6 +163,10 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	//we copy AppsecRutime for each runner
 	wrt := *AppsecRuntime
 	wrt.Logger = logger
+	// mirror production wiring (run.go / config.go) so challenge lifecycle
+	// events are emitted on the same channel the harness collects from.
+	wrt.OutChan = OutChan
+	wrt.Labels = map[string]string{"foo": "bar"}
 
 	mux, urlx, teardown := setupLapi()
 	defer teardown()
