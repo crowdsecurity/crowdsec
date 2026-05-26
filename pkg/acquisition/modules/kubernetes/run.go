@@ -240,7 +240,13 @@ func (s *Source) processLine(line string, source string, out chan pipeline.Event
 	return nil
 }
 
-func (s *Source) podWorker(parentCtx context.Context, cs *kubernetes.Clientset, pod *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) context.CancelFunc {
+func (s *Source) podWorker(parentCtx context.Context,
+	cs *kubernetes.Clientset,
+	pod *corev1.Pod,
+	out chan pipeline.Event,
+	wg *sync.WaitGroup,
+	mu *sync.Mutex,
+	cancels map[types.UID]context.CancelFunc) context.CancelFunc {
 	podCtx, cancel := context.WithCancel(parentCtx)
 	wg.Go(func() {
 		defer func() {
