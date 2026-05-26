@@ -172,7 +172,7 @@ func (s *Source) Dump() any {
 	return s
 }
 
-func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
+func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
 	onLine func(string, string, chan pipeline.Event) error) error {
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	fn := func() error {
@@ -203,6 +203,13 @@ func (*Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		err := fn()
 		if err != nil {
 			return err
+		}
+		// Clean EOF: check if the pod has terminated so we don't re-stream old logs.
+		// If the Get fails or the pod is still Running, fall through and retry
+		// (handles transient API server disconnects).
+		if p, getErr := cs.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
+			s.logger.Debugf("stopped following logs for %s/%s/%s: pod is in phase %s", ns, pod, container, p.Status.Phase)
+			return nil
 		}
 		select {
 		case <-ctx.Done():
