@@ -151,7 +151,7 @@ func TestConfigure(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &Source{}
-			err := s.Configure(context.Background(), []byte(tc.yaml), logger, metrics.AcquisitionMetricsLevelNone)
+			err := s.Configure(t.Context(), []byte(tc.yaml), logger, metrics.AcquisitionMetricsLevelNone)
 			cstest.AssertErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr == "" {
 				require.NotNil(t, s.logger)
