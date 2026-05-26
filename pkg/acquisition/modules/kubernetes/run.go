@@ -1,0 +1,303 @@
+package kubernetes
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+)
+
+func podRef(p *corev1.Pod) string {
+	if p == nil {
+		return "<nil pod>"
+	}
+	return fmt.Sprintf("%s/%s uid=%s phase=%s rv=%s node=%s",
+		p.Namespace,
+		p.Name,
+		p.UID,
+		p.Status.Phase,
+		p.ResourceVersion,
+		p.Spec.NodeName,
+	)
+}
+
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+		"unique_id": s.config.UniqueId,
+	}).Info("starting kubernetes acquisition")
+
+	cfg, err := s.config.buildClientConfig(s.logger)
+	if err != nil {
+		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+	}
+	cs, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+	}
+
+	informerCtx, cancelInformer := context.WithCancel(ctx)
+	defer cancelInformer()
+
+	cancels := map[types.UID]context.CancelFunc{}
+	watchErrCh := make(chan error, 1)
+
+	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
+		informers.WithNamespace(s.config.Namespace),
+		informers.WithTweakListOptions(func(o *metav1.ListOptions) {
+			// We set the LabelSelector on the ListOptions to filter pods at the
+			// API level, so we only get events for pods that match our
+			// selector. This is more efficient than getting all pod events and
+			// filtering them in our event handlers.
+			o.LabelSelector = s.config.Selector
+		}),
+	)
+	inf := f.Core().V1().Pods().Informer()
+	if err := inf.SetWatchErrorHandler(func(_ *cache.Reflector, watchErr error) {
+		fields := log.Fields{
+			"namespace": s.config.Namespace,
+			"selector":  s.config.Selector,
+			"unique_id": s.config.UniqueId,
+			"error":     watchErr,
+		}
+		if apierrors.IsUnauthorized(watchErr) {
+			s.logger.WithFields(fields).Error("kubernetes informer received Unauthorized, forcing datasource restart")
+			select {
+			case watchErrCh <- fmt.Errorf("kubernetes informer unauthorized for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, watchErr):
+			default:
+			}
+			cancelInformer()
+			return
+		}
+		s.logger.WithFields(fields).Warn("kubernetes informer watch error")
+	}); err != nil {
+		return fmt.Errorf("while setting watch error handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+	}
+
+	// We ignore the ResourceEventHandlerRegistration returned by
+	// AddEventHandler since we don't need to remove the handlers until shutdown,
+	// and we will stop the entire informer at that time.
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+		"unique_id": s.config.UniqueId,
+	}).Info("adding kubernetes event handler")
+	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			p := obj.(*corev1.Pod)
+			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
+			s.tailPod(informerCtx, cs, p, out, &wg, &mu, cancels)
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			oldP := oldObj.(*corev1.Pod)
+			newP := newObj.(*corev1.Pod)
+
+			if oldP.Status.Phase != newP.Status.Phase {
+				s.logger.Debugf("UPDATE phase %s -> %s", podRef(oldP), podRef(newP))
+			} else {
+				s.logger.Tracef("UPDATE %s", podRef(newP))
+			}
+
+			s.tailPod(informerCtx, cs, newP, out, &wg, &mu, cancels)
+		},
+		DeleteFunc: func(obj any) {
+			pod, ok := obj.(*corev1.Pod)
+			if !ok {
+				t, _ := obj.(cache.DeletedFinalStateUnknown)
+				pod, _ = t.Obj.(*corev1.Pod)
+				s.logger.Debugf("DELETE(tombstone) %s", podRef(pod))
+			} else {
+				s.logger.Debugf("DELETE %s", podRef(pod))
+			}
+
+			if pod != nil {
+				s.stopPod(pod, &mu, cancels)
+			}
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("while adding event handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+	}
+	f.Start(informerCtx.Done())
+	if !cache.WaitForCacheSync(informerCtx.Done(), inf.HasSynced) {
+		select {
+		case watchErr := <-watchErrCh:
+			return watchErr
+		default:
+		}
+		return fmt.Errorf("cache sync failed for namespace=%q selector=%q unique_id=%q", s.config.Namespace, s.config.Selector, s.config.UniqueId)
+	}
+
+	select {
+	case <-ctx.Done():
+	case watchErr := <-watchErrCh:
+		mu.Lock()
+		for _, c := range cancels {
+			c()
+		}
+		mu.Unlock()
+		wg.Wait()
+		return watchErr
+	}
+	mu.Lock()
+	for _, c := range cancels {
+		c()
+	}
+	mu.Unlock()
+	wg.Wait()
+
+	return nil
+}
+
+func (s *Source) Dump() any {
+	return s
+}
+
+func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
+	onLine func(string, string, chan pipeline.Event) error) error {
+	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
+	fn := func() error {
+		if err := ctx.Err(); err != nil {
+			return nil
+		}
+		stream, err := req.Stream(ctx)
+		if err != nil {
+			return err
+		}
+		defer stream.Close()
+
+		sc := bufio.NewScanner(stream)
+		for sc.Scan() {
+			if err := ctx.Err(); err != nil {
+				return nil
+			}
+			if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
+				return err
+			}
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		return sc.Err()
+	}
+	for {
+		err := fn()
+		if err != nil {
+			return err
+		}
+		// Clean EOF: check if the pod has terminated so we don't re-stream old logs.
+		// If the Get fails or the pod is still Running, fall through and retry
+		// (handles transient API server disconnects).
+		if p, getErr := cs.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
+			s.logger.Debugf("stopped following logs for %s/%s/%s: pod is in phase %s", ns, pod, container, p.Status.Phase)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+func (s *Source) processLine(line string, source string, out chan pipeline.Event) error {
+	l := pipeline.Line{
+		Raw:     line,
+		Labels:  s.config.Labels,
+		Time:    time.Now().UTC(),
+		Src:     source,
+		Process: true,
+		Module:  s.GetName(),
+	}
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
+	}
+	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
+	evt.Line = l
+	evt.Process = true
+	evt.Type = pipeline.LOG
+	out <- evt
+	s.logger.Tracef("got one line from %s: %s", source, line)
+	return nil
+}
+
+func (s *Source) podWorker(parentCtx context.Context,
+	cs *kubernetes.Clientset,
+	pod *corev1.Pod,
+	out chan pipeline.Event,
+	wg *sync.WaitGroup,
+	mu *sync.Mutex,
+	cancels map[types.UID]context.CancelFunc) context.CancelFunc {
+	podCtx, cancel := context.WithCancel(parentCtx)
+	wg.Go(func() {
+		defer func() {
+			mu.Lock()
+			delete(cancels, pod.UID)
+			mu.Unlock()
+		}()
+		var cw sync.WaitGroup
+		for _, cont := range pod.Spec.Containers {
+			cw.Go(func() {
+				err := s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, out, s.processLine)
+				if err != nil {
+					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
+				} else {
+					s.logger.Debugf("stopped following logs for %s/%s/%s", pod.Namespace, pod.Name, cont.Name)
+				}
+			})
+		}
+		cw.Wait()
+	})
+	return cancel
+}
+
+func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
+	if p.Status.Phase != corev1.PodRunning {
+		s.logger.Debugf("SKIP tailPod(non-running) %s", podRef(p))
+		return
+	}
+
+	key := p.UID
+	mu.Lock()
+	if _, ok := cancels[key]; ok {
+		s.logger.Tracef("tail already running %s", podRef(p))
+		mu.Unlock()
+		return
+	}
+
+	s.logger.Debugf("START tail %s", podRef(p))
+	cancels[key] = s.podWorker(ctx, cs, p, out, wg, mu, cancels)
+	mu.Unlock()
+}
+
+func (*Source) stopPod(p *corev1.Pod, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
+	key := p.UID
+	mu.Lock()
+	cancel, ok := cancels[key]
+	if ok {
+		delete(cancels, key)
+	}
+	mu.Unlock()
+	if ok {
+		cancel()
+	}
+}
