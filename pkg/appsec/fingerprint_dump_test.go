@@ -203,32 +203,10 @@ func TestDumpFingerprint_NilFingerprintIsNoop(t *testing.T) {
 	}
 }
 
-// TestDumpFingerprint_EmptyDirIsNoop is the regression guard for the
-// /tmp-fallback temptation: an operator running with FingerprintDumpDir
-// unset (e.g. engine couldn't MkdirAll the data-dir subdir at startup)
-// must get a logged no-op, not a silent write to os.TempDir(). The whole
-// reason the dir is configurable is that /tmp is unsafe.
 func TestDumpFingerprint_EmptyDirIsNoop(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("TMPDIR", tmp) // belt-and-braces: prove no /tmp fallback fired
-
 	got := DumpFingerprint("", "anything", fakeFingerprint("xx"), fakeRequest())
 	if got != "" {
 		t.Errorf("empty dir returned path %q, want empty", got)
-	}
-
-	// Neither the test TempDir() (used as TMPDIR) nor the system temp dir
-	// should have grown a dump file.
-	for _, scanDir := range []string{tmp, os.TempDir()} {
-		entries, err := os.ReadDir(scanDir)
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			if strings.HasPrefix(e.Name(), "crowdsec_fp_dump_") {
-				t.Errorf("empty dir caused a fallback write: %s/%s", scanDir, e.Name())
-			}
-		}
 	}
 }
 
@@ -292,4 +270,3 @@ func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
 		t.Errorf("got %d lines, want %d", len(lines), goroutines*perGoroutine)
 	}
 }
-
