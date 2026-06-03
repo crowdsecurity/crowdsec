@@ -16,10 +16,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 )
 
-// Per-output-path mutexes so concurrent requests appending to the same
-// labeled JSONL file can't interleave half-lines, while distinct labels
-// never contend with each other. The outer mutex only guards the map
-// itself; the per-path mutex guards the actual write.
+// Per-output-path mutexes as there can be concurrency. Outer mutex only guards the map
+// itself
 var (
 	fpDumpMapMu sync.Mutex
 	fpDumpLocks = map[string]*sync.Mutex{}
