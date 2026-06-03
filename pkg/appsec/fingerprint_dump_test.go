@@ -27,11 +27,16 @@ func fakeFingerprint(fsid string) *challenge.FingerprintData {
 
 func fakeRequest() *ParsedRequest {
 	return &ParsedRequest{
-		RemoteAddr: "203.0.113.7:51234",
-		Host:       "example.test",
-		URI:        "/login",
-		Method:     "POST",
-		Headers:    http.Header{"User-Agent": []string{"Mozilla/5.0 (test)"}},
+		// Distinct visitor vs. bouncer addresses so the test can prove
+		// DumpFingerprint records the *real* source IP (ClientIP) and
+		// not just the bouncer's TCP peer (RemoteAddr).
+		ClientIP:             "203.0.113.7",
+		RemoteAddr:           "127.0.0.1:54321",
+		RemoteAddrNormalized: "127.0.0.1",
+		Host:                 "example.test",
+		URI:                  "/login",
+		Method:               "POST",
+		Headers:              http.Header{"User-Agent": []string{"Mozilla/5.0 (test)"}},
 	}
 }
 
@@ -125,8 +130,17 @@ func TestDumpFingerprint_AppendsAndPreservesFields(t *testing.T) {
 			t.Errorf("line %d timestamp %q not RFC3339: %s", i, ts, err)
 		}
 		// Minimal request context preserved.
-		if line["remote_addr"] != "203.0.113.7:51234" {
+		// client_ip is the real visitor address — the field a SOC
+		// operator actually wants when triaging a sample. Verify it
+		// is distinct from remote_addr (which is the bouncer).
+		if line["client_ip"] != "203.0.113.7" {
+			t.Errorf("line %d client_ip = %v, want %q", i, line["client_ip"], "203.0.113.7")
+		}
+		if line["remote_addr"] != "127.0.0.1:54321" {
 			t.Errorf("line %d remote_addr = %v", i, line["remote_addr"])
+		}
+		if line["normalized_remote_addr"] != "127.0.0.1" {
+			t.Errorf("line %d normalized_remote_addr = %v", i, line["normalized_remote_addr"])
 		}
 		if line["user_agent"] != "Mozilla/5.0 (test)" {
 			t.Errorf("line %d user_agent = %v", i, line["user_agent"])
@@ -207,7 +221,7 @@ func TestDumpFingerprint_NilRequestStillDumps(t *testing.T) {
 		t.Fatalf("got %d lines, want 1", len(lines))
 	}
 	// Request fields are omitempty, so they should be absent from the JSON.
-	for _, k := range []string{"remote_addr", "user_agent", "host", "uri", "method"} {
+	for _, k := range []string{"client_ip", "remote_addr", "normalized_remote_addr", "user_agent", "host", "uri", "method"} {
 		if _, ok := lines[0][k]; ok {
 			t.Errorf("nil request still wrote %s=%v", k, lines[0][k])
 		}

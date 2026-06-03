@@ -64,15 +64,24 @@ func sanitizeFpLabel(label string) string {
 // fpDumpEntry is the on-disk record shape: one of these per line in the
 // labeled JSONL file. Field order is fixed by the struct so downstream
 // consumers can rely on the JSON layout.
+//
+// IP-naming convention matches the rest of the appsec package: ClientIP
+// (json:"client_ip") is the *real* visitor address as the bouncer sees
+// it — the field operators actually want when triaging a sample.
+// RemoteAddr / RemoteAddrNormalized are the bouncer's own TCP peer,
+// preserved for completeness (logged as "bouncer" elsewhere in this
+// package — see appsec.go and challenge/fingerprint_helpers.go).
 type fpDumpEntry struct {
-	Label       string                     `json:"label"`
-	Timestamp   time.Time                  `json:"timestamp"`
-	RemoteAddr  string                     `json:"remote_addr,omitempty"`
-	UserAgent   string                     `json:"user_agent,omitempty"`
-	Host        string                     `json:"host,omitempty"`
-	URI         string                     `json:"uri,omitempty"`
-	Method      string                     `json:"method,omitempty"`
-	Fingerprint *challenge.FingerprintData `json:"fingerprint"`
+	Label                string                     `json:"label"`
+	Timestamp            time.Time                  `json:"timestamp"`
+	ClientIP             string                     `json:"client_ip,omitempty"`
+	RemoteAddr           string                     `json:"remote_addr,omitempty"`
+	RemoteAddrNormalized string                     `json:"normalized_remote_addr,omitempty"`
+	UserAgent            string                     `json:"user_agent,omitempty"`
+	Host                 string                     `json:"host,omitempty"`
+	URI                  string                     `json:"uri,omitempty"`
+	Method               string                     `json:"method,omitempty"`
+	Fingerprint          *challenge.FingerprintData `json:"fingerprint"`
 }
 
 // DumpFingerprint appends one compact JSON object (JSONL) describing the
@@ -102,7 +111,9 @@ func DumpFingerprint(label string, fp *challenge.FingerprintData, req *ParsedReq
 		Fingerprint: fp,
 	}
 	if req != nil {
+		entry.ClientIP = req.ClientIP
 		entry.RemoteAddr = req.RemoteAddr
+		entry.RemoteAddrNormalized = req.RemoteAddrNormalized
 		entry.UserAgent = req.Headers.Get("User-Agent")
 		entry.Host = req.Host
 		entry.URI = req.URI
