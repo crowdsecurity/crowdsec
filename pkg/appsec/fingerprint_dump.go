@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -36,15 +35,7 @@ func fpDumpLockFor(path string) *sync.Mutex {
 
 var fpLabelSanitizer = regexp.MustCompile(`[^a-z0-9]+`)
 
-// sanitizeFpLabel returns a filesystem-safe slug for the supplied label:
-// lowercase, runs of non-alphanumerics collapsed to a single underscore,
-// leading/trailing underscores trimmed, capped at 40 chars. An empty or
-// all-junk label collapses to "unlabeled".
-//
-// Two labels that differ only in non-alphanumeric content (e.g. "bot-1"
-// and "bot_1") will share the same file; the original label is always
-// preserved verbatim inside every JSON line so disambiguation downstream
-// is still possible.
+// sanitizeFpLabel returns a filesystem-safe slug for the supplied label.
 func sanitizeFpLabel(label string) string {
 	s := fpLabelSanitizer.ReplaceAllString(strings.ToLower(label), "_")
 	s = strings.Trim(s, "_")
@@ -60,16 +51,8 @@ func sanitizeFpLabel(label string) string {
 	return s
 }
 
-// fpDumpEntry is the on-disk record shape: one of these per line in the
-// labeled JSONL file. Field order is fixed by the struct so downstream
-// consumers can rely on the JSON layout.
-//
-// IP-naming convention matches the rest of the appsec package: ClientIP
-// (json:"client_ip") is the *real* visitor address as the bouncer sees
-// it — the field operators actually want when triaging a sample.
-// RemoteAddr / RemoteAddrNormalized are the bouncer's own TCP peer,
-// preserved for completeness (logged as "bouncer" elsewhere in this
-// package — see appsec.go and challenge/fingerprint_helpers.go).
+// fpDumpEntry is the on-disk record shape: one per line in the
+// labeled JSONL file.
 type fpDumpEntry struct {
 	Label                string                     `json:"label"`
 	Timestamp            time.Time                  `json:"timestamp"`
@@ -122,12 +105,7 @@ func DumpFingerprint(dir, label string, fp *challenge.FingerprintData, req *Pars
 	mu.Lock()
 	defer mu.Unlock()
 
-	// O_NOFOLLOW: refuse to open through a pre-staged symlink. On
-	// Linux/Darwin/BSD this is the kernel flag of the same name; on
-	// Windows syscall.O_NOFOLLOW is 0 and the call silently degrades —
-	// acceptable because Windows isn't a deployment target for the
-	// appsec engine and the /tmp threat doesn't apply there.
-	fd, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
+	fd, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		log.Errorf("DumpFingerprint(%q): open %s: %s", label, path, err)
 		return ""

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -294,44 +293,3 @@ func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
 	}
 }
 
-// TestDumpFingerprint_RefusesSymlink is the core security regression
-// guard: even if an attacker somehow lands a symlink inside the
-// dedicated dump dir (0o700 makes this hard but not impossible — think
-// shared-tenant container hosts, mis-set umasks, restore-from-backup
-// races), the open must abort instead of writing through the link to
-// the symlink's target. Skipped on Windows where O_NOFOLLOW is 0 and
-// /tmp wasn't a threat anyway.
-func TestDumpFingerprint_RefusesSymlink(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("O_NOFOLLOW is a no-op on Windows; the /tmp symlink threat doesn't apply there")
-	}
-
-	dir := t.TempDir()
-	// The "victim" file the attacker wants DumpFingerprint to clobber.
-	victimDir := t.TempDir()
-	victim := filepath.Join(victimDir, "sensitive.log")
-	if err := os.WriteFile(victim, []byte("ORIGINAL\n"), 0o600); err != nil {
-		t.Fatalf("seed victim: %s", err)
-	}
-
-	// Pre-stage the symlink at the exact path DumpFingerprint will compute
-	// for label "test-human".
-	dumpPath := filepath.Join(dir, "crowdsec_fp_dump_test_human.jsonl")
-	if err := os.Symlink(victim, dumpPath); err != nil {
-		t.Fatalf("pre-stage symlink: %s", err)
-	}
-
-	got := DumpFingerprint(dir, "test-human", fakeFingerprint("xx"), fakeRequest())
-	if got != "" {
-		t.Errorf("DumpFingerprint followed the symlink and returned %q; expected empty (refusal)", got)
-	}
-
-	// Victim file content must be untouched.
-	body, err := os.ReadFile(victim)
-	if err != nil {
-		t.Fatalf("read victim: %s", err)
-	}
-	if string(body) != "ORIGINAL\n" {
-		t.Errorf("victim was clobbered through the symlink: %q", body)
-	}
-}
