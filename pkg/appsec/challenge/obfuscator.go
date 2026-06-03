@@ -9,6 +9,7 @@ package challenge
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	_ "embed"
 	"fmt"
 	"sync"
@@ -36,7 +37,11 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	config := wazero.NewModuleConfig().
 		WithStdin(stdin).
 		WithStdout(&stdout).
-		WithStderr(&stderr)
+		WithStderr(&stderr).
+		//ensure that wazero gets a real PRNG source and real wall/nano time for non-deterministic output
+		WithRandSource(crand.Reader).
+		WithSysWalltime().
+		WithSysNanotime()
 
 	mod, err := c.r.InstantiateModule(ctx, c.obfuscatorMod, config)
 	if err != nil {
