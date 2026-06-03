@@ -9,6 +9,7 @@ package challenge
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	_ "embed"
 	"fmt"
 	"sync"
@@ -28,6 +29,18 @@ var (
 // wasm module and returns the obfuscated output. Thread-safe: wazero allows
 // concurrent module instantiations from the same compiled module, which is
 // what makes the dynamic-module singleflight pattern work.
+//
+// The wazero ModuleConfig must opt in to real entropy and real time:
+// wazero defaults `WithRandSource` to a *deterministic* source and the
+// walltime/nanotime to fixed values. javascript-obfuscator's high-
+// obfuscation preset seeds its identifier mangler from QuickJS's
+// `Math.random()` and `Date.now()`, both of which ultimately resolve to
+// WASI calls into these host hooks. With the defaults, every invocation
+// produces byte-identical output — silently collapsing the per-epoch
+// variant pool (see TestCryptoObfuscationPoolSize) to a single variant
+// regardless of the configured cryptoPoolSize, defeating the whole
+// point of pooling. Use crypto/rand + real wall/nano time so each
+// invocation gets distinct output.
 func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (string, error) {
 	stdin := bytes.NewReader([]byte(inputJS))
 	var stdout bytes.Buffer
@@ -36,7 +49,10 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	config := wazero.NewModuleConfig().
 		WithStdin(stdin).
 		WithStdout(&stdout).
-		WithStderr(&stderr)
+		WithStderr(&stderr).
+		WithRandSource(crand.Reader).
+		WithSysWalltime().
+		WithSysNanotime()
 
 	mod, err := c.r.InstantiateModule(ctx, c.obfuscatorMod, config)
 	if err != nil {
