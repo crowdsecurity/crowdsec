@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -84,26 +85,19 @@ type fpDumpEntry struct {
 	Fingerprint          *challenge.FingerprintData `json:"fingerprint"`
 }
 
-// DumpFingerprint appends one compact JSON object (JSONL) describing the
-// supplied human label, a server-side UTC timestamp, a minimal request
-// context block (remote addr, UA, host, URI, method), and the full
-// FingerprintData to os.TempDir()/crowdsec_fp_dump_<sanitized-label>.jsonl (i.e. the system temp dir, honoring $TMPDIR when set).
-//
-// Re-calling with the same label appends to the same file; different
-// labels produce different files. Designed for offline dataset collection
-// from on_challenge_submit and post_eval hooks.
-//
-// Returns the written path, or "" on error (always logged via logrus).
-// A nil fingerprint is treated as a soft no-op (warning logged) so a
-// rule firing in a hook before the fingerprint is populated doesn't
-// crash request processing.
-func DumpFingerprint(label string, fp *challenge.FingerprintData, req *ParsedRequest) string {
+// DumpFingerprint allows to dump the fingerprint + some context (ip, host, timestamp etc.)
+// to as JSONL file for later analysis.
+func DumpFingerprint(dir, label string, fp *challenge.FingerprintData, req *ParsedRequest) string {
 	if fp == nil {
 		log.Warnf("DumpFingerprint(%q) called with nil fingerprint, skipping", label)
 		return ""
 	}
+	if dir == "" {
+		log.Warnf("DumpFingerprint(%q): no dump directory configured, skipping", label)
+		return ""
+	}
 
-	path := filepath.Join(os.TempDir(), fmt.Sprintf("crowdsec_fp_dump_%s.jsonl", sanitizeFpLabel(label)))
+	path := filepath.Join(dir, fmt.Sprintf("crowdsec_fp_dump_%s.jsonl", sanitizeFpLabel(label)))
 
 	entry := fpDumpEntry{
 		Label:       label,
@@ -130,7 +124,12 @@ func DumpFingerprint(label string, fp *challenge.FingerprintData, req *ParsedReq
 	mu.Lock()
 	defer mu.Unlock()
 
-	fd, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	// O_NOFOLLOW: refuse to open through a pre-staged symlink. On
+	// Linux/Darwin/BSD this is the kernel flag of the same name; on
+	// Windows syscall.O_NOFOLLOW is 0 and the call silently degrades —
+	// acceptable because Windows isn't a deployment target for the
+	// appsec engine and the /tmp threat doesn't apply there.
+	fd, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		log.Errorf("DumpFingerprint(%q): open %s: %s", label, path, err)
 		return ""

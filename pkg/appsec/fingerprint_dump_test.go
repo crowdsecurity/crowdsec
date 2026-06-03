@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -90,24 +91,21 @@ func TestSanitizeFpLabel(t *testing.T) {
 }
 
 func TestDumpFingerprint_AppendsAndPreservesFields(t *testing.T) {
-	// Redirect os.TempDir() to a per-test dir so the test is hermetic and
-	// doesn't collide with other runs (or pollute /tmp).
-	t.Setenv("TMPDIR", t.TempDir())
-
+	dir := t.TempDir()
 	fp := fakeFingerprint("fsid-abc")
 	req := fakeRequest()
 
-	path1 := DumpFingerprint("test-human", fp, req)
+	path1 := DumpFingerprint(dir, "test-human", fp, req)
 	if path1 == "" {
 		t.Fatal("first DumpFingerprint returned empty path")
 	}
-	wantPath := filepath.Join(os.TempDir(), "crowdsec_fp_dump_test_human.jsonl")
+	wantPath := filepath.Join(dir, "crowdsec_fp_dump_test_human.jsonl")
 	if path1 != wantPath {
 		t.Errorf("path = %q, want %q", path1, wantPath)
 	}
 
 	// Second call with the same label must append, not truncate.
-	path2 := DumpFingerprint("test-human", fakeFingerprint("fsid-def"), req)
+	path2 := DumpFingerprint(dir, "test-human", fakeFingerprint("fsid-def"), req)
 	if path2 != path1 {
 		t.Errorf("second call wrote to %q, want same file %q", path2, path1)
 	}
@@ -170,10 +168,9 @@ func TestDumpFingerprint_AppendsAndPreservesFields(t *testing.T) {
 }
 
 func TestDumpFingerprint_DifferentLabelsGoToDifferentFiles(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
-
-	pHuman := DumpFingerprint("human", fakeFingerprint("a"), fakeRequest())
-	pBot := DumpFingerprint("bot", fakeFingerprint("b"), fakeRequest())
+	dir := t.TempDir()
+	pHuman := DumpFingerprint(dir, "human", fakeFingerprint("a"), fakeRequest())
+	pBot := DumpFingerprint(dir, "bot", fakeFingerprint("b"), fakeRequest())
 	if pHuman == "" || pBot == "" {
 		t.Fatalf("paths empty: %q %q", pHuman, pBot)
 	}
@@ -191,9 +188,7 @@ func TestDumpFingerprint_DifferentLabelsGoToDifferentFiles(t *testing.T) {
 
 func TestDumpFingerprint_NilFingerprintIsNoop(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("TMPDIR", dir)
-
-	got := DumpFingerprint("anything", nil, fakeRequest())
+	got := DumpFingerprint(dir, "anything", nil, fakeRequest())
 	if got != "" {
 		t.Errorf("nil fingerprint returned path %q, want empty", got)
 	}
@@ -209,10 +204,38 @@ func TestDumpFingerprint_NilFingerprintIsNoop(t *testing.T) {
 	}
 }
 
-func TestDumpFingerprint_NilRequestStillDumps(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
+// TestDumpFingerprint_EmptyDirIsNoop is the regression guard for the
+// /tmp-fallback temptation: an operator running with FingerprintDumpDir
+// unset (e.g. engine couldn't MkdirAll the data-dir subdir at startup)
+// must get a logged no-op, not a silent write to os.TempDir(). The whole
+// reason the dir is configurable is that /tmp is unsafe.
+func TestDumpFingerprint_EmptyDirIsNoop(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp) // belt-and-braces: prove no /tmp fallback fired
 
-	path := DumpFingerprint("nofreq", fakeFingerprint("xx"), nil)
+	got := DumpFingerprint("", "anything", fakeFingerprint("xx"), fakeRequest())
+	if got != "" {
+		t.Errorf("empty dir returned path %q, want empty", got)
+	}
+
+	// Neither the test TempDir() (used as TMPDIR) nor the system temp dir
+	// should have grown a dump file.
+	for _, scanDir := range []string{tmp, os.TempDir()} {
+		entries, err := os.ReadDir(scanDir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), "crowdsec_fp_dump_") {
+				t.Errorf("empty dir caused a fallback write: %s/%s", scanDir, e.Name())
+			}
+		}
+	}
+}
+
+func TestDumpFingerprint_NilRequestStillDumps(t *testing.T) {
+	dir := t.TempDir()
+	path := DumpFingerprint(dir, "nofreq", fakeFingerprint("xx"), nil)
 	if path == "" {
 		t.Fatal("expected dump to succeed with nil request")
 	}
@@ -229,14 +252,13 @@ func TestDumpFingerprint_NilRequestStillDumps(t *testing.T) {
 }
 
 func TestDumpFingerprint_EmptyAndJunkLabelsCollapse(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
-
-	p1 := DumpFingerprint("", fakeFingerprint("a"), nil)
-	p2 := DumpFingerprint("!!! @@@ ", fakeFingerprint("b"), nil)
+	dir := t.TempDir()
+	p1 := DumpFingerprint(dir, "", fakeFingerprint("a"), nil)
+	p2 := DumpFingerprint(dir, "!!! @@@ ", fakeFingerprint("b"), nil)
 	if p1 == "" || p2 == "" {
 		t.Fatalf("paths empty: %q %q", p1, p2)
 	}
-	wantPath := filepath.Join(os.TempDir(), "crowdsec_fp_dump_unlabeled.jsonl")
+	wantPath := filepath.Join(dir, "crowdsec_fp_dump_unlabeled.jsonl")
 	if p1 != wantPath || p2 != wantPath {
 		t.Errorf("expected both junk labels to land in %q, got %q and %q", wantPath, p1, p2)
 	}
@@ -246,8 +268,7 @@ func TestDumpFingerprint_EmptyAndJunkLabelsCollapse(t *testing.T) {
 }
 
 func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
-	t.Setenv("TMPDIR", t.TempDir())
-
+	dir := t.TempDir()
 	const goroutines = 32
 	const perGoroutine = 20
 
@@ -257,7 +278,7 @@ func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < perGoroutine; i++ {
-				if path := DumpFingerprint("race", fakeFingerprint("fsid"), fakeRequest()); path == "" {
+				if path := DumpFingerprint(dir, "race", fakeFingerprint("fsid"), fakeRequest()); path == "" {
 					t.Errorf("DumpFingerprint returned empty path under contention")
 					return
 				}
@@ -266,9 +287,51 @@ func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
 	}
 	wg.Wait()
 
-	path := filepath.Join(os.TempDir(), "crowdsec_fp_dump_race.jsonl")
+	path := filepath.Join(dir, "crowdsec_fp_dump_race.jsonl")
 	lines := readJSONL(t, path) // this would fatal on any torn line
 	if len(lines) != goroutines*perGoroutine {
 		t.Errorf("got %d lines, want %d", len(lines), goroutines*perGoroutine)
+	}
+}
+
+// TestDumpFingerprint_RefusesSymlink is the core security regression
+// guard: even if an attacker somehow lands a symlink inside the
+// dedicated dump dir (0o700 makes this hard but not impossible — think
+// shared-tenant container hosts, mis-set umasks, restore-from-backup
+// races), the open must abort instead of writing through the link to
+// the symlink's target. Skipped on Windows where O_NOFOLLOW is 0 and
+// /tmp wasn't a threat anyway.
+func TestDumpFingerprint_RefusesSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("O_NOFOLLOW is a no-op on Windows; the /tmp symlink threat doesn't apply there")
+	}
+
+	dir := t.TempDir()
+	// The "victim" file the attacker wants DumpFingerprint to clobber.
+	victimDir := t.TempDir()
+	victim := filepath.Join(victimDir, "sensitive.log")
+	if err := os.WriteFile(victim, []byte("ORIGINAL\n"), 0o600); err != nil {
+		t.Fatalf("seed victim: %s", err)
+	}
+
+	// Pre-stage the symlink at the exact path DumpFingerprint will compute
+	// for label "test-human".
+	dumpPath := filepath.Join(dir, "crowdsec_fp_dump_test_human.jsonl")
+	if err := os.Symlink(victim, dumpPath); err != nil {
+		t.Fatalf("pre-stage symlink: %s", err)
+	}
+
+	got := DumpFingerprint(dir, "test-human", fakeFingerprint("xx"), fakeRequest())
+	if got != "" {
+		t.Errorf("DumpFingerprint followed the symlink and returned %q; expected empty (refusal)", got)
+	}
+
+	// Victim file content must be untouched.
+	body, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatalf("read victim: %s", err)
+	}
+	if string(body) != "ORIGINAL\n" {
+		t.Errorf("victim was clobbered through the symlink: %q", body)
 	}
 }

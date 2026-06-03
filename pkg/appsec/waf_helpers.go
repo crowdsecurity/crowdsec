@@ -146,7 +146,7 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
 		"DumpFingerprint": func(label string) string {
-			return DumpFingerprint(label, state.Fingerprint, request)
+			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
 		"fingerprint": state.Fingerprint,
 	}
@@ -263,7 +263,7 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 			return w.EvaluateMismatches(state, request)
 		},
 		"DumpFingerprint": func(label string) string {
-			return DumpFingerprint(label, state.Fingerprint, request)
+			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
 	}
 }
