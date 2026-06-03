@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -126,6 +127,15 @@ func (r *AppsecRunner) Init(datadir string) error {
 
 	r.logger.Tracef("Loaded inband rules: %+v", r.AppsecInbandEngine.GetRuleGroup().GetRules())
 	r.logger.Tracef("Loaded outband rules: %+v", r.AppsecOutbandEngine.GetRuleGroup().GetRules())
+
+	// Materialize the fingerprint-dump dir under data_dir. Failure doesn't prevent startup.
+	r.AppsecRuntime.FingerprintDumpDir = filepath.Join(datadir, "fingerprint_dumps")
+	if err := os.MkdirAll(r.AppsecRuntime.FingerprintDumpDir, 0o700); err != nil {
+		r.logger.Warnf("could not create fingerprint dump dir %q: %s; DumpFingerprint() will be a no-op", r.AppsecRuntime.FingerprintDumpDir, err)
+		r.AppsecRuntime.FingerprintDumpDir = ""
+	} else if err := os.Chmod(r.AppsecRuntime.FingerprintDumpDir, 0o700); err != nil {
+		r.logger.Warnf("could not chmod fingerprint dump dir %q to 0700: %s", r.AppsecRuntime.FingerprintDumpDir, err)
+	}
 
 	return nil
 }

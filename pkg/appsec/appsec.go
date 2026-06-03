@@ -330,6 +330,9 @@ type AppsecRuntimeConfig struct {
 	// (e.g. in unit tests with no datasource).
 	OutChan chan pipeline.Event
 	Labels  map[string]string
+
+	// FingerprintDumpDir is the on-disk directory the DumpFingerprint
+	FingerprintDumpDir string
 }
 
 // emitChallengeEvent builds and sends a challenge lifecycle event to the
