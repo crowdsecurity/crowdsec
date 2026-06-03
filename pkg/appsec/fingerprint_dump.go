@@ -87,7 +87,7 @@ type fpDumpEntry struct {
 // DumpFingerprint appends one compact JSON object (JSONL) describing the
 // supplied human label, a server-side UTC timestamp, a minimal request
 // context block (remote addr, UA, host, URI, method), and the full
-// FingerprintData to <tmpdir>/crowdsec_fp_dump_<sanitized-label>.jsonl.
+// FingerprintData to os.TempDir()/crowdsec_fp_dump_<sanitized-label>.jsonl (i.e. the system temp dir, honoring $TMPDIR when set).
 //
 // Re-calling with the same label appends to the same file; different
 // labels produce different files. Designed for offline dataset collection
