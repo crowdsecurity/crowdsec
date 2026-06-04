@@ -345,7 +345,80 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 		return
 	}
 
+	labels := prometheus.Labels{
+		"source":        request.RemoteAddrNormalized,
+		"appsec_engine": request.AppsecEngine,
+	}
+
+	switch info.Reason {
+	case ChallengeReasonRequested:
+		metrics.AppsecChallengeRequested.With(labels).Inc()
+	case ChallengeReasonSubmitted:
+		metrics.AppsecChallengeSubmitted.With(labels).Inc()
+	case ChallengeReasonSolved:
+		acceptedLabels := prometheus.Labels{
+			"source":        labels["source"],
+			"appsec_engine": labels["appsec_engine"],
+			"kind":          "solved",
+		}
+		metrics.AppsecChallengeAccepted.With(acceptedLabels).Inc()
+	case ChallengeReasonFailed:
+		rejectedLabels := prometheus.Labels{
+			"source":        labels["source"],
+			"appsec_engine": labels["appsec_engine"],
+			"kind":          "protocol",
+			"reason":        classifyProtocolErr(info.FailErr),
+		}
+		metrics.AppsecChallengeRejected.With(rejectedLabels).Inc()
+	case ChallengeReasonRejected:
+		rejectedLabels := prometheus.Labels{
+			"source":        labels["source"],
+			"appsec_engine": labels["appsec_engine"],
+			"kind":          "submission",
+			"reason":        info.FailReason,
+		}
+		metrics.AppsecChallengeRejected.With(rejectedLabels).Inc()
+	}
+
 	w.OutChan <- ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
+}
+
+// classifyProtocolErr maps a challenge-validation error to one of a small
+// closed vocabulary.
+func classifyProtocolErr(err error) string {
+	switch {
+	case err == nil:
+		return "other"
+	case errors.Is(err, challenge.ErrChallengeHMAC):
+		return "hmac"
+	case errors.Is(err, challenge.ErrChallengeTicket):
+		return "ticket"
+	case errors.Is(err, challenge.ErrChallengePoW):
+		return "pow"
+	case errors.Is(err, challenge.ErrChallengeFields), errors.Is(err, challenge.ErrChallengePayload):
+		return "payload"
+	case errors.Is(err, challenge.ErrChallengeDifficulty):
+		return "difficulty"
+	default:
+		return "other"
+	}
+}
+
+// classifyCookieErr maps a ValidCookie error to one of a small closed
+// vocabulary
+func classifyCookieErr(err error) string {
+	switch {
+	case err == nil:
+		return "other"
+	case errors.Is(err, challenge.ErrCookieSignature):
+		return "signature"
+	case errors.Is(err, challenge.ErrCookiePayload), errors.Is(err, challenge.ErrCookieMalformed):
+		return "payload"
+	case errors.Is(err, challenge.ErrCookieExpired), errors.Is(err, challenge.ErrCookieVersion):
+		return "epoch"
+	default:
+		return "other"
+	}
 }
 
 type AppsecConfig struct {
@@ -943,7 +1016,11 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			w.Logger.Errorf("challenge validation failed: %s", err)
-			w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonFailed, FailReason: err.Error()})
+			w.emitChallengeEvent(request, ChallengeEventInfo{
+				Reason:     ChallengeReasonFailed,
+				FailReason: err.Error(),
+				FailErr:    err,
+			})
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -961,8 +1038,8 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
 			w.emitChallengeEvent(request, ChallengeEventInfo{
-				Reason:      ChallengeReasonFailed,
-				FailReason:  "submission rejected: " + state.SubmissionRejection.Reason,
+				Reason:      ChallengeReasonRejected,
+				FailReason:  state.SubmissionRejection.Reason,
 				Fingerprint: &fpData,
 			})
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
@@ -982,7 +1059,20 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 	// Regular request: validate the existing cookie (if any) to populate
 	// fingerprint and remember the difficulty the client proved.
 	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
-		if cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent()); validErr == nil {
+		cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent())
+		switch {
+		case validErr != nil:
+			// Tampered / replayed / past-window cookies show up here. Count
+			// them on the rejected counter with kind=cookie so dashboards
+			// can separate "active submission was rejected" from "a stale
+			// or forged cookie was presented on a regular request".
+			metrics.AppsecChallengeRejected.With(prometheus.Labels{
+				"source":        request.RemoteAddrNormalized,
+				"appsec_engine": request.AppsecEngine,
+				"kind":          "cookie",
+				"reason":        classifyCookieErr(validErr),
+			}).Inc()
+		default:
 			fp := cookieData.Fingerprint
 			fp.Allowlisted = cookieData.Allowlisted
 			fp.AllowlistReason = cookieData.AllowlistReason
@@ -1399,6 +1489,16 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 		AllowlistReason: reason,
 	}
 	state.ChallengeBypassed = true
+
+	// One increment here covers both GrantChallengeCookie (307 redirect from
+	// pre_eval/post_eval) and GrantAllowlistCookieInline (inline on the
+	// challenge-submit response). Both delegate to this function, so this is
+	// the single chokepoint that can't double-count or miss future helpers.
+	metrics.AppsecChallengeAccepted.With(prometheus.Labels{
+		"source":        request.RemoteAddrNormalized,
+		"appsec_engine": request.AppsecEngine,
+		"kind":          "granted",
+	}).Inc()
 
 	return ck, nil
 }

@@ -29,7 +29,8 @@ type ChallengeReason string
 const (
 	ChallengeReasonRequested ChallengeReason = "requested" // challenge page served to the client
 	ChallengeReasonSubmitted ChallengeReason = "submitted" // a challenge validation attempt was received
-	ChallengeReasonFailed    ChallengeReason = "failed"    // validation was rejected (bad PoW/HMAC or operator policy)
+	ChallengeReasonFailed    ChallengeReason = "failed"    // submission failed crypto/PoW validation
+	ChallengeReasonRejected  ChallengeReason = "rejected"  // submission decoded fine but an on_challenge_submit hook called RejectSubmission
 	ChallengeReasonSolved    ChallengeReason = "solved"    // validation passed, cookie issued
 )
 
@@ -67,8 +68,9 @@ func EventFromRequest(r *ParsedRequest, labels map[string]string, txUuid string)
 // ChallengeEventInfo describes a single challenge lifecycle moment to be turned
 // into a pipeline.Event by ChallengeEventFromRequest.
 type ChallengeEventInfo struct {
-	Reason      ChallengeReason            // requested | submitted | failed | solved
-	FailReason  string                     // set only when Reason == failed
+	Reason      ChallengeReason            // requested | submitted | failed | rejected | solved
+	FailReason  string                     // set on failed (raw error message) or rejected (operator-supplied reason)
+	FailErr     error                      // set on failed; carries the sentinel-wrapped error so metrics can classify via errors.Is.
 	Difficulty  int                        // target PoW difficulty for this moment
 	Fingerprint *challenge.FingerprintData // nil when none available (e.g. requested w/o cookie)
 }

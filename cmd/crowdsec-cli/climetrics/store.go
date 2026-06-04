@@ -27,8 +27,9 @@ func NewMetricStore() metricStore {
 		"acquisition":    statAcquis{},
 		"alerts":         statAlert{},
 		"bouncers":       &statBouncer{},
-		"appsec-engine":  statAppsecEngine{},
-		"appsec-rule":    statAppsecRule{},
+		"appsec-engine":    statAppsecEngine{},
+		"appsec-rule":      statAppsecRule{},
+		"appsec-challenge": statAppsecChallenge{},
 		"decisions":      statDecision{},
 		"lapi":           statLapi{},
 		"lapi-bouncer":   statLapiBouncer{},
@@ -62,6 +63,7 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
+	mAppsecChallenge := ms["appsec-challenge"].(statAppsecChallenge)
 	mDecision := ms["decisions"].(statDecision)
 	mLapi := ms["lapi"].(statLapi)
 	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
@@ -103,6 +105,10 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 
 	appsecEngine := p.Labels["appsec_engine"]
 	appsecRule := p.Labels["rule_name"]
+
+	// kind is carried by the appsec-challenge accepted/rejected counters
+	// to distinguish sub-outcomes; empty for every other metric.
+	kind := p.Labels["kind"]
 
 	mtype := p.Labels["type"]
 
@@ -179,6 +185,32 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 			mAppsecEngine.Process(appsecEngine, "blocked", ival)
 		case "cs_appsec_rule_hits":
 			mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
+		//
+		// bot detection / challenge lifecycle
+		//
+		case metrics.AppsecChallengeRequestedMetricName:
+			mAppsecEngine.Process(appsecEngine, "challenge_requested", ival)
+			mAppsecChallenge.Process(appsecEngine, "requested", ival)
+		case metrics.AppsecChallengeSubmittedMetricName:
+			mAppsecChallenge.Process(appsecEngine, "submitted", ival)
+		case metrics.AppsecChallengeAcceptedMetricName:
+			mAppsecEngine.Process(appsecEngine, "challenge_accepted", ival)
+			switch kind {
+			case "solved":
+				mAppsecChallenge.Process(appsecEngine, "solved", ival)
+			case "granted":
+				mAppsecChallenge.Process(appsecEngine, "granted", ival)
+			}
+		case metrics.AppsecChallengeRejectedMetricName:
+			mAppsecEngine.Process(appsecEngine, "challenge_rejected", ival)
+			switch kind {
+			case "protocol":
+				mAppsecChallenge.Process(appsecEngine, "rejected_protocol", ival)
+			case "submission":
+				mAppsecChallenge.Process(appsecEngine, "rejected_submission", ival)
+			case "cookie":
+				mAppsecChallenge.Process(appsecEngine, "rejected_cookie", ival)
+			}
 		default:
 			log.Debugf("unknown: %+v", p.Name)
 			continue

@@ -76,3 +76,49 @@ var AppsecFingerprintMismatch = prometheus.NewCounterVec(
 	},
 	[]string{"reason", "severity", "appsec_engine"},
 )
+
+// Bot detection / WAF challenge lifecycle counters. The funnel is
+// requested → submitted → accepted | rejected, with a `kind` label
+// distinguishing sub-outcomes (e.g. accepted{kind="granted"} for operator
+// allowlist grants, rejected{kind="cookie"} for tampered/expired cookies
+// caught on subsequent requests).
+
+const AppsecChallengeRequestedMetricName = "cs_appsec_challenge_requested_total"
+
+var AppsecChallengeRequested = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeRequestedMetricName,
+		Help: "Total challenges served by the Application Security Engine.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
+const AppsecChallengeSubmittedMetricName = "cs_appsec_challenge_submitted_total"
+
+var AppsecChallengeSubmitted = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeSubmittedMetricName,
+		Help: "Total challenge responses received by the Application Security Engine.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
+const AppsecChallengeAcceptedMetricName = "cs_appsec_challenge_accepted_total"
+
+var AppsecChallengeAccepted = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeAcceptedMetricName,
+		Help: "Total challenge cookies issued, by kind (solved=valid submission, granted=GrantChallengeCookie).",
+	},
+	[]string{"source", "appsec_engine", "kind"},
+)
+
+const AppsecChallengeRejectedMetricName = "cs_appsec_challenge_rejected_total"
+
+var AppsecChallengeRejected = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeRejectedMetricName,
+		Help: "Total challenge/cookie rejections, by kind (protocol=crypto/PoW failure, submission=RejectSubmission, cookie=invalid incoming cookie) and reason.",
+	},
+	[]string{"source", "appsec_engine", "kind", "reason"},
+)

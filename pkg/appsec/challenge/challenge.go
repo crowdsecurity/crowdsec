@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,6 +46,16 @@ const (
 	ChallengeJSPath        = "/crowdsec-internal/challenge/challenge.js"
 	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
 	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
+)
+
+// Sentinel errors (reasons) returned by ValidateChallengeResponse.
+var (
+	ErrChallengeFields     = errors.New("missing required fields in challenge response")
+	ErrChallengeTicket     = errors.New("invalid ticket in challenge response")
+	ErrChallengeDifficulty = errors.New("challenge difficulty is impossible")
+	ErrChallengePoW        = errors.New("invalid proof-of-work in challenge response")
+	ErrChallengeHMAC       = errors.New("invalid HMAC in challenge response")
+	ErrChallengePayload    = errors.New("invalid challenge response payload")
 )
 
 // ChallengeCookieName is the name of the sealed cookie carrying the
@@ -596,7 +607,7 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to parse challenge response: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("%w: %w", ErrChallengePayload, err)
 	}
 
 	encryptedFingerprint := vars.Get("f")
@@ -608,24 +619,24 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientPowMAC := vars.Get("m")
 
 	if encryptedFingerprint == "" || clientTicket == "" || clientTS == "" || clientHMAC == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" {
-		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
+		return nil, FingerprintData{}, ErrChallengeFields
 	}
 
 	// Verify ticket/timestamp match and PoW salt is authentically server-generated (stateless).
 	if !c.matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC) {
-		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
+		return nil, FingerprintData{}, ErrChallengeTicket
 	}
 
 	// An impossible difficulty is a deliberate hard-block: clients cannot solve
 	// it, and the server must not accept any submission.
 	if c.powDifficulty >= PowDifficultyImpossible {
-		return nil, FingerprintData{}, fmt.Errorf("challenge difficulty is impossible; submission rejected")
+		return nil, FingerprintData{}, ErrChallengeDifficulty
 	}
 
 	// Verify proof-of-work: SHA256(powSalt + nonce) must have required leading zero bits
 	powHash := sha256.Sum256([]byte(clientPowSalt + clientNonce))
 	if !hasLeadingZeroBits(powHash[:], c.powDifficulty) {
-		return nil, FingerprintData{}, fmt.Errorf("invalid proof-of-work in challenge response")
+		return nil, FingerprintData{}, ErrChallengePoW
 	}
 
 	// Derive session key from ticket + nonce (same as client-side)
@@ -641,18 +652,18 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	expectedHMACHex := fmt.Sprintf("%x", expectedHMAC.Sum(nil))
 
 	if !hmac.Equal([]byte(clientHMAC), []byte(expectedHMACHex)) {
-		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
+		return nil, FingerprintData{}, ErrChallengeHMAC
 	}
 
 	fingerprint, err := c.decryptFingerprint(sessionKey, encryptedFingerprint)
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to decrypt fingerprint: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("%w: failed to decrypt fingerprint: %w", ErrChallengePayload, err)
 	}
 
 	var fpData FingerprintData
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
 	}
 
 	envelope := &pb.ChallengeCookie{
