@@ -40,26 +40,24 @@ const (
 // surface in pathological configurations.
 const ticketAgeBackstop = 20 * time.Minute
 
-// computeTicket signs the timestamp with the per-epoch signing key derived
-// from the master secret. The epoch is computed from the timestamp itself
-// (`ts_nanos / 1e9 / rotation_seconds`), so verification is fully stateless:
-// any instance with the same master secret can derive the same epoch from the
-// same ts and validate the HMAC.
-func (c *ChallengeRuntime) computeTicket(ts string) string {
-	epoch := c.epochForTimestamp(ts)
-	signKey, ok := c.keys.SignKey(epoch)
-	if !ok {
-		// Falling back to the current key on out-of-window timestamps avoids
-		// accidentally producing a structurally valid signature for a stale
-		// timestamp; verification will reject the resulting ticket on the same
-		// liveness check.
-		_, signKey = c.keys.Current()
+// generateChallengeNonce returns a fresh 16-byte random per-challenge nonce
+// (`r`) as hex. `r` keys single-use bookkeeping (spent_set.go) and seeds the
+// per-challenge secret `s = HMAC(K_epoch, r)`. Error (not panic) on entropy
+// failure so only the current request fails.
+func generateChallengeNonce() (string, error) {
+	buf := make([]byte, 16)
+	if _, err := crand.Read(buf); err != nil {
+		return "", fmt.Errorf("generate challenge nonce: %w", err)
 	}
 
-	h := hmac.New(sha256.New, signKey)
-	h.Write([]byte(ts))
+	return hex.EncodeToString(buf), nil
+}
 
-	return fmt.Sprintf("%x", h.Sum(nil))
+// deriveChallengeSecret computes the per-challenge signing secret
+// `s = HMAC(K_epoch, r)` (hex). `s` is never transmitted; client and server
+// derive it independently from the same per-epoch key.
+func deriveChallengeSecret(signKey []byte, r string) string {
+	return hmacSHA256Hex(signKey, []byte(r))
 }
 
 // epochForTimestamp converts a nanosecond UnixNano string (the format used in
@@ -90,10 +88,10 @@ func generatePowPrefix() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// computePowMAC produces an HMAC that authenticates a PoW salt as server-
-// generated and bound to a specific ticket window. Signed with the same
-// per-epoch key as the ticket so a single keyring lookup verifies both.
-func (c *ChallengeRuntime) computePowMAC(salt, ticket, ts string) string {
+// computePowMAC authenticates a PoW salt as server-generated and bound to a
+// specific challenge (`r`) + timestamp, signed with the per-epoch key — so a
+// client can't substitute a favourable salt.
+func (c *ChallengeRuntime) computePowMAC(salt, r, ts string) string {
 	epoch := c.epochForTimestamp(ts)
 	signKey, ok := c.keys.SignKey(epoch)
 	if !ok {
@@ -102,7 +100,7 @@ func (c *ChallengeRuntime) computePowMAC(salt, ticket, ts string) string {
 
 	h := hmac.New(sha256.New, signKey)
 	h.Write([]byte(salt))
-	h.Write([]byte(ticket))
+	h.Write([]byte(r))
 	h.Write([]byte(ts))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -128,44 +126,44 @@ func hasLeadingZeroBits(hash []byte, bits int) bool {
 	return true
 }
 
-func (c *ChallengeRuntime) getSessionKey(ticket string, nonce string) string {
-	hash := sha256.Sum256([]byte(ticket + nonce))
-	return fmt.Sprintf("%x", hash)
+// deriveFingerprintObfKey returns the keystream key for the fingerprint
+// payload: `HMAC(s, "fpenc"||r)`, hex. Light obfuscation, NOT confidentiality
+// (DESIGN.md §2.6): a known-plaintext attack recovers only this per-challenge,
+// single-use key, which can't reveal `s`/`K_epoch` or forge a signature.
+func deriveFingerprintObfKey(s, r string) string {
+	return hmacSHA256Hex([]byte(s), []byte("fpenc"+r))
 }
 
-func (c *ChallengeRuntime) decryptFingerprint(sessionKey string, encrypted string) (string, error) {
-	encryptedBytes, err := base64.StdEncoding.DecodeString(encrypted)
+// deobfuscateFingerprint reverses the client-side repeating-key XOR + base64
+// applied to the fingerprint JSON, using the key from deriveFingerprintObfKey.
+func deobfuscateFingerprint(obfKey string, payload string) (string, error) {
+	payloadBytes, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode encrypted fingerprint: %w", err)
+		return "", fmt.Errorf("failed to decode obfuscated fingerprint: %w", err)
 	}
 
-	decryptedBytes := make([]byte, len(encryptedBytes))
+	out := make([]byte, len(payloadBytes))
 
-	for i := range encryptedBytes {
-		decryptedBytes[i] = encryptedBytes[i] ^ sessionKey[i%len(sessionKey)]
+	for i := range payloadBytes {
+		out[i] = payloadBytes[i] ^ obfKey[i%len(obfKey)]
 	}
 
-	return string(decryptedBytes), nil
+	return string(out), nil
 }
 
-// matchesChallenge verifies that the ticket/timestamp/PoW salt are authentically
-// server-generated and the timestamp is recent. Fully stateless — any instance
-// sharing the master secret can verify.
-//
-// Both the ticket and the PoW MAC are signed with the per-epoch key derived
-// from `ts`. Liveness is enforced twice: first via the keyring (the epoch
-// derived from `ts` must be in the live window) and second via the
-// challenge-JS refresh window. The keyring window is the actual freshness
-// guarantee; the JS-refresh check is a (looser) backstop.
-func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSalt, clientPowMAC string) bool {
+// verifyChallenge gates timestamp freshness and authenticates the PoW-salt
+// binding, returning the per-epoch sign key (for deriving `s`) on success.
+// Stateless — any instance sharing the master secret can verify. Knowledge of
+// the per-epoch key is proven separately by the caller's `sig` check.
+func (c *ChallengeRuntime) verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC string) ([]byte, bool) {
 	tsVal, err := strconv.ParseInt(clientTS, 10, 64)
 	if err != nil || tsVal <= 0 {
-		return false
+		return nil, false
 	}
 
 	age := time.Since(time.Unix(0, tsVal))
 	if age < 0 || age > ticketAgeBackstop {
-		return false
+		return nil, false
 	}
 
 	epoch := c.epochForTimestamp(clientTS)
@@ -173,23 +171,21 @@ func (c *ChallengeRuntime) matchesChallenge(clientTicket, clientTS, clientPowSal
 	if !ok {
 		// Epoch fell out of the live window — reject without leaking a usable
 		// "signature mismatch" vs "stale epoch" distinction via timing.
-		return false
+		return nil, false
 	}
 
-	// Verify the ticket is an authentic HMAC of the timestamp under K_epoch.
-	expectedTicket := hmacSHA256Hex(signKey, []byte(clientTS))
-	if !hmac.Equal([]byte(clientTicket), []byte(expectedTicket)) {
-		return false
-	}
-
-	// Verify the PoW salt MAC is authentic and bound to this ticket+timestamp.
-	macIn := make([]byte, 0, len(clientPowSalt)+len(clientTicket)+len(clientTS))
+	// Verify the PoW salt MAC is authentic and bound to this challenge+timestamp.
+	macIn := make([]byte, 0, len(clientPowSalt)+len(clientR)+len(clientTS))
 	macIn = append(macIn, clientPowSalt...)
-	macIn = append(macIn, clientTicket...)
+	macIn = append(macIn, clientR...)
 	macIn = append(macIn, clientTS...)
 	expectedMAC := hmacSHA256Hex(signKey, macIn)
 
-	return hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC))
+	if !hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC)) {
+		return nil, false
+	}
+
+	return signKey, true
 }
 
 func hmacSHA256Hex(key, msg []byte) string {

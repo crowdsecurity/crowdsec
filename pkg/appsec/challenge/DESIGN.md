@@ -48,7 +48,7 @@ walking the compiled expression AST and setting
 ┌──────────────────────────────────────────────────────────────────────┐
 │ pkg/appsec/challenge (ChallengeRuntime)                              │
 │   - KeyRing: HKDF-derived per-epoch keys + long-lived cookie key     │
-│   - Crypto: AES-GCM cookie seal/open, ticket + PoW MAC HMACs         │
+│   - Crypto: AES-GCM cookie seal/open, per-challenge + PoW MAC HMACs  │
 │   - Obfuscator: wazero-hosted WASM running javascript-obfuscator     │
 │   - Static bundle pool: baked-in + optional runtime variants         │
 │   - Dynamic module pool: per-epoch key script, obfuscated variants   │
@@ -108,13 +108,14 @@ families from the master secret via HKDF-SHA256 (salt
 
 | Family | HKDF info | Lifetime | Use |
 |---|---|---|---|
-| Per-epoch sign key | `"epoch-sign"` | One rotation interval | Ticket HMAC, PoW MAC |
+| Per-epoch sign key | `"epoch-sign"` | One rotation interval | Per-challenge secret `s` + PoW MAC |
 | Master cookie key | `"cookie-master"` | Lifetime of master secret | AES-GCM seal/open of challenge cookies |
 
 An **epoch** is a time bucket of `rotationInterval` seconds, computed as
 `now.Unix() / rotation_interval_seconds`. All instances sharing the same
 master secret + rotation interval derive bit-identical epoch keys with no
-coordination — the basis for stateless distributed verification.
+coordination — the basis for distributed verification of the per-challenge
+crypto (replay protection is separately stateful; see §2.1).
 
 The keyring keeps a sliding window of `MaxLiveEpochs` past epochs plus the
 current epoch plus a one-step clock-skew slack. Submissions signed by any key
@@ -141,8 +142,9 @@ Three things to note:
 
 1. **Cookie expiry is enforced by the embedded `not_after` timestamp**, not
    by keyring eviction. This intentional decouples cookie TTL (operator
-   policy, e.g. 12h–24h) from the keyring live window (forgery exposure, e.g.
-   15m). Long-lived cookies don't widen the ticket-signing forgery window.
+   policy, e.g. 12h–24h) from the keyring live window (the window in which an
+   extracted per-epoch key stays usable, e.g. 15m). Long-lived cookies don't
+   widen that signing window.
 2. **User-Agent is the GCM authentication tag.** A cookie cannot be replayed
    across UAs — `openCookie` fails authentication on mismatch.
 3. **Allowlist cookies** set `cookieFlagAllowlisted = 0x01` and carry an
@@ -150,21 +152,47 @@ Three things to note:
    final cookie comfortably under the browser 4 KB limit). Real-submission
    cookies leave the flag clear and the reason empty.
 
-#### Ticket and PoW MAC
+#### Per-challenge secret, PoW MAC, and single-use
 
-[`pkg/appsec/challenge/ticket.go`](ticket.go) signs each challenge render
-with two HMAC-SHA256 tags computed from the per-epoch key:
+Each challenge render carries a fresh 16-byte random nonce `r`. From it the
+client derives a **per-challenge secret** that is *never transmitted*:
 
-- `ticket = HMAC(K_epoch, ts_nanos_string)`
-- `powMAC = HMAC(K_epoch, salt || ticket || ts)`
+- `s = HMAC(K_epoch, r)` — the per-challenge signing secret. Both client and
+  server derive it independently (the client from the K_epoch delivered in the
+  obfuscated dynamic module; the server from the keyring). It never appears on
+  the wire.
+- `powMAC = HMAC(K_epoch, salt || r || ts)` — authenticates the PoW salt as
+  server-issued and bound to this challenge, so a client can't pick a
+  favourable salt.
 
-`ts` is just `time.Now().UnixNano()` formatted as a string; the verifier
-derives the epoch from `ts` itself and looks up the same key. There is no
-server-side state — any instance with the same master secret + rotation
-interval can validate any other's tickets.
+The submission is signed `sig = HMAC(s, r || ts || n || f)`. Producing a valid
+`sig` proves the client derived `s` from the per-epoch key — i.e. ran our JS.
+See [ticket.go](ticket.go) (`deriveChallengeSecret`, `computePowMAC`,
+`verifyChallenge`).
 
-Freshness is doubly gated: keyring liveness (epoch in live window) and a
-loose backstop of `ticketAgeBackstop = 20 minutes`.
+`ts` is `time.Now().UnixNano()` formatted as a string; the verifier derives the
+epoch from `ts` itself and looks up the same key. **Challenge *issuance* is
+stateless** (any instance with the same master secret can render and verify the
+crypto), but **submission is single-use**: the validated `r` is burned in an
+in-memory spent-set ([spent_set.go](spent_set.go)), so a captured submission
+cannot be replayed. This is the load-bearing replay control; the per-epoch key
+obfuscation is only a non-load-bearing speed-bump (§2.6).
+
+Freshness is doubly gated: keyring liveness (epoch in live window) and a loose
+backstop of `ticketAgeBackstop = 20 minutes` — which also bounds the spent-set
+TTL.
+
+#### Single-use tickets
+
+[`spent_set.go`](spent_set.go) records consumed per-challenge nonces (`r`) to
+enforce single-use. It wraps **gcache** (already used by `pkg/cache`): a bounded
+LRU (`spentSetMaxEntries`) with a per-entry TTL equal to the freshness window,
+so there is no janitor goroutine or hand-rolled cap. A single mutex makes the
+`Has`/`SetWithExpire` pair in `checkAndInsert` atomic, so two concurrent
+identical submissions can't both win. The burn happens **last** in
+`ValidateChallengeResponse` (after freshness, PoW-MAC, PoW, and `sig` all pass),
+so the set only ever grows for crypto+PoW-valid submissions — its growth is
+sig+PoW-gated and TTL-bounded.
 
 PoW levels (in leading SHA-256 zero bits) live as constants in
 [`ticket.go`](ticket.go):
@@ -184,8 +212,8 @@ The browser receives three logical pieces of JS at every challenge:
 1. **Static library bundle** — fpscanner + PoW worker glue + IndexedDB
    persistence. Public, non-sensitive code.
 2. **Dynamic key module** — a ~30-line script embedding the current epoch's
-   HMAC signing key as a hex literal, so the client can compute a ticket for
-   the submission.
+   HMAC signing key as a hex literal, so the client can derive the
+   per-challenge secret `s = HMAC(K_epoch, r)` and sign the submission.
 3. **PoW worker** — separate JS served at `/crowdsec-internal/challenge/pow-worker.js`.
 
 #### The obfuscator itself
@@ -260,22 +288,24 @@ evaluation if no challenge response was assembled.
 | Path | Method | Handling |
 |---|---|---|
 | `/crowdsec-internal/challenge/pow-worker.js` | GET | Static `PowWorkerJS` body served |
-| `/crowdsec-internal/challenge/submit` | POST | `ValidateChallengeResponse` → fingerprint decrypt → `on_challenge_submit` hooks → `bodyChallengeOK` + Set-Cookie *or* `bodyChallengeRejected` |
+| `/crowdsec-internal/challenge/submit` | POST | `ValidateChallengeResponse` → single-use burn + fingerprint de-obfuscate → `on_challenge_submit` hooks → `bodyChallengeOK` + Set-Cookie *or* `bodyChallengeRejected` |
 | anything else | any | Existing `__crowdsec_challenge` cookie validated → `state.Fingerprint` populated → `on_challenge` hooks |
 
 For a submission, `ValidateChallengeResponse`:
 
-1. Parses the form (`f, t, ts, h, n, p, m` — encrypted fingerprint, client
-   ticket, timestamp, HMAC, nonce, PoW salt, PoW MAC).
-2. Calls `matchesChallenge` to derive the epoch from `ts`, look up the
-   per-epoch key, verify `t == HMAC(K_epoch, ts)` and `m == HMAC(K_epoch,
-   p || t || ts)`.
+1. Parses the form (`f, r, ts, sig, n, p, m` — obfuscated fingerprint,
+   per-challenge nonce, timestamp, submission signature, PoW nonce, PoW salt,
+   PoW MAC).
+2. Calls `verifyChallenge` to gate freshness, derive the epoch from `ts`, look
+   up the per-epoch key, and verify `m == HMAC(K_epoch, p || r || ts)`.
 3. Rejects outright if difficulty is `Impossible`.
 4. Verifies the PoW: `hasLeadingZeroBits(SHA-256(p || n), powDifficulty)`.
-5. Derives the session key as `SHA-256(t || n)`, verifies the HMAC over the
-   encrypted fingerprint, decrypts it (XOR keystream), and JSON-unmarshals
-   into `FingerprintData`.
-6. Seals a v0 cookie carrying that fingerprint under the long-lived master
+5. Derives `s = HMAC(K_epoch, r)` (never transmitted) and verifies
+   `sig == HMAC(s, r || ts || n || f)`.
+6. Burns `r` in the spent-set — **single-use**; a replay is rejected here.
+7. De-obfuscates `f` (repeating-key XOR keyed by `HMAC(s, "fpenc" || r)`) and
+   JSON-unmarshals into `FingerprintData`.
+8. Seals a v0 cookie carrying that fingerprint under the long-lived master
    cookie key with a fresh `not_after`.
 
 The challenge page itself (`GetChallengePage`) builds the response by:
@@ -283,7 +313,7 @@ The challenge page itself (`GetChallengePage`) builds the response by:
 1. Resolving difficulty (per-request override beats runtime default).
 2. Picking a random static library bundle variant and a random dynamic
    module variant.
-3. Generating `ts`, `ticket`, `powSalt`, `powMAC`.
+3. Generating `ts`, the per-challenge nonce `r`, `powSalt`, `powMAC`.
 4. Rendering [`challenge.html.tmpl`](challenge.html.tmpl) with all of the
    above.
 
@@ -388,11 +418,18 @@ Things to actively look for when reviewing changes that touch this subsystem.
 
 ### 2.1 Invariants that must not break
 
-- **Stateless distributed verification.** Anything written into a ticket,
-  PoW MAC, or cookie must be derivable from the master secret + epoch +
-  request data. No node-local randomness, no node-specific identifiers.
-  Multiple WAFs sharing a master secret must accept each other's submissions
-  silently.
+- **Stateless *crypto*, stateful *single-use*.** All per-challenge / PoW-MAC /
+  cookie crypto must remain derivable from the master secret + epoch + request data
+  (no node-local randomness baked into verifiable material), so any instance can
+  verify any other's signatures. **However, replay protection is intentionally
+  stateful**: the per-challenge nonce `r` is burned in an in-memory spent-set
+  ([spent_set.go](spent_set.go)). The design assumes **all web servers talk to a
+  single appsec instance** — single-use holds within that instance. A
+  multi-instance fleet without a shared spent-set would not enforce fleet-wide
+  single-use (a captured submission could replay against a *different* instance);
+  that is accepted by assumption. Cookie sealing/validation stays stateless under
+  the master cookie key, so only the brief challenge *handshake* is instance-
+  sticky — the 12h cookie validates on any instance.
 - **`master_secret` policy.** A misconfigured master_secret must FAIL the
   config load — it must never silently fall back to a random secret when the
   operator clearly intended to set one. The "random secret" path is reserved
@@ -518,7 +555,24 @@ out unless you split by package.
 - The dynamic module template embeds the per-epoch key as a hex literal in
   plain JS source before obfuscation. That's intentional — the obfuscator's
   string-array transforms encode it, and per-epoch rotation bounds the
-  exposure.
+  exposure. Note that with per-challenge single-use tickets the obfuscation is
+  **no longer load-bearing**: extracting `K_epoch` lets an attacker forge at
+  most one PoW-solved submission per challenge they legitimately request, since
+  replay is killed by the spent-set. Raising the JS reverse-engineering bar is
+  tracked separately.
+- The fingerprint payload `f` is "encrypted" with a repeating-key XOR
+  (`deriveFingerprintObfKey` / `deobfuscateFingerprint`). This is **deliberately
+  light obfuscation, not confidentiality**: a known-plaintext attack recovers
+  only the per-challenge, single-use key `HMAC(s, "fpenc" || r)`, which is
+  one-way-derived (`K_epoch → s → obfKey`) and cannot leak `s`/`K_epoch` or
+  forge `sig`. Transport confidentiality is TLS's job; integrity is `sig`'s.
+  Don't "upgrade" it to WebCrypto AES-GCM — routing `K_epoch`-derived key
+  material through `crypto.subtle.*` creates a trivially-hookable key-
+  interception boundary, which is worse.
+- Challenge submission is single-use but issuance is not: an attacker spamming
+  GET challenge pages costs nothing extra (issuance is stateless). The
+  spent-set only grows on *valid* submissions (sig+PoW-gated) and entries
+  expire after the freshness window, so it can't be cheaply flooded.
 
 ---
 
