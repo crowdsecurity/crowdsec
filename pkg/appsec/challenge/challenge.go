@@ -516,6 +516,16 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	}
 	powMAC := c.computePowMAC(powSalt, r, ts)
 
+	// DEV-ONLY (remove before release): log the per-challenge seed `r` and the
+	// per-epoch key K_epoch served with this challenge, so we can later test
+	// whether the obfuscated assets let an attacker recover K_epoch.
+	issEpoch, issKey := c.keys.Current()
+	log.WithFields(log.Fields{
+		"r":       r,
+		"epoch":   issEpoch,
+		"k_epoch": fmt.Sprintf("%x", issKey),
+	}).Info("WAF challenge DEV: issued challenge")
+
 	// The static bundle only carries the hook registration; the dynamic module
 	// carries the per-epoch K, so K never appears in plain HTML.
 	dynamicModule, err := c.currentDynamicModule(context.Background())
@@ -590,6 +600,15 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	if !hmac.Equal([]byte(clientSig), []byte(expectedSig)) {
 		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
 	}
+
+	// DEV-ONLY (remove before release): log the per-challenge seed `r` and the
+	// per-epoch key K_epoch from a validated submission, to pair with the
+	// issuance log above for key-recovery testing.
+	log.WithFields(log.Fields{
+		"r":       clientR,
+		"epoch":   c.epochForTimestamp(clientTS),
+		"k_epoch": fmt.Sprintf("%x", signKey),
+	}).Info("WAF challenge DEV: validated submission")
 
 	// Single-use: burn `r` (rejects replays). Done last so the spent-set only
 	// grows on fully-valid submissions.
