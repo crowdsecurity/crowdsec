@@ -29,7 +29,7 @@ func NewMetricStore() metricStore {
 		"bouncers":       &statBouncer{},
 		"appsec-engine":    statAppsecEngine{},
 		"appsec-rule":      statAppsecRule{},
-		"appsec-challenge": statAppsecChallenge{},
+		"appsec-challenge": newStatAppsecChallenge(),
 		"decisions":      statDecision{},
 		"lapi":           statLapi{},
 		"lapi-bouncer":   statLapiBouncer{},
@@ -63,7 +63,7 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
-	mAppsecChallenge := ms["appsec-challenge"].(statAppsecChallenge)
+	mAppsecChallenge := ms["appsec-challenge"].(*statAppsecChallenge)
 	mDecision := ms["decisions"].(statDecision)
 	mLapi := ms["lapi"].(statLapi)
 	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
@@ -200,16 +200,20 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 				mAppsecChallenge.Process(appsecEngine, "solved", ival)
 			case "granted":
 				mAppsecChallenge.Process(appsecEngine, "granted", ival)
+				mAppsecChallenge.ProcessReason(appsecEngine, "granted", reason, ival)
 			}
 		case metrics.AppsecChallengeRejectedMetricName:
 			mAppsecEngine.Process(appsecEngine, "challenge_rejected", ival)
 			switch kind {
 			case "protocol":
 				mAppsecChallenge.Process(appsecEngine, "rejected_protocol", ival)
+				mAppsecChallenge.ProcessReason(appsecEngine, "protocol", reason, ival)
 			case "submission":
 				mAppsecChallenge.Process(appsecEngine, "rejected_submission", ival)
+				mAppsecChallenge.ProcessReason(appsecEngine, "submission", reason, ival)
 			case "cookie":
 				mAppsecChallenge.Process(appsecEngine, "rejected_cookie", ival)
+				mAppsecChallenge.ProcessReason(appsecEngine, "cookie", reason, ival)
 			}
 		default:
 			log.Debugf("unknown: %+v", p.Name)

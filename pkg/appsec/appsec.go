@@ -360,6 +360,7 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 			"source":        labels["source"],
 			"appsec_engine": labels["appsec_engine"],
 			"kind":          "solved",
+			"reason":        "", // regular submissions have no per-issue reason
 		}
 		metrics.AppsecChallengeAccepted.With(acceptedLabels).Inc()
 	case ChallengeReasonFailed:
@@ -1498,6 +1499,7 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 		"source":        request.RemoteAddrNormalized,
 		"appsec_engine": request.AppsecEngine,
 		"kind":          "granted",
+		"reason":        reason, // operator-supplied string passed to GrantChallengeCookie
 	}).Inc()
 
 	return ck, nil

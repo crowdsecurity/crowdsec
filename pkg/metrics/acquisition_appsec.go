@@ -105,12 +105,16 @@ var AppsecChallengeSubmitted = prometheus.NewCounterVec(
 
 const AppsecChallengeAcceptedMetricName = "cs_appsec_challenge_accepted_total"
 
+// AppsecChallengeAccepted carries an extra `reason` label so operator-driven
+// grants (kind="granted") can be split by the GrantChallengeCookie reason.
+// For kind="solved" the label is empty: regular submissions have no
+// per-issue reason and we don't want to invent one.
 var AppsecChallengeAccepted = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: AppsecChallengeAcceptedMetricName,
-		Help: "Total challenge cookies issued, by kind (solved=valid submission, granted=GrantChallengeCookie).",
+		Help: "Total challenge cookies issued, by kind (solved=valid submission, granted=GrantChallengeCookie) and (for granted) operator-supplied reason.",
 	},
-	[]string{"source", "appsec_engine", "kind"},
+	[]string{"source", "appsec_engine", "kind", "reason"},
 )
 
 const AppsecChallengeRejectedMetricName = "cs_appsec_challenge_rejected_total"
