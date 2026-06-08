@@ -1,10 +1,11 @@
-// ticket.go produces and verifies the short-lived "ticket" handed to the
-// browser at challenge time: a random nonce + difficulty + issued-at
-// timestamp, HMAC-signed with the current epoch's signing key. The browser
-// solves the PoW (leading-zero-bits) over the ticket and posts the solution
-// back; ValidateChallengeResponse (in challenge.go) re-verifies the HMAC and
-// the PoW. Difficulty levels are tuned for pure-JS SHA-256 through the
-// obfuscated runtime, see DifficultyBits below.
+// ticket.go holds the per-challenge crypto handed to the browser and verified
+// on submit: a random per-challenge nonce `r`, the PoW salt + its MAC, and the
+// helpers to derive the per-challenge secret `s = HMAC(K_epoch, r)`. The browser
+// solves the PoW (leading-zero-bits) and signs its submission with `s`;
+// ValidateChallengeResponse (in challenge.go) re-derives `s`, checks the
+// signature and PoW, then burns `r` (single-use). PoW difficulty levels are
+// tuned for pure-JS SHA-256 through the obfuscated runtime; see the
+// PowDifficulty* constants below.
 
 package challenge
 
@@ -31,8 +32,8 @@ const (
 	defaultPowDifficulty = PowDifficultyMedium
 )
 
-// ticketAgeBackstop is a loose ceiling on accepted ticket age in
-// matchesChallenge. The actual freshness gate is the keyring live
+// ticketAgeBackstop is a loose ceiling on accepted submission age in
+// verifyChallenge. The actual freshness gate is the keyring live
 // window (rotationInterval × maxLiveEpochs); this is a separate ceiling
 // that protects against operators configuring an unusually wide live
 // window. Loose enough not to interfere with real submissions on slow
@@ -66,7 +67,7 @@ func deriveChallengeSecret(signKey []byte, r string) string {
 func (c *ChallengeRuntime) epochForTimestamp(ts string) int64 {
 	tsVal, err := strconv.ParseInt(ts, 10, 64)
 	if err != nil || tsVal <= 0 {
-		// Caller will reject the ticket via the liveness check anyway; return
+		// Caller will reject the request via the liveness check anyway; return
 		// an out-of-window sentinel epoch.
 		return -1
 	}
