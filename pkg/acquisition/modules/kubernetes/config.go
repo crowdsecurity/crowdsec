@@ -75,6 +75,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	s.config = cfg
+	s.client = nil
 
 	return nil
 }

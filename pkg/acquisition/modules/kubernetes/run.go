@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -35,6 +36,22 @@ func podRef(p *corev1.Pod) string {
 	)
 }
 
+func (s *Source) initClient() error {
+	cfg, err := s.config.buildClientConfig(s.logger)
+	if err != nil {
+		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+
+	s.client = client
+
+	return nil
+}
+
 func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -44,13 +61,9 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		"selector":  s.config.Selector,
 	}).Info("starting kubernetes acquisition")
 
-	cfg, err := s.config.buildClientConfig(s.logger)
+	err := s.initClient()
 	if err != nil {
-		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
-	}
-	cs, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+		return err
 	}
 
 	informerCtx, cancelInformer := context.WithCancel(ctx)
@@ -59,7 +72,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	cancels := map[types.UID]context.CancelFunc{}
 	watchErrCh := make(chan error, 1)
 
-	f := informers.NewSharedInformerFactoryWithOptions(cs, 0,
+	f := informers.NewSharedInformerFactoryWithOptions(s.client, 0,
 		informers.WithNamespace(s.config.Namespace),
 		informers.WithTweakListOptions(func(o *metav1.ListOptions) {
 			// We set the LabelSelector on the ListOptions to filter pods at the
@@ -101,7 +114,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		AddFunc: func(obj any) {
 			p := obj.(*corev1.Pod)
 			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
-			s.tailPod(informerCtx, cs, p, out, &wg, &mu, cancels)
+			s.tailPod(informerCtx, p, out, &wg, &mu, cancels)
 		},
 		UpdateFunc: func(oldObj, newObj any) {
 			oldP := oldObj.(*corev1.Pod)
@@ -113,7 +126,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 				s.logger.Tracef("UPDATE %s", podRef(newP))
 			}
 
-			s.tailPod(informerCtx, cs, newP, out, &wg, &mu, cancels)
+			s.tailPod(informerCtx, newP, out, &wg, &mu, cancels)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
@@ -169,9 +182,14 @@ func (s *Source) Dump() any {
 	return s
 }
 
-func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
+func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, container string, out chan pipeline.Event,
 	onLineFunc func(string, string, chan pipeline.Event) error) error {
-	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
+	client := s.client
+	if client == nil {
+		return errors.New("kubernetes client is not initialized")
+	}
+
+	req := client.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	fn := func() error {
 		if err := ctx.Err(); err != nil {
 			return nil
@@ -204,7 +222,7 @@ func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns
 		// Clean EOF: check if the pod has terminated so we don't re-stream old logs.
 		// If the Get fails or the pod is still Running, fall through and retry
 		// (handles transient API server disconnects).
-		if p, getErr := cs.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
+		if p, getErr := client.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
 			s.logger.Debugf("stopped following logs for %s/%s/%s: pod is in phase %s", ns, pod, container, p.Status.Phase)
 			return nil
 		}
@@ -236,7 +254,6 @@ func (s *Source) processLine(line string, source string, out chan pipeline.Event
 }
 
 func (s *Source) podWorker(parentCtx context.Context,
-	cs *kubernetes.Clientset,
 	pod *corev1.Pod,
 	out chan pipeline.Event,
 	wg *sync.WaitGroup,
@@ -252,7 +269,7 @@ func (s *Source) podWorker(parentCtx context.Context,
 		var cw sync.WaitGroup
 		for _, cont := range pod.Spec.Containers {
 			cw.Go(func() {
-				err := s.followPodLogs(podCtx, cs, pod.Namespace, pod.Name, cont.Name, out, s.processLine)
+				err := s.followPodLogs(podCtx, pod.Namespace, pod.Name, cont.Name, out, s.processLine)
 				if err != nil {
 					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
 				} else {
@@ -265,7 +282,7 @@ func (s *Source) podWorker(parentCtx context.Context,
 	return cancel
 }
 
-func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
+func (s *Source) tailPod(ctx context.Context, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, mu *sync.Mutex, cancels map[types.UID]context.CancelFunc) {
 	if p.Status.Phase != corev1.PodRunning {
 		s.logger.Debugf("SKIP tailPod(non-running) %s", podRef(p))
 		return
@@ -280,7 +297,7 @@ func (s *Source) tailPod(ctx context.Context, cs *kubernetes.Clientset, p *corev
 	}
 
 	s.logger.Debugf("START tail %s", podRef(p))
-	cancels[key] = s.podWorker(ctx, cs, p, out, wg, mu, cancels)
+	cancels[key] = s.podWorker(ctx, p, out, wg, mu, cancels)
 	mu.Unlock()
 }
 

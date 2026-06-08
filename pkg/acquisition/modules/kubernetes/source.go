@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
@@ -10,6 +11,7 @@ type Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
 	config       Configuration
 
+	client *kubernetes.Clientset
 	logger *log.Entry
 }
 
