@@ -42,16 +42,15 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.WithFields(log.Fields{
 		"namespace": s.config.Namespace,
 		"selector":  s.config.Selector,
-		"unique_id": s.config.UniqueId,
 	}).Info("starting kubernetes acquisition")
 
 	cfg, err := s.config.buildClientConfig(s.logger)
 	if err != nil {
-		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
 	}
 	cs, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
 	}
 
 	informerCtx, cancelInformer := context.WithCancel(ctx)
@@ -75,7 +74,6 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		fields := log.Fields{
 			"namespace": s.config.Namespace,
 			"selector":  s.config.Selector,
-			"unique_id": s.config.UniqueId,
 			"error":     watchErr,
 		}
 		if apierrors.IsUnauthorized(watchErr) {
@@ -89,7 +87,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		}
 		s.logger.WithFields(fields).Warn("kubernetes informer watch error")
 	}); err != nil {
-		return fmt.Errorf("while setting watch error handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+		return fmt.Errorf("while setting watch error handler for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
 	}
 
 	// We ignore the ResourceEventHandlerRegistration returned by
@@ -98,7 +96,6 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.WithFields(log.Fields{
 		"namespace": s.config.Namespace,
 		"selector":  s.config.Selector,
-		"unique_id": s.config.UniqueId,
 	}).Info("adding kubernetes event handler")
 	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
@@ -135,7 +132,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("while adding event handler for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, err)
+		return fmt.Errorf("while adding event handler for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
 	}
 	f.Start(informerCtx.Done())
 	if !cache.WaitForCacheSync(informerCtx.Done(), inf.HasSynced) {
@@ -144,7 +141,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 			return watchErr
 		default:
 		}
-		return fmt.Errorf("cache sync failed for namespace=%q selector=%q unique_id=%q", s.config.Namespace, s.config.Selector, s.config.UniqueId)
+		return fmt.Errorf("cache sync failed for namespace=%q selector=%q", s.config.Namespace, s.config.Selector)
 	}
 
 	select {
@@ -233,8 +230,6 @@ func (s *Source) processLine(line string, source string, out chan pipeline.Event
 	}
 	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
 	evt.Line = l
-	evt.Process = true
-	evt.Type = pipeline.LOG
 	out <- evt
 	s.logger.Tracef("got one line from %s: %s", source, line)
 	return nil

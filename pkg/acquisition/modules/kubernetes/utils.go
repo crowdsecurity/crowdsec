@@ -18,7 +18,6 @@ func (c *Configuration) buildClientConfig(logger *log.Entry) (*rest.Config, erro
 				"bearer_token_file": cfg.BearerTokenFile,
 				"namespace":         c.Namespace,
 				"selector":          c.Selector,
-				"unique_id":         c.UniqueId,
 			}).Info("using in-cluster kubernetes client configuration")
 		}
 		return cfg, nil
@@ -30,7 +29,6 @@ func (c *Configuration) buildClientConfig(logger *log.Entry) (*rest.Config, erro
 			"error":     err,
 			"namespace": c.Namespace,
 			"selector":  c.Selector,
-			"unique_id": c.UniqueId,
 		}).Warn("failed to build in-cluster kubernetes client configuration, falling back to kubeconfig")
 	}
 
@@ -53,7 +51,6 @@ func (c *Configuration) buildClientConfig(logger *log.Entry) (*rest.Config, erro
 			"kube_context":      c.KubeContext,
 			"namespace":         c.Namespace,
 			"selector":          c.Selector,
-			"unique_id":         c.UniqueId,
 		}).Info("using kubeconfig-based kubernetes client configuration")
 	}
 
