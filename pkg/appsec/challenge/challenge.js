@@ -202,19 +202,15 @@ function encryptFingerprint(key, fingerprint) {
 
 // --- Non-secret per-request values (plain template injection) ---
 //
-// _ts, _powP, _powM, _powD, _r are set on `globalThis` by a small plain
-// <script> tag rendered by the server before this module loads. They are NOT
-// secrets:
-//   _ts   — current server time (forgeable but freshness-windowed)
-//   _powP — random PoW salt (must be server-issued so clients can't pick favorable salts)
-//   _powM — HMAC binding (_powP, _r, _ts) under the server's per-epoch sign key
-//   _powD — PoW difficulty (a number)
-//   _r    — per-challenge nonce; seeds the per-challenge secret s = HMAC(K, r)
-//
-// What IS secret: the per-epoch K used to derive the per-challenge secret s
-// (and from it the submission signature). K is delivered by the dynamic key
-// module (re-obfuscated each rotation) which calls the hook below with
-// { key, epoch }. s itself is never transmitted.
+// Set on `globalThis` by a plain <script> the server renders before this
+// module. None are secret:
+//   _ts   — server time (forgeable but freshness-windowed)
+//   _powP — random PoW salt (server-issued so clients can't pick easy salts)
+//   _powM — HMAC(_powP, _r, _ts) under the per-epoch key
+//   _powD — PoW difficulty
+//   _r    — per-challenge nonce; seeds s = HMAC(K, r)
+// The secret is the per-epoch K, delivered only by the dynamic key module; the
+// derived s is never transmitted.
 
 const ts = typeof _ts !== "undefined" ? _ts : "";
 const powPrefix = typeof _powP !== "undefined" ? _powP : "";
@@ -239,14 +235,10 @@ function reportChallengeStatus(status) {
 }
 
 // --- Main flow ---
-// The static bundle exposes a hook on globalThis. The dynamic key module
-// (loaded after this static bundle) calls the hook with { key, epoch }.
-// All cryptographic operations that depend on the per-epoch key live here:
-// the static bundle never sees a hardcoded K, only the per-call argument.
-//
-// The hook name is a sentinel that survives JS obfuscation via the
-// `reservedStrings` option — the same literal must appear in both the
-// static bundle and the dynamic module so they meet on globalThis.
+// The static bundle registers a hook on globalThis; the dynamic key module
+// (loaded after) calls it with { key, epoch }. Key-dependent crypto lives here;
+// the static bundle holds no hardcoded K. The hook name survives obfuscation
+// via `reservedStrings` so both bundles meet on the same global.
 
 const CSEC_HOOK_NAME = "__CSEC_CHALLENGE_HOOK_v1__";
 
