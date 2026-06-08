@@ -186,7 +186,13 @@ func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, conta
 		return errors.New("kubernetes client is not initialized")
 	}
 
-	req := client.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
+	sinceTime := metav1.NewTime(time.Now().UTC())
+	req := client.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{
+		Container:  container,
+		Follow:     true,
+		Timestamps: false,
+		SinceTime:  &sinceTime,
+	})
 	fn := func() error {
 		if err := ctx.Err(); err != nil {
 			return nil
