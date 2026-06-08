@@ -170,7 +170,7 @@ func (s *Source) Dump() any {
 }
 
 func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns, pod, container string, out chan pipeline.Event,
-	onLine func(string, string, chan pipeline.Event) error) error {
+	onLineFunc func(string, string, chan pipeline.Event) error) error {
 	req := cs.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{Container: container, Follow: true, Timestamps: false})
 	fn := func() error {
 		if err := ctx.Err(); err != nil {
@@ -187,7 +187,7 @@ func (s *Source) followPodLogs(ctx context.Context, cs *kubernetes.Clientset, ns
 			if err := ctx.Err(); err != nil {
 				return nil
 			}
-			if err := onLine(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
+			if err := onLineFunc(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
 				return err
 			}
 		}
