@@ -165,9 +165,10 @@ client derives a **per-challenge secret** that is *never transmitted*:
   server-issued and bound to this challenge, so a client can't pick a
   favourable salt.
 
-The submission is signed `sig = HMAC(s, r || ts || n || f)`. Producing a valid
-`sig` proves the client derived `s` from the per-epoch key — i.e. ran our JS.
-See [ticket.go](ticket.go) (`deriveChallengeSecret`, `computePowMAC`,
+The submission is signed `sig = HMAC(s, r || ts || n || f)`. A valid `sig` proves
+the submitter knows `K_epoch` — normally by running our obfuscated JS to read it
+from the dynamic module, though a determined attacker can extract it (§2.6). See
+[ticket.go](ticket.go) (`deriveChallengeSecret`, `computePowMAC`,
 `verifyChallenge`).
 
 `ts` is `time.Now().UnixNano()` formatted as a string; the verifier derives the
