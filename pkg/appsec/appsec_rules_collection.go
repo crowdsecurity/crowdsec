@@ -117,9 +117,9 @@ func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]Appsec
 		}
 
 		if appsecRule.Rules != nil {
-			for _, rule := range appsecRule.Rules {
+			for i, rule := range appsecRule.Rules {
 				rule.Severity = appsecRule.Severity
-				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description)
+				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description, i)
 				if err != nil {
 					logger.Errorf("unable to convert rule %s : %s", appsecRule.Name, err)
 					return nil, err
@@ -128,19 +128,20 @@ func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]Appsec
 				logger.Debugf("Adding rule %s", strRule)
 				appsecCol.Rules = append(appsecCol.Rules, strRule)
 
-				// We only take the first id, as it's the one of the "main" rule
-				if _, ok := AppsecRulesDetails[int(rulesId[0])]; !ok {
-					AppsecRulesDetails[int(rulesId[0])] = RulesDetails{
-						LogLevel: log.InfoLevel,
-						Hash:     appsecRule.hash,
-						Version:  appsecRule.version,
-						Name:     appsecRule.Name,
-					}
-				} else {
-					logger.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
-				}
-
+				// An `or` expands into several SecRules; register every id (not
+				// just the first) so the name resolves whichever branch matches.
 				for _, id := range rulesId {
+					if _, ok := AppsecRulesDetails[int(id)]; !ok {
+						AppsecRulesDetails[int(id)] = RulesDetails{
+							LogLevel: log.InfoLevel,
+							Hash:     appsecRule.hash,
+							Version:  appsecRule.version,
+							Name:     appsecRule.Name,
+						}
+					} else {
+						logger.Warnf("conflicting id %d for rule %s !", id, appsecRule.Name)
+					}
+
 					SetRuleDebug(int(id), appsecRule.Debug)
 				}
 			}
