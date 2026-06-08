@@ -66,3 +66,7 @@ msi
 __pycache__
 *.py[cod]
 *.egg-info
+
+# local agent/tooling dirs (not part of the repo)
+.agents/
+.claude/
