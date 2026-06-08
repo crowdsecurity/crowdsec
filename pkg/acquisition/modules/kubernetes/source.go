@@ -1,6 +1,8 @@
 package kubernetes
 
 import (
+	"sync"
+
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 
@@ -12,6 +14,7 @@ type Source struct {
 	config       Configuration
 
 	client *kubernetes.Clientset
+	mu     sync.Mutex
 	logger *log.Entry
 }
 
