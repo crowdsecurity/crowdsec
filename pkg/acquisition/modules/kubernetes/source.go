@@ -1,9 +1,11 @@
 package kubernetes
 
 import (
+	"context"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -13,9 +15,10 @@ type Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
 	config       Configuration
 
-	client *kubernetes.Clientset
-	mu     sync.Mutex
-	logger *log.Entry
+	client  *kubernetes.Clientset
+	cancels map[types.UID]context.CancelFunc
+	mu      sync.Mutex
+	logger  *log.Entry
 }
 
 func (*Source) GetName() string {

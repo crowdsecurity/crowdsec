@@ -52,6 +52,12 @@ func (s *Source) initClient() error {
 	return nil
 }
 
+func (s *Source) initCancels() {
+	s.mu.Lock()
+	s.cancels = map[types.UID]context.CancelFunc{}
+	s.mu.Unlock()
+}
+
 func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	var wg sync.WaitGroup
 
@@ -68,7 +74,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	informerCtx, cancelInformer := context.WithCancel(ctx)
 	defer cancelInformer()
 
-	cancels := map[types.UID]context.CancelFunc{}
+	s.initCancels()
 	watchErrCh := make(chan error, 1)
 
 	f := informers.NewSharedInformerFactoryWithOptions(s.client, 0,
@@ -113,7 +119,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 		AddFunc: func(obj any) {
 			p := obj.(*corev1.Pod)
 			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
-			s.tailPod(informerCtx, p, out, &wg, cancels)
+			s.tailPod(informerCtx, p, out, &wg)
 		},
 		UpdateFunc: func(oldObj, newObj any) {
 			oldP := oldObj.(*corev1.Pod)
@@ -125,7 +131,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 				s.logger.Tracef("UPDATE %s", podRef(newP))
 			}
 
-			s.tailPod(informerCtx, newP, out, &wg, cancels)
+			s.tailPod(informerCtx, newP, out, &wg)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
@@ -138,7 +144,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 			}
 
 			if pod != nil {
-				s.stopPod(pod, cancels)
+				s.stopPod(pod)
 			}
 		},
 	})
@@ -159,19 +165,11 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	select {
 	case <-ctx.Done():
 	case watchErr := <-watchErrCh:
-		s.mu.Lock()
-		for _, c := range cancels {
-			c()
-		}
-		s.mu.Unlock()
+		s.stopPods()
 		wg.Wait()
 		return watchErr
 	}
-	s.mu.Lock()
-	for _, c := range cancels {
-		c()
-	}
-	s.mu.Unlock()
+	s.stopPods()
 	wg.Wait()
 
 	return nil
@@ -255,13 +253,12 @@ func (s *Source) processLine(line string, source string, out chan pipeline.Event
 func (s *Source) podWorker(parentCtx context.Context,
 	pod *corev1.Pod,
 	out chan pipeline.Event,
-	wg *sync.WaitGroup,
-	cancels map[types.UID]context.CancelFunc) context.CancelFunc {
+	wg *sync.WaitGroup) context.CancelFunc {
 	podCtx, cancel := context.WithCancel(parentCtx)
 	wg.Go(func() {
 		defer func() {
 			s.mu.Lock()
-			delete(cancels, pod.UID)
+			delete(s.cancels, pod.UID)
 			s.mu.Unlock()
 		}()
 		var cw sync.WaitGroup
@@ -280,7 +277,7 @@ func (s *Source) podWorker(parentCtx context.Context,
 	return cancel
 }
 
-func (s *Source) tailPod(ctx context.Context, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup, cancels map[types.UID]context.CancelFunc) {
+func (s *Source) tailPod(ctx context.Context, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup) {
 	if p.Status.Phase != corev1.PodRunning {
 		s.logger.Debugf("SKIP tailPod(non-running) %s", podRef(p))
 		return
@@ -288,26 +285,34 @@ func (s *Source) tailPod(ctx context.Context, p *corev1.Pod, out chan pipeline.E
 
 	key := p.UID
 	s.mu.Lock()
-	if _, ok := cancels[key]; ok {
+	if _, ok := s.cancels[key]; ok {
 		s.logger.Tracef("tail already running %s", podRef(p))
 		s.mu.Unlock()
 		return
 	}
 
 	s.logger.Debugf("START tail %s", podRef(p))
-	cancels[key] = s.podWorker(ctx, p, out, wg, cancels)
+	s.cancels[key] = s.podWorker(ctx, p, out, wg)
 	s.mu.Unlock()
 }
 
-func (s *Source) stopPod(p *corev1.Pod, cancels map[types.UID]context.CancelFunc) {
+func (s *Source) stopPod(p *corev1.Pod) {
 	key := p.UID
 	s.mu.Lock()
-	cancel, ok := cancels[key]
+	cancel, ok := s.cancels[key]
 	if ok {
-		delete(cancels, key)
+		delete(s.cancels, key)
 	}
 	s.mu.Unlock()
 	if ok {
 		cancel()
 	}
+}
+
+func (s *Source) stopPods() {
+	s.mu.Lock()
+	for _, c := range s.cancels {
+		c()
+	}
+	s.mu.Unlock()
 }
