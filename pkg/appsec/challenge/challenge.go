@@ -663,7 +663,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	fingerprint, err := deobfuscateFingerprint(obfKey, encryptedFingerprint)
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to decrypt fingerprint: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("failed to deobfuscate fingerprint: %w", err)
 	}
 
 	var fpData FingerprintData
