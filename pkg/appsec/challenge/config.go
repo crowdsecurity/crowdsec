@@ -51,6 +51,10 @@ type Config struct {
 	// new library-bundle variant is obfuscated, disabled by default.
 	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
 
+	// SpentSetMaxEntries caps the replay-protection LRU. A deep DoS backstop;
+	// steady-state stays far below it. Defaults to spentSetDefaultMaxEntries.
+	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
+
 	// LogLevel sets the challenge runtime's own log verbosity, independent of
 	// the global level.
 	LogLevel *log.Level `yaml:"log_level,omitempty"`
@@ -92,6 +96,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.LibraryObfuscationRefreshInterval != nil {
 		c.LibraryObfuscationRefreshInterval = other.LibraryObfuscationRefreshInterval
+	}
+	if other.SpentSetMaxEntries != nil {
+		c.SpentSetMaxEntries = other.SpentSetMaxEntries
 	}
 	if other.LogLevel != nil {
 		c.LogLevel = other.LogLevel
@@ -153,6 +160,9 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.LibraryObfuscationRefreshInterval != nil {
 		opts = append(opts, WithLibraryObfuscationRefreshInterval(*c.LibraryObfuscationRefreshInterval))
+	}
+	if c.SpentSetMaxEntries != nil && *c.SpentSetMaxEntries > 0 {
+		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))
 	}
 
 	return opts, nil

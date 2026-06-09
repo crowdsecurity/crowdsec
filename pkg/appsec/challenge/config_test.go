@@ -51,6 +51,7 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
 		LibraryObfuscationPoolSize:        ptrInt(2),
 		LibraryObfuscationRefreshInterval: ptrDur(30 * time.Minute),
+		SpentSetMaxEntries:                ptrInt(500_000),
 	}
 
 	dst.MergeFrom(src)
@@ -70,6 +71,7 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 	assert.True(t, *dst.LibraryRuntimeObfuscationEnabled)
 	assert.Equal(t, 2, *dst.LibraryObfuscationPoolSize)
 	assert.Equal(t, 30*time.Minute, *dst.LibraryObfuscationRefreshInterval)
+	assert.Equal(t, 500_000, *dst.SpentSetMaxEntries)
 }
 
 // TestBuildOptionsNilOrEmptyConfig confirms a nil or fully-empty Config emits
@@ -99,11 +101,12 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
 		LibraryObfuscationPoolSize:        ptrInt(2),
 		LibraryObfuscationRefreshInterval: ptrDur(45 * time.Minute),
+		SpentSetMaxEntries:                ptrInt(250_000),
 	}
 
 	opts, err := BuildOptions(cfg, nil)
 	require.NoError(t, err)
-	require.Len(t, opts, 9, "every populated field + the component logger must emit an option")
+	require.Len(t, opts, 10, "every populated field + the component logger must emit an option")
 
 	rt, err := NewChallengeRuntime(context.Background(), opts...)
 	require.NoError(t, err)
@@ -113,6 +116,7 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 	assert.True(t, rt.libraryRuntimeObfuscationEnabled, "LibraryRuntimeObfuscationEnabled must reach the runtime")
 	assert.Equal(t, 2, rt.libraryPoolSize, "LibraryObfuscationPoolSize must reach the runtime")
 	assert.Equal(t, 45*time.Minute, rt.libraryRefreshInterval, "LibraryObfuscationRefreshInterval must reach the runtime")
+	assert.Equal(t, 250_000, rt.spent.maxEntries, "SpentSetMaxEntries must reach the runtime")
 }
 
 // TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled confirms the
