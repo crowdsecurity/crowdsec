@@ -216,7 +216,7 @@ TTL.
 
 [`spent_set.go`](spent_set.go) records consumed challenge nonces (`r`) to
 enforce single-use. It wraps **gcache** (already used by `pkg/cache`): a bounded
-LRU (`spentSetMaxEntries`) with a per-entry TTL equal to the freshness window,
+LRU (`spent_set_max_entries`, default `spentSetDefaultMaxEntries`) with a per-entry TTL equal to the freshness window,
 so there is no janitor goroutine or hand-rolled cap. A single mutex makes the
 `Has`/`SetWithExpire` pair in `checkAndInsert` atomic, so two concurrent
 identical submissions can't both win. The burn happens **last** in
