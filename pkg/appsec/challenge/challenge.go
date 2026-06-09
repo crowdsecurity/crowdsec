@@ -509,8 +509,6 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// re-obfuscated on every rotation (bounded cost, one pass per variant).
 	go challengeRuntime.dynamicModulePreWarmer(ctx)
 
-	// Single concise startup line at info — the per-rotation detail below it is
-	// debug-only.
 	logger.WithFields(log.Fields{
 		"rotation_interval":   rotationInterval,
 		"cookie_ttl":          cookieTTL,
