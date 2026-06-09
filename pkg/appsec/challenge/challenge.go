@@ -557,9 +557,6 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	}
 	powMAC := c.computePowMAC(powSalt, r, ts)
 
-	// Debug diagnostic: the per-challenge nonce `r` and the per-epoch key
-	// served with this challenge. Guarded so `k_epoch` is only ever derived and
-	// formatted at debug — it is forgeable signing material (DESIGN.md §2.1).
 	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
 		issEpoch, issKey := c.keys.Current()
 		c.log().WithFields(log.Fields{
