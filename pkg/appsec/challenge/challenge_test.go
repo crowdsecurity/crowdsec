@@ -305,12 +305,12 @@ func testKeyRing() *KeyRing {
 // runtimes via NewChallengeRuntime). Includes a spent-set so
 // ValidateChallengeResponse's single-use burn works.
 func newTestRuntime() *ChallengeRuntime {
-	return &ChallengeRuntime{keys: testKeyRing(), spent: newSpentSet()}
+	return &ChallengeRuntime{keys: testKeyRing(), spent: newSpentSet(spentSetDefaultMaxEntries)}
 }
 
 // newTestRuntimeWithDifficulty is a small convenience for the many ValidateChallengeResponse tests.
 func newTestRuntimeWithDifficulty(d int) *ChallengeRuntime {
-	return &ChallengeRuntime{keys: testKeyRing(), powDifficulty: d, spent: newSpentSet()}
+	return &ChallengeRuntime{keys: testKeyRing(), powDifficulty: d, spent: newSpentSet(spentSetDefaultMaxEntries)}
 }
 
 // freshChallenge generates a per-request nonce+timestamp pair (matching
@@ -431,7 +431,7 @@ func TestValidateChallengeResponse_Replay(t *testing.T) {
 // the cookie Seal → Open round-trip too. Regression guard for any future
 // change to encryption, HMAC keying, or proto conversion.
 func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
-	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet()}
+	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
 	submitted := FingerprintData{
 		FSID:             "fsid-abcdef",

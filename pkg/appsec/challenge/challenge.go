@@ -205,6 +205,10 @@ type runtimeOptions struct {
 	// libraryRuntimeObfuscationEnabled is false.
 	libraryObfuscationRefreshInterval time.Duration
 
+	// spentSetMaxEntries caps the replay-protection LRU. Zero falls back to
+	// spentSetDefaultMaxEntries.
+	spentSetMaxEntries int
+
 	// logger is the component logger (already at the desired level). Nil falls
 	// back to a default "challenge" sublogger in NewChallengeRuntime.
 	logger *log.Entry
@@ -305,6 +309,17 @@ func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
 	return func(o *runtimeOptions) {
 		if d > 0 {
 			o.libraryObfuscationRefreshInterval = d
+		}
+	}
+}
+
+// WithSpentSetMaxEntries caps the replay-protection LRU. Sized as a deep DoS
+// backstop; steady-state stays far below it. Values below 1 are ignored (the
+// default is used).
+func WithSpentSetMaxEntries(n int) Option {
+	return func(o *runtimeOptions) {
+		if n >= 1 {
+			o.spentSetMaxEntries = n
 		}
 	}
 }
@@ -420,6 +435,11 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		libraryRefreshInterval = libraryBundleRefreshDefaultInterval
 	}
 
+	spentSetMaxEntries := resolvedOpts.spentSetMaxEntries
+	if spentSetMaxEntries <= 0 {
+		spentSetMaxEntries = spentSetDefaultMaxEntries
+	}
+
 	r := wazero.NewRuntime(ctx)
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
@@ -479,7 +499,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		dynamicModuleCache:               make(map[int64][]string),
 		cookieTTL:                        cookieTTL,
 		htmlTpl:                          htmlTpl,
-		spent:                            newSpentSet(),
+		spent:                            newSpentSet(spentSetMaxEntries),
 		logger:                           logger,
 	}
 
