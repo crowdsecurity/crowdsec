@@ -35,13 +35,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// initialBundleGz is a pre-obfuscated library bundle produced at build time
-// by `go generate ./pkg/appsec/challenge/js/...`. It seeds the library
-// bundle pool at startup so the service is immediately ready to serve
-// challenges without waiting ~1 minute for the first variant to be
-// obfuscated synchronously. When library obfuscation is enabled, the
-// background refresher continues to add fresh runtime-generated variants
-// at the configured cadence.
+// initialBundleGz is the build-time pre-obfuscated library bundle (via
+// `go generate ./pkg/appsec/challenge/js/...`), embedded to seed the pool at
+// startup. See the package doc for the seeding/refresh model.
 //
 //go:embed initial_bundle.js.gz
 var initialBundleGz []byte
@@ -106,16 +102,9 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 	return nil
 }
 
-// libraryBundlePoolRefresher is the background goroutine that trickles
-// new obfuscated library-bundle variants into the pool on the configured
-// refresh interval. Spawned only when WithLibraryRuntimeObfuscationEnabled
-// is set (default off) — when disabled, the runtime serves only the
-// baked-in initial bundle and pays no runtime obfuscator cost.
-//
-// Each tick generates exactly one new variant (~1 minute of CPU) and
-// appends it; appendLibraryBundle's trim caps total pool size at
-// libraryPoolSize, evicting the oldest entry. Full pool rotation
-// therefore takes libraryPoolSize × refreshInterval.
+// libraryBundlePoolRefresher trickles one new obfuscated variant into the pool
+// per tick (~1 minute of CPU each), evicting the oldest via appendLibraryBundle.
+// Spawned only when runtime obfuscation is enabled.
 func (c *ChallengeRuntime) libraryBundlePoolRefresher(ctx context.Context) {
 	ticker := time.NewTicker(c.libraryRefreshInterval)
 	defer ticker.Stop()
@@ -160,11 +149,8 @@ func (c *ChallengeRuntime) generateAndCacheChallengeJS(ctx context.Context) erro
 }
 
 // generateLibraryBundleVariants runs the obfuscator `count` times on the
-// library bundle and returns the resulting variants. Each obfuscation is
-// the expensive (~1 minute) full-bundle pass — callers should generally
-// pass count=1 and rely on the trickle pattern to grow the pool over
-// time. The exception is the synchronous fallback path used when the
-// baked-in bundle is unavailable.
+// library bundle. Each pass is the expensive (~1 minute) full-bundle
+// obfuscation, so callers normally pass count=1.
 func (c *ChallengeRuntime) generateLibraryBundleVariants(ctx context.Context, count int) ([]obfuscatedScript, error) {
 	if count <= 0 {
 		return []obfuscatedScript{}, nil
@@ -201,11 +187,8 @@ func (c *ChallengeRuntime) appendLibraryBundle(variants []obfuscatedScript) {
 	c.libraryBundlePoolMu.Unlock()
 }
 
-// getLibraryBundle picks one variant from the library bundle pool at
-// random. When the pool holds a single variant (default state: just the
-// baked-in initial bundle), every render returns the same bundle. When
-// the pool has grown via the refresher (opt-in), each render selects
-// uniformly across the variants for per-visitor byte variance.
+// getLibraryBundle returns a random variant from the pool (the same one when
+// the pool holds a single variant — the default state).
 func (c *ChallengeRuntime) getLibraryBundle() obfuscatedScript {
 	c.libraryBundlePoolMu.RLock()
 	defer c.libraryBundlePoolMu.RUnlock()

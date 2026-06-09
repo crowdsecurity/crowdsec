@@ -17,38 +17,51 @@ import (
 
 // Config carries the YAML-configurable challenge runtime settings.
 type Config struct {
-	// MasterSecret is the long-lived secret used to sign tickets / PoW MACs
-	// and seal challenge cookies. In a distributed deployment
-	// all instances MUST share the same value. If unset,
-	// the runtime generates an ephemeral random secret at startup
+	// MasterSecret is the long-lived secret all per-epoch HMAC keys and the
+	// cookie-sealing AES key derive from. In a distributed deployment every
+	// instance MUST share the same value to sign/verify each other's
+	// challenges. If unset, the runtime generates an ephemeral random secret
+	// at startup — fine for a single instance, but restarts then invalidate
+	// outstanding cookies.
 	MasterSecret *string `yaml:"master_secret"`
 
-	// KeyRotationInterval controls how often the per-epoch challenge key
-	// advances.
+	// KeyRotationInterval is the per-epoch key advance period. All instances
+	// in a distributed setup MUST agree on it to derive identical keys.
+	// Defaults to 5m.
 	KeyRotationInterval *time.Duration `yaml:"key_rotation_interval"`
 
-	// MaxLiveEpochs is how many past epochs (in addition to the current
-	// one) the keyring continues to accept.
+	// MaxLiveEpochs is how many past epochs (besides the current one) the
+	// keyring keeps accepting, so in-flight submissions aren't invalidated at
+	// a rotation boundary. Bounds ticket-forgery exposure to
+	// MaxLiveEpochs × KeyRotationInterval. Defaults to 3.
 	MaxLiveEpochs *int `yaml:"max_live_epochs"`
 
-	// CookieTTL controls how long a successful-challenge cookie stays
-	// valid. Decoupled from the keyring rotation window. Defaults to 12h.
+	// CookieTTL is how long a successful-challenge cookie stays valid.
+	// Decoupled from the keyring window (enforced by a not_after stamp inside
+	// the sealed cookie, not key eviction) so cookies can be long-lived while
+	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
-	// CryptoObfuscationPoolSize is the number of distinct obfuscations of
-	// the per-epoch sign-key module to keep per live epoch. Default 1.
+	// CryptoObfuscationPoolSize is how many obfuscations of the per-epoch
+	// sign-key module to keep per live epoch. Each variant embeds the same key
+	// with different byte layout, giving per-visitor variance. Defaults to 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
-	// LibraryRuntimeObfuscationEnabled enables the background re-obfuscation
-	// of the static library bundle at runtime. A version is shipped within build artifacts.
+	// LibraryRuntimeObfuscationEnabled gates background re-obfuscation of the
+	// public library bundle. The bundle is ALWAYS obfuscated at build time;
+	// this only adds further runtime variants at ~1 minute of CPU per pass.
+	// Off by default (serve only the baked-in variant).
 	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
 
-	// LibraryObfuscationPoolSize is the max number of obfuscated variants
-	// of the library bundle to keep, defaults to 1.
+	// LibraryObfuscationPoolSize is the max number of library-bundle variants
+	// to keep. Only meaningful when LibraryRuntimeObfuscationEnabled is set.
+	// Defaults to 1.
 	LibraryObfuscationPoolSize *int `yaml:"library_obfuscation_pool_size"`
 
-	// LibraryObfuscationRefreshInterval is the cadence at which a single
-	// new library-bundle variant is obfuscated, disabled by default.
+	// LibraryObfuscationRefreshInterval is the cadence at which one new
+	// library-bundle variant is obfuscated (oldest evicted) — one per tick, so
+	// a full rotation takes pool_size × interval. Ignored unless
+	// LibraryRuntimeObfuscationEnabled is set.
 	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
 
 	// SpentSetMaxEntries caps the replay-protection LRU. A deep DoS backstop;
@@ -60,14 +73,9 @@ type Config struct {
 	LogLevel *log.Level `yaml:"log_level,omitempty"`
 }
 
-// MergeFrom overlays the non-nil fields of other onto c, field by field.
-// Used when multiple appsec-configs are loaded: each later config contributes
-// (or overrides) a subset of fields while leaving the others intact. Mirrors
-// the "last wins for overrides, append for collections" pattern that the rest
-// of LoadByPath uses for scalar fields.
-//
-// Calling MergeFrom on a nil *Config is a no-op (returns silently); the caller
-// is expected to have allocated the receiver before merging into it.
+// MergeFrom overlays the non-nil fields of other onto c, field by field, so
+// multiple appsec-configs can each contribute a disjoint subset (last non-nil
+// wins). A nil receiver or argument is a no-op.
 func (c *Config) MergeFrom(other *Config) {
 	if c == nil || other == nil {
 		return
@@ -106,15 +114,10 @@ func (c *Config) MergeFrom(other *Config) {
 }
 
 // BuildOptions translates a (possibly nil) merged Config into the WithXxx
-// Option list consumed by NewChallengeRuntime. Each unset field is simply not
-// emitted so the runtime falls back to its built-in default. Returns the
-// secret-validation error from ParseConfiguredSecret if MasterSecret is set
-// but invalid.
-//
-// parent is the appsec logger the challenge runtime derives its own "challenge"
-// sublogger from; the sublogger's level is the configured log_level, or the
-// parent's level when unset. parent may be nil (falls back to the standard
-// logger), e.g. in tests.
+// Option list for NewChallengeRuntime; unset fields are omitted so the runtime
+// uses its built-in defaults. Returns an error if MasterSecret is set but
+// invalid. parent (may be nil) is the logger the "challenge" sublogger derives
+// from, at the configured log_level or parent's level.
 func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	// Always give the runtime its own component sublogger.
 	base := log.StandardLogger()

@@ -162,56 +162,18 @@ type ChallengeRuntime struct {
 // Option configures a ChallengeRuntime at construction time.
 type Option func(*runtimeOptions)
 
+// Field semantics mirror the YAML Config in config.go;
 type runtimeOptions struct {
-	// masterSecret, if non-nil, overrides the secret-resolution path. The
-	// caller is responsible for ensuring it is at least minSecretBytes long.
-	masterSecret []byte
-
-	// rotationInterval is the wall-clock period after which the per-epoch
-	// derived keys advance. Zero falls back to keyringDefaultRotation.
-	rotationInterval time.Duration
-
-	// maxLiveEpochs is how many past epochs (plus the current one) the
-	// keyring keeps acceptable. Zero falls back to keyringDefaultMaxLive.
-	maxLiveEpochs int
-
-	// cookieTTL controls how long an issued challenge cookie remains
-	// valid. Zero falls back to defaultCookieTTL.
-	cookieTTL time.Duration
-
-	// cryptoObfuscationPoolSize is the number of distinct obfuscations of
-	// the per-epoch sign-key module to keep per live epoch. Zero falls
-	// back to cryptoObfuscationPoolDefaultSize.
-	cryptoObfuscationPoolSize int
-
-	// libraryRuntimeObfuscationEnabled gates the background re-obfuscation
-	// of the static library bundle at runtime. The library bundle is
-	// ALWAYS obfuscated at build time; this flag only adds further runtime
-	// variants. False (the default) means: serve only the baked-in initial
-	// bundle, no refresher goroutine.
-	libraryRuntimeObfuscationEnabled bool
-
-	// libraryObfuscationPoolSize is the max number of obfuscated variants
-	// of the library bundle to keep. Zero falls back to
-	// libraryBundlePoolDefaultSize. Values > 1 only have effect when
-	// runtime obfuscation is enabled; otherwise no source produces
-	// additional variants and the runtime warns + clamps to 1.
-	libraryObfuscationPoolSize int
-
-	// libraryObfuscationRefreshInterval is the cadence at which a single
-	// new library-bundle variant is obfuscated and added to the pool when
-	// runtime obfuscation is enabled. Zero falls back to
-	// libraryBundleRefreshDefaultInterval. Ignored when
-	// libraryRuntimeObfuscationEnabled is false.
+	masterSecret                      []byte // must be >= minSecretBytes when non-nil
+	rotationInterval                  time.Duration
+	maxLiveEpochs                     int
+	cookieTTL                         time.Duration
+	cryptoObfuscationPoolSize         int
+	libraryRuntimeObfuscationEnabled  bool
+	libraryObfuscationPoolSize        int
 	libraryObfuscationRefreshInterval time.Duration
-
-	// spentSetMaxEntries caps the replay-protection LRU. Zero falls back to
-	// spentSetDefaultMaxEntries.
-	spentSetMaxEntries int
-
-	// logger is the component logger (already at the desired level). Nil falls
-	// back to a default "challenge" sublogger in NewChallengeRuntime.
-	logger *log.Entry
+	spentSetMaxEntries                int
+	logger                            *log.Entry // nil → default "challenge" sublogger
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -229,36 +191,28 @@ func (c *ChallengeRuntime) log() *log.Entry {
 	return logging.SubLogger(log.StandardLogger(), "challenge", 0)
 }
 
-// WithMasterSecret sets the long-lived shared secret. In distributed
-// deployments this MUST be the same across all WAF instances. If not set,
-// NewChallengeRuntime generates a random secret at startup (suitable only for
-// single-instance deployments — restarts invalidate outstanding cookies).
+// WithMasterSecret sets the long-lived shared secret (see Config.MasterSecret).
 func WithMasterSecret(secret []byte) Option {
 	return func(o *runtimeOptions) {
 		o.masterSecret = secret
 	}
 }
 
-// WithRotationInterval sets the per-epoch key rotation period. All instances
-// in a distributed setup MUST agree on this value to derive identical keys.
+// WithRotationInterval sets the per-epoch key rotation period (see Config.KeyRotationInterval).
 func WithRotationInterval(d time.Duration) Option {
 	return func(o *runtimeOptions) {
 		o.rotationInterval = d
 	}
 }
 
-// WithMaxLiveEpochs sets how many past epochs (in addition to the current
-// one) the keyring continues to accept. Sized so any submission within the
-// freshness window has a non-evicted epoch.
+// WithMaxLiveEpochs sets how many past epochs the keyring keeps accepting (see Config.MaxLiveEpochs).
 func WithMaxLiveEpochs(n int) Option {
 	return func(o *runtimeOptions) {
 		o.maxLiveEpochs = n
 	}
 }
 
-// WithCookieTTL sets challenge-cookie validity. Decoupled from the keyring
-// window so cookies can be long-lived (e.g. 24h) while per-epoch keys rotate
-// tightly. Zero/negative is ignored (defaultCookieTTL used).
+// WithCookieTTL sets challenge-cookie validity (see Config.CookieTTL); zero/negative is ignored.
 func WithCookieTTL(ttl time.Duration) Option {
 	return func(o *runtimeOptions) {
 		if ttl > 0 {
@@ -267,9 +221,8 @@ func WithCookieTTL(ttl time.Duration) Option {
 	}
 }
 
-// WithCryptoObfuscationPoolSize sets how many obfuscations of the per-epoch key
-// module to keep per live epoch (per-visitor byte variance over the same key).
-// Default 1; values below 1 are ignored.
+// WithCryptoObfuscationPoolSize sets the per-epoch sign-key obfuscation pool size
+// (see Config.CryptoObfuscationPoolSize); values below 1 are ignored.
 func WithCryptoObfuscationPoolSize(n int) Option {
 	return func(o *runtimeOptions) {
 		if n >= 1 {
@@ -279,19 +232,15 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 }
 
 // WithLibraryRuntimeObfuscationEnabled toggles runtime re-obfuscation of the
-// static library bundle. The bundle is always obfuscated at build time; this
-// only adds runtime variants. Off by default (serve only the baked-in bundle,
-// no obfuscator cost on the static path).
+// library bundle (see Config.LibraryRuntimeObfuscationEnabled).
 func WithLibraryRuntimeObfuscationEnabled(enabled bool) Option {
 	return func(o *runtimeOptions) {
 		o.libraryRuntimeObfuscationEnabled = enabled
 	}
 }
 
-// WithLibraryObfuscationPoolSize sets the max number of runtime-
-// obfuscated variants of the library bundle to keep when library
-// obfuscation is enabled. Ignored when disabled. Values below 1 are
-// ignored; zero falls back to libraryBundlePoolDefaultSize.
+// WithLibraryObfuscationPoolSize sets the library-bundle variant pool size
+// (see Config.LibraryObfuscationPoolSize); values below 1 are ignored.
 func WithLibraryObfuscationPoolSize(n int) Option {
 	return func(o *runtimeOptions) {
 		if n >= 1 {
@@ -300,11 +249,8 @@ func WithLibraryObfuscationPoolSize(n int) Option {
 	}
 }
 
-// WithLibraryObfuscationRefreshInterval sets the cadence at which a
-// single new library-bundle variant is obfuscated and added to the pool
-// when library obfuscation is enabled. One obfuscation per tick
-// regardless of pool size — full pool rotation takes pool_size ×
-// refresh_interval. Ignored when disabled. Values ≤ 0 are ignored.
+// WithLibraryObfuscationRefreshInterval sets the library-bundle refresh cadence
+// (see Config.LibraryObfuscationRefreshInterval); values <= 0 are ignored.
 func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
 	return func(o *runtimeOptions) {
 		if d > 0 {
@@ -313,9 +259,7 @@ func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
 	}
 }
 
-// WithSpentSetMaxEntries caps the replay-protection LRU. Sized as a deep DoS
-// backstop; steady-state stays far below it. Values below 1 are ignored (the
-// default is used).
+// WithSpentSetMaxEntries caps the replay-protection LRU (see Config.SpentSetMaxEntries); values below 1 are ignored.
 func WithSpentSetMaxEntries(n int) Option {
 	return func(o *runtimeOptions) {
 		if n >= 1 {
@@ -360,15 +304,11 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 	return nil
 }
 
-// NewChallengeRuntime builds and starts a ChallengeRuntime. It initializes
-// the wazero runtime, decompresses the baked-in library bundle, derives the
-// master secret + keyring, pre-warms the dynamic-module cache, and (if
-// configured) spawns the background obfuscation refresher. The returned
-// instance is safe for concurrent use across all appsec runners.
-//
-// Pass functional options (WithMasterSecret, WithKeyringRotationInterval,
-// WithLibraryRuntimeObfuscationEnabled, ...) to override defaults; see the
-// options in this file for individual semantics.
+// NewChallengeRuntime builds and starts a ChallengeRuntime: it initializes the
+// wazero runtime, decompresses the baked-in library bundle, derives the master
+// secret + keyring, pre-warms the dynamic-module cache, and (if configured)
+// spawns the background obfuscation refresher. Safe for concurrent use across
+// all appsec runners. Pass WithXxx options to override defaults.
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
 	resolvedOpts := runtimeOptions{}
 	for _, opt := range opts {

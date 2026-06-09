@@ -219,9 +219,8 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 				"on_challenge_submit rejected",
 				parseLogVerbosity(w.Logger, verbosity),
 			)
-			// Terminal: short-circuit later on_challenge_submit rules so
-			// a `filter: "true"` `LogAccepted` after this never fires for
-			// a rejected submission.
+			// Terminal: halt later on_challenge_submit rules so a `filter: "true"`
+			// `LogAccepted` can't fire for an already-rejected submission.
 			state.HooksHalted = true
 			return nil
 		},
@@ -252,10 +251,8 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 			if err := w.GrantAllowlistCookieInline(state, request, reason, ttlOverride); err != nil {
 				return err
 			}
-			// Terminal: like RejectSubmission, the decision is final —
-			// any further on_challenge_submit rule would either be dead
-			// code or actively confusing (e.g. overwriting the synthetic
-			// allowlist fingerprint).
+			// Terminal: halt later rules — the grant is final, and a following
+			// rule could only overwrite the synthetic allowlist fingerprint.
 			state.HooksHalted = true
 			return nil
 		},

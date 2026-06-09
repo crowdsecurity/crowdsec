@@ -101,16 +101,11 @@ func (c *ChallengeRuntime) dynamicModulePreWarmer(ctx context.Context) {
 	}
 }
 
-// dynamicModuleForEpoch returns the slice of obfuscated per-epoch key
-// module variants for the given epoch, deriving the per-epoch key on
-// demand from the keyring and generating cryptoPoolSize obfuscations of
-// it. The result is cached; concurrent calls for the same epoch are
-// coalesced via singleflight so only one batch obfuscation runs even
-// under a thundering-herd arrival pattern at a rotation boundary.
-//
-// The cache mutex is only held for the fast read/write of the map,
-// never across the obfuscation calls — concurrent requests for the same
-// epoch coalesce via singleflight rather than serialize on the mutex.
+// dynamicModuleForEpoch returns the cryptoPoolSize obfuscated variants of the
+// per-epoch key module, deriving the key from the keyring on demand. Results
+// are cached; concurrent calls for the same epoch coalesce via singleflight so
+// only one batch obfuscation runs under a thundering-herd at a rotation
+// boundary. The cache mutex guards only the map, never the obfuscation.
 func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int64) ([]string, error) {
 	// Fast path: cached.
 	c.dynamicModuleCacheMu.RLock()
