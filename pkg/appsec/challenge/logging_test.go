@@ -26,7 +26,7 @@ func runtimeWithCapturedLogger(level log.Level) (*ChallengeRuntime, *logtest.Hoo
 		keys:          keys,
 		powDifficulty: 8,
 		cookieTTL:     time.Hour,
-		spent:         newSpentSet(),
+		spent:         newSpentSet(spentSetDefaultMaxEntries),
 		logger:        entry,
 	}, hook
 }
