@@ -557,7 +557,7 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
 	r, err := generateChallengeNonce()
 	if err != nil {
-		return "", fmt.Errorf("generate challenge nonce: %w", err)
+		return "", err
 	}
 	powSalt, err := generatePowPrefix()
 	if err != nil {
