@@ -11,7 +11,7 @@ import (
 )
 
 func TestSpentSet_CheckAndInsert(t *testing.T) {
-	s := newSpentSet()
+	s := newSpentSet(spentSetDefaultMaxEntries)
 
 	// First insert of a fresh r succeeds.
 	assert.True(t, s.checkAndInsert("r1", time.Minute))
@@ -24,7 +24,7 @@ func TestSpentSet_CheckAndInsert(t *testing.T) {
 // TestSpentSet_ConcurrentSameKey asserts the check-and-insert pair is atomic:
 // when N goroutines race to burn the same r, exactly one wins. Run with -race.
 func TestSpentSet_ConcurrentSameKey(t *testing.T) {
-	s := newSpentSet()
+	s := newSpentSet(spentSetDefaultMaxEntries)
 
 	const goroutines = 64
 	var wins int64
@@ -52,7 +52,7 @@ func TestSpentSet_ConcurrentSameKey(t *testing.T) {
 // (In production the freshness check rejects such an aged r anyway; this only
 // guards the store's own expiry behaviour.)
 func TestSpentSet_Expiry(t *testing.T) {
-	s := newSpentSet()
+	s := newSpentSet(spentSetDefaultMaxEntries)
 
 	assert.True(t, s.checkAndInsert("r-exp", 20*time.Millisecond))
 	assert.False(t, s.checkAndInsert("r-exp", 20*time.Millisecond))
@@ -66,7 +66,7 @@ func TestSpentSet_Expiry(t *testing.T) {
 // TestSpentSet_DistinctKeys is a basic sanity check that many distinct keys all
 // insert successfully.
 func TestSpentSet_DistinctKeys(t *testing.T) {
-	s := newSpentSet()
+	s := newSpentSet(spentSetDefaultMaxEntries)
 
 	for i := range 1000 {
 		assert.True(t, s.checkAndInsert(fmt.Sprintf("r-%d", i), time.Minute))

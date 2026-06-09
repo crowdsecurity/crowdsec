@@ -9,11 +9,11 @@ import (
 	"github.com/bluele/gcache"
 )
 
-// spentSetMaxEntries is a deep DoS backstop. Growth is sig+PoW-gated and
+// spentSetDefaultMaxEntries is a deep DoS backstop. Growth is sig+PoW-gated and
 // TTL-bounded (ticketAgeBackstop), so steady-state stays far below this. If the
 // cap is ever hit, LRU evicts the oldest (maybe still-live) `r`, letting that
 // one submission replay once — acceptable at this size.
-const spentSetMaxEntries = 1_000_000
+const spentSetDefaultMaxEntries = 1_000_000
 
 // spentSet records consumed per-challenge nonces. Safe for concurrent use.
 type spentSet struct {
@@ -21,10 +21,13 @@ type spentSet struct {
 	// independently, which alone wouldn't stop two concurrent replays winning).
 	mu    sync.Mutex
 	cache gcache.Cache
+
+	// maxEntries is the configured LRU cap, retained for introspection.
+	maxEntries int
 }
 
-func newSpentSet() *spentSet {
-	return &spentSet{cache: gcache.New(spentSetMaxEntries).LRU().Build()}
+func newSpentSet(maxEntries int) *spentSet {
+	return &spentSet{cache: gcache.New(maxEntries).LRU().Build(), maxEntries: maxEntries}
 }
 
 // checkAndInsert atomically records `r` as spent, returning true if it was
