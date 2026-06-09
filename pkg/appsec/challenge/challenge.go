@@ -360,9 +360,6 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		opt(&resolvedOpts)
 	}
 
-	// Component logger (level already set by WithLogger / BuildOptions). When
-	// constructed directly without WithLogger (e.g. tests), fall back to a
-	// "challenge" sublogger inheriting the standard logger's level.
 	logger := resolvedOpts.logger
 	if logger == nil {
 		logger = logging.SubLogger(log.StandardLogger(), "challenge", 0)
