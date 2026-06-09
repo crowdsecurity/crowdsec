@@ -210,9 +210,6 @@ type runtimeOptions struct {
 	logger *log.Entry
 }
 
-// WithLogger sets the challenge runtime's component logger, already configured
-// at the desired level (see BuildOptions). When unset, the runtime builds a
-// "challenge" sublogger inheriting the standard logger's level.
 func WithLogger(logger *log.Entry) Option {
 	return func(o *runtimeOptions) {
 		o.logger = logger
