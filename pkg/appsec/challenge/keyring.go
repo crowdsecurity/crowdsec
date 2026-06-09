@@ -78,21 +78,17 @@ type KeyRing struct {
 
 	now func() time.Time // overridable for tests
 
-	// logger is the challenge component logger, set by NewChallengeRuntime.
-	// Nil-safe via k.log() (direct-construction tests don't set it).
+	// logger is seeded with a default sublogger by NewKeyRing (never nil) and
+	// overwritten by NewChallengeRuntime before the ring is shared.
 	logger *log.Entry
 
 	mu    sync.RWMutex
 	cache map[int64][]byte // epoch -> per-epoch sign key
 }
 
-// log returns the component logger, defaulting to a standard "challenge"
-// sublogger when unset (e.g. KeyRings built directly in tests).
+// log returns the component logger (never nil; see the logger field).
 func (k *KeyRing) log() *log.Entry {
-	if k.logger != nil {
-		return k.logger
-	}
-	return log.StandardLogger().WithField("module", "challenge")
+	return k.logger
 }
 
 // NewKeyRing constructs a KeyRing. masterSecret must be at least minSecretBytes
@@ -116,6 +112,7 @@ func NewKeyRing(masterSecret []byte, rotationInterval time.Duration, maxLive int
 		maxLive:          maxLive,
 		clockSkew:        keyringClockSkew,
 		masterCookieKey:  deriveMasterCookieKey(masterSecret),
+		logger:           log.StandardLogger().WithField("module", "challenge"),
 		now:              time.Now,
 		cache:            make(map[int64][]byte),
 	}, nil

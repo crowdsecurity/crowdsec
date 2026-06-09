@@ -263,7 +263,7 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 // cookie-v0 wired together.
 func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	keys := testKeyRing()
-	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet()}
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
@@ -293,7 +293,7 @@ func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 // cookieTTL.
 func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 	keys := testKeyRing()
-	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute, spent: newSpentSet()}
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
