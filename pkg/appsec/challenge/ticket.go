@@ -128,9 +128,7 @@ func hasLeadingZeroBits(hash []byte, bits int) bool {
 }
 
 // deriveFingerprintObfKey returns the keystream key for the fingerprint
-// payload: `HMAC(s, "fpenc"||r)`, hex. Light obfuscation, NOT confidentiality
-// (DESIGN.md §2.6): a known-plaintext attack recovers only this per-challenge,
-// single-use key, which can't reveal `s`/`K_epoch` or forge a signature.
+// payload: `HMAC(s, "fpenc"||r)`.
 func deriveFingerprintObfKey(s, r string) string {
 	return hmacSHA256Hex([]byte(s), []byte("fpenc"+r))
 }
