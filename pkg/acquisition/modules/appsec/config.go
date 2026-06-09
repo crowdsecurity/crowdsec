@@ -193,7 +193,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	if appsecRuntime.NeedWASMVM {
 		logger.Info("Initializing WASM runtime for challenge obfuscation")
 
-		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge)
+		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge, appsecCfg.Logger)
 		if err != nil {
 			return fmt.Errorf("unable to build challenge options: %w", err)
 		}

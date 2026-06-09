@@ -32,6 +32,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	log "github.com/sirupsen/logrus"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -151,6 +152,11 @@ type ChallengeRuntime struct {
 	// spent burns consumed per-challenge nonces (`r`) to enforce single-use and
 	// eliminate replay (in-memory, single instance — see spent_set.go).
 	spent *spentSet
+
+	// logger is the component logger; its level is set at construction
+	// (WithLogger / BuildOptions). All challenge logging routes through it so
+	// `log_level` controls verbosity independently of the global logger.
+	logger *log.Entry
 }
 
 // Option configures a ChallengeRuntime at construction time.
@@ -198,6 +204,28 @@ type runtimeOptions struct {
 	// libraryBundleRefreshDefaultInterval. Ignored when
 	// libraryRuntimeObfuscationEnabled is false.
 	libraryObfuscationRefreshInterval time.Duration
+
+	// logger is the component logger (already at the desired level). Nil falls
+	// back to a default "challenge" sublogger in NewChallengeRuntime.
+	logger *log.Entry
+}
+
+// WithLogger sets the challenge runtime's component logger, already configured
+// at the desired level (see BuildOptions). When unset, the runtime builds a
+// "challenge" sublogger inheriting the standard logger's level.
+func WithLogger(logger *log.Entry) Option {
+	return func(o *runtimeOptions) {
+		o.logger = logger
+	}
+}
+
+// log returns the component logger, defaulting to a standard "challenge"
+// sublogger when unset (runtimes built directly in tests don't set it).
+func (c *ChallengeRuntime) log() *log.Entry {
+	if c.logger != nil {
+		return c.logger
+	}
+	return logging.SubLogger(log.StandardLogger(), "challenge", 0)
 }
 
 // WithMasterSecret sets the long-lived shared secret. In distributed
@@ -335,6 +363,14 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		opt(&resolvedOpts)
 	}
 
+	// Component logger (level already set by WithLogger / BuildOptions). When
+	// constructed directly without WithLogger (e.g. tests), fall back to a
+	// "challenge" sublogger inheriting the standard logger's level.
+	logger := resolvedOpts.logger
+	if logger == nil {
+		logger = logging.SubLogger(log.StandardLogger(), "challenge", 0)
+	}
+
 	secret := resolvedOpts.masterSecret
 	if secret == nil {
 		var err error
@@ -342,7 +378,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		if err != nil {
 			return nil, err
 		}
-		log.Warn("no master secret configured for the WAF challenge runtime; generated an ephemeral random secret. " +
+		logger.Warn("no master secret configured for the WAF challenge runtime; generated an ephemeral random secret. " +
 			"Distributed (multi-WAF) deployments MUST configure a shared master_secret in the appsec config; " +
 			"single-instance deployments will see outstanding challenge cookies invalidated on restart.")
 	} else if len(secret) < minSecretBytes {
@@ -358,6 +394,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	if err != nil {
 		return nil, fmt.Errorf("build challenge keyring: %w", err)
 	}
+	keys.logger = logger
 
 	cookieTTL := resolvedOpts.cookieTTL
 	if cookieTTL <= 0 {
@@ -380,7 +417,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// operator notices the misconfiguration without having the runtime fail
 	// to start.
 	if !resolvedOpts.libraryRuntimeObfuscationEnabled && libraryPoolSize > 1 {
-		log.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
+		logger.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
 		libraryPoolSize = 1
 	}
 
@@ -449,13 +486,14 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL:                        cookieTTL,
 		htmlTpl:                          htmlTpl,
 		spent:                            newSpentSet(),
+		logger:                           logger,
 	}
 
 	// Seed from the baked-in pre-obfuscated bundle so we can serve immediately.
 	if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
 		// Initial bundle missing/corrupt (e.g. `go generate` not run): fall back
 		// to generating one variant synchronously.
-		log.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
+		logger.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
 		if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
 			return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
 		}
@@ -476,6 +514,17 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// The dynamic-module pre-warmer is always on — the per-epoch key must be
 	// re-obfuscated on every rotation (bounded cost, one pass per variant).
 	go challengeRuntime.dynamicModulePreWarmer(ctx)
+
+	// Single concise startup line at info — the per-rotation detail below it is
+	// debug-only.
+	logger.WithFields(log.Fields{
+		"rotation_interval":   rotationInterval,
+		"cookie_ttl":          cookieTTL,
+		"pow_difficulty":      defaultPowDifficulty,
+		"crypto_pool_size":    cryptoPoolSize,
+		"library_pool_size":   libraryPoolSize,
+		"library_runtime_obf": resolvedOpts.libraryRuntimeObfuscationEnabled,
+	}).Info("WAF challenge runtime initialized")
 
 	return challengeRuntime, nil
 }
@@ -516,15 +565,18 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	}
 	powMAC := c.computePowMAC(powSalt, r, ts)
 
-	// DEV-ONLY (remove before release): log the per-challenge seed `r` and the
-	// per-epoch key K_epoch served with this challenge, so we can later test
-	// whether the obfuscated assets let an attacker recover K_epoch.
-	issEpoch, issKey := c.keys.Current()
-	log.WithFields(log.Fields{
-		"r":       r,
-		"epoch":   issEpoch,
-		"k_epoch": fmt.Sprintf("%x", issKey),
-	}).Info("WAF challenge DEV: issued challenge")
+	// Debug diagnostic: the per-challenge nonce `r` and the per-epoch key
+	// served with this challenge. Guarded so `k_epoch` is only ever derived and
+	// formatted at debug — it is forgeable signing material (DESIGN.md §2.1).
+	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
+		issEpoch, issKey := c.keys.Current()
+		c.log().WithFields(log.Fields{
+			"r":          r,
+			"epoch":      issEpoch,
+			"k_epoch":    fmt.Sprintf("%x", issKey),
+			"difficulty": difficulty,
+		}).Debug("issued challenge")
+	}
 
 	// The static bundle only carries the hook registration; the dynamic module
 	// carries the per-epoch K, so K never appears in plain HTML.
@@ -601,15 +653,6 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
 	}
 
-	// DEV-ONLY (remove before release): log the per-challenge seed `r` and the
-	// per-epoch key K_epoch from a validated submission, to pair with the
-	// issuance log above for key-recovery testing.
-	log.WithFields(log.Fields{
-		"r":       clientR,
-		"epoch":   c.epochForTimestamp(clientTS),
-		"k_epoch": fmt.Sprintf("%x", signKey),
-	}).Info("WAF challenge DEV: validated submission")
-
 	// Single-use: burn `r` (rejects replays). Done last so the spent-set only
 	// grows on fully-valid submissions.
 	if !c.spent.checkAndInsert(clientR, ticketAgeBackstop) {
@@ -627,6 +670,18 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
+	}
+
+	// Debug diagnostic: a validated submission. Guarded so `k_epoch` (forgeable
+	// signing material — DESIGN.md §2.1) is only formatted at debug.
+	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
+		c.log().WithFields(log.Fields{
+			"r":       clientR,
+			"epoch":   c.epochForTimestamp(clientTS),
+			"k_epoch": fmt.Sprintf("%x", signKey),
+			"fsid":    fpData.FSID,
+			"is_bot":  fpData.FastBotDetection,
+		}).Debug("validated submission")
 	}
 
 	envelope := &pb.ChallengeCookie{

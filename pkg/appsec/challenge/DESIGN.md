@@ -58,8 +58,7 @@ walking the compiled expression AST and setting
 
 ### 1.3 Configuration model
 
-Challenge tuning lives **inside the appsec-config**, not the acquisition
-config. The relevant fields are on [`challenge.Config`](config.go), referenced
+Challenge tuning lives **inside the appsec-config**. The relevant fields are on [`challenge.Config`](config.go), referenced
 from `AppsecConfig.Challenge`:
 
 ```go
@@ -467,6 +466,10 @@ Things to actively look for when reviewing changes that touch this subsystem.
   for the *no `master_secret` at all* case, and must always emit the existing
   warning. [`BuildOptions`](config.go) bubbles `ParseConfiguredSecret` errors
   for this reason.
+- **Secret-logging discipline.** `master_secret` is never logged. `k_epoch` /
+  `s` may be logged **only at debug**, behind an `IsLevelEnabled(debug)` guard
+  so they aren't formatted at higher levels (§1.11). A stray `Info`/`Warn`
+  carrying `k_epoch` is a key leak — keep the guard.
 - **Cookie / keyring decoupling.** Cookie TTL is enforced inside the sealed
   envelope (`not_after`), not by keyring eviction. Don't tie cookie validity
   to live-epoch membership — that would force cookie TTL ≤ keyring window,
@@ -756,6 +759,7 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `library_runtime_obfuscation_enabled` | bool | false | Enable *runtime* library re-obfuscation. The library bundle is always obfuscated at build time regardless of this flag; this only adds further variants over time |
 | `library_obfuscation_pool_size` | int | 1 | Pool ceiling for library variants. Values > 1 are only meaningful when runtime obfuscation is enabled; otherwise the runtime warns and clamps to 1 |
 | `library_obfuscation_refresh_interval` | duration | 1h | Cadence; ignored when runtime obfuscation is off. Full pool rotation = `pool_size × interval` |
+| `log_level` | string | inherits | `debug` / `info` / `warning` (etc.) for the challenge runtime only. ⚠️ **`debug` writes the per-epoch key `k_epoch` to the logs** (key rotation + per challenge) — forgeable signing material; a diagnostic mode only, **not for production** (see §1.10). Unset inherits the appsec logger's level. |
 
 #### Hook helpers
 

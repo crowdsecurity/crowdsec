@@ -78,8 +78,21 @@ type KeyRing struct {
 
 	now func() time.Time // overridable for tests
 
+	// logger is the challenge component logger, set by NewChallengeRuntime.
+	// Nil-safe via k.log() (direct-construction tests don't set it).
+	logger *log.Entry
+
 	mu    sync.RWMutex
 	cache map[int64][]byte // epoch -> per-epoch sign key
+}
+
+// log returns the component logger, defaulting to a standard "challenge"
+// sublogger when unset (e.g. KeyRings built directly in tests).
+func (k *KeyRing) log() *log.Entry {
+	if k.logger != nil {
+		return k.logger
+	}
+	return log.StandardLogger().WithField("module", "challenge")
 }
 
 // NewKeyRing constructs a KeyRing. masterSecret must be at least minSecretBytes
@@ -189,18 +202,13 @@ func (k *KeyRing) deriveOrCache(epoch int64) []byte {
 
 	k.cache[epoch] = derived
 
-	// One INFO line per fresh epoch derivation. HKDF itself is microseconds
-	// — we log it for distributed-troubleshooting visibility (every WAF
-	// instance with the same master_secret should log the same epoch
-	// numbers at the same wall-clock times) and to surface unexpected
-	// rotation churn (clock jumps, mis-sized live window, etc.).
-	log.WithFields(log.Fields{
+	k.log().WithFields(log.Fields{
 		"epoch":         epoch,
 		"current_epoch": k.CurrentEpoch(),
 		"derivation_us": derivationDuration.Microseconds(),
 		"cache_evicted": evicted,
 		"cache_size":    len(k.cache),
-	}).Info("WAF challenge: derived per-epoch key")
+	}).Debug("derived per-epoch key")
 
 	return derived
 }

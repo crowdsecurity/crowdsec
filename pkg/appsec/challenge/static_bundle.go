@@ -84,11 +84,11 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 		}
 		initialBundle = string(decoded)
 
-		log.WithFields(log.Fields{
+		c.log().WithFields(log.Fields{
 			"compressed_bytes":   len(initialBundleGz),
 			"decompressed_bytes": len(initialBundle),
 			"duration_ms":        time.Since(decompressStart).Milliseconds(),
-		}).Info("WAF challenge: decompressed baked-in obfuscated initial bundle")
+		}).Debug("decompressed baked-in obfuscated initial bundle")
 	})
 
 	if initialBundleErr != nil {
@@ -125,7 +125,7 @@ func (c *ChallengeRuntime) libraryBundlePoolRefresher(ctx context.Context) {
 		case <-ticker.C:
 			variants, err := c.generateLibraryBundleVariants(ctx, 1)
 			if err != nil {
-				log.Errorf("failed to refresh library bundle pool: %v", err)
+				c.log().Warnf("failed to refresh library bundle pool: %v", err)
 				continue
 			}
 

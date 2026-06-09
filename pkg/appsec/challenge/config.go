@@ -1,37 +1,30 @@
-// config.go defines the YAML-facing challenge configuration and its
-// merge/translation semantics. All Config fields are pointers so multiple
+// config.go defines the YAML-facing challenge configuration. Multiple
 // appsec-config files can each contribute a disjoint subset; MergeFrom
-// composes them without one wiping the others. Once merged, ToOptions
+// composes them without one wiping the others. Once merged, BuildOptions
 // translates the Config into the runtime's functional-option list
-// (NewChallengeRuntime(...))).
+// (NewChallengeRuntime(...)).
 
 package challenge
 
 import (
 	"fmt"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
-// Config carries the YAML-configurable challenge runtime settings. All fields
-// are pointers so the loader can distinguish "unset" from a zero value: this
-// lets multiple appsec-configs each contribute a disjoint subset of fields
-// without one wiping out the others on merge.
-//
-// Field semantics mirror the corresponding WithXxx options on the runtime; see
-// their doc-comments for the operational meaning of each value.
+// Config carries the YAML-configurable challenge runtime settings.
 type Config struct {
 	// MasterSecret is the long-lived secret used to sign tickets / PoW MACs
-	// and seal challenge cookies. In a distributed (multi-WAF) deployment
-	// all instances MUST share the same value. May be a hex-encoded byte
-	// string or a raw passphrase; minimum 32 bytes / characters. If unset,
-	// the runtime generates an ephemeral random secret at startup (suitable
-	// for single-instance deployments only — restarts invalidate
-	// outstanding challenge cookies).
+	// and seal challenge cookies. In a distributed deployment
+	// all instances MUST share the same value. If unset,
+	// the runtime generates an ephemeral random secret at startup
 	MasterSecret *string `yaml:"master_secret"`
 
 	// KeyRotationInterval controls how often the per-epoch challenge key
-	// advances. All instances in a distributed setup MUST agree on this
-	// value to derive identical per-epoch keys.
+	// advances.
 	KeyRotationInterval *time.Duration `yaml:"key_rotation_interval"`
 
 	// MaxLiveEpochs is how many past epochs (in addition to the current
@@ -46,26 +39,21 @@ type Config struct {
 	// the per-epoch sign-key module to keep per live epoch. Default 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
-	// LibraryRuntimeObfuscationEnabled gates the background re-obfuscation
-	// of the static library bundle at runtime. The library bundle is ALWAYS
-	// obfuscated at build time via `go generate` (initial_bundle.js.gz) —
-	// this flag only controls whether additional runtime-generated variants
-	// are produced and added to the pool over time. Off by default: the
-	// runtime serves only the baked-in obfuscated bundle and pays no
-	// runtime obfuscator cost for the static path.
+	// LibraryRuntimeObfuscationEnabled enables the background re-obfuscation
+	// of the static library bundle at runtime. A version is shipped within build artifacts.
 	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
 
 	// LibraryObfuscationPoolSize is the max number of obfuscated variants
-	// of the library bundle to keep. Default 1 — only the baked-in
-	// initial bundle. Bumping this above 1 only has effect when runtime
-	// obfuscation is enabled (otherwise no source produces additional
-	// variants); misconfiguration is clamped to 1 with a startup warning.
+	// of the library bundle to keep, defaults to 1.
 	LibraryObfuscationPoolSize *int `yaml:"library_obfuscation_pool_size"`
 
 	// LibraryObfuscationRefreshInterval is the cadence at which a single
-	// new library-bundle variant is obfuscated and added to the pool when
-	// runtime obfuscation is enabled. Ignored when disabled. Default 1h.
+	// new library-bundle variant is obfuscated, disabled by default.
 	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
+
+	// LogLevel sets the challenge runtime's own log verbosity, independent of
+	// the global level.
+	LogLevel *log.Level `yaml:"log_level,omitempty"`
 }
 
 // MergeFrom overlays the non-nil fields of other onto c, field by field.
@@ -105,6 +93,9 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.LibraryObfuscationRefreshInterval != nil {
 		c.LibraryObfuscationRefreshInterval = other.LibraryObfuscationRefreshInterval
 	}
+	if other.LogLevel != nil {
+		c.LogLevel = other.LogLevel
+	}
 }
 
 // BuildOptions translates a (possibly nil) merged Config into the WithXxx
@@ -112,12 +103,28 @@ func (c *Config) MergeFrom(other *Config) {
 // emitted so the runtime falls back to its built-in default. Returns the
 // secret-validation error from ParseConfiguredSecret if MasterSecret is set
 // but invalid.
-func BuildOptions(c *Config) ([]Option, error) {
-	if c == nil {
-		return nil, nil
+//
+// parent is the appsec logger the challenge runtime derives its own "challenge"
+// sublogger from; the sublogger's level is the configured log_level, or the
+// parent's level when unset. parent may be nil (falls back to the standard
+// logger), e.g. in tests.
+func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
+	// Always give the runtime its own component sublogger.
+	base := log.StandardLogger()
+	if parent != nil {
+		base = parent.Logger
 	}
 
-	var opts []Option
+	var lvl log.Level
+	if c != nil && c.LogLevel != nil {
+		lvl = *c.LogLevel
+	}
+
+	opts := []Option{WithLogger(logging.SubLogger(base, "challenge", lvl))}
+
+	if c == nil {
+		return opts, nil
+	}
 
 	if c.MasterSecret != nil && *c.MasterSecret != "" {
 		secret, err := ParseConfiguredSecret(*c.MasterSecret)
