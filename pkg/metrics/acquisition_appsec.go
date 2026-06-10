@@ -125,6 +125,8 @@ var AppsecChallengeRejected = prometheus.NewCounterVec(
 		Help: "Total challenge/cookie rejections, by kind (protocol=crypto/PoW failure, submission=RejectSubmission, cookie=invalid incoming cookie) and reason.",
 	},
 	[]string{"source", "appsec_engine", "kind", "reason"},
+)
+
 const AppsecValidationOKCounterMetricName = "cs_appsec_validation_ok_total"
 
 // AppsecValidationOKCounter counts successful OpenAPI schema validations.
