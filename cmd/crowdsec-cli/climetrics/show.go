@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 var (
@@ -38,9 +39,15 @@ func (cli *cliMetrics) show(ctx context.Context, sections []string, url string, 
 
 	ms := NewMetricStore()
 
-	db, err := require.DBClient(ctx, cfg.DbConfig)
-	if err != nil {
-		log.Warnf("unable to open database: %s", err)
+	// Don't setup the database client if we don't have any config for it
+	var db *database.Client
+	if cfg.DbConfig != nil {
+		var err error
+
+		db, err = require.DBClient(ctx, cfg.DbConfig)
+		if err != nil {
+			log.Warnf("unable to open database: %s", err)
+		}
 	}
 
 	if err := ms.Fetch(ctx, cfg.Cscli.PrometheusUrl, db); err != nil {

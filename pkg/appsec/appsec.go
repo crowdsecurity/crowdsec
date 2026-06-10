@@ -1,15 +1,20 @@
 package appsec
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
+	apivalidation "github.com/crowdsecurity/crowdsec/pkg/appsec/api_validation"
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/prometheus/client_golang/prometheus"
@@ -104,6 +109,17 @@ const bodyChallengeFailed = `{"status":"failed"}`
 // a retry). The server-side reason string is logged but NOT echoed to
 // the client to avoid leaking detection logic.
 const bodyChallengeRejected = `{"status":"rejected"}`
+const (
+	// BodySizeActionDrop drops the request when the body exceeds the maximum size.
+	BodySizeActionDrop = "drop"
+	// BodySizeActionPartial reads the body up to the maximum size and processes it.
+	BodySizeActionPartial = "partial"
+	// BodySizeActionAllow processes the request without inspecting the body.
+	BodySizeActionAllow = "allow"
+
+	// DefaultMaxBodySize is the default maximum body size (10MB).
+	DefaultMaxBodySize = int64(10 * 1024 * 1024)
+)
 
 type phase int
 
@@ -112,25 +128,30 @@ const (
 	PhaseOutOfBand
 )
 
-func (h *Hook) Build(stage hookStage, patcher *appsecExprPatcher) error {
-	ctx := map[string]any{}
+func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPatcher) error {
+	env := map[string]any{}
+
+	// Env builders for phase hooks dereference state (e.g. state.HookVars), so
+	// we hand them a zero-value state with an initialized HookVars map for
+	// compile-time expr setup. At runtime the real state is passed.
+	placeholderState := &AppsecRequestState{HookVars: map[string]string{}}
 
 	switch stage {
 	case hookOnLoad:
-		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
+		env = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
+		env = GetPreEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
+		env = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{}, pipeline.Event{})
+		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	case hookOnChallenge:
-		ctx = GetOnChallengeEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
+		env = GetOnChallengeEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnChallengeSubmit:
-		ctx = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, &AppsecRequestState{}, &ParsedRequest{})
+		env = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	}
 
-	opts := exprhelpers.GetExprOptions(ctx)
+	opts := exprhelpers.GetExprOptions(env)
 	if patcher != nil {
 		opts = append(opts, expr.Patch(patcher))
 	}
@@ -222,6 +243,15 @@ type AppsecRequestState struct {
 	// rule expression don't redo the work (or re-emit observability).
 	// nil until the first call.
 	LastMismatchReport *challenge.MismatchReport
+
+	// HookVars is a per-request scratch space exposed to expr hooks as
+	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
+	// values here so that later hook expressions — including the `apply`
+	// block of the same hook — can read them. The map is allocated once in
+	// NewRequestState, persists across in-band/out-of-band phases, and is
+	// copied into pipeline.AppsecEvent.HookVars when an event is emitted.
+	HookVars              map[string]string
+	DisableBodyInspection bool
 }
 
 func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
@@ -272,6 +302,15 @@ func (s *AppsecRequestState) ApplyPendingResponse() {
 type AppsecSubEngineOpts struct {
 	DisableBodyInspection    bool `yaml:"disable_body_inspection"`
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
+}
+
+// BodySettings controls how oversized request bodies are handled.
+type BodySettings struct {
+	// MaxSize is the maximum allowed body size in bytes. Defaults to DefaultMaxBodySize (10MB).
+	MaxSize int64 `yaml:"max_body_size"`
+	// Action controls what happens when a body exceeds MaxSize:
+	// "drop" (default) - block the request, "partial" - inspect up to MaxSize bytes, "allow" - skip body inspection.
+	Action string `yaml:"body_size_exceeded_action"`
 }
 
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
@@ -333,6 +372,11 @@ type AppsecRuntimeConfig struct {
 
 	// FingerprintDumpDir is the on-disk directory the DumpFingerprint
 	FingerprintDumpDir string
+
+	RequestValidator *apivalidation.RequestValidator
+	DataDir          string
+	// BodySettings controls how oversized request bodies are handled. Settable via on_load hooks.
+	BodySettings BodySettings
 }
 
 // emitChallengeEvent builds and sends a challenge lifecycle event to the
@@ -458,7 +502,9 @@ type AppsecConfig struct {
 }
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
-	state := AppsecRequestState{}
+	state := AppsecRequestState{
+		HookVars: make(map[string]string),
+	}
 	state.ResetResponse(w.Config)
 	return state
 }
@@ -684,7 +730,7 @@ func (wc *AppsecConfig) normalizePhaseScoped() {
 }
 
 // buildHookList validates and compiles a list of hooks of the given stage.
-func buildHookList(hooks []Hook, stage hookStage, patcher *appsecExprPatcher) ([]Hook, error) {
+func buildHookList(ctx context.Context, hooks []Hook, stage hookStage, patcher *appsecExprPatcher) ([]Hook, error) {
 	var compiled []Hook
 
 	for _, hook := range hooks {
@@ -692,7 +738,7 @@ func buildHookList(hooks []Hook, stage hookStage, patcher *appsecExprPatcher) ([
 			return nil, fmt.Errorf("invalid 'on_success' for %s hook : %s", stage, hook.OnSuccess)
 		}
 
-		if err := hook.Build(stage, patcher); err != nil {
+		if err := hook.Build(ctx, stage, patcher); err != nil {
 			return nil, fmt.Errorf("unable to build %s hook : %w", stage, err)
 		}
 
@@ -704,7 +750,7 @@ func buildHookList(hooks []Hook, stage hookStage, patcher *appsecExprPatcher) ([
 
 // buildPhaseHooks compiles pre_eval / post_eval / on_match hook lists into a
 // PhaseHooks. phaseName is only used to wrap errors ("" for the shared section).
-func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook, patcher *appsecExprPatcher) (PhaseHooks, error) {
+func buildPhaseHooks(ctx context.Context, phaseName string, pre, post, onMatch []Hook, patcher *appsecExprPatcher) (PhaseHooks, error) {
 	var (
 		out PhaseHooks
 		err error
@@ -717,15 +763,15 @@ func buildPhaseHooks(phaseName string, pre, post, onMatch []Hook, patcher *appse
 		return fmt.Errorf("%s: %w", phaseName, e)
 	}
 
-	if out.PreEval, err = buildHookList(pre, hookPreEval, patcher); err != nil {
+	if out.PreEval, err = buildHookList(ctx, pre, hookPreEval, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.PostEval, err = buildHookList(post, hookPostEval, patcher); err != nil {
+	if out.PostEval, err = buildHookList(ctx, post, hookPostEval, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
-	if out.OnMatch, err = buildHookList(onMatch, hookOnMatch, patcher); err != nil {
+	if out.OnMatch, err = buildHookList(ctx, onMatch, hookOnMatch, patcher); err != nil {
 		return PhaseHooks{}, wrap(err)
 	}
 
@@ -749,8 +795,10 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
+func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
+
+	ret.RequestValidator = apivalidation.NewRequestValidator(wc.Logger.WithField("component", "api_validator"))
 
 	if wc.BouncerBlockedHTTPCode == 0 {
 		wc.BouncerBlockedHTTPCode = http.StatusForbidden
@@ -787,6 +835,10 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
+	ret.BodySettings = BodySettings{
+		MaxSize: DefaultMaxBodySize,
+		Action:  BodySizeActionDrop,
+	}
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules
@@ -821,23 +873,23 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	// load hooks
 	var err error
 
-	if ret.CompiledOnLoad, err = buildHookList(wc.OnLoad, hookOnLoad, nil); err != nil {
+	if ret.CompiledOnLoad, err = buildHookList(ctx, wc.OnLoad, hookOnLoad, nil); err != nil {
 		return nil, err
 	}
 
-	if ret.CommonHooks, err = buildPhaseHooks("", wc.PreEval, wc.PostEval, wc.OnMatch, patcher); err != nil {
+	if ret.CommonHooks, err = buildPhaseHooks(ctx, "", wc.PreEval, wc.PostEval, wc.OnMatch, patcher); err != nil {
 		return nil, err
 	}
 
 	if wc.InBand != nil {
-		if ret.InBandHooks, err = buildPhaseHooks("inband",
+		if ret.InBandHooks, err = buildPhaseHooks(ctx, "inband",
 			wc.InBand.PreEval, wc.InBand.PostEval, wc.InBand.OnMatch, patcher); err != nil {
 			return nil, err
 		}
 	}
 
 	if wc.OutOfBand != nil {
-		if ret.OutOfBandHooks, err = buildPhaseHooks("outofband",
+		if ret.OutOfBandHooks, err = buildPhaseHooks(ctx, "outofband",
 			wc.OutOfBand.PreEval, wc.OutOfBand.PostEval, wc.OutOfBand.OnMatch, patcher); err != nil {
 			return nil, err
 		}
@@ -857,7 +909,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 		onChallengeHooks = append(onChallengeHooks, wc.InBand.OnChallenge...)
 	}
 
-	if ret.CompiledOnChallenge, err = buildHookList(onChallengeHooks, hookOnChallenge, patcher); err != nil {
+	if ret.CompiledOnChallenge, err = buildHookList(ctx, onChallengeHooks, hookOnChallenge, patcher); err != nil {
 		return nil, err
 	}
 
@@ -874,7 +926,7 @@ func (wc *AppsecConfig) Build(hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 		onChallengeSubmitHooks = append(onChallengeSubmitHooks, wc.InBand.OnChallengeSubmit...)
 	}
 
-	if ret.CompiledOnChallengeSubmit, err = buildHookList(onChallengeSubmitHooks, hookOnChallengeSubmit, patcher); err != nil {
+	if ret.CompiledOnChallengeSubmit, err = buildHookList(ctx, onChallengeSubmitHooks, hookOnChallengeSubmit, patcher); err != nil {
 		return nil, err
 	}
 
@@ -1101,8 +1153,8 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge", nil)
 }
 
-func (w *AppsecRuntimeConfig) ProcessPreEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(w, state, request), request)
+func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
+	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(ctx, w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
@@ -1331,6 +1383,17 @@ func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequ
 	return nil
 }
 
+// SetMaxBodySize sets the maximum allowed body size in bytes. Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetMaxBodySize(size int64) error {
+	if size <= 0 {
+		return errors.New("max_body_size must be a positive integer")
+	}
+
+	w.Logger.Debugf("setting max body size to %d bytes", size)
+	w.BodySettings.MaxSize = size
+	return nil
+}
+
 // SendChallenge issues a challenge HTML page for the current request. Cookie
 // and submission handling live in ProcessOnChallengeRules; by the time this
 // runs, state.Fingerprint has already been populated if a valid cookie was
@@ -1456,25 +1519,14 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 	return nil
 }
 
-// mintAllowlistCookie does the per-request bookkeeping shared by every
-// phase variant of GrantChallengeCookie: seals a v0 allowlist cookie,
-// stamps a synthetic Allowlisted fingerprint, and flips
-// state.ChallengeBypassed so any later SendChallenge in the same request
-// is a no-op. The caller is responsible for deciding HOW the sealed
-// cookie is delivered to the visitor (redirect response from
-// pre_eval/post_eval, inline attachment on the challenge-submit
-// envelope from on_challenge_submit).
+// mintAllowlistCookie seals a v0 allowlist cookie, stamps a synthetic
+// Allowlisted fingerprint, and flips state.ChallengeBypassed so any later
+// SendChallenge in the same request is a no-op. The caller decides how the
+// cookie reaches the visitor (redirect vs. inline envelope).
 //
-// This DELIBERATELY overwrites any prior state.Fingerprint set by the
-// cookie-valid branch of ProcessOnChallengeRules: the operator-explicit
-// allowlist wins over a real submission. See the GrantChallengeCookie
-// doc-comment for the full precedence rationale.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the sealed
-// cookie instead of the runtime-global cookie_ttl.
-//
-// Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
-// MaxAllowlistReasonLen.
+// It DELIBERATELY overwrites any prior state.Fingerprint from a real
+// submission: an operator allowlist wins. ttlOverride (non-nil) overrides the
+// runtime cookie_ttl. Returns ErrAllowlistReasonSize if reason is too long.
 func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if w.ChallengeRuntime == nil {
 		return nil, fmt.Errorf("challenge runtime not initialized")
@@ -1505,41 +1557,18 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 	return ck, nil
 }
 
-// GrantChallengeCookie mints an allowlist-bypass cookie and issues an
-// HTTP 307 challenge response that carries it back to the visitor. Used
-// from pre_eval and post_eval, where the request is still on its way to
-// the origin and we have a free hand to redirect.
+// GrantChallengeCookie mints an allowlist-bypass cookie and issues an HTTP 307
+// redirect carrying it back to the visitor. Used from pre_eval/post_eval.
 //
-// Why a redirect and not a silent allow: the bouncer protocol only
-// serialises UserCookies / UserHeaders on a ChallengeRemediation response
-// (see GenerateResponse switch); a plain AllowRemediation drops the
-// Set-Cookie on the floor. A 307 Temporary Redirect to the same URL is
-// the minimal-friction shape that:
-//   - returns a challenge-action response (cookie is actually emitted),
-//   - preserves the original method + body (unlike 302/303),
-//   - bounces the visitor back through the WAF with the cookie present
-//     so ProcessOnChallengeRules' allowlist branch short-circuits and
-//     they reach the origin transparently on the second hop.
+// Why a 307 and not a silent allow: the bouncer only serialises cookies on a
+// ChallengeRemediation response (see GenerateResponse), so a plain allow drops
+// the Set-Cookie. The redirect to the same URL preserves method+body and
+// bounces the visitor back through the WAF with the cookie present, so
+// ProcessOnChallengeRules' allowlist branch lets them through on the next hop.
 //
-// Effects:
-//   - Calls mintAllowlistCookie to seal the cookie and stamp
-//     state.Fingerprint / state.ChallengeBypassed.
-//   - Builds a 307 challenge response via setChallengeResponse with
-//     Location set to the original request URI and a small static HTML
-//     body as a no-JS fallback.
-//
-// Note on precedence: see mintAllowlistCookie — an operator-driven
-// allowlist deliberately overwrites any prior fingerprint set by a
-// real-submission cookie. The "operator allowlist takes precedence"
-// model; filter on req.Headers in pre_eval BEFORE the allowlist rule
-// if you need to preserve real signals.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the issued
-// cookie instead of the runtime-global cookie_ttl. Hook authors pass it via
-// the optional second argument on the GrantChallengeCookie expr helper.
-//
-// Returns ErrAllowlistReasonSize if the reason exceeds
-// MaxAllowlistReasonLen.
+// Precedence: see mintAllowlistCookie (operator allowlist overwrites a real
+// fingerprint). ttlOverride overrides cookie_ttl. Returns ErrAllowlistReasonSize
+// if reason is too long.
 func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
 	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
@@ -1563,28 +1592,12 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 	return w.setChallengeResponse(state, http.StatusTemporaryRedirect, challenge.GrantRedirectBody, headers, ck)
 }
 
-// GrantAllowlistCookieInline mints an allowlist-bypass cookie and
-// attaches it to the in-flight challenge-submit response envelope without
-// changing the response shape. Used from on_challenge_submit: the client
-// is already mid-fetch() to the submit endpoint and expects the
-// challenge-submit JSON envelope back, so a redirect is not an option
-// (it would break the client-side JS state machine).
-//
-// Effects:
-//   - Calls mintAllowlistCookie to seal the cookie and stamp
-//     state.Fingerprint / state.ChallengeBypassed.
-//   - Appends the sealed cookie to state.Response.UserHTTPCookies via
-//     SetChallengeCookie so it rides on the submit response (which is
-//     already a ChallengeRemediation, so UserCookies IS serialised here).
-//
-// Same precedence semantics as GrantChallengeCookie: see
+// GrantAllowlistCookieInline mints an allowlist-bypass cookie and attaches it
+// to the in-flight challenge-submit envelope. Used from on_challenge_submit,
+// where the client awaits the submit JSON envelope and a redirect would break
+// its state machine (the envelope is already a ChallengeRemediation, so
+// UserCookies is serialised). Same precedence/ttl/error semantics as
 // mintAllowlistCookie.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the issued
-// cookie instead of the runtime-global cookie_ttl.
-//
-// Returns ErrAllowlistReasonSize if the reason exceeds
-// MaxAllowlistReasonLen.
 func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
 	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
@@ -1594,6 +1607,30 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 	w.SetChallengeCookie(state, *ck)
 
 	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
+
+	return nil
+}
+
+// SetBodySizeExceededAction sets what happens when the body exceeds the maximum size.
+// Valid values: "drop" (block request), "partial" (inspect up to max size), "allow" (skip body inspection).
+// Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetBodySizeExceededAction(action string) error {
+	switch action {
+	case BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow:
+		w.Logger.Debugf("setting body size exceeded action to %q", action)
+		w.BodySettings.Action = action
+
+		return nil
+	default:
+		return fmt.Errorf("invalid body_size_exceeded_action %q (must be %s, %s, or %s)", action, BodySizeActionDrop, BodySizeActionPartial, BodySizeActionAllow)
+	}
+}
+
+// DisableBodyInspection prevents Coraza from processing the request body for the current request.
+// Intended for use in pre_eval hooks.
+func (w *AppsecRuntimeConfig) DisableBodyInspection(state *AppsecRequestState) error {
+	state.DisableBodyInspection = true
+	w.Logger.Debugf("body inspection disabled for this request")
 
 	return nil
 }
@@ -1611,8 +1648,6 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 
 	resp := BodyResponse{Action: response.Action}
 
-	//spew.Dump("Generating response", response)
-
 	switch response.Action {
 	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
@@ -1628,8 +1663,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 		if _, ok := resp.UserHeaders["Content-Security-Policy"]; !ok {
 			resp.UserHeaders["Content-Security-Policy"] = []string{challenge.DefaultChallengeCSP}
 		}
-		// Return code are handled the same way for challenge/ban/captcha
-		// There's probably a less brittle way to do this, but falltrhough is easier
+		// Challenge shares the ban/captcha status-code logic below.
 		fallthrough
 	case BanRemediation, CaptchaRemediation:
 		resp.HTTPStatus = response.UserHTTPResponseCode
@@ -1653,4 +1687,134 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	}
 
 	return bouncerStatusCode, resp
+}
+
+const schemasSubDir = "schemas"
+
+func (w *AppsecRuntimeConfig) loadAPISchema(ref, filename string, opts *apivalidation.SchemaOptions) error {
+	if !filepath.IsLocal(filename) {
+		return fmt.Errorf("schema filename %q must be relative to %s and stay within it", filename, schemasSubDir)
+	}
+	schemaPath := filepath.Join(w.DataDir, schemasSubDir, filename)
+	w.Logger.Debugf("loading schema %s for ref %s", schemaPath, ref)
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		return fmt.Errorf("unable to read schema file %s : %w", schemaPath, err)
+	}
+	return w.RequestValidator.LoadSchema(ref, string(schema), opts)
+}
+
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithName(ref string, filename string) error {
+	return w.loadAPISchema(ref, filename, nil)
+}
+
+// LoadAPISchemaWithOptions behaves like LoadAPISchemaWithName but accepts a
+// map of policy overrides. Supported keys:
+//   - "on_route_not_found":             "drop" | "ignore"  (default: "drop")
+//   - "on_method_not_allowed":          "drop" | "ignore"  (default: "drop")
+//   - "on_unsupported_security_scheme": "drop" | "ignore"  (default: "drop")
+func (w *AppsecRuntimeConfig) LoadAPISchemaWithOptions(ref string, filename string, opts map[string]any) error {
+	schemaOpts, err := parseSchemaOptions(opts)
+	if err != nil {
+		return err
+	}
+	return w.loadAPISchema(ref, filename, schemaOpts)
+}
+
+// RegisterAPISchemaBodyDecoder allows a user's on_load hook to add a Content-Type
+// to the set the API schema validator can decode. decoderName must be one of
+// the stable built-in identifiers exported by the api_validation package
+// ("json", "urlencoded", "multipart", "yaml", "csv", "plain", "file"). Note
+// that the underlying kin-openapi decoder registry is process-global: today
+// all appsec datasources in the same process share the same set of
+// registered body decoders.
+func (w *AppsecRuntimeConfig) RegisterAPISchemaBodyDecoder(contentType, decoderName string) error {
+	return w.RequestValidator.RegisterBodyDecoder(contentType, decoderName)
+}
+
+func parseSchemaOptions(opts map[string]any) (*apivalidation.SchemaOptions, error) {
+	out := &apivalidation.SchemaOptions{}
+	for k, v := range opts {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("schema option %q must be a string, got %T", k, v)
+		}
+		switch k {
+		case "on_route_not_found":
+			out.OnRouteNotFound = apivalidation.Policy(s)
+		case "on_method_not_allowed":
+			out.OnMethodNotAllowed = apivalidation.Policy(s)
+		case "on_unsupported_security_scheme":
+			out.OnUnsupportedSecurityScheme = apivalidation.Policy(s)
+		default:
+			return nil, fmt.Errorf("unknown schema option %q", k)
+		}
+	}
+	return out, nil
+}
+
+// validationErrorVarKeys lists the keys published into state.HookVars by
+// ValidateRequestWithSchema. Keeping them centralized makes it easy to reset
+// them all at the start of each validation call.
+var validationErrorVarKeys = []string{
+	"validation_error",
+	"validation_error_reason",
+	"validation_error_field",
+	"validation_error_message",
+	"validation_error_value",
+	"validation_error_expected",
+}
+
+// ValidateRequestWithSchema validates r against the OpenAPI schema registered
+// under ref. It returns true when the request is valid, false when it is not
+// (or when no schema is registered for ref). On failure, structured error
+// details are published into state.HookVars under the "validation_error*" keys
+// so that subsequent hook expressions (typically the `apply` block of the same
+// hook) can build a drop reason or enrich an event. Each call also increments
+// the AppsecValidationOKCounter / AppsecValidationFailedCounter metric.
+func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, ref string) bool {
+	for _, k := range validationErrorVarKeys {
+		delete(state.HookVars, k)
+	}
+
+	r := request.HTTPRequest.Clone(ctx)
+	r.Body = io.NopCloser(bytes.NewReader(request.Body))
+
+	err := w.RequestValidator.ValidateRequest(ctx, ref, r)
+	if err == nil {
+		metrics.AppsecValidationOKCounter.With(prometheus.Labels{
+			"source":        request.RemoteAddrNormalized,
+			"appsec_engine": request.AppsecEngine,
+			"schema_ref":    ref,
+		}).Inc()
+		return true
+	}
+
+	var valErr *apivalidation.ValidationError
+	if !errors.As(err, &valErr) {
+		// Non-ValidationError paths cover things like "no schema loaded for
+		// ref X". Log loudly and surface a synthetic entry so the hook can
+		// still build a message.
+		w.Logger.Errorf("request validation failed: %s", err)
+		valErr = &apivalidation.ValidationError{
+			Reason:  "internal",
+			Message: err.Error(),
+		}
+	}
+
+	state.HookVars["validation_error"] = valErr.Error()
+	state.HookVars["validation_error_reason"] = valErr.Reason
+	state.HookVars["validation_error_field"] = valErr.Field
+	state.HookVars["validation_error_message"] = valErr.Message
+	state.HookVars["validation_error_value"] = valErr.Value
+	state.HookVars["validation_error_expected"] = valErr.Expected
+
+	metrics.AppsecValidationFailedCounter.With(prometheus.Labels{
+		"source":        request.RemoteAddrNormalized,
+		"appsec_engine": request.AppsecEngine,
+		"schema_ref":    ref,
+		"reason":        valErr.Reason,
+	}).Inc()
+
+	return false
 }

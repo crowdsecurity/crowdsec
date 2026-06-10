@@ -1,0 +1,57 @@
+openapi: 3.0.0
+info:
+  title: Query Parameter Validation API
+  version: 1.0.0
+
+paths:
+  /users:
+    get:
+      summary: Get users with filters
+      parameters:
+        - name: limit
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, pending]
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            format: email
+        - name: age
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 150
+        - name: tags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: verified
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of users

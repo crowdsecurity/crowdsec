@@ -44,7 +44,7 @@ func newChallengeTestRuntime(t *testing.T, hooks []Hook) *AppsecRuntimeConfig {
 
 	cr := getSharedChallengeRuntime(t)
 
-	compiled, err := buildHookList(hooks, hookOnChallenge, &appsecExprPatcher{})
+	compiled, err := buildHookList(t.Context(), hooks, hookOnChallenge, &appsecExprPatcher{})
 	require.NoError(t, err)
 
 	logger := log.NewEntry(log.StandardLogger())

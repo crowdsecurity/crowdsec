@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -68,24 +69,30 @@ func parseChallengeCookieTTLArg(ttl []string) (*time.Duration, error) {
 
 func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
-		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
-		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
-		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
-		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
-		"RemoveOutBandRuleByTag":  w.DisableOutBandRuleByTag,
-		"RemoveOutBandRuleByName": w.DisableOutBandRuleByName,
-		"SetRemediationByTag":     w.SetActionByTag,
-		"SetRemediationByID":      w.SetActionByID,
-		"SetRemediationByName":    w.SetActionByName,
-		"SetChallengeDifficulty":  w.SetChallengeDifficulty,
+		"RemoveInBandRuleByID":         w.DisableInBandRuleByID,
+		"RemoveInBandRuleByTag":        w.DisableInBandRuleByTag,
+		"RemoveInBandRuleByName":       w.DisableInBandRuleByName,
+		"RemoveOutBandRuleByID":        w.DisableOutBandRuleByID,
+		"RemoveOutBandRuleByTag":       w.DisableOutBandRuleByTag,
+		"RemoveOutBandRuleByName":      w.DisableOutBandRuleByName,
+		"SetRemediationByTag":          w.SetActionByTag,
+		"SetRemediationByID":           w.SetActionByID,
+		"SetRemediationByName":         w.SetActionByName,
+		"SetChallengeDifficulty":       w.SetChallengeDifficulty,
+		"LoadAPISchemaWithName":        w.LoadAPISchemaWithName,
+		"LoadAPISchemaWithOptions":     w.LoadAPISchemaWithOptions,
+		"RegisterAPISchemaBodyDecoder": w.RegisterAPISchemaBodyDecoder,
+		"SetMaxBodySize":               w.SetMaxBodySize,
+		"SetBodySizeExceededAction":    w.SetBodySizeExceededAction,
 	}
 }
 
-func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
 		"req":                     request.HTTPRequest,
+		"hook_vars":               state.HookVars,
 		"RemoveInBandRuleByID":    func(id int) error { return w.RemoveInbandRuleByID(state, id) },
 		"RemoveInBandRuleByName":  func(name string) error { return w.RemoveInbandRuleByName(state, name) },
 		"RemoveInBandRuleByTag":   func(tag string) error { return w.RemoveInbandRuleByTag(state, tag) },
@@ -123,6 +130,10 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
 		"fingerprint": state.Fingerprint,
+		"ValidateRequestWithSchema": func(ref string) bool {
+			return w.ValidateRequestWithSchema(ctx, state, request, ref)
+		},
+		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 	}
 }
 
@@ -149,6 +160,7 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
 		"fingerprint": state.Fingerprint,
+		"hook_vars":   state.HookVars,
 	}
 }
 
@@ -219,9 +231,8 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 				"on_challenge_submit rejected",
 				parseLogVerbosity(w.Logger, verbosity),
 			)
-			// Terminal: short-circuit later on_challenge_submit rules so
-			// a `filter: "true"` `LogAccepted` after this never fires for
-			// a rejected submission.
+			// Terminal: halt later on_challenge_submit rules so a `filter: "true"`
+			// `LogAccepted` can't fire for an already-rejected submission.
 			state.HooksHalted = true
 			return nil
 		},
@@ -252,10 +263,8 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 			if err := w.GrantAllowlistCookieInline(state, request, reason, ttlOverride); err != nil {
 				return err
 			}
-			// Terminal: like RejectSubmission, the decision is final —
-			// any further on_challenge_submit rule would either be dead
-			// code or actively confusing (e.g. overwriting the synthetic
-			// allowlist fingerprint).
+			// Terminal: halt later rules — the grant is final, and a following
+			// rule could only overwrite the synthetic allowlist fingerprint.
 			state.HooksHalted = true
 			return nil
 		},
@@ -272,6 +281,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 	return map[string]interface{}{
 		"evt":                evt,
 		"req":                request.HTTPRequest,
+		"hook_vars":          state.HookVars,
 		"IsInBand":           request.IsInBand,
 		"IsOutBand":          request.IsOutBand,
 		"SetRemediation":     func(action string) error { return w.SetAction(state, action) },

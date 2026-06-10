@@ -1,7 +1,6 @@
 package challenge
 
 import (
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -133,95 +132,91 @@ func TestSetDifficulty(t *testing.T) {
 	assert.Equal(t, PowDifficultyImpossible, c.powDifficulty) // unchanged on error
 }
 
-func TestGetSessionKey(t *testing.T) {
-	c := &ChallengeRuntime{}
-
-	key1 := c.getSessionKey("ticket1", "nonce1")
-	key2 := c.getSessionKey("ticket1", "nonce2")
-	key3 := c.getSessionKey("ticket1", "nonce1")
-
-	assert.Len(t, key1, 64) // SHA-256 = 64 hex chars
-	assert.NotEqual(t, key1, key2)
-	assert.Equal(t, key1, key3) // deterministic
-
-	expected := sha256.Sum256([]byte("ticket1nonce1"))
-	assert.Equal(t, fmt.Sprintf("%x", expected), key1)
-}
-
-func TestComputeTicket(t *testing.T) {
-	// Use a fixed test secret so the HMAC equality check is reproducible.
+func TestDeriveChallengeSecret(t *testing.T) {
 	secret := []byte("0123456789abcdef0123456789abcdef")
 	keys, err := NewKeyRing(secret, time.Minute, 3)
 	require.NoError(t, err)
 	c := &ChallengeRuntime{keys: keys}
 
-	// Use a current timestamp so the keyring derives the right epoch.
-	ts1 := fmt.Sprintf("%d", time.Now().UnixNano())
-
-	// Deterministic for same timestamp
-	t1 := c.computeTicket(ts1)
-	t2 := c.computeTicket(ts1)
-	assert.Equal(t, t1, t2)
-
-	// Different for different timestamps
-	ts2 := fmt.Sprintf("%d", time.Now().Add(2*time.Second).UnixNano())
-	t3 := c.computeTicket(ts2)
-	assert.NotEqual(t, t1, t3)
-
-	// Matches HMAC-SHA256 under the per-epoch sign key for ts1's epoch.
-	epoch := c.epochForTimestamp(ts1)
+	ts := fmt.Sprintf("%d", time.Now().UnixNano())
+	epoch := c.epochForTimestamp(ts)
 	signKey, ok := c.keys.SignKey(epoch)
 	require.True(t, ok)
-	h := hmac.New(sha256.New, signKey)
-	h.Write([]byte(ts1))
-	assert.Equal(t, fmt.Sprintf("%x", h.Sum(nil)), t1)
+
+	r1, err := generateChallengeNonce()
+	require.NoError(t, err)
+	r2, err := generateChallengeNonce()
+	require.NoError(t, err)
+
+	s1 := deriveChallengeSecret(signKey, r1)
+	s1again := deriveChallengeSecret(signKey, r1)
+	s2 := deriveChallengeSecret(signKey, r2)
+
+	assert.Len(t, s1, 64)         // HMAC-SHA256 hex
+	assert.Equal(t, s1, s1again)  // deterministic in (signKey, r)
+	assert.NotEqual(t, s1, s2)    // distinct per-challenge r → distinct s
+
+	// Matches HMAC-SHA256 under the per-epoch sign key.
+	assert.Equal(t, hmacSHA256Hex(signKey, []byte(r1)), s1)
+
+	// The fingerprint obfuscation key is derived from s and r, distinct from s.
+	obf := deriveFingerprintObfKey(s1, r1)
+	assert.Len(t, obf, 64)
+	assert.NotEqual(t, s1, obf)
+	assert.Equal(t, obf, deriveFingerprintObfKey(s1, r1)) // deterministic
 }
 
-func TestMatchesChallenge(t *testing.T) {
+func TestVerifyChallenge(t *testing.T) {
 	keys, err := NewKeyRing([]byte("0123456789abcdef0123456789abcdef"), time.Minute, 3)
 	require.NoError(t, err)
 	c := &ChallengeRuntime{keys: keys}
 
-	ts := fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket := c.computeTicket(ts)
+	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, ticket, ts)
+	mac := c.computePowMAC(salt, r, ts)
 
-	// Valid challenge
-	assert.True(t, c.matchesChallenge(ticket, ts, salt, mac))
+	// Valid challenge → returns the epoch sign key.
+	signKey, ok := c.verifyChallenge(r, ts, salt, mac)
+	assert.True(t, ok)
+	assert.NotEmpty(t, signKey)
 
-	// Wrong ticket
-	assert.False(t, c.matchesChallenge("wrong-ticket", ts, salt, mac))
+	// Wrong r (MAC bound to a different r).
+	_, ok = c.verifyChallenge("ffffffffffffffffffffffffffffffff", ts, salt, mac)
+	assert.False(t, ok)
 
-	// Wrong timestamp (ticket doesn't match)
-	assert.False(t, c.matchesChallenge(ticket, "9999999999999999999", salt, mac))
+	// Malformed timestamp.
+	_, ok = c.verifyChallenge(r, "9999999999999999999", salt, mac)
+	assert.False(t, ok)
 
-	// Forged MAC
-	assert.False(t, c.matchesChallenge(ticket, ts, salt, "forged-mac"))
+	// Forged MAC.
+	_, ok = c.verifyChallenge(r, ts, salt, "forged-mac")
+	assert.False(t, ok)
 
-	// MAC from different salt
+	// MAC from a different salt.
 	otherSalt := mustGeneratePowPrefix(t)
-	assert.False(t, c.matchesChallenge(ticket, ts, otherSalt, mac))
+	_, ok = c.verifyChallenge(r, ts, otherSalt, mac)
+	assert.False(t, ok)
 
-	// Expired timestamp (too old)
+	// Expired timestamp (too old).
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
-	oldTicket := c.computeTicket(oldTS)
-	oldMAC := c.computePowMAC(salt, oldTicket, oldTS)
-	assert.False(t, c.matchesChallenge(oldTicket, oldTS, salt, oldMAC))
+	oldMAC := c.computePowMAC(salt, r, oldTS)
+	_, ok = c.verifyChallenge(r, oldTS, salt, oldMAC)
+	assert.False(t, ok)
 
-	// Cross-secret rejection: a ticket signed by a different instance with a
-	// different master secret must NOT validate.
+	// Cross-secret rejection: a challenge signed by a different master secret
+	// must NOT validate.
 	otherKeys, err := NewKeyRing([]byte("ffffffffffffffffffffffffffffffff"), time.Minute, 3)
 	require.NoError(t, err)
 	other := &ChallengeRuntime{keys: otherKeys}
-	otherTicket := other.computeTicket(ts)
-	otherMAC := other.computePowMAC(salt, otherTicket, ts)
-	assert.False(t, c.matchesChallenge(otherTicket, ts, salt, otherMAC))
+	otherMAC := other.computePowMAC(salt, r, ts)
+	_, ok = c.verifyChallenge(r, ts, salt, otherMAC)
+	assert.False(t, ok)
 }
 
 // TestDistributedAgreement asserts that two ChallengeRuntime instances
-// configured with the same master_secret produce bit-identical tickets and
-// PoW MACs — the property that makes load-balanced deployments work.
+// configured with the same master_secret derive bit-identical per-challenge
+// secrets and PoW MACs — the property that makes load-balanced deployments
+// work (challenge issuance is stateless; only the spent-set is local).
 func TestDistributedAgreement(t *testing.T) {
 	secret := []byte("shared-secret-shared-secret-shar") // 32 bytes
 	keysA, err := NewKeyRing(secret, time.Minute, 3)
@@ -231,17 +226,24 @@ func TestDistributedAgreement(t *testing.T) {
 	a := &ChallengeRuntime{keys: keysA}
 	b := &ChallengeRuntime{keys: keysB}
 
-	// Use a freshness-window-valid timestamp so matchesChallenge accepts it.
-	ts := fmt.Sprintf("%d", time.Now().UnixNano())
+	r, ts := freshChallenge(t)
 	salt := "deadbeefcafebabe"
 
-	assert.Equal(t, a.computeTicket(ts), b.computeTicket(ts))
+	// Both instances agree on the PoW MAC...
+	assert.Equal(t, a.computePowMAC(salt, r, ts), b.computePowMAC(salt, r, ts))
 
-	ticket := a.computeTicket(ts)
-	assert.Equal(t, a.computePowMAC(salt, ticket, ts), b.computePowMAC(salt, ticket, ts))
+	// ...and on the per-challenge secret derived from the epoch for ts.
+	epoch := a.epochForTimestamp(ts)
+	keyA, ok := a.keys.SignKey(epoch)
+	require.True(t, ok)
+	keyB, ok := b.keys.SignKey(epoch)
+	require.True(t, ok)
+	assert.Equal(t, deriveChallengeSecret(keyA, r), deriveChallengeSecret(keyB, r))
 
 	// And a challenge issued by A validates against B.
-	assert.True(t, b.matchesChallenge(ticket, ts, salt, a.computePowMAC(salt, ticket, ts)))
+	signKey, ok := b.verifyChallenge(r, ts, salt, a.computePowMAC(salt, r, ts))
+	assert.True(t, ok)
+	assert.NotEmpty(t, signKey)
 }
 
 // solvePoWGo is a Go implementation of the PoW solver matching the JS client.
@@ -300,20 +302,25 @@ func testKeyRing() *KeyRing {
 
 // newTestRuntime returns a minimal ChallengeRuntime suitable for the helpers
 // in this file (no WASM, no obfuscation cache — those tests construct full
-// runtimes via NewChallengeRuntime).
+// runtimes via NewChallengeRuntime). Includes a spent-set so
+// ValidateChallengeResponse's single-use burn works.
 func newTestRuntime() *ChallengeRuntime {
-	return &ChallengeRuntime{keys: testKeyRing()}
+	return &ChallengeRuntime{keys: testKeyRing(), spent: newSpentSet(spentSetDefaultMaxEntries)}
 }
 
 // newTestRuntimeWithDifficulty is a small convenience for the many ValidateChallengeResponse tests.
 func newTestRuntimeWithDifficulty(d int) *ChallengeRuntime {
-	return &ChallengeRuntime{keys: testKeyRing(), powDifficulty: d}
+	return &ChallengeRuntime{keys: testKeyRing(), powDifficulty: d, spent: newSpentSet(spentSetDefaultMaxEntries)}
 }
 
-// freshTicket generates a per-request ticket+timestamp pair (matching GetChallengePage).
-func freshTicket() (ticket, ts string) {
+// freshChallenge generates a per-request nonce+timestamp pair (matching
+// GetChallengePage's `r` and `ts`).
+func freshChallenge(tb testing.TB) (r, ts string) {
+	tb.Helper()
 	ts = fmt.Sprintf("%d", time.Now().UnixNano())
-	ticket = newTestRuntime().computeTicket(ts)
+	var err error
+	r, err = generateChallengeNonce()
+	require.NoError(tb, err)
 	return
 }
 
@@ -331,52 +338,60 @@ func mustGeneratePowPrefix(tb testing.TB) string {
 // fingerprint. Existing tests rely on this signature; for tests that need
 // to assert fingerprint round-trip through the seal/unseal chain, use
 // buildValidBodyWithFingerprint.
-func buildValidBody(tb testing.TB, difficulty int, ticket, ts string) string {
-	return buildValidBodyWithFingerprint(tb, difficulty, ticket, ts, FingerprintData{})
+func buildValidBody(tb testing.TB, difficulty int, r, ts string) string {
+	return buildValidBodyWithFingerprint(tb, difficulty, r, ts, FingerprintData{})
 }
 
 // buildValidBodyWithFingerprint mirrors buildValidBody but lets the caller
 // supply a populated FingerprintData so tests can assert that the submitted
-// payload survives the full encrypt → HMAC → decrypt → unmarshal chain.
-func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, ticket, ts string, fp FingerprintData) string {
+// payload survives the full obfuscate → sign → deobfuscate → unmarshal chain.
+// It mirrors the client (challenge.js): derive s = HMAC(K_epoch, r), obfuscate
+// f under HMAC(s, "fpenc"||r), and sign sig = HMAC(s, r||ts||n||f).
+func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, r, ts string, fp FingerprintData) string {
 	c := newTestRuntime()
 	salt := mustGeneratePowPrefix(tb)
-	powMAC := c.computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, r, ts)
 	nonce := solvePoWGo(salt, difficulty)
-	sessionKey := c.getSessionKey(ticket, nonce)
+
+	// Derive s exactly as the server will, from the per-epoch sign key for ts.
+	// Mirror computePowMAC's fallback for out-of-window timestamps (used by the
+	// expired-timestamp test) so the body is still constructible; the server
+	// rejects on freshness before the signature is ever checked.
+	epoch := c.epochForTimestamp(ts)
+	signKey, ok := c.keys.SignKey(epoch)
+	if !ok {
+		_, signKey = c.keys.Current()
+	}
+	s := deriveChallengeSecret(signKey, r)
 
 	fpJSON, err := json.Marshal(fp)
 	require.NoError(tb, err)
 
-	keyBytes := []byte(sessionKey)
-	encrypted := make([]byte, len(fpJSON))
+	obfKey := deriveFingerprintObfKey(s, r)
+	keyBytes := []byte(obfKey)
+	obfuscated := make([]byte, len(fpJSON))
 	for i := range fpJSON {
-		encrypted[i] = fpJSON[i] ^ keyBytes[i%len(keyBytes)]
+		obfuscated[i] = fpJSON[i] ^ keyBytes[i%len(keyBytes)]
 	}
-	encryptedB64 := base64.StdEncoding.EncodeToString(encrypted)
+	f := base64.StdEncoding.EncodeToString(obfuscated)
 
-	mac := hmac.New(sha256.New, []byte(sessionKey))
-	mac.Write([]byte(encryptedB64))
-	mac.Write([]byte(ts))
-	mac.Write([]byte(ticket))
-	mac.Write([]byte(nonce))
-	hmacHex := fmt.Sprintf("%x", mac.Sum(nil))
+	sig := hmacSHA256Hex([]byte(s), []byte(r+ts+nonce+f))
 
 	return url.Values{
-		"f":  {encryptedB64},
-		"t":  {ticket},
-		"ts": {ts},
-		"h":  {hmacHex},
-		"n":  {nonce},
-		"p":  {salt},
-		"m":  {powMAC},
+		"f":   {f},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {sig},
+		"n":   {nonce},
+		"p":   {salt},
+		"m":   {powMAC},
 	}.Encode()
 }
 
 func TestValidateChallengeResponse(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	ticket, ts := freshTicket()
-	body := buildValidBody(t, c.powDifficulty, ticket, ts)
+	r, ts := freshChallenge(t)
+	body := buildValidBody(t, c.powDifficulty, r, ts)
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -387,6 +402,27 @@ func TestValidateChallengeResponse(t *testing.T) {
 	assert.NotNil(t, fpResult)
 }
 
+// TestValidateChallengeResponse_Replay asserts single-use: a valid submission
+// is accepted once, and re-submitting the identical body is rejected because
+// its per-challenge nonce `r` has been burned.
+func TestValidateChallengeResponse_Replay(t *testing.T) {
+	c := newTestRuntimeWithDifficulty(8)
+	r, ts := freshChallenge(t)
+	body := buildValidBody(t, c.powDifficulty, r, ts)
+
+	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req.Header.Set("User-Agent", "test-agent")
+
+	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	require.NoError(t, err)
+
+	// Replay the exact same body — must be rejected as already used.
+	req2, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req2.Header.Set("User-Agent", "test-agent")
+	_, _, err = c.ValidateChallengeResponse(req2, []byte(body))
+	assert.ErrorContains(t, err, "already used")
+}
+
 // TestValidateChallengeResponse_FingerprintRoundTrip is the explicit
 // happy-path guard for the full client→server seal/unseal chain. Other
 // ValidateChallengeResponse tests only assert that a well-formed submission
@@ -395,7 +431,7 @@ func TestValidateChallengeResponse(t *testing.T) {
 // the cookie Seal → Open round-trip too. Regression guard for any future
 // change to encryption, HMAC keying, or proto conversion.
 func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
-	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour}
+	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
 	submitted := FingerprintData{
 		FSID:             "fsid-abcdef",
@@ -405,8 +441,8 @@ func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
 		FastBotDetection: FlexBool(false),
 	}
 
-	ticket, ts := freshTicket()
-	body := buildValidBodyWithFingerprint(t, c.powDifficulty, ticket, ts, submitted)
+	r, ts := freshChallenge(t)
+	body := buildValidBodyWithFingerprint(t, c.powDifficulty, r, ts, submitted)
 
 	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
@@ -441,8 +477,8 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 
 	for range 20 {
-		ticket, ts := freshTicket()
-		body := buildValidBody(t, c.powDifficulty, ticket, ts)
+		r, ts := freshChallenge(t)
+		body := buildValidBody(t, c.powDifficulty, r, ts)
 		req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 		req.Header.Set("User-Agent", "test-agent")
 
@@ -453,18 +489,18 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 
 func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	ticket, ts := freshTicket()
+	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, r, ts)
 
 	body := url.Values{
-		"f":  {"dGVzdA=="},
-		"t":  {ticket},
-		"ts": {ts},
-		"h":  {"deadbeef"},
-		"n":  {"invalid-nonce"},
-		"p":  {salt},
-		"m":  {powMAC},
+		"f":   {"dGVzdA=="},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {"deadbeef"},
+		"n":   {"invalid-nonce"},
+		"p":   {salt},
+		"m":   {powMAC},
 	}.Encode()
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
@@ -476,8 +512,8 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 	// A submission that would otherwise pass at low difficulty is rejected
 	// outright when the runtime is set to impossible.
 	c := newTestRuntimeWithDifficulty(PowDifficultyImpossible)
-	ticket, ts := freshTicket()
-	body := buildValidBody(t, 8, ticket, ts) // satisfies 8-bit PoW but not impossible
+	r, ts := freshChallenge(t)
+	body := buildValidBody(t, 8, r, ts) // satisfies 8-bit PoW but not impossible
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -488,9 +524,9 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 
 func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
+	r, _ := freshChallenge(t)
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
-	oldTicket := c.computeTicket(oldTS)
-	body := buildValidBody(t, c.powDifficulty, oldTicket, oldTS)
+	body := buildValidBody(t, c.powDifficulty, r, oldTS)
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
@@ -499,20 +535,22 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid ticket")
 }
 
-func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
+// TestValidateChallengeResponse_TamperedR sends a different `r` than the one
+// the PoW MAC was issued for, so verifyChallenge's MAC check fails.
+func TestValidateChallengeResponse_TamperedR(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	ticket, ts := freshTicket()
+	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, r, ts) // bound to r, not to the tampered value
 
 	body := url.Values{
-		"f":  {"dGVzdA=="},
-		"t":  {"wrong-ticket"},
-		"ts": {ts},
-		"h":  {"deadbeef"},
-		"n":  {"0"},
-		"p":  {salt},
-		"m":  {powMAC},
+		"f":   {"dGVzdA=="},
+		"r":   {"ffffffffffffffffffffffffffffffff"},
+		"ts":  {ts},
+		"sig": {"deadbeef"},
+		"n":   {"0"},
+		"p":   {salt},
+		"m":   {powMAC},
 	}.Encode()
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
@@ -522,17 +560,17 @@ func TestValidateChallengeResponse_InvalidTicket(t *testing.T) {
 
 func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	ticket, ts := freshTicket()
+	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
 
 	body := url.Values{
-		"f":  {"dGVzdA=="},
-		"t":  {ticket},
-		"ts": {ts},
-		"h":  {"deadbeef"},
-		"n":  {"0"},
-		"p":  {salt},
-		"m":  {"forged-mac-value"},
+		"f":   {"dGVzdA=="},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {"deadbeef"},
+		"n":   {"0"},
+		"p":   {salt},
+		"m":   {"forged-mac-value"},
 	}.Encode()
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
@@ -540,21 +578,21 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid ticket")
 }
 
-func TestValidateChallengeResponse_InvalidHMAC(t *testing.T) {
+func TestValidateChallengeResponse_InvalidSig(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
-	ticket, ts := freshTicket()
+	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, ticket, ts)
+	powMAC := c.computePowMAC(salt, r, ts)
 	nonce := solvePoWGo(salt, c.powDifficulty)
 
 	body := url.Values{
-		"f":  {"dGVzdA=="},
-		"t":  {ticket},
-		"ts": {ts},
-		"h":  {"0000000000000000000000000000000000000000000000000000000000000000"},
-		"n":  {nonce},
-		"p":  {salt},
-		"m":  {powMAC},
+		"f":   {"dGVzdA=="},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {"0000000000000000000000000000000000000000000000000000000000000000"},
+		"n":   {nonce},
+		"p":   {salt},
+		"m":   {powMAC},
 	}.Encode()
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
@@ -567,10 +605,40 @@ func TestValidateChallengeResponse_MissingFields(t *testing.T) {
 
 	body := url.Values{
 		"f": {"dGVzdA=="},
-		"t": {"ticket"},
+		"r": {"abcd"},
 	}.Encode()
 
 	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "missing required fields")
+}
+
+func TestValidateChallengeResponse_MalformedR(t *testing.T) {
+	c := &ChallengeRuntime{}
+
+	// All fields present (passes the missing-field guard) but `r` is not a
+	// well-formed 32-char hex nonce, so the shape check rejects it before any
+	// spent-set burn. Error is the generic "invalid ticket" so the stage stays
+	// indistinguishable from a verifyChallenge failure.
+	for name, badR := range map[string]string{
+		"too short":        strings.Repeat("a", 31),
+		"too long":         strings.Repeat("a", 33),
+		"right len non-hex": strings.Repeat("z", 32),
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := url.Values{
+				"f":   {"dGVzdA=="},
+				"r":   {badR},
+				"ts":  {"1"},
+				"sig": {"x"},
+				"n":   {"x"},
+				"p":   {"x"},
+				"m":   {"x"},
+			}.Encode()
+
+			req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+			_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+			assert.ErrorContains(t, err, "invalid ticket")
+		})
+	}
 }

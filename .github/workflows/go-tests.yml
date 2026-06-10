@@ -11,13 +11,13 @@ on:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   pull_request:
     branches:
       - master
       - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
 
 # these env variables are for localstack, so we can emulate aws services
 env:
@@ -36,13 +36,13 @@ jobs:
       localstack:
         image: localstack/localstack:3.0
         ports:
-        - 4566:4566  # Localstack exposes all services on the same port
+          - 4566:4566 # Localstack exposes all services on the same port
         env:
           DEBUG: ""
           LAMBDA_EXECUTOR: ""
           KINESIS_ERROR_PROBABILITY: ""
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
-          LOCALSTACK_HOST: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
+          LOCALSTACK_HOST: ${{ env.AWS_HOST }} # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
         options: >-
           --name=localstack
@@ -125,95 +125,100 @@ jobs:
           --health-retries 5
           --health-start-period 30s
     steps:
+      - name: Check out CrowdSec repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          submodules: false
 
-    - name: Check out CrowdSec repository
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        fetch-depth: 0
-        submodules: false
+      - name: "Set up Go"
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
 
-    - name: "Set up Go"
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-      with:
-        go-version-file: go.mod
+      - name: Run "go generate" and check for changes
+        run: |
+          set -e
+          # ensure the version of 'protoc' matches the one that generated the files
+          PROTOBUF_VERSION="35.0"
+          JAVY_VERSION="8.1.1"
+          # don't pollute the repo
+          pushd $HOME
+          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+          unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d $HOME/.protoc
+          curl -OL https://github.com/bytecodealliance/javy/releases/download/v${JAVY_VERSION}/javy-x86_64-linux-v${JAVY_VERSION}.gz
+          mkdir -p $HOME/.javy
+          gzip -d javy-x86_64-linux-v${JAVY_VERSION}.gz
+          mv javy-x86_64-linux-v${JAVY_VERSION} $HOME/.javy/javy
+          chmod +x $HOME/.javy/javy
+          popd
+          export PATH="$HOME/.protoc/bin:$HOME/.javy/:$PATH"
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          go generate ./...
+          protoc --version
+          if [[ $(git status --porcelain) ]]; then
+            echo "Error: Uncommitted changes found after running 'go generate'. Please commit all generated code."
+            git diff
+            exit 1
+          else
+            echo "No changes detected after running 'go generate'."
+          fi
 
-    - name: Run "go generate" and check for changes
-      run: |
-        set -e
-        # ensure the version of 'protoc' matches the one that generated the files
-        PROTOBUF_VERSION="21.12"
-        # don't pollute the repo
-        pushd $HOME
-        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
-        unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d $HOME/.protoc
-        popd
-        export PATH="$HOME/.protoc/bin:$PATH"
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
-        go generate ./...
-        protoc --version
-        if [[ $(git status --porcelain) ]]; then
-          echo "Error: Uncommitted changes found after running 'go generate'. Please commit all generated code."
-          git diff
-          exit 1
-        else
-          echo "No changes detected after running 'go generate'."
-        fi
-
-    - name: Create localstack streams
-      run: |
+      - name: Create localstack streams
+        run: |
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
           aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
 
-    - name: Generate codecov configuration
-      run: |
+      - name: Generate codecov configuration
+        run: |
           .github/generate-codecov-yml.sh > .github/codecov.yml
 
-    - name: Ensure we can do a dynamic build
-      run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
-        make build
+      - name: Ensure we can do a dynamic build
+        run: |
+          sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
+          make build
 
-    - name: Ensure we can do a static build
-      run: |
-        make clean build BUILD_STATIC=1
+      - name: Ensure we can do a static build
+        run: |
+          make clean build BUILD_STATIC=1
 
-    - name: Unit tests
-      run: |
-        go install gotest.tools/gotestsum@v1.12.3
-        # make the repo read-only, with the exception of coverage output
-        touch coverage.out
-        chmod -R a-w .
-        chmod u+w coverage.out
-        make testcover
-        # ignore changes to codecov.yml
-        if [[ $(git status --porcelain -- . ":(exclude).github/codecov.yml") ]]; then
-          echo "Error: Unit tests should not create or alter files inside the repository. Please use the appropriate testing helpers or otherwise temporary locations."
-          git diff --name-only
-          exit 1
-        fi
-        chmod -R u+w .
+      - name: Unit tests
+        run: |
+          go install gotest.tools/gotestsum@v1.12.3
+          # make the repo read-only, with the exception of coverage output
+          touch coverage.out
+          chmod -R a-w .
+          chmod u+w coverage.out
+          make testcover
+          # ignore changes to codecov.yml
+          if [[ $(git status --porcelain -- . ":(exclude).github/codecov.yml") ]]; then
+            echo "Error: Unit tests should not create or alter files inside the repository. Please use the appropriate testing helpers or otherwise temporary locations."
+            git diff --name-only
+            exit 1
+          fi
+          chmod -R u+w .
 
-    # check if some component stubs are missing
-    - name: "Build profile: minimal"
-      run: |
-        make build BUILD_PROFILE=minimal
+      # check if some component stubs are missing
+      - name: "Build profile: minimal"
+        run: |
+          make build BUILD_PROFILE=minimal
 
-    # check that the freebsd build is not broken
-    - name: "Build target: freebsd"
-      run: |
-        make build BUILD_STATIC=1 BUILD_RE2_WASM=1 BUILD_SQLITE=modernc GOOS=freebsd
+      # check that the freebsd build is not broken
+      - name: "Build target: freebsd"
+        run: |
+          make build BUILD_STATIC=1 BUILD_RE2_WASM=1 BUILD_SQLITE=modernc GOOS=freebsd
 
-    - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-      with:
-        files: coverage.out
-        flags: unit-linux
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload unit coverage to Codecov
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          files: coverage.out
+          flags: unit-linux
+          token: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-      with:
-        version: v2.10
-        args: --issues-exit-code=1 --timeout 10m
-        only-new-issues: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.10
+          args: --issues-exit-code=1 --timeout 10m
+          only-new-issues: false

@@ -1,7 +1,9 @@
 package appsecacquisition
 
 import (
+	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -140,7 +142,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 	return nil
 }
 
-func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
 
@@ -150,7 +152,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}
 
 	defer func() {
-		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+		// We don't close the transaction here, as it would reset coraza internal state and break variable tracking.
 		err := r.AppsecRuntime.ProcessPostEvalRules(state, request)
 		if err != nil {
 			r.logger.Errorf("unable to process PostEval rules: %s", err)
@@ -158,7 +160,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	}()
 
 	//pre eval (expr) rules
-	err = r.AppsecRuntime.ProcessPreEvalRules(state, request)
+	err = r.AppsecRuntime.ProcessPreEvalRules(ctx, state, request)
 	if err != nil {
 		r.logger.Errorf("unable to process PreEval rules: %s", err)
 		//FIXME: should we abort here ?
@@ -176,9 +178,23 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		return nil
 	}
 
+	if request.BodySizeExceeded {
+		// DisableBodyInspection in pre_eval also opts out of the size-exceeded drop:
+		// the operator has explicitly accepted that this request's body will not be
+		// processed, so there is nothing to protect the WAF from.
+		if !state.DisableBodyInspection {
+			r.logger.Warnf("request body exceeded maximum allowed size, dropping request")
+			if err = r.AppsecRuntime.DropRequest(state, request, "request body exceeded maximum allowed size"); err != nil {
+				r.logger.Errorf("unable to drop request: %s", err)
+			}
+			return nil
+		}
+		r.logger.Debugf("request body exceeded maximum allowed size but body inspection is disabled, allowing request")
+	}
+
 	defer func() {
 		state.Tx.ProcessLogging()
-		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+		// We don't close the transaction here, as it would reset coraza internal state and break variable tracking.
 	}()
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
@@ -213,21 +229,26 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 		return nil
 	}
 
-	if len(request.Body) > 0 {
-		in, _, err = state.Tx.WriteRequestBody(request.Body)
-		if err != nil {
-			r.logger.Errorf("unable to write request body : %s", err)
-			return err
+	if state.DisableBodyInspection {
+		r.logger.Debugf("body inspection is disabled for this request, skipping body write")
+	} else {
+		if request.BodyTruncated {
+			r.logger.Warnf("request body was truncated to %d bytes (partial mode)", len(request.Body))
 		}
-		if in != nil {
-			return nil
+
+		if len(request.Body) > 0 {
+			in, _, err = state.Tx.WriteRequestBody(request.Body)
+			if err != nil {
+				r.logger.Warnf("unable to write request body: %s", err)
+			} else if in != nil {
+				return nil
+			}
 		}
 	}
 
 	in, err = state.Tx.ProcessRequestBody()
 	if err != nil {
-		r.logger.Errorf("unable to process request body : %s", err)
-		return err
+		r.logger.Warnf("unable to process request body: %s", err)
 	}
 
 	if in != nil {
@@ -237,7 +258,7 @@ func (r *AppsecRunner) processRequest(state *appsec.AppsecRequestState, request 
 	return nil
 }
 
-func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) ProcessInBandRules(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	state.Tx = tx
 	// Even if we have no inband rules, we might have pre-eval, post-eval or on_challenge hooks to process
@@ -269,11 +290,11 @@ func (r *AppsecRunner) ProcessInBandRules(state *appsec.AppsecRequestState, requ
 		return nil
 	}
 
-	err := r.processRequest(state, request)
+	err := r.processRequest(ctx, state, request)
 	return err
 }
 
-func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
+func (r *AppsecRunner) ProcessOutOfBandRules(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	state.Tx = tx
 	if len(r.AppsecRuntime.OutOfBandRules) == 0 &&
@@ -283,11 +304,11 @@ func (r *AppsecRunner) ProcessOutOfBandRules(state *appsec.AppsecRequestState, r
 		len(r.AppsecRuntime.OutOfBandHooks.PostEval) == 0 {
 		return nil
 	}
-	err := r.processRequest(state, request)
+	err := r.processRequest(ctx, state, request)
 	return err
 }
 
-func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
+func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
 	//create the associated event for crowdsec itself
 	evt, err := appsec.EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
@@ -336,6 +357,10 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 		return
 	}
 
+	// Snapshot hook vars after on_match so any hook-published values are
+	// captured onto the event and onto each matched rule (for alert context).
+	copyHookVars(&evt, state)
+
 	// Should the in band match trigger an overflow ?
 	if state.Response.SendAlert {
 		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
@@ -353,7 +378,25 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 	}
 }
 
-func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
+// copyHookVars snapshots the per-request HookVars onto the emitted event:
+//   - evt.Appsec.HookVars gets a shallow copy (state keeps mutating during the
+//     out-of-band phase, so the event must own its snapshot).
+//   - Each MatchedRule in evt.Appsec.MatchedRules gets the same snapshot
+//     under the "hook_vars" key, so alert-context expressions can access
+//     match.hook_vars.<key> alongside evt.Appsec.HookVars.<key>.
+func copyHookVars(evt *pipeline.Event, state *appsec.AppsecRequestState) {
+	if len(state.HookVars) == 0 {
+		return
+	}
+	snapshot := make(map[string]string, len(state.HookVars))
+	maps.Copy(snapshot, state.HookVars)
+	evt.Appsec.HookVars = snapshot
+	for i := range evt.Appsec.MatchedRules {
+		evt.Appsec.MatchedRules[i]["hook_vars"] = snapshot
+	}
+}
+
+func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
 	evt, err := appsec.EventFromRequest(request, r.Labels, state.Tx.ID())
 	if err != nil {
 		//let's not interrupt the pipeline for this
@@ -391,6 +434,8 @@ func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, 
 		return
 	}
 
+	copyHookVars(&evt, state)
+
 	// The alert needs to be sent first:
 	// The event and the alert share the same internal map (parsed, meta, ...)
 	// The event can be modified by the parsers, which might cause a concurrent map read/write
@@ -412,7 +457,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, 
 	}
 }
 
-func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
+func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) {
 	state := r.AppsecRuntime.NewRequestState()
 	stateLogger := r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
 	r.AppsecRuntime.Logger = stateLogger
@@ -441,7 +486,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	state.CurrentPhase = appsec.PhaseInBand
 
 	//inband appsec rules
-	err := r.ProcessInBandRules(&state, request)
+	err := r.ProcessInBandRules(ctx, &state, request)
 	if err != nil {
 		logger.Errorf("unable to process InBand rules: %s", err)
 		err = state.Tx.Close()
@@ -456,7 +501,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	metrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
 
 	if state.Tx.IsInterrupted() || state.InBandDrop != nil {
-		r.handleInBandInterrupt(&state, request)
+		r.handleInBandInterrupt(ctx, &state, request)
 	}
 
 	err = state.Tx.Close()
@@ -480,28 +525,22 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	state.Response.SendEvent = true
 	state.CurrentPhase = appsec.PhaseOutOfBand
 
-	//FIXME: This is a bit of a hack to avoid confusion with the transaction if we do not have any inband rules.
-	//We should probably have different transaction (or even different request object) for inband and out of band rules
-	if len(r.AppsecRuntime.OutOfBandRules) > 0 {
-		//to measure the time spent in the Application Security Engine for OutOfBand rules
-		startOutOfBandParsing := time.Now()
+	startOutOfBandParsing := time.Now()
 
-		err = r.ProcessOutOfBandRules(&state, request)
+	err = r.ProcessOutOfBandRules(ctx, &state, request)
+	if err != nil {
+		logger.Errorf("unable to process OutOfBand rules: %s", err)
+		err = state.Tx.Close()
 		if err != nil {
-			logger.Errorf("unable to process OutOfBand rules: %s", err)
-			err = state.Tx.Close()
-			if err != nil {
-				logger.Errorf("unable to close outband transaction: %s", err)
-			}
-			return
+			logger.Errorf("unable to close outband transaction: %s", err)
 		}
+		return
+	}
 
-		// time spent to process out of band rules
-		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
-		if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
-			r.handleOutBandInterrupt(&state, request)
-		}
+	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
+	metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
+	if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
+		r.handleOutBandInterrupt(ctx, &state, request)
 	}
 	err = state.Tx.Close()
 	if err != nil {
@@ -512,7 +551,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
-func (r *AppsecRunner) Run(t *tomb.Tomb) error {
+func (r *AppsecRunner) Run(ctx context.Context, t *tomb.Tomb) error {
 	r.logger.Infof("Appsec Runner ready to process event")
 	for {
 		select {
@@ -520,7 +559,7 @@ func (r *AppsecRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Appsec Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			r.handleRequest(&request)
+			r.handleRequest(ctx, &request)
 		}
 	}
 }

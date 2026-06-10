@@ -202,21 +202,21 @@ function encryptFingerprint(key, fingerprint) {
 
 // --- Non-secret per-request values (plain template injection) ---
 //
-// _ts, _powP, _powM, _powD are set on `globalThis` by a small plain <script>
-// tag rendered by the server before this module loads. They are NOT secrets:
-//   _ts   — current server time (forgeable but freshness-windowed)
-//   _powP — random PoW salt (must be server-issued so clients can't pick favorable salts)
-//   _powM — HMAC binding (_powP, _ts) under the server's per-epoch sign key
-//   _powD — PoW difficulty (a number)
-//
-// What IS secret: the per-epoch K used to derive the ticket and submission
-// HMAC. K is delivered by the dynamic key module (re-obfuscated each
-// rotation) which calls the hook below with { key, epoch }.
+// Set on `globalThis` by a plain <script> the server renders before this
+// module. None are secret:
+//   _ts   — server time (forgeable but freshness-windowed)
+//   _powP — random PoW salt (server-issued so clients can't pick easy salts)
+//   _powM — HMAC(_powP, _r, _ts) under the per-epoch key
+//   _powD — PoW difficulty
+//   _r    — per-challenge nonce; seeds s = HMAC(K, r)
+// The secret is the per-epoch K, delivered only by the dynamic key module; the
+// derived s is never transmitted.
 
 const ts = typeof _ts !== "undefined" ? _ts : "";
 const powPrefix = typeof _powP !== "undefined" ? _powP : "";
 const powMAC = typeof _powM !== "undefined" ? _powM : "";
 const powDifficulty = typeof _powD !== "undefined" ? _powD : 12;
+const r = typeof _r !== "undefined" ? _r : "";
 const submitPath = "__CROWDSEC_SUBMIT_PATH__";
 
 // --- Challenge status reporting ---
@@ -235,14 +235,10 @@ function reportChallengeStatus(status) {
 }
 
 // --- Main flow ---
-// The static bundle exposes a hook on globalThis. The dynamic key module
-// (loaded after this static bundle) calls the hook with { key, epoch }.
-// All cryptographic operations that depend on the per-epoch key live here:
-// the static bundle never sees a hardcoded K, only the per-call argument.
-//
-// The hook name is a sentinel that survives JS obfuscation via the
-// `reservedStrings` option — the same literal must appear in both the
-// static bundle and the dynamic module so they meet on globalThis.
+// The static bundle registers a hook on globalThis; the dynamic key module
+// (loaded after) calls it with { key, epoch }. Key-dependent crypto lives here;
+// the static bundle holds no hardcoded K. The hook name survives obfuscation
+// via `reservedStrings` so both bundles meet on the same global.
 
 const CSEC_HOOK_NAME = "__CSEC_CHALLENGE_HOOK_v1__";
 
@@ -252,19 +248,23 @@ async function runChallenge(epochKey) {
     new FingerprintScanner().collectFingerprint({ encrypt: false }),
   ]);
 
-  // Client derives the ticket using the per-epoch key — the secret never
-  // appears in plaintext HTML, only in the obfuscated dynamic module.
-  // epochKey is hex-encoded; HMAC over the raw bytes.
-  const ticket = hmacSHA256HexKey(epochKey, ts);
+  // Per-challenge secret s = HMAC(K_epoch, r). Never transmitted; the server
+  // derives the same s from its per-epoch key and the cleartext r. epochKey is
+  // hex-encoded K; HMAC over its raw bytes.
+  const s = hmacSHA256HexKey(epochKey, r);
 
-  const sessionKey = sha256Hex(ticket + nonce);
-  const f = encryptFingerprint(sessionKey, JSON.stringify(fpResult));
-  const h = hmacSHA256Hex(sessionKey, f + ts + ticket + nonce);
+  // Fingerprint payload obfuscation key, derived from the secret s (NOT a
+  // confidentiality guarantee — light obfuscation only).
+  const encKey = hmacSHA256Hex(s, "fpenc" + r);
+  const f = encryptFingerprint(encKey, JSON.stringify(fpResult));
+
+  // Submission signature binds (r, ts, nonce, f) under the secret s.
+  const sig = hmacSHA256Hex(s, r + ts + nonce + f);
 
   return fetch(submitPath, {
     method: "POST",
     credentials: "same-origin",
-    body: new URLSearchParams({ f: f, t: ticket, ts: ts, h: h, n: nonce, p: powPrefix, m: powMAC }),
+    body: new URLSearchParams({ f: f, r: r, ts: ts, sig: sig, n: nonce, p: powPrefix, m: powMAC }),
   })
     .then((response) => response.json())
     .then((data) => {

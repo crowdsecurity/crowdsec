@@ -86,31 +86,26 @@ func (c *ChallengeRuntime) dynamicModulePreWarmer(ctx context.Context) {
 			}
 
 			nextEpoch := current + 1
-			log.WithFields(log.Fields{
+			c.log().WithFields(log.Fields{
 				"epoch":               nextEpoch,
 				"current_epoch":       current,
 				"seconds_to_boundary": int64(nextBoundary.Sub(now).Seconds()),
 				"pool_size":           c.cryptoPoolSize,
-			}).Info("WAF challenge: pre-warming dynamic key module for upcoming epoch")
+			}).Debug("pre-warming dynamic key module for upcoming epoch")
 
 			if _, err := c.dynamicModuleForEpoch(ctx, nextEpoch); err != nil {
-				log.WithError(err).WithField("epoch", nextEpoch).
-					Warn("WAF challenge: pre-warm of next epoch failed; first request after rotation will pay obfuscation cost")
+				c.log().WithError(err).WithField("epoch", nextEpoch).
+					Warn("pre-warm of next epoch failed; first request after rotation will pay obfuscation cost")
 			}
 		}
 	}
 }
 
-// dynamicModuleForEpoch returns the slice of obfuscated per-epoch key
-// module variants for the given epoch, deriving the per-epoch key on
-// demand from the keyring and generating cryptoPoolSize obfuscations of
-// it. The result is cached; concurrent calls for the same epoch are
-// coalesced via singleflight so only one batch obfuscation runs even
-// under a thundering-herd arrival pattern at a rotation boundary.
-//
-// The cache mutex is only held for the fast read/write of the map,
-// never across the obfuscation calls — concurrent requests for the same
-// epoch coalesce via singleflight rather than serialize on the mutex.
+// dynamicModuleForEpoch returns the cryptoPoolSize obfuscated variants of the
+// per-epoch key module, deriving the key from the keyring on demand. Results
+// are cached; concurrent calls for the same epoch coalesce via singleflight so
+// only one batch obfuscation runs under a thundering-herd at a rotation
+// boundary. The cache mutex guards only the map, never the obfuscation.
 func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int64) ([]string, error) {
 	// Fast path: cached.
 	c.dynamicModuleCacheMu.RLock()
@@ -173,23 +168,23 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 				return nil, fmt.Errorf("obfuscator produced empty dynamic module output (variant %d/%d)", i+1, poolSize)
 			}
 
-			log.WithFields(log.Fields{
+			c.log().WithFields(log.Fields{
 				"epoch":        epoch,
 				"variant":      i,
 				"input_bytes":  inputSize,
 				"output_bytes": len(obfuscated),
 				"duration_ms":  obfuscateDuration.Milliseconds(),
-			}).Debug("WAF challenge: obfuscated dynamic key module variant")
+			}).Debug("obfuscated dynamic key module variant")
 
 			variants = append(variants, obfuscated)
 		}
 
-		log.WithFields(log.Fields{
+		c.log().WithFields(log.Fields{
 			"epoch":       epoch,
 			"variants":    poolSize,
 			"batch_ms":    time.Since(batchStart).Milliseconds(),
 			"input_bytes": inputSize,
-		}).Info("WAF challenge: obfuscated dynamic key module batch for new epoch")
+		}).Debug("obfuscated dynamic key module batch for new epoch")
 
 		c.dynamicModuleCacheMu.Lock()
 		// Prune any cached modules whose epoch has fallen out of the

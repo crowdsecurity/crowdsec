@@ -51,6 +51,7 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
 		LibraryObfuscationPoolSize:        ptrInt(2),
 		LibraryObfuscationRefreshInterval: ptrDur(30 * time.Minute),
+		SpentSetMaxEntries:                ptrInt(500_000),
 	}
 
 	dst.MergeFrom(src)
@@ -70,19 +71,20 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 	assert.True(t, *dst.LibraryRuntimeObfuscationEnabled)
 	assert.Equal(t, 2, *dst.LibraryObfuscationPoolSize)
 	assert.Equal(t, 30*time.Minute, *dst.LibraryObfuscationRefreshInterval)
+	assert.Equal(t, 500_000, *dst.SpentSetMaxEntries)
 }
 
-// TestBuildOptionsNilOrEmptyConfig confirms a nil or fully-empty Config
-// produces no Options; the runtime is then constructed with its built-in
-// defaults.
+// TestBuildOptionsNilOrEmptyConfig confirms a nil or fully-empty Config emits
+// only the always-present component-logger option; the runtime is otherwise
+// constructed with its built-in defaults.
 func TestBuildOptionsNilOrEmptyConfig(t *testing.T) {
-	opts, err := BuildOptions(nil)
+	opts, err := BuildOptions(nil, nil)
 	require.NoError(t, err)
-	assert.Empty(t, opts)
+	assert.Len(t, opts, 1, "nil config still emits the component-logger option")
 
-	opts, err = BuildOptions(&Config{})
+	opts, err = BuildOptions(&Config{}, nil)
 	require.NoError(t, err)
-	assert.Empty(t, opts)
+	assert.Len(t, opts, 1, "empty config still emits the component-logger option")
 }
 
 // TestBuildOptionsTranslatesFieldsToRuntimeBehavior wires a populated Config
@@ -99,11 +101,12 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
 		LibraryObfuscationPoolSize:        ptrInt(2),
 		LibraryObfuscationRefreshInterval: ptrDur(45 * time.Minute),
+		SpentSetMaxEntries:                ptrInt(250_000),
 	}
 
-	opts, err := BuildOptions(cfg)
+	opts, err := BuildOptions(cfg, nil)
 	require.NoError(t, err)
-	require.Len(t, opts, 8, "every populated field must emit an option")
+	require.Len(t, opts, 10, "every populated field + the component logger must emit an option")
 
 	rt, err := NewChallengeRuntime(context.Background(), opts...)
 	require.NoError(t, err)
@@ -113,6 +116,7 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 	assert.True(t, rt.libraryRuntimeObfuscationEnabled, "LibraryRuntimeObfuscationEnabled must reach the runtime")
 	assert.Equal(t, 2, rt.libraryPoolSize, "LibraryObfuscationPoolSize must reach the runtime")
 	assert.Equal(t, 45*time.Minute, rt.libraryRefreshInterval, "LibraryObfuscationRefreshInterval must reach the runtime")
+	assert.Equal(t, 250_000, rt.spent.maxEntries, "SpentSetMaxEntries must reach the runtime")
 }
 
 // TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled confirms the
@@ -162,7 +166,7 @@ func TestBuildOptionsInvalidMasterSecret(t *testing.T) {
 	cfg := &Config{
 		MasterSecret: ptrStr("too-short"),
 	}
-	_, err := BuildOptions(cfg)
+	_, err := BuildOptions(cfg, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "master_secret")
 }

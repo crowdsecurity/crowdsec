@@ -104,6 +104,7 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 		if fp.AllowlistReason != "" {
 			evt.Parsed["fingerprint_allowlist_reason"] = fp.AllowlistReason
 		}
+		evt.Parsed["platform"] = fp.Signals.Device.Platform
 	}
 
 	return evt
