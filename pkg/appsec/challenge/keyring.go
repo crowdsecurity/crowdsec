@@ -78,8 +78,15 @@ type KeyRing struct {
 
 	now func() time.Time // overridable for tests
 
+	logger *log.Entry
+
 	mu    sync.RWMutex
 	cache map[int64][]byte // epoch -> per-epoch sign key
+}
+
+// log returns the component logger (never nil; see the logger field).
+func (k *KeyRing) log() *log.Entry {
+	return k.logger
 }
 
 // NewKeyRing constructs a KeyRing. masterSecret must be at least minSecretBytes
@@ -103,6 +110,7 @@ func NewKeyRing(masterSecret []byte, rotationInterval time.Duration, maxLive int
 		maxLive:          maxLive,
 		clockSkew:        keyringClockSkew,
 		masterCookieKey:  deriveMasterCookieKey(masterSecret),
+		logger:           log.StandardLogger().WithField("module", "challenge"),
 		now:              time.Now,
 		cache:            make(map[int64][]byte),
 	}, nil
@@ -189,18 +197,13 @@ func (k *KeyRing) deriveOrCache(epoch int64) []byte {
 
 	k.cache[epoch] = derived
 
-	// One INFO line per fresh epoch derivation. HKDF itself is microseconds
-	// — we log it for distributed-troubleshooting visibility (every WAF
-	// instance with the same master_secret should log the same epoch
-	// numbers at the same wall-clock times) and to surface unexpected
-	// rotation churn (clock jumps, mis-sized live window, etc.).
-	log.WithFields(log.Fields{
+	k.log().WithFields(log.Fields{
 		"epoch":         epoch,
 		"current_epoch": k.CurrentEpoch(),
 		"derivation_us": derivationDuration.Microseconds(),
 		"cache_evicted": evicted,
 		"cache_size":    len(k.cache),
-	}).Info("WAF challenge: derived per-epoch key")
+	}).Debug("derived per-epoch key")
 
 	return derived
 }
@@ -232,18 +235,12 @@ func deriveMasterCookieKey(masterSecret []byte) []byte {
 	return hkdfExtract(masterSecret, []byte(keyringInfoMasterCookie))
 }
 
-// hkdfExtract is the shared HKDF-SHA256 call used by both derivation
-// helpers. Salt is the fixed keyringHKDFSalt; info is caller-supplied
-// (already disambiguated by context).
-//
-// The Read at a 32-byte fixed output with SHA-256 is documented as
-// infallible: HKDF-Expand only fails when asked for more than
-// 255 * HashLen bytes, and 32 is well under SHA-256's 8160-byte limit.
-// A non-nil error here is therefore an invariant violation (e.g. the
-// runtime/crypto stack itself is broken), not a recoverable runtime
-// condition. Panic is appropriate: the alternative would be threading
-// a (string, error) return through every derivation site to handle a
-// case the standard library guarantees cannot occur.
+// hkdfExtract is the shared HKDF-SHA256 call used by both derivation helpers
+// (fixed keyringHKDFSalt, caller-supplied info). It panics on a Read error
+// because a 32-byte SHA-256 output is infallible (HKDF-Expand only fails above
+// 255*HashLen bytes); an error here means the crypto stack itself is broken,
+// not a recoverable condition, so threading an error through every call site
+// would be handling an impossible case.
 func hkdfExtract(masterSecret []byte, info []byte) []byte {
 	r := hkdf.New(sha256.New, masterSecret, []byte(keyringHKDFSalt), info)
 

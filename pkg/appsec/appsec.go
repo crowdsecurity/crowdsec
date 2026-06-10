@@ -1365,25 +1365,14 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 	return nil
 }
 
-// mintAllowlistCookie does the per-request bookkeeping shared by every
-// phase variant of GrantChallengeCookie: seals a v0 allowlist cookie,
-// stamps a synthetic Allowlisted fingerprint, and flips
-// state.ChallengeBypassed so any later SendChallenge in the same request
-// is a no-op. The caller is responsible for deciding HOW the sealed
-// cookie is delivered to the visitor (redirect response from
-// pre_eval/post_eval, inline attachment on the challenge-submit
-// envelope from on_challenge_submit).
+// mintAllowlistCookie seals a v0 allowlist cookie, stamps a synthetic
+// Allowlisted fingerprint, and flips state.ChallengeBypassed so any later
+// SendChallenge in the same request is a no-op. The caller decides how the
+// cookie reaches the visitor (redirect vs. inline envelope).
 //
-// This DELIBERATELY overwrites any prior state.Fingerprint set by the
-// cookie-valid branch of ProcessOnChallengeRules: the operator-explicit
-// allowlist wins over a real submission. See the GrantChallengeCookie
-// doc-comment for the full precedence rationale.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the sealed
-// cookie instead of the runtime-global cookie_ttl.
-//
-// Returns ErrAllowlistReasonSize via the sealer if the reason exceeds
-// MaxAllowlistReasonLen.
+// It DELIBERATELY overwrites any prior state.Fingerprint from a real
+// submission: an operator allowlist wins. ttlOverride (non-nil) overrides the
+// runtime cookie_ttl. Returns ErrAllowlistReasonSize if reason is too long.
 func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if w.ChallengeRuntime == nil {
 		return nil, fmt.Errorf("challenge runtime not initialized")
@@ -1403,41 +1392,18 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 	return ck, nil
 }
 
-// GrantChallengeCookie mints an allowlist-bypass cookie and issues an
-// HTTP 307 challenge response that carries it back to the visitor. Used
-// from pre_eval and post_eval, where the request is still on its way to
-// the origin and we have a free hand to redirect.
+// GrantChallengeCookie mints an allowlist-bypass cookie and issues an HTTP 307
+// redirect carrying it back to the visitor. Used from pre_eval/post_eval.
 //
-// Why a redirect and not a silent allow: the bouncer protocol only
-// serialises UserCookies / UserHeaders on a ChallengeRemediation response
-// (see GenerateResponse switch); a plain AllowRemediation drops the
-// Set-Cookie on the floor. A 307 Temporary Redirect to the same URL is
-// the minimal-friction shape that:
-//   - returns a challenge-action response (cookie is actually emitted),
-//   - preserves the original method + body (unlike 302/303),
-//   - bounces the visitor back through the WAF with the cookie present
-//     so ProcessOnChallengeRules' allowlist branch short-circuits and
-//     they reach the origin transparently on the second hop.
+// Why a 307 and not a silent allow: the bouncer only serialises cookies on a
+// ChallengeRemediation response (see GenerateResponse), so a plain allow drops
+// the Set-Cookie. The redirect to the same URL preserves method+body and
+// bounces the visitor back through the WAF with the cookie present, so
+// ProcessOnChallengeRules' allowlist branch lets them through on the next hop.
 //
-// Effects:
-//   - Calls mintAllowlistCookie to seal the cookie and stamp
-//     state.Fingerprint / state.ChallengeBypassed.
-//   - Builds a 307 challenge response via setChallengeResponse with
-//     Location set to the original request URI and a small static HTML
-//     body as a no-JS fallback.
-//
-// Note on precedence: see mintAllowlistCookie — an operator-driven
-// allowlist deliberately overwrites any prior fingerprint set by a
-// real-submission cookie. The "operator allowlist takes precedence"
-// model; filter on req.Headers in pre_eval BEFORE the allowlist rule
-// if you need to preserve real signals.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the issued
-// cookie instead of the runtime-global cookie_ttl. Hook authors pass it via
-// the optional second argument on the GrantChallengeCookie expr helper.
-//
-// Returns ErrAllowlistReasonSize if the reason exceeds
-// MaxAllowlistReasonLen.
+// Precedence: see mintAllowlistCookie (operator allowlist overwrites a real
+// fingerprint). ttlOverride overrides cookie_ttl. Returns ErrAllowlistReasonSize
+// if reason is too long.
 func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
 	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
@@ -1461,28 +1427,12 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 	return w.setChallengeResponse(state, http.StatusTemporaryRedirect, challenge.GrantRedirectBody, headers, ck)
 }
 
-// GrantAllowlistCookieInline mints an allowlist-bypass cookie and
-// attaches it to the in-flight challenge-submit response envelope without
-// changing the response shape. Used from on_challenge_submit: the client
-// is already mid-fetch() to the submit endpoint and expects the
-// challenge-submit JSON envelope back, so a redirect is not an option
-// (it would break the client-side JS state machine).
-//
-// Effects:
-//   - Calls mintAllowlistCookie to seal the cookie and stamp
-//     state.Fingerprint / state.ChallengeBypassed.
-//   - Appends the sealed cookie to state.Response.UserHTTPCookies via
-//     SetChallengeCookie so it rides on the submit response (which is
-//     already a ChallengeRemediation, so UserCookies IS serialised here).
-//
-// Same precedence semantics as GrantChallengeCookie: see
+// GrantAllowlistCookieInline mints an allowlist-bypass cookie and attaches it
+// to the in-flight challenge-submit envelope. Used from on_challenge_submit,
+// where the client awaits the submit JSON envelope and a redirect would break
+// its state machine (the envelope is already a ChallengeRemediation, so
+// UserCookies is serialised). Same precedence/ttl/error semantics as
 // mintAllowlistCookie.
-//
-// ttlOverride, if non-nil, sets a per-call validity window for the issued
-// cookie instead of the runtime-global cookie_ttl.
-//
-// Returns ErrAllowlistReasonSize if the reason exceeds
-// MaxAllowlistReasonLen.
 func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
 	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
 	if err != nil {
@@ -1509,8 +1459,6 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 
 	resp := BodyResponse{Action: response.Action}
 
-	//spew.Dump("Generating response", response)
-
 	switch response.Action {
 	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
@@ -1526,8 +1474,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 		if _, ok := resp.UserHeaders["Content-Security-Policy"]; !ok {
 			resp.UserHeaders["Content-Security-Policy"] = []string{challenge.DefaultChallengeCSP}
 		}
-		// Return code are handled the same way for challenge/ban/captcha
-		// There's probably a less brittle way to do this, but falltrhough is easier
+		// Challenge shares the ban/captcha status-code logic below.
 		fallthrough
 	case BanRemediation, CaptchaRemediation:
 		resp.HTTPStatus = response.UserHTTPResponseCode

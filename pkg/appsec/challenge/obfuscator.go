@@ -38,7 +38,7 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 		WithStdin(stdin).
 		WithStdout(&stdout).
 		WithStderr(&stderr).
-		//ensure that wazero gets a real PRNG source and real wall/nano time for non-deterministic output
+		// Give wazero a real PRNG source and real wall/nano time so output is non-deterministic.
 		WithRandSource(crand.Reader).
 		WithSysWalltime().
 		WithSysNanotime()

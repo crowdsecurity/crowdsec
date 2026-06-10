@@ -1,81 +1,82 @@
-// config.go defines the YAML-facing challenge configuration and its
-// merge/translation semantics. All Config fields are pointers so multiple
+// config.go defines the YAML-facing challenge configuration. Multiple
 // appsec-config files can each contribute a disjoint subset; MergeFrom
-// composes them without one wiping the others. Once merged, ToOptions
+// composes them without one wiping the others. Once merged, BuildOptions
 // translates the Config into the runtime's functional-option list
-// (NewChallengeRuntime(...))).
+// (NewChallengeRuntime(...)).
 
 package challenge
 
 import (
 	"fmt"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
 
-// Config carries the YAML-configurable challenge runtime settings. All fields
-// are pointers so the loader can distinguish "unset" from a zero value: this
-// lets multiple appsec-configs each contribute a disjoint subset of fields
-// without one wiping out the others on merge.
-//
-// Field semantics mirror the corresponding WithXxx options on the runtime; see
-// their doc-comments for the operational meaning of each value.
+// Config carries the YAML-configurable challenge runtime settings.
 type Config struct {
-	// MasterSecret is the long-lived secret used to sign tickets / PoW MACs
-	// and seal challenge cookies. In a distributed (multi-WAF) deployment
-	// all instances MUST share the same value. May be a hex-encoded byte
-	// string or a raw passphrase; minimum 32 bytes / characters. If unset,
-	// the runtime generates an ephemeral random secret at startup (suitable
-	// for single-instance deployments only — restarts invalidate
-	// outstanding challenge cookies).
+	// MasterSecret is the long-lived secret all per-epoch HMAC keys and the
+	// cookie-sealing AES key derive from. In a distributed deployment every
+	// instance MUST share the same value to sign/verify each other's
+	// challenges. If unset, the runtime generates an ephemeral random secret
+	// at startup — fine for a single instance, but restarts then invalidate
+	// outstanding cookies.
 	MasterSecret *string `yaml:"master_secret"`
 
-	// KeyRotationInterval controls how often the per-epoch challenge key
-	// advances. All instances in a distributed setup MUST agree on this
-	// value to derive identical per-epoch keys.
+	// KeyRotationInterval is the per-epoch key advance period. All instances
+	// in a distributed setup MUST agree on it to derive identical keys.
+	// Defaults to 5m.
 	KeyRotationInterval *time.Duration `yaml:"key_rotation_interval"`
 
-	// MaxLiveEpochs is how many past epochs (in addition to the current
-	// one) the keyring continues to accept.
+	// MaxLiveEpochs is how many past epochs (besides the current one) the
+	// keyring keeps accepting, so in-flight submissions aren't invalidated at
+	// a rotation boundary. Bounds ticket-forgery exposure to
+	// MaxLiveEpochs × KeyRotationInterval. Defaults to 3.
 	MaxLiveEpochs *int `yaml:"max_live_epochs"`
 
-	// CookieTTL controls how long a successful-challenge cookie stays
-	// valid. Decoupled from the keyring rotation window. Defaults to 12h.
+	// CookieTTL is how long a successful-challenge cookie stays valid.
+	// Decoupled from the keyring window (enforced by a not_after stamp inside
+	// the sealed cookie, not key eviction) so cookies can be long-lived while
+	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
-	// CryptoObfuscationPoolSize is the number of distinct obfuscations of
-	// the per-epoch sign-key module to keep per live epoch. Default 1.
+	// CryptoObfuscationPoolSize is how many obfuscations of the per-epoch
+	// sign-key module to keep per live epoch. Each variant embeds the same key
+	// with different byte layout, giving per-visitor variance. Defaults to 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
-	// LibraryRuntimeObfuscationEnabled gates the background re-obfuscation
-	// of the static library bundle at runtime. The library bundle is ALWAYS
-	// obfuscated at build time via `go generate` (initial_bundle.js.gz) —
-	// this flag only controls whether additional runtime-generated variants
-	// are produced and added to the pool over time. Off by default: the
-	// runtime serves only the baked-in obfuscated bundle and pays no
-	// runtime obfuscator cost for the static path.
+	// LibraryRuntimeObfuscationEnabled gates background re-obfuscation of the
+	// public library bundle. The bundle is ALWAYS obfuscated at build time;
+	// this only adds further runtime variants at ~1 minute of CPU per pass.
+	// Off by default (serve only the baked-in variant).
 	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
 
-	// LibraryObfuscationPoolSize is the max number of obfuscated variants
-	// of the library bundle to keep. Default 1 — only the baked-in
-	// initial bundle. Bumping this above 1 only has effect when runtime
-	// obfuscation is enabled (otherwise no source produces additional
-	// variants); misconfiguration is clamped to 1 with a startup warning.
+	// LibraryObfuscationPoolSize is the max number of library-bundle variants
+	// to keep. Only meaningful when LibraryRuntimeObfuscationEnabled is set.
+	// Defaults to 1.
 	LibraryObfuscationPoolSize *int `yaml:"library_obfuscation_pool_size"`
 
-	// LibraryObfuscationRefreshInterval is the cadence at which a single
-	// new library-bundle variant is obfuscated and added to the pool when
-	// runtime obfuscation is enabled. Ignored when disabled. Default 1h.
+	// LibraryObfuscationRefreshInterval is the cadence at which one new
+	// library-bundle variant is obfuscated (oldest evicted) — one per tick, so
+	// a full rotation takes pool_size × interval. Ignored unless
+	// LibraryRuntimeObfuscationEnabled is set.
 	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
+
+	// SpentSetMaxEntries caps the replay-protection LRU. A deep DoS backstop;
+	// steady-state stays far below it. Defaults to spentSetDefaultMaxEntries.
+	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
+
+	// LogLevel sets the challenge runtime's own log verbosity, independent of
+	// the global level. Note: `panic` is not supported — logrus.PanicLevel is 0,
+	// which SubLogger (pkg/logging/sublogger.go) treats as "inherit the parent level".
+	LogLevel *log.Level `yaml:"log_level,omitempty"`
 }
 
-// MergeFrom overlays the non-nil fields of other onto c, field by field.
-// Used when multiple appsec-configs are loaded: each later config contributes
-// (or overrides) a subset of fields while leaving the others intact. Mirrors
-// the "last wins for overrides, append for collections" pattern that the rest
-// of LoadByPath uses for scalar fields.
-//
-// Calling MergeFrom on a nil *Config is a no-op (returns silently); the caller
-// is expected to have allocated the receiver before merging into it.
+// MergeFrom overlays the non-nil fields of other onto c, field by field, so
+// multiple appsec-configs can each contribute a disjoint subset (last non-nil
+// wins). A nil receiver or argument is a no-op.
 func (c *Config) MergeFrom(other *Config) {
 	if c == nil || other == nil {
 		return
@@ -105,19 +106,36 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.LibraryObfuscationRefreshInterval != nil {
 		c.LibraryObfuscationRefreshInterval = other.LibraryObfuscationRefreshInterval
 	}
+	if other.SpentSetMaxEntries != nil {
+		c.SpentSetMaxEntries = other.SpentSetMaxEntries
+	}
+	if other.LogLevel != nil {
+		c.LogLevel = other.LogLevel
+	}
 }
 
 // BuildOptions translates a (possibly nil) merged Config into the WithXxx
-// Option list consumed by NewChallengeRuntime. Each unset field is simply not
-// emitted so the runtime falls back to its built-in default. Returns the
-// secret-validation error from ParseConfiguredSecret if MasterSecret is set
-// but invalid.
-func BuildOptions(c *Config) ([]Option, error) {
-	if c == nil {
-		return nil, nil
+// Option list for NewChallengeRuntime; unset fields are omitted so the runtime
+// uses its built-in defaults. Returns an error if MasterSecret is set but
+// invalid. parent (may be nil) is the logger the "challenge" sublogger derives
+// from, at the configured log_level or parent's level.
+func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
+	// Always give the runtime its own component sublogger.
+	base := log.StandardLogger()
+	if parent != nil {
+		base = parent.Logger
 	}
 
-	var opts []Option
+	var lvl log.Level
+	if c != nil && c.LogLevel != nil {
+		lvl = *c.LogLevel
+	}
+
+	opts := []Option{WithLogger(logging.SubLogger(base, "challenge", lvl))}
+
+	if c == nil {
+		return opts, nil
+	}
 
 	if c.MasterSecret != nil && *c.MasterSecret != "" {
 		secret, err := ParseConfiguredSecret(*c.MasterSecret)
@@ -146,6 +164,9 @@ func BuildOptions(c *Config) ([]Option, error) {
 	}
 	if c.LibraryObfuscationRefreshInterval != nil {
 		opts = append(opts, WithLibraryObfuscationRefreshInterval(*c.LibraryObfuscationRefreshInterval))
+	}
+	if c.SpentSetMaxEntries != nil && *c.SpentSetMaxEntries > 0 {
+		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))
 	}
 
 	return opts, nil

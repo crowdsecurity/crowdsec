@@ -211,7 +211,7 @@ func TestCookie_UnknownVersionRejected(t *testing.T) {
 // live window. Without this, every key rotation would invalidate every
 // challenge currently in flight.
 //
-// matchesChallenge uses time.Since on the wall clock (not the keyring's
+// verifyChallenge uses time.Since on the wall clock (not the keyring's
 // overridable now), so we anchor t0 at the real current time and only
 // override the keyring's clock — small enough offsets stay inside the
 // ticketAgeBackstop freshness check.
@@ -221,22 +221,23 @@ func TestRotation_TicketSurvives_WithinLiveWindow(t *testing.T) {
 
 	c := &ChallengeRuntime{keys: keys}
 	tsStr := strconvI64(t0.UnixNano())
-	ticket := c.computeTicket(tsStr)
+	r, err := generateChallengeNonce()
+	require.NoError(t, err)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, ticket, tsStr)
+	mac := c.computePowMAC(salt, r, tsStr)
 
-	// Roll the keyring clock forward one rotation interval — the ticket's
+	// Roll the keyring clock forward one rotation interval — the challenge's
 	// epoch is now "previous" but still in the live window.
 	keys.now = func() time.Time { return t0.Add(70 * time.Second) }
 
-	assert.True(t, c.matchesChallenge(ticket, tsStr, salt, mac),
-		"ticket from previous epoch must still validate within the live window")
+	_, ok := c.verifyChallenge(r, tsStr, salt, mac)
+	assert.True(t, ok, "challenge from previous epoch must still validate within the live window")
 }
 
 // TestRotation_TicketRejected_OutOfWindow proves the negative side of the
 // previous test: once the keyring's view of time has advanced enough to
-// evict the ticket's epoch, validation fails. Anchored at real-time t0 so
-// matchesChallenge's own freshness check (time.Since) doesn't conflate with
+// evict the challenge's epoch, validation fails. Anchored at real-time t0 so
+// verifyChallenge's own freshness check (time.Since) doesn't conflate with
 // the keyring's eviction logic.
 func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 	t0 := time.Now()
@@ -244,16 +245,17 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 
 	c := &ChallengeRuntime{keys: keys}
 	tsStr := strconvI64(t0.UnixNano())
-	ticket := c.computeTicket(tsStr)
+	r, err := generateChallengeNonce()
+	require.NoError(t, err)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, ticket, tsStr)
+	mac := c.computePowMAC(salt, r, tsStr)
 
 	// Jump the keyring's clock past the live window (maxLive=3 + skew=1 =
 	// any epoch >4 minutes ahead in the keyring's view evicts the original).
 	keys.now = func() time.Time { return t0.Add(5 * time.Minute) }
 
-	assert.False(t, c.matchesChallenge(ticket, tsStr, salt, mac),
-		"ticket from an evicted epoch must not validate")
+	_, ok := c.verifyChallenge(r, tsStr, salt, mac)
+	assert.False(t, ok, "challenge from an evicted epoch must not validate")
 }
 
 // TestEndToEnd_ValidateChallengeResponse walks the full validation path
@@ -261,10 +263,10 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 // cookie-v0 wired together.
 func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	keys := testKeyRing()
-	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour}
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
-	ticket, ts := freshTicket()
-	body := buildValidBody(t, c.powDifficulty, ticket, ts)
+	r, ts := freshChallenge(t)
+	body := buildValidBody(t, c.powDifficulty, r, ts)
 
 	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
@@ -291,10 +293,10 @@ func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 // cookieTTL.
 func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 	keys := testKeyRing()
-	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute}
+	c := &ChallengeRuntime{keys: keys, powDifficulty: 8, cookieTTL: 90 * time.Minute, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
-	ticket, ts := freshTicket()
-	body := buildValidBody(t, c.powDifficulty, ticket, ts)
+	r, ts := freshChallenge(t)
+	body := buildValidBody(t, c.powDifficulty, r, ts)
 
 	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
