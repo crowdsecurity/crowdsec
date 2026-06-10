@@ -78,8 +78,6 @@ type KeyRing struct {
 
 	now func() time.Time // overridable for tests
 
-	// logger is seeded with a default sublogger by NewKeyRing (never nil) and
-	// overwritten by NewChallengeRuntime before the ring is shared.
 	logger *log.Entry
 
 	mu    sync.RWMutex
