@@ -20,6 +20,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -572,6 +573,13 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" {
 		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
+	}
+
+	// Server-issued `r` is a 16-byte nonce in hex (generateChallengeNonce):
+	// exactly 32 hex chars. Reject other shapes early so a K_epoch holder can't
+	// bloat the spent-set with oversized keys, and to keep the key space canonical.
+	if _, err := hex.DecodeString(clientR); err != nil || len(clientR) != 32 {
+		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
 	}
 
 	// Verify freshness + PoW-salt authenticity and recover the per-epoch sign

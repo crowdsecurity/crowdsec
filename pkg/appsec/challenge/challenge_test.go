@@ -612,3 +612,33 @@ func TestValidateChallengeResponse_MissingFields(t *testing.T) {
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "missing required fields")
 }
+
+func TestValidateChallengeResponse_MalformedR(t *testing.T) {
+	c := &ChallengeRuntime{}
+
+	// All fields present (passes the missing-field guard) but `r` is not a
+	// well-formed 32-char hex nonce, so the shape check rejects it before any
+	// spent-set burn. Error is the generic "invalid ticket" so the stage stays
+	// indistinguishable from a verifyChallenge failure.
+	for name, badR := range map[string]string{
+		"too short":        strings.Repeat("a", 31),
+		"too long":         strings.Repeat("a", 33),
+		"right len non-hex": strings.Repeat("z", 32),
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := url.Values{
+				"f":   {"dGVzdA=="},
+				"r":   {badR},
+				"ts":  {"1"},
+				"sig": {"x"},
+				"n":   {"x"},
+				"p":   {"x"},
+				"m":   {"x"},
+			}.Encode()
+
+			req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+			_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+			assert.ErrorContains(t, err, "invalid ticket")
+		})
+	}
+}
