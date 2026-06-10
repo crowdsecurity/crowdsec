@@ -140,7 +140,7 @@ jobs:
         run: |
           set -e
           # ensure the version of 'protoc' matches the one that generated the files
-          PROTOBUF_VERSION="21.12"
+          PROTOBUF_VERSION="35.0"
           JAVY_VERSION="8.1.1"
           # don't pollute the repo
           pushd $HOME
