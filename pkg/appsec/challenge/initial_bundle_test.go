@@ -1,7 +1,6 @@
 package challenge
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -15,7 +14,7 @@ func TestNewChallengeRuntimeStartupBudget(t *testing.T) {
 	const budget = 10 * time.Second
 
 	start := time.Now()
-	rt, err := NewChallengeRuntime(context.Background())
+	rt, err := NewChallengeRuntime(t.Context())
 	dur := time.Since(start)
 
 	require.NoError(t, err)

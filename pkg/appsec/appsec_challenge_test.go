@@ -1,7 +1,6 @@
 package appsec
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"sync"
@@ -30,7 +29,7 @@ func getSharedChallengeRuntime(t *testing.T) *challenge.ChallengeRuntime {
 		// Use context.Background so the runtime survives across tests.
 		// Goroutines it spawns leak for the duration of the test binary; that's
 		// acceptable here since the binary exits after tests complete.
-		sharedChallengeRuntimeInst, sharedChallengeRuntimeErr = challenge.NewChallengeRuntime(context.Background())
+		sharedChallengeRuntimeInst, sharedChallengeRuntimeErr = challenge.NewChallengeRuntime(t.Context())
 	})
 	require.NoError(t, sharedChallengeRuntimeErr)
 	return sharedChallengeRuntimeInst
@@ -89,7 +88,7 @@ func TestProcessOnChallengeRulesNilRuntime(t *testing.T) {
 	state := &AppsecRequestState{}
 	req := newInBandRequest(http.MethodGet, "/", nil)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.False(t, state.RequireChallenge)
 	assert.Nil(t, state.Fingerprint)
 }
@@ -101,7 +100,7 @@ func TestProcessOnChallengeRulesServesPowWorker(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, challenge.ChallengePowWorkerPath, nil)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.True(t, state.RequireChallenge)
 	assert.Equal(t, ChallengeRemediation, state.Response.Action)
 	assert.Equal(t, http.StatusOK, state.Response.UserHTTPResponseCode)
@@ -117,7 +116,7 @@ func TestProcessOnChallengeRulesSubmitInvalidBody(t *testing.T) {
 	// Empty body → ValidateChallengeResponse fails; dispatcher returns failed JSON body.
 	req := newInBandRequest(http.MethodPost, challenge.ChallengeSubmitPath, nil)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.True(t, state.RequireChallenge)
 	assert.JSONEq(t, bodyChallengeFailed, state.Response.UserHTTPBodyContent)
 	assert.Contains(t, state.Response.UserHeaders["Content-Type"], "application/json")
@@ -138,7 +137,7 @@ func TestProcessOnChallengeRulesNoCookieSkipsUserHooks(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, "/", nil)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.Nil(t, state.Fingerprint)
 	assert.Nil(t, state.PendingAction, "user hooks must not run when fingerprint is nil")
 }
@@ -163,7 +162,7 @@ func TestProcessOnChallengeRulesInvalidCookieSkipsUserHooks(t *testing.T) {
 	}
 	req := &ParsedRequest{HTTPRequest: httpReq, IsInBand: true}
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.Nil(t, state.Fingerprint)
 	assert.Nil(t, state.PendingHTTPCode, "user hooks must not run when fingerprint is nil")
 }
@@ -178,7 +177,7 @@ func TestSendChallengeNoOpWhenStoredDifficultyMeetsTarget(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, "/protected", nil)
 
-	require.NoError(t, rt.SendChallenge(state, req))
+	require.NoError(t, rt.SendChallenge(t.Context(), state, req))
 	assert.False(t, state.RequireChallenge)
 	assert.Empty(t, state.Response.UserHTTPBodyContent)
 	assert.NotEqual(t, ChallengeRemediation, state.Response.Action)
@@ -196,7 +195,7 @@ func TestSendChallengeReIssuesWhenTargetExceedsStored(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, "/protected", nil)
 
-	require.NoError(t, rt.SendChallenge(state, req))
+	require.NoError(t, rt.SendChallenge(t.Context(), state, req))
 	assert.True(t, state.RequireChallenge)
 	assert.Equal(t, ChallengeRemediation, state.Response.Action)
 	assert.Contains(t, state.Response.UserHeaders["Content-Type"], "text/html")
@@ -215,7 +214,7 @@ func TestSendChallengeNoOpWhenTargetLoweredBelowStored(t *testing.T) {
 
 	req := newInBandRequest(http.MethodGet, "/protected", nil)
 
-	require.NoError(t, rt.SendChallenge(state, req))
+	require.NoError(t, rt.SendChallenge(t.Context(), state, req))
 	assert.False(t, state.RequireChallenge)
 }
 
@@ -232,7 +231,7 @@ func TestProcessOnChallengeRulesInvalidSubmissionSkipsUserHooks(t *testing.T) {
 	// Empty body → ValidateChallengeResponse fails.
 	req := newInBandRequest(http.MethodPost, challenge.ChallengeSubmitPath, nil)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, req))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
 	assert.True(t, state.RequireChallenge)
 	assert.JSONEq(t, bodyChallengeFailed, state.Response.UserHTTPBodyContent)
 	assert.Nil(t, state.PendingAction, "user hooks must not run on invalid submission")
@@ -262,7 +261,7 @@ func TestRejectSubmissionSetsState(t *testing.T) {
 // cookie, stamps allowlist fingerprint + bypass state, and produces a
 // 307 challenge response carrying the Location header and Set-Cookie
 // back to the visitor. The 307 is necessary because GenerateResponse
-// only serialises UserCookies on ChallengeRemediation responses.
+// only serializes UserCookies on ChallengeRemediation responses.
 func TestGrantChallengeCookieIssuesRedirect(t *testing.T) {
 	rt := newChallengeTestRuntime(t, nil)
 	state := &AppsecRequestState{}
@@ -277,7 +276,7 @@ func TestGrantChallengeCookieIssuesRedirect(t *testing.T) {
 	assert.Equal(t, "Googlebot/2.1", state.Fingerprint.AllowlistReason)
 	assert.True(t, state.ChallengeBypassed, "ChallengeBypassed must be set to suppress later SendChallenge")
 
-	assert.Equal(t, ChallengeRemediation, state.Response.Action, "must produce a challenge-action response so the cookie is serialised")
+	assert.Equal(t, ChallengeRemediation, state.Response.Action, "must produce a challenge-action response so the cookie is serialized")
 	assert.Equal(t, http.StatusTemporaryRedirect, state.Response.UserHTTPResponseCode, "must be a 307 redirect")
 	assert.True(t, state.RequireChallenge, "RequireChallenge must be flagged so the wire response carries the cookie")
 
@@ -328,9 +327,9 @@ func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
 	bodyBefore := state.Response.UserHTTPBodyContent
 	statusBefore := state.Response.UserHTTPResponseCode
 
-	require.NoError(t, rt.SendChallenge(state, req))
+	require.NoError(t, rt.SendChallenge(t.Context(), state, req))
 
-	assert.Equal(t, cookiesBefore, len(state.Response.UserHTTPCookies), "cookie set must be unchanged")
+	assert.Len(t, state.Response.UserHTTPCookies, cookiesBefore, "cookie set must be unchanged")
 	assert.Equal(t, bodyBefore, state.Response.UserHTTPBodyContent, "redirect body must not be overwritten")
 	assert.Equal(t, statusBefore, state.Response.UserHTTPResponseCode, "redirect status must not be overwritten")
 }
@@ -363,7 +362,7 @@ func TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag(t *testing.T) {
 	state := &AppsecRequestState{}
 	state.ResetResponse(rt.Config)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, getReq))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, getReq))
 	require.NotNil(t, state.Fingerprint, "valid allowlist cookie must populate fingerprint")
 	assert.True(t, state.Fingerprint.Allowlisted)
 	assert.Equal(t, "test-bypass", state.Fingerprint.AllowlistReason)
@@ -399,7 +398,7 @@ func TestAllowlistCookieRoundtripBypassesSendChallenge(t *testing.T) {
 	state := &AppsecRequestState{}
 	state.ResetResponse(rt.Config)
 
-	require.NoError(t, rt.ProcessOnChallengeRules(state, replayReq))
+	require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, replayReq))
 	require.NotNil(t, state.Fingerprint)
 	require.True(t, state.ChallengeBypassed, "replayed allowlist cookie must flip ChallengeBypassed")
 
@@ -408,7 +407,7 @@ func TestAllowlistCookieRoundtripBypassesSendChallenge(t *testing.T) {
 	statusBefore := state.Response.UserHTTPResponseCode
 	actionBefore := state.Response.Action
 
-	require.NoError(t, rt.SendChallenge(state, replayReq))
+	require.NoError(t, rt.SendChallenge(t.Context(), state, replayReq))
 
 	assert.Equal(t, actionBefore, state.Response.Action, "SendChallenge must not set ChallengeRemediation")
 	assert.NotEqual(t, ChallengeRemediation, state.Response.Action,

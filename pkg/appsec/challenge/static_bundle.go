@@ -23,6 +23,7 @@ import (
 	"compress/gzip"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -31,7 +32,6 @@ import (
 	"time"
 
 	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -51,8 +51,7 @@ var (
 )
 
 type obfuscatedScript struct {
-	Code string    // the obfuscated JS code
-	uuid uuid.UUID // unique ID to track the script
+	Code string // the obfuscated JS code
 }
 
 // seedCacheFromInitialBundle decompresses the build-time obfuscated bundle
@@ -64,7 +63,7 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 		decompressStart := time.Now()
 
 		if len(initialBundleGz) == 0 {
-			initialBundleErr = fmt.Errorf("baked-in initial_bundle.js.gz is empty (was `go generate` run?)")
+			initialBundleErr = errors.New("baked-in initial_bundle.js.gz is empty (was `go generate` run?)")
 			return
 		}
 
@@ -93,12 +92,11 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 		return initialBundleErr
 	}
 	if initialBundle == "" {
-		return fmt.Errorf("initial bundle is empty after decompression")
+		return errors.New("initial bundle is empty after decompression")
 	}
 
 	c.appendLibraryBundle([]obfuscatedScript{{
 		Code: initialBundle,
-		uuid: uuid.New(),
 	}})
 
 	return nil
@@ -127,7 +125,7 @@ func (c *ChallengeRuntime) libraryBundlePoolRefresher(ctx context.Context) {
 	}
 }
 
-func (c *ChallengeRuntime) buildChallengeBundle() string {
+func (*ChallengeRuntime) buildChallengeBundle() string {
 	return strings.NewReplacer(
 		"__CROWDSEC_SUBMIT_PATH__", ChallengeSubmitPath,
 		"__CROWDSEC_POW_WORKER_PATH__", ChallengePowWorkerPath,
@@ -164,7 +162,6 @@ func (c *ChallengeRuntime) generateLibraryBundleVariants(ctx context.Context, co
 
 	for range count {
 		o := obfuscatedScript{}
-		o.uuid = uuid.New()
 		obfuscatedJS, err := c.ObfuscateJS(ctx, bundle)
 		if err != nil {
 			return nil, err

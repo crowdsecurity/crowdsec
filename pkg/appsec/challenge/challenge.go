@@ -76,7 +76,7 @@ const libraryBundleRefreshDefaultInterval = time.Hour
 
 // cryptoObfuscationPoolDefaultSize is how many obfuscations of the per-epoch
 // key module to keep per live epoch. Each variant embeds the same key
-// differently (per-visitor byte variance); default 1 keeps prior behaviour.
+// differently (per-visitor byte variance); default 1 keeps prior behavior.
 const cryptoObfuscationPoolDefaultSize = 1
 
 // defaultCookieTTL is the default challenge-cookie validity. Decoupled from the
@@ -495,7 +495,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
 // If difficulty is 0, the default difficulty is used.
-func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (string, error) {
+func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent string, difficulty int) (string, error) {
 	_ = userAgent
 
 	if difficulty <= 0 {
@@ -504,12 +504,12 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 
 	obfuscatedJS := c.getLibraryBundle()
 	if obfuscatedJS.Code == "" {
-		if err := c.generateAndCacheChallengeJS(context.Background()); err != nil {
+		if err := c.generateAndCacheChallengeJS(ctx); err != nil {
 			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
 		}
 		obfuscatedJS = c.getLibraryBundle()
 		if obfuscatedJS.Code == "" {
-			return "", fmt.Errorf("challenge JS cache is empty")
+			return "", errors.New("challenge JS cache is empty")
 		}
 	}
 
@@ -517,7 +517,7 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 	// burn in ValidateChallengeResponse). `r` seeds the per-challenge secret
 	// `s = HMAC(K_epoch, r)` the client derives from the obfuscated dynamic
 	// module, so `s` never appears in plain HTML; the PoW MAC binds the salt to
-	// `r`+ts so a client can't pick a favourable salt.
+	// `r`+ts so a client can't pick a favorable salt.
 	ts := fmt.Sprintf("%d", time.Now().UnixNano())
 	r, err := generateChallengeNonce()
 	if err != nil {
@@ -541,7 +541,7 @@ func (c *ChallengeRuntime) GetChallengePage(userAgent string, difficulty int) (s
 
 	// The static bundle only carries the hook registration; the dynamic module
 	// carries the per-epoch K, so K never appears in plain HTML.
-	dynamicModule, err := c.currentDynamicModule(context.Background())
+	dynamicModule, err := c.currentDynamicModule(ctx)
 	if err != nil {
 		return "", fmt.Errorf("build dynamic key module: %w", err)
 	}
@@ -583,21 +583,21 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientPowMAC := vars.Get("m")
 
 	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" {
-		return nil, FingerprintData{}, fmt.Errorf("missing required fields in challenge response")
+		return nil, FingerprintData{}, errors.New("missing required fields in challenge response")
 	}
 
 	// Server-issued `r` is a 16-byte nonce in hex (generateChallengeNonce):
 	// exactly 32 hex chars. Reject other shapes early so a K_epoch holder can't
 	// bloat the spent-set with oversized keys, and to keep the key space canonical.
 	if _, err := hex.DecodeString(clientR); err != nil || len(clientR) != 32 {
-		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
+		return nil, FingerprintData{}, errors.New("invalid ticket in challenge response")
 	}
 
 	// Verify freshness + PoW-salt authenticity and recover the per-epoch sign
 	// key (stateless). Key knowledge is proven by `sig` below.
 	signKey, ok := c.verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC)
 	if !ok {
-		return nil, FingerprintData{}, fmt.Errorf("invalid ticket in challenge response")
+		return nil, FingerprintData{}, errors.New("invalid ticket in challenge response")
 	}
 
 	// Impossible difficulty is a deliberate hard-block: never accept anything.
@@ -618,13 +618,13 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	expectedSig := hmacSHA256Hex([]byte(s), []byte(clientR+clientTS+clientNonce+encryptedFingerprint))
 	if !hmac.Equal([]byte(clientSig), []byte(expectedSig)) {
-		return nil, FingerprintData{}, fmt.Errorf("invalid HMAC in challenge response")
+		return nil, FingerprintData{}, errors.New("invalid HMAC in challenge response")
 	}
 
 	// Single-use: burn `r` (rejects replays). Done last so the spent-set only
 	// grows on fully-valid submissions.
 	if !c.spent.checkAndInsert(clientR, ticketAgeBackstop) {
-		return nil, FingerprintData{}, fmt.Errorf("challenge response already used")
+		return nil, FingerprintData{}, errors.New("challenge response already used")
 	}
 
 	obfKey := deriveFingerprintObfKey(s, clientR)
@@ -681,7 +681,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 // bounded by MaxAllowlistReasonLen (crypto.go).
 func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if c == nil {
-		return nil, fmt.Errorf("challenge runtime not initialized")
+		return nil, errors.New("challenge runtime not initialized")
 	}
 
 	ttl := c.cookieTTL
@@ -720,7 +720,7 @@ type CookieData struct {
 // cookieless.
 func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*CookieData, error) {
 	if ck == nil {
-		return nil, fmt.Errorf("nil cookie")
+		return nil, errors.New("nil cookie")
 	}
 
 	envelope, err := openCookie(ck.Value, c.keys.MasterCookieKey(), []byte(userAgent))

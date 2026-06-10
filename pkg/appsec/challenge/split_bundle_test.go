@@ -1,7 +1,6 @@
 package challenge
 
 import (
-	"context"
 	"encoding/hex"
 	"strings"
 	"sync"
@@ -53,7 +52,7 @@ func TestSplitBundle_DynamicModuleObfuscatesKey(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	got, err := rt.currentDynamicModule(context.Background())
+	got, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
 	require.NotEmpty(t, got)
 
@@ -89,10 +88,10 @@ func TestSplitBundle_DynamicModuleCachedPerEpoch(t *testing.T) {
 
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	first, err := rt.currentDynamicModule(context.Background())
+	first, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
 
-	second, err := rt.currentDynamicModule(context.Background())
+	second, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, first, second, "second call must return the cached module byte-for-byte")
@@ -105,14 +104,14 @@ func TestSplitBundle_DynamicModuleRebuildsOnEpochAdvance(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	first, err := rt.currentDynamicModule(context.Background())
+	first, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
 	firstEpoch, _ := keys.Current()
 
 	// Advance the keyring's clock past the rotation interval.
 	keys.now = func() time.Time { return time.Now().Add(2 * time.Minute) }
 
-	second, err := rt.currentDynamicModule(context.Background())
+	second, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
 	secondEpoch, _ := keys.Current()
 
@@ -140,10 +139,10 @@ func TestSplitBundle_DynamicModuleConcurrentSingleflight(t *testing.T) {
 	wg.Add(N)
 
 	start := time.Now()
-	for i := 0; i < N; i++ {
+	for i := range N {
 		go func(idx int) {
 			defer wg.Done()
-			out, err := rt.currentDynamicModule(context.Background())
+			out, err := rt.currentDynamicModule(t.Context())
 			results[idx] = out
 			errs[idx] = err
 		}(i)
@@ -182,7 +181,7 @@ func TestSplitBundle_HTMLDoesNotContainSecret(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	html, err := rt.GetChallengePage("test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
 	require.NoError(t, err)
 	require.NotEmpty(t, html)
 
@@ -204,7 +203,7 @@ const hookSentinel = "__CSEC_CHALLENGE_HOOK_v1__"
 // can be made against a known key.
 func newChallengeRuntimeForSplitTest(t *testing.T, keys *KeyRing) *ChallengeRuntime {
 	t.Helper()
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		WithMasterSecret(testSecret),
 	)
 	require.NoError(t, err)

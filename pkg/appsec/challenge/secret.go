@@ -58,10 +58,10 @@ func ParseConfiguredSecret(value string) ([]byte, error) {
 }
 
 func isHex(s string) bool {
-	if len(s) == 0 || len(s)%2 != 0 {
+	if s == "" || len(s)%2 != 0 {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch {
 		case c >= '0' && c <= '9':

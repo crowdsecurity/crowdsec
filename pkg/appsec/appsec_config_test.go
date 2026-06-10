@@ -415,7 +415,7 @@ challenge:
 	// Second config overrides CookieTTL and adds library obfuscation fields,
 	// leaving master_secret / rotation / max_live_epochs from the first
 	// config untouched. This is the multi-config last-wins-per-field
-	// behaviour collections rely on.
+	// behavior collections rely on.
 	second := writeTempYAML(t, `
 name: overlay
 challenge:

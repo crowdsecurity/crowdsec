@@ -49,7 +49,7 @@ func TestSpentSet_ConcurrentSameKey(t *testing.T) {
 
 // TestSpentSet_Expiry asserts an entry is re-accepted after its TTL lapses.
 // (In production the freshness check rejects such an aged r anyway; this only
-// guards the store's own expiry behaviour.)
+// guards the store's own expiry behavior.)
 func TestSpentSet_Expiry(t *testing.T) {
 	s := newSpentSet(spentSetDefaultMaxEntries)
 

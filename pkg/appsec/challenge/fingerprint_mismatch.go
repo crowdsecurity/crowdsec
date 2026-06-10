@@ -9,6 +9,7 @@ package challenge
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 
 	"golang.org/x/text/language"
@@ -112,13 +113,7 @@ func (f *FingerprintData) TimezoneCountryMismatch(country string) bool {
 		return false
 	}
 
-	for _, c := range countries {
-		if c == country {
-			return false
-		}
-	}
-
-	return true
+	return !slices.Contains(countries, country)
 }
 
 // MismatchSignal is a single fired reason/severity pair on the report.

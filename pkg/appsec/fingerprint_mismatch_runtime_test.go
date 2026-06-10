@@ -69,7 +69,7 @@ func TestEvaluateMismatches_GeoIPTimezoneMismatch_Fires(t *testing.T) {
 	metrics.AppsecFingerprintMismatch.Reset()
 
 	w := makeRuntime()
-	httpReq, err := http.NewRequest("GET", "http://x/", nil)
+	httpReq, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	state := &AppsecRequestState{Fingerprint: fpEuropeParisCDP(t)}
@@ -91,20 +91,20 @@ func TestEvaluateMismatches_GeoIPTimezoneMismatch_Fires(t *testing.T) {
 	assert.Equal(t, 1, report.Low(), "timezone_country is low severity")
 
 	// Prometheus counters must reflect one bump per fired signal.
-	assert.Equal(t, 1.0, testutil.ToFloat64(
+	assert.InDelta(t, 1.0, testutil.ToFloat64(
 		metrics.AppsecFingerprintMismatch.With(prometheus.Labels{
 			"reason":        challenge.ReasonTimezoneCountry,
 			"severity":      challenge.SeverityLow,
 			"appsec_engine": "test-engine",
 		}),
-	))
-	assert.Equal(t, 1.0, testutil.ToFloat64(
+	), 0)
+	assert.InDelta(t, 1.0, testutil.ToFloat64(
 		metrics.AppsecFingerprintMismatch.With(prometheus.Labels{
 			"reason":        challenge.ReasonCDP,
 			"severity":      challenge.SeverityHigh,
 			"appsec_engine": "test-engine",
 		}),
-	))
+	), 0)
 }
 
 func TestEvaluateMismatches_GeoIPConsistent_NoTimezoneSignal(t *testing.T) {
@@ -112,7 +112,7 @@ func TestEvaluateMismatches_GeoIPConsistent_NoTimezoneSignal(t *testing.T) {
 	metrics.AppsecFingerprintMismatch.Reset()
 
 	w := makeRuntime()
-	httpReq, err := http.NewRequest("GET", "http://x/", nil)
+	httpReq, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	// Browser reports Europe/London tz; client IP geolocates to GB.
@@ -155,7 +155,7 @@ func TestEvaluateMismatches_CachesAcrossCalls(t *testing.T) {
 	metrics.AppsecFingerprintMismatch.Reset()
 
 	w := makeRuntime()
-	httpReq, err := http.NewRequest("GET", "http://x/", nil)
+	httpReq, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	state := &AppsecRequestState{Fingerprint: fpEuropeParisCDP(t)}
@@ -176,13 +176,13 @@ func TestEvaluateMismatches_CachesAcrossCalls(t *testing.T) {
 
 	// Observability fires once total (log + metric) despite three calls.
 	// Verifies the emitMismatchObservability gate at state.LastMismatchReport.
-	assert.Equal(t, 1.0, testutil.ToFloat64(
+	assert.InDelta(t, 1.0, testutil.ToFloat64(
 		metrics.AppsecFingerprintMismatch.With(prometheus.Labels{
 			"reason":        challenge.ReasonTimezoneCountry,
 			"severity":      challenge.SeverityLow,
 			"appsec_engine": "test-engine",
 		}),
-	))
+	), 0)
 }
 
 func TestEvaluateMismatches_UnresolvableClientIP_NoTimezoneSignal(t *testing.T) {
@@ -190,7 +190,7 @@ func TestEvaluateMismatches_UnresolvableClientIP_NoTimezoneSignal(t *testing.T) 
 	metrics.AppsecFingerprintMismatch.Reset()
 
 	w := makeRuntime()
-	httpReq, err := http.NewRequest("GET", "http://x/", nil)
+	httpReq, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	state := &AppsecRequestState{Fingerprint: fpEuropeParisCDP(t)}
@@ -213,7 +213,7 @@ func TestEvaluateMismatches_EmptyReport_NoObservability(t *testing.T) {
 	metrics.AppsecFingerprintMismatch.Reset()
 
 	w := makeRuntime()
-	httpReq, err := http.NewRequest("GET", "http://x/", nil)
+	httpReq, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	// Consistent fingerprint — no library signals, no custom helper fires.
@@ -254,6 +254,6 @@ func TestEvaluateMismatches_EmptyReport_NoObservability(t *testing.T) {
 			"severity":      sev,
 			"appsec_engine": "test-engine",
 		}))
-		assert.Equal(t, 0.0, got, "no counter bump expected for %q", reason)
+		assert.InDelta(t, 0.0, got, 0, "no counter bump expected for %q", reason)
 	}
 }

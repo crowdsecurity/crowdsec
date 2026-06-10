@@ -113,11 +113,9 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"AppsecCookie": func(name string) *cookie.AppsecCookie {
-			return cookie.NewAppsecCookie(name)
-		},
+		"AppsecCookie": cookie.NewAppsecCookie,
 		"SendChallenge": func() error {
-			return w.SendChallenge(state, request)
+			return w.SendChallenge(ctx, state, request)
 		},
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
@@ -137,14 +135,14 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 	}
 }
 
-func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
 		"SendChallenge": func() error {
-			return w.SendChallenge(state, request)
+			return w.SendChallenge(ctx, state, request)
 		},
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
@@ -164,13 +162,13 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *
 	}
 }
 
-func GetOnChallengeEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"req":         request.HTTPRequest,
 		"IsInBand":    request.IsInBand,
 		"fingerprint": state.Fingerprint,
 		"SendChallenge": func() error {
-			return w.SendChallenge(state, request)
+			return w.SendChallenge(ctx, state, request)
 		},
 		"SetRemediation": func(action string) error {
 			state.PendingAction = &action
@@ -293,6 +291,6 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"DumpRequest":        request.DumpRequest,
 		"SetChallengeBody":   func(body string) error { return w.SetChallengeBody(state, body) },
 		"SetChallengeCookie": func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
-		"AppsecCookie":       func(name string) *cookie.AppsecCookie { return cookie.NewAppsecCookie(name) },
+		"AppsecCookie":       cookie.NewAppsecCookie,
 	}
 }

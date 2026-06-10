@@ -1,7 +1,7 @@
 package challenge
 
 import (
-	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,7 +16,7 @@ import (
 // library path is zero — only the baked-in variant is served and no
 // background obfuscation runs.
 func TestLibraryRuntimeObfuscationDisabledByDefault(t *testing.T) {
-	rt, err := NewChallengeRuntime(context.Background())
+	rt, err := NewChallengeRuntime(t.Context())
 	require.NoError(t, err)
 	require.False(t, rt.libraryRuntimeObfuscationEnabled, "library runtime obfuscation must be disabled by default")
 
@@ -40,7 +40,7 @@ func TestLibraryRuntimeObfuscationDisabledByDefault(t *testing.T) {
 
 // TestLibraryRuntimeObfuscationEnabledTrickle asserts that when runtime
 // library obfuscation is enabled, the refresher trickles one new variant
-// per tick (rather than the old behaviour of regenerating all N variants
+// per tick (rather than the old behavior of regenerating all N variants
 // at once). The pool grows from 1 (seeded) toward the configured size
 // across multiple ticks.
 //
@@ -55,7 +55,7 @@ func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
 	// 1-second refresh interval is fine for the test: each tick still
 	// does one full-bundle obfuscation, but we only wait for the FIRST
 	// successful tick (pool goes 1 → 2) before asserting.
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		WithLibraryRuntimeObfuscationEnabled(true),
 		WithLibraryObfuscationPoolSize(3),
 		WithLibraryObfuscationRefreshInterval(1*time.Second),
@@ -64,7 +64,7 @@ func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
 
 	// Initial state: just the seeded variant.
 	rt.libraryBundlePoolMu.RLock()
-	require.Equal(t, 1, len(rt.libraryBundlePool), "pool must start at 1 (just the seeded variant)")
+	require.Len(t, rt.libraryBundlePool, 1, "pool must start at 1 (just the seeded variant)")
 	rt.libraryBundlePoolMu.RUnlock()
 
 	// Wait long enough for one tick + one full-bundle obfuscation
@@ -76,7 +76,7 @@ func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
 		rt.libraryBundlePoolMu.RUnlock()
 		if sz >= 2 {
 			// Trickle confirmed: pool grew by 1 (not by 2 or 3 in one
-			// tick). The cap behaviour is exercised by waiting further
+			// tick). The cap behavior is exercised by waiting further
 			// if you want — kept short here to bound test runtime.
 			require.LessOrEqual(t, sz, 3, "pool must respect libraryPoolSize cap")
 			return
@@ -92,9 +92,9 @@ func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
 // TestCryptoObfuscationDefaultPoolSize confirms that with no
 // WithCryptoObfuscationPoolSize option, the per-epoch dynamic module
 // cache holds exactly 1 variant per epoch — preserving the historical
-// single-variant-per-epoch behaviour.
+// single-variant-per-epoch behavior.
 func TestCryptoObfuscationDefaultPoolSize(t *testing.T) {
-	rt, err := NewChallengeRuntime(context.Background())
+	rt, err := NewChallengeRuntime(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, cryptoObfuscationPoolDefaultSize, rt.cryptoPoolSize,
 		"default crypto pool size must be cryptoObfuscationPoolDefaultSize")
@@ -121,7 +121,7 @@ func TestCryptoObfuscationPoolSize(t *testing.T) {
 	}
 
 	const poolSize = 3
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		WithCryptoObfuscationPoolSize(poolSize),
 	)
 	require.NoError(t, err)
@@ -145,14 +145,8 @@ func TestCryptoObfuscationPoolSize(t *testing.T) {
 	}
 
 	// currentDynamicModule must return one of the cached variants.
-	got, err := rt.currentDynamicModule(context.Background())
+	got, err := rt.currentDynamicModule(t.Context())
 	require.NoError(t, err)
-	found := false
-	for _, v := range variants {
-		if v == got {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(variants, got)
 	assert.True(t, found, "currentDynamicModule returned a value not in the cached pool")
 }

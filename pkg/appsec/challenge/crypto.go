@@ -95,7 +95,7 @@ func deriveKey(secret []byte) ([]byte, error) {
 // cookie key. notAfter is the unix-seconds expiration; flags carries the
 // allowlist bit set by GrantChallengeCookie (0 for normal cookies);
 // reason is the operator-supplied allowlist reason (empty for normal
-// cookies). All three are prepended to the marshalled proto BEFORE
+// cookies). All three are prepended to the marshaled proto BEFORE
 // encryption so they are both confidential (not observable from the wire)
 // and authenticated (any tamper attempt invalidates the GCM tag).
 //

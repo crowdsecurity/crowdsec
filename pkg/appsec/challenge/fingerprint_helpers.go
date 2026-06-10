@@ -233,7 +233,7 @@ func resolveVerbosity(verbosity []FingerprintLogVerbosity) FingerprintLogVerbosi
 // by the bouncer via X-Forwarded-For or equivalent) and is logged as
 // "source". bouncerIP is the connection-level peer of the appsec listener
 // (typically request.RemoteAddrNormalized) and is logged as "bouncer".
-// Both are needed: operators correlate visitor behaviour on "source", but
+// Both are needed: operators correlate visitor behavior on "source", but
 // "bouncer" is what they use to debug which gateway forwarded the request
 // (multi-WAF setups, misconfigured X-Forwarded-For chains, etc.).
 //
