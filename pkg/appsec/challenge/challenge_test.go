@@ -90,23 +90,23 @@ func TestGeneratePowPrefix(t *testing.T) {
 
 func TestDifficultyFromLevel(t *testing.T) {
 	bits, err := DifficultyFromLevel("low")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, PowDifficultyLow, bits)
 
 	bits, err = DifficultyFromLevel("MEDIUM")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, PowDifficultyMedium, bits)
 
 	bits, err = DifficultyFromLevel("High")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, PowDifficultyHigh, bits)
 
 	bits, err = DifficultyFromLevel("disabled")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, PowDifficultyDisabled, bits)
 
 	bits, err = DifficultyFromLevel("IMPOSSIBLE")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, PowDifficultyImpossible, bits)
 
 	_, err = DifficultyFromLevel("extreme")
@@ -116,19 +116,19 @@ func TestDifficultyFromLevel(t *testing.T) {
 func TestSetDifficulty(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(defaultPowDifficulty)
 
-	assert.NoError(t, c.SetDifficulty("low"))
+	require.NoError(t, c.SetDifficulty("low"))
 	assert.Equal(t, PowDifficultyLow, c.powDifficulty)
 
-	assert.NoError(t, c.SetDifficulty("MEDIUM"))
+	require.NoError(t, c.SetDifficulty("MEDIUM"))
 	assert.Equal(t, PowDifficultyMedium, c.powDifficulty)
 
-	assert.NoError(t, c.SetDifficulty("High"))
+	require.NoError(t, c.SetDifficulty("High"))
 	assert.Equal(t, PowDifficultyHigh, c.powDifficulty)
 
-	assert.NoError(t, c.SetDifficulty("impossible"))
+	require.NoError(t, c.SetDifficulty("impossible"))
 	assert.Equal(t, PowDifficultyImpossible, c.powDifficulty)
 
-	assert.Error(t, c.SetDifficulty("extreme"))
+	require.Error(t, c.SetDifficulty("extreme"))
 	assert.Equal(t, PowDifficultyImpossible, c.powDifficulty) // unchanged on error
 }
 
@@ -152,9 +152,9 @@ func TestDeriveChallengeSecret(t *testing.T) {
 	s1again := deriveChallengeSecret(signKey, r1)
 	s2 := deriveChallengeSecret(signKey, r2)
 
-	assert.Len(t, s1, 64)         // HMAC-SHA256 hex
-	assert.Equal(t, s1, s1again)  // deterministic in (signKey, r)
-	assert.NotEqual(t, s1, s2)    // distinct per-challenge r → distinct s
+	assert.Len(t, s1, 64)        // HMAC-SHA256 hex
+	assert.Equal(t, s1, s1again) // deterministic in (signKey, r)
+	assert.NotEqual(t, s1, s2)   // distinct per-challenge r → distinct s
 
 	// Matches HMAC-SHA256 under the per-epoch sign key.
 	assert.Equal(t, hmacSHA256Hex(signKey, []byte(r1)), s1)
@@ -321,7 +321,7 @@ func freshChallenge(tb testing.TB) (r, ts string) {
 	var err error
 	r, err = generateChallengeNonce()
 	require.NoError(tb, err)
-	return
+	return r, ts
 }
 
 // mustGeneratePowPrefix is the test-only wrapper around generatePowPrefix
@@ -393,7 +393,7 @@ func TestValidateChallengeResponse(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
 	ck, fpResult, err := c.ValidateChallengeResponse(req, []byte(body))
@@ -410,14 +410,14 @@ func TestValidateChallengeResponse_Replay(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 
 	// Replay the exact same body — must be rejected as already used.
-	req2, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req2, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req2.Header.Set("User-Agent", "test-agent")
 	_, _, err = c.ValidateChallengeResponse(req2, []byte(body))
 	assert.ErrorContains(t, err, "already used")
@@ -444,7 +444,7 @@ func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBodyWithFingerprint(t, c.powDifficulty, r, ts, submitted)
 
-	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 
@@ -479,7 +479,7 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 	for range 20 {
 		r, ts := freshChallenge(t)
 		body := buildValidBody(t, c.powDifficulty, r, ts)
-		req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 		req.Header.Set("User-Agent", "test-agent")
 
 		_, _, err := c.ValidateChallengeResponse(req, []byte(body))
@@ -503,7 +503,7 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 		"m":   {powMAC},
 	}.Encode()
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid proof-of-work")
 }
@@ -515,7 +515,7 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, 8, r, ts) // satisfies 8-bit PoW but not impossible
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
@@ -528,7 +528,7 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
 	body := buildValidBody(t, c.powDifficulty, r, oldTS)
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
@@ -553,7 +553,7 @@ func TestValidateChallengeResponse_TamperedR(t *testing.T) {
 		"m":   {powMAC},
 	}.Encode()
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid ticket")
 }
@@ -573,7 +573,7 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 		"m":   {"forged-mac-value"},
 	}.Encode()
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid ticket")
 }
@@ -595,7 +595,7 @@ func TestValidateChallengeResponse_InvalidSig(t *testing.T) {
 		"m":   {powMAC},
 	}.Encode()
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid HMAC")
 }
@@ -608,7 +608,7 @@ func TestValidateChallengeResponse_MissingFields(t *testing.T) {
 		"r": {"abcd"},
 	}.Encode()
 
-	req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "missing required fields")
 }
@@ -621,8 +621,8 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 	// spent-set burn. Error is the generic "invalid ticket" so the stage stays
 	// indistinguishable from a verifyChallenge failure.
 	for name, badR := range map[string]string{
-		"too short":        strings.Repeat("a", 31),
-		"too long":         strings.Repeat("a", 33),
+		"too short":         strings.Repeat("a", 31),
+		"too long":          strings.Repeat("a", 33),
 		"right len non-hex": strings.Repeat("z", 32),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -636,7 +636,7 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 				"m":   {"x"},
 			}.Encode()
 
-			req, _ := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 			_, _, err := c.ValidateChallengeResponse(req, []byte(body))
 			assert.ErrorContains(t, err, "invalid ticket")
 		})

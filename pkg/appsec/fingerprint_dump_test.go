@@ -251,12 +251,12 @@ func TestDumpFingerprint_ConcurrentAppendIsLineSafe(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < perGoroutine; i++ {
+			for range perGoroutine {
 				if path := DumpFingerprint(dir, "race", fakeFingerprint("fsid"), fakeRequest()); path == "" {
-					t.Errorf("DumpFingerprint returned empty path under contention")
+					t.Error("DumpFingerprint returned empty path under contention")
 					return
 				}
 			}

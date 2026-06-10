@@ -268,7 +268,7 @@ func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
 
-	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 
@@ -298,7 +298,7 @@ func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 	r, ts := freshChallenge(t)
 	body := buildValidBody(t, c.powDifficulty, r, ts)
 
-	req, err := http.NewRequest("POST", "http://example.com/submit", strings.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 

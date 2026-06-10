@@ -153,7 +153,7 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 
 	defer func() {
 		// We don't close the transaction here, as it would reset coraza internal state and break variable tracking.
-		err := r.AppsecRuntime.ProcessPostEvalRules(state, request)
+		err := r.AppsecRuntime.ProcessPostEvalRules(ctx, state, request)
 		if err != nil {
 			r.logger.Errorf("unable to process PostEval rules: %s", err)
 		}
@@ -274,7 +274,7 @@ func (r *AppsecRunner) ProcessInBandRules(ctx context.Context, state *appsec.App
 
 	// on_challenge runs before any WAF work: it serves PoW infrastructure paths,
 	// validates submissions, and populates state.Fingerprint from the cookie.
-	if err := r.AppsecRuntime.ProcessOnChallengeRules(state, request); err != nil {
+	if err := r.AppsecRuntime.ProcessOnChallengeRules(ctx, state, request); err != nil {
 		r.logger.Errorf("unable to process OnChallenge rules: %s", err)
 	}
 

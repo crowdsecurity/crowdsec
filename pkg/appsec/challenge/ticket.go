@@ -91,7 +91,7 @@ func generatePowPrefix() (string, error) {
 
 // computePowMAC authenticates a PoW salt as server-generated and bound to a
 // specific challenge (`r`) + timestamp, signed with the per-epoch key — so a
-// client can't substitute a favourable salt.
+// client can't substitute a favorable salt.
 func (c *ChallengeRuntime) computePowMAC(salt, r, ts string) string {
 	epoch := c.epochForTimestamp(ts)
 	signKey, ok := c.keys.SignKey(epoch)

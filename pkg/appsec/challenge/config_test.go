@@ -1,7 +1,6 @@
 package challenge
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -11,19 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptrStr(s string) *string             { return &s }
-func ptrInt(i int) *int                   { return &i }
-func ptrBool(b bool) *bool                { return &b }
-func ptrDur(d time.Duration) *time.Duration { return &d }
-
 // TestConfigMergeFromNilReceiverAndOther covers the two no-op edge cases:
 // merging into a nil receiver and merging a nil source. Both must not panic
 // and must not change anything.
 func TestConfigMergeFromNilReceiverAndOther(t *testing.T) {
 	var nilCfg *Config
-	require.NotPanics(t, func() { nilCfg.MergeFrom(&Config{CookieTTL: ptrDur(time.Hour)}) })
+	require.NotPanics(t, func() { nilCfg.MergeFrom(&Config{CookieTTL: new(time.Hour)}) })
 
-	dst := &Config{CookieTTL: ptrDur(time.Hour)}
+	dst := &Config{CookieTTL: new(time.Hour)}
 	dst.MergeFrom(nil)
 	require.NotNil(t, dst.CookieTTL)
 	assert.Equal(t, time.Hour, *dst.CookieTTL, "nil source must leave existing fields untouched")
@@ -35,23 +29,23 @@ func TestConfigMergeFromNilReceiverAndOther(t *testing.T) {
 // configs each contribute a disjoint subset without one wiping the others.
 func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 	dst := &Config{
-		MasterSecret:              ptrStr("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-		KeyRotationInterval:       ptrDur(5 * time.Minute),
-		MaxLiveEpochs:             ptrInt(3),
-		CookieTTL:                 ptrDur(12 * time.Hour),
-		CryptoObfuscationPoolSize: ptrInt(1),
+		MasterSecret:              new("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+		KeyRotationInterval:       new(5 * time.Minute),
+		MaxLiveEpochs:             new(3),
+		CookieTTL:                 new(12 * time.Hour),
+		CryptoObfuscationPoolSize: new(1),
 	}
 
 	src := &Config{
 		// Override CookieTTL and CryptoObfuscationPoolSize; leave others
 		// nil so the dst values must survive.
-		CookieTTL:                 ptrDur(1 * time.Hour),
-		CryptoObfuscationPoolSize: ptrInt(4),
+		CookieTTL:                 new(1 * time.Hour),
+		CryptoObfuscationPoolSize: new(4),
 		// New fields not present on dst.
-		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
-		LibraryObfuscationPoolSize:        ptrInt(2),
-		LibraryObfuscationRefreshInterval: ptrDur(30 * time.Minute),
-		SpentSetMaxEntries:                ptrInt(500_000),
+		LibraryRuntimeObfuscationEnabled:  new(true),
+		LibraryObfuscationPoolSize:        new(2),
+		LibraryObfuscationRefreshInterval: new(30 * time.Minute),
+		SpentSetMaxEntries:                new(500_000),
 	}
 
 	dst.MergeFrom(src)
@@ -93,22 +87,22 @@ func TestBuildOptionsNilOrEmptyConfig(t *testing.T) {
 // guard for "appsec-config values reach the running challenge engine".
 func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 	cfg := &Config{
-		MasterSecret:                      ptrStr("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-		KeyRotationInterval:               ptrDur(3 * time.Minute),
-		MaxLiveEpochs:                     ptrInt(4),
-		CookieTTL:                         ptrDur(2 * time.Hour),
-		CryptoObfuscationPoolSize:         ptrInt(2),
-		LibraryRuntimeObfuscationEnabled:  ptrBool(true),
-		LibraryObfuscationPoolSize:        ptrInt(2),
-		LibraryObfuscationRefreshInterval: ptrDur(45 * time.Minute),
-		SpentSetMaxEntries:                ptrInt(250_000),
+		MasterSecret:                      new("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+		KeyRotationInterval:               new(3 * time.Minute),
+		MaxLiveEpochs:                     new(4),
+		CookieTTL:                         new(2 * time.Hour),
+		CryptoObfuscationPoolSize:         new(2),
+		LibraryRuntimeObfuscationEnabled:  new(true),
+		LibraryObfuscationPoolSize:        new(2),
+		LibraryObfuscationRefreshInterval: new(45 * time.Minute),
+		SpentSetMaxEntries:                new(250_000),
 	}
 
 	opts, err := BuildOptions(cfg, nil)
 	require.NoError(t, err)
 	require.Len(t, opts, 10, "every populated field + the component logger must emit an option")
 
-	rt, err := NewChallengeRuntime(context.Background(), opts...)
+	rt, err := NewChallengeRuntime(t.Context(), opts...)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2*time.Hour, rt.cookieTTL, "CookieTTL must reach the runtime")
@@ -125,7 +119,7 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 // bundle, so a larger ceiling would leave empty slots forever; clamping
 // avoids ambiguity in metrics and reflects reality.
 func TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled(t *testing.T) {
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		// Runtime obfuscation deliberately NOT enabled.
 		WithLibraryObfuscationPoolSize(5),
 	)
@@ -148,7 +142,7 @@ func TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled(t *testing.T) {
 // configured pool size must propagate as-is so the refresher has room
 // to grow into.
 func TestLibraryPoolSizeHonoredWhenRuntimeObfuscationEnabled(t *testing.T) {
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		WithLibraryRuntimeObfuscationEnabled(true),
 		WithLibraryObfuscationPoolSize(3),
 	)
@@ -164,7 +158,7 @@ func TestLibraryPoolSizeHonoredWhenRuntimeObfuscationEnabled(t *testing.T) {
 // random secret — that would be a footgun in distributed deployments.
 func TestBuildOptionsInvalidMasterSecret(t *testing.T) {
 	cfg := &Config{
-		MasterSecret: ptrStr("too-short"),
+		MasterSecret: new("too-short"),
 	}
 	_, err := BuildOptions(cfg, nil)
 	require.Error(t, err)
@@ -176,7 +170,7 @@ func TestBuildOptionsInvalidMasterSecret(t *testing.T) {
 // generated cookie's Max-Age reflects the override rather than the
 // runtime-global cookie_ttl. Nil falls back to the runtime default.
 func TestSealAllowlistCookieTTLOverride(t *testing.T) {
-	rt, err := NewChallengeRuntime(context.Background(),
+	rt, err := NewChallengeRuntime(t.Context(),
 		WithMasterSecret([]byte("0123456789abcdef0123456789abcdef")),
 		WithCookieTTL(12*time.Hour),
 	)

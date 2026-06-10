@@ -128,7 +128,7 @@ func TestAcceptLanguageMismatch(t *testing.T) {
 			fp := &FingerprintData{}
 			fp.Signals.Locale.Languages.Language = tc.fpLang
 
-			req, err := http.NewRequest("GET", "http://x/", nil)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 			require.NoError(t, err)
 			if tc.header != "" {
 				req.Header.Set("Accept-Language", tc.header)
@@ -205,13 +205,13 @@ func TestMismatchReport_NilReceiver(t *testing.T) {
 	assert.Equal(t, 0, r.High())
 	assert.Equal(t, 0, r.Medium())
 	assert.Equal(t, 0, r.Low())
-	assert.Equal(t, "", r.String())
+	assert.Empty(t, r.String())
 }
 
 func TestComputeMismatchReport_AndroidOnLinuxSample(t *testing.T) {
 	fp := mustUnmarshal(t, androidOnLinuxSample)
 
-	req, err := http.NewRequest("GET", "http://x/", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 
 	// Request originates from France; timezone is also Europe/Paris, so
@@ -252,7 +252,7 @@ func TestComputeMismatchReport_BaselineConsistent(t *testing.T) {
     }`
 	fp := mustUnmarshal(t, raw)
 
-	req, err := http.NewRequest("GET", "http://x/", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
@@ -279,7 +279,7 @@ func TestComputeMismatchReport_AcceptLanguageOnly(t *testing.T) {
     }`
 	fp := mustUnmarshal(t, raw)
 
-	req, err := http.NewRequest("GET", "http://x/", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 
@@ -309,7 +309,7 @@ func TestComputeMismatchReport_TimezoneCountryOnly(t *testing.T) {
     }`
 	fp := mustUnmarshal(t, raw)
 
-	req, err := http.NewRequest("GET", "http://x/", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://x/", http.NoBody)
 	require.NoError(t, err)
 	req.Header.Set("Accept-Language", "en-US")
 
@@ -330,5 +330,5 @@ func TestSeverityFor(t *testing.T) {
 	assert.Equal(t, SeverityHigh, SeverityFor(ReasonCDP))
 	assert.Equal(t, SeverityMedium, SeverityFor(ReasonAcceptLanguage))
 	assert.Equal(t, SeverityLow, SeverityFor(ReasonTimezoneCountry))
-	assert.Equal(t, "", SeverityFor("not_a_reason"))
+	assert.Empty(t, SeverityFor("not_a_reason"))
 }

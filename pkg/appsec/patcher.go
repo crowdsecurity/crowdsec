@@ -19,7 +19,7 @@ var challengeRuntimeCallees = map[string]struct{}{
 	"LogAccepted":          {},
 }
 
-func (p *appsecExprPatcher) Visit(node *ast.Node) {
+func (p *appsecExprPatcher) Visit(node *ast.Node) { //nolint:gocritic // signature fixed by expr-lang ast.Visitor interface
 	if n, ok := (*node).(*ast.CallNode); ok {
 		if _, needs := challengeRuntimeCallees[n.Callee.String()]; needs {
 			p.NeedWASMVM = true

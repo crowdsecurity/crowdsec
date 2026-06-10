@@ -1453,7 +1453,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				URI:        challenge.ChallengeSubmitPath,
 				HTTPRequest: func() *http.Request {
 					u, _ := url.Parse(challenge.ChallengeSubmitPath)
-					return &http.Request{Host: "example.com", URL: u, Method: "POST"}
+					return &http.Request{Host: "example.com", URL: u, Method: http.MethodPost}
 				}(),
 			},
 			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
@@ -1498,7 +1498,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 		},
 		{
 			// Same allowlisted IP, but inside a /24 CIDR entry (5.4.4.0/24) —
-			// confirms range matches are honoured the same way as exact IPs.
+			// confirms range matches are honored the same way as exact IPs.
 			name:             "allowlisted CIDR: pre_eval SendChallenge() is suppressed",
 			expected_load_ok: true,
 			pre_eval: []appsec.Hook{
@@ -1526,7 +1526,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			// WAF processing.
 			name:             "allowlisted IP: PoW worker path is not served",
 			expected_load_ok: true,
-			// Reference SendChallenge() so ChallengeRuntime initialises.
+			// Reference SendChallenge() so ChallengeRuntime initializes.
 			on_challenge: []appsec.Hook{
 				{Filter: "false", Apply: []string{"SendChallenge()"}},
 			},

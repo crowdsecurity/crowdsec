@@ -142,11 +142,11 @@ func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPa
 	case hookPreEval:
 		env = GetPreEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookPostEval:
-		env = GetPostEvalEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetPostEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
 		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	case hookOnChallenge:
-		env = GetOnChallengeEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetOnChallengeEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnChallengeSubmit:
 		env = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	}
@@ -755,7 +755,8 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 	case BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation:
 		// those are the officially supported remediation(s)
 	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation)
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s,%s] ensure bouncer compatibility!",
+			wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation, ChallengeRemediation)
 	}
 
 	ret.Name = wc.Name
@@ -969,7 +970,7 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, req
 // fingerprint to inspect — i.e. on a valid submission or when a valid cookie
 // was presented. Requests with no cookie / invalid cookie / invalid submission
 // skip user hooks entirely (there's nothing to evaluate).
-func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState, request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
 	if w.ChallengeRuntime == nil {
 		return nil
 	}
@@ -1059,15 +1060,15 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(state *AppsecRequestState,
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(w, state, request), "on_challenge", nil)
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", nil)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
 	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(ctx, w, state, request), request)
 }
 
-func (w *AppsecRuntimeConfig) ProcessPostEvalRules(state *AppsecRequestState, request *ParsedRequest) error {
-	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(w, state, request), request)
+func (w *AppsecRuntimeConfig) ProcessPostEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
+	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(ctx, w, state, request), request)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
@@ -1255,17 +1256,27 @@ func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name
 }
 
 func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, code int, body string, headers map[string]string, cookie *cookie.AppsecCookie) error {
-	w.SetAction(state, ChallengeRemediation)
-	w.SetHTTPCode(state, code)
+	if err := w.SetAction(state, ChallengeRemediation); err != nil {
+		return err
+	}
+	if err := w.SetHTTPCode(state, code); err != nil {
+		return err
+	}
 	// Initial response state defaults BouncerHTTPResponseCode to the "passed" code (see InitRequestState);
 	// override it here so the bouncer gets the blocked code while the visitor still receives the challenge page.
 	state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
-	w.SetChallengeBody(state, body)
+	if err := w.SetChallengeBody(state, body); err != nil {
+		return err
+	}
 	for name, value := range headers {
-		w.SetChallengeHeader(state, name, value)
+		if err := w.SetChallengeHeader(state, name, value); err != nil {
+			return err
+		}
 	}
 	if cookie != nil {
-		w.SetChallengeCookie(state, *cookie)
+		if err := w.SetChallengeCookie(state, *cookie); err != nil {
+			return err
+		}
 	}
 	state.RequireChallenge = true
 	return nil
@@ -1274,14 +1285,14 @@ func (w *AppsecRuntimeConfig) setChallengeResponse(state *AppsecRequestState, co
 // SetChallengeDifficulty sets the default PoW difficulty on the runtime (used from on_load).
 func (w *AppsecRuntimeConfig) SetChallengeDifficulty(level string) error {
 	if w.ChallengeRuntime == nil {
-		return fmt.Errorf("challenge runtime not initialized")
+		return errors.New("challenge runtime not initialized")
 	}
 
 	return w.ChallengeRuntime.SetDifficulty(level)
 }
 
 // SetChallengeDifficultyPerRequest sets a per-request PoW difficulty override (used from pre_eval/post_eval).
-func (w *AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequestState, level string) error {
+func (*AppsecRuntimeConfig) SetChallengeDifficultyPerRequest(state *AppsecRequestState, level string) error {
 	bits, err := challenge.DifficultyFromLevel(level)
 	if err != nil {
 		return err
@@ -1369,9 +1380,9 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 	}
 }
 
-func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
 	if w.ChallengeRuntime == nil {
-		return fmt.Errorf("challenge runtime not initialized")
+		return errors.New("challenge runtime not initialized")
 	}
 
 	// GrantChallengeCookie earlier in the same request already minted an
@@ -1394,7 +1405,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 
 	w.Logger.Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
 
-	challengePage, err := w.ChallengeRuntime.GetChallengePage(request.HTTPRequest.UserAgent(), target)
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(ctx, request.HTTPRequest.UserAgent(), target)
 	if err != nil {
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
@@ -1419,7 +1430,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(state *AppsecRequestState, request *
 // inspected only at submit time).
 //
 // The reason string is logged server-side and NOT echoed to the client.
-func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason string) error {
+func (*AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		reason = "submission rejected by on_challenge_submit"
@@ -1438,7 +1449,7 @@ func (w *AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason
 // runtime cookie_ttl. Returns ErrAllowlistReasonSize if reason is too long.
 func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) (*cookie.AppsecCookie, error) {
 	if w.ChallengeRuntime == nil {
-		return nil, fmt.Errorf("challenge runtime not initialized")
+		return nil, errors.New("challenge runtime not initialized")
 	}
 
 	ck, err := w.ChallengeRuntime.SealAllowlistCookie(request.HTTPRequest, reason, ttlOverride)
@@ -1458,7 +1469,7 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 // GrantChallengeCookie mints an allowlist-bypass cookie and issues an HTTP 307
 // redirect carrying it back to the visitor. Used from pre_eval/post_eval.
 //
-// Why a 307 and not a silent allow: the bouncer only serialises cookies on a
+// Why a 307 and not a silent allow: the bouncer only serializes cookies on a
 // ChallengeRemediation response (see GenerateResponse), so a plain allow drops
 // the Set-Cookie. The redirect to the same URL preserves method+body and
 // bounces the visitor back through the WAF with the cookie present, so
@@ -1494,7 +1505,7 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 // to the in-flight challenge-submit envelope. Used from on_challenge_submit,
 // where the client awaits the submit JSON envelope and a redirect would break
 // its state machine (the envelope is already a ChallengeRemediation, so
-// UserCookies is serialised). Same precedence/ttl/error semantics as
+// UserCookies is serialized). Same precedence/ttl/error semantics as
 // mintAllowlistCookie.
 func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestState, request *ParsedRequest, reason string, ttlOverride *time.Duration) error {
 	ck, err := w.mintAllowlistCookie(state, request, reason, ttlOverride)
@@ -1502,7 +1513,9 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 		return err
 	}
 
-	w.SetChallengeCookie(state, *ck)
+	if err := w.SetChallengeCookie(state, *ck); err != nil {
+		return err
+	}
 
 	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
 

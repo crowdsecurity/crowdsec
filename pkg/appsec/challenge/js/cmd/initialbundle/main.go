@@ -5,10 +5,10 @@
 //
 // Pipeline:
 //
-//   fpscanner/bundle.js  ──substitute placeholders──▶  source JS
-//   obfuscate/index.wasm.gz ──decompress──▶ obfuscator WASM
-//   wazero(obfuscator).Run(stdin=source) ──▶ obfuscated JS
-//   gzip ──▶ ../initial_bundle.js.gz
+//	fpscanner/bundle.js  ──substitute placeholders──▶  source JS
+//	obfuscate/index.wasm.gz ──decompress──▶ obfuscator WASM
+//	wazero(obfuscator).Run(stdin=source) ──▶ obfuscated JS
+//	gzip ──▶ ../initial_bundle.js.gz
 //
 // The output `initial_bundle.js.gz` is committed and embedded via go:embed in
 // pkg/appsec/challenge/challenge.go.
@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -84,8 +85,8 @@ func run() error {
 		return fmt.Errorf("obfuscate: %w", err)
 	}
 
-	if len(obfuscated) == 0 {
-		return fmt.Errorf("obfuscator produced empty output")
+	if obfuscated == "" {
+		return errors.New("obfuscator produced empty output")
 	}
 
 	if err := writeGzip(outputPath, obfuscated); err != nil {

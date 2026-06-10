@@ -1,7 +1,6 @@
 package appsecacquisition
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -24,7 +23,7 @@ var (
 func getSharedChallengeRuntime(t *testing.T) *challenge.ChallengeRuntime {
 	t.Helper()
 	sharedChallengeRuntimeOnce.Do(func() {
-		sharedChallengeRuntimeInst, sharedChallengeRuntimeErr = challenge.NewChallengeRuntime(context.Background())
+		sharedChallengeRuntimeInst, sharedChallengeRuntimeErr = challenge.NewChallengeRuntime(t.Context())
 	})
 	require.NoError(t, sharedChallengeRuntimeErr)
 	return sharedChallengeRuntimeInst

@@ -58,7 +58,7 @@ func (fi *FlexInt) UnmarshalJSON(data []byte) error {
 	parsed, err := strconv.Atoi(s)
 	if err != nil {
 		*fi = 0
-		return nil
+		return nil //nolint:nilerr // tolerant by design: non-numeric strings (JS-side error messages) default to 0
 	}
 
 	*fi = FlexInt(parsed)

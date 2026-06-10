@@ -10,7 +10,7 @@
 // keeps a small pool of cryptoPoolSize variants per epoch — each
 // variant is an independent obfuscation of the same input. Default
 // pool size is 1, preserving the historical single-variant-per-epoch
-// behaviour; operators that want per-visitor variance for the
+// behavior; operators that want per-visitor variance for the
 // sensitive code can raise WithCryptoObfuscationPoolSize.
 //
 // For the **non-sensitive** library bundle (public fpscanner / PoW
@@ -41,14 +41,7 @@ var dynamicModuleTemplate string
 // boundary), floored at 1s so very small rotation intervals don't make the
 // ticker degenerate into a tight loop.
 func (c *ChallengeRuntime) preWarmLeadTime() time.Duration {
-	lead := c.keys.rotationInterval / 4
-	if lead > 30*time.Second {
-		lead = 30 * time.Second
-	}
-	if lead < time.Second {
-		lead = time.Second
-	}
-	return lead
+	return max(min(c.keys.rotationInterval/4, 30*time.Second), time.Second)
 }
 
 // dynamicModulePreWarmer runs in the background and obfuscates the next
@@ -150,14 +143,11 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 		input := rendered.String()
 		inputSize := len(input)
 
-		poolSize := c.cryptoPoolSize
-		if poolSize < 1 {
-			poolSize = 1
-		}
+		poolSize := max(c.cryptoPoolSize, 1)
 
 		variants := make([]string, 0, poolSize)
 		batchStart := time.Now()
-		for i := 0; i < poolSize; i++ {
+		for i := range poolSize {
 			obfuscateStart := time.Now()
 			obfuscated, err := c.ObfuscateJS(ctx, input)
 			obfuscateDuration := time.Since(obfuscateStart)

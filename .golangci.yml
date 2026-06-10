@@ -337,6 +337,10 @@ linters:
       # A wildcard `*` can use as a struct name (ex: `*.MethodName`).
       exclusions:
         - "HCLogAdapter.SetLevel"
+        # Unmarshal methods must have a pointer receiver by nature; getters on
+        # the same type legitimately use value receivers (same rationale as the
+        # built-in Marshal* exclusions, which don't cover Unmarshal*).
+        - "*.UnmarshalJSON"
 
     revive:
       severity: error
