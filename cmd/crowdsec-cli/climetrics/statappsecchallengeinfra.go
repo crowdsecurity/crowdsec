@@ -18,7 +18,7 @@ type statAppsecChallengeInfra map[string]int
 
 func (statAppsecChallengeInfra) Description() (string, string) {
 	return "Bot Detection Infrastructure Metrics",
-		`Tracks the internal upkeep of the AppSec challenge runtime: per-epoch key regeneration, JS re-obfuscation and cache eviction.`
+		`Tracks the internal upkeep of the AppSec challenge runtime: signing-key rotation, JS re-obfuscation and cache eviction.`
 }
 
 func (s statAppsecChallengeInfra) Process(metric string, val int) {
@@ -31,8 +31,8 @@ var infraRows = []struct {
 	key   string
 	label string
 }{
-	{"kepoch_generated", "K_epoch regenerated"},
-	{"kepoch_evicted", "K_epoch evicted"},
+	{"kepoch_generated", "Signing key regenerated"},
+	{"kepoch_evicted", "Signing key evicted"},
 	{"reobfuscation_dynamic", "Re-obfuscation (dynamic module)"},
 	{"reobfuscation_library", "Re-obfuscation (library bundle)"},
 	{"dynamic_module_evicted", "Dynamic module evicted"},
