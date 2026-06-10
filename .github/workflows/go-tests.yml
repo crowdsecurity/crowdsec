@@ -150,6 +150,7 @@ jobs:
           mkdir -p $HOME/.javy
           gzip -d javy-x86_64-linux-v${JAVY_VERSION}.gz
           mv javy-x86_64-linux-v${JAVY_VERSION} $HOME/.javy/javy
+          chmod +x $HOME/.javy/javy
           popd
           export PATH="$HOME/.protoc/bin:$HOME/.javy/:$PATH"
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
