@@ -24,21 +24,22 @@ type metricStore map[string]metricSection
 
 func NewMetricStore() metricStore {
 	return metricStore{
-		"acquisition":    statAcquis{},
-		"alerts":         statAlert{},
-		"bouncers":       &statBouncer{},
-		"appsec-engine":    statAppsecEngine{},
-		"appsec-rule":      statAppsecRule{},
-		"appsec-challenge": newStatAppsecChallenge(),
-		"decisions":      statDecision{},
-		"lapi":           statLapi{},
-		"lapi-bouncer":   statLapiBouncer{},
-		"lapi-decisions": statLapiDecision{},
-		"lapi-machine":   statLapiMachine{},
-		"parsers":        statParser{},
-		"scenarios":      statBucket{},
-		"stash":          statStash{},
-		"whitelists":     statWhitelist{},
+		"acquisition":            statAcquis{},
+		"alerts":                 statAlert{},
+		"bouncers":               &statBouncer{},
+		"appsec-engine":          statAppsecEngine{},
+		"appsec-rule":            statAppsecRule{},
+		"appsec-challenge":       newStatAppsecChallenge(),
+		"appsec-challenge-infra": statAppsecChallengeInfra{},
+		"decisions":              statDecision{},
+		"lapi":                   statLapi{},
+		"lapi-bouncer":           statLapiBouncer{},
+		"lapi-decisions":         statLapiDecision{},
+		"lapi-machine":           statLapiMachine{},
+		"parsers":                statParser{},
+		"scenarios":              statBucket{},
+		"stash":                  statStash{},
+		"whitelists":             statWhitelist{},
 	}
 }
 
@@ -64,6 +65,7 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
 	mAppsecChallenge := ms["appsec-challenge"].(*statAppsecChallenge)
+	mAppsecChallengeInfra := ms["appsec-challenge-infra"].(statAppsecChallengeInfra)
 	mDecision := ms["decisions"].(statDecision)
 	mLapi := ms["lapi"].(statLapi)
 	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
@@ -82,39 +84,43 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 		name, ok := p.Labels["name"]
 		if !ok {
 			log.Debugf("no name in Metric %v", p.Labels)
-	}
-
-	source, ok := p.Labels["source"]
-	if !ok {
-		log.Debugf("no source in Metric %v for %s", p.Labels, p.Name)
-	} else {
-		if srctype, ok := p.Labels["type"]; ok {
-			source = srctype + ":" + source
 		}
-	}
 
-	machine := p.Labels["machine"]
-	bouncer := p.Labels["bouncer"]
+		source, ok := p.Labels["source"]
+		if !ok {
+			log.Debugf("no source in Metric %v for %s", p.Labels, p.Name)
+		} else {
+			if srctype, ok := p.Labels["type"]; ok {
+				source = srctype + ":" + source
+			}
+		}
 
-	route := p.Labels["route"]
-	method := p.Labels["method"]
+		machine := p.Labels["machine"]
+		bouncer := p.Labels["bouncer"]
 
-	reason := p.Labels["reason"]
-	origin := p.Labels["origin"]
-	action := p.Labels["action"]
+		route := p.Labels["route"]
+		method := p.Labels["method"]
 
-	appsecEngine := p.Labels["appsec_engine"]
-	appsecRule := p.Labels["rule_name"]
+		reason := p.Labels["reason"]
+		origin := p.Labels["origin"]
+		action := p.Labels["action"]
 
-	// kind is carried by the appsec-challenge accepted/rejected counters
-	// to distinguish sub-outcomes; empty for every other metric.
-	kind := p.Labels["kind"]
+		appsecEngine := p.Labels["appsec_engine"]
+		appsecRule := p.Labels["rule_name"]
 
-	mtype := p.Labels["type"]
+		// kind is carried by the appsec-challenge accepted/rejected counters
+		// to distinguish sub-outcomes; empty for every other metric.
+		kind := p.Labels["kind"]
 
-	ival := int(p.Value)
+		// bundle is carried by the challenge re-obfuscation counter
+		// (dynamic vs library); empty for every other metric.
+		bundle := p.Labels["bundle"]
 
-	switch p.Name {
+		mtype := p.Labels["type"]
+
+		ival := int(p.Value)
+
+		switch p.Name {
 		//
 		// buckets
 		//
@@ -215,6 +221,22 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 				mAppsecChallenge.Process(appsecEngine, "rejected_cookie", ival)
 				mAppsecChallenge.ProcessReason(appsecEngine, "cookie", reason, ival)
 			}
+		//
+		// bot detection / challenge infrastructure (process-global, no engine label)
+		//
+		case metrics.AppsecChallengeKepochGeneratedMetricName:
+			mAppsecChallengeInfra.Process("kepoch_generated", ival)
+		case metrics.AppsecChallengeKepochEvictedMetricName:
+			mAppsecChallengeInfra.Process("kepoch_evicted", ival)
+		case metrics.AppsecChallengeReobfuscationMetricName:
+			switch bundle {
+			case "dynamic":
+				mAppsecChallengeInfra.Process("reobfuscation_dynamic", ival)
+			case "library":
+				mAppsecChallengeInfra.Process("reobfuscation_library", ival)
+			}
+		case metrics.AppsecChallengeDynamicModuleEvictedMetricName:
+			mAppsecChallengeInfra.Process("dynamic_module_evicted", ival)
 		default:
 			log.Debugf("unknown: %+v", p.Name)
 			continue

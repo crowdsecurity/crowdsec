@@ -148,3 +148,48 @@ var AppsecValidationFailedCounter = prometheus.NewCounterVec(
 	},
 	[]string{"source", "appsec_engine", "schema_ref", "reason"},
 )
+
+// Bot detection / WAF challenge infrastructure counters. These track the
+// internal upkeep of the challenge runtime rather than visitor behaviour.
+
+const AppsecChallengeKepochGeneratedMetricName = "cs_appsec_challenge_kepoch_generated_total"
+
+var AppsecChallengeKepochGenerated = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeKepochGeneratedMetricName,
+		Help: "Total per-epoch challenge signing keys derived (k_epoch regenerations).",
+	},
+)
+
+const AppsecChallengeKepochEvictedMetricName = "cs_appsec_challenge_kepoch_evicted_total"
+
+var AppsecChallengeKepochEvicted = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeKepochEvictedMetricName,
+		Help: "Total per-epoch challenge signing keys evicted from the keyring cache (generated minus evicted is the live cache size).",
+	},
+)
+
+const AppsecChallengeReobfuscationMetricName = "cs_appsec_challenge_reobfuscation_total"
+
+// AppsecChallengeReobfuscation counts JS obfuscation passes by bundle:
+// "dynamic" for the sensitive per-epoch sign-key module (one pass per
+// pool variant per new epoch) and "library" for the public static bundle
+// (opt-in runtime re-obfuscation). Each pass is CPU-expensive, so this is
+// the headline signal for obfuscator load.
+var AppsecChallengeReobfuscation = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeReobfuscationMetricName,
+		Help: "Total JS obfuscation passes run by the challenge runtime, by bundle (dynamic=per-epoch sign-key module, library=static public bundle).",
+	},
+	[]string{"bundle"},
+)
+
+const AppsecChallengeDynamicModuleEvictedMetricName = "cs_appsec_challenge_dynamic_module_evicted_total"
+
+var AppsecChallengeDynamicModuleEvicted = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeDynamicModuleEvictedMetricName,
+		Help: "Total per-epoch dynamic-module cache entries evicted once their epoch left the keyring live window.",
+	},
+)
