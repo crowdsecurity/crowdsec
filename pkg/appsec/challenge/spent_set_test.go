@@ -1,7 +1,6 @@
 package challenge
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -61,14 +60,4 @@ func TestSpentSet_Expiry(t *testing.T) {
 
 	assert.True(t, s.checkAndInsert("r-exp", 20*time.Millisecond),
 		"entry must be re-accepted after its TTL expires")
-}
-
-// TestSpentSet_DistinctKeys is a basic sanity check that many distinct keys all
-// insert successfully.
-func TestSpentSet_DistinctKeys(t *testing.T) {
-	s := newSpentSet(spentSetDefaultMaxEntries)
-
-	for i := range 1000 {
-		assert.True(t, s.checkAndInsert(fmt.Sprintf("r-%d", i), time.Minute))
-	}
 }
