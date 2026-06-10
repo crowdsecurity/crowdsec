@@ -108,7 +108,7 @@ const AppsecChallengeAcceptedMetricName = "cs_appsec_challenge_accepted_total"
 // AppsecChallengeAccepted carries an extra `reason` label so operator-driven
 // grants (kind="granted") can be split by the GrantChallengeCookie reason.
 // For kind="solved" the label is empty: regular submissions have no
-// per-issue reason and we don't want to invent one.
+// per-issue reason.
 var AppsecChallengeAccepted = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: AppsecChallengeAcceptedMetricName,
@@ -175,9 +175,7 @@ var AppsecChallengeKepochEvicted = prometheus.NewCounter(
 const AppsecChallengeReobfuscationMetricName = "cs_appsec_challenge_reobfuscation_total"
 
 // Each obfuscation pass is CPU-expensive (~1 min for the library bundle),
-// so this is the headline signal for obfuscator load. dynamic re-obfuscates
-// once per pool variant per epoch rotation; library only when runtime
-// obfuscation is opted in.
+// so this is the headline signal for obfuscator load.
 var AppsecChallengeReobfuscation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: AppsecChallengeReobfuscationMetricName,

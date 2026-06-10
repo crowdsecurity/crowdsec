@@ -1556,8 +1556,7 @@ func (w *AppsecRuntimeConfig) mintAllowlistCookie(state *AppsecRequestState, req
 
 	// One increment here covers both GrantChallengeCookie (307 redirect from
 	// pre_eval/post_eval) and GrantAllowlistCookieInline (inline on the
-	// challenge-submit response). Both delegate to this function, so this is
-	// the single chokepoint that can't double-count or miss future helpers.
+	// challenge-submit response). Both delegate to this function.
 	metrics.AppsecChallengeAccepted.With(prometheus.Labels{
 		"source":        request.RemoteAddrNormalized,
 		"appsec_engine": request.AppsecEngine,

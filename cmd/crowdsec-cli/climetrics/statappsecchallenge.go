@@ -46,8 +46,7 @@ func (s *statAppsecChallenge) Process(appsecEngine, metric string, val int) {
 }
 
 // ProcessReason records a per-kind/reason datapoint. Empty reasons are
-// dropped: the second table would otherwise carry a noisy "" row for every
-// solved increment, which has no per-issue reason by design.
+// dropped.
 func (s *statAppsecChallenge) ProcessReason(appsecEngine, kind, reason string, val int) {
 	if reason == "" {
 		return
@@ -88,9 +87,7 @@ func (s *statAppsecChallenge) Table(out io.Writer, wantColor string, noUnit bool
 	// (GrantChallengeCookie / RejectSubmission) and bounded-vocabulary
 	// (protocol / cookie) reasons. One table per outcome (accepted /
 	// rejected) so the kind dimension only needs to show up where it
-	// actually varies. Suppressed when there is nothing to show, even
-	// with --show-empty: operators that asked for the section already
-	// saw an empty funnel above; an extra empty table is noise.
+	// actually varies.
 	s.renderAccepted(out, wantColor, noUnit)
 	s.renderRejected(out, wantColor, noUnit)
 }
