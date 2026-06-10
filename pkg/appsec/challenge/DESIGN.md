@@ -590,10 +590,14 @@ out unless you split by package.
   plain JS source before obfuscation. That's intentional — the obfuscator's
   string-array transforms encode it, and per-epoch rotation bounds the
   exposure. Note that with per-challenge single-use tickets the obfuscation is
-  **no longer load-bearing**: extracting `K_epoch` lets an attacker forge at
-  most one PoW-solved submission per challenge they legitimately request, since
-  replay is killed by the spent-set. Raising the JS reverse-engineering bar is
-  tracked separately.
+  **no longer load-bearing**: extracting `K_epoch` lets an attacker self-mint
+  valid submissions *without ever requesting a challenge page* — issuance is
+  stateless, so the server records no issued `r`, and the attacker can pick a
+  fresh `r` each time. Each forged submission still costs one PoW solve and is
+  usable once before the spent-set burns it. The real bound is therefore **one
+  PoW solve per forged submission, for the lifetime of the live epoch window** —
+  no worse than the pre-PR ticket scheme. Raising the JS reverse-engineering bar
+  is tracked separately.
 - The fingerprint payload `f` is "encrypted" with a repeating-key XOR
   (`deriveFingerprintObfKey` / `deobfuscateFingerprint`). This is **deliberately
   light obfuscation, not confidentiality**: a known-plaintext attack recovers
