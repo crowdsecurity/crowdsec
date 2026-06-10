@@ -30,6 +30,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 //go:embed dynamic_module.js.tmpl
@@ -158,6 +160,8 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 				return nil, fmt.Errorf("obfuscator produced empty dynamic module output (variant %d/%d)", i+1, poolSize)
 			}
 
+			metrics.AppsecChallengeReobfuscation.WithLabelValues("dynamic").Inc()
+
 			c.log().WithFields(log.Fields{
 				"epoch":        epoch,
 				"variant":      i,
@@ -183,13 +187,19 @@ func (c *ChallengeRuntime) dynamicModuleForEpoch(ctx context.Context, epoch int6
 		for _, e := range c.keys.LiveEpochs() {
 			live[e] = true
 		}
+		evicted := 0
 		for e := range c.dynamicModuleCache {
 			if !live[e] {
 				delete(c.dynamicModuleCache, e)
+				evicted++
 			}
 		}
 		c.dynamicModuleCache[epoch] = variants
 		c.dynamicModuleCacheMu.Unlock()
+
+		if evicted > 0 {
+			metrics.AppsecChallengeDynamicModuleEvicted.Add(float64(evicted))
+		}
 
 		return variants, nil
 	})

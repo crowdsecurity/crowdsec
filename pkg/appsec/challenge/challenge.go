@@ -50,6 +50,16 @@ const (
 	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 )
 
+// Sentinel errors (reasons) returned by ValidateChallengeResponse.
+var (
+	ErrChallengeFields     = errors.New("missing required fields in challenge response")
+	ErrChallengeTicket     = errors.New("invalid ticket in challenge response")
+	ErrChallengeDifficulty = errors.New("challenge difficulty is impossible")
+	ErrChallengePoW        = errors.New("invalid proof-of-work in challenge response")
+	ErrChallengeHMAC       = errors.New("invalid HMAC in challenge response")
+	ErrChallengePayload    = errors.New("invalid challenge response payload")
+)
+
 // ChallengeCookieName is the name of the sealed cookie carrying the
 // successfully-validated fingerprint between requests.
 const ChallengeCookieName = "__crowdsec_challenge"
@@ -561,7 +571,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
 	vars, err := url.ParseQuery(string(body))
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to parse challenge response: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("%w: %w", ErrChallengePayload, err)
 	}
 
 	encryptedFingerprint := vars.Get("f")
@@ -592,13 +602,13 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	// Impossible difficulty is a deliberate hard-block: never accept anything.
 	if c.powDifficulty >= PowDifficultyImpossible {
-		return nil, FingerprintData{}, errors.New("challenge difficulty is impossible; submission rejected")
+		return nil, FingerprintData{}, ErrChallengeDifficulty
 	}
 
 	// Verify proof-of-work: SHA256(powSalt + nonce) must have required leading zero bits
 	powHash := sha256.Sum256([]byte(clientPowSalt + clientNonce))
 	if !hasLeadingZeroBits(powHash[:], c.powDifficulty) {
-		return nil, FingerprintData{}, errors.New("invalid proof-of-work in challenge response")
+		return nil, FingerprintData{}, ErrChallengePoW
 	}
 
 	// Verify the submission signature sig = HMAC(s, r||ts||n||f), where the
@@ -627,7 +637,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	var fpData FingerprintData
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to unmarshal fingerprint data: %w", err)
+		return nil, FingerprintData{}, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
 	}
 
 	// Debug diagnostic: a validated submission. Guarded so `k_epoch` (forgeable

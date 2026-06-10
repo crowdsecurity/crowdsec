@@ -33,6 +33,8 @@ import (
 
 	challengejs "github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/js"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 // initialBundleGz is the build-time pre-obfuscated library bundle (via
@@ -164,6 +166,7 @@ func (c *ChallengeRuntime) generateLibraryBundleVariants(ctx context.Context, co
 		if err != nil {
 			return nil, err
 		}
+		metrics.AppsecChallengeReobfuscation.WithLabelValues("library").Inc()
 		o.Code = obfuscatedJS
 		variants = append(variants, o)
 	}

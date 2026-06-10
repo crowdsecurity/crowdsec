@@ -17,6 +17,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/hkdf"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 // keyringHKDFSalt and the per-context info strings define the HKDF
@@ -196,6 +198,11 @@ func (k *KeyRing) deriveOrCache(epoch int64) []byte {
 	}
 
 	k.cache[epoch] = derived
+
+	metrics.AppsecChallengeKepochGenerated.Inc()
+	if evicted > 0 {
+		metrics.AppsecChallengeKepochEvicted.Add(float64(evicted))
+	}
 
 	k.log().WithFields(log.Fields{
 		"epoch":         epoch,
