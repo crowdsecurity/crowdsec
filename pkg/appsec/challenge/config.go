@@ -69,7 +69,8 @@ type Config struct {
 	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
 
 	// LogLevel sets the challenge runtime's own log verbosity, independent of
-	// the global level.
+	// the global level. Note: `panic` is not supported — logrus.PanicLevel is 0,
+	// which SubLogger (pkg/logging/sublogger.go) treats as "inherit the parent level".
 	LogLevel *log.Level `yaml:"log_level,omitempty"`
 }
 
