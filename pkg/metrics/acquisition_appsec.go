@@ -174,11 +174,10 @@ var AppsecChallengeKepochEvicted = prometheus.NewCounter(
 
 const AppsecChallengeReobfuscationMetricName = "cs_appsec_challenge_reobfuscation_total"
 
-// AppsecChallengeReobfuscation counts JS obfuscation passes by bundle:
-// "dynamic" for the sensitive per-epoch sign-key module (one pass per
-// pool variant per new epoch) and "library" for the public static bundle
-// (opt-in runtime re-obfuscation). Each pass is CPU-expensive, so this is
-// the headline signal for obfuscator load.
+// Each obfuscation pass is CPU-expensive (~1 min for the library bundle),
+// so this is the headline signal for obfuscator load. dynamic re-obfuscates
+// once per pool variant per epoch rotation; library only when runtime
+// obfuscation is opted in.
 var AppsecChallengeReobfuscation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: AppsecChallengeReobfuscationMetricName,
