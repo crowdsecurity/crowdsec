@@ -299,7 +299,15 @@ func (p *Papi) Pull(ctx context.Context) error {
 				papiChan = nil
 				p.Logger.Debug("done stopping PAPI pull")
 			}
-		case event := <-papiChan:
+		case event, ok := <-papiChan:
+			if !ok {
+				// The longpoll client closed the channel (e.g. 402 from PAPI).
+				// Stop selecting on it to avoid a tight loop on the closed channel;
+				// a subsequent token refresh with a different subscription type will recreate it.
+				p.Logger.Warn("PAPI channel closed, polling stopped until next subscription change")
+				papiChan = nil
+				continue
+			}
 			logger := p.Logger.WithField("request-id", event.RequestId)
 			// update last timestamp in database
 			newTime := time.Now().UTC()

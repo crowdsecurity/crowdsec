@@ -12,6 +12,8 @@ func (*Source) GetMetrics() []prometheus.Collector {
 		metrics.AppsecBlockCounter,
 		metrics.AppsecRuleHits,
 		metrics.AppsecFingerprintMismatch,
+		metrics.AppsecValidationOKCounter,
+		metrics.AppsecValidationFailedCounter,
 		metrics.AppsecOutbandParsingHistogram,
 		metrics.AppsecInbandParsingHistogram,
 		metrics.AppsecGlobalParsingHistogram,
@@ -25,6 +27,8 @@ func (*Source) GetAggregMetrics() []prometheus.Collector {
 		metrics.AppsecRuleHits,
 		metrics.AppsecFingerprintMismatch,
 		metrics.AppsecOutbandParsingHistogram,
+		metrics.AppsecValidationOKCounter,
+		metrics.AppsecValidationFailedCounter,
 		metrics.AppsecInbandParsingHistogram,
 		metrics.AppsecGlobalParsingHistogram,
 	}

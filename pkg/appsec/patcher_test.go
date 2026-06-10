@@ -22,7 +22,7 @@ func TestAppsecConfigBuildDetectsRequireValidChallenge(t *testing.T) {
 		},
 	}
 
-	runtimeCfg, err := cfg.Build(nil)
+	runtimeCfg, err := cfg.Build(t.Context(), nil)
 	require.NoError(t, err)
 	assert.True(t, runtimeCfg.NeedWASMVM)
 }
@@ -40,7 +40,7 @@ func TestAppsecConfigBuildDoesNotDetectRequireValidChallengeWhenUnused(t *testin
 		},
 	}
 
-	runtimeCfg, err := cfg.Build(nil)
+	runtimeCfg, err := cfg.Build(t.Context(), nil)
 	require.NoError(t, err)
 	assert.False(t, runtimeCfg.NeedWASMVM)
 }

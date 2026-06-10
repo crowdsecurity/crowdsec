@@ -29,7 +29,10 @@ var (
 	errInvalidAPIKey = errors.New("invalid API key")
 )
 
-var DefaultAuthCacheDuration = (1 * time.Minute)
+var (
+	DefaultAuthCacheDuration = (1 * time.Minute)
+	DefaultBodyReadTimeout   = (1 * time.Second)
+)
 
 // configuration structure of the acquis for the application security engine
 type Configuration struct {
@@ -43,7 +46,9 @@ type Configuration struct {
 	AppsecConfigs     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration *time.Duration `yaml:"auth_cache_duration"`
-
+	// BodyReadTimeout bounds how long we wait for the bouncer to finish sending the request body.
+	// Set to 0 to disable. Defaults to DefaultBodyReadTimeout.
+	BodyReadTimeout                   *time.Duration `yaml:"body_read_timeout"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -145,6 +150,11 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		w.logger.Infof("Cache duration for auth not set, using default: %v", *w.config.AuthCacheDuration)
 	}
 
+	if w.config.BodyReadTimeout == nil {
+		w.config.BodyReadTimeout = &DefaultBodyReadTimeout
+		w.logger.Infof("Body read timeout not set, using default: %v", *w.config.BodyReadTimeout)
+	}
+
 	w.mux = http.NewServeMux()
 
 	w.server = &http.Server{
@@ -185,7 +195,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	// Now we can set up the logger
 	appsecCfg.SetUpLogger()
 
-	appsecRuntime, err := appsecCfg.Build(w.hub)
+	appsecRuntime, err := appsecCfg.Build(ctx, w.hub)
 	if err != nil {
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
@@ -207,6 +217,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	w.AppsecRuntime = appsecRuntime
 	w.AppsecRuntime.Labels = w.config.Labels
+	w.AppsecRuntime.DataDir = w.hub.GetDataDir()
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
 	if err != nil {
@@ -349,8 +360,18 @@ func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Force client to send the body quickly enough.
+	// In practice, this is not a real issue as bouncers are trusted and assumed to behave properly,
+	// but some bouncers may take time to forward POST request with an empty body
+	// which would make us wait for several seconds on each empty-body request.
+	if *w.config.BodyReadTimeout > 0 {
+		if err := http.NewResponseController(rw).SetReadDeadline(time.Now().Add(*w.config.BodyReadTimeout)); err != nil {
+			w.logger.Debugf("unable to set read deadline: %s", err)
+		}
+	}
+
 	// parse the request only once
-	parsedRequest, err := appsec.NewParsedRequestFromRequest(r, w.logger)
+	parsedRequest, err := appsec.NewParsedRequestFromRequest(r, w.logger, w.AppsecRuntime.BodySettings)
 	if err != nil {
 		w.logger.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

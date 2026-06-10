@@ -280,7 +280,7 @@ func TestBuildPopulatesPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -312,7 +312,7 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Common hooks populated
@@ -342,7 +342,7 @@ func TestBuildOnChallengeTopLevelAndInband(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	// Both top-level and inband on_challenge hooks end up in CompiledOnChallenge.
@@ -364,7 +364,7 @@ func TestBuildOnChallengeUnderOutofbandRejected(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	_, err := cfg.Build(hub)
+	_, err := cfg.Build(t.Context(), hub)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "on_challenge hooks are only valid in-band")
 }
@@ -459,7 +459,7 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	}
 
 	hub := &cwhub.Hub{}
-	rt, err := cfg.Build(hub)
+	rt, err := cfg.Build(t.Context(), hub)
 	require.NoError(t, err)
 
 	assert.Len(t, rt.CompiledOnLoad, 1)
@@ -469,4 +469,25 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	assert.Empty(t, rt.CommonHooks.PreEval)
 	assert.Empty(t, rt.CommonHooks.PostEval)
 	assert.Empty(t, rt.CommonHooks.OnMatch)
+}
+
+func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
+	cases := []string{
+		"../escape.yaml",
+		"../../etc/passwd",
+		"/etc/passwd",
+	}
+
+	for _, filename := range cases {
+		t.Run(filename, func(t *testing.T) {
+			rt := &AppsecRuntimeConfig{
+				Logger:  log.NewEntry(log.StandardLogger()),
+				DataDir: t.TempDir(),
+			}
+
+			err := rt.LoadAPISchemaWithName("ref", filename)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "must be relative to schemas")
+		})
+	}
 }
