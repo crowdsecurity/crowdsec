@@ -436,18 +436,64 @@ func parseAlertTimes(alert *models.Alert, logger log.FieldLogger) (time.Time, ti
 	return start, stop
 }
 
-func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.Client, machineID string, alertItem *models.Alert) ([]*ent.Event, error) {
-	// let's track when we strip or drop data, notify outside of loop to avoid spam
+func marshalEventSerialized(logger log.FieldLogger, machineID, scenario string, eventItem *models.Event) (string, bool, bool, error) {
 	stripped := false
 	dropped := false
 
-	if len(alertItem.Events) == 0 {
-		return nil, nil
+	marshallMetas, err := json.Marshal(eventItem.Meta)
+	if err != nil {
+		return "", stripped, dropped, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
 	}
 
-	eventBulk := make([]*ent.EventCreate, len(alertItem.Events))
+	// the serialized field is too big, let's try to progressively strip it
+	if event.SerializedValidator(string(marshallMetas)) != nil {
+		stripped = true
 
-	for i, eventItem := range alertItem.Events {
+		valid := false
+		stripSize := 2048
+
+		for !valid && stripSize > 0 {
+			for _, serializedItem := range eventItem.Meta {
+				if len(serializedItem.Value) > stripSize*2 {
+					serializedItem.Value = serializedItem.Value[:stripSize] + "<stripped>"
+				}
+			}
+
+			marshallMetas, err = json.Marshal(eventItem.Meta)
+			if err != nil {
+				return "", stripped, dropped, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
+			}
+
+			if event.SerializedValidator(string(marshallMetas)) == nil {
+				valid = true
+			}
+
+			stripSize /= 2
+		}
+
+		// nothing worked, drop it
+		if !valid {
+			dropped = true
+			stripped = false
+			marshallMetas = []byte("")
+		}
+	}
+
+	if stripped {
+		logger.Warningf("stripped 'serialized' field (machine %s / scenario %s)", machineID, scenario)
+	}
+
+	if dropped {
+		logger.Warningf("dropped 'serialized' field (machine %s / scenario %s)", machineID, scenario)
+	}
+
+	return string(marshallMetas), stripped, dropped, nil
+}
+
+// createAlertEventsForAlert inserts events with owner set at creation time.
+// Pre-creating events then linking via AddEvents fails on MySQL (alert_events constraint).
+func createAlertEventsForAlert(ctx context.Context, logger log.FieldLogger, client *ent.Client, machineID, scenario string, alertID int, events []*models.Event) error {
+	for _, eventItem := range events {
 		ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 		if err != nil {
 			logger.Errorf("creating alert: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
@@ -455,90 +501,58 @@ func buildEventCreates(ctx context.Context, logger log.FieldLogger, client *ent.
 			ts = time.Now().UTC()
 		}
 
-		marshallMetas, err := json.Marshal(eventItem.Meta)
+		serialized, _, _, err := marshalEventSerialized(logger, machineID, scenario, eventItem)
 		if err != nil {
-			return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
+			return err
 		}
 
-		// the serialized field is too big, let's try to progressively strip it
-		if event.SerializedValidator(string(marshallMetas)) != nil {
-			stripped = true
-
-			valid := false
-			stripSize := 2048
-
-			for !valid && stripSize > 0 {
-				for _, serializedItem := range eventItem.Meta {
-					if len(serializedItem.Value) > stripSize*2 {
-						serializedItem.Value = serializedItem.Value[:stripSize] + "<stripped>"
-					}
-				}
-
-				marshallMetas, err = json.Marshal(eventItem.Meta)
-				if err != nil {
-					return nil, fmt.Errorf("event meta '%v': %w: %w", eventItem.Meta, err, MarshalFail)
-				}
-
-				if event.SerializedValidator(string(marshallMetas)) == nil {
-					valid = true
-				}
-
-				stripSize /= 2
-			}
-
-			// nothing worked, drop it
-			if !valid {
-				dropped = true
-				stripped = false
-				marshallMetas = []byte("")
-			}
-		}
-
-		eventBulk[i] = client.Event.Create().
+		if _, err := client.Event.Create().
 			SetTime(ts).
-			SetSerialized(string(marshallMetas))
+			SetSerialized(serialized).
+			SetOwnerID(alertID).
+			Save(ctx); err != nil {
+			return fmt.Errorf("creating alert event: %w", err)
+		}
 	}
 
-	if stripped {
-		logger.Warningf("stripped 'serialized' field (machine %s / scenario %s)", machineID, *alertItem.Scenario)
-	}
-
-	if dropped {
-		logger.Warningf("dropped 'serialized' field (machine %s / scenario %s)", machineID, *alertItem.Scenario)
-	}
-
-	return client.Event.CreateBulk(eventBulk...).Save(ctx)
+	return nil
 }
 
-func buildMetaCreates(ctx context.Context, logger log.FieldLogger, client *ent.Client, alertItem *models.Alert) ([]*ent.Meta, error) {
-	if len(alertItem.Meta) == 0 {
-		return nil, nil
+func normalizeMetaItem(logger log.FieldLogger, metaItem *models.MetaItems0) (string, string) {
+	key := metaItem.Key
+	value := metaItem.Value
+
+	if len(metaItem.Value) > 4095 {
+		logger.Warningf("truncated meta %s: value too long", metaItem.Key)
+
+		value = value[:4095]
 	}
 
-	metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
+	if len(metaItem.Key) > 255 {
+		logger.Warningf("truncated meta %s: key too long", metaItem.Key)
 
-	for i, metaItem := range alertItem.Meta {
-		key := metaItem.Key
-		value := metaItem.Value
+		key = key[:255]
+	}
 
-		if len(metaItem.Value) > 4095 {
-			logger.Warningf("truncated meta %s: value too long", metaItem.Key)
+	return key, value
+}
 
-			value = value[:4095]
-		}
+// createAlertMetasForAlert inserts alert-level metas with owner set at creation time.
+// Pre-creating metas then linking via AddMetas fails on MySQL (alert_metas constraint).
+func createAlertMetasForAlert(ctx context.Context, logger log.FieldLogger, client *ent.Client, alertID int, metaItems []*models.MetaItems0) error {
+	for _, metaItem := range metaItems {
+		key, value := normalizeMetaItem(logger, metaItem)
 
-		if len(metaItem.Key) > 255 {
-			logger.Warningf("truncated meta %s: key too long", metaItem.Key)
-
-			key = key[:255]
-		}
-
-		metaBulk[i] = client.Meta.Create().
+		if _, err := client.Meta.Create().
 			SetKey(key).
-			SetValue(value)
+			SetValue(value).
+			SetOwnerID(alertID).
+			Save(ctx); err != nil {
+			return fmt.Errorf("creating alert meta %s: %w", key, err)
+		}
 	}
 
-	return client.Meta.CreateBulk(metaBulk...).Save(ctx)
+	return nil
 }
 
 func (c *Client) buildDecisions(ctx context.Context, logger log.FieldLogger, client *ent.Client, alertItem *models.Alert, stopAtTime time.Time) ([]*ent.Decision, int, error) {
@@ -588,24 +602,31 @@ func (c *Client) saveAlerts(ctx context.Context, client *ent.Client, batch []ale
 		return nil, nil
 	}
 
-	// extract builders in the same order
-	builders := make([]*ent.AlertCreate, len(batch))
+	// Insert alerts one-by-one; events and metas are created after save with owner set.
+	ret := make([]string, len(batch))
 	for i := range batch {
 		if batch[i].builder == nil {
 			return nil, fmt.Errorf("nil alert builder at index %d", i)
 		}
 
-		builders[i] = batch[i].builder
-	}
+		a, err := batch[i].builder.Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("creating alert: %w: %w", err, BulkError)
+		}
 
-	alertsCreateBulk, err := client.Alert.CreateBulk(builders...).Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("bulk creating alert: %w: %w", err, BulkError)
-	}
-
-	ret := make([]string, len(alertsCreateBulk))
-	for i, a := range alertsCreateBulk {
 		ret[i] = strconv.Itoa(a.ID)
+
+		if len(batch[i].events) > 0 {
+			if err := createAlertEventsForAlert(ctx, c.Log, client, batch[i].machineID, batch[i].scenario, a.ID, batch[i].events); err != nil {
+				return nil, fmt.Errorf("creating events for alert %d: %w: %w", a.ID, err, BulkError)
+			}
+		}
+
+		if len(batch[i].meta) > 0 {
+			if err := createAlertMetasForAlert(ctx, c.Log, client, a.ID, batch[i].meta); err != nil {
+				return nil, fmt.Errorf("creating metas for alert %d: %w: %w", a.ID, err, BulkError)
+			}
+		}
 
 		d := batch[i].decisions
 		if len(d) == 0 {
@@ -627,6 +648,10 @@ func (c *Client) saveAlerts(ctx context.Context, client *ent.Client, batch []ale
 
 type alertCreatePlan struct {
 	builder   *ent.AlertCreate
+	machineID string
+	scenario  string
+	events    []*models.Event
+	meta      []*models.MetaItems0
 	decisions []*ent.Decision
 }
 
@@ -646,16 +671,6 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 		// display proper alert in logs
 		for _, disp := range alertItem.FormatAsStrings(machineID, log.StandardLogger()) {
 			c.Log.Info(disp)
-		}
-
-		events, err := buildEventCreates(ctx, c.Log, txEnt, machineID, alertItem)
-		if err != nil {
-			return nil, rollbackOnError(tx, err, fmt.Sprintf("building events for alert %s", alertItem.UUID))
-		}
-
-		metas, err := buildMetaCreates(ctx, c.Log, txEnt, alertItem)
-		if err != nil {
-			c.Log.Warningf("error creating alert meta: %s", err)
 		}
 
 		decisions, discardCount, err := c.buildDecisions(ctx, c.Log, txEnt, alertItem, stopAtTime)
@@ -692,9 +707,7 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 			SetScenarioHash(*alertItem.ScenarioHash).
 			SetRemediation(alertItem.Remediation).
 			SetUUID(alertItem.UUID).
-			SetKind(alertItem.Kind).
-			AddEvents(events...).
-			AddMetas(metas...)
+			SetKind(alertItem.Kind)
 
 		if owner != nil {
 			builder.SetOwner(owner)
@@ -702,6 +715,10 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 
 		batch = append(batch, alertCreatePlan{
 			builder:   builder,
+			machineID: machineID,
+			scenario:  *alertItem.Scenario,
+			events:    alertItem.Events,
+			meta:      alertItem.Meta,
 			decisions: decisions,
 		})
 	}
