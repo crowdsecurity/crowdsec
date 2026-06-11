@@ -120,11 +120,6 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 		return "", fmt.Errorf("%w: %d > %d", ErrAllowlistReasonSize, len(reason), MaxAllowlistReasonLen)
 	}
 
-	envelopeBytes, err := proto.Marshal(envelope)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
-	}
-
 	key, err := deriveKey(masterCookieKey)
 	if err != nil {
 		return "", err
@@ -140,21 +135,26 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 		return "", fmt.Errorf("failed to create GCM: %w", err)
 	}
 
+	// Reject an over-limit envelope BEFORE marshaling it. The envelope derives
+	// from the client-submitted fingerprint, so a crafted submission could
+	// otherwise force a large proto.Marshal allocation for a cookie the browser
+	// would refuse to store anyway. proto.Size walks the message and returns its
+	// length WITHOUT allocating the marshal buffer, so the guard itself is cheap.
+	// RawURLEncoding expands raw bytes by 4/3, so invert maxCookieLen, then
+	// subtract the version byte, GCM nonce, and GCM tag to get the plaintext budget.
+	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
+	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + proto.Size(envelope); plaintextLen > maxPlaintext {
+		return "", fmt.Errorf("%w: plaintext=%d > %d", ErrCookieTooLarge, plaintextLen, maxPlaintext)
+	}
+
+	envelopeBytes, err := proto.Marshal(envelope)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
+	}
+
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return "", fmt.Errorf("failed to generate nonce: %w", err)
-	}
-
-	// Reject an envelope that would seal into an over-limit cookie before we
-	// allocate for it. envelopeBytes comes from the client-submitted
-	// fingerprint, so without this bound a crafted submission forces a large
-	// allocation here for a cookie the browser would refuse to store anyway.
-	// RawURLEncoding expands raw bytes by 4/3, so invert maxCookieLen, then
-	// subtract the version byte, GCM nonce, and GCM tag to get the plaintext
-	// budget.
-	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
-	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + len(envelopeBytes); plaintextLen > maxPlaintext {
-		return "", fmt.Errorf("%w: plaintext=%d > %d", ErrCookieTooLarge, plaintextLen, maxPlaintext)
 	}
 
 	// Build the plaintext: not_after_be8 || flags || reason_len_be || reason || envelope
