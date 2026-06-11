@@ -117,8 +117,6 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 	mAlert := ms["alerts"].(statAlert)
 	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
-	mAppsecChallenge := ms["appsec-challenge"].(*statAppsecChallenge)
-	mAppsecChallengeInfra := ms["appsec-challenge-infra"].(statAppsecChallengeInfra)
 	mDecision := ms["decisions"].(statDecision)
 	mLapi := ms["lapi"].(statLapi)
 	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
@@ -209,57 +207,80 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 			mAppsecEngine.Process(l.appsecEngine, "blocked", ival)
 		case "cs_appsec_rule_hits":
 			mAppsecRule.Process(l.appsecEngine, l.appsecRule, "triggered", ival)
-		//
-		// bot detection / challenge lifecycle
-		//
-		case metrics.AppsecChallengeRequestedMetricName:
-			mAppsecEngine.Process(l.appsecEngine, "challenge_requested", ival)
-			mAppsecChallenge.Process(l.appsecEngine, "requested", ival)
-		case metrics.AppsecChallengeSubmittedMetricName:
-			mAppsecChallenge.Process(l.appsecEngine, "submitted", ival)
-		case metrics.AppsecChallengeAcceptedMetricName:
-			mAppsecEngine.Process(l.appsecEngine, "challenge_accepted", ival)
-			switch l.kind {
-			case "solved":
-				mAppsecChallenge.Process(l.appsecEngine, "solved", ival)
-			case "granted":
-				mAppsecChallenge.Process(l.appsecEngine, "granted", ival)
-				mAppsecChallenge.ProcessReason(l.appsecEngine, "granted", l.reason, ival)
-			}
-		case metrics.AppsecChallengeRejectedMetricName:
-			mAppsecEngine.Process(l.appsecEngine, "challenge_rejected", ival)
-			switch l.kind {
-			case "protocol":
-				mAppsecChallenge.Process(l.appsecEngine, "rejected_protocol", ival)
-				mAppsecChallenge.ProcessReason(l.appsecEngine, "protocol", l.reason, ival)
-			case "submission":
-				mAppsecChallenge.Process(l.appsecEngine, "rejected_submission", ival)
-				mAppsecChallenge.ProcessReason(l.appsecEngine, "submission", l.reason, ival)
-			case "cookie":
-				mAppsecChallenge.Process(l.appsecEngine, "rejected_cookie", ival)
-				mAppsecChallenge.ProcessReason(l.appsecEngine, "cookie", l.reason, ival)
-			}
-		//
-		// bot detection / challenge infrastructure (process-global, no engine label)
-		//
-		case metrics.AppsecChallengeKepochGeneratedMetricName:
-			mAppsecChallengeInfra.Process("kepoch_generated", ival)
-		case metrics.AppsecChallengeKepochEvictedMetricName:
-			mAppsecChallengeInfra.Process("kepoch_evicted", ival)
-		case metrics.AppsecChallengeReobfuscationMetricName:
-			switch l.bundle {
-			case "dynamic":
-				mAppsecChallengeInfra.Process("reobfuscation_dynamic", ival)
-			case "library":
-				mAppsecChallengeInfra.Process("reobfuscation_library", ival)
-			}
-		case metrics.AppsecChallengeDynamicModuleEvictedMetricName:
-			mAppsecChallengeInfra.Process("dynamic_module_evicted", ival)
 		default:
+			// bot detection / challenge metrics live in their own handler to
+			// keep this switch's complexity in check.
+			if ms.processAppsecChallengeMetric(p.Name, l, ival) {
+				continue
+			}
+
 			log.Debugf("unknown: %+v", p.Name)
 			continue
 		}
 	}
+}
+
+// processAppsecChallengeMetric handles the bot-detection / challenge lifecycle
+// and infrastructure metrics. It lives apart from processPrometheusMetrics
+// because its nested kind/bundle switches would otherwise push that function
+// over the cyclomatic-complexity limit. Returns false for unrecognized metrics.
+func (ms metricStore) processAppsecChallengeMetric(name string, l metricLabels, ival int) bool {
+	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
+	mAppsecChallenge := ms["appsec-challenge"].(*statAppsecChallenge)
+	mAppsecChallengeInfra := ms["appsec-challenge-infra"].(statAppsecChallengeInfra)
+
+	switch name {
+	//
+	// bot detection / challenge lifecycle
+	//
+	case metrics.AppsecChallengeRequestedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_requested", ival)
+		mAppsecChallenge.Process(l.appsecEngine, "requested", ival)
+	case metrics.AppsecChallengeSubmittedMetricName:
+		mAppsecChallenge.Process(l.appsecEngine, "submitted", ival)
+	case metrics.AppsecChallengeAcceptedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_accepted", ival)
+		switch l.kind {
+		case "solved":
+			mAppsecChallenge.Process(l.appsecEngine, "solved", ival)
+		case "granted":
+			mAppsecChallenge.Process(l.appsecEngine, "granted", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "granted", l.reason, ival)
+		}
+	case metrics.AppsecChallengeRejectedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_rejected", ival)
+		switch l.kind {
+		case "protocol":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_protocol", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "protocol", l.reason, ival)
+		case "submission":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_submission", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "submission", l.reason, ival)
+		case "cookie":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_cookie", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "cookie", l.reason, ival)
+		}
+	//
+	// bot detection / challenge infrastructure (process-global, no engine label)
+	//
+	case metrics.AppsecChallengeKepochGeneratedMetricName:
+		mAppsecChallengeInfra.Process("kepoch_generated", ival)
+	case metrics.AppsecChallengeKepochEvictedMetricName:
+		mAppsecChallengeInfra.Process("kepoch_evicted", ival)
+	case metrics.AppsecChallengeReobfuscationMetricName:
+		switch l.bundle {
+		case "dynamic":
+			mAppsecChallengeInfra.Process("reobfuscation_dynamic", ival)
+		case "library":
+			mAppsecChallengeInfra.Process("reobfuscation_library", ival)
+		}
+	case metrics.AppsecChallengeDynamicModuleEvictedMetricName:
+		mAppsecChallengeInfra.Process("dynamic_module_evicted", ival)
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, outputFormat string, noUnit bool) error {

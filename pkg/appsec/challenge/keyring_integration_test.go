@@ -431,7 +431,7 @@ func TestCookieV0_ConfigurableLimit(t *testing.T) {
 	// A tight limit rejects it on seal, before allocating.
 	_, err := sealCookieV0(envelope, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"), 1024)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrCookieTooLarge)
+	require.ErrorIs(t, err, ErrCookieTooLarge)
 
 	// A raised limit accepts the same envelope.
 	encoded, err := sealCookieV0(envelope, keys.MasterCookieKey(), notAfter, 0, "", []byte("ua"), 8192)
@@ -441,7 +441,7 @@ func TestCookieV0_ConfigurableLimit(t *testing.T) {
 	// The default ceiling (0 → MaxCookieLen) then rejects it on open...
 	_, err = openCookie(encoded, keys.MasterCookieKey(), []byte("ua"), 0)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrCookieTooLarge)
+	require.ErrorIs(t, err, ErrCookieTooLarge)
 
 	// ...while the matching raised ceiling opens it successfully.
 	got, err := openCookie(encoded, keys.MasterCookieKey(), []byte("ua"), 8192)

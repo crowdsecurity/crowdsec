@@ -337,6 +337,40 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 // secret + keyring, pre-warms the dynamic-module cache, and (if configured)
 // spawns the background obfuscation refresher. Safe for concurrent use across
 // all appsec runners. Pass WithXxx options to override defaults.
+// compileObfuscatorModule decompresses the baked-in obfuscator WASM (once,
+// process-wide) and compiles it for the given runtime. Pre-compiling lets each
+// ObfuscateJS call merely instantiate the module instead of re-parsing the WASM
+// bytes, which would otherwise cost ~4-5s per call.
+func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.CompiledModule, error) {
+	var obfuscatorWasmErr error
+
+	obfuscatorWasmOnce.Do(func() {
+		zr, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
+		if err != nil {
+			obfuscatorWasmErr = fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
+			return
+		}
+		defer zr.Close()
+
+		obfuscatorWasm, err = io.ReadAll(zr)
+		if err != nil {
+			obfuscatorWasmErr = fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
+			return
+		}
+	})
+
+	if obfuscatorWasmErr != nil {
+		return nil, obfuscatorWasmErr
+	}
+
+	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
+	}
+
+	return compiledMod, nil
+}
+
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
 	resolvedOpts := runtimeOptions{}
 	for _, opt := range opts {
@@ -420,34 +454,9 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("failed to instantiate WASI: %w", err)
 	}
 
-	var obfuscatorWasmErr error
-
-	obfuscatorWasmOnce.Do(func() {
-		r, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
-			return
-		}
-		defer r.Close()
-
-		obfuscatorWasm, err = io.ReadAll(r)
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
-			return
-		}
-	})
-
-	if obfuscatorWasmErr != nil {
-		return nil, obfuscatorWasmErr
-	}
-
-	// Pre-compile the obfuscator WASM once. Without this, every ObfuscateJS
-	// call re-parses the WASM bytes (~4-5s of overhead per call). Compiling
-	// once and instantiating on each call drops per-call overhead to the
-	// instantiation cost alone.
-	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	compiledMod, err := compileObfuscatorModule(ctx, r)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
+		return nil, err
 	}
 
 	// We use text/template instead of html/template because the data we send
