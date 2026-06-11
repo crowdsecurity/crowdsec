@@ -42,6 +42,13 @@ type Config struct {
 	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
+	// MaxCookieSize caps the challenge cookie's encoded size, enforced on both
+	// seal and open. It bounds the memory allocated from the (attacker-supplied)
+	// fingerprint envelope, closing an over-allocation DoS. Defaults to
+	// MaxCookieLen (4096, the per-cookie size browsers guarantee); raise it only
+	// if a non-browser client tolerates larger cookies.
+	MaxCookieSize *int `yaml:"max_cookie_size"`
+
 	// CryptoObfuscationPoolSize is how many obfuscations of the per-epoch
 	// sign-key module to keep per live epoch. Each variant embeds the same key
 	// with different byte layout, giving per-visitor variance. Defaults to 1.
@@ -93,6 +100,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.CookieTTL != nil {
 		c.CookieTTL = other.CookieTTL
+	}
+	if other.MaxCookieSize != nil {
+		c.MaxCookieSize = other.MaxCookieSize
 	}
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
@@ -152,6 +162,9 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.CookieTTL != nil {
 		opts = append(opts, WithCookieTTL(*c.CookieTTL))
+	}
+	if c.MaxCookieSize != nil && *c.MaxCookieSize > 0 {
+		opts = append(opts, WithMaxCookieLen(*c.MaxCookieSize))
 	}
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))

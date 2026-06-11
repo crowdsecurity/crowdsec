@@ -31,6 +31,7 @@ var (
 	ErrCookieExpired       = errors.New("cookie expired")
 	ErrCookieVersion       = errors.New("unknown cookie version")
 	ErrAllowlistReasonSize = errors.New("allowlist reason exceeds maximum length")
+	ErrCookieTooLarge      = errors.New("cookie exceeds maximum size")
 )
 
 const hkdfInfo = "crowdsec-challenge-cookie"
@@ -41,6 +42,16 @@ const hkdfInfo = "crowdsec-challenge-cookie"
 // well under the 4 KB browser limit even with the AES-GCM tag + base64
 // expansion.
 const MaxAllowlistReasonLen = 256
+
+// MaxCookieLen is the DEFAULT per-cookie size ceiling, matching what browsers
+// guarantee (RFC 6265 §6.1: 4096 bytes for name + value + attributes). The
+// challenge cookie round-trips through the browser, so a legitimate one always
+// fits. We reject anything larger on both the seal and open paths — capping the
+// allocations derived from the (attacker-influenced) envelope and closing a
+// memory-exhaustion DoS. Operators can override it via Config.MaxCookieSize
+// (e.g. when a custom client tolerates larger cookies); sealCookieV0/openCookie
+// fall back to this default when given a non-positive limit.
+const MaxCookieLen = 4096
 
 // Cookie wire format. A single version byte at offset 0 lets us evolve the
 // format without flag-day-style cookie invalidation. New formats add a new
@@ -100,7 +111,11 @@ func deriveKey(secret []byte) ([]byte, error) {
 // and authenticated (any tamper attempt invalidates the GCM tag).
 //
 // Returns ErrAllowlistReasonSize if reason exceeds MaxAllowlistReasonLen.
-func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter int64, flags byte, reason string, aad []byte) (string, error) {
+func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter int64, flags byte, reason string, aad []byte, maxCookieLen int) (string, error) {
+	if maxCookieLen <= 0 {
+		maxCookieLen = MaxCookieLen
+	}
+
 	if len(reason) > MaxAllowlistReasonLen {
 		return "", fmt.Errorf("%w: %d > %d", ErrAllowlistReasonSize, len(reason), MaxAllowlistReasonLen)
 	}
@@ -128,6 +143,18 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return "", fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	// Reject an envelope that would seal into an over-limit cookie before we
+	// allocate for it. envelopeBytes comes from the client-submitted
+	// fingerprint, so without this bound a crafted submission forces a large
+	// allocation here for a cookie the browser would refuse to store anyway.
+	// RawURLEncoding expands raw bytes by 4/3, so invert maxCookieLen, then
+	// subtract the version byte, GCM nonce, and GCM tag to get the plaintext
+	// budget.
+	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
+	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + len(envelopeBytes); plaintextLen > maxPlaintext {
+		return "", fmt.Errorf("%w: plaintext=%d > %d", ErrCookieTooLarge, plaintextLen, maxPlaintext)
 	}
 
 	// Build the plaintext: not_after_be8 || flags || reason_len_be || reason || envelope
@@ -171,7 +198,18 @@ type CookieEnvelope struct {
 // openCookie decodes a sealed cookie, dispatching on the version byte.
 // Unknown versions are rejected with ErrCookieVersion. Expired cookies
 // (notAfter <= now) are rejected with ErrCookieExpired.
-func openCookie(encoded string, masterCookieKey []byte, aad []byte) (*CookieEnvelope, error) {
+func openCookie(encoded string, masterCookieKey []byte, aad []byte, maxCookieLen int) (*CookieEnvelope, error) {
+	if maxCookieLen <= 0 {
+		maxCookieLen = MaxCookieLen
+	}
+
+	// Reject over-limit values before base64-decoding or AEAD-opening them.
+	// The value is fully attacker-controlled and a legitimate cookie always
+	// fits maxCookieLen; this bounds both the decode and gcm.Open allocations.
+	if len(encoded) > maxCookieLen {
+		return nil, fmt.Errorf("%w: %d > %d", ErrCookieTooLarge, len(encoded), maxCookieLen)
+	}
+
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode: %w", ErrCookieMalformed, err)

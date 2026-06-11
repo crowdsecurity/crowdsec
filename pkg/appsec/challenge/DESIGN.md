@@ -648,6 +648,7 @@ challenge:
   key_rotation_interval: 5m
   max_live_epochs: 3
   cookie_ttl: 12h
+  # max_cookie_size: 4096   # encoded cookie size ceiling (seal + open); bounds envelope allocation
   crypto_obfuscation_pool_size: 1
   # The library bundle is ALWAYS obfuscated (build-time). This flag only
   # adds further runtime-generated variants — leave off unless you want
@@ -759,6 +760,7 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `key_rotation_interval` | duration | 5m | Min 30 s; must be the same across all instances |
 | `max_live_epochs` | int | 3 | Past epochs accepted; sized to cover the freshness window |
 | `cookie_ttl` | duration | 12h | Decoupled from rotation interval; can be long (24h+) |
+| `max_cookie_size` | int | 4096 | Encoded cookie size ceiling, enforced on seal and open. Bounds the memory allocated from the (attacker-supplied) fingerprint envelope — an over-allocation DoS guard. Matches the per-cookie size browsers guarantee; raise only for non-browser clients that tolerate larger cookies |
 | `crypto_obfuscation_pool_size` | int | 1 | Variants of dynamic key module per epoch; each costs ~5 s of CPU per rotation |
 | `library_runtime_obfuscation_enabled` | bool | false | Enable *runtime* library re-obfuscation. The library bundle is always obfuscated at build time regardless of this flag; this only adds further variants over time |
 | `library_obfuscation_pool_size` | int | 1 | Pool ceiling for library variants. Values > 1 are only meaningful when runtime obfuscation is enabled; otherwise the runtime warns and clamps to 1 |
