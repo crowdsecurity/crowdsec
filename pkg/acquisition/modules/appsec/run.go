@@ -105,6 +105,12 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
 		}
 
+		if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
+			if err := w.AppsecRuntime.ChallengeRuntime.Close(ctx); err != nil {
+				w.logger.Errorf("Error closing challenge runtime: %s", err)
+			}
+		}
+
 		if w.config.ListenSocket != "" {
 			if err := os.Remove(w.config.ListenSocket); err != nil {
 				if !errors.Is(err, fs.ErrNotExist) {
