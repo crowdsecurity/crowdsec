@@ -516,9 +516,6 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	return challengeRuntime, nil
 }
 
-// Close releases the wazero runtime and its compiled modules. Safe to call once
-// on shutdown (and on a nil receiver); the background goroutines stop on their
-// own via the construction context.
 func (c *ChallengeRuntime) Close(ctx context.Context) error {
 	if c == nil || c.r == nil {
 		return nil
