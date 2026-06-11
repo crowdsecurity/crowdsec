@@ -135,13 +135,7 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 		return "", fmt.Errorf("failed to create GCM: %w", err)
 	}
 
-	// Reject an over-limit envelope BEFORE marshaling it. The envelope derives
-	// from the client-submitted fingerprint, so a crafted submission could
-	// otherwise force a large proto.Marshal allocation for a cookie the browser
-	// would refuse to store anyway. proto.Size walks the message and returns its
-	// length WITHOUT allocating the marshal buffer, so the guard itself is cheap.
-	// RawURLEncoding expands raw bytes by 4/3, so invert maxCookieLen, then
-	// subtract the version byte, GCM nonce, and GCM tag to get the plaintext budget.
+	// Reject an over-limit envelope before marshaling it.
 	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
 	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + proto.Size(envelope); plaintextLen > maxPlaintext {
 		return "", fmt.Errorf("%w: plaintext=%d > %d", ErrCookieTooLarge, plaintextLen, maxPlaintext)
