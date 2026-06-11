@@ -49,5 +49,8 @@ try {
 
   writeStdout(result.getObfuscatedCode());
 } catch (e) {
-  writeStdout(`// OBFUSCATION FAILED: ${e.message}`);
+  const msg = (e && e.message) ? e.message : String(e);
+  const buffer = new TextEncoder().encode(`obfuscate: ${msg}\n`);
+  Javy.IO.writeSync(2, buffer);
+  throw e;
 }
