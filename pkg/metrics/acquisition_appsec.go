@@ -152,7 +152,7 @@ var AppsecValidationFailedCounter = prometheus.NewCounterVec(
 )
 
 // Bot detection / WAF challenge infrastructure counters. These track the
-// internal upkeep of the challenge runtime rather than visitor behaviour.
+// internal upkeep of the challenge runtime rather than visitor behavior.
 
 const AppsecChallengeKepochGeneratedMetricName = "cs_appsec_challenge_kepoch_generated_total"
 
