@@ -229,6 +229,14 @@ type AppsecRequestState struct {
 	// the allowlist cookie itself, not by this flag.
 	ChallengeBypassed bool
 
+	// LegitimateBot is set by the SetLegitimateBot expr helper to tag the
+	// request as coming from a known good bot; once set, every later
+	// IsLegitimateBot call short-circuits to true without datafile or DNS
+	// checks. It is a verdict on the request identity, not on the response,
+	// so like HookVars it persists across in-band/out-of-band phases and is
+	// NOT cleared by ResetResponse.
+	LegitimateBot bool
+
 	// HooksHalted is flipped by terminal hook actions (currently
 	// RejectSubmission and the inline GrantChallengeCookie variant
 	// exposed in on_challenge_submit) to short-circuit later rules in
@@ -497,8 +505,43 @@ type AppsecConfig struct {
 	// values (see LoadByPath).
 	Challenge *challenge.Config `yaml:"challenge"`
 
+	// LegitBotsCache tunes the FCrDNS verdict cache behind the
+	// IsLegitimateBot expr helper. All fields are optional; unset fields
+	// keep the exprhelpers defaults. The cache is process-global (DNS facts
+	// are not per-config): with multiple appsec-configs, each later
+	// config's non-nil fields override the earlier values (see LoadByPath).
+	LegitBotsCache *LegitBotsCacheConfig `yaml:"legit_bots_cache"`
+
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
+}
+
+// LegitBotsCacheConfig holds the optional tuning of the FCrDNS verdict
+// cache used by the IsLegitimateBot expr helper.
+type LegitBotsCacheConfig struct {
+	// TTL of a positive verdict (the IP has a forward-confirmed PTR name).
+	TTL *time.Duration `yaml:"ttl"`
+	// NegativeTTL of a negative verdict (no PTR, lookup failure, or no
+	// forward confirmation). Shorter by default so transient DNS failures
+	// don't lock a legitimate bot out for long.
+	NegativeTTL *time.Duration `yaml:"negative_ttl"`
+	// Size is the maximum number of cached IPs (LRU eviction).
+	Size *int `yaml:"size"`
+}
+
+// mergeFrom overrides each field with the corresponding non-nil field of other.
+func (c *LegitBotsCacheConfig) mergeFrom(other *LegitBotsCacheConfig) {
+	if other.TTL != nil {
+		c.TTL = other.TTL
+	}
+
+	if other.NegativeTTL != nil {
+		c.NegativeTTL = other.NegativeTTL
+	}
+
+	if other.Size != nil {
+		c.Size = other.Size
+	}
 }
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
@@ -689,6 +732,13 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		wc.Challenge.MergeFrom(tmp.Challenge)
 	}
 
+	if tmp.LegitBotsCache != nil {
+		if wc.LegitBotsCache == nil {
+			wc.LegitBotsCache = &LegitBotsCacheConfig{}
+		}
+		wc.LegitBotsCache.mergeFrom(tmp.LegitBotsCache)
+	}
+
 	return nil
 }
 
@@ -795,6 +845,40 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
+// setupLegitBots tunes the FCrDNS cache and loads the known-good bot
+// definitions from <datadir>/legit_bots/, before any hook calling
+// IsLegitimateBot runs.
+func (wc *AppsecConfig) setupLegitBots(hub *cwhub.Hub) {
+	if wc.LegitBotsCache != nil {
+		var (
+			ttl, negativeTTL time.Duration
+			size             int
+		)
+
+		if wc.LegitBotsCache.TTL != nil {
+			ttl = *wc.LegitBotsCache.TTL
+		}
+
+		if wc.LegitBotsCache.NegativeTTL != nil {
+			negativeTTL = *wc.LegitBotsCache.NegativeTTL
+		}
+
+		if wc.LegitBotsCache.Size != nil {
+			size = *wc.LegitBotsCache.Size
+		}
+
+		exprhelpers.ConfigureBotDNSCache(ttl, negativeTTL, size)
+	}
+
+	// hub is nil or bare in tests that build a standalone config; there is
+	// no data dir to scan in that case.
+	if hub != nil && hub.GetDataDir() != "" {
+		if err := exprhelpers.LoadBotFilesFromDir(hub.GetDataDir()); err != nil {
+			wc.Logger.Errorf("unable to load legitimate bot files: %s", err)
+		}
+	}
+}
+
 func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
@@ -840,6 +924,8 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 		MaxSize: DefaultMaxBodySize,
 		Action:  BodySizeActionDrop,
 	}
+
+	wc.setupLegitBots(hub)
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules

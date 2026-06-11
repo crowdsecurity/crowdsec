@@ -10,8 +10,18 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+// isLegitimateBotHelper wraps exprhelpers.IsLegitimateBot with the
+// per-request escape hatch: once SetLegitimateBot was called, the verdict
+// is true without datafile or DNS checks.
+func isLegitimateBotHelper(state *AppsecRequestState) func(string, string, string) bool {
+	return func(ip string, ua string, path string) bool {
+		return state.LegitimateBot || exprhelpers.IsLegitimateBot(ip, ua, path)
+	}
+}
 
 // parseLogVerbosity maps an optional expr-side verbosity argument
 // ("minimal", "info", "verbose") to a FingerprintLogVerbosity. Empty /
@@ -132,6 +142,8 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			return w.ValidateRequestWithSchema(ctx, state, request, ref)
 		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
+		"IsLegitimateBot":       isLegitimateBotHelper(state),
+		"SetLegitimateBot":      func() error { state.LegitimateBot = true; return nil },
 	}
 }
 
@@ -157,8 +169,10 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		"fingerprint": state.Fingerprint,
-		"hook_vars":   state.HookVars,
+		"fingerprint":      state.Fingerprint,
+		"hook_vars":        state.HookVars,
+		"IsLegitimateBot":  isLegitimateBotHelper(state),
+		"SetLegitimateBot": func() error { state.LegitimateBot = true; return nil },
 	}
 }
 
@@ -292,5 +306,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"SetChallengeBody":   func(body string) error { return w.SetChallengeBody(state, body) },
 		"SetChallengeCookie": func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
 		"AppsecCookie":       cookie.NewAppsecCookie,
+		"IsLegitimateBot":    isLegitimateBotHelper(state),
+		"SetLegitimateBot":   func() error { state.LegitimateBot = true; return nil },
 	}
 }
