@@ -197,9 +197,6 @@ func openCookie(encoded string, masterCookieKey []byte, aad []byte, maxCookieLen
 		maxCookieLen = MaxCookieLen
 	}
 
-	// Reject over-limit values before base64-decoding or AEAD-opening them.
-	// The value is fully attacker-controlled and a legitimate cookie always
-	// fits maxCookieLen; this bounds both the decode and gcm.Open allocations.
 	if len(encoded) > maxCookieLen {
 		return nil, fmt.Errorf("%w: %d > %d", ErrCookieTooLarge, len(encoded), maxCookieLen)
 	}
