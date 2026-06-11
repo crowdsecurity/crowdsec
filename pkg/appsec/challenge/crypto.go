@@ -43,14 +43,8 @@ const hkdfInfo = "crowdsec-challenge-cookie"
 // expansion.
 const MaxAllowlistReasonLen = 256
 
-// MaxCookieLen is the DEFAULT per-cookie size ceiling, matching what browsers
-// guarantee (RFC 6265 §6.1: 4096 bytes for name + value + attributes). The
-// challenge cookie round-trips through the browser, so a legitimate one always
-// fits. We reject anything larger on both the seal and open paths — capping the
-// allocations derived from the (attacker-influenced) envelope and closing a
-// memory-exhaustion DoS. Operators can override it via Config.MaxCookieSize
-// (e.g. when a custom client tolerates larger cookies); sealCookieV0/openCookie
-// fall back to this default when given a non-positive limit.
+// MaxCookieLen is the DEFAULT per-cookie size (RFC 6265 §6.1: 4096 bytes).
+// Can be configured via Config.MaxCookieSize and we reject anything bigger.
 const MaxCookieLen = 4096
 
 // Cookie wire format. A single version byte at offset 0 lets us evolve the
