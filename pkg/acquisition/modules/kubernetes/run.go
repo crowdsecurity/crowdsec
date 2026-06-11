@@ -127,11 +127,12 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 
 			if oldP.Status.Phase != newP.Status.Phase {
 				s.logger.Debugf("UPDATE phase %s -> %s", podRef(oldP), podRef(newP))
+				if newP.Status.Phase == corev1.PodRunning {
+					s.tailPod(informerCtx, newP, out, &wg)
+				}
 			} else {
 				s.logger.Tracef("UPDATE %s", podRef(newP))
 			}
-
-			s.tailPod(informerCtx, newP, out, &wg)
 		},
 		DeleteFunc: func(obj any) {
 			pod, ok := obj.(*corev1.Pod)
