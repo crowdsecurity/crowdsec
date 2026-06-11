@@ -31,6 +31,7 @@ var (
 	ErrCookieExpired       = errors.New("cookie expired")
 	ErrCookieVersion       = errors.New("unknown cookie version")
 	ErrAllowlistReasonSize = errors.New("allowlist reason exceeds maximum length")
+	ErrCookieTooLarge      = errors.New("cookie exceeds maximum size")
 )
 
 const hkdfInfo = "crowdsec-challenge-cookie"
@@ -41,6 +42,10 @@ const hkdfInfo = "crowdsec-challenge-cookie"
 // well under the 4 KB browser limit even with the AES-GCM tag + base64
 // expansion.
 const MaxAllowlistReasonLen = 256
+
+// MaxCookieLen is the DEFAULT per-cookie size (RFC 6265 §6.1: 4096 bytes).
+// Can be configured via Config.MaxCookieSize and we reject anything bigger.
+const MaxCookieLen = 4096
 
 // Cookie wire format. A single version byte at offset 0 lets us evolve the
 // format without flag-day-style cookie invalidation. New formats add a new
@@ -100,14 +105,13 @@ func deriveKey(secret []byte) ([]byte, error) {
 // and authenticated (any tamper attempt invalidates the GCM tag).
 //
 // Returns ErrAllowlistReasonSize if reason exceeds MaxAllowlistReasonLen.
-func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter int64, flags byte, reason string, aad []byte) (string, error) {
-	if len(reason) > MaxAllowlistReasonLen {
-		return "", fmt.Errorf("%w: %d > %d", ErrAllowlistReasonSize, len(reason), MaxAllowlistReasonLen)
+func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter int64, flags byte, reason string, aad []byte, maxCookieLen int) (string, error) {
+	if maxCookieLen <= 0 {
+		maxCookieLen = MaxCookieLen
 	}
 
-	envelopeBytes, err := proto.Marshal(envelope)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
+	if len(reason) > MaxAllowlistReasonLen {
+		return "", fmt.Errorf("%w: %d > %d", ErrAllowlistReasonSize, len(reason), MaxAllowlistReasonLen)
 	}
 
 	key, err := deriveKey(masterCookieKey)
@@ -123,6 +127,17 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	// Reject an over-limit envelope before marshaling it.
+	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
+	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + proto.Size(envelope); plaintextLen > maxPlaintext {
+		return "", fmt.Errorf("%w: plaintext=%d > %d", ErrCookieTooLarge, plaintextLen, maxPlaintext)
+	}
+
+	envelopeBytes, err := proto.Marshal(envelope)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal challenge cookie proto: %w", err)
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
@@ -171,7 +186,15 @@ type CookieEnvelope struct {
 // openCookie decodes a sealed cookie, dispatching on the version byte.
 // Unknown versions are rejected with ErrCookieVersion. Expired cookies
 // (notAfter <= now) are rejected with ErrCookieExpired.
-func openCookie(encoded string, masterCookieKey []byte, aad []byte) (*CookieEnvelope, error) {
+func openCookie(encoded string, masterCookieKey []byte, aad []byte, maxCookieLen int) (*CookieEnvelope, error) {
+	if maxCookieLen <= 0 {
+		maxCookieLen = MaxCookieLen
+	}
+
+	if len(encoded) > maxCookieLen {
+		return nil, fmt.Errorf("%w: %d > %d", ErrCookieTooLarge, len(encoded), maxCookieLen)
+	}
+
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode: %w", ErrCookieMalformed, err)

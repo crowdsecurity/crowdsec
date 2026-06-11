@@ -1671,6 +1671,11 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 			resp.UserCookies = append(resp.UserCookies, cookie.String())
 		}
 		resp.UserHeaders = response.UserHeaders
+		if resp.UserHeaders == nil {
+			// default_remediation: challenge reaches here without any headers set
+			// (the internal challenge-serving paths always set Content-Type).
+			resp.UserHeaders = make(map[string][]string)
+		}
 		// If there's no Content-Security-Policy header, add a default one to make sure that the JS code can be evaluated
 		if _, ok := resp.UserHeaders["Content-Security-Policy"]; !ok {
 			resp.UserHeaders["Content-Security-Policy"] = []string{challenge.DefaultChallengeCSP}

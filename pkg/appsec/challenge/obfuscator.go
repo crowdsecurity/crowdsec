@@ -50,7 +50,6 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 		}
 		return "", fmt.Errorf("wasm instantiation error: %v", err)
 	}
-
 	mod.Close(ctx)
 
 	return stdout.String(), nil

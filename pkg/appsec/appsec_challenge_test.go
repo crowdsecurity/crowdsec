@@ -416,3 +416,25 @@ func TestAllowlistCookieRoundtripBypassesSendChallenge(t *testing.T) {
 	assert.Equal(t, statusBefore, state.Response.UserHTTPResponseCode, "challenge status must not overwrite")
 	assert.False(t, state.RequireChallenge, "RequireChallenge must stay false on bypassed replay")
 }
+
+// TestGenerateResponseChallengeNilHeaders guards against a regression where a
+// `default_remediation: challenge` match reaches GenerateResponse with no
+// UserHeaders map set (only the internal challenge-serving paths set headers).
+// Writing the default CSP into that nil map used to panic.
+func TestGenerateResponseChallengeNilHeaders(t *testing.T) {
+	rt := &AppsecRuntimeConfig{
+		Logger: log.NewEntry(log.StandardLogger()),
+		Config: &AppsecConfig{
+			UserBlockedHTTPCode:    http.StatusForbidden,
+			BouncerBlockedHTTPCode: http.StatusForbidden,
+		},
+	}
+
+	resp := AppsecTempResponse{Action: ChallengeRemediation, UserHeaders: nil}
+
+	require.NotPanics(t, func() {
+		_, body := rt.GenerateResponse(resp, rt.Logger)
+		require.NotNil(t, body.UserHeaders)
+		assert.Equal(t, []string{challenge.DefaultChallengeCSP}, body.UserHeaders["Content-Security-Policy"])
+	})
+}

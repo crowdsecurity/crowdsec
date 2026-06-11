@@ -157,6 +157,11 @@ type ChallengeRuntime struct {
 	// so it can exceed the per-epoch signing window.
 	cookieTTL time.Duration
 
+	// maxCookieLen is the size ceiling enforced when sealing and opening cookies
+	// (crypto.go). Bounds the allocation derived from the attacker-influenced
+	// fingerprint envelope. Defaults to MaxCookieLen (the browser limit).
+	maxCookieLen int
+
 	// htmlTpl is the challenge HTML template, parsed once and reused so
 	// GetChallengePage doesn't re-parse per request.
 	htmlTpl *template.Template
@@ -180,6 +185,7 @@ type runtimeOptions struct {
 	rotationInterval                  time.Duration
 	maxLiveEpochs                     int
 	cookieTTL                         time.Duration
+	maxCookieLen                      int
 	cryptoObfuscationPoolSize         int
 	libraryRuntimeObfuscationEnabled  bool
 	libraryObfuscationPoolSize        int
@@ -229,6 +235,16 @@ func WithCookieTTL(ttl time.Duration) Option {
 	return func(o *runtimeOptions) {
 		if ttl > 0 {
 			o.cookieTTL = ttl
+		}
+	}
+}
+
+// WithMaxCookieLen sets the cookie size ceiling (see Config.MaxCookieSize);
+// zero/negative is ignored, leaving the MaxCookieLen default in effect.
+func WithMaxCookieLen(n int) Option {
+	return func(o *runtimeOptions) {
+		if n > 0 {
+			o.maxCookieLen = n
 		}
 	}
 }
@@ -362,6 +378,11 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL = defaultCookieTTL
 	}
 
+	maxCookieLen := resolvedOpts.maxCookieLen
+	if maxCookieLen <= 0 {
+		maxCookieLen = MaxCookieLen
+	}
+
 	cryptoPoolSize := resolvedOpts.cryptoObfuscationPoolSize
 	if cryptoPoolSize <= 0 {
 		cryptoPoolSize = cryptoObfuscationPoolDefaultSize
@@ -450,6 +471,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cryptoPoolSize:                   cryptoPoolSize,
 		dynamicModuleCache:               make(map[int64][]string),
 		cookieTTL:                        cookieTTL,
+		maxCookieLen:                     maxCookieLen,
 		htmlTpl:                          htmlTpl,
 		spent:                            newSpentSet(spentSetMaxEntries),
 		logger:                           logger,
@@ -484,6 +506,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	logger.WithFields(log.Fields{
 		"rotation_interval":   rotationInterval,
 		"cookie_ttl":          cookieTTL,
+		"max_cookie_len":      maxCookieLen,
 		"pow_difficulty":      defaultPowDifficulty,
 		"crypto_pool_size":    cryptoPoolSize,
 		"library_pool_size":   libraryPoolSize,
@@ -491,6 +514,13 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}).Info("WAF challenge runtime initialized")
 
 	return challengeRuntime, nil
+}
+
+func (c *ChallengeRuntime) Close(ctx context.Context) error {
+	if c == nil || c.r == nil {
+		return nil
+	}
+	return c.r.Close(ctx)
 }
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
@@ -661,7 +691,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// the server validity window exactly c.cookieTTL (independent of key
 	// rotation); the browser Max-Age below matches so both expire together.
 	notAfter := time.Now().Add(c.cookieTTL).Unix()
-	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()))
+	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
 	if err != nil {
 		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
@@ -690,7 +720,7 @@ func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason str
 	}
 
 	notAfter := time.Now().Add(ttl).Unix()
-	cookieValue, err := sealCookieV0(&pb.ChallengeCookie{}, c.keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte(request.UserAgent()))
+	cookieValue, err := sealCookieV0(&pb.ChallengeCookie{}, c.keys.MasterCookieKey(), notAfter, cookieFlagAllowlisted, reason, []byte(request.UserAgent()), c.maxCookieLen)
 	if err != nil {
 		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
 	}
@@ -723,7 +753,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		return nil, errors.New("nil cookie")
 	}
 
-	envelope, err := openCookie(ck.Value, c.keys.MasterCookieKey(), []byte(userAgent))
+	envelope, err := openCookie(ck.Value, c.keys.MasterCookieKey(), []byte(userAgent), c.maxCookieLen)
 	if err != nil {
 		return nil, fmt.Errorf("invalid challenge cookie: %w", err)
 	}
