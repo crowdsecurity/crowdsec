@@ -552,13 +552,13 @@ linters:
         path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
         text: 'confusing-naming: Method ''QueryRange'' differs only by capitalization to method ''queryRange'' in the same source file'
 
-      # the FCrDNS lookup behind IsLegitimateBot is deliberately detached from
-      # the request context: its result is shared across requests
-      # (singleflight + cache), so one caller's cancellation must not abort
-      # the lookup for the others; a fixed timeout bounds it instead.
+      # pkg/dnscache lookups are deliberately detached from the request
+      # context: their results are shared across requests (singleflight +
+      # cache), so one caller's cancellation must not abort the lookup for
+      # the others; a fixed timeout bounds them instead.
       - linters:
           - contextcheck
-        text: 'fcrdnsResolve` should pass the context parameter'
+        text: '(lookupPTR|lookupForward)` should pass the context parameter'
 
       # tolerate complex functions in tests for now
       - linters:

@@ -5,28 +5,27 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 )
 
-// fakeResolver implements dnsResolver from in-memory maps so no test ever
-// hits real DNS. ptrCalls/fwdCalls let tests assert how many lookups ran.
+// fakeResolver implements dnscache.Resolver from in-memory maps so no test
+// ever hits real DNS. ptrCalls lets tests assert how many lookups ran.
+// (The cache/singleflight internals are tested in pkg/dnscache; here the
+// fake only backs the end-to-end IsLegitimateBot checks.)
 type fakeResolver struct {
 	ptr      map[string][]string     // ip → PTR names
 	fwd      map[string][]net.IPAddr // hostname → addresses
-	delay    time.Duration
 	ptrCalls atomic.Int32
-	fwdCalls atomic.Int32
 }
 
 func (f *fakeResolver) LookupAddr(_ context.Context, addr string) ([]string, error) {
 	f.ptrCalls.Add(1)
-	time.Sleep(f.delay)
 
 	names, ok := f.ptr[addr]
 	if !ok {
@@ -37,8 +36,6 @@ func (f *fakeResolver) LookupAddr(_ context.Context, addr string) ([]string, err
 }
 
 func (f *fakeResolver) LookupIPAddr(_ context.Context, host string) ([]net.IPAddr, error) {
-	f.fwdCalls.Add(1)
-
 	ips, ok := f.fwd[host]
 	if !ok {
 		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
@@ -47,9 +44,8 @@ func (f *fakeResolver) LookupIPAddr(_ context.Context, host string) ([]net.IPAdd
 	return ips, nil
 }
 
-// setupBotTest resets the datafile globals, installs the fake resolver and
-// empties the FCrDNS cache (Init purges it, but the cache is also rebuilt
-// lazily so a purge is enough for isolation).
+// setupBotTest resets the datafile globals and, when a fake resolver is
+// given, installs it in pkg/dnscache with an empty cache for isolation.
 func setupBotTest(t *testing.T, resolver *fakeResolver) {
 	t.Helper()
 
@@ -57,11 +53,11 @@ func setupBotTest(t *testing.T, resolver *fakeResolver) {
 	require.NoError(t, err)
 
 	if resolver != nil {
-		prev := botDNSResolver
-		botDNSResolver = resolver
+		dnscache.SetResolver(resolver)
+		dnscache.Purge()
 		t.Cleanup(func() {
-			botDNSResolver = prev
-			purgeBotDNSCache()
+			dnscache.SetResolver(net.DefaultResolver)
+			dnscache.Purge()
 		})
 	}
 }
@@ -271,28 +267,6 @@ func TestIsLegitimateBotDNSCache(t *testing.T) {
 	assert.False(t, IsLegitimateBot("203.0.113.9", "googlebot", "/"))
 	assert.False(t, IsLegitimateBot("203.0.113.9", "googlebot", "/"))
 	assert.Equal(t, int32(2), resolver.ptrCalls.Load(), "failed lookup must be cached as negative")
-}
-
-func TestIsLegitimateBotSingleflight(t *testing.T) {
-	resolver := &fakeResolver{
-		ptr:   map[string][]string{"66.249.66.1": {"crawl-66-249-66-1.googlebot.com."}},
-		fwd:   map[string][]net.IPAddr{"crawl-66-249-66-1.googlebot.com": {{IP: net.ParseIP("66.249.66.1")}}},
-		delay: 50 * time.Millisecond,
-	}
-	setupBotTest(t, resolver)
-
-	err := FileInit("testdata", "test_data_bots.json", "bots")
-	require.NoError(t, err)
-
-	var wg sync.WaitGroup
-	for range 10 {
-		wg.Go(func() {
-			assert.True(t, IsLegitimateBot("66.249.66.1", "googlebot", "/"))
-		})
-	}
-
-	wg.Wait()
-	assert.Equal(t, int32(1), resolver.ptrCalls.Load(), "concurrent cold lookups must coalesce")
 }
 
 func TestLoadBotFilesFromDir(t *testing.T) {

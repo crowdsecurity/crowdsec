@@ -1,0 +1,6 @@
+# known good bots test data
+{"name":"googlebot","user_agent":"googlebot","rdns":["googlebot.com",".google.com."]}
+
+{"name":"uptimerobot","user_agent":"uptimerobot","paths":["^/health(/|$)","^/status$"],"ranges":["69.162.124.224/28","2607:ff68:107::/48"],"ips":["216.144.250.150"]}
+{"name":"internal-scanner","ips":["10.1.2.3","2001:db8::42"]}
+{"name":"partner-range","ranges":["192.0.2.0/24"]}

@@ -125,7 +125,6 @@ func Init(databaseClient *database.Client) error {
 	dataFileBots = make(map[string][]*botEntry)
 	dbClient = databaseClient
 
-	purgeBotDNSCache()
 	XMLCacheInit()
 
 	return nil
@@ -133,8 +132,8 @@ func Init(databaseClient *database.Client) error {
 
 // ResetDataFiles clears all datafile-related global variables.
 // This should be called during HUP reload to ensure clean state.
-// The FCrDNS cache is deliberately kept: DNS facts don't change with the
-// configuration, and a reload shouldn't trigger a re-lookup storm.
+// The DNS cache (pkg/dnscache) is deliberately kept: DNS facts don't change
+// with the configuration, and a reload shouldn't trigger a re-lookup storm.
 func ResetDataFiles() {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)

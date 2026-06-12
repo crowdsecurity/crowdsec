@@ -1,7 +1,6 @@
 package exprhelpers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -10,19 +9,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/bluele/gcache"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/singleflight"
+
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 )
 
-// legitBotsSubdir is the subdirectory of the data directory holding "bots"
-// data files. All files in it are loaded on start/reload (see LoadBotFilesFromDir).
 const legitBotsSubdir = "legit_bots"
 
-// dataFileBots holds pre-parsed bot definitions, keyed by filename.
 var dataFileBots map[string][]*botEntry
 
 // botEntry is one bot definition (one JSON line in a "bots" data file).
@@ -47,14 +41,10 @@ type botEntry struct {
 	rdnsSuffixes []string // lowercase, no leading/trailing dot
 }
 
-// compileBotRegex compiles a user-supplied bot pattern, case-insensitive by design.
 func compileBotRegex(pattern string) (*regexp.Regexp, error) {
-	return regexp.Compile("(?i)" + pattern)
+	return regexp.Compile("(?i)" + pattern) // Force case insensitive match
 }
 
-// botFileInit parses a single JSON line of a "bots" data file and appends the
-// compiled entry to dataFileBots. All validation is eager so a bad entry
-// aborts the load (errors surface at startup, not at request time).
 func botFileInit(filename string, line string) error {
 	entry := &botEntry{}
 
@@ -124,11 +114,6 @@ func botFileInit(filename string, line string) error {
 	return nil
 }
 
-// LoadBotFilesFromDir loads every file in <datadir>/legit_bots/ as a "bots"
-// data file. Subdirectories and dotfiles are skipped; a missing directory is
-// a no-op so the feature is opt-in. A malformed file is logged and skipped
-// entirely (no partial definitions), the other files still load — same
-// log-and-continue behavior as bucket/parser data files.
 func LoadBotFilesFromDir(datadir string) error {
 	dir := filepath.Join(datadir, legitBotsSubdir)
 
@@ -158,144 +143,6 @@ func LoadBotFilesFromDir(datadir string) error {
 	}
 
 	return nil
-}
-
-// FCrDNS (forward-confirmed reverse DNS) verification: the PTR record of the
-// source IP must forward-resolve back to that same IP. This is the
-// documented way to verify Googlebot, Bingbot, etc. Verdicts are cached
-// (positive and negative) and concurrent lookups for the same IP coalesce
-// via singleflight, so an IP costs at most one PTR+forward chain per TTL.
-
-// dnsResolver is satisfied by *net.Resolver; swapped for a fake in tests.
-type dnsResolver interface {
-	LookupAddr(ctx context.Context, addr string) ([]string, error)
-	LookupIPAddr(ctx context.Context, host string) ([]net.IPAddr, error)
-}
-
-var botDNSResolver dnsResolver = net.DefaultResolver
-
-const (
-	fcrdnsLookupTimeout = 3 * time.Second // whole PTR+forward chain
-	fcrdnsMaxPTRNames   = 3               // PTR fan-out cap; legit bots return 1
-
-	fcrdnsDefaultPositiveTTL = 1 * time.Hour
-	fcrdnsDefaultNegativeTTL = 5 * time.Minute
-	fcrdnsDefaultCacheSize   = 16384
-)
-
-var (
-	fcrdnsPositiveTTL = fcrdnsDefaultPositiveTTL
-	fcrdnsNegativeTTL = fcrdnsDefaultNegativeTTL
-	fcrdnsCacheSize   = fcrdnsDefaultCacheSize
-
-	fcrdnsCacheOnce sync.Once
-	fcrdnsCache     gcache.Cache
-	fcrdnsSF        singleflight.Group
-)
-
-// ConfigureBotDNSCache overrides the FCrDNS cache defaults. Zero values keep
-// the current setting. Must be called before the first IsLegitimateBot call
-// needing DNS: the cache is built once, on first use.
-func ConfigureBotDNSCache(positiveTTL time.Duration, negativeTTL time.Duration, size int) {
-	if positiveTTL > 0 {
-		fcrdnsPositiveTTL = positiveTTL
-	}
-
-	if negativeTTL > 0 {
-		fcrdnsNegativeTTL = negativeTTL
-	}
-
-	if size > 0 {
-		fcrdnsCacheSize = size
-	}
-}
-
-// purgeBotDNSCache empties the FCrDNS cache. Called from Init for test
-// isolation; deliberately NOT called on HUP reload (ResetDataFiles) — DNS
-// facts don't change with the configuration, keep the warm entries.
-func purgeBotDNSCache() {
-	if fcrdnsCache != nil {
-		fcrdnsCache.Purge()
-	}
-}
-
-// fcrdnsVerifiedNames returns the forward-confirmed PTR names of addr:
-// PTR lookup, then for each returned name (capped at fcrdnsMaxPTRNames) a
-// forward lookup that must contain addr. Names are normalized (lowercase,
-// no trailing dot). An empty slice means "no verified name" and is cached
-// too, with a shorter TTL.
-func fcrdnsVerifiedNames(addr netip.Addr) []string {
-	fcrdnsCacheOnce.Do(func() {
-		fcrdnsCache = gcache.New(fcrdnsCacheSize).LRU().Build()
-	})
-
-	key := addr.String()
-
-	if val, err := fcrdnsCache.Get(key); err == nil {
-		return val.([]string)
-	}
-
-	val, _, _ := fcrdnsSF.Do(key, func() (any, error) {
-		// Re-check the cache inside the singleflight callback in case
-		// another goroutine populated it between the fast-path read and
-		// our entry into Do.
-		if val, err := fcrdnsCache.Get(key); err == nil {
-			return val.([]string), nil
-		}
-
-		verified := fcrdnsResolve(addr)
-
-		ttl := fcrdnsPositiveTTL
-		if len(verified) == 0 {
-			ttl = fcrdnsNegativeTTL
-		}
-
-		if err := fcrdnsCache.SetWithExpire(key, verified, ttl); err != nil {
-			log.Debugf("failed to cache FCrDNS result for %s: %s", key, err)
-		}
-
-		return verified, nil
-	})
-
-	return val.([]string)
-}
-
-// fcrdnsResolve performs the actual (uncached) PTR + forward confirmation.
-// It is deliberately detached from any request context: the result is shared
-// across requests (singleflight + cache), so one caller's cancellation must
-// not abort the lookup for the others. The fixed timeout bounds it instead.
-// (contextcheck is excluded for this function in .golangci.yml)
-func fcrdnsResolve(addr netip.Addr) []string {
-	ctx, cancel := context.WithTimeout(context.Background(), fcrdnsLookupTimeout)
-	defer cancel()
-
-	names, err := botDNSResolver.LookupAddr(ctx, addr.String())
-	if err != nil {
-		log.Debugf("FCrDNS: PTR lookup failed for %s: %s", addr, err)
-		return []string{}
-	}
-
-	verified := []string{}
-
-	for _, name := range names[:min(len(names), fcrdnsMaxPTRNames)] {
-		name = strings.TrimSuffix(strings.ToLower(name), ".")
-
-		ips, err := botDNSResolver.LookupIPAddr(ctx, name)
-		if err != nil {
-			log.Debugf("FCrDNS: forward lookup failed for %s (PTR of %s): %s", name, addr, err)
-			continue
-		}
-
-		for _, ip := range ips {
-			fwd, ok := netip.AddrFromSlice(ip.IP)
-			if ok && fwd.Unmap() == addr {
-				verified = append(verified, name)
-				break
-			}
-		}
-	}
-
-	return verified
 }
 
 // parseBotAddr normalizes a source address as found in HTTP contexts:
@@ -383,7 +230,7 @@ func IsLegitimateBot(ip string, ua string, path string) bool {
 		return false
 	}
 
-	for _, name := range fcrdnsVerifiedNames(addr) {
+	for _, name := range dnscache.ForwardConfirmedNames(addr) {
 		for _, entry := range rdnsCandidates {
 			if domainSuffixMatch(name, entry.rdnsSuffixes) {
 				log.Debugf("IsLegitimateBot: %s verified as '%s' via FCrDNS (%s)", ip, entry.Name, name)
