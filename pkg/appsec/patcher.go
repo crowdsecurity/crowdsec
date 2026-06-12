@@ -9,9 +9,7 @@ type appsecExprPatcher struct {
 
 // challengeRuntimeCallees is the set of expr helper names whose presence in
 // any compiled rule body implies that the challenge runtime (WASM VM,
-// obfuscator, keyring) must be initialized — even if no rule ever calls
-// SendChallenge directly. Keep in sync with the env helpers exposed by
-// GetPreEvalEnv / GetOnChallengeEnv / GetOnChallengeSubmitEnv.
+// obfuscator, keyring) must be initialized.
 var challengeRuntimeCallees = map[string]struct{}{
 	"SendChallenge":        {},
 	"GrantChallengeCookie": {},

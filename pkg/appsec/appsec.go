@@ -1499,6 +1499,12 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 		return errors.New("challenge runtime not initialized")
 	}
 
+	// SendChallenge can only be called from inband.post_eval and inband.on_challenge.
+	// as it's the same expr-env, we need to detect here.
+	if state.CurrentPhase != PhaseInBand {
+		return errors.New("SendChallenge can only be called from an in-band hook (on_challenge or post_eval)")
+	}
+
 	// GrantChallengeCookie earlier in the same request already minted an
 	// allowlist cookie; refuse to overwrite it with a challenge page.
 	if state.ChallengeBypassed {

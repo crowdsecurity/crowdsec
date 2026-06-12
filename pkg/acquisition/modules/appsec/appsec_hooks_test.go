@@ -1355,9 +1355,9 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 
 	tests := []appsecRuleTest{
 		{
-			name:             "pre_eval issues a challenge when no cookie is present",
+			name:             "post_eval issues a challenge when no cookie is present",
 			expected_load_ok: true,
-			pre_eval: []appsec.Hook{
+			post_eval: []appsec.Hook{
 				{Apply: []string{"SendChallenge()"}},
 			},
 			input_request: appsec.ParsedRequest{
@@ -1388,7 +1388,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				{Filter: "fingerprint.Bot.MismatchWebGLInWorker", Apply: []string{"DropRequest('bot')"}},
 			},
 			// Must reference SendChallenge() somewhere to force ChallengeRuntime init.
-			pre_eval: []appsec.Hook{
+			post_eval: []appsec.Hook{
 				{Filter: "false", Apply: []string{"SendChallenge()"}},
 			},
 			input_request: appsec.ParsedRequest{
@@ -1444,7 +1444,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				{Apply: []string{"DropRequest('should not fire')"}},
 			},
 			// Force ChallengeRuntime init.
-			pre_eval: []appsec.Hook{
+			post_eval: []appsec.Hook{
 				{Filter: "false", Apply: []string{"SendChallenge()"}},
 			},
 			input_request: appsec.ParsedRequest{
@@ -1474,9 +1474,9 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			// as an allowlisted IP. SendChallenge() must be a no-op for it: no
 			// challenge HTML, no Set-Cookie, response stays at the default pass
 			// action so the request goes through cleanly.
-			name:             "allowlisted IP: pre_eval SendChallenge() is suppressed",
+			name:             "allowlisted IP: post_eval SendChallenge() is suppressed",
 			expected_load_ok: true,
-			pre_eval: []appsec.Hook{
+			post_eval: []appsec.Hook{
 				{Apply: []string{"SendChallenge()"}},
 			},
 			input_request: appsec.ParsedRequest{
@@ -1499,9 +1499,9 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 		{
 			// Same allowlisted IP, but inside a /24 CIDR entry (5.4.4.0/24) —
 			// confirms range matches are honored the same way as exact IPs.
-			name:             "allowlisted CIDR: pre_eval SendChallenge() is suppressed",
+			name:             "allowlisted CIDR: post_eval SendChallenge() is suppressed",
 			expected_load_ok: true,
-			pre_eval: []appsec.Hook{
+			post_eval: []appsec.Hook{
 				{Apply: []string{"SendChallenge()"}},
 			},
 			input_request: appsec.ParsedRequest{
@@ -1543,6 +1543,74 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 					"allowlisted IP must not receive the PoW worker JS")
 				require.NotEqual(t, challenge.PowWorkerJS, responses[0].UserHTTPBodyContent)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
+		{
+			// SendChallenge is restricted to on_challenge + in-band post_eval
+			name:             "pre_eval SendChallenge() fails to load",
+			expected_load_ok: false,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+		},
+		{
+			// SendChallenge in an out-of-band post_eval hook is rejected at runtime
+			name:             "outofband post_eval SendChallenge() is rejected",
+			expected_load_ok: true,
+			outofband_post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"out-of-band SendChallenge must not issue a challenge")
+				require.Empty(t, responses[0].UserHTTPBodyContent, "no challenge HTML must be served")
+			},
+		},
+		{
+			// A challenged request is served the challenge and never reaches the
+			// backend;
+			name:             "challenge skips out-of-band evaluation",
+			expected_load_ok: true,
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "oob-rule",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				Args:        url.Values{"foo": []string{"toto"}}, // would match oob-rule
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				// Only the challenge "requested" event must be present; the OOB rule
+				// was skipped, so no appsec match event is emitted.
+				require.Len(t, events, 1)
+				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
+				require.Equal(t, string(appsec.ChallengeReasonRequested), events[0].Parsed["challenge_event"])
 			},
 		},
 	}

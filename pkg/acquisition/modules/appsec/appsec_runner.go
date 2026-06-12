@@ -517,6 +517,11 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	// handler's map read/write + json.Marshal.
 	request.ResponseChannel <- state.Response.Clone()
 
+	// A challenge was served, so the request never reaches the backend;
+	if state.RequireChallenge {
+		return
+	}
+
 	// Challenge remediation is intentionally a no-op for OOB matches: the inband
 	// response has already been sent to the visitor at this point, so there is
 	// nothing left to challenge. OOB matches still feed alerts/events.

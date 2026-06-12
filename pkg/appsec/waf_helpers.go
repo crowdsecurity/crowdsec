@@ -114,9 +114,9 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			return nil
 		},
 		"AppsecCookie": cookie.NewAppsecCookie,
-		"SendChallenge": func() error {
-			return w.SendChallenge(ctx, state, request)
-		},
+		// SendChallenge is intentionally not exposed in pre_eval: a challenge must
+		// only be issued after in-band WAF evaluation. Referencing it here fails to
+		// compile at config load.
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},

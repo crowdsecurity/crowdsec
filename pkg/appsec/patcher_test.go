@@ -13,9 +13,11 @@ func TestAppsecConfigBuildDetectsRequireValidChallenge(t *testing.T) {
 	logger := log.New()
 	logger.SetOutput(io.Discard)
 
+	// SendChallenge is only exposed in post_eval / on_challenge envs; the patcher
+	// detects it from any stage and flags NeedWASMVM.
 	cfg := AppsecConfig{
 		Logger: log.NewEntry(logger),
-		PreEval: []Hook{
+		PostEval: []Hook{
 			{
 				Apply: []string{"SendChallenge()"},
 			},

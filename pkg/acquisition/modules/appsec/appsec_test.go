@@ -150,6 +150,12 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	hub := cwhub.Hub{}
 	AppsecRuntime, err := appsecCfg.Build(t.Context(), &hub)
 	if err != nil {
+		// A hook that fails to compile (e.g. SendChallenge() in a phase where it
+		// isn't exposed) surfaces here; honor expected_load_ok like the
+		// runner.Init failure path below.
+		if !test.expected_load_ok {
+			return
+		}
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
 	for ref, schemaYAML := range test.schemas {
