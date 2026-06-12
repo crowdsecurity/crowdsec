@@ -25,6 +25,10 @@ var dataFileBots map[string][]*botEntry
 // verified by at least one identity check (exact IP, CIDR range, or
 // forward-confirmed reverse DNS). UA-only entries are rejected at load time:
 // a User-Agent is trivially spoofable.
+//
+// rdns patterns are regexes matched against the FCrDNS-verified names
+// (lowercase, no trailing dot). Anchor them — `(^|\.)googlebot\.com$` —
+// or "evilgooglebot.com.attacker.net" matches `googlebot\.com` too.
 type botEntry struct {
 	Name      string   `json:"name"`
 	UserAgent string   `json:"user_agent,omitempty"`
@@ -34,11 +38,11 @@ type botEntry struct {
 	RDNS      []string `json:"rdns,omitempty"`
 
 	// compiled at load time
-	uaRegex      *regexp.Regexp
-	pathRegexes  []*regexp.Regexp
-	ipSet        map[netip.Addr]struct{}
-	prefixes     []netip.Prefix
-	rdnsSuffixes []string // lowercase, no leading/trailing dot
+	uaRegex     *regexp.Regexp
+	pathRegexes []*regexp.Regexp
+	ipSet       map[netip.Addr]struct{}
+	prefixes    []netip.Prefix
+	rdnsRegexes []*regexp.Regexp
 }
 
 func compileBotRegex(pattern string) (*regexp.Regexp, error) {
@@ -100,13 +104,19 @@ func botFileInit(filename string, line string) error {
 		entry.prefixes = append(entry.prefixes, prefix.Masked())
 	}
 
-	for _, suffix := range entry.RDNS {
-		normalized := strings.Trim(strings.ToLower(suffix), ".")
-		if normalized == "" {
-			return fmt.Errorf("empty rdns suffix for bot entry '%s' in %s", entry.Name, filename)
+	for _, p := range entry.RDNS {
+		// an empty pattern matches every PTR-confirmed host: almost
+		// certainly a mistake, reject it
+		if p == "" {
+			return fmt.Errorf("empty rdns pattern for bot entry '%s' in %s", entry.Name, filename)
 		}
 
-		entry.rdnsSuffixes = append(entry.rdnsSuffixes, normalized)
+		re, err := compileBotRegex(p)
+		if err != nil {
+			return fmt.Errorf("invalid rdns regex '%s' for bot entry '%s' in %s: %w", p, entry.Name, filename, err)
+		}
+
+		entry.rdnsRegexes = append(entry.rdnsRegexes, re)
 	}
 
 	dataFileBots[filename] = append(dataFileBots[filename], entry)
@@ -165,19 +175,6 @@ func parseBotAddr(s string) (netip.Addr, bool) {
 	return addr.WithZone("").Unmap(), true
 }
 
-// domainSuffixMatch reports whether name equals suffix or is a subdomain of
-// it. The label-boundary check prevents "evilgooglebot.com" from matching
-// the suffix "googlebot.com".
-func domainSuffixMatch(name string, suffixes []string) bool {
-	for _, suffix := range suffixes {
-		if name == suffix || strings.HasSuffix(name, "."+suffix) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // IsLegitimateBot reports whether the request (source address, User-Agent,
 // path) matches a bot definition from the loaded "bots" data files:
 // (UA && PATH) && (IP || RANGE || RDNS). Fail-closed: an unparseable
@@ -220,7 +217,7 @@ func IsLegitimateBot(ip string, ua string, path string) bool {
 				}
 			}
 
-			if len(entry.rdnsSuffixes) > 0 {
+			if len(entry.rdnsRegexes) > 0 {
 				rdnsCandidates = append(rdnsCandidates, entry)
 			}
 		}
@@ -232,7 +229,7 @@ func IsLegitimateBot(ip string, ua string, path string) bool {
 
 	for _, name := range dnscache.ForwardConfirmedNames(addr) {
 		for _, entry := range rdnsCandidates {
-			if domainSuffixMatch(name, entry.rdnsSuffixes) {
+			if matchAnyRegex(entry.rdnsRegexes, name) {
 				log.Debugf("IsLegitimateBot: %s verified as '%s' via FCrDNS (%s)", ip, entry.Name, name)
 				return true
 			}

@@ -76,8 +76,7 @@ func TestBotFileInit(t *testing.T) {
 	assert.Equal(t, "googlebot", googlebot.Name)
 	assert.NotNil(t, googlebot.uaRegex)
 	assert.Empty(t, googlebot.pathRegexes)
-	// rdns suffixes are normalized: lowercase, no leading/trailing dots
-	assert.Equal(t, []string{"googlebot.com", "google.com"}, googlebot.rdnsSuffixes)
+	assert.Len(t, googlebot.rdnsRegexes, 2)
 
 	uptimerobot := entries[1]
 	assert.Len(t, uptimerobot.pathRegexes, 2)
@@ -100,6 +99,7 @@ func TestBotFileInitErrors(t *testing.T) {
 		{"missing name", "test_data_bots_no_name.json", "missing mandatory 'name' field"},
 		{"no identity check", "test_data_bots_no_identity.json", "no identity verification"},
 		{"bad user_agent regex", "test_data_bots_bad_regex.json", "invalid user_agent regex"},
+		{"bad rdns regex", "test_data_bots_bad_rdns.json", "invalid rdns regex"},
 		{"bad CIDR", "test_data_bots_bad_cidr.json", "invalid CIDR range"},
 		{"bad IP", "test_data_bots_bad_ip.json", "invalid IP"},
 		{"unknown field", "test_data_bots_unknown_field.json", "unknown field"},
@@ -207,7 +207,7 @@ func TestIsLegitimateBotFCrDNS(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "suffix match requires label boundary",
+			name: "anchored pattern rejects lookalike domain",
 			resolver: &fakeResolver{
 				ptr: map[string][]string{"203.0.113.6": {"evilgooglebot.com."}},
 				fwd: map[string][]net.IPAddr{"evilgooglebot.com": {{IP: net.ParseIP("203.0.113.6")}}},
