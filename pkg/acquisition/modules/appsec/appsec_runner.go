@@ -511,10 +511,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 		r.logger.Errorf("unable to close inband transaction: %s", err)
 	}
 
-	// send back the result to the HTTP handler for the InBand part. Clone so the
-	// handler reads an isolated copy: the out-of-band phase below keeps mutating
-	// state.Response (headers/cookies via hooks), which would otherwise race the
-	// handler's map read/write + json.Marshal.
+	// Clone as the out-of-band phase might mutate the response
 	request.ResponseChannel <- state.Response.Clone()
 
 	// A challenge was served, so the request never reaches the backend;
