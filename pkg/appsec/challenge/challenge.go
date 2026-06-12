@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -566,7 +567,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 	if err != nil {
 		return "", fmt.Errorf("generate PoW salt: %w", err)
 	}
-	powMAC := c.computePowMAC(powSalt, r, ts)
+	powMAC := c.computePowMAC(powSalt, r, ts, difficulty)
 
 	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
 		issEpoch, issKey := c.keys.Current()
@@ -602,15 +603,16 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 }
 
 // ValidateChallengeResponse parses a submit POST and runs the full chain:
-// freshness + PoW-salt authenticity, PoW solution, the submission signature
-// `sig` (keyed by the never-transmitted s = HMAC(K_epoch, r)), a single-use
-// burn of `r` (replay protection), and fingerprint de-obfuscation. On success
-// it returns the sealed cookie and decoded FingerprintData; failures return a
-// generic error so the caller doesn't leak which stage failed.
-func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, error) {
+// freshness + PoW-salt authenticity + difficulty, PoW solution,
+// the submission signature `sig` (keyed by the never-transmitted s = HMAC(K_epoch, r)),
+// a single-use burn of `r` (replay protection),
+// and fingerprint de-obfuscation. On success it returns the sealed
+// cookie, decoded FingerprintData, and the proven PoW difficulty; failures
+// return a generic error so the caller doesn't leak which stage failed.
+func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body []byte) (*cookie.AppsecCookie, FingerprintData, int, error) {
 	vars, err := url.ParseQuery(string(body))
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("%w: %w", ErrChallengePayload, err)
+		return nil, FingerprintData{}, 0, fmt.Errorf("%w: %w", ErrChallengePayload, err)
 	}
 
 	encryptedFingerprint := vars.Get("f")
@@ -620,34 +622,45 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientNonce := vars.Get("n")
 	clientPowSalt := vars.Get("p")
 	clientPowMAC := vars.Get("m")
+	clientDifficultyStr := vars.Get("d")
 
-	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" {
-		return nil, FingerprintData{}, errors.New("missing required fields in challenge response")
+	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" || clientDifficultyStr == "" {
+		return nil, FingerprintData{}, 0, errors.New("missing required fields in challenge response")
+	}
+
+	// The difficulty the client claims it solved. It is untrusted until the PoW
+	// MAC (which binds it) is verified in verifyChallenge below. Bound to the
+	// valid PoW range so a malformed value can't reach the PoW/seal logic.
+	clientDifficulty, err := strconv.Atoi(clientDifficultyStr)
+	if err != nil || clientDifficulty < PowDifficultyDisabled || clientDifficulty > PowDifficultyImpossible {
+		return nil, FingerprintData{}, 0, errors.New("invalid ticket in challenge response")
 	}
 
 	// Server-issued `r` is a 16-byte nonce in hex (generateChallengeNonce):
 	// exactly 32 hex chars. Reject other shapes early so a K_epoch holder can't
 	// bloat the spent-set with oversized keys, and to keep the key space canonical.
 	if _, err := hex.DecodeString(clientR); err != nil || len(clientR) != 32 {
-		return nil, FingerprintData{}, errors.New("invalid ticket in challenge response")
+		return nil, FingerprintData{}, 0, errors.New("invalid ticket in challenge response")
 	}
 
-	// Verify freshness + PoW-salt authenticity and recover the per-epoch sign
-	// key (stateless). Key knowledge is proven by `sig` below.
-	signKey, ok := c.verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC)
+	// Verify freshness + PoW-salt/difficulty authenticity and recover the
+	// per-epoch sign key (stateless). Key knowledge is proven by `sig` below.
+	signKey, ok := c.verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC, clientDifficulty)
 	if !ok {
-		return nil, FingerprintData{}, errors.New("invalid ticket in challenge response")
+		return nil, FingerprintData{}, 0, errors.New("invalid ticket in challenge response")
 	}
 
 	// Impossible difficulty is a deliberate hard-block: never accept anything.
-	if c.powDifficulty >= PowDifficultyImpossible {
-		return nil, FingerprintData{}, ErrChallengeDifficulty
+	// clientDifficulty is now MAC-authenticated, so this enforces the difficulty
+	// actually issued for this request, not the runtime-global default.
+	if clientDifficulty >= PowDifficultyImpossible {
+		return nil, FingerprintData{}, 0, ErrChallengeDifficulty
 	}
 
 	// Verify proof-of-work: SHA256(powSalt + nonce) must have required leading zero bits
 	powHash := sha256.Sum256([]byte(clientPowSalt + clientNonce))
-	if !hasLeadingZeroBits(powHash[:], c.powDifficulty) {
-		return nil, FingerprintData{}, ErrChallengePoW
+	if !hasLeadingZeroBits(powHash[:], clientDifficulty) {
+		return nil, FingerprintData{}, 0, ErrChallengePoW
 	}
 
 	// Verify the submission signature sig = HMAC(s, r||ts||n||f), where the
@@ -657,26 +670,26 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	expectedSig := hmacSHA256Hex([]byte(s), []byte(clientR+clientTS+clientNonce+encryptedFingerprint))
 	if !hmac.Equal([]byte(clientSig), []byte(expectedSig)) {
-		return nil, FingerprintData{}, errors.New("invalid HMAC in challenge response")
+		return nil, FingerprintData{}, 0, errors.New("invalid HMAC in challenge response")
 	}
 
 	// Single-use: burn `r` (rejects replays). Done last so the spent-set only
 	// grows on fully-valid submissions.
 	if !c.spent.checkAndInsert(clientR, ticketAgeBackstop) {
-		return nil, FingerprintData{}, errors.New("challenge response already used")
+		return nil, FingerprintData{}, 0, errors.New("challenge response already used")
 	}
 
 	obfKey := deriveFingerprintObfKey(s, clientR)
 
 	fingerprint, err := deobfuscateFingerprint(obfKey, encryptedFingerprint)
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to deobfuscate fingerprint: %w", err)
+		return nil, FingerprintData{}, 0, fmt.Errorf("failed to deobfuscate fingerprint: %w", err)
 	}
 
 	var fpData FingerprintData
 
 	if err := json.Unmarshal([]byte(fingerprint), &fpData); err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
+		return nil, FingerprintData{}, 0, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
 	}
 
 	// Debug diagnostic: a validated submission. Guarded so `k_epoch` (forgeable
@@ -691,9 +704,12 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		}).Debug("validated submission")
 	}
 
+	// Seal the difficulty the client actually proved (MAC-authenticated above),
+	// so the next request's re-challenge check compares against real work and an
+	// escalated per-request difficulty survives the cookie round-trip.
 	envelope := &pb.ChallengeCookie{
 		Fingerprint:   fpData.ToProto(),
-		PowDifficulty: int32(c.powDifficulty),
+		PowDifficulty: int32(clientDifficulty),
 	}
 
 	// Seal under the long-lived master cookie key. The embedded not_after makes
@@ -702,7 +718,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	notAfter := time.Now().Add(c.cookieTTL).Unix()
 	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
 	if err != nil {
-		return nil, FingerprintData{}, fmt.Errorf("failed to seal challenge cookie: %w", err)
+		return nil, FingerprintData{}, 0, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
 	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
@@ -710,7 +726,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		ck = ck.Secure()
 	}
 
-	return ck, fpData, nil
+	return ck, fpData, clientDifficulty, nil
 }
 
 // SealAllowlistCookie mints an allowlist-bypass cookie (no fingerprint, with

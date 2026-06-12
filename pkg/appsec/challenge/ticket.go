@@ -90,9 +90,9 @@ func generatePowPrefix() (string, error) {
 }
 
 // computePowMAC authenticates a PoW salt as server-generated and bound to a
-// specific challenge (`r`) + timestamp, signed with the per-epoch key — so a
-// client can't substitute a favorable salt.
-func (c *ChallengeRuntime) computePowMAC(salt, r, ts string) string {
+// specific challenge (`r`) + timestamp + difficulty, signed with the per-epoch
+// key.
+func (c *ChallengeRuntime) computePowMAC(salt, r, ts string, difficulty int) string {
 	epoch := c.epochForTimestamp(ts)
 	signKey, ok := c.keys.SignKey(epoch)
 	if !ok {
@@ -103,6 +103,7 @@ func (c *ChallengeRuntime) computePowMAC(salt, r, ts string) string {
 	h.Write([]byte(salt))
 	h.Write([]byte(r))
 	h.Write([]byte(ts))
+	h.Write([]byte(strconv.Itoa(difficulty)))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
@@ -154,7 +155,7 @@ func deobfuscateFingerprint(obfKey string, payload string) (string, error) {
 // binding, returning the per-epoch sign key (for deriving `s`) on success.
 // Stateless — any instance sharing the master secret can verify. Knowledge of
 // the per-epoch key is proven separately by the caller's `sig` check.
-func (c *ChallengeRuntime) verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC string) ([]byte, bool) {
+func (c *ChallengeRuntime) verifyChallenge(clientR, clientTS, clientPowSalt, clientPowMAC string, clientDifficulty int) ([]byte, bool) {
 	tsVal, err := strconv.ParseInt(clientTS, 10, 64)
 	if err != nil || tsVal <= 0 {
 		return nil, false
@@ -173,12 +174,9 @@ func (c *ChallengeRuntime) verifyChallenge(clientR, clientTS, clientPowSalt, cli
 		return nil, false
 	}
 
-	// Verify the PoW salt MAC is authentic and bound to this challenge+timestamp.
-	macIn := make([]byte, 0, len(clientPowSalt)+len(clientR)+len(clientTS))
-	macIn = append(macIn, clientPowSalt...)
-	macIn = append(macIn, clientR...)
-	macIn = append(macIn, clientTS...)
-	expectedMAC := hmacSHA256Hex(signKey, macIn)
+	// MAC is recomputed over the client-submitted difficulty: a tampered `d`
+	// won't match, so this is what authenticates the difficulty.
+	expectedMAC := c.computePowMAC(clientPowSalt, clientR, clientTS, clientDifficulty)
 
 	if !hmac.Equal([]byte(clientPowMAC), []byte(expectedMAC)) {
 		return nil, false

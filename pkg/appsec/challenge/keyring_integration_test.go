@@ -224,13 +224,13 @@ func TestRotation_TicketSurvives_WithinLiveWindow(t *testing.T) {
 	r, err := generateChallengeNonce()
 	require.NoError(t, err)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, r, tsStr)
+	mac := c.computePowMAC(salt, r, tsStr, PowDifficultyMedium)
 
 	// Roll the keyring clock forward one rotation interval — the challenge's
 	// epoch is now "previous" but still in the live window.
 	keys.now = func() time.Time { return t0.Add(70 * time.Second) }
 
-	_, ok := c.verifyChallenge(r, tsStr, salt, mac)
+	_, ok := c.verifyChallenge(r, tsStr, salt, mac, PowDifficultyMedium)
 	assert.True(t, ok, "challenge from previous epoch must still validate within the live window")
 }
 
@@ -248,13 +248,13 @@ func TestRotation_TicketRejected_OutOfWindow(t *testing.T) {
 	r, err := generateChallengeNonce()
 	require.NoError(t, err)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, r, tsStr)
+	mac := c.computePowMAC(salt, r, tsStr, PowDifficultyMedium)
 
 	// Jump the keyring's clock past the live window (maxLive=3 + skew=1 =
 	// any epoch >4 minutes ahead in the keyring's view evicts the original).
 	keys.now = func() time.Time { return t0.Add(5 * time.Minute) }
 
-	_, ok := c.verifyChallenge(r, tsStr, salt, mac)
+	_, ok := c.verifyChallenge(r, tsStr, salt, mac, PowDifficultyMedium)
 	assert.False(t, ok, "challenge from an evicted epoch must not validate")
 }
 
@@ -272,7 +272,7 @@ func TestEndToEnd_ValidateChallengeResponse(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 
-	ck, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	ck, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 	require.NotNil(t, ck)
 
@@ -302,7 +302,7 @@ func TestCookieV0_BrowserTTLMatchesServerTTL(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 
-	ck, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	ck, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 
 	parsed, err := http.ParseSetCookie(ck.String())

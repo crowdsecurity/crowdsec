@@ -1067,7 +1067,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		w.Logger.Debugf("validating challenge response")
 		w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
 
-		ck, fpData, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
+		ck, fpData, provenDifficulty, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			w.Logger.Errorf("challenge validation failed: %s", err)
 			w.emitChallengeEvent(request, ChallengeEventInfo{
@@ -1080,8 +1080,11 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		}
 
 		// Populate state.Fingerprint so on_challenge_submit expressions see
-		// the freshly-decrypted fingerprint via the env.
+		// the freshly-decrypted fingerprint via the env. CookiePowDifficulty
+		// records the difficulty just proven so the Solved event and
+		// on_challenge_submit expressions see the real value, not 0.
 		state.Fingerprint = &fpData
+		state.CookiePowDifficulty = provenDifficulty
 
 		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
 			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
