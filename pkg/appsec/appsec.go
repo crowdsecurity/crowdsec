@@ -189,12 +189,6 @@ type AppsecTempResponse struct {
 	SendAlert               bool                  // do we send an alert on rule match
 }
 
-// Clone returns a copy whose reference-typed fields (UserHeaders,
-// UserHTTPCookies) have independent backing. It lets the runner hand a response
-// to the HTTP handler while the out-of-band phase keeps mutating the live
-// state.Response — without it, GenerateResponse (which adds a default CSP header
-// and json-marshals the map) races the OOB SetChallengeHeader/SetChallengeCookie
-// writes, a fatal concurrent map access.
 func (r AppsecTempResponse) Clone() AppsecTempResponse {
 	clone := r
 	if r.UserHeaders != nil {
