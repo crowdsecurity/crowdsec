@@ -85,7 +85,7 @@ func TestChallengeEventFromRequest(t *testing.T) {
 				require.Equal(t, "true", evt.Parsed["fingerprint_allowlisted"])
 				require.Equal(t, "googlebot", evt.Parsed["fingerprint_allowlist_reason"])
 				// the full fingerprint struct must be available for traversal
-				fp, ok := evt.Unmarshaled["fingerprint"].(challenge.FingerprintData)
+				fp, ok := evt.Unmarshaled["fingerprint"].(*challenge.FingerprintData)
 				require.True(t, ok, "fingerprint should be attached to Unmarshaled")
 				require.Equal(t, "FS1_abc", fp.FSID)
 			},

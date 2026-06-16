@@ -94,9 +94,10 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 	if fp := info.Fingerprint; fp != nil {
 		// Expose the full fingerprint (all nested signals, bot-detection details,
 		// etc.) so scenarios and alert-context can traverse it as
-		// evt.Unmarshaled.fingerprint.Signals... It stays out of LAPI/CAPI unless
-		// explicitly mapped into Meta.
-		evt.Unmarshaled["fingerprint"] = *fp
+		// evt.Unmarshaled.fingerprint.Signals... Stored as a pointer so expr can
+		// also call the *FingerprintData helper methods (Platform(), BotSignals(),
+		// IsBot(), ...). It stays out of LAPI/CAPI unless explicitly mapped into Meta.
+		evt.Unmarshaled["fingerprint"] = fp
 		// Flat shortcuts for cheap scenario filtering.
 		evt.Parsed["fsid"] = fp.FSID
 		evt.Parsed["fingerprint_bot"] = strconv.FormatBool(fp.FastBotDetection.Bool())
