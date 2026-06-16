@@ -264,7 +264,7 @@ async function runChallenge(epochKey) {
   return fetch(submitPath, {
     method: "POST",
     credentials: "same-origin",
-    body: new URLSearchParams({ f: f, r: r, ts: ts, sig: sig, n: nonce, p: powPrefix, m: powMAC }),
+    body: new URLSearchParams({ f: f, r: r, ts: ts, sig: sig, n: nonce, p: powPrefix, m: powMAC, d: powDifficulty }),
   })
     .then((response) => response.json())
     .then((data) => {

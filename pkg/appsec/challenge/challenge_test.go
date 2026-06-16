@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -173,34 +174,40 @@ func TestVerifyChallenge(t *testing.T) {
 
 	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	mac := c.computePowMAC(salt, r, ts)
+	const diff = PowDifficultyMedium
+	mac := c.computePowMAC(salt, r, ts, diff)
 
 	// Valid challenge → returns the epoch sign key.
-	signKey, ok := c.verifyChallenge(r, ts, salt, mac)
+	signKey, ok := c.verifyChallenge(r, ts, salt, mac, diff)
 	assert.True(t, ok)
 	assert.NotEmpty(t, signKey)
 
 	// Wrong r (MAC bound to a different r).
-	_, ok = c.verifyChallenge("ffffffffffffffffffffffffffffffff", ts, salt, mac)
+	_, ok = c.verifyChallenge("ffffffffffffffffffffffffffffffff", ts, salt, mac, diff)
 	assert.False(t, ok)
 
 	// Malformed timestamp.
-	_, ok = c.verifyChallenge(r, "9999999999999999999", salt, mac)
+	_, ok = c.verifyChallenge(r, "9999999999999999999", salt, mac, diff)
 	assert.False(t, ok)
 
 	// Forged MAC.
-	_, ok = c.verifyChallenge(r, ts, salt, "forged-mac")
+	_, ok = c.verifyChallenge(r, ts, salt, "forged-mac", diff)
 	assert.False(t, ok)
 
 	// MAC from a different salt.
 	otherSalt := mustGeneratePowPrefix(t)
-	_, ok = c.verifyChallenge(r, ts, otherSalt, mac)
+	_, ok = c.verifyChallenge(r, ts, otherSalt, mac, diff)
+	assert.False(t, ok)
+
+	// Tampered difficulty: the MAC binds difficulty, so claiming a lower one
+	// than was issued must fail (the per-request escalation bypass).
+	_, ok = c.verifyChallenge(r, ts, salt, mac, PowDifficultyLow)
 	assert.False(t, ok)
 
 	// Expired timestamp (too old).
 	oldTS := fmt.Sprintf("%d", time.Now().Add(-3*ticketAgeBackstop).UnixNano())
-	oldMAC := c.computePowMAC(salt, r, oldTS)
-	_, ok = c.verifyChallenge(r, oldTS, salt, oldMAC)
+	oldMAC := c.computePowMAC(salt, r, oldTS, diff)
+	_, ok = c.verifyChallenge(r, oldTS, salt, oldMAC, diff)
 	assert.False(t, ok)
 
 	// Cross-secret rejection: a challenge signed by a different master secret
@@ -208,8 +215,8 @@ func TestVerifyChallenge(t *testing.T) {
 	otherKeys, err := NewKeyRing([]byte("ffffffffffffffffffffffffffffffff"), time.Minute, 3)
 	require.NoError(t, err)
 	other := &ChallengeRuntime{keys: otherKeys}
-	otherMAC := other.computePowMAC(salt, r, ts)
-	_, ok = c.verifyChallenge(r, ts, salt, otherMAC)
+	otherMAC := other.computePowMAC(salt, r, ts, diff)
+	_, ok = c.verifyChallenge(r, ts, salt, otherMAC, diff)
 	assert.False(t, ok)
 }
 
@@ -230,7 +237,7 @@ func TestDistributedAgreement(t *testing.T) {
 	salt := "deadbeefcafebabe"
 
 	// Both instances agree on the PoW MAC...
-	assert.Equal(t, a.computePowMAC(salt, r, ts), b.computePowMAC(salt, r, ts))
+	assert.Equal(t, a.computePowMAC(salt, r, ts, PowDifficultyMedium), b.computePowMAC(salt, r, ts, PowDifficultyMedium))
 
 	// ...and on the per-challenge secret derived from the epoch for ts.
 	epoch := a.epochForTimestamp(ts)
@@ -241,7 +248,7 @@ func TestDistributedAgreement(t *testing.T) {
 	assert.Equal(t, deriveChallengeSecret(keyA, r), deriveChallengeSecret(keyB, r))
 
 	// And a challenge issued by A validates against B.
-	signKey, ok := b.verifyChallenge(r, ts, salt, a.computePowMAC(salt, r, ts))
+	signKey, ok := b.verifyChallenge(r, ts, salt, a.computePowMAC(salt, r, ts, PowDifficultyMedium), PowDifficultyMedium)
 	assert.True(t, ok)
 	assert.NotEmpty(t, signKey)
 }
@@ -350,7 +357,7 @@ func buildValidBody(tb testing.TB, difficulty int, r, ts string) string {
 func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, r, ts string, fp FingerprintData) string {
 	c := newTestRuntime()
 	salt := mustGeneratePowPrefix(tb)
-	powMAC := c.computePowMAC(salt, r, ts)
+	powMAC := c.computePowMAC(salt, r, ts, difficulty)
 	nonce := solvePoWGo(salt, difficulty)
 
 	// Derive s exactly as the server will, from the per-epoch sign key for ts.
@@ -385,6 +392,7 @@ func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, r, ts string, 
 		"n":   {nonce},
 		"p":   {salt},
 		"m":   {powMAC},
+		"d":   {strconv.Itoa(difficulty)},
 	}.Encode()
 }
 
@@ -396,7 +404,7 @@ func TestValidateChallengeResponse(t *testing.T) {
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
-	ck, fpResult, err := c.ValidateChallengeResponse(req, []byte(body))
+	ck, fpResult, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 	assert.NotNil(t, ck)
 	assert.NotNil(t, fpResult)
@@ -413,13 +421,13 @@ func TestValidateChallengeResponse_Replay(t *testing.T) {
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 
 	// Replay the exact same body — must be rejected as already used.
 	req2, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req2.Header.Set("User-Agent", "test-agent")
-	_, _, err = c.ValidateChallengeResponse(req2, []byte(body))
+	_, _, _, err = c.ValidateChallengeResponse(req2, []byte(body))
 	assert.ErrorContains(t, err, "already used")
 }
 
@@ -448,7 +456,7 @@ func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "test-agent")
 
-	ck, decoded, err := c.ValidateChallengeResponse(req, []byte(body))
+	ck, decoded, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	require.NoError(t, err)
 	require.NotNil(t, ck)
 
@@ -482,7 +490,7 @@ func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {
 		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 		req.Header.Set("User-Agent", "test-agent")
 
-		_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+		_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 		require.NoError(t, err)
 	}
 }
@@ -491,7 +499,7 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, r, ts)
+	powMAC := c.computePowMAC(salt, r, ts, 8)
 
 	body := url.Values{
 		"f":   {"dGVzdA=="},
@@ -501,10 +509,11 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 		"n":   {"invalid-nonce"},
 		"p":   {salt},
 		"m":   {powMAC},
+		"d":   {"8"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid proof-of-work")
 }
 
@@ -513,12 +522,25 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 	// outright when the runtime is set to impossible.
 	c := newTestRuntimeWithDifficulty(PowDifficultyImpossible)
 	r, ts := freshChallenge(t)
-	body := buildValidBody(t, 8, r, ts) // satisfies 8-bit PoW but not impossible
+	salt := mustGeneratePowPrefix(t)
+	// A ticket issued (and MAC-bound) at impossible difficulty: the hard-block
+	// fires before the unsolvable PoW is ever checked, so a dummy nonce is fine.
+	powMAC := c.computePowMAC(salt, r, ts, PowDifficultyImpossible)
+	body := url.Values{
+		"f":   {"dGVzdA=="},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {"deadbeef"},
+		"n":   {"0"},
+		"p":   {salt},
+		"m":   {powMAC},
+		"d":   {strconv.Itoa(PowDifficultyImpossible)},
+	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "impossible")
 }
 
@@ -531,7 +553,7 @@ func TestValidateChallengeResponse_ExpiredTimestamp(t *testing.T) {
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
 	req.Header.Set("User-Agent", "test-agent")
 
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid ticket")
 }
 
@@ -541,7 +563,7 @@ func TestValidateChallengeResponse_TamperedR(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, r, ts) // bound to r, not to the tampered value
+	powMAC := c.computePowMAC(salt, r, ts, 8) // bound to r, not to the tampered value
 
 	body := url.Values{
 		"f":   {"dGVzdA=="},
@@ -551,10 +573,11 @@ func TestValidateChallengeResponse_TamperedR(t *testing.T) {
 		"n":   {"0"},
 		"p":   {salt},
 		"m":   {powMAC},
+		"d":   {"8"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid ticket")
 }
 
@@ -571,10 +594,37 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 		"n":   {"0"},
 		"p":   {salt},
 		"m":   {"forged-mac-value"},
+		"d":   {"8"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	assert.ErrorContains(t, err, "invalid ticket")
+}
+
+// TestValidateChallengeResponse_TamperedDifficulty submits a lower difficulty
+// than the MAC was issued for; verifyChallenge's MAC check fails because the
+// MAC binds the difficulty (the per-request escalation-bypass guard).
+func TestValidateChallengeResponse_TamperedDifficulty(t *testing.T) {
+	c := newTestRuntimeWithDifficulty(8)
+	r, ts := freshChallenge(t)
+	salt := mustGeneratePowPrefix(t)
+	powMAC := c.computePowMAC(salt, r, ts, PowDifficultyHigh) // issued at high
+	nonce := solvePoWGo(salt, 8)
+
+	body := url.Values{
+		"f":   {"dGVzdA=="},
+		"r":   {r},
+		"ts":  {ts},
+		"sig": {"deadbeef"},
+		"n":   {nonce},
+		"p":   {salt},
+		"m":   {powMAC},
+		"d":   {"8"}, // client claims a lower difficulty than was bound
+	}.Encode()
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid ticket")
 }
 
@@ -582,7 +632,7 @@ func TestValidateChallengeResponse_InvalidSig(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(8)
 	r, ts := freshChallenge(t)
 	salt := mustGeneratePowPrefix(t)
-	powMAC := c.computePowMAC(salt, r, ts)
+	powMAC := c.computePowMAC(salt, r, ts, 8)
 	nonce := solvePoWGo(salt, c.powDifficulty)
 
 	body := url.Values{
@@ -593,10 +643,11 @@ func TestValidateChallengeResponse_InvalidSig(t *testing.T) {
 		"n":   {nonce},
 		"p":   {salt},
 		"m":   {powMAC},
+		"d":   {"8"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "invalid HMAC")
 }
 
@@ -609,7 +660,7 @@ func TestValidateChallengeResponse_MissingFields(t *testing.T) {
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-	_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 	assert.ErrorContains(t, err, "missing required fields")
 }
 
@@ -637,7 +688,7 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 			}.Encode()
 
 			req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
-			_, _, err := c.ValidateChallengeResponse(req, []byte(body))
+			_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 			assert.ErrorContains(t, err, "invalid ticket")
 		})
 	}

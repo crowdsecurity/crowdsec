@@ -323,20 +323,24 @@ evaluation if no challenge response was assembled.
 
 For a submission, `ValidateChallengeResponse`:
 
-1. Parses the form (`f, r, ts, sig, n, p, m` — obfuscated fingerprint,
+1. Parses the form (`f, r, ts, sig, n, p, m, d` — obfuscated fingerprint,
    challenge nonce, timestamp, submission signature, PoW nonce, PoW salt,
-   PoW MAC).
+   PoW MAC, and the issued PoW difficulty).
 2. Calls `verifyChallenge` to gate freshness, derive the epoch from `ts`, look
-   up the per-epoch key, and verify `m == HMAC(K_epoch, p || r || ts)`.
-3. Rejects outright if difficulty is `Impossible`.
-4. Verifies the PoW: `hasLeadingZeroBits(SHA-256(p || n), powDifficulty)`.
+   up the per-epoch key, and verify `m == HMAC(K_epoch, p || r || ts || d)`.
+   Binding `d` into the MAC authenticates the difficulty: a client cannot
+   downgrade an escalated per-request challenge without invalidating `m`.
+3. Rejects outright if the (now-authenticated) difficulty is `Impossible`.
+4. Verifies the PoW: `hasLeadingZeroBits(SHA-256(p || n), d)` — using the
+   issued per-request difficulty, not the runtime-global default.
 5. Derives `s = HMAC(K_epoch, r)` (never transmitted) and verifies
    `sig == HMAC(s, r || ts || n || f)`.
 6. Burns `r` in the spent-set — **single-use**; a replay is rejected here.
 7. De-obfuscates `f` (repeating-key XOR keyed by `HMAC(s, "fpenc" || r)`) and
    JSON-unmarshals into `FingerprintData`.
-8. Seals a v0 cookie carrying that fingerprint under the long-lived master
-   cookie key with a fresh `not_after`.
+8. Seals a v0 cookie carrying that fingerprint **and the proven difficulty `d`**
+   under the long-lived master cookie key with a fresh `not_after`, so the next
+   request's re-challenge check compares against the work actually performed.
 
 The challenge page itself (`GetChallengePage`) builds the response by:
 
