@@ -229,13 +229,11 @@ type AppsecRequestState struct {
 	// the allowlist cookie itself, not by this flag.
 	ChallengeBypassed bool
 
-	// LegitimateBot is set by the SetLegitimateBot expr helper to tag the
-	// request as coming from a known good bot; once set, every later
-	// IsLegitimateBot call short-circuits to true without datafile or DNS
-	// checks. It is a verdict on the request identity, not on the response,
-	// so like HookVars it persists across in-band/out-of-band phases and is
-	// NOT cleared by ResetResponse.
-	LegitimateBot bool
+	// ChallengeExempt is set by the ExemptFromChallenge expr helper to exempt
+	// the current request from the bot challenge. It works by short-circuiting
+	// every later IsLegitimateBot call to true (without datafile or DNS checks);
+	// It only affects thhe current request and doesn't mint a cookie (unlike GrantChallengeCookie)
+	ChallengeExempt bool
 
 	// HooksHalted is flipped by terminal hook actions (currently
 	// RejectSubmission and the inline GrantChallengeCookie variant

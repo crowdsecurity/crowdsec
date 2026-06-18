@@ -9,30 +9,30 @@ import (
 )
 
 // TestLegitimateBotHooksCompile guards the env maps: a hook referencing
-// IsLegitimateBot/SetLegitimateBot must compile in every phase exposing them.
+// IsLegitimateBot/ExemptFromChallenge must compile in every phase exposing them.
 func TestLegitimateBotHooksCompile(t *testing.T) {
 	for _, stage := range []hookStage{hookPreEval, hookPostEval, hookOnMatch} {
 		h := &Hook{
 			Filter: `IsLegitimateBot(req.RemoteAddr, req.UserAgent(), req.URL.Path)`,
-			Apply:  []string{`SetLegitimateBot()`},
+			Apply:  []string{`ExemptFromChallenge()`},
 		}
 		require.NoError(t, h.Build(t.Context(), stage, nil), "stage %v", stage)
 	}
 }
 
-// TestSetLegitimateBotEscapeHatch verifies the per-request escape hatch:
-// once SetLegitimateBot was called, IsLegitimateBot returns true without
+// TestExemptFromChallengeEscapeHatch verifies the per-request escape hatch:
+// once ExemptFromChallenge was called, IsLegitimateBot returns true without
 // consulting datafiles (none are loaded here) or DNS.
-func TestSetLegitimateBotEscapeHatch(t *testing.T) {
+func TestExemptFromChallengeEscapeHatch(t *testing.T) {
 	state := &AppsecRequestState{HookVars: map[string]string{}}
 	env := GetPreEvalEnv(t.Context(), &AppsecRuntimeConfig{}, state, &ParsedRequest{})
 
 	isLegit := env["IsLegitimateBot"].(func(string, string, string) bool)
-	setLegit := env["SetLegitimateBot"].(func() error)
+	exempt := env["ExemptFromChallenge"].(func() error)
 
 	assert.False(t, isLegit("1.2.3.4", "googlebot", "/"))
 
-	require.NoError(t, setLegit())
+	require.NoError(t, exempt())
 	assert.True(t, isLegit("1.2.3.4", "googlebot", "/"))
 	assert.True(t, isLegit("garbage-ip", "", ""), "escape hatch bypasses all checks")
 

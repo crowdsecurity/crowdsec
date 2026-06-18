@@ -1808,7 +1808,7 @@ func mustParseURL(raw string) *url.URL {
 	return u
 }
 
-// TestAppsecLegitimateBotHooks exercises the IsLegitimateBot/SetLegitimateBot
+// TestAppsecLegitimateBotHooks exercises the IsLegitimateBot/ExemptFromChallenge
 // helpers through the full runner: a bot definition is loaded from a
 // legit_bots directory (as AppsecConfig.Build does with the hub data dir),
 // an in-band rule matches the request, and a pre_eval hook downgrades the
@@ -1875,11 +1875,11 @@ func TestAppsecLegitimateBotHooks(t *testing.T) {
 			},
 		},
 		{
-			name:             "SetLegitimateBot escape hatch short-circuits the checks",
+			name:             "ExemptFromChallenge escape hatch short-circuits the checks",
 			expected_load_ok: true,
 			inband_rules:     []appsec_rule.CustomRule{banRule},
 			pre_eval: []appsec.Hook{
-				{Apply: []string{"SetLegitimateBot()"}},
+				{Apply: []string{"ExemptFromChallenge()"}},
 				bypassHook,
 			},
 			// neither the UA nor the IP matches any definition
