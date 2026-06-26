@@ -150,3 +150,57 @@ func TestCryptoObfuscationPoolSize(t *testing.T) {
 	found := slices.Contains(variants, got)
 	assert.True(t, found, "currentDynamicModule returned a value not in the cached pool")
 }
+
+// TestLibraryObfuscationEnabledByDefault confirms the default path serves the
+// obfuscated baked-in bundle (the size blowup that pushes the page past the
+// SPOA frame limit) — the behavior SPOA operators opt out of.
+func TestLibraryObfuscationEnabledByDefault(t *testing.T) {
+	rt, err := NewChallengeRuntime(t.Context())
+	require.NoError(t, err)
+	require.True(t, rt.libraryObfuscationEnabled, "library obfuscation must be on by default")
+
+	got := rt.getLibraryBundle()
+	require.NotEmpty(t, got.Code)
+	// The obfuscated bundle is ~778 KB; the plain one is ~37 KB. A 100 KB floor
+	// cleanly distinguishes the two without pinning an exact size.
+	assert.Greater(t, len(got.Code), 100_000,
+		"default served bundle should be the obfuscated (large) variant")
+}
+
+// TestLibraryObfuscationDisabledServesPlainBundle is the core Option-B guard:
+// with obfuscation off, the served library bundle is the plain minified bundle
+// (small enough for a SPOA frame) while the per-epoch key module stays
+// obfuscated — the security invariant that must survive the size optimization.
+func TestLibraryObfuscationDisabledServesPlainBundle(t *testing.T) {
+	rt, err := NewChallengeRuntime(t.Context(),
+		WithLibraryObfuscationEnabled(false),
+	)
+	require.NoError(t, err)
+	require.False(t, rt.libraryObfuscationEnabled, "sanity: obfuscation is off")
+
+	// Pool holds exactly the one plain variant.
+	rt.libraryBundlePoolMu.RLock()
+	poolLen := len(rt.libraryBundlePool)
+	rt.libraryBundlePoolMu.RUnlock()
+	require.Equal(t, 1, poolLen, "obfuscation-off pool must hold a single plain variant")
+
+	got := rt.getLibraryBundle()
+	// Byte-for-byte the plain, path-substituted bundle — no obfuscation pass.
+	assert.Equal(t, rt.buildChallengeBundle(), got.Code,
+		"served bundle must be the plain buildChallengeBundle output")
+	assert.Less(t, len(got.Code), 100_000,
+		"plain bundle must be far smaller than the obfuscated one (SPOA frame fit)")
+	// Path placeholders must still have been substituted.
+	assert.NotContains(t, got.Code, "__CROWDSEC_SUBMIT_PATH__")
+	assert.NotContains(t, got.Code, "__CROWDSEC_POW_WORKER_PATH__")
+
+	// Invariant: the sensitive per-epoch key module is STILL obfuscated. The
+	// raw template declares `var hookName = ...`; the obfuscator mangles that,
+	// so its absence proves the module was obfuscated even with the library
+	// obfuscation turned off.
+	dyn, err := rt.currentDynamicModule(t.Context())
+	require.NoError(t, err)
+	require.NotEmpty(t, dyn)
+	assert.NotContains(t, dyn, "var hookName =",
+		"dynamic key module must remain obfuscated regardless of library obfuscation")
+}

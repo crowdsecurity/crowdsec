@@ -54,10 +54,22 @@ type Config struct {
 	// with different byte layout, giving per-visitor variance. Defaults to 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
+	// LibraryObfuscationEnabled is the master switch for obfuscating the public
+	// library bundle. Defaults to true (serve the baked-in obfuscated variant).
+	// Set false to serve the plain minified bundle (~11 KB gzip vs ~286 KB) —
+	// the obfuscation is what pushes the challenge page past HAProxy's SPOA
+	// frame limit. Obfuscating this bundle buys little: it's open-source
+	// fp-scanner and forgery resistance lives in the per-epoch key module, which
+	// stays obfuscated regardless of this flag. Distinct from
+	// LibraryRuntimeObfuscationEnabled (which only adds extra runtime variants);
+	// when this is false, runtime re-obfuscation is moot and ignored.
+	LibraryObfuscationEnabled *bool `yaml:"library_obfuscation_enabled"`
+
 	// LibraryRuntimeObfuscationEnabled gates background re-obfuscation of the
-	// public library bundle. The bundle is ALWAYS obfuscated at build time;
-	// this only adds further runtime variants at ~1 minute of CPU per pass.
-	// Off by default (serve only the baked-in variant).
+	// public library bundle. The bundle is obfuscated at build time by default
+	// (see LibraryObfuscationEnabled); this only adds further runtime variants
+	// at ~1 minute of CPU per pass. Off by default (serve only the baked-in
+	// variant).
 	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
 
 	// LibraryObfuscationPoolSize is the max number of library-bundle variants
@@ -106,6 +118,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
+	}
+	if other.LibraryObfuscationEnabled != nil {
+		c.LibraryObfuscationEnabled = other.LibraryObfuscationEnabled
 	}
 	if other.LibraryRuntimeObfuscationEnabled != nil {
 		c.LibraryRuntimeObfuscationEnabled = other.LibraryRuntimeObfuscationEnabled
@@ -168,6 +183,9 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))
+	}
+	if c.LibraryObfuscationEnabled != nil {
+		opts = append(opts, WithLibraryObfuscationEnabled(*c.LibraryObfuscationEnabled))
 	}
 	if c.LibraryRuntimeObfuscationEnabled != nil {
 		opts = append(opts, WithLibraryRuntimeObfuscationEnabled(*c.LibraryRuntimeObfuscationEnabled))

@@ -42,6 +42,7 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 		CookieTTL:                 new(1 * time.Hour),
 		CryptoObfuscationPoolSize: new(4),
 		// New fields not present on dst.
+		LibraryObfuscationEnabled:         new(false),
 		LibraryRuntimeObfuscationEnabled:  new(true),
 		LibraryObfuscationPoolSize:        new(2),
 		LibraryObfuscationRefreshInterval: new(30 * time.Minute),
@@ -62,6 +63,8 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 	assert.Equal(t, 3, *dst.MaxLiveEpochs)
 
 	// New-from-src fields appear on dst.
+	require.NotNil(t, dst.LibraryObfuscationEnabled)
+	assert.False(t, *dst.LibraryObfuscationEnabled)
 	require.NotNil(t, dst.LibraryRuntimeObfuscationEnabled)
 	assert.True(t, *dst.LibraryRuntimeObfuscationEnabled)
 	assert.Equal(t, 2, *dst.LibraryObfuscationPoolSize)
@@ -155,6 +158,21 @@ func TestLibraryPoolSizeHonoredWhenRuntimeObfuscationEnabled(t *testing.T) {
 	assert.True(t, rt.libraryRuntimeObfuscationEnabled)
 	assert.Equal(t, 3, rt.libraryPoolSize,
 		"libraryPoolSize must be honored when runtime obfuscation is on")
+}
+
+// TestBuildOptionsLibraryObfuscationDisabled confirms the
+// library_obfuscation_enabled=false config reaches the runtime: the bundle is
+// served plain (no obfuscation) so the challenge page fits HAProxy SPOA frames.
+func TestBuildOptionsLibraryObfuscationDisabled(t *testing.T) {
+	cfg := &Config{LibraryObfuscationEnabled: new(false)}
+
+	opts, err := BuildOptions(cfg, nil)
+	require.NoError(t, err)
+	require.Len(t, opts, 2, "the disable flag + the component logger must emit an option each")
+
+	rt, err := NewChallengeRuntime(t.Context(), opts...)
+	require.NoError(t, err)
+	assert.False(t, rt.libraryObfuscationEnabled, "library_obfuscation_enabled=false must reach the runtime")
 }
 
 // TestBuildOptionsInvalidMasterSecret confirms a malformed master_secret

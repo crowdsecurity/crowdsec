@@ -14,6 +14,12 @@
 // cost is bounded to a single obfuscation per
 // WithLibraryObfuscationRefreshInterval.
 //
+// Obfuscation can be opted out entirely via WithLibraryObfuscationEnabled(false):
+// the pool is then seeded with the plain minified bundle (seedPlainBundle),
+// ~11 KB gzip instead of ~286 KB, so the challenge page fits HAProxy's SPOA
+// frame limit. This trades away byte variance only — the sensitive per-epoch
+// key module is always obfuscated (see dynamic_module.go).
+//
 // For the **sensitive** path (per-epoch HMAC sign key), see
 // dynamic_module.go.
 package challenge
@@ -100,6 +106,15 @@ func (c *ChallengeRuntime) seedCacheFromInitialBundle() error {
 	}})
 
 	return nil
+}
+
+// seedPlainBundle inserts the plain (un-obfuscated) minified bundle into the
+// pool as the single variant. Used when obfuscation is opted out
+// (WithLibraryObfuscationEnabled(false)) — skips the decompress + WASM pass and
+// keeps the challenge page small enough for HAProxy SPOA frames. The pool stores
+// JS code regardless of whether it's obfuscated, so a plain variant is valid.
+func (c *ChallengeRuntime) seedPlainBundle() {
+	c.appendLibraryBundle([]obfuscatedScript{{Code: c.buildChallengeBundle()}})
 }
 
 // libraryBundlePoolRefresher trickles one new obfuscated variant into the pool

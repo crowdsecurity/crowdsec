@@ -116,10 +116,18 @@ type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
 
+	// libraryObfuscationEnabled is the master switch for obfuscating the public
+	// library bundle. Defaults to true: the baked-in obfuscated variant is
+	// seeded into the pool. When false, the plain minified bundle is served
+	// instead (~11 KB gzip vs ~286 KB) so the challenge page fits HAProxy's SPOA
+	// frame limit; the per-epoch key module stays obfuscated regardless.
+	libraryObfuscationEnabled bool
+
 	// libraryRuntimeObfuscationEnabled gates the library-bundle refresher. The
-	// bundle is ALWAYS obfuscated at build time; when false (default) only the
-	// baked-in variant is served and no refresher runs. When true, the
-	// refresher adds one runtime variant per tick.
+	// bundle is obfuscated at build time by default; when false (default) only
+	// the baked-in variant is served and no refresher runs. When true, the
+	// refresher adds one runtime variant per tick. Moot (and ignored) when
+	// libraryObfuscationEnabled is false.
 	libraryRuntimeObfuscationEnabled bool
 	libraryPoolSize                  int
 	libraryRefreshInterval           time.Duration
@@ -188,6 +196,7 @@ type runtimeOptions struct {
 	cookieTTL                         time.Duration
 	maxCookieLen                      int
 	cryptoObfuscationPoolSize         int
+	libraryObfuscationEnabled         bool
 	libraryRuntimeObfuscationEnabled  bool
 	libraryObfuscationPoolSize        int
 	libraryObfuscationRefreshInterval time.Duration
@@ -257,6 +266,14 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 		if n >= 1 {
 			o.cryptoObfuscationPoolSize = n
 		}
+	}
+}
+
+// WithLibraryObfuscationEnabled toggles obfuscation of the library bundle (see
+// Config.LibraryObfuscationEnabled); false serves the plain minified bundle.
+func WithLibraryObfuscationEnabled(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.libraryObfuscationEnabled = enabled
 	}
 }
 
@@ -373,7 +390,9 @@ func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.Comp
 }
 
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
-	resolvedOpts := runtimeOptions{}
+	// libraryObfuscationEnabled defaults to true so the zero-value bool doesn't
+	// silently disable obfuscation; WithLibraryObfuscationEnabled(false) opts out.
+	resolvedOpts := runtimeOptions{libraryObfuscationEnabled: true}
 	for _, opt := range opts {
 		opt(&resolvedOpts)
 	}
@@ -428,13 +447,19 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		libraryPoolSize = libraryBundlePoolDefaultSize
 	}
 
-	// Clamp pool size to 1 when runtime obfuscation is off: the only source
-	// of variants in that mode is the baked-in initial bundle (one entry),
-	// so any larger ceiling would leave empty slots forever. Warn so the
-	// operator notices the misconfiguration without having the runtime fail
-	// to start.
-	if !resolvedOpts.libraryRuntimeObfuscationEnabled && libraryPoolSize > 1 {
-		logger.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
+	// Runtime re-obfuscation only happens when obfuscation is on AND explicitly
+	// requested; obfuscation-off wins over a contradictory runtime-obf request.
+	runtimeObfuscationActive := resolvedOpts.libraryObfuscationEnabled && resolvedOpts.libraryRuntimeObfuscationEnabled
+	if resolvedOpts.libraryRuntimeObfuscationEnabled && !resolvedOpts.libraryObfuscationEnabled {
+		logger.Warn("library_runtime_obfuscation_enabled ignored: library_obfuscation_enabled is false, the plain bundle is served without obfuscation.")
+	}
+
+	// Clamp pool size to 1 when no runtime obfuscation runs: the only source of
+	// variants is then a single bundle (baked-in or plain), so any larger ceiling
+	// would leave empty slots forever. Warn so the operator notices the
+	// misconfiguration without having the runtime fail to start.
+	if !runtimeObfuscationActive && libraryPoolSize > 1 {
+		logger.Warnf("library_obfuscation_pool_size=%d ignored: no runtime obfuscation is active, only a single variant will populate the pool. Clamping to 1.", libraryPoolSize)
 		libraryPoolSize = 1
 	}
 
@@ -472,6 +497,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	challengeRuntime := &ChallengeRuntime{
 		r:                                r,
 		obfuscatorMod:                    compiledMod,
+		libraryObfuscationEnabled:        resolvedOpts.libraryObfuscationEnabled,
 		libraryRuntimeObfuscationEnabled: resolvedOpts.libraryRuntimeObfuscationEnabled,
 		libraryPoolSize:                  libraryPoolSize,
 		libraryRefreshInterval:           libraryRefreshInterval,
@@ -487,8 +513,13 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		logger:                           logger,
 	}
 
-	// Seed from the baked-in pre-obfuscated bundle so we can serve immediately.
-	if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
+	if !resolvedOpts.libraryObfuscationEnabled {
+		// Obfuscation opted out: serve the plain minified bundle (no decompress,
+		// no WASM pass). Keeps the challenge page small enough for SPOA frames.
+		logger.Info("library bundle obfuscation disabled; serving the plain minified bundle (the per-epoch key module remains obfuscated)")
+		challengeRuntime.seedPlainBundle()
+	} else if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
+		// Seed from the baked-in pre-obfuscated bundle so we can serve immediately.
 		// Initial bundle missing/corrupt (e.g. `go generate` not run): fall back
 		// to generating one variant synchronously.
 		logger.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
@@ -505,8 +536,9 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 
 	// Library refresher is opt-in: the bundle is public code already served
 	// obfuscated, so runtime variants only add byte variance and aren't worth
-	// the ~minute-per-pass cost by default.
-	if resolvedOpts.libraryRuntimeObfuscationEnabled {
+	// the ~minute-per-pass cost by default. Skipped entirely when obfuscation
+	// is off (nothing to re-obfuscate).
+	if runtimeObfuscationActive {
 		go challengeRuntime.libraryBundlePoolRefresher(ctx)
 	}
 	// The dynamic-module pre-warmer is always on — the per-epoch key must be

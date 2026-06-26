@@ -282,6 +282,15 @@ is > 1, the runtime warns at startup and clamps the pool to 1 (the extra
 slots would never be filled since only the initial bundle seeds the
 pool).
 
+`library_obfuscation_enabled` (default `true`) is the master switch above all
+of that: set it `false` to serve the plain minified bundle (~11 KB gzip vs
+~286 KB obfuscated). The motivation is HAProxy's SPOA bouncer, which must
+return the challenge page inside a SPOP frame bounded by `tune.bufsize` — the
+obfuscated page does not fit. The trade-off is byte variance only: the bundle
+is open-source fp-scanner and forgery resistance comes from the per-epoch key
+module, which **stays obfuscated regardless of this flag**. When it is `false`,
+runtime re-obfuscation is moot and ignored (the runtime warns if both are set).
+
 #### Dynamic module pool
 
 [`dynamic_module.go`](dynamic_module.go) renders a small template
@@ -654,7 +663,10 @@ challenge:
   cookie_ttl: 12h
   # max_cookie_size: 4096   # encoded cookie size ceiling (seal + open); bounds envelope allocation
   crypto_obfuscation_pool_size: 1
-  # The library bundle is ALWAYS obfuscated (build-time). This flag only
+  # library_obfuscation_enabled: true        # set false to serve the plain
+  #   minified bundle (~11 KB gzip vs ~286 KB) so the page fits HAProxy SPOA
+  #   frames; the per-epoch key module stays obfuscated regardless.
+  # The library bundle is obfuscated by default (build-time). This flag only
   # adds further runtime-generated variants — leave off unless you want
   # per-visitor byte variance on top of the build-time obfuscation.
   library_runtime_obfuscation_enabled: false
@@ -766,7 +778,8 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `cookie_ttl` | duration | 12h | Decoupled from rotation interval; can be long (24h+) |
 | `max_cookie_size` | int | 4096 | Encoded cookie size ceiling, enforced on seal and open. Bounds the memory allocated from the (attacker-supplied) fingerprint envelope — an over-allocation DoS guard. Matches the per-cookie size browsers guarantee; raise only for non-browser clients that tolerate larger cookies |
 | `crypto_obfuscation_pool_size` | int | 1 | Variants of dynamic key module per epoch; each costs ~5 s of CPU per rotation |
-| `library_runtime_obfuscation_enabled` | bool | false | Enable *runtime* library re-obfuscation. The library bundle is always obfuscated at build time regardless of this flag; this only adds further variants over time |
+| `library_obfuscation_enabled` | bool | true | Master switch for library-bundle obfuscation. Set `false` to serve the plain minified bundle (~11 KB gzip vs ~286 KB) so the challenge page fits HAProxy SPOA frames. The per-epoch key module stays obfuscated regardless; runtime re-obfuscation is ignored when this is off |
+| `library_runtime_obfuscation_enabled` | bool | false | Enable *runtime* library re-obfuscation. The library bundle is obfuscated at build time by default (see `library_obfuscation_enabled`); this only adds further variants over time |
 | `library_obfuscation_pool_size` | int | 1 | Pool ceiling for library variants. Values > 1 are only meaningful when runtime obfuscation is enabled; otherwise the runtime warns and clamps to 1 |
 | `library_obfuscation_refresh_interval` | duration | 1h | Cadence; ignored when runtime obfuscation is off. Full pool rotation = `pool_size × interval` |
 | `log_level` | string | inherits | `debug` / `info` / `warning` (etc.) for the challenge runtime only. ⚠️ **`debug` writes the per-epoch key `k_epoch` to the logs** (key rotation + per challenge) — forgeable signing material; a diagnostic mode only, **not for production** (see §1.10). Unset inherits the appsec logger's level. |
