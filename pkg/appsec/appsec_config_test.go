@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -469,6 +470,80 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	assert.Empty(t, rt.CommonHooks.PreEval)
 	assert.Empty(t, rt.CommonHooks.PostEval)
 	assert.Empty(t, rt.CommonHooks.OnMatch)
+}
+
+// TestSetUpLoggerIsolatesLevel verifies that an appsec-config's log_level lives
+// on its own logger instance: raising it to debug must not mutate the base
+// (datasource/process) logger it was derived from.
+func TestSetUpLoggerIsolatesLevel(t *testing.T) {
+	base := log.New()
+	base.SetLevel(log.InfoLevel)
+
+	debug := log.DebugLevel
+	cfg := AppsecConfig{
+		Name:     "scoped",
+		Logger:   base.WithField("component", "appsec_config"),
+		LogLevel: &debug,
+	}
+
+	cfg.SetUpLogger()
+
+	assert.Equal(t, log.DebugLevel, cfg.Logger.Logger.GetLevel(), "config logger must adopt its own level")
+	assert.Equal(t, log.InfoLevel, base.GetLevel(), "base logger must be left untouched")
+	assert.Equal(t, "scoped", cfg.Logger.Data["name"])
+	assert.Equal(t, "appsec_config", cfg.Logger.Data["component"], "parent fields must be preserved")
+}
+
+// TestSetUpLoggerInheritsLevelWhenUnset verifies that without an explicit
+// log_level the config logger inherits the base logger's level.
+func TestSetUpLoggerInheritsLevelWhenUnset(t *testing.T) {
+	base := log.New()
+	base.SetLevel(log.WarnLevel)
+
+	cfg := AppsecConfig{
+		Name:   "inherit",
+		Logger: base.WithField("component", "appsec_config"),
+	}
+
+	cfg.SetUpLogger()
+
+	require.NotNil(t, cfg.LogLevel)
+	assert.Equal(t, log.WarnLevel, *cfg.LogLevel)
+	assert.Equal(t, log.WarnLevel, cfg.Logger.Logger.GetLevel())
+}
+
+// TestProcessHooksExprDebugFollowsConfigLevel guards the expr-hook debug path:
+// the debug flag passed to exprhelpers.Run must come from the backend logger
+// level (config log_level), not the per-event Entry.Level (always 0 on a derived
+// entry, which silently disabled all expr tracing). At debug the per-operation
+// expr trace ("dbg(result=...") must appear; at info it must not.
+func TestProcessHooksExprDebugFollowsConfigLevel(t *testing.T) {
+	run := func(t *testing.T, level log.Level) string {
+		t.Helper()
+
+		var buf bytes.Buffer
+		base := log.New()
+		base.SetOutput(&buf)
+		base.SetLevel(level)
+
+		cfg := AppsecConfig{
+			Logger:             base.WithField("component", "appsec_config"),
+			DefaultRemediation: "ban",
+			OnLoad:             []Hook{{Filter: "1 == 1", Apply: []string{"RemoveInBandRuleByName('noop')"}}},
+		}
+		cfg.SetUpLogger()
+
+		rt, err := cfg.Build(t.Context(), &cwhub.Hub{})
+		require.NoError(t, err)
+		require.NoError(t, rt.ProcessOnLoadRules())
+
+		return buf.String()
+	}
+
+	assert.Contains(t, run(t, log.DebugLevel), "dbg(result=",
+		"expr debug trace must be emitted when the appsec-config logger is at debug")
+	assert.NotContains(t, run(t, log.InfoLevel), "dbg(result=",
+		"expr debug trace must stay silent when the appsec-config logger is at info")
 }
 
 func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {

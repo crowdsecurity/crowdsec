@@ -25,6 +25,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -563,14 +564,17 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 }
 
 func (wc *AppsecConfig) SetUpLogger() {
-	if wc.LogLevel == nil {
-		lvl := wc.Logger.Logger.GetLevel()
-		wc.LogLevel = &lvl
+	level := wc.Logger.Logger.GetLevel()
+	if wc.LogLevel != nil {
+		level = *wc.LogLevel
+	} else {
+		wc.LogLevel = &level
 	}
 
-	/* wc.Name is actually the datasource name.*/
-	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
-	wc.Logger.Logger.SetLevel(*wc.LogLevel)
+	// To allow granular log level control.
+	wc.Logger = logging.SubLogger(wc.Logger.Logger, "", level).
+		WithFields(wc.Logger.Data).
+		WithField("name", wc.Name)
 }
 
 func (wc *AppsecConfig) LoadByPath(file string) error {
@@ -990,7 +994,7 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 		}
 
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Logger.IsLevelEnabled(log.DebugLevel))
 			if err != nil {
 				return fmt.Errorf("unable to run appsec %s filter %s : %w", hookType, rule.Filter, err)
 			}
@@ -1010,7 +1014,7 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 		}
 
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, env, w.Logger, w.Logger.Logger.IsLevelEnabled(log.DebugLevel))
 			if err != nil {
 				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, err)
 				continue

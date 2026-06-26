@@ -685,6 +685,7 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 				"n":   {"x"},
 				"p":   {"x"},
 				"m":   {"x"},
+				"d":   {"12"},
 			}.Encode()
 
 			req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))

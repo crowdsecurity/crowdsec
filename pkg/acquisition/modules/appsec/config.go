@@ -233,7 +233,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		runner := AppsecRunner{
 			inChan:                 w.InChan,
 			UUID:                   appsecRunnerUUID,
-			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
+			logger:                 w.AppsecRuntime.Logger.WithField("runner_uuid", appsecRunnerUUID),
 			AppsecRuntime:          w.AppsecRuntime,
 			Labels:                 w.config.Labels,
 			appsecAllowlistsClient: w.appsecAllowlistClient,

@@ -189,30 +189,33 @@ func IsLegitimateBot(ip string, ua string, path string) bool {
 
 	addr, ok := parseBotAddr(ip)
 	if !ok {
-		log.Debugf("IsLegitimateBot: invalid source address '%s'", ip)
+		log.Infof("IsLegitimateBot: invalid source address '%s'", ip)
 		return false
 	}
 
 	var rdnsCandidates []*botEntry
 
 	for _, entries := range dataFileBots {
+		log.Infof("IsLegitimateBot: checking %s against %s", ip, entries[0].Name)
 		for _, entry := range entries {
 			if entry.uaRegex != nil && !entry.uaRegex.MatchString(ua) {
+				log.Infof("IsLegitimateBot: %s rejected by UA regex for '%s'", ip, entry.Name)
 				continue
 			}
 
 			if len(entry.pathRegexes) > 0 && !matchAnyRegex(entry.pathRegexes, path) {
+				log.Info("IsLegitimateBot: %s rejected by path regexes for '%s'", ip, entry.Name)
 				continue
 			}
 
 			if _, found := entry.ipSet[addr]; found {
-				log.Debugf("IsLegitimateBot: %s verified as '%s' via exact IP", ip, entry.Name)
+				log.Infof("IsLegitimateBot: %s verified as '%s' via exact IP", ip, entry.Name)
 				return true
 			}
 
 			for _, prefix := range entry.prefixes {
 				if prefix.Contains(addr) {
-					log.Debugf("IsLegitimateBot: %s verified as '%s' via range %s", ip, entry.Name, prefix)
+					log.Infof("IsLegitimateBot: %s verified as '%s' via range %s", ip, entry.Name, prefix)
 					return true
 				}
 			}
