@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	entsql "entgo.io/ent/dialect/sql"
 	log "github.com/sirupsen/logrus"
@@ -16,12 +17,30 @@ import (
 )
 
 type Client struct {
-	Ent              *ent.Client
-	Log              logging.ExtLogger
-	CanFlush         bool
-	Type             string
-	WalMode          *bool
+	Ent     *ent.Client
+	Log     logging.ExtLogger
+	Type    string
+	WalMode *bool
+	// imports hold the read lock; the flush job takes it exclusively.
+	flushGuard       sync.RWMutex
 	decisionBulkSize int
+}
+
+// PauseFlush pauses the alert flush job until the returned function is called.
+// Usage: defer c.PauseFlush()().
+func (c *Client) PauseFlush() func() {
+	c.flushGuard.RLock()
+	return c.flushGuard.RUnlock
+}
+
+// TryFlushLock acquires the flush lock without blocking, returning false if an
+// import is in progress. On success, release with FlushUnlock.
+func (c *Client) TryFlushLock() bool {
+	return c.flushGuard.TryLock()
+}
+
+func (c *Client) FlushUnlock() {
+	c.flushGuard.Unlock()
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -102,7 +121,6 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.En
 	return &Client{
 		Ent:              client,
 		Log:              logger,
-		CanFlush:         true,
 		Type:             config.Type,
 		WalMode:          config.UseWal,
 		decisionBulkSize: config.DecisionBulkSize,

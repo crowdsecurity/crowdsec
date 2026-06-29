@@ -258,10 +258,11 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 		err             error
 	)
 
-	if !c.CanFlush {
+	if !c.TryFlushLock() {
 		c.Log.Debug("a list is being imported, flushing later")
 		return nil
 	}
+	defer c.FlushUnlock()
 
 	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans(ctx)
