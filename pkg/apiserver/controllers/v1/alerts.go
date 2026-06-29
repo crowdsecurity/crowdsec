@@ -270,7 +270,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	if stopFlush {
 		// don't let the flush job trim the batch mid-import
-		defer c.DBClient.PauseFlush()()
+		resumeFlush := c.DBClient.PauseFlush()
+		defer resumeFlush()
 	}
 
 	alerts, err := c.DBClient.CreateAlert(ctx, machineID, alertsToSave)

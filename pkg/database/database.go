@@ -27,7 +27,6 @@ type Client struct {
 }
 
 // PauseFlush pauses the alert flush job until the returned function is called.
-// Usage: defer c.PauseFlush()().
 func (c *Client) PauseFlush() func() {
 	c.flushGuard.RLock()
 	return c.flushGuard.RUnlock
