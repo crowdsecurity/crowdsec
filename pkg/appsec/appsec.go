@@ -243,6 +243,12 @@ type AppsecRequestState struct {
 	// the allowlist cookie itself, not by this flag.
 	ChallengeBypassed bool
 
+	// ChallengeExempt is set by the ExemptFromChallenge expr helper to exempt
+	// the current request from the bot challenge. It works by short-circuiting
+	// every later IsLegitimateBot call to true (without datafile or DNS checks);
+	// It only affects thhe current request and doesn't mint a cookie (unlike GrantChallengeCookie)
+	ChallengeExempt bool
+
 	// HooksHalted is flipped by terminal hook actions (currently
 	// RejectSubmission and the inline GrantChallengeCookie variant
 	// exposed in on_challenge_submit) to short-circuit later rules in
@@ -809,6 +815,20 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
+// setupLegitBots loads the known-good bot definitions from
+// <datadir>/legit_bots/, before any hook calling IsLegitimateBot runs.
+// (The DNS cache they rely on is configured from the main crowdsec config,
+// see crowdsec_service.dns_cache.)
+func (wc *AppsecConfig) setupLegitBots(hub *cwhub.Hub) {
+	// hub is nil or bare in tests that build a standalone config; there is
+	// no data dir to scan in that case.
+	if hub != nil && hub.GetDataDir() != "" {
+		if err := exprhelpers.LoadBotFilesFromDir(hub.GetDataDir()); err != nil {
+			wc.Logger.Errorf("unable to load legitimate bot files: %s", err)
+		}
+	}
+}
+
 func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
@@ -854,6 +874,8 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 		MaxSize: DefaultMaxBodySize,
 		Action:  BodySizeActionDrop,
 	}
+
+	wc.setupLegitBots(hub)
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules

@@ -8,6 +8,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestLegitimateBotHooksCompile guards the env maps: a hook referencing
+// IsLegitimateBot/ExemptFromChallenge must compile in every phase exposing them.
+func TestLegitimateBotHooksCompile(t *testing.T) {
+	for _, stage := range []hookStage{hookPreEval, hookPostEval, hookOnMatch} {
+		h := &Hook{
+			Filter: `IsLegitimateBot(req.RemoteAddr, req.UserAgent(), req.URL.Path)`,
+			Apply:  []string{`ExemptFromChallenge()`},
+		}
+		require.NoError(t, h.Build(t.Context(), stage, nil), "stage %v", stage)
+	}
+}
+
+// TestExemptFromChallengeEscapeHatch verifies the per-request escape hatch:
+// once ExemptFromChallenge was called, IsLegitimateBot returns true without
+// consulting datafiles (none are loaded here) or DNS.
+func TestExemptFromChallengeEscapeHatch(t *testing.T) {
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+	env := GetPreEvalEnv(t.Context(), &AppsecRuntimeConfig{}, state, &ParsedRequest{})
+
+	isLegit := env["IsLegitimateBot"].(func(string, string, string) bool)
+	exempt := env["ExemptFromChallenge"].(func() error)
+
+	assert.False(t, isLegit("1.2.3.4", "googlebot", "/"))
+
+	require.NoError(t, exempt())
+	assert.True(t, isLegit("1.2.3.4", "googlebot", "/"))
+	assert.True(t, isLegit("garbage-ip", "", ""), "escape hatch bypasses all checks")
+
+	// the flag is per-request state: a fresh state starts clean
+	freshEnv := GetPreEvalEnv(t.Context(), &AppsecRuntimeConfig{}, &AppsecRequestState{HookVars: map[string]string{}}, &ParsedRequest{})
+	assert.False(t, freshEnv["IsLegitimateBot"].(func(string, string, string) bool)("1.2.3.4", "googlebot", "/"))
+}
+
 // TestParseChallengeCookieTTLArg covers the GrantChallengeCookie optional TTL
 // argument parsing: no args / empty string yield a nil override (use runtime
 // default), a parseable duration yields a positive pointer, and malformed /

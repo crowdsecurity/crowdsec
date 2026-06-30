@@ -10,8 +10,20 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+// isLegitimateBotHelper wraps exprhelpers.IsLegitimateBot with the
+// per-request escape hatch: once ExemptFromChallenge was called, the verdict
+// is true without datafile or DNS checks. The standard rules gate
+// SendChallenge() on IsLegitimateBot(), so forcing the verdict true is what
+// whitelists the request from the challenge.
+func isLegitimateBotHelper(state *AppsecRequestState) func(string, string, string) bool {
+	return func(ip string, ua string, path string) bool {
+		return state.ChallengeExempt || exprhelpers.IsLegitimateBot(ip, ua, path)
+	}
+}
 
 // parseLogVerbosity maps an optional expr-side verbosity argument
 // ("minimal", "info", "verbose") to a FingerprintLogVerbosity. Empty /
@@ -132,6 +144,8 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			return w.ValidateRequestWithSchema(ctx, state, request, ref)
 		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
+		"IsLegitimateBot":       isLegitimateBotHelper(state),
+		"ExemptFromChallenge":   func() error { state.ChallengeExempt = true; return nil },
 	}
 }
 
@@ -157,8 +171,10 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		"fingerprint": state.Fingerprint,
-		"hook_vars":   state.HookVars,
+		"fingerprint":         state.Fingerprint,
+		"hook_vars":           state.HookVars,
+		"IsLegitimateBot":     isLegitimateBotHelper(state),
+		"ExemptFromChallenge": func() error { state.ChallengeExempt = true; return nil },
 	}
 }
 
@@ -277,20 +293,22 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 
 func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
-		"evt":                evt,
-		"req":                request.HTTPRequest,
-		"hook_vars":          state.HookVars,
-		"IsInBand":           request.IsInBand,
-		"IsOutBand":          request.IsOutBand,
-		"SetRemediation":     func(action string) error { return w.SetAction(state, action) },
-		"SetReturnCode":      func(code int) error { return w.SetHTTPCode(state, code) },
-		"CancelEvent":        func() error { return w.CancelEvent(state) },
-		"SendEvent":          func() error { return w.SendEvent(state) },
-		"CancelAlert":        func() error { return w.CancelAlert(state) },
-		"SendAlert":          func() error { return w.SendAlert(state) },
-		"DumpRequest":        request.DumpRequest,
-		"SetChallengeBody":   func(body string) error { return w.SetChallengeBody(state, body) },
-		"SetChallengeCookie": func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
-		"AppsecCookie":       cookie.NewAppsecCookie,
+		"evt":                 evt,
+		"req":                 request.HTTPRequest,
+		"hook_vars":           state.HookVars,
+		"IsInBand":            request.IsInBand,
+		"IsOutBand":           request.IsOutBand,
+		"SetRemediation":      func(action string) error { return w.SetAction(state, action) },
+		"SetReturnCode":       func(code int) error { return w.SetHTTPCode(state, code) },
+		"CancelEvent":         func() error { return w.CancelEvent(state) },
+		"SendEvent":           func() error { return w.SendEvent(state) },
+		"CancelAlert":         func() error { return w.CancelAlert(state) },
+		"SendAlert":           func() error { return w.SendAlert(state) },
+		"DumpRequest":         request.DumpRequest,
+		"SetChallengeBody":    func(body string) error { return w.SetChallengeBody(state, body) },
+		"SetChallengeCookie":  func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
+		"AppsecCookie":        cookie.NewAppsecCookie,
+		"IsLegitimateBot":     isLegitimateBotHelper(state),
+		"ExemptFromChallenge": func() error { state.ChallengeExempt = true; return nil },
 	}
 }
