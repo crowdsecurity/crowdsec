@@ -110,3 +110,48 @@ func TestExpandAppsecConfigEntry(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveAppsecConfigEntries(t *testing.T) {
+	all := []string{"crowdsecurity/vpatch", "crowdsecurity/generic", "crowdsecurity/uninstalled", "custom/mine"}
+	installed := []string{"crowdsecurity/vpatch", "crowdsecurity/generic", "custom/mine"}
+
+	tests := []struct {
+		name     string
+		entries  []string
+		expected []string
+	}{
+		{
+			// "*" already pulls in vpatch; the explicit literal must not load it
+			// a second time. First-seen order from the wildcard expansion wins.
+			name:     "wildcard plus overlapping literal dedups",
+			entries:  []string{"*", "crowdsecurity/vpatch"},
+			expected: []string{"crowdsecurity/generic", "crowdsecurity/vpatch", "custom/mine"},
+		},
+		{
+			name:     "same literal twice collapses to one",
+			entries:  []string{"crowdsecurity/vpatch", "crowdsecurity/vpatch"},
+			expected: []string{"crowdsecurity/vpatch"},
+		},
+		{
+			name:     "unknown literal passes through once",
+			entries:  []string{"does/not-exist", "does/not-exist"},
+			expected: []string{"does/not-exist"},
+		},
+		{
+			// Overlapping patterns: generic matches both, must appear once.
+			name:     "overlapping patterns dedup",
+			entries:  []string{"crowdsecurity/*", "*/generic"},
+			expected: []string{"crowdsecurity/generic", "crowdsecurity/vpatch"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			hub := hubWithConfigs(t, all, installed)
+
+			got, err := resolveAppsecConfigEntries(tc.entries, hub)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}

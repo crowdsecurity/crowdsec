@@ -157,6 +157,35 @@ func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
 	return matches, nil
 }
 
+// resolveAppsecConfigEntries expands every appsec_config(s) entry and returns
+// the de-duplicated list of config names to load, in first-seen order.
+// Dedup matters because AppsecConfig.Load -> LoadByPath is additive, so loading
+// the same config twice would duplicate its rules (e.g. "*" plus an explicit
+// "crowdsec/vpatch", or two overlapping patterns).
+func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, error) {
+	seen := make(map[string]struct{})
+
+	var toLoad []string
+
+	for _, entry := range entries {
+		names, err := expandAppsecConfigEntry(entry, hub)
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve appsec_config %q: %w", entry, err)
+		}
+
+		for _, name := range names {
+			if _, ok := seen[name]; ok {
+				continue
+			}
+
+			seen[name] = struct{}{}
+			toLoad = append(toLoad, name)
+		}
+	}
+
+	return toLoad, nil
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -219,16 +248,14 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 			entries = []string{w.config.AppsecConfig}
 		}
 
-		for _, entry := range entries {
-			names, err := expandAppsecConfigEntry(entry, w.hub)
-			if err != nil {
-				return fmt.Errorf("unable to resolve appsec_config %q: %w", entry, err)
-			}
+		names, err := resolveAppsecConfigEntries(entries, w.hub)
+		if err != nil {
+			return err
+		}
 
-			for _, name := range names {
-				if err := appsecCfg.Load(name, w.hub); err != nil {
-					return fmt.Errorf("unable to load appsec_config: %w", err)
-				}
+		for _, name := range names {
+			if err := appsecCfg.Load(name, w.hub); err != nil {
+				return fmt.Errorf("unable to load appsec_config: %w", err)
 			}
 		}
 	} else {
