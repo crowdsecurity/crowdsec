@@ -516,6 +516,8 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 
 	// A challenge was served, so the request never reaches the backend;
 	if state.RequireChallenge {
+		globalParsingElapsed := time.Since(startGlobalParsing)
+		metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 		return
 	}
 
