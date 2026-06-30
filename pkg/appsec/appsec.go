@@ -189,6 +189,20 @@ type AppsecTempResponse struct {
 	SendAlert               bool                  // do we send an alert on rule match
 }
 
+func (r AppsecTempResponse) Clone() AppsecTempResponse {
+	clone := r
+	if r.UserHeaders != nil {
+		clone.UserHeaders = make(map[string][]string, len(r.UserHeaders))
+		for k, v := range r.UserHeaders {
+			clone.UserHeaders[k] = append([]string(nil), v...)
+		}
+	}
+	if r.UserHTTPCookies != nil {
+		clone.UserHTTPCookies = append([]cookie.AppsecCookie(nil), r.UserHTTPCookies...)
+	}
+	return clone
+}
+
 type AppsecDropInfo struct {
 	Reason       string
 	Interruption *corazatypes.Interruption
@@ -1505,6 +1519,12 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
 	if w.ChallengeRuntime == nil {
 		return errors.New("challenge runtime not initialized")
+	}
+
+	// SendChallenge can only be called from inband.post_eval and inband.on_challenge.
+	// as it's the same expr-env, we need to detect here.
+	if state.CurrentPhase != PhaseInBand {
+		return errors.New("SendChallenge can only be called from an in-band hook (on_challenge or post_eval)")
 	}
 
 	// GrantChallengeCookie earlier in the same request already minted an

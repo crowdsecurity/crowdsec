@@ -13,11 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -31,12 +31,12 @@ type appsecRuleTest struct {
 	// schemas registers OpenAPI schemas (ref → YAML content) on the
 	// RequestValidator after Build, so hooks can refer to them via
 	// ValidateRequestWithSchema(ref).
-	schemas                map[string]string
-	on_load                []appsec.Hook
-	pre_eval               []appsec.Hook
-	post_eval              []appsec.Hook
-	on_match               []appsec.Hook
-	on_challenge           []appsec.Hook
+	schemas      map[string]string
+	on_load      []appsec.Hook
+	pre_eval     []appsec.Hook
+	post_eval    []appsec.Hook
+	on_match     []appsec.Hook
+	on_challenge []appsec.Hook
 	// Phase-scoped hooks (dispatched only during the matching phase)
 	inband_on_match        []appsec.Hook
 	inband_pre_eval        []appsec.Hook
@@ -150,6 +150,9 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	hub := cwhub.Hub{}
 	AppsecRuntime, err := appsecCfg.Build(t.Context(), &hub)
 	if err != nil {
+		if !test.expected_load_ok {
+			return
+		}
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
 	for ref, schemaYAML := range test.schemas {
@@ -259,7 +262,7 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		idle.Reset(idleDuration)
 	}
 
-	responses :=[]appsec.AppsecTempResponse{}
+	responses := []appsec.AppsecTempResponse{}
 	events := []pipeline.Event{}
 
 	done := make(chan struct{})
