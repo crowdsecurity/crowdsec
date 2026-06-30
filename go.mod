@@ -60,7 +60,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/jszwec/csvutil v1.10.0
 	github.com/mattn/go-isatty v0.0.22
-	github.com/mattn/go-sqlite3 v1.14.44
+	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -81,13 +81,13 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	github.com/wasilibs/go-re2 v1.10.0
+	github.com/wasilibs/go-re2 v1.11.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.50.0
 	golang.org/x/mod v0.35.0
 	golang.org/x/net v0.53.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.43.0
+	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.36.0
 	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.81.0
