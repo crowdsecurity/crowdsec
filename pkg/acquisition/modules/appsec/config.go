@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	yaml "github.com/goccy/go-yaml"
@@ -21,6 +22,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -122,6 +125,38 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
+// expandAppsecConfigEntry resolves a single appsec_config(s) entry into the list
+// of appsec-config item names to load. A literal entry is returned untouched so
+// the per-name "no appsec-config found" error still surfaces from
+// AppsecConfig.Load for typos. An entry containing a glob meta-character ('*' or
+// '?') is matched against the installed appsec-configs with the same matcher used
+// to expand appsec-rule patterns (see appsec.LoadCollection); it errors when no
+// installed config matches.
+func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
+	if !strings.ContainsAny(entry, "*?") {
+		return []string{entry}, nil
+	}
+
+	var matches []string
+
+	for _, item := range hub.GetInstalledByType(cwhub.APPSEC_CONFIGS, true) {
+		matched, err := exprhelpers.Match(entry, item.Name)
+		if err != nil {
+			return nil, fmt.Errorf("while matching %q against %q: %w", entry, item.Name, err)
+		}
+
+		if matched.(bool) {
+			matches = append(matches, item.Name)
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no installed appsec-config matches pattern %q", entry)
+	}
+
+	return matches, nil
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -178,14 +213,22 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		if err := appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
-	} else if w.config.AppsecConfig != "" {
-		if err := appsecCfg.Load(w.config.AppsecConfig, w.hub); err != nil {
-			return fmt.Errorf("unable to load appsec_config: %w", err)
+	} else if w.config.AppsecConfig != "" || len(w.config.AppsecConfigs) > 0 {
+		entries := w.config.AppsecConfigs
+		if w.config.AppsecConfig != "" {
+			entries = []string{w.config.AppsecConfig}
 		}
-	} else if len(w.config.AppsecConfigs) > 0 {
-		for _, appsecConfig := range w.config.AppsecConfigs {
-			if err := appsecCfg.Load(appsecConfig, w.hub); err != nil {
-				return fmt.Errorf("unable to load appsec_config: %w", err)
+
+		for _, entry := range entries {
+			names, err := expandAppsecConfigEntry(entry, w.hub)
+			if err != nil {
+				return fmt.Errorf("unable to resolve appsec_config %q: %w", entry, err)
+			}
+
+			for _, name := range names {
+				if err := appsecCfg.Load(name, w.hub); err != nil {
+					return fmt.Errorf("unable to load appsec_config: %w", err)
+				}
 			}
 		}
 	} else {
