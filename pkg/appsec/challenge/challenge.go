@@ -80,7 +80,7 @@ const defaultCookieTTL = 12 * time.Hour
 // challenge page when the operator hasn't configured a custom one. Allows
 // inline script/style (the challenge runtime injects both) and blob workers
 // (the PoW worker is loaded from a blob URL).
-const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
