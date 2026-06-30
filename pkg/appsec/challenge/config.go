@@ -54,23 +54,6 @@ type Config struct {
 	// with different byte layout, giving per-visitor variance. Defaults to 1.
 	CryptoObfuscationPoolSize *int `yaml:"crypto_obfuscation_pool_size"`
 
-	// LibraryRuntimeObfuscationEnabled gates background re-obfuscation of the
-	// public library bundle. The bundle is ALWAYS obfuscated at build time;
-	// this only adds further runtime variants at ~1 minute of CPU per pass.
-	// Off by default (serve only the baked-in variant).
-	LibraryRuntimeObfuscationEnabled *bool `yaml:"library_runtime_obfuscation_enabled"`
-
-	// LibraryObfuscationPoolSize is the max number of library-bundle variants
-	// to keep. Only meaningful when LibraryRuntimeObfuscationEnabled is set.
-	// Defaults to 1.
-	LibraryObfuscationPoolSize *int `yaml:"library_obfuscation_pool_size"`
-
-	// LibraryObfuscationRefreshInterval is the cadence at which one new
-	// library-bundle variant is obfuscated (oldest evicted) — one per tick, so
-	// a full rotation takes pool_size × interval. Ignored unless
-	// LibraryRuntimeObfuscationEnabled is set.
-	LibraryObfuscationRefreshInterval *time.Duration `yaml:"library_obfuscation_refresh_interval"`
-
 	// SpentSetMaxEntries caps the replay-protection LRU. A deep DoS backstop;
 	// steady-state stays far below it. Defaults to spentSetDefaultMaxEntries.
 	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
@@ -106,15 +89,6 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
-	}
-	if other.LibraryRuntimeObfuscationEnabled != nil {
-		c.LibraryRuntimeObfuscationEnabled = other.LibraryRuntimeObfuscationEnabled
-	}
-	if other.LibraryObfuscationPoolSize != nil {
-		c.LibraryObfuscationPoolSize = other.LibraryObfuscationPoolSize
-	}
-	if other.LibraryObfuscationRefreshInterval != nil {
-		c.LibraryObfuscationRefreshInterval = other.LibraryObfuscationRefreshInterval
 	}
 	if other.SpentSetMaxEntries != nil {
 		c.SpentSetMaxEntries = other.SpentSetMaxEntries
@@ -168,15 +142,6 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))
-	}
-	if c.LibraryRuntimeObfuscationEnabled != nil {
-		opts = append(opts, WithLibraryRuntimeObfuscationEnabled(*c.LibraryRuntimeObfuscationEnabled))
-	}
-	if c.LibraryObfuscationPoolSize != nil && *c.LibraryObfuscationPoolSize > 0 {
-		opts = append(opts, WithLibraryObfuscationPoolSize(*c.LibraryObfuscationPoolSize))
-	}
-	if c.LibraryObfuscationRefreshInterval != nil {
-		opts = append(opts, WithLibraryObfuscationRefreshInterval(*c.LibraryObfuscationRefreshInterval))
 	}
 	if c.SpentSetMaxEntries != nil && *c.SpentSetMaxEntries > 0 {
 		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))

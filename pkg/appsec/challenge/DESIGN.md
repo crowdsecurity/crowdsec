@@ -50,7 +50,7 @@ walking the compiled expression AST and setting
 │   - KeyRing: HKDF-derived per-epoch keys + long-lived cookie key     │
 │   - Crypto: AES-GCM cookie seal/open, per-challenge + PoW MAC HMACs  │
 │   - Obfuscator: wazero-hosted WASM running javascript-obfuscator     │
-│   - Static bundle pool: baked-in + optional runtime variants         │
+│   - Challenge code: single static build-time obfuscated variant      │
 │   - Dynamic module pool: per-epoch key script, obfuscated variants   │
 │   - Fingerprint mismatch report aggregator                           │
 └──────────────────────────────────────────────────────────────────────┘
@@ -68,9 +68,6 @@ type Config struct {
     MaxLiveEpochs                     *int
     CookieTTL                         *time.Duration
     CryptoObfuscationPoolSize         *int
-    LibraryRuntimeObfuscationEnabled  *bool
-    LibraryObfuscationPoolSize        *int
-    LibraryObfuscationRefreshInterval *time.Duration
 }
 ```
 
@@ -237,14 +234,22 @@ PoW levels (in leading SHA-256 zero bits) live as constants in
 
 ### 1.5 JS obfuscation pipeline
 
-The browser receives three logical pieces of JS at every challenge:
+The browser receives four logical pieces of JS at every challenge:
 
-1. **Static library bundle** — fpscanner + PoW worker glue + IndexedDB
-   persistence. Public, non-sensitive code.
+1. **Obfuscated challenge code** — the small crypto/glue bundle (SHA-256, HMAC,
+   PoW orchestration, fingerprint XOR, submission, hook registration). Injected
+   **inline** on the challenge page. A single static build-time obfuscated
+   variant (no runtime pool — see below).
 2. **Dynamic key module** — a ~30-line script embedding the current epoch's key
    `K_epoch` as a hex literal, so the client can derive the per-challenge secret
-   `s = HMAC(K_epoch, r)` and sign the submission.
-3. **PoW worker** — separate JS served at `/crowdsec-internal/challenge/pow-worker.js`.
+   `s = HMAC(K_epoch, r)` and sign the submission. Injected inline.
+3. **fpscanner bundle** — the public `fpscanner` device-fingerprint scanner,
+   served **unobfuscated** as its own file at
+   `/crowdsec-internal/challenge/fpscanner.js` and loaded via a plain
+   `<script src>` tag. It assigns `globalThis.CrowdsecFingerprintScanner`; the
+   challenge code reads that global at use time. Public, non-sensitive code —
+   cacheable.
+4. **PoW worker** — separate JS served at `/crowdsec-internal/challenge/pow-worker.js`.
 
 #### The obfuscator itself
 
@@ -257,30 +262,30 @@ A pre-built `javascript-obfuscator` distribution compiled to WASM lives at
   (`CompileModule` ~4–5 s); per-call cost is just `InstantiateModule`.
 - Each obfuscation pass produces byte-distinct output even for the same input
   (mangled identifier names, random transforms).
-- A pass on the **static library bundle** takes ~1 min of CPU; a pass on the
-  **dynamic module** takes ~5 s.
+- A pass on the **challenge code** is cheap (~5 s of CPU) — it is just the small
+  crypto/glue bundle; the bulk of the old library (fpscanner) is no longer
+  obfuscated at all. A pass on the **dynamic module** also takes ~5 s.
 
-#### Static bundle pool
+#### Challenge code (single static variant)
 
-The library bundle is **always** obfuscated — `initial_bundle.js.gz` is
-generated at build time by [`js/cmd/initialbundle`](js/cmd/initialbundle)
-(run via `go generate`) and embedded into the binary.
-[`static_bundle.go`](static_bundle.go) seeds the pool with that variant on
-startup. By default the pool stays at size 1 and no further runtime
-obfuscation happens — the baked-in variant is what every visitor receives.
+The challenge crypto/glue code is **always** obfuscated, but it is a **single
+static build-time variant** — there is no runtime pool or refresher for it
+anymore. The build pipeline splits the two concerns:
 
-With `library_runtime_obfuscation_enabled: true`, a background goroutine
-adds one new runtime-obfuscated variant per
-`library_obfuscation_refresh_interval` (default 1 h), capped at
-`library_obfuscation_pool_size` (default 1, raise it together with the
-flag to grow the pool). Each challenge render picks a variant at random.
+- [`js/cmd/bundle`](js/cmd/bundle) emits two outputs: `fpscanner/fpscanner.js`
+  (the minified, **unobfuscated** fpscanner IIFE, embedded as
+  `challengejs.FPScannerJS` / re-exported as `challenge.FPScannerJS` and served
+  raw at `/crowdsec-internal/challenge/fpscanner.js`) and `challenge_code.js`
+  (the obfuscation input).
+- [`js/cmd/initialbundle`](js/cmd/initialbundle) substitutes the path
+  placeholders into `challenge_code.js` and obfuscates it into
+  `../initial_bundle.js.gz`, embedded into the binary.
 
-The name `library_runtime_obfuscation_enabled` is precise on purpose: the
-library is obfuscated regardless of the flag — the flag only adds runtime
-*variants*. If runtime obfuscation is off and `library_obfuscation_pool_size`
-is > 1, the runtime warns at startup and clamps the pool to 1 (the extra
-slots would never be filled since only the initial bundle seeds the
-pool).
+On startup [`seedCacheFromInitialBundle()`](static_bundle.go) loads that single
+baked-in variant into the `challengeCode string` field on `ChallengeRuntime`;
+every visitor receives it inline via [`getChallengeCode()`](static_bundle.go).
+There is no per-visitor byte variance on the challenge code, and the fpscanner
+bundle (the public, bulky part) is served as-is.
 
 #### Dynamic module pool
 
@@ -300,8 +305,8 @@ Two non-obvious mechanisms keep this fast:
   epoch. The first request after rotation finds the cache populated.
 
 The obfuscator config (in [`js/obfuscate/obfuscate.js`](js/obfuscate))
-reserves the hook symbol `__CSEC_CHALLENGE_HOOK_v1__` so the static and
-dynamic modules can find each other by name across independent obfuscation
+reserves the hook symbol `__CSEC_CHALLENGE_HOOK_v1__` so the challenge code and
+the dynamic module can find each other by name across independent obfuscation
 passes. The key material itself is **not** reserved — it's deliberately
 encoded by the obfuscator's string-array transforms.
 
@@ -318,6 +323,7 @@ evaluation if no challenge response was assembled.
 | Path | Method | Handling |
 |---|---|---|
 | `/crowdsec-internal/challenge/pow-worker.js` | GET | Static `PowWorkerJS` body served |
+| `/crowdsec-internal/challenge/fpscanner.js` | GET | Static (unobfuscated) `FPScannerJS` body served |
 | `/crowdsec-internal/challenge/submit` | POST | `ValidateChallengeResponse` → single-use burn + fingerprint de-obfuscate → `on_challenge_submit` hooks → `bodyChallengeOK` + Set-Cookie *or* `bodyChallengeRejected` |
 | anything else | any | Existing `__crowdsec_challenge` cookie validated → `state.Fingerprint` populated → `on_challenge` hooks |
 
@@ -345,8 +351,9 @@ For a submission, `ValidateChallengeResponse`:
 The challenge page itself (`GetChallengePage`) builds the response by:
 
 1. Resolving difficulty (per-request override beats runtime default).
-2. Picking a random static library bundle variant and a random dynamic
-   module variant.
+2. Reading the single static obfuscated challenge code and picking a random
+   dynamic module variant (the unobfuscated fpscanner bundle is referenced by
+   `<script src>`, not inlined).
 3. Generating `ts`, the challenge nonce `r`, the PoW salt `p`, and the PoW MAC `m`.
 4. Rendering [`challenge.html.tmpl`](challenge.html.tmpl) with all of the
    above.
@@ -502,10 +509,10 @@ Things to actively look for when reviewing changes that touch this subsystem.
   Don't bypass either. Walking `dynamicModuleCache` without holding
   `dynamicModuleCacheMu` is a race; mutating it inside a
   `singleflight.Do` callback is fine.
-- **Library bundle pool**: `libraryBundlePoolMu` is `RWMutex`. The refresher
-  goroutine takes the write lock to append + trim; read paths must use the
-  read lock. Pool size must always stay ≤ `libraryPoolSize` after a refresh
-  pass.
+- **Challenge code**: held in a single immutable `challengeCode string` field,
+  seeded once at startup by `seedCacheFromInitialBundle()` and read via
+  `getChallengeCode()`. There is no pool, mutex, or refresher to coordinate —
+  it is set-once and read-only thereafter.
 - **Pre-warmer lifetime**: the pre-warmer reads from the keyring and writes
   into the dynamic module cache. It must observe context cancellation. If
   you add a new goroutine, plumb the same context.
@@ -520,8 +527,8 @@ Things to actively look for when reviewing changes that touch this subsystem.
   seconds of CPU per challenge served.
 - **Pool sizes have CPU cost**, not just memory cost. Each
   `crypto_obfuscation_pool_size` increment is one extra ~5 s obfuscation
-  pass per epoch rotation. Each `library_obfuscation_pool_size` increment is
-  one extra ~1 min pass per `library_obfuscation_refresh_interval`.
+  pass per epoch rotation. The challenge code is obfuscated once at build
+  time, so it adds no runtime obfuscation cost at all.
 - **Pre-warm lead time** is `1/4 × rotation_interval`, capped at 30 s and
   floored at 1 s. Shrinking the rotation interval below ~20 s makes the
   pre-warmer too tight for the obfuscation pass; the test
@@ -556,11 +563,14 @@ Targeted tests live alongside the code:
    — epoch math, key derivation determinism, liveness window.
 - [`secret_test.go`](secret_test.go) — hex vs passphrase, min-size guard.
 - [`initial_bundle_test.go`](initial_bundle_test.go), [`split_bundle_test.go`](split_bundle_test.go)
-   — baked-in bundle integrity.
-- [`obfuscation_pools_test.go`](obfuscation_pools_test.go) — library and
-  dynamic pool behaviour (note: `TestCryptoObfuscationPoolSize` is flaky;
-  it depends on the JS obfuscator producing byte-distinct output across
-  passes).
+   — baked-in bundle integrity. `initial_bundle_test.go` also asserts fpscanner
+   is **not** present in the obfuscated challenge bundle and that `FPScannerJS`
+   exposes the `globalThis.CrowdsecFingerprintScanner` global.
+- [`obfuscation_pools_test.go`](obfuscation_pools_test.go) — asserts the
+  challenge code is seeded **statically** (single build-time variant, no
+  runtime pool) and exercises the crypto/dynamic-module pool behaviour (note:
+  `TestCryptoObfuscationPoolSize` is flaky; it depends on the JS obfuscator
+  producing byte-distinct output across passes).
 - [`pkg/appsec/appsec_challenge_test.go`](../appsec_challenge_test.go) —
   `GrantChallengeCookie` 307 path, inline submit variant,
   `state.ChallengeBypassed` guard, allowlist flag propagation.
@@ -654,12 +664,6 @@ challenge:
   cookie_ttl: 12h
   # max_cookie_size: 4096   # encoded cookie size ceiling (seal + open); bounds envelope allocation
   crypto_obfuscation_pool_size: 1
-  # The library bundle is ALWAYS obfuscated (build-time). This flag only
-  # adds further runtime-generated variants — leave off unless you want
-  # per-visitor byte variance on top of the build-time obfuscation.
-  library_runtime_obfuscation_enabled: false
-  # library_obfuscation_pool_size: 1        # clamped to 1 when runtime obfuscation is off
-  # library_obfuscation_refresh_interval: 1h # ignored when runtime obfuscation is off
 
 # Hooks define WHEN to challenge and WHO gets allowlisted.
 inband:
@@ -766,9 +770,6 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `cookie_ttl` | duration | 12h | Decoupled from rotation interval; can be long (24h+) |
 | `max_cookie_size` | int | 4096 | Encoded cookie size ceiling, enforced on seal and open. Bounds the memory allocated from the (attacker-supplied) fingerprint envelope — an over-allocation DoS guard. Matches the per-cookie size browsers guarantee; raise only for non-browser clients that tolerate larger cookies |
 | `crypto_obfuscation_pool_size` | int | 1 | Variants of dynamic key module per epoch; each costs ~5 s of CPU per rotation |
-| `library_runtime_obfuscation_enabled` | bool | false | Enable *runtime* library re-obfuscation. The library bundle is always obfuscated at build time regardless of this flag; this only adds further variants over time |
-| `library_obfuscation_pool_size` | int | 1 | Pool ceiling for library variants. Values > 1 are only meaningful when runtime obfuscation is enabled; otherwise the runtime warns and clamps to 1 |
-| `library_obfuscation_refresh_interval` | duration | 1h | Cadence; ignored when runtime obfuscation is off. Full pool rotation = `pool_size × interval` |
 | `log_level` | string | inherits | `debug` / `info` / `warning` (etc.) for the challenge runtime only. ⚠️ **`debug` writes the per-epoch key `k_epoch` to the logs** (key rotation + per challenge) — forgeable signing material; a diagnostic mode only, **not for production** (see §1.10). Unset inherits the appsec logger's level. |
 
 #### Hook helpers
@@ -854,12 +855,13 @@ the keyring tolerates one rotation interval of clock skew, no more.
 - **High-traffic, wants per-visitor JS variance**: bump
   `crypto_obfuscation_pool_size` to 2–3. Costs `N × 5 s` of CPU per
   rotation.
-- **Wants runtime library obfuscation** (against signature-based scrapers
-  matching on the static bundle): set `library_runtime_obfuscation_enabled:
-  true`, optionally raise `library_obfuscation_pool_size` to 2–3 so the
-  refresher has room to grow. Costs ~1 min of CPU per
-  `library_obfuscation_refresh_interval` (default 1 h) for one fresh
-  variant per tick.
+- **fpscanner is public, served raw**: the fpscanner bundle at
+  `/crowdsec-internal/challenge/fpscanner.js` is unobfuscated, cacheable public
+  code — there is no runtime knob to obfuscate it, and scrapers keying on that
+  static bundle are not a threat the runtime tries to defeat. The only
+  per-visitor JS variance available is on the dynamic key module
+  (`crypto_obfuscation_pool_size`); the challenge crypto code is a single
+  static build-time obfuscated variant.
 - **Long-lived cookies for known clients**: set a long `cookie_ttl`
   (24h, 7 days) — safe because cookie expiry is enforced by `not_after`,
   not by the much shorter keyring window.

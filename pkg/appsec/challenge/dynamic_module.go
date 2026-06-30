@@ -13,9 +13,9 @@
 // behavior; operators that want per-visitor variance for the
 // sensitive code can raise WithCryptoObfuscationPoolSize.
 //
-// For the **non-sensitive** library bundle (public fpscanner / PoW
-// worker glue, controlled by WithLibraryRuntimeObfuscationEnabled), see
-// static_bundle.go.
+// For the **non-sensitive** challenge code (the build-time-obfuscated
+// crypto/glue served inline) and the separately-served, unobfuscated
+// fpscanner bundle, see static_bundle.go.
 package challenge
 
 import (

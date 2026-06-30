@@ -49,6 +49,7 @@ const (
 	ChallengeJSPath        = "/crowdsec-internal/challenge/challenge.js"
 	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
 	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
+	ChallengeFPScannerPath = "/crowdsec-internal/challenge/fpscanner.js"
 )
 
 // Sentinel errors (reasons) returned by ValidateChallengeResponse.
@@ -64,16 +65,6 @@ var (
 // ChallengeCookieName is the name of the sealed cookie carrying the
 // successfully-validated fingerprint between requests.
 const ChallengeCookieName = "__crowdsec_challenge"
-
-// libraryBundlePoolDefaultSize caps the library bundle pool. With runtime
-// obfuscation off (default) only the baked-in initial_bundle.js.gz variant
-// exists (so 1); with it on, this is the ceiling the refresher fills.
-const libraryBundlePoolDefaultSize = 1
-
-// libraryBundleRefreshDefaultInterval is how often one new library-bundle
-// variant is obfuscated (oldest evicted) when runtime obfuscation is on — one
-// per tick, so full rotation takes pool_size × interval.
-const libraryBundleRefreshDefaultInterval = time.Hour
 
 // cryptoObfuscationPoolDefaultSize is how many obfuscations of the per-epoch
 // key module to keep per live epoch. Each variant embeds the same key
@@ -116,20 +107,12 @@ type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
 
-	// libraryRuntimeObfuscationEnabled gates the library-bundle refresher. The
-	// bundle is ALWAYS obfuscated at build time; when false (default) only the
-	// baked-in variant is served and no refresher runs. When true, the
-	// refresher adds one runtime variant per tick.
-	libraryRuntimeObfuscationEnabled bool
-	libraryPoolSize                  int
-	libraryRefreshInterval           time.Duration
-
-	// libraryBundlePool holds up to libraryPoolSize obfuscated variants of the
-	// static bundle, seeded at startup from initial_bundle.js.gz. With
-	// obfuscation enabled the refresher appends/trims; the serving path picks
-	// one at random per render.
-	libraryBundlePool   []obfuscatedScript
-	libraryBundlePoolMu sync.RWMutex
+	// challengeCode is the build-time-obfuscated challenge crypto/glue code,
+	// decompressed once at startup from initial_bundle.js.gz and injected inline
+	// on every challenge page. Static for the life of the process (no runtime
+	// re-obfuscation or pool); the sensitive per-epoch key module lives in
+	// dynamic_module.go.
+	challengeCode string
 
 	powDifficulty int
 
@@ -182,17 +165,14 @@ type Option func(*runtimeOptions)
 
 // Field semantics mirror the YAML Config in config.go;
 type runtimeOptions struct {
-	masterSecret                      []byte // must be >= minSecretBytes when non-nil
-	rotationInterval                  time.Duration
-	maxLiveEpochs                     int
-	cookieTTL                         time.Duration
-	maxCookieLen                      int
-	cryptoObfuscationPoolSize         int
-	libraryRuntimeObfuscationEnabled  bool
-	libraryObfuscationPoolSize        int
-	libraryObfuscationRefreshInterval time.Duration
-	spentSetMaxEntries                int
-	logger                            *log.Entry // nil → default "challenge" sublogger
+	masterSecret              []byte // must be >= minSecretBytes when non-nil
+	rotationInterval          time.Duration
+	maxLiveEpochs             int
+	cookieTTL                 time.Duration
+	maxCookieLen              int
+	cryptoObfuscationPoolSize int
+	spentSetMaxEntries        int
+	logger                    *log.Entry // nil → default "challenge" sublogger
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -256,34 +236,6 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 	return func(o *runtimeOptions) {
 		if n >= 1 {
 			o.cryptoObfuscationPoolSize = n
-		}
-	}
-}
-
-// WithLibraryRuntimeObfuscationEnabled toggles runtime re-obfuscation of the
-// library bundle (see Config.LibraryRuntimeObfuscationEnabled).
-func WithLibraryRuntimeObfuscationEnabled(enabled bool) Option {
-	return func(o *runtimeOptions) {
-		o.libraryRuntimeObfuscationEnabled = enabled
-	}
-}
-
-// WithLibraryObfuscationPoolSize sets the library-bundle variant pool size
-// (see Config.LibraryObfuscationPoolSize); values below 1 are ignored.
-func WithLibraryObfuscationPoolSize(n int) Option {
-	return func(o *runtimeOptions) {
-		if n >= 1 {
-			o.libraryObfuscationPoolSize = n
-		}
-	}
-}
-
-// WithLibraryObfuscationRefreshInterval sets the library-bundle refresh cadence
-// (see Config.LibraryObfuscationRefreshInterval); values <= 0 are ignored.
-func WithLibraryObfuscationRefreshInterval(d time.Duration) Option {
-	return func(o *runtimeOptions) {
-		if d > 0 {
-			o.libraryObfuscationRefreshInterval = d
 		}
 	}
 }
@@ -423,26 +375,6 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cryptoPoolSize = cryptoObfuscationPoolDefaultSize
 	}
 
-	libraryPoolSize := resolvedOpts.libraryObfuscationPoolSize
-	if libraryPoolSize <= 0 {
-		libraryPoolSize = libraryBundlePoolDefaultSize
-	}
-
-	// Clamp pool size to 1 when runtime obfuscation is off: the only source
-	// of variants in that mode is the baked-in initial bundle (one entry),
-	// so any larger ceiling would leave empty slots forever. Warn so the
-	// operator notices the misconfiguration without having the runtime fail
-	// to start.
-	if !resolvedOpts.libraryRuntimeObfuscationEnabled && libraryPoolSize > 1 {
-		logger.Warnf("library_obfuscation_pool_size=%d ignored: library_runtime_obfuscation_enabled is false, only the baked-in variant will populate the pool. Clamping to 1.", libraryPoolSize)
-		libraryPoolSize = 1
-	}
-
-	libraryRefreshInterval := resolvedOpts.libraryObfuscationRefreshInterval
-	if libraryRefreshInterval <= 0 {
-		libraryRefreshInterval = libraryBundleRefreshDefaultInterval
-	}
-
 	spentSetMaxEntries := resolvedOpts.spentSetMaxEntries
 	if spentSetMaxEntries <= 0 {
 		spentSetMaxEntries = spentSetDefaultMaxEntries
@@ -470,27 +402,24 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	challengeRuntime := &ChallengeRuntime{
-		r:                                r,
-		obfuscatorMod:                    compiledMod,
-		libraryRuntimeObfuscationEnabled: resolvedOpts.libraryRuntimeObfuscationEnabled,
-		libraryPoolSize:                  libraryPoolSize,
-		libraryRefreshInterval:           libraryRefreshInterval,
-		libraryBundlePool:                make([]obfuscatedScript, 0, libraryPoolSize),
-		powDifficulty:                    defaultPowDifficulty,
-		keys:                             keys,
-		cryptoPoolSize:                   cryptoPoolSize,
-		dynamicModuleCache:               make(map[int64][]string),
-		cookieTTL:                        cookieTTL,
-		maxCookieLen:                     maxCookieLen,
-		htmlTpl:                          htmlTpl,
-		spent:                            newSpentSet(spentSetMaxEntries),
-		logger:                           logger,
+		r:                  r,
+		obfuscatorMod:      compiledMod,
+		powDifficulty:      defaultPowDifficulty,
+		keys:               keys,
+		cryptoPoolSize:     cryptoPoolSize,
+		dynamicModuleCache: make(map[int64][]string),
+		cookieTTL:          cookieTTL,
+		maxCookieLen:       maxCookieLen,
+		htmlTpl:            htmlTpl,
+		spent:              newSpentSet(spentSetMaxEntries),
+		logger:             logger,
 	}
 
-	// Seed from the baked-in pre-obfuscated bundle so we can serve immediately.
+	// Load the build-time-obfuscated challenge code from the baked-in bundle so
+	// we can serve immediately.
 	if err := challengeRuntime.seedCacheFromInitialBundle(); err != nil {
 		// Initial bundle missing/corrupt (e.g. `go generate` not run): fall back
-		// to generating one variant synchronously.
+		// to obfuscating the challenge code synchronously.
 		logger.Warnf("failed to load baked-in initial challenge bundle (%v); falling back to synchronous generation", err)
 		if err := challengeRuntime.generateAndCacheChallengeJS(ctx); err != nil {
 			return nil, fmt.Errorf("failed to generate initial challenge bundle: %w", err)
@@ -503,24 +432,18 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		return nil, fmt.Errorf("warm dynamic key module: %w", err)
 	}
 
-	// Library refresher is opt-in: the bundle is public code already served
-	// obfuscated, so runtime variants only add byte variance and aren't worth
-	// the ~minute-per-pass cost by default.
-	if resolvedOpts.libraryRuntimeObfuscationEnabled {
-		go challengeRuntime.libraryBundlePoolRefresher(ctx)
-	}
 	// The dynamic-module pre-warmer is always on — the per-epoch key must be
-	// re-obfuscated on every rotation (bounded cost, one pass per variant).
+	// re-obfuscated on every rotation (bounded cost, one pass per variant). The
+	// challenge code itself is static (build-time obfuscated), so there is no
+	// library refresher anymore.
 	go challengeRuntime.dynamicModulePreWarmer(ctx)
 
 	logger.WithFields(log.Fields{
-		"rotation_interval":   rotationInterval,
-		"cookie_ttl":          cookieTTL,
-		"max_cookie_len":      maxCookieLen,
-		"pow_difficulty":      defaultPowDifficulty,
-		"crypto_pool_size":    cryptoPoolSize,
-		"library_pool_size":   libraryPoolSize,
-		"library_runtime_obf": resolvedOpts.libraryRuntimeObfuscationEnabled,
+		"rotation_interval": rotationInterval,
+		"cookie_ttl":        cookieTTL,
+		"max_cookie_len":    maxCookieLen,
+		"pow_difficulty":    defaultPowDifficulty,
+		"crypto_pool_size":  cryptoPoolSize,
 	}).Info("WAF challenge runtime initialized")
 
 	return challengeRuntime, nil
@@ -542,13 +465,13 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		difficulty = c.powDifficulty
 	}
 
-	obfuscatedJS := c.getLibraryBundle()
-	if obfuscatedJS.Code == "" {
+	challengeCode := c.getChallengeCode()
+	if challengeCode == "" {
 		if err := c.generateAndCacheChallengeJS(ctx); err != nil {
 			return "", fmt.Errorf("failed to generate challenge JS: %w", err)
 		}
-		obfuscatedJS = c.getLibraryBundle()
-		if obfuscatedJS.Code == "" {
+		challengeCode = c.getChallengeCode()
+		if challengeCode == "" {
 			return "", errors.New("challenge JS cache is empty")
 		}
 	}
@@ -579,7 +502,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		}).Debug("issued challenge")
 	}
 
-	// The static bundle only carries the hook registration; the dynamic module
+	// The challenge code only carries the hook registration; the dynamic module
 	// carries the per-epoch K, so K never appears in plain HTML.
 	dynamicModule, err := c.currentDynamicModule(ctx)
 	if err != nil {
@@ -589,8 +512,9 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 	var renderedPage strings.Builder
 
 	if err := c.htmlTpl.Execute(&renderedPage, map[string]interface{}{
-		"JSChallenge":   obfuscatedJS.Code,
+		"JSChallenge":   challengeCode,
 		"DynamicModule": dynamicModule,
+		"FPScannerPath": ChallengeFPScannerPath,
 		"PowDifficulty": difficulty,
 		"PowPrefix":     powSalt,
 		"PowMAC":        powMAC,

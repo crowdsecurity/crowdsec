@@ -388,6 +388,9 @@
     </script>
 
     <script>var _powD={{.PowDifficulty}},_powP="{{.PowPrefix}}",_powM="{{.PowMAC}}",_ts="{{.Timestamp}}",_r="{{.R}}"</script>
+    <!-- Classic script: runs before the deferred module below, so the scanner
+         global is ready when the challenge code runs. -->
+    <script src="{{.FPScannerPath}}"></script>
     <script type="module">
 {{.JSChallenge}}
 {{.DynamicModule}}

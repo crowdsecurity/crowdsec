@@ -1,5 +1,3 @@
-import FingerprintScanner from "./js/fpscanner/src/index.ts";
-
 // --- Pure JS SHA-256 (RFC 6234) ---
 
 const K = [
@@ -243,9 +241,16 @@ function reportChallengeStatus(status) {
 const CSEC_HOOK_NAME = "__CSEC_CHALLENGE_HOOK_v1__";
 
 async function runChallenge(epochKey) {
+  // Fail closed if the fpscanner bundle didn't load.
+  const Scanner = globalThis.CrowdsecFingerprintScanner;
+  if (typeof Scanner !== "function") {
+    reportChallengeStatus("fail");
+    return;
+  }
+
   const [nonce, fpResult] = await Promise.all([
     solvePoWAsync(powPrefix, powDifficulty),
-    new FingerprintScanner().collectFingerprint({ encrypt: false }),
+    new Scanner().collectFingerprint({ encrypt: false }),
   ]);
 
   // Per-challenge secret s = HMAC(K_epoch, r). Never transmitted; the server

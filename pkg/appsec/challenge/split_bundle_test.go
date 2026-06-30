@@ -22,18 +22,15 @@ import (
 // obfuscate.js explicitly registers it via reservedStrings. If someone
 // removes that registration this test fires before any user notices.
 func TestSplitBundle_HookSentinelInBakedBundle(t *testing.T) {
-	rt := &ChallengeRuntime{
-		libraryBundlePool: make([]obfuscatedScript, 0, libraryBundlePoolDefaultSize),
-		libraryPoolSize:   libraryBundlePoolDefaultSize,
-	}
+	rt := &ChallengeRuntime{}
 	require.NoError(t, rt.seedCacheFromInitialBundle())
 
-	bundle := rt.libraryBundlePool[0].Code
+	bundle := rt.getChallengeCode()
 	require.NotEmpty(t, bundle)
 
 	count := strings.Count(bundle, hookSentinel)
 	assert.GreaterOrEqual(t, count, 1,
-		"hook sentinel %q must survive obfuscation in the static bundle (was reservedStrings dropped from obfuscate.js?)",
+		"hook sentinel %q must survive obfuscation in the challenge code (was reservedStrings dropped from obfuscate.js?)",
 		hookSentinel)
 }
 
@@ -190,6 +187,23 @@ func TestSplitBundle_HTMLDoesNotContainSecret(t *testing.T) {
 
 	assert.NotContains(t, html, keyHex,
 		"the per-epoch sign key leaked into plain HTML \u2014 split-bundle invariant violated")
+}
+
+// TestSplitBundle_HTMLLoadsFPScannerViaScriptTag asserts the rendered page
+// pulls the public fpscanner in via a <script src> tag (so it is cacheable and
+// served unobfuscated) rather than inlining it. fpscanner-only source strings
+// must NOT appear inline in the page.
+func TestSplitBundle_HTMLLoadsFPScannerViaScriptTag(t *testing.T) {
+	keys := testKeyRing()
+	rt := newChallengeRuntimeForSplitTest(t, keys)
+
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	require.NoError(t, err)
+
+	require.Contains(t, html, `<script src="`+ChallengeFPScannerPath+`">`,
+		"challenge page must load fpscanner via a <script src> tag")
+	require.NotContains(t, strings.ToLower(html), "swiftshader",
+		"fpscanner source must be served separately, not inlined in the challenge page")
 }
 
 // hookSentinel must match the constant used by both challenge.js (as
