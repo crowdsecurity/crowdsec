@@ -471,6 +471,8 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	if r.appsecAllowlistsClient != nil {
 		if allowed, reason := r.appsecAllowlistsClient.IsAllowlisted(request.ClientIP); allowed {
 			logger.Infof("%s is allowlisted by %s, skipping WAF processing", request.ClientIP, reason)
+			// No Clone() needed (unlike the in-band send below): we return
+			// immediately, so no out-of-band phase races this response.
 			request.ResponseChannel <- state.Response
 			return
 		}
@@ -509,8 +511,15 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 		r.logger.Errorf("unable to close inband transaction: %s", err)
 	}
 
-	// send back the result to the HTTP handler for the InBand part
-	request.ResponseChannel <- state.Response
+	// Clone as the out-of-band phase might mutate the response
+	request.ResponseChannel <- state.Response.Clone()
+
+	// A challenge was served, so the request never reaches the backend;
+	if state.RequireChallenge {
+		globalParsingElapsed := time.Since(startGlobalParsing)
+		metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
+		return
+	}
 
 	// Challenge remediation is intentionally a no-op for OOB matches: the inband
 	// response has already been sent to the visitor at this point, so there is
