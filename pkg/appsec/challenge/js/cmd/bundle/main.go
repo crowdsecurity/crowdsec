@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -56,7 +57,7 @@ func build(t bundleTarget) error {
 	}
 
 	if len(result.OutputFiles) == 0 {
-		return fmt.Errorf("esbuild returned no output files")
+		return errors.New("esbuild returned no output files")
 	}
 
 	if err := os.WriteFile(t.outFile, result.OutputFiles[0].Contents, 0o644); err != nil {
