@@ -19,9 +19,6 @@ on:
     paths-ignore:
       - "README.md"
   pull_request:
-    branches:
-      - master
-      - releases/**
     paths-ignore:
       - "README.md"
 

@@ -1,4 +1,4 @@
-//go:build !db_no_sqlite && sqlite_modernc
+//go:build !no_db_sqlite && sqlite_modernc
 
 package database
 

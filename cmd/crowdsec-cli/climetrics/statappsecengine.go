@@ -27,9 +27,9 @@ func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
 
 func (s statAppsecEngine) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
 	t := cstable.New(out, wantColor).Writer
-	t.AppendHeader(table.Row{"Appsec Engine", "Processed", "Blocked"})
+	t.AppendHeader(table.Row{"Appsec Engine", "Processed", "Blocked", "Ch. Requested", "Ch. Accepted", "Ch. Rejected"})
 
-	keys := []string{"processed", "blocked"}
+	keys := []string{"processed", "blocked", "challenge_requested", "challenge_accepted", "challenge_rejected"}
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
