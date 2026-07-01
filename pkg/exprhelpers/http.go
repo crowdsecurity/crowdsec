@@ -109,7 +109,7 @@ func HTTPPost(params ...any) (any, error) {
 	return doHTTPRequest(http.MethodPost, uri, headers, strings.NewReader(body))
 }
 
-// HTTPRequest(method string, url string, headers map[string]string, body string) (*HTTPResponse, error)
+// HTTPRequest(method string, url string, headers map[string]any, body string) (*HTTPResponse, error)
 func HTTPRequest(params ...any) (any, error) {
 	method, ok := params[0].(string)
 	if !ok {
@@ -121,9 +121,16 @@ func HTTPRequest(params ...any) (any, error) {
 		return nil, fmt.Errorf("invalid type for url: %T", params[1])
 	}
 
-	headers, ok := params[2].(map[string]string)
+	// headers is map[string]any so that expr map literals (map[string]interface{})
+	// are accepted; values are stringified.
+	rawHeaders, ok := params[2].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid type for headers: %T", params[2])
+	}
+
+	headers := make(map[string]string, len(rawHeaders))
+	for k, v := range rawHeaders {
+		headers[k] = fmt.Sprint(v)
 	}
 
 	body, ok := params[3].(string)

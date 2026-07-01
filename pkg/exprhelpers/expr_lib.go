@@ -579,7 +579,7 @@ var exprFuncs = []exprCustomFunc{
 		name:     "HTTPRequest",
 		function: HTTPRequest,
 		signature: []any{
-			new(func(string, string, map[string]string, string) (*HTTPResponse, error)),
+			new(func(string, string, map[string]any, string) (*HTTPResponse, error)),
 		},
 	},
 }
