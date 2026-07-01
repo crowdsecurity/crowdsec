@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,10 @@ import (
 // quickly (seeded from the baked-in bundle), without paying the synchronous
 // obfuscation it would otherwise pay.
 func TestNewChallengeRuntimeStartupBudget(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("timing is not reliable on windows CI (wazero/WASM obfuscation runs ~2.5x slower)")
+	}
+
 	const budget = 10 * time.Second
 
 	start := time.Now()
