@@ -1096,6 +1096,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
 	}
 
+	// Serve the fpscanner bundle (static, public, unobfuscated asset). Skip user expressions.
+	if path == challenge.ChallengeFPScannerPath {
+		return w.setChallengeResponse(state, http.StatusOK, challenge.FPScannerJS,
+			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+	}
+
 	// Challenge submission: validate, give on_challenge_submit hooks a chance
 	// to reject the submission, then issue (or deny) the cookie. Per-route
 	// on_challenge inspection happens on subsequent cookie-bearing requests.

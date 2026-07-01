@@ -3,90 +3,30 @@ package challenge
 import (
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestLibraryRuntimeObfuscationDisabledByDefault asserts that the default
-// NewChallengeRuntime path does NOT spawn the library-bundle refresher
-// goroutine. The library is still obfuscated (build-time, via
-// initial_bundle.js.gz); this only confirms that steady-state CPU on the
-// library path is zero — only the baked-in variant is served and no
-// background obfuscation runs.
-func TestLibraryRuntimeObfuscationDisabledByDefault(t *testing.T) {
+// TestChallengeCodeSeededStatically asserts that the default
+// NewChallengeRuntime path loads the build-time-obfuscated challenge code
+// once from initial_bundle.js.gz and serves it verbatim — there is no
+// runtime re-obfuscation or pool for the (public) library path anymore.
+func TestChallengeCodeSeededStatically(t *testing.T) {
 	rt, err := NewChallengeRuntime(t.Context())
 	require.NoError(t, err)
-	require.False(t, rt.libraryRuntimeObfuscationEnabled, "library runtime obfuscation must be disabled by default")
 
-	// Pool holds exactly the seeded baked-in variant, nothing more.
-	rt.libraryBundlePoolMu.RLock()
-	poolLen := len(rt.libraryBundlePool)
-	rt.libraryBundlePoolMu.RUnlock()
-	require.Equal(t, 1, poolLen, "default pool must hold only the seeded baked-in bundle")
+	code := rt.getChallengeCode()
+	require.NotEmpty(t, code, "challenge code must be seeded from the baked-in initial bundle")
 
-	// Even after waiting longer than any plausible refresh window, the
-	// pool must NOT grow — proves no refresher goroutine is running.
-	// 500ms is enough to catch any sub-second-misconfigured ticker
-	// (real defaults are 1h, so we won't false-positive even on a slow
-	// CI box).
-	time.Sleep(500 * time.Millisecond)
-	rt.libraryBundlePoolMu.RLock()
-	poolLenAfter := len(rt.libraryBundlePool)
-	rt.libraryBundlePoolMu.RUnlock()
-	assert.Equal(t, 1, poolLenAfter, "pool must NOT grow when runtime library obfuscation is disabled")
-}
+	// The hook sentinel must survive obfuscation so the dynamic key module
+	// can find the registered hook (reservedStrings in obfuscate.js).
+	require.Contains(t, code, hookSentinel,
+		"obfuscated challenge code must preserve the hook sentinel verbatim")
 
-// TestLibraryRuntimeObfuscationEnabledTrickle asserts that when runtime
-// library obfuscation is enabled, the refresher trickles one new variant
-// per tick (rather than the old behavior of regenerating all N variants
-// at once). The pool grows from 1 (seeded) toward the configured size
-// across multiple ticks.
-//
-// This is the regression guard for the production CPU pegging: if the
-// refresher ever again does a batch regen, this test will see the
-// pool jump from 1 → N in one tick instead of trickling.
-func TestLibraryRuntimeObfuscationEnabledTrickle(t *testing.T) {
-	if testing.Short() {
-		t.Skip("library obfuscation runs the full bundle through wazero (~minute per tick); skipped in -short")
-	}
-
-	// 1-second refresh interval is fine for the test: each tick still
-	// does one full-bundle obfuscation, but we only wait for the FIRST
-	// successful tick (pool goes 1 → 2) before asserting.
-	rt, err := NewChallengeRuntime(t.Context(),
-		WithLibraryRuntimeObfuscationEnabled(true),
-		WithLibraryObfuscationPoolSize(3),
-		WithLibraryObfuscationRefreshInterval(1*time.Second),
-	)
-	require.NoError(t, err)
-
-	// Initial state: just the seeded variant.
-	rt.libraryBundlePoolMu.RLock()
-	require.Len(t, rt.libraryBundlePool, 1, "pool must start at 1 (just the seeded variant)")
-	rt.libraryBundlePoolMu.RUnlock()
-
-	// Wait long enough for one tick + one full-bundle obfuscation
-	// (~1 minute). Use a generous deadline and poll.
-	deadline := time.Now().Add(180 * time.Second)
-	for time.Now().Before(deadline) {
-		rt.libraryBundlePoolMu.RLock()
-		sz := len(rt.libraryBundlePool)
-		rt.libraryBundlePoolMu.RUnlock()
-		if sz >= 2 {
-			// Trickle confirmed: pool grew by 1 (not by 2 or 3 in one
-			// tick). The cap behavior is exercised by waiting further
-			// if you want — kept short here to bound test runtime.
-			require.LessOrEqual(t, sz, 3, "pool must respect libraryPoolSize cap")
-			return
-		}
-		time.Sleep(2 * time.Second)
-	}
-	rt.libraryBundlePoolMu.RLock()
-	finalSize := len(rt.libraryBundlePool)
-	rt.libraryBundlePoolMu.RUnlock()
-	t.Fatalf("library bundle pool did not grow within the deadline (got %d, want ≥2)", finalSize)
+	// The accessor is a stable read of static state: repeated calls return
+	// the identical string (no pool, no random selection).
+	assert.Equal(t, code, rt.getChallengeCode(), "challenge code must be static across calls")
 }
 
 // TestCryptoObfuscationDefaultPoolSize confirms that with no

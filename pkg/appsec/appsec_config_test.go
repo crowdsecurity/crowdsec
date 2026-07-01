@@ -412,7 +412,7 @@ challenge:
 	assert.Equal(t, 3, *cfg.Challenge.MaxLiveEpochs)
 	assert.Equal(t, 12*time.Hour, *cfg.Challenge.CookieTTL)
 
-	// Second config overrides CookieTTL and adds library obfuscation fields,
+	// Second config overrides CookieTTL and adds crypto/spent-set fields,
 	// leaving master_secret / rotation / max_live_epochs from the first
 	// config untouched. This is the multi-config last-wins-per-field
 	// behavior collections rely on.
@@ -420,35 +420,38 @@ challenge:
 name: overlay
 challenge:
   cookie_ttl: 1h
-  library_runtime_obfuscation_enabled: true
-  library_obfuscation_pool_size: 2
+  crypto_obfuscation_pool_size: 2
+  spent_set_max_entries: 250000
 `)
 	require.NoError(t, cfg.LoadByPath(second))
 	require.NotNil(t, cfg.Challenge)
 	assert.Equal(t, 1*time.Hour, *cfg.Challenge.CookieTTL, "later config overrides cookie_ttl")
 	require.NotNil(t, cfg.Challenge.MasterSecret, "master_secret from first config must survive")
 	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
-	require.NotNil(t, cfg.Challenge.LibraryRuntimeObfuscationEnabled)
-	assert.True(t, *cfg.Challenge.LibraryRuntimeObfuscationEnabled, "new field from second config appears")
-	assert.Equal(t, 2, *cfg.Challenge.LibraryObfuscationPoolSize)
+	require.NotNil(t, cfg.Challenge.CryptoObfuscationPoolSize)
+	assert.Equal(t, 2, *cfg.Challenge.CryptoObfuscationPoolSize, "new field from second config appears")
+	require.NotNil(t, cfg.Challenge.SpentSetMaxEntries)
+	assert.Equal(t, 250000, *cfg.Challenge.SpentSetMaxEntries)
 }
 
-// TestLoadByPathRejectsStaleLibraryObfuscationEnabledKey confirms that an
-// appsec-config carrying the pre-rename `library_obfuscation_enabled`
-// YAML key fails to parse (strict YAML mode). This is the desired loud-
-// failure surface for stale configs after the rename to
-// `library_runtime_obfuscation_enabled`.
-func TestLoadByPathRejectsStaleLibraryObfuscationEnabledKey(t *testing.T) {
-	cfg := newTestConfig()
-	f := writeTempYAML(t, `
-name: stale
-challenge:
-  library_obfuscation_enabled: true
-`)
-	err := cfg.LoadByPath(f)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "library_obfuscation_enabled",
-		"strict YAML parse error must name the unknown field")
+// TestLoadByPathRejectsRemovedLibraryObfuscationKeys confirms that an
+// appsec-config carrying any of the removed `library_*` obfuscation keys
+// fails to parse (strict YAML mode). fpscanner is now served unobfuscated,
+// so these knobs are gone and stale configs must fail loudly rather than
+// silently doing nothing.
+func TestLoadByPathRejectsRemovedLibraryObfuscationKeys(t *testing.T) {
+	for _, key := range []string{
+		"library_runtime_obfuscation_enabled: true",
+		"library_obfuscation_pool_size: 2",
+		"library_obfuscation_refresh_interval: 30m",
+	} {
+		cfg := newTestConfig()
+		f := writeTempYAML(t, "name: stale\nchallenge:\n  "+key+"\n")
+		err := cfg.LoadByPath(f)
+		require.Error(t, err, "stale key %q must be rejected", key)
+		assert.Contains(t, err.Error(), "library_",
+			"strict YAML parse error must name the unknown field")
+	}
 }
 
 func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {

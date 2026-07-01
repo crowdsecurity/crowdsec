@@ -42,11 +42,8 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 		CookieTTL:                 new(1 * time.Hour),
 		CryptoObfuscationPoolSize: new(4),
 		// New fields not present on dst.
-		LibraryRuntimeObfuscationEnabled:  new(true),
-		LibraryObfuscationPoolSize:        new(2),
-		LibraryObfuscationRefreshInterval: new(30 * time.Minute),
-		SpentSetMaxEntries:                new(500_000),
-		MaxCookieSize:                     new(8192),
+		SpentSetMaxEntries: new(500_000),
+		MaxCookieSize:      new(8192),
 	}
 
 	dst.MergeFrom(src)
@@ -62,10 +59,7 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 	assert.Equal(t, 3, *dst.MaxLiveEpochs)
 
 	// New-from-src fields appear on dst.
-	require.NotNil(t, dst.LibraryRuntimeObfuscationEnabled)
-	assert.True(t, *dst.LibraryRuntimeObfuscationEnabled)
-	assert.Equal(t, 2, *dst.LibraryObfuscationPoolSize)
-	assert.Equal(t, 30*time.Minute, *dst.LibraryObfuscationRefreshInterval)
+	require.NotNil(t, dst.SpentSetMaxEntries)
 	assert.Equal(t, 500_000, *dst.SpentSetMaxEntries)
 	assert.Equal(t, 8192, *dst.MaxCookieSize)
 }
@@ -89,72 +83,26 @@ func TestBuildOptionsNilOrEmptyConfig(t *testing.T) {
 // guard for "appsec-config values reach the running challenge engine".
 func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 	cfg := &Config{
-		MasterSecret:                      new("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-		KeyRotationInterval:               new(3 * time.Minute),
-		MaxLiveEpochs:                     new(4),
-		CookieTTL:                         new(2 * time.Hour),
-		CryptoObfuscationPoolSize:         new(2),
-		LibraryRuntimeObfuscationEnabled:  new(true),
-		LibraryObfuscationPoolSize:        new(2),
-		LibraryObfuscationRefreshInterval: new(45 * time.Minute),
-		SpentSetMaxEntries:                new(250_000),
-		MaxCookieSize:                     new(8192),
+		MasterSecret:              new("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+		KeyRotationInterval:       new(3 * time.Minute),
+		MaxLiveEpochs:             new(4),
+		CookieTTL:                 new(2 * time.Hour),
+		CryptoObfuscationPoolSize: new(2),
+		SpentSetMaxEntries:        new(250_000),
+		MaxCookieSize:             new(8192),
 	}
 
 	opts, err := BuildOptions(cfg, nil)
 	require.NoError(t, err)
-	require.Len(t, opts, 11, "every populated field + the component logger must emit an option")
+	require.Len(t, opts, 8, "every populated field + the component logger must emit an option")
 
 	rt, err := NewChallengeRuntime(t.Context(), opts...)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2*time.Hour, rt.cookieTTL, "CookieTTL must reach the runtime")
 	assert.Equal(t, 2, rt.cryptoPoolSize, "CryptoObfuscationPoolSize must reach the runtime")
-	assert.True(t, rt.libraryRuntimeObfuscationEnabled, "LibraryRuntimeObfuscationEnabled must reach the runtime")
-	assert.Equal(t, 2, rt.libraryPoolSize, "LibraryObfuscationPoolSize must reach the runtime")
-	assert.Equal(t, 45*time.Minute, rt.libraryRefreshInterval, "LibraryObfuscationRefreshInterval must reach the runtime")
 	assert.Equal(t, 250_000, rt.spent.maxEntries, "SpentSetMaxEntries must reach the runtime")
 	assert.Equal(t, 8192, rt.maxCookieLen, "MaxCookieSize must reach the runtime")
-}
-
-// TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled confirms the
-// runtime silently clamps libraryPoolSize to 1 when runtime obfuscation
-// is off. The pool's only source in that mode is the baked-in initial
-// bundle, so a larger ceiling would leave empty slots forever; clamping
-// avoids ambiguity in metrics and reflects reality.
-func TestLibraryPoolSizeClampedWhenRuntimeObfuscationDisabled(t *testing.T) {
-	rt, err := NewChallengeRuntime(t.Context(),
-		// Runtime obfuscation deliberately NOT enabled.
-		WithLibraryObfuscationPoolSize(5),
-	)
-	require.NoError(t, err)
-
-	assert.False(t, rt.libraryRuntimeObfuscationEnabled,
-		"sanity: runtime obfuscation is off")
-	assert.Equal(t, 1, rt.libraryPoolSize,
-		"libraryPoolSize must be clamped to 1 when runtime obfuscation is off")
-
-	// And the actual pool contents reflect that — just the seeded variant.
-	rt.libraryBundlePoolMu.RLock()
-	poolLen := len(rt.libraryBundlePool)
-	rt.libraryBundlePoolMu.RUnlock()
-	assert.Equal(t, 1, poolLen, "pool must hold only the baked-in initial bundle")
-}
-
-// TestLibraryPoolSizeHonoredWhenRuntimeObfuscationEnabled confirms the
-// clamp does NOT fire when runtime obfuscation is enabled — the
-// configured pool size must propagate as-is so the refresher has room
-// to grow into.
-func TestLibraryPoolSizeHonoredWhenRuntimeObfuscationEnabled(t *testing.T) {
-	rt, err := NewChallengeRuntime(t.Context(),
-		WithLibraryRuntimeObfuscationEnabled(true),
-		WithLibraryObfuscationPoolSize(3),
-	)
-	require.NoError(t, err)
-
-	assert.True(t, rt.libraryRuntimeObfuscationEnabled)
-	assert.Equal(t, 3, rt.libraryPoolSize,
-		"libraryPoolSize must be honored when runtime obfuscation is on")
 }
 
 // TestBuildOptionsInvalidMasterSecret confirms a malformed master_secret

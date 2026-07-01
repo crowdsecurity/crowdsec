@@ -5,7 +5,7 @@
 //
 // Pipeline:
 //
-//	fpscanner/bundle.js  ──substitute placeholders──▶  source JS
+//	challenge_code.js  ──substitute placeholders──▶  source JS
 //	obfuscate/index.wasm.gz ──decompress──▶ obfuscator WASM
 //	wazero(obfuscator).Run(stdin=source) ──▶ obfuscated JS
 //	gzip ──▶ ../initial_bundle.js.gz
@@ -39,8 +39,8 @@ const (
 
 const (
 	// Inputs (relative to pkg/appsec/challenge/js where this tool runs).
-	fpscannerBundlePath = "fpscanner/bundle.js"
-	obfuscatorWasmGz    = "obfuscate/index.wasm.gz"
+	challengeCodePath = "challenge_code.js"
+	obfuscatorWasmGz  = "obfuscate/index.wasm.gz"
 	// Output (relative to pkg/appsec/challenge/js).
 	outputPath = "../initial_bundle.js.gz"
 )
@@ -100,9 +100,9 @@ func run() error {
 }
 
 func buildSourceBundle() (string, error) {
-	raw, err := os.ReadFile(fpscannerBundlePath)
+	raw, err := os.ReadFile(challengeCodePath)
 	if err != nil {
-		return "", fmt.Errorf("read %s: %w", fpscannerBundlePath, err)
+		return "", fmt.Errorf("read %s: %w", challengeCodePath, err)
 	}
 
 	// Same substitution as ChallengeRuntime.buildChallengeBundle in challenge.go.
