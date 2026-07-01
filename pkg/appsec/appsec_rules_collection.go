@@ -10,12 +10,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 type AppsecCollection struct {
-	Rules          []string
-	NativeRules    []string
+	Rules       []string
+	NativeRules []string
 }
 
 const APPSEC_RULE = "appsec-rule"
@@ -33,7 +34,7 @@ type AppsecCollectionConfig struct {
 
 	Labels map[string]any `yaml:"labels"` // Labels is K:V list aiming at providing context the overflow
 
-	Data    any `yaml:"data"` // Ignore it
+	Data    *enrichment.DataProvider `yaml:"data"`
 	hash    string
 	version string
 }
@@ -143,6 +144,13 @@ func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]Appsec
 				for _, id := range rulesId {
 					SetRuleDebug(int(id), appsecRule.Debug)
 				}
+			}
+		}
+
+		if appsecRule.Data != nil {
+			if err := exprhelpers.FileInit(hub.GetDataDir(), appsecRule.Data.DestPath, appsecRule.Data.Type); err != nil {
+				logger.Errorf("unable to initialize data file %s : %s", appsecRule.Data.DestPath, err)
+				continue
 			}
 		}
 

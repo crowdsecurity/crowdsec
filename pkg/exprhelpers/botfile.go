@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -120,37 +118,6 @@ func botFileInit(filename string, line string) error {
 	}
 
 	dataFileBots[filename] = append(dataFileBots[filename], entry)
-
-	return nil
-}
-
-func LoadBotFilesFromDir(datadir string) error {
-	dir := filepath.Join(datadir, legitBotsSubdir)
-
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Debugf("no %s directory in %s, no bot files to load", legitBotsSubdir, datadir)
-			return nil
-		}
-
-		return fmt.Errorf("unable to read bot files directory %s: %w", dir, err)
-	}
-
-	for _, f := range files {
-		if f.IsDir() || strings.HasPrefix(f.Name(), ".") {
-			continue
-		}
-
-		if err := FileInit(dir, f.Name(), "bots"); err != nil {
-			log.Errorf("unable to load bot file '%s': %s", f.Name(), err)
-			delete(dataFileBots, f.Name())
-
-			continue
-		}
-
-		log.Infof("loaded bot file '%s' (%d entries)", f.Name(), len(dataFileBots[f.Name()]))
-	}
 
 	return nil
 }

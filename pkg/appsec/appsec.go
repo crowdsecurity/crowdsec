@@ -815,20 +815,6 @@ func (wc *AppsecConfig) Load(configName string, hub *cwhub.Hub) error {
 	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-// setupLegitBots loads the known-good bot definitions from
-// <datadir>/legit_bots/, before any hook calling IsLegitimateBot runs.
-// (The DNS cache they rely on is configured from the main crowdsec config,
-// see crowdsec_service.dns_cache.)
-func (wc *AppsecConfig) setupLegitBots(hub *cwhub.Hub) {
-	// hub is nil or bare in tests that build a standalone config; there is
-	// no data dir to scan in that case.
-	if hub != nil && hub.GetDataDir() != "" {
-		if err := exprhelpers.LoadBotFilesFromDir(hub.GetDataDir()); err != nil {
-			wc.Logger.Errorf("unable to load legitimate bot files: %s", err)
-		}
-	}
-}
-
 func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 
@@ -874,8 +860,6 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 		MaxSize: DefaultMaxBodySize,
 		Action:  BodySizeActionDrop,
 	}
-
-	wc.setupLegitBots(hub)
 
 	wc.Logger.Tracef("Loading config %+v", wc)
 	// load rules
