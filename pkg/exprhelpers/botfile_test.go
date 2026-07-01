@@ -269,12 +269,12 @@ func TestIsLegitimateBotDNSCache(t *testing.T) {
 	assert.Equal(t, int32(2), resolver.ptrCalls.Load(), "failed lookup must be cached as negative")
 }
 
-func TestLoadBotFilesFromDir(t *testing.T) {
+// bot data files are loaded per-file via FileInit(dir, name, "bots"), driven
+// by the data reference on each appsec-rule (see LoadCollection).
+func TestFileInitBots(t *testing.T) {
 	setupBotTest(t, nil)
 
-	datadir := t.TempDir()
-	botsDir := filepath.Join(datadir, legitBotsSubdir)
-	require.NoError(t, os.Mkdir(botsDir, 0o755))
+	botsDir := t.TempDir()
 
 	write := func(name, content string) {
 		require.NoError(t, os.WriteFile(filepath.Join(botsDir, name), []byte(content), 0o644))
@@ -282,12 +282,11 @@ func TestLoadBotFilesFromDir(t *testing.T) {
 
 	write("google.json", `{"name":"googlebot","user_agent":"googlebot","rdns":["googlebot.com"]}`)
 	write("partners.json", `{"name":"partner","ranges":["192.0.2.0/24"]}`)
-	write(".hidden.json", `{"name":"hidden","ips":["10.0.0.1"]}`)
-	require.NoError(t, os.Mkdir(filepath.Join(botsDir, "subdir"), 0o755))
 
-	require.NoError(t, LoadBotFilesFromDir(datadir))
+	require.NoError(t, FileInit(botsDir, "google.json", "bots"))
+	require.NoError(t, FileInit(botsDir, "partners.json", "bots"))
 
-	assert.Len(t, dataFileBots, 2, "dotfiles and subdirectories must be skipped")
+	assert.Len(t, dataFileBots, 2)
 	assert.Contains(t, dataFileBots, "google.json")
 	assert.Contains(t, dataFileBots, "partners.json")
 
@@ -295,29 +294,16 @@ func TestLoadBotFilesFromDir(t *testing.T) {
 	assert.True(t, IsLegitimateBot("192.0.2.10", "", "/"))
 }
 
-func TestLoadBotFilesFromDirMissing(t *testing.T) {
+func TestFileInitBotsInvalidFile(t *testing.T) {
 	setupBotTest(t, nil)
 
-	require.NoError(t, LoadBotFilesFromDir(t.TempDir()))
-	assert.Empty(t, dataFileBots)
-}
-
-func TestLoadBotFilesFromDirInvalidFile(t *testing.T) {
-	setupBotTest(t, nil)
-
-	datadir := t.TempDir()
-	botsDir := filepath.Join(datadir, legitBotsSubdir)
-	require.NoError(t, os.Mkdir(botsDir, 0o755))
-	// first line is valid, second is not: the whole file must be skipped,
-	// without leaving partial definitions behind
+	botsDir := t.TempDir()
+	// first line is valid, second has no identity verification: the
+	// malformed line makes the whole load fail.
 	require.NoError(t, os.WriteFile(filepath.Join(botsDir, "bad.json"),
 		[]byte(`{"name":"ok","ips":["10.0.0.1"]}`+"\n"+`{"name":"ua-only","user_agent":"x"}`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(botsDir, "good.json"),
-		[]byte(`{"name":"partner","ranges":["192.0.2.0/24"]}`), 0o644))
 
-	require.NoError(t, LoadBotFilesFromDir(datadir), "a malformed file is logged and skipped, not fatal")
-	assert.NotContains(t, dataFileBots, "bad.json")
-	assert.Contains(t, dataFileBots, "good.json")
+	require.Error(t, FileInit(botsDir, "bad.json", "bots"))
 }
 
 func TestParseBotAddr(t *testing.T) {

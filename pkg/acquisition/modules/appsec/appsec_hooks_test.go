@@ -1885,10 +1885,11 @@ func TestAppsecLegitimateBotHooks(t *testing.T) {
 	require.NoError(t, exprhelpers.Init(nil))
 
 	datadir := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(datadir, "legit_bots"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(datadir, "legit_bots", "bots.json"),
+	botsDir := filepath.Join(datadir, "legit_bots")
+	require.NoError(t, os.Mkdir(botsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(botsDir, "bots.json"),
 		[]byte(`{"name":"testbot","user_agent":"testbot","ranges":["192.0.2.0/24"]}`), 0o644))
-	require.NoError(t, exprhelpers.LoadBotFilesFromDir(datadir))
+	require.NoError(t, exprhelpers.FileInit(botsDir, "bots.json", "bots"))
 
 	banRule := appsec_rule.CustomRule{
 		Name:      "rule1",

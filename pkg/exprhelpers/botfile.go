@@ -13,8 +13,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 )
 
-const legitBotsSubdir = "legit_bots"
-
 var dataFileBots map[string][]*botEntry
 
 // botEntry is one bot definition (one JSON line in a "bots" data file).
