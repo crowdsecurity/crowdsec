@@ -393,6 +393,7 @@ func buildValidBodyWithFingerprint(tb testing.TB, difficulty int, r, ts string, 
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {strconv.Itoa(difficulty)},
+		"u":   {"/"},
 	}.Encode()
 }
 
@@ -510,6 +511,7 @@ func TestValidateChallengeResponse_InvalidPoW(t *testing.T) {
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {"8"},
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -535,6 +537,7 @@ func TestValidateChallengeResponse_ImpossibleDifficulty(t *testing.T) {
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {strconv.Itoa(PowDifficultyImpossible)},
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -574,6 +577,7 @@ func TestValidateChallengeResponse_TamperedR(t *testing.T) {
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {"8"},
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -595,6 +599,7 @@ func TestValidateChallengeResponse_ForgedMAC(t *testing.T) {
 		"p":   {salt},
 		"m":   {"forged-mac-value"},
 		"d":   {"8"},
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -621,6 +626,7 @@ func TestValidateChallengeResponse_TamperedDifficulty(t *testing.T) {
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {"8"}, // client claims a lower difficulty than was bound
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -644,6 +650,7 @@ func TestValidateChallengeResponse_InvalidSig(t *testing.T) {
 		"p":   {salt},
 		"m":   {powMAC},
 		"d":   {"8"},
+		"u":   {"/"},
 	}.Encode()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
@@ -686,6 +693,7 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 				"p":   {"x"},
 				"m":   {"x"},
 				"d":   {"12"},
+				"u":   {"/"},
 			}.Encode()
 
 			req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))

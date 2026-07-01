@@ -547,10 +547,14 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	clientPowSalt := vars.Get("p")
 	clientPowMAC := vars.Get("m")
 	clientDifficultyStr := vars.Get("d")
+	clientPath := vars.Get("u")
 
-	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" || clientDifficultyStr == "" {
+	if encryptedFingerprint == "" || clientR == "" || clientTS == "" || clientSig == "" || clientNonce == "" || clientPowSalt == "" || clientPowMAC == "" || clientDifficultyStr == "" || clientPath == "" {
 		return nil, FingerprintData{}, 0, errors.New("missing required fields in challenge response")
 	}
+
+	// Override the request path so the WAF sees the original URL the client
+	request.URL.Path = clientPath
 
 	// The difficulty the client claims it solved. It is untrusted until the PoW
 	// MAC (which binds it) is verified in verifyChallenge below. Bound to the
