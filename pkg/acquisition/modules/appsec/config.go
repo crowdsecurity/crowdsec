@@ -130,7 +130,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 // the per-name "no appsec-config found" error still surfaces from
 // AppsecConfig.Load for typos. An entry containing a glob meta-character ('*' or
 // '?') is matched against the installed appsec-configs with the same matcher used
-// to expand appsec-rule patterns (see appsec.LoadCollection); it errors when no
+// to expand appsec-rule patterns; it errors when no
 // installed config matches.
 func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
 	if !strings.ContainsAny(entry, "*?") {
@@ -159,9 +159,6 @@ func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
 
 // resolveAppsecConfigEntries expands every appsec_config(s) entry and returns
 // the de-duplicated list of config names to load, in first-seen order.
-// Dedup matters because AppsecConfig.Load -> LoadByPath is additive, so loading
-// the same config twice would duplicate its rules (e.g. "*" plus an explicit
-// "crowdsec/vpatch", or two overlapping patterns).
 func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, error) {
 	seen := make(map[string]struct{})
 
