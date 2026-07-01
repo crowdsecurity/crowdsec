@@ -122,6 +122,7 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 	dbClient = databaseClient
 
 	XMLCacheInit()
@@ -131,12 +132,15 @@ func Init(databaseClient *database.Client) error {
 
 // ResetDataFiles clears all datafile-related global variables.
 // This should be called during HUP reload to ensure clean state.
+// The DNS cache (pkg/dnscache) is deliberately kept: DNS facts don't change
+// with the configuration, and a reload shouldn't trigger a re-lookup storm.
 func ResetDataFiles() {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileRegexCache = make(map[string]gcache.Cache)
 	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 }
 
 func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
@@ -240,6 +244,10 @@ func FileInit(directory string, filename string, fileType string) error {
 			if err := fileMapInit(filename, scanner.Text()); err != nil {
 				return err
 			}
+		case "bots":
+			if err := botFileInit(filename, scanner.Text()); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -322,6 +330,8 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 		_, ok = dataFile[filename]
 	case "map":
 		_, ok = dataFileMap[filename]
+	case "bots":
+		_, ok = dataFileBots[filename]
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
 	}

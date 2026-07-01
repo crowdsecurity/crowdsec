@@ -75,7 +75,9 @@ func expandAlias(args []string) []string {
 		case "lapi":
 			ret = append(ret, "alerts", "decisions", "lapi", "lapi-bouncer", "lapi-decisions", "lapi-machine")
 		case "appsec":
-			ret = append(ret, "appsec-engine", "appsec-rule")
+			ret = append(ret, "appsec-engine", "appsec-rule", "appsec-challenge")
+		case "bot-detection":
+			ret = append(ret, "appsec-challenge", "appsec-challenge-infra")
 		default:
 			ret = append(ret, section)
 		}
