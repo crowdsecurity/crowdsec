@@ -34,7 +34,7 @@ type AppsecCollectionConfig struct {
 
 	Labels map[string]any `yaml:"labels"` // Labels is K:V list aiming at providing context the overflow
 
-	Data    *enrichment.DataProvider `yaml:"data"`
+	Data    []*enrichment.DataProvider `yaml:"data"`
 	hash    string
 	version string
 }
@@ -148,10 +148,17 @@ func LoadCollection(pattern string, logger *log.Entry, hub *cwhub.Hub) ([]Appsec
 		}
 
 		if appsecRule.Data != nil {
-			if err := exprhelpers.FileInit(hub.GetDataDir(), appsecRule.Data.DestPath, appsecRule.Data.Type); err != nil {
-				logger.Errorf("unable to initialize data file %s : %s", appsecRule.Data.DestPath, err)
-				continue
+			for _, appsecRuleData := range appsecRule.Data {
+				if appsecRuleData.DestPath == "" {
+					logger.Errorf("missing dest_path for rule %s : %+v", appsecRule.Name, appsecRuleData)
+					continue
+				}
+				if err := exprhelpers.FileInit(hub.GetDataDir(), appsecRuleData.DestPath, appsecRuleData.Type); err != nil {
+					logger.Errorf("unable to initialize data file %s : %s", appsecRuleData.DestPath, err)
+					continue
+				}
 			}
+
 		}
 
 		ret = append(ret, appsecCol)
