@@ -81,7 +81,7 @@ func TestHTTPRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	headers := map[string]string{"X-Api-Key": "secret"}
+	headers := map[string]any{"X-Api-Key": "secret"}
 
 	out, err := HTTPRequest(http.MethodPut, server.URL, headers, "payload")
 	require.NoError(t, err)
@@ -97,18 +97,56 @@ func TestHTTPRequestError(t *testing.T) {
 }
 
 func TestHTTPExprIntegration(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	// echoes back method, Content-Type and body so expressions can assert on them
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("X-Method", r.Method)
+		w.Header().Set("X-Content-Type", r.Header.Get("Content-Type"))
+		w.Header().Set("X-Api-Key", r.Header.Get("X-Api-Key"))
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("body"))
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
+	tests := []struct {
+		name    string
+		program string
+	}{
+		{
+			name:    "HTTPGet",
+			program: "HTTPGet(url).StatusCode == 200 && HTTPGet(url).Headers.Get('X-Method') == 'GET'",
+		},
+		{
+			name:    "HTTPHead",
+			program: "HTTPHead(url).StatusCode == 200 && HTTPHead(url).Headers.Get('X-Method') == 'HEAD'",
+		},
+		{
+			name: "HTTPPost with content-type",
+			program: `HTTPPost(url, "application/json", '{"foo":"bar"}').Body == '{"foo":"bar"}' && ` +
+				`HTTPPost(url, "application/json", "x").Headers.Get("X-Content-Type") == "application/json"`,
+		},
+		{
+			name: "HTTPRequest generic with headers map literal",
+			program: `HTTPRequest("PUT", url, {"X-Api-Key": "secret"}, "payload").Body == "payload" && ` +
+				`HTTPRequest("PUT", url, {"X-Api-Key": "secret"}, "payload").Headers.Get("X-Method") == "PUT" && ` +
+				`HTTPRequest("PUT", url, {"X-Api-Key": "secret"}, "payload").Headers.Get("X-Api-Key") == "secret"`,
+		},
+		{
+			name:    "HTTPRequest empty body",
+			program: `HTTPRequest("GET", url, {}, "").StatusCode == 200`,
+		},
+	}
+
 	env := map[string]any{"url": server.URL}
 
-	program, err := expr.Compile("HTTPGet(url).StatusCode == 200 && HTTPGet(url).Body == 'body'", GetExprOptions(env)...)
-	require.NoError(t, err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			program, err := expr.Compile(tc.program, GetExprOptions(env)...)
+			require.NoError(t, err)
 
-	out, err := expr.Run(program, env)
-	require.NoError(t, err)
-	assert.Equal(t, true, out)
+			out, err := expr.Run(program, env)
+			require.NoError(t, err)
+			assert.Equal(t, true, out)
+		})
+	}
 }
