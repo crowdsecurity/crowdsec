@@ -261,6 +261,10 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	appsecRuntime, err := appsecCfg.Build(ctx, w.hub)
 	if err != nil {
+		if len(appsecCfg.LoadedFrom) > 0 {
+			return fmt.Errorf("unable to build appsec_config [%s]: %w", strings.Join(appsecCfg.LoadedFrom, ", "), err)
+		}
+
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
 

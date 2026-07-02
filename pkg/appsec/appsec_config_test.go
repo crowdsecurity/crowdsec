@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -193,6 +194,29 @@ inband:
 	// Phase-scoped hook from file 2
 	require.NotNil(t, cfg.InBand)
 	assert.Len(t, cfg.InBand.OnMatch, 1)
+
+	// Both source files are tracked, in load order.
+	assert.Equal(t, []string{f1, f2}, cfg.LoadedFrom)
+}
+
+// A hook filter that fails to compile must surface an error naming the
+// appsec-config file it came from, so `crowdsec -t` points at the faulty config.
+func TestBuildErrorNamesSourceFile(t *testing.T) {
+	cfg := newTestConfig()
+	f := writeTempYAML(t, `
+name: broken-config
+inband:
+  pre_eval:
+    - filter: "req.URL.Path matches '(?i)\\.(css)$'"
+`)
+
+	require.NoError(t, cfg.LoadByPath(f))
+	require.Equal(t, []string{f}, cfg.LoadedFrom)
+
+	// hub is unused: compilation fails before any rule is loaded.
+	_, err := cfg.Build(context.Background(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to compile filter")
 }
 
 func TestLoadByPathPhaseOptionsOverride(t *testing.T) {

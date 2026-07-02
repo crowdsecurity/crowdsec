@@ -519,6 +519,10 @@ type AppsecConfig struct {
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
+
+	// LoadedFrom lists the appsec-config file(s) merged into this config, in load order.
+	// Used to track error origins at load time
+	LoadedFrom []string `yaml:"-"`
 }
 
 func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
@@ -606,6 +610,8 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	// Normalize phase-scoped sections: merge rules, options, and variables_tracking
 	// into flat fields. Hooks stay in the phase sections for Build() to compile separately.
 	tmp.normalizePhaseScoped()
+
+	wc.LoadedFrom = append(wc.LoadedFrom, file)
 
 	if wc.Name == "" && tmp.Name != "" {
 		wc.Name = tmp.Name
