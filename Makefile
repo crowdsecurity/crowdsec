@@ -320,6 +320,23 @@ cscli:  ## Build cscli
 crowdsec:  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
+# Regenerate the WAF challenge JS artifacts: the bundled fpscanner source
+# (fpscanner/bundle.js), the obfuscator runtime (obfuscate/index.wasm.gz),
+# and the build-time pre-obfuscated initial bundle (initial_bundle.js.gz).
+# These are committed to the tree so a normal `make build` does NOT rebuild
+# them — only run this target after intentionally changing challenge.js,
+# fpscanner sources, the obfuscator wrapper, or the dynamic-module template.
+#
+# Requires `javy` (https://github.com/bytecodealliance/javy/releases) on
+# PATH. The full obfuscation pass is slow (~1 minute) because it runs
+# javascript-obfuscator's "high-obfuscation" preset over the full bundle;
+# this is the cost we are paying once at generate time so the runtime
+# doesn't pay it on every startup.
+.PHONY: generate-challenge-js
+generate-challenge-js:  ## Regenerate WAF challenge JS bundles (requires javy on PATH)
+	@command -v javy >/dev/null 2>&1 || (echo "Error: javy is not installed. Download it from https://github.com/bytecodealliance/javy/releases and put it on PATH." && exit 1)
+	$(GO) generate ./pkg/appsec/challenge/js/...
+
 testenv:
 ifeq ($(TEST_LOCAL_ONLY),)
 	@echo 'NOTE: You need to run "make localstack" in a separate shell, "make localstack-stop" to terminate it; or define the envvar TEST_LOCAL_ONLY to some value.'

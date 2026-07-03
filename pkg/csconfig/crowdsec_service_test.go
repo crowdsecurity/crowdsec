@@ -3,8 +3,11 @@ package csconfig
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
@@ -194,4 +197,30 @@ func TestLoadCrowdsec(t *testing.T) {
 			require.Equal(t, tc.expected, tc.input.Crowdsec)
 		})
 	}
+}
+
+func TestDNSCacheCfg(t *testing.T) {
+	yamlConfig := `
+acquisition_path: ./testdata/acquis.yaml
+dns_cache:
+  ttl: 2h
+  negative_ttl: 30s
+  size: 4096
+`
+
+	cfg := CrowdsecServiceCfg{}
+	require.NoError(t, yaml.Unmarshal([]byte(yamlConfig), &cfg))
+
+	require.NotNil(t, cfg.DNSCache)
+	require.NotNil(t, cfg.DNSCache.TTL)
+	assert.Equal(t, 2*time.Hour, *cfg.DNSCache.TTL)
+	require.NotNil(t, cfg.DNSCache.NegativeTTL)
+	assert.Equal(t, 30*time.Second, *cfg.DNSCache.NegativeTTL)
+	require.NotNil(t, cfg.DNSCache.Size)
+	assert.Equal(t, 4096, *cfg.DNSCache.Size)
+
+	// the section is optional
+	bare := CrowdsecServiceCfg{}
+	require.NoError(t, yaml.Unmarshal([]byte("acquisition_path: ./testdata/acquis.yaml"), &bare))
+	assert.Nil(t, bare.DNSCache)
 }
