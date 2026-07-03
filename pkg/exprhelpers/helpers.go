@@ -268,19 +268,16 @@ func FileInit(directory string, filename string, fileType string) error {
 // Expr helpers
 
 func Distinct(params ...any) (any, error) {
-	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
+	v := reflect.ValueOf(params[0])
+	if k := v.Kind(); k != reflect.Slice && k != reflect.Array {
 		return nil, nil
 	}
 
-	array := params[0].([]any)
-	if array == nil {
-		return []any{}, nil
-	}
-
 	exists := make(map[any]bool)
-	ret := make([]any, 0)
+	ret := make([]any, 0, v.Len())
 
-	for _, val := range array {
+	for i := range v.Len() {
+		val := v.Index(i).Interface()
 		if _, ok := exists[val]; !ok {
 			exists[val] = true
 			ret = append(ret, val)
