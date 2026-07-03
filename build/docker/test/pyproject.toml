@@ -13,9 +13,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.8",
+    "basedpyright>=1.39.9",
     "ipdb>=0.13.13",
-    "ruff>=0.15.18",
+    "ruff>=0.15.20",
 ]
 
 [tool.uv.sources]
