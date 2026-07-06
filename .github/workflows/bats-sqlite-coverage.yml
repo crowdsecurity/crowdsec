@@ -44,6 +44,9 @@ jobs:
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq libre2-dev
 
     - name: "Build crowdsec and fixture"
+      # fetch the hub index from a git clone to avoid cdn-hub rate limiting (403)
+      env:
+        TEST_HUB_CLONE: "true"
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
 

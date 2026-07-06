@@ -61,6 +61,8 @@ jobs:
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
       env:
+        # fetch the hub index from a git clone to avoid cdn-hub rate limiting (403)
+        TEST_HUB_CLONE: "true"
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
         PGPORT: 5432
