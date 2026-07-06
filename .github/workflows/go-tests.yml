@@ -16,6 +16,9 @@ on:
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
 # these env variables are for localstack, so we can emulate aws services
 env:
   AWS_HOST: localstack

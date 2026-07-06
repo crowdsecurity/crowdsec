@@ -22,6 +22,9 @@ on:
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
 jobs:
   sqlite:
     uses: ./.github/workflows/bats-sqlite-coverage.yml

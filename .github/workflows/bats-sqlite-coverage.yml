@@ -6,6 +6,9 @@ on:
       CODECOV_TOKEN:
         required: true
 
+permissions:
+  contents: read
+
 env:
   TEST_COVERAGE: true
 

@@ -6,6 +6,10 @@ on:
     types:
       - closed
 
+permissions:
+  contents: read
+  actions: write # to delete the branch's Actions caches
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest

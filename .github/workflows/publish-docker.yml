@@ -30,6 +30,10 @@ on:
         required: true
         type: boolean
 
+permissions:
+  contents: read
+  packages: write # push images to ghcr.io
+
 jobs:
   push_to_registry:
     name: Push Docker image to registries

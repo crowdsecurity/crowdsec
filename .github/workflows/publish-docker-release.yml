@@ -18,6 +18,10 @@ on:
         default: false
         required: true
 
+permissions:
+  contents: read
+  packages: write # push images to ghcr.io
+
 jobs:
   alpine:
     uses: ./.github/workflows/publish-docker.yml

@@ -19,6 +19,9 @@ on:
       - build/windows/installer/*.wxs
       - .github/workflows/ci-windows-build-msi.yml
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build

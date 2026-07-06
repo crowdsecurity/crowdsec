@@ -3,6 +3,9 @@ name: (sub) Bats / Postgres
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: "Functional tests"

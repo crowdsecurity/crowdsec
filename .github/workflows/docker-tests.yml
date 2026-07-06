@@ -13,6 +13,10 @@ on:
       - releases/**
     paths-ignore:
       - "README.md"
+
+permissions:
+  contents: read
+
 env:
   CROWDSEC_BYPASS_DB_VOLUME_CHECK: "TRUE" # to avoid the db volume check in the docker_start.sh script
 

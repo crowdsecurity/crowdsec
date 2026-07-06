@@ -17,6 +17,10 @@ on:
       - 'go.sum'
       - 'Makefile'
 
+permissions:
+  contents: read
+  packages: write # push images to ghcr.io
+
 jobs:
   dev-alpine:
     uses: ./.github/workflows/publish-docker.yml

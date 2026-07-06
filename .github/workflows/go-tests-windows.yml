@@ -11,6 +11,9 @@ on:
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
 env:
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
