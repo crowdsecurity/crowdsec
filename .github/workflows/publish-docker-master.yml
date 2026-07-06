@@ -32,9 +32,6 @@ jobs:
       push: true
       slim: false
       debian: false
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   dev-debian:
     uses: ./.github/workflows/publish-docker.yml
@@ -46,6 +43,3 @@ jobs:
       push: true
       slim: false
       debian: true
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

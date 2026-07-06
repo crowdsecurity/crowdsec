@@ -25,9 +25,6 @@ permissions:
 jobs:
   alpine:
     uses: ./.github/workflows/publish-docker.yml
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     with:
       image_version: ${{ github.event.inputs.image_version }}
       crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
@@ -39,9 +36,6 @@ jobs:
 
   debian:
     uses: ./.github/workflows/publish-docker.yml
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     with:
       image_version: ${{ github.event.inputs.image_version }}
       crowdsec_version: ${{ github.event.inputs.crowdsec_version }}

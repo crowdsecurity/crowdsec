@@ -2,12 +2,11 @@ name: (sub) Publish Docker images
 
 on:
   workflow_call:
-    secrets:
-      DOCKER_USERNAME:
-        required: true
-      DOCKER_PASSWORD:
-        required: true
     inputs:
+      environment:
+        required: false
+        type: string
+        default: docker
       platform:
         required: true
         type: string
@@ -38,6 +37,7 @@ jobs:
   push_to_registry:
     name: Push Docker image to registries
     runs-on: crowdsec-large-runner
+    environment: ${{ inputs.environment }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
