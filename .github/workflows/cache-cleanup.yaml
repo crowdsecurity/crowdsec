@@ -7,36 +7,15 @@ on:
       - closed
 
 permissions:
-  contents: read
   actions: write # to delete the branch's Actions caches
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-
       - name: Cleanup
-        run: |
-          gh extension install actions/gh-actions-cache
-
-          BRANCH="refs/pull/${PR_NUMBER}/merge"
-
-          echo "Fetching list of cache key"
-          cacheKeysForPR=$(gh actions-cache list -R "$REPO" -B "$BRANCH" | cut -f 1 )
-
-          ## Setting this to not fail the workflow while deleting cache keys.
-          set +e
-          echo "Deleting caches..."
-          for cacheKey in $cacheKeysForPR
-          do
-              gh actions-cache delete "$cacheKey" -R "$REPO" -B "$BRANCH" --confirm
-          done
-          echo "Done"
+        run: gh cache delete --all --ref "refs/pull/${PR_NUMBER}/merge" --succeed-on-no-caches
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
