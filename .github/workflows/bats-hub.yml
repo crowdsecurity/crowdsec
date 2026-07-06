@@ -56,24 +56,19 @@ jobs:
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage ./hub >> $GITHUB_ENV
 
-    - name: "Create Parsers badge"
-      uses: schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501 # v1.8.0
+    - name: "Update coverage badges"
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
-      with:
-        auth: ${{ secrets.GIST_BADGES_SECRET }}
-        gistID: ${{ secrets.GIST_BADGES_ID }}
-        filename: crowdsec_parsers_badge.json
-        label: Hub Parsers
-        message: ${{ env.PARSERS_COV }}
-        color: ${{ env.PARSERS_BADGE_COLOR }}
-
-    - name: "Create Scenarios badge"
-      uses: schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501 # v1.8.0
-      if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
-      with:
-        auth: ${{ secrets.GIST_BADGES_SECRET }}
-        gistID: ${{ secrets.GIST_BADGES_ID }}
-        filename: crowdsec_scenarios_badge.json
-        label: Hub Scenarios
-        message: ${{ env.SCENARIOS_COV }}
-        color: ${{ env.SCENARIO_BADGE_COLOR }}
+      env:
+        GH_TOKEN: ${{ secrets.GIST_BADGES_SECRET }}
+        GIST_ID: ${{ secrets.GIST_BADGES_ID }}
+      run: |
+        set -euo pipefail
+        # shields.io endpoint badge, written as a gist file
+        badge() { jq -nc --arg l "$1" --arg m "$2" --arg c "$3" \
+          '{schemaVersion:1,label:$l,message:$m,color:$c}'; }
+        jq -n \
+          --arg p "$(badge 'Hub Parsers'   "$PARSERS_COV"   "$PARSERS_BADGE_COLOR")" \
+          --arg s "$(badge 'Hub Scenarios' "$SCENARIOS_COV" "$SCENARIO_BADGE_COLOR")" \
+          '{files:{"crowdsec_parsers_badge.json":{content:$p},
+                   "crowdsec_scenarios_badge.json":{content:$s}}}' \
+          | gh api --method PATCH "/gists/${GIST_ID}" --input -
