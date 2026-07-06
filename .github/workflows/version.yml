@@ -60,10 +60,13 @@ jobs:
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
 
       - name: Write dist artifact
+        env:
+          TAG: ${{ steps.pick_version.outputs.tag }}
+          DATE: ${{ steps.pick_version.outputs.date }}
         run: |
           set -euo pipefail
           mkdir -p ./dist
-          echo '{"name":"${{ steps.pick_version.outputs.tag }}", "tag_name":"${{ steps.pick_version.outputs.tag }}", "published_at":"${{ steps.pick_version.outputs.date }}"}' > ./dist/latest
+          printf '{"name":"%s", "tag_name":"%s", "published_at":"%s"}\n' "$TAG" "$TAG" "$DATE" > ./dist/latest
           cat ./dist/latest
 
       # Deploy the build output directory (adjust ./dist to your framework output)
