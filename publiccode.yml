@@ -9,8 +9,8 @@ publiccodeYmlVersion: "0.4"
 name: CrowdSec
 url: "https://github.com/crowdsecurity/crowdsec"
 landingURL: "https://www.crowdsec.net"
-softwareVersion: "1.7.7"
-releaseDate: "2026-03-23"
+softwareVersion: "1.7.8"
+releaseDate: "2026-05-11"
 logo: "https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/crowdsec_logo.png"
 
 platforms:
