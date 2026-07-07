@@ -561,6 +561,34 @@ var exprFuncs = []exprCustomFunc{
 			new(func([]interface{}) time.Duration),
 		},
 	},
+	{
+		name:     "HTTPGet",
+		function: HTTPGet,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPHead",
+		function: HTTPHead,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPPost",
+		function: HTTPPost,
+		signature: []any{
+			new(func(string, string, string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPRequest",
+		function: HTTPRequest,
+		signature: []any{
+			new(func(string, string, map[string]any, string) (*HTTPResponse, error)),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
