@@ -218,40 +218,18 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			return
 		// we underflow or reach bucket deadline (timers)
 		case <-durationTickerChan:
-			var (
-				alert pipeline.RuntimeAlert
-				err   error
-			)
 			l.Ovflw_ts = time.Now().UTC()
-			l.markDone()
-			ofw := l.Queue
-			alert = pipeline.RuntimeAlert{Mapkey: l.Mapkey}
-
 			if l.timedOverflow {
-				metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
-
-				alert, err = NewAlert(l, ofw)
-				if err != nil {
-					log.Error(err)
-				}
-				for _, f := range l.Factory.processors {
-					alert, ofw = f.OnBucketOverflow(l.Factory, l, alert, ofw)
-					if ofw == nil {
-						l.logger.Debugf("Overflow has been discarded (%T)", f)
-						break
-					}
-				}
+				// a counter bucket reached its deadline: this is a real overflow,
+				// emit it through the same path as a capacity overflow.
 				l.logger.Infof("Timed Overflow")
+				l.overflow(l.Queue)
 			} else {
 				l.logger.Debugf("bucket underflow, destroy")
+				l.markDone()
 				metrics.BucketsUnderflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
+				l.AllOut <- pipeline.Event{Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}, Type: pipeline.OVFLW}
 			}
-			if l.logger.Level >= log.TraceLevel {
-				// don't sdump if it's not going to be printed, it's expensive
-				l.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
-			}
-
-			l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		case <-ctx.Done():
