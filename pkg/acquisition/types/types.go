@@ -76,6 +76,10 @@ type Fetcher interface {
 //    failures, but treat them as errors. The caller is responsible for supervising
 //    Stream(), and restarting it as needed. There is currently no way to differentiate
 //    retryable vs permanent errors.
+//  - never close the output channel: it is shared and fed by every configured
+//    datasource, so it is owned by the acquisition orchestrator, not by any single
+//    Stream() implementation. Closing it here would race with (and can panic) any
+//    other datasource still sending on it.
 type RestartableStreamer interface {
 	// Start live acquisition (eg, tail a file)
 	Stream(ctx context.Context, out chan pipeline.Event) error
@@ -84,6 +88,9 @@ type RestartableStreamer interface {
 // Tailer has the same pupose as RestartableStreamer (provide ongoing events) but
 // is responsible for spawning its own goroutines, and handling errors and retries.
 // New datasources are expected to implement RestartableStreamer instead.
+//
+// As with RestartableStreamer, the output channel is shared and orchestrator-owned:
+// an implementation must never close it.
 type Tailer interface {
 	StreamingAcquisition(ctx context.Context, out chan pipeline.Event, acquisTomb *tomb.Tomb) error
 }
