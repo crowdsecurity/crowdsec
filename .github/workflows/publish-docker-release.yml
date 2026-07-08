@@ -25,6 +25,8 @@ permissions:
 jobs:
   alpine:
     uses: ./.github/workflows/publish-docker.yml
+    # inherit so the reusable job's `docker` environment secrets resolve
+    secrets: inherit
     with:
       image_version: ${{ github.event.inputs.image_version }}
       crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
@@ -36,6 +38,7 @@ jobs:
 
   debian:
     uses: ./.github/workflows/publish-docker.yml
+    secrets: inherit
     with:
       image_version: ${{ github.event.inputs.image_version }}
       crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
