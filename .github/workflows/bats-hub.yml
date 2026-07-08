@@ -71,7 +71,7 @@ jobs:
           '{schemaVersion:1,label:$l,message:$m,color:$c}'; }
         jq -n \
           --arg p "$(badge 'Hub Parsers'   "$PARSERS_COV"   "$PARSERS_BADGE_COLOR")" \
-          --arg s "$(badge 'Hub Scenarios' "$SCENARIOS_COV" "$SCENARIO_BADGE_COLOR")" \
+          --arg s "$(badge 'Hub Scenarios' "$SCENARIOS_COV" "$SCENARIOS_BADGE_COLOR")" \
           '{files:{"crowdsec_parsers_badge.json":{content:$p},
                    "crowdsec_scenarios_badge.json":{content:$s}}}' \
           | gh api --method PATCH "/gists/${GIST_ID}" --input -
