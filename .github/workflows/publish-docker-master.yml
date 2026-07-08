@@ -24,6 +24,8 @@ permissions:
 jobs:
   dev-alpine:
     uses: ./.github/workflows/publish-docker.yml
+    # inherit so the reusable job's `docker` environment secrets resolve
+    secrets: inherit
     with:
       platform: linux/amd64
       crowdsec_version: ""
@@ -35,6 +37,7 @@ jobs:
 
   dev-debian:
     uses: ./.github/workflows/publish-docker.yml
+    secrets: inherit
     with:
       platform: linux/amd64
       crowdsec_version: ""
