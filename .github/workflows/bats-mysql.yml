@@ -7,6 +7,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: "Functional tests"
@@ -32,6 +35,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+        persist-credentials: false
 
     - name: "Set up Go"
       uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
@@ -48,6 +52,8 @@ jobs:
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
       env:
+        # fetch the hub index from a git clone to avoid cdn-hub rate limiting (403)
+        TEST_HUB_CLONE: "true"
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306

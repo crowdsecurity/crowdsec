@@ -17,6 +17,10 @@ on:
       - 'go.sum'
       - 'Makefile'
 
+permissions:
+  contents: read
+  packages: write # push images to ghcr.io
+
 jobs:
   dev-alpine:
     uses: ./.github/workflows/publish-docker.yml
@@ -28,9 +32,6 @@ jobs:
       push: true
       slim: false
       debian: false
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   dev-debian:
     uses: ./.github/workflows/publish-docker.yml
@@ -42,6 +43,3 @@ jobs:
       push: true
       slim: false
       debian: true
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

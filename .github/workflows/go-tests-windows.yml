@@ -11,6 +11,9 @@ on:
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
 env:
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
@@ -25,6 +28,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: false
+          persist-credentials: false
 
       - name: "Set up Go"
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0

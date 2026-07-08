@@ -16,6 +16,9 @@ on:
     paths-ignore:
       - "README.md"
 
+permissions:
+  contents: read
+
 # these env variables are for localstack, so we can emulate aws services
 env:
   AWS_HOST: localstack
@@ -127,6 +130,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
+          persist-credentials: false
 
       - name: "Set up Go"
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
@@ -139,14 +143,18 @@ jobs:
           # ensure the version of 'protoc' matches the one that generated the files
           PROTOBUF_VERSION="35.0"
           JAVY_VERSION="8.1.1"
+          # sha256 of the release assets, verified before use
+          PROTOBUF_SHA256="a45cda0989c17dd950db55f6fbe1e5814c50fda08e87aa422980ac1f89dddbbc"
+          JAVY_SHA256="4bec224e1d51827808fd063541a2b4d94cf474744636b692be63e7a29bec83a6"
           # don't pollute the repo
           pushd $HOME
-          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
-          unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d $HOME/.protoc
-          curl -OL https://github.com/bytecodealliance/javy/releases/download/v${JAVY_VERSION}/javy-x86_64-linux-v${JAVY_VERSION}.gz
+          curl --fail --location --proto '=https' --tlsv1.2 -o protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+          echo "${PROTOBUF_SHA256}  protoc.zip" | sha256sum -c -
+          unzip protoc.zip -d $HOME/.protoc
+          curl --fail --location --proto '=https' --tlsv1.2 -o javy.gz https://github.com/bytecodealliance/javy/releases/download/v${JAVY_VERSION}/javy-x86_64-linux-v${JAVY_VERSION}.gz
+          echo "${JAVY_SHA256}  javy.gz" | sha256sum -c -
           mkdir -p $HOME/.javy
-          gzip -d javy-x86_64-linux-v${JAVY_VERSION}.gz
-          mv javy-x86_64-linux-v${JAVY_VERSION} $HOME/.javy/javy
+          gzip -dc javy.gz > $HOME/.javy/javy
           chmod +x $HOME/.javy/javy
           popd
           export PATH="$HOME/.protoc/bin:$HOME/.javy/:$PATH"
