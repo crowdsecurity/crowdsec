@@ -13,11 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -31,15 +31,17 @@ type appsecRuleTest struct {
 	// schemas registers OpenAPI schemas (ref → YAML content) on the
 	// RequestValidator after Build, so hooks can refer to them via
 	// ValidateRequestWithSchema(ref).
-	schemas                map[string]string
-	on_load                []appsec.Hook
-	pre_eval               []appsec.Hook
-	post_eval              []appsec.Hook
-	on_match               []appsec.Hook
+	schemas      map[string]string
+	on_load      []appsec.Hook
+	pre_eval     []appsec.Hook
+	post_eval    []appsec.Hook
+	on_match     []appsec.Hook
+	on_challenge []appsec.Hook
 	// Phase-scoped hooks (dispatched only during the matching phase)
 	inband_on_match        []appsec.Hook
 	inband_pre_eval        []appsec.Hook
 	inband_post_eval       []appsec.Hook
+	inband_on_challenge    []appsec.Hook
 	outofband_on_match     []appsec.Hook
 	outofband_pre_eval     []appsec.Hook
 	outofband_post_eval    []appsec.Hook
@@ -119,6 +121,7 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		PreEval:                test.pre_eval,
 		PostEval:               test.post_eval,
 		OnMatch:                test.on_match,
+		OnChallenge:            test.on_challenge,
 		BouncerBlockedHTTPCode: test.BouncerBlockedHTTPCode,
 		UserBlockedHTTPCode:    test.UserBlockedHTTPCode,
 		UserPassedHTTPCode:     test.UserPassedHTTPCode,
@@ -127,11 +130,12 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 
 	// Set phase-scoped hooks if any are provided
-	if len(test.inband_on_match) > 0 || len(test.inband_pre_eval) > 0 || len(test.inband_post_eval) > 0 {
+	if len(test.inband_on_match) > 0 || len(test.inband_pre_eval) > 0 || len(test.inband_post_eval) > 0 || len(test.inband_on_challenge) > 0 {
 		appsecCfg.InBand = &appsec.AppsecPhaseConfig{
-			OnMatch:  test.inband_on_match,
-			PreEval:  test.inband_pre_eval,
-			PostEval: test.inband_post_eval,
+			OnMatch:     test.inband_on_match,
+			PreEval:     test.inband_pre_eval,
+			PostEval:    test.inband_post_eval,
+			OnChallenge: test.inband_on_challenge,
 		}
 	}
 
@@ -146,6 +150,9 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	hub := cwhub.Hub{}
 	AppsecRuntime, err := appsecCfg.Build(t.Context(), &hub)
 	if err != nil {
+		if !test.expected_load_ok {
+			return
+		}
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
 	for ref, schemaYAML := range test.schemas {
@@ -155,10 +162,23 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules, NativeRules: nativeInbandRules}}
 	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules, NativeRules: nativeOutofbandRules}}
+
+	// Hooks using SendChallenge() or on_challenge hooks require the WASM
+	// challenge runtime; mirror what pkg/acquisition/modules/appsec/config.go
+	// does in production. We share a single runtime across tests — building
+	// one is expensive (~15-20s for WASM obfuscator warm-up), and none of the
+	// tests mutate runtime-level state like default difficulty.
+	if AppsecRuntime.NeedWASMVM {
+		AppsecRuntime.ChallengeRuntime = getSharedChallengeRuntime(t)
+	}
 	appsecRunnerUUID := uuid.New().String()
 	//we copy AppsecRutime for each runner
 	wrt := *AppsecRuntime
 	wrt.Logger = logger
+	// mirror production wiring (run.go / config.go) so challenge lifecycle
+	// events are emitted on the same channel the harness collects from.
+	wrt.OutChan = OutChan
+	wrt.Labels = map[string]string{"foo": "bar"}
 
 	mux, urlx, teardown := setupLapi()
 	defer teardown()
@@ -242,7 +262,7 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		idle.Reset(idleDuration)
 	}
 
-	responses :=[]appsec.AppsecTempResponse{}
+	responses := []appsec.AppsecTempResponse{}
 	events := []pipeline.Event{}
 
 	done := make(chan struct{})

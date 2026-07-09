@@ -24,20 +24,22 @@ type metricStore map[string]metricSection
 
 func NewMetricStore() metricStore {
 	return metricStore{
-		"acquisition":    statAcquis{},
-		"alerts":         statAlert{},
-		"bouncers":       &statBouncer{},
-		"appsec-engine":  statAppsecEngine{},
-		"appsec-rule":    statAppsecRule{},
-		"decisions":      statDecision{},
-		"lapi":           statLapi{},
-		"lapi-bouncer":   statLapiBouncer{},
-		"lapi-decisions": statLapiDecision{},
-		"lapi-machine":   statLapiMachine{},
-		"parsers":        statParser{},
-		"scenarios":      statBucket{},
-		"stash":          statStash{},
-		"whitelists":     statWhitelist{},
+		"acquisition":            statAcquis{},
+		"alerts":                 statAlert{},
+		"bouncers":               &statBouncer{},
+		"appsec-engine":          statAppsecEngine{},
+		"appsec-rule":            statAppsecRule{},
+		"appsec-challenge":       newStatAppsecChallenge(),
+		"appsec-challenge-infra": statAppsecChallengeInfra{},
+		"decisions":              statDecision{},
+		"lapi":                   statLapi{},
+		"lapi-bouncer":           statLapiBouncer{},
+		"lapi-decisions":         statLapiDecision{},
+		"lapi-machine":           statLapiMachine{},
+		"parsers":                statParser{},
+		"scenarios":              statBucket{},
+		"stash":                  statStash{},
+		"whitelists":             statWhitelist{},
 	}
 }
 
@@ -55,6 +57,59 @@ func (ms metricStore) Fetch(ctx context.Context, url string, db *database.Client
 	ms.processPrometheusMetrics(points)
 
 	return nil
+}
+
+// metricLabels holds the label values extracted from a single Prometheus point.
+type metricLabels struct {
+	name         string
+	source       string
+	machine      string
+	bouncer      string
+	route        string
+	method       string
+	reason       string
+	origin       string
+	action       string
+	appsecEngine string
+	appsecRule   string
+	// kind is carried by the appsec-challenge accepted/rejected counters
+	// to distinguish sub-outcomes; empty for every other metric.
+	kind string
+	// bundle is carried by the challenge re-obfuscation counter
+	// (dynamic vs library); empty for every other metric.
+	bundle string
+	mtype  string
+}
+
+func extractLabels(p MetricPoint) metricLabels {
+	name, ok := p.Labels["name"]
+	if !ok {
+		log.Debugf("no name in Metric %v", p.Labels)
+	}
+
+	source, ok := p.Labels["source"]
+	if !ok {
+		log.Debugf("no source in Metric %v for %s", p.Labels, p.Name)
+	} else if srctype, ok := p.Labels["type"]; ok {
+		source = srctype + ":" + source
+	}
+
+	return metricLabels{
+		name:         name,
+		source:       source,
+		machine:      p.Labels["machine"],
+		bouncer:      p.Labels["bouncer"],
+		route:        p.Labels["route"],
+		method:       p.Labels["method"],
+		reason:       p.Labels["reason"],
+		origin:       p.Labels["origin"],
+		action:       p.Labels["action"],
+		appsecEngine: p.Labels["appsec_engine"],
+		appsecRule:   p.Labels["rule_name"],
+		kind:         p.Labels["kind"],
+		bundle:       p.Labels["bundle"],
+		mtype:        p.Labels["type"],
+	}
 }
 
 func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
@@ -77,113 +132,155 @@ func (ms metricStore) processPrometheusMetrics(result []MetricPoint) {
 			continue
 		}
 
-		name, ok := p.Labels["name"]
-		if !ok {
-			log.Debugf("no name in Metric %v", p.Labels)
-	}
+		l := extractLabels(p)
 
-	source, ok := p.Labels["source"]
-	if !ok {
-		log.Debugf("no source in Metric %v for %s", p.Labels, p.Name)
-	} else {
-		if srctype, ok := p.Labels["type"]; ok {
-			source = srctype + ":" + source
-		}
-	}
+		ival := int(p.Value)
 
-	machine := p.Labels["machine"]
-	bouncer := p.Labels["bouncer"]
-
-	route := p.Labels["route"]
-	method := p.Labels["method"]
-
-	reason := p.Labels["reason"]
-	origin := p.Labels["origin"]
-	action := p.Labels["action"]
-
-	appsecEngine := p.Labels["appsec_engine"]
-	appsecRule := p.Labels["rule_name"]
-
-	mtype := p.Labels["type"]
-
-	ival := int(p.Value)
-
-	switch p.Name {
+		switch p.Name {
 		//
 		// buckets
 		//
 		case metrics.BucketsInstantiationMetricName:
-			mBucket.Process(name, "instantiation", ival)
+			mBucket.Process(l.name, "instantiation", ival)
 		case metrics.BucketsCurrentCountMetricName:
-			mBucket.Process(name, "curr_count", ival)
+			mBucket.Process(l.name, "curr_count", ival)
 		case metrics.BucketsOverflowMetricName:
-			mBucket.Process(name, "overflow", ival)
+			mBucket.Process(l.name, "overflow", ival)
 		case metrics.BucketPouredMetricName:
-			mBucket.Process(name, "pour", ival)
-			mAcquis.Process(source, "pour", ival)
+			mBucket.Process(l.name, "pour", ival)
+			mAcquis.Process(l.source, "pour", ival)
 		case metrics.BucketsUnderflowMetricName:
-			mBucket.Process(name, "underflow", ival)
+			mBucket.Process(l.name, "underflow", ival)
 		//
 		// parsers
 		//
 		case metrics.GlobalParserHitsMetricName:
-			mAcquis.Process(source, "reads", ival)
+			mAcquis.Process(l.source, "reads", ival)
 		case metrics.GlobalParserHitsOkMetricName:
-			mAcquis.Process(source, "parsed", ival)
+			mAcquis.Process(l.source, "parsed", ival)
 		case metrics.GlobalParserHitsKoMetricName:
-			mAcquis.Process(source, "unparsed", ival)
+			mAcquis.Process(l.source, "unparsed", ival)
 		case metrics.NodesHitsMetricName:
-			mParser.Process(name, "hits", ival)
+			mParser.Process(l.name, "hits", ival)
 		case metrics.NodesHitsOkMetricName:
-			mParser.Process(name, "parsed", ival)
+			mParser.Process(l.name, "parsed", ival)
 		case metrics.NodesHitsKoMetricName:
-			mParser.Process(name, "unparsed", ival)
+			mParser.Process(l.name, "unparsed", ival)
 		//
 		// whitelists
 		//
 		case metrics.NodesWlHitsMetricName:
-			mWhitelist.Process(name, reason, "hits", ival)
+			mWhitelist.Process(l.name, l.reason, "hits", ival)
 		case metrics.NodesWlHitsOkMetricName:
-			mWhitelist.Process(name, reason, "whitelisted", ival)
+			mWhitelist.Process(l.name, l.reason, "whitelisted", ival)
 			// track as well whitelisted lines at acquis level
-			mAcquis.Process(source, "whitelisted", ival)
+			mAcquis.Process(l.source, "whitelisted", ival)
 		//
 		// lapi
 		//
 		case metrics.LapiRouteHitsMetricName:
-			mLapi.Process(route, method, ival)
+			mLapi.Process(l.route, l.method, ival)
 		case metrics.LapiMachineHitsMetricName:
-			mLapiMachine.Process(machine, route, method, ival)
+			mLapiMachine.Process(l.machine, l.route, l.method, ival)
 		case metrics.LapiBouncerHitsMetricName:
-			mLapiBouncer.Process(bouncer, route, method, ival)
+			mLapiBouncer.Process(l.bouncer, l.route, l.method, ival)
 		case metrics.LapiNilDecisionsMetricName, metrics.LapiNonNilDecisionsMetricName:
-			mLapiDecision.Process(bouncer, p.Name, ival)
+			mLapiDecision.Process(l.bouncer, p.Name, ival)
 		//
 		// decisions
 		//
 		case metrics.GlobalActiveDecisionsMetricName:
-			mDecision.Process(reason, origin, action, ival)
+			mDecision.Process(l.reason, l.origin, l.action, ival)
 		case metrics.GlobalAlertsMetricName:
-			mAlert.Process(reason, ival)
+			mAlert.Process(l.reason, ival)
 		//
 		// stash
 		//
 		case metrics.CacheMetricName:
-			mStash.Process(name, mtype, ival)
+			mStash.Process(l.name, l.mtype, ival)
 		//
 		// appsec
 		//
 		case "cs_appsec_reqs_total":
-			mAppsecEngine.Process(appsecEngine, "processed", ival)
+			mAppsecEngine.Process(l.appsecEngine, "processed", ival)
 		case "cs_appsec_block_total":
-			mAppsecEngine.Process(appsecEngine, "blocked", ival)
+			mAppsecEngine.Process(l.appsecEngine, "blocked", ival)
 		case "cs_appsec_rule_hits":
-			mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
+			mAppsecRule.Process(l.appsecEngine, l.appsecRule, "triggered", ival)
 		default:
+			// bot detection / challenge metrics live in their own handler to
+			// keep this switch's complexity in check.
+			if ms.processAppsecChallengeMetric(p.Name, l, ival) {
+				continue
+			}
+
 			log.Debugf("unknown: %+v", p.Name)
 			continue
 		}
 	}
+}
+
+// processAppsecChallengeMetric handles the bot-detection / challenge lifecycle
+// and infrastructure metrics. It lives apart from processPrometheusMetrics
+// because its nested kind/bundle switches would otherwise push that function
+// over the cyclomatic-complexity limit. Returns false for unrecognized metrics.
+func (ms metricStore) processAppsecChallengeMetric(name string, l metricLabels, ival int) bool {
+	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
+	mAppsecChallenge := ms["appsec-challenge"].(*statAppsecChallenge)
+	mAppsecChallengeInfra := ms["appsec-challenge-infra"].(statAppsecChallengeInfra)
+
+	switch name {
+	//
+	// bot detection / challenge lifecycle
+	//
+	case metrics.AppsecChallengeRequestedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_requested", ival)
+		mAppsecChallenge.Process(l.appsecEngine, "requested", ival)
+	case metrics.AppsecChallengeSubmittedMetricName:
+		mAppsecChallenge.Process(l.appsecEngine, "submitted", ival)
+	case metrics.AppsecChallengeAcceptedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_accepted", ival)
+		switch l.kind {
+		case "solved":
+			mAppsecChallenge.Process(l.appsecEngine, "solved", ival)
+		case "granted":
+			mAppsecChallenge.Process(l.appsecEngine, "granted", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "granted", l.reason, ival)
+		}
+	case metrics.AppsecChallengeRejectedMetricName:
+		mAppsecEngine.Process(l.appsecEngine, "challenge_rejected", ival)
+		switch l.kind {
+		case "protocol":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_protocol", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "protocol", l.reason, ival)
+		case "submission":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_submission", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "submission", l.reason, ival)
+		case "cookie":
+			mAppsecChallenge.Process(l.appsecEngine, "rejected_cookie", ival)
+			mAppsecChallenge.ProcessReason(l.appsecEngine, "cookie", l.reason, ival)
+		}
+	//
+	// bot detection / challenge infrastructure (process-global, no engine label)
+	//
+	case metrics.AppsecChallengeKepochGeneratedMetricName:
+		mAppsecChallengeInfra.Process("kepoch_generated", ival)
+	case metrics.AppsecChallengeKepochEvictedMetricName:
+		mAppsecChallengeInfra.Process("kepoch_evicted", ival)
+	case metrics.AppsecChallengeReobfuscationMetricName:
+		switch l.bundle {
+		case "dynamic":
+			mAppsecChallengeInfra.Process("reobfuscation_dynamic", ival)
+		case "library":
+			mAppsecChallengeInfra.Process("reobfuscation_library", ival)
+		}
+	case metrics.AppsecChallengeDynamicModuleEvictedMetricName:
+		mAppsecChallengeInfra.Process("dynamic_module_evicted", ival)
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (ms metricStore) Format(out io.Writer, wantColor string, sections []string, outputFormat string, noUnit bool) error {
