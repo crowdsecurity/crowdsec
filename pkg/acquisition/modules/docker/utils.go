@@ -28,10 +28,15 @@ func parseKeyToMap(m map[string]interface{}, key string, value string) {
 	}
 
 	for i := 1; i < len(parts)-1; i++ {
-		if _, ok := m[parts[i]]; !ok {
-			m[parts[i]] = make(map[string]interface{})
+		next, ok := m[parts[i]].(map[string]interface{})
+		if !ok {
+			// The key is absent, or a leaf value (e.g. a sibling label like
+			// crowdsec.enable=true) is already stored here. Replace it with a
+			// nested map instead of panicking on the type assertion.
+			next = make(map[string]interface{})
+			m[parts[i]] = next
 		}
-		m = m[parts[i]].(map[string]interface{})
+		m = next
 	}
 	m[parts[len(parts)-1]] = value
 }

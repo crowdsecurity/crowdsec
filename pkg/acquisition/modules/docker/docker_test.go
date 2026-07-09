@@ -92,7 +92,7 @@ func TestConfigureDSN(t *testing.T) {
 
 type mockDockerCli struct {
 	client.Client
-	services       []dockerTypesSwarm.Service
+	services []dockerTypesSwarm.Service
 }
 
 // Simplified Info method - just return basic info without complex types
@@ -108,7 +108,7 @@ func (cli *mockDockerCli) ServiceList(_ context.Context, _ client.ServiceListOpt
 	items := cli.services
 
 	if items == nil {
-		defaultTestService :=  dockerTypesSwarm.Service{
+		defaultTestService := dockerTypesSwarm.Service{
 			ID: "service123",
 			Spec: dockerTypesSwarm.ServiceSpec{
 				Annotations: dockerTypesSwarm.Annotations{
@@ -522,8 +522,8 @@ func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options clien
 func (*mockDockerCli) ContainerInspect(_ context.Context, _ string, _ client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	res := client.ContainerInspectResult{}
 	res.Container = dockerContainer.InspectResponse{
-		Config: &dockerContainer.Config{ Tty: false },
-		State:  &dockerContainer.State{ Running: true }, // Mock container is running
+		Config: &dockerContainer.Config{Tty: false},
+		State:  &dockerContainer.State{Running: true}, // Mock container is running
 	}
 
 	return res, nil
@@ -542,6 +542,7 @@ func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string,
 
 	return service, []byte("{}"), nil
 }
+
 // Since we are mocking the docker client, we return channels that will never be used
 func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) client.EventsResult {
 	eventsChan := make(chan dockerTypesEvents.Message)
@@ -549,7 +550,7 @@ func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) clie
 
 	return client.EventsResult{
 		Messages: eventsChan,
-		Err: errChan,
+		Err:      errChan,
 	}
 }
 
@@ -657,4 +658,20 @@ func TestParseLabels(t *testing.T) {
 			assert.Equal(t, test.expected, labels)
 		})
 	}
+}
+
+func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
+	// A leaf label and a branch label under the same key (set by whoever
+	// launches the container) must not panic the type assertion in
+	// parseKeyToMap. Map iteration order decides which wins, but neither
+	// ordering may crash, and unrelated labels must survive.
+	labels := map[string]string{
+		"crowdsec.enable":     "true",
+		"crowdsec.enable.foo": "bar",
+		"crowdsec.other":      "keepme",
+	}
+
+	var out map[string]any
+	require.NotPanics(t, func() { out = parseLabels(labels) })
+	assert.Equal(t, "keepme", out["other"])
 }
