@@ -663,15 +663,24 @@ func TestParseLabels(t *testing.T) {
 func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
 	// A leaf label and a branch label under the same key (set by whoever
 	// launches the container) must not panic the type assertion in
-	// parseKeyToMap. Map iteration order decides which wins, but neither
-	// ordering may crash, and unrelated labels must survive.
+	// parseKeyToMap. Only one of the two can win, but the result must be the
+	// same every run (not decided by random map order) and unrelated labels
+	// must survive.
 	labels := map[string]string{
 		"crowdsec.enable":     "true",
 		"crowdsec.enable.foo": "bar",
 		"crowdsec.other":      "keepme",
 	}
 
-	var out map[string]any
-	require.NotPanics(t, func() { out = parseLabels(labels) })
-	assert.Equal(t, "keepme", out["other"])
+	// Sorting inside parseLabels applies the shorter "crowdsec.enable" first,
+	// then the more specific "crowdsec.enable.foo" overwrites it, so the branch
+	// wins deterministically. Run it repeatedly to catch any order dependence.
+	var first map[string]any
+	require.NotPanics(t, func() { first = parseLabels(labels) })
+	assert.Equal(t, "keepme", first["other"])
+	assert.Equal(t, map[string]any{"foo": "bar"}, first["enable"])
+
+	for i := 0; i < 50; i++ {
+		assert.Equal(t, first, parseLabels(labels))
+	}
 }
