@@ -55,14 +55,24 @@ func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) (string, er
 	}
 	queryParams := u.Query()
 
-	if len(lq.Data.Result) > 0 {
-		lastTS := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
-		// +1 the last timestamp to avoid getting the same result again.
-		queryParams.Set("start", strconv.Itoa(int(lastTS.UnixNano()+1)))
+	var maxTS time.Time
+	for _, stream := range lq.Data.Result {
+		for _, entry := range stream.Entries {
+			if entry.Timestamp.After(maxTS) {
+				maxTS = entry.Timestamp
+			}
+		}
 	}
 
+	if !maxTS.IsZero() {
+		// +1 the last timestamp to avoid getting the same result again.
+		queryParams.Set("start", strconv.FormatInt(maxTS.UnixNano()+1, 10))
+	}
+	// When maxTS.IsZero() (no results), keep the existing start to avoid
+	// re-fetching already-processed logs. Only end is moved forward below.
+
 	if infinite {
-		queryParams.Set("end", strconv.Itoa(int(time.Now().UnixNano())))
+		queryParams.Set("end", strconv.FormatInt(time.Now().UnixNano(), 10))
 	}
 
 	u.RawQuery = queryParams.Encode()
@@ -244,7 +254,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	dialer := &websocket.Dialer{}
 	u := lc.getURLFor("loki/api/v1/tail", map[string]string{
 		"limit":     strconv.Itoa(lc.config.Limit),
-		"start":     strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
+		"start":     strconv.FormatInt(time.Now().Add(-lc.config.Since).UnixNano(), 10),
 		"query":     lc.config.Query,
 		"delay_for": strconv.Itoa(lc.config.DelayFor),
 	})
@@ -294,8 +304,8 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQueryRangeResponse {
 	url := lc.getURLFor("loki/api/v1/query_range", map[string]string{
 		"query":     lc.config.Query,
-		"start":     strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
-		"end":       strconv.Itoa(int(time.Now().UnixNano())),
+		"start":     strconv.FormatInt(time.Now().Add(-lc.config.Since).UnixNano(), 10),
+		"end":       strconv.FormatInt(time.Now().UnixNano(), 10),
 		"limit":     strconv.Itoa(lc.config.Limit),
 		"direction": "forward",
 	})

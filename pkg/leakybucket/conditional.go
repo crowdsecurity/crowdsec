@@ -70,7 +70,7 @@ func (p *ConditionalProcessor) AfterBucketPour(f *BucketFactory, msg pipeline.Ev
 		if condition {
 			l.logger.Debugf("Conditional bucket overflow")
 			l.Ovflw_ts = l.Last_ts
-			l.Out <- l.Queue
+			l.pendingOverflow = l.Queue
 			return nil
 		}
 	}

@@ -26,7 +26,12 @@ type Hub struct {
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
+// Empty for a hub created without local configuration (e.g. zero-value Hub in tests).
 func (h *Hub) GetDataDir() string {
+	if h.local == nil {
+		return ""
+	}
+
 	return h.local.InstallDataDir
 }
 
