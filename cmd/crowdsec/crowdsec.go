@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -30,6 +31,8 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading context: %w", err)
 	}
+
+	configureDNSCache(cConfig.Crowdsec.DNSCache)
 
 	err = exprhelpers.GeoIPInit(hub.GetDataDir())
 	if err != nil {
@@ -68,6 +71,31 @@ func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub,
 	}
 
 	return csParsers, datasources, nil
+}
+
+func configureDNSCache(cfg *csconfig.DNSCacheCfg) {
+	if cfg == nil {
+		return
+	}
+
+	var (
+		ttl, negTTL time.Duration
+		size        int
+	)
+
+	if cfg.TTL != nil {
+		ttl = *cfg.TTL
+	}
+
+	if cfg.NegativeTTL != nil {
+		negTTL = *cfg.NegativeTTL
+	}
+
+	if cfg.Size != nil {
+		size = *cfg.Size
+	}
+
+	dnscache.Configure(ttl, negTTL, size)
 }
 
 func startParserRoutines(ctx context.Context, g *errgroup.Group, cConfig *csconfig.Config, parsers *parser.Parsers, stageCollector *parser.StageParseCollector) {

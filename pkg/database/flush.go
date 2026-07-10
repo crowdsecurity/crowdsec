@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -241,6 +242,14 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 	return nil
 }
 
+// alertWithoutActiveDecision matches alerts that have no decision still in
+// effect at the given time. Because the alert->decisions edge cascades on
+// delete, flushing must never remove an alert that still carries an active
+// decision: doing so would silently delete a live (e.g. long-term) decision.
+func alertWithoutActiveDecision(now time.Time) predicate.Alert {
+	return alert.Not(alert.HasDecisionsWith(decision.UntilGTE(now)))
+}
+
 func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems int) error {
 	var (
 		deletedByAge    int
@@ -249,10 +258,11 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 		err             error
 	)
 
-	if !c.CanFlush {
+	if !c.TryFlushLock() {
 		c.Log.Debug("a list is being imported, flushing later")
 		return nil
 	}
+	defer c.FlushUnlock()
 
 	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans(ctx)
@@ -267,14 +277,17 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 
 	if maxAge != 0 {
-		filter := map[string][]string{
-			"created_before": {maxAge.String()},
-		}
+		now := time.Now().UTC()
 
-		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)
+		// Delete alerts older than maxAge, but never one that still has an
+		// active decision (the cascade would take the live decision with it).
+		nbDeleted, err := c.Ent.Alert.Delete().Where(
+			alert.CreatedAtLTE(now.Add(-maxAge)),
+			alertWithoutActiveDecision(now),
+		).Exec(ctx)
 		if err != nil {
 			c.Log.Warningf("FlushAlerts (max age): %s", err)
-			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", maxAge, err)
+			return fmt.Errorf("unable to flush alerts older than %s: %w", maxAge, err)
 		}
 
 		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
@@ -307,7 +320,12 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 
 			if maxid > 0 {
 				// This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
-				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(ctx)
+				// Alerts that still carry an active decision are kept regardless of the count: deleting them would
+				// cascade-delete the live decision. They are flushed on a later run, once their decisions expire.
+				deletedByNbItem, err = c.Ent.Alert.Delete().Where(
+					alert.IDLT(maxid),
+					alertWithoutActiveDecision(time.Now().UTC()),
+				).Exec(ctx)
 				if err != nil {
 					c.Log.Errorf("FlushAlerts: Could not delete alerts: %s", err)
 					return fmt.Errorf("could not delete alerts: %w", err)

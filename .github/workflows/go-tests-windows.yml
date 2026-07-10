@@ -8,11 +8,11 @@ on:
     paths-ignore:
       - "README.md"
   pull_request:
-    branches:
-      - master
-      - releases/**
     paths-ignore:
       - "README.md"
+
+permissions:
+  contents: read
 
 env:
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
@@ -24,13 +24,14 @@ jobs:
 
     steps:
       - name: Check out CrowdSec repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           submodules: false
+          persist-credentials: false
 
       - name: "Set up Go"
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
 
@@ -48,14 +49,14 @@ jobs:
           make testcover
 
       - name: Upload unit coverage to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: coverage.out
           flags: unit-windows
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.10
           args: --issues-exit-code=1 --timeout 10m
