@@ -39,17 +39,22 @@ func TestDatasourcesDoNotCloseSharedOutputChannel(t *testing.T) {
 
 		moduleDir := filepath.Join(modulesDir, entry.Name())
 
+		moduleFiles, err := os.ReadDir(moduleDir)
+		require.NoError(t, err, "reading module %s", entry.Name())
+
 		fset := token.NewFileSet()
 
-		pkgs, err := parser.ParseDir(fset, moduleDir, func(fi os.FileInfo) bool {
-			return filepath.Ext(fi.Name()) == ".go"
-		}, 0)
-		require.NoError(t, err, "parsing module %s", entry.Name())
-
-		for _, pkg := range pkgs {
-			for path, file := range pkg.Files {
-				checkFileDoesNotCloseOut(t, fset, entry.Name(), path, file)
+		for _, moduleFile := range moduleFiles {
+			if moduleFile.IsDir() || filepath.Ext(moduleFile.Name()) != ".go" {
+				continue
 			}
+
+			path := filepath.Join(moduleDir, moduleFile.Name())
+
+			file, err := parser.ParseFile(fset, path, nil, 0)
+			require.NoError(t, err, "parsing %s", path)
+
+			checkFileDoesNotCloseOut(t, fset, entry.Name(), path, file)
 		}
 	}
 }
