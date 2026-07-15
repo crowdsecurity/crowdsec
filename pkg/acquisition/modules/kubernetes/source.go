@@ -15,7 +15,7 @@ type Source struct {
 	metricsLevel metrics.AcquisitionMetricsLevel
 	config       Configuration
 
-	client  *kubernetes.Clientset
+	client  kubernetes.Interface
 	cancels map[types.UID]context.CancelFunc
 	mu      sync.Mutex
 	logger  *log.Entry
