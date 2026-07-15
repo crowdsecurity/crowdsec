@@ -23,11 +23,11 @@ func (e *Entry) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("invalid Loki entry: expected [timestamp, line], got %v", values)
 	}
 
-	t, err := strconv.Atoi(values[0])
+	t, err := strconv.ParseInt(values[0], 10, 64)
 	if err != nil {
 		return err
 	}
-	e.Timestamp = time.Unix(0, int64(t))
+	e.Timestamp = time.Unix(0, t)
 	e.Line = values[1]
 	return nil
 }

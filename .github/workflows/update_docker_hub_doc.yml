@@ -7,6 +7,9 @@ on:
     paths:
       - 'build/docker/README.md'
 
+permissions:
+  contents: read
+
 jobs:
   update-docker-hub-readme:
     runs-on: ubuntu-latest
@@ -14,8 +17,10 @@ jobs:
 
       -
         name: Check out the repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: ${{ github.repository_owner == 'crowdsecurity' }}
+        with:
+          persist-credentials: false
 
       -
         name: Update docker hub README
