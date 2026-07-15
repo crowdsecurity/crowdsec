@@ -187,12 +187,15 @@ func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, conta
 		return errors.New("kubernetes client is not initialized")
 	}
 
-	sinceTime := metav1.NewTime(time.Now().UTC())
+	// TailLines: 0 means "no historical catch-up, only new lines from now on".
+	// Unlike SinceTime, this stays correct across reconnects: a fixed SinceTime
+	// would cause every retry to re-stream everything since the original call.
+	tailLines := int64(0)
 	req := client.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{
 		Container:  container,
 		Follow:     true,
 		Timestamps: false,
-		SinceTime:  &sinceTime,
+		TailLines:  &tailLines,
 	})
 	fn := func() error {
 		if err := ctx.Err(); err != nil {
