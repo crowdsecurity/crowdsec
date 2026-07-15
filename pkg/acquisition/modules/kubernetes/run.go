@@ -22,6 +22,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+// errProcessLine marks onLineFunc failures as fatal, as opposed to stream/scan
+// errors which followPodLogs retries.
+var errProcessLine = errors.New("failed to process line")
+
 func podRef(p *corev1.Pod) string {
 	if p == nil {
 		return "<nil pod>"
@@ -213,7 +217,7 @@ func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, conta
 				return nil
 			}
 			if err := onLineFunc(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
-				return err
+				return fmt.Errorf("%w: %w", errProcessLine, err)
 			}
 		}
 		if ctx.Err() != nil {
@@ -224,11 +228,17 @@ func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, conta
 	for {
 		err := fn()
 		if err != nil {
-			return err
+			if errors.Is(err, errProcessLine) {
+				return err
+			}
+			// Stream open failure or a scanner/connection error: log and retry
+			// below instead of giving up, to survive transient API server
+			// disconnects.
+			s.logger.Warnf("error following logs for %s/%s/%s, retrying: %s", ns, pod, container, err)
 		}
-		// Clean EOF: check if the pod has terminated so we don't re-stream old logs.
-		// If the Get fails or the pod is still Running, fall through and retry
-		// (handles transient API server disconnects).
+		// Clean EOF or transient error: check if the pod has terminated so we
+		// don't keep retrying against a dead pod / re-stream old logs.
+		// If the Get fails or the pod is still Running, fall through and retry.
 		if p, getErr := client.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
 			s.logger.Debugf("stopped following logs for %s/%s/%s: pod is in phase %s", ns, pod, container, p.Status.Phase)
 			return nil
