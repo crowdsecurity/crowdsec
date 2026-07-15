@@ -19,6 +19,9 @@ on:
       - build/windows/installer/*.wxs
       - .github/workflows/ci-windows-build-msi.yml
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build
@@ -27,13 +30,14 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         fetch-depth: 0
         submodules: false
+        persist-credentials: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
       with:
         go-version-file: go.mod
 

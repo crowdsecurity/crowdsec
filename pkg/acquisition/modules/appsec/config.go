@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	yaml "github.com/goccy/go-yaml"
@@ -20,6 +21,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -121,6 +125,61 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 	return caCertPool, nil
 }
 
+// expandAppsecConfigEntry resolves a single appsec_config(s) entry into the list
+// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character 
+// is matched against the installed appsec-configs with the same matcher used
+// to expand appsec-rule patterns; it errors when no installed config matches.
+func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
+	if !strings.ContainsAny(entry, "*?") {
+		return []string{entry}, nil
+	}
+
+	var matches []string
+
+	for _, item := range hub.GetInstalledByType(cwhub.APPSEC_CONFIGS, true) {
+		matched, err := exprhelpers.Match(entry, item.Name)
+		if err != nil {
+			return nil, fmt.Errorf("while matching %q against %q: %w", entry, item.Name, err)
+		}
+
+		if matched.(bool) {
+			matches = append(matches, item.Name)
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("no installed appsec-config matches pattern %q", entry)
+	}
+
+	return matches, nil
+}
+
+// resolveAppsecConfigEntries expands every appsec_config(s) entry and returns
+// the de-duplicated list of config names to load, in first-seen order.
+func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, error) {
+	seen := make(map[string]struct{})
+
+	var toLoad []string
+
+	for _, entry := range entries {
+		names, err := expandAppsecConfigEntry(entry, hub)
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve appsec_config %q: %w", entry, err)
+		}
+
+		for _, name := range names {
+			if _, ok := seen[name]; ok {
+				continue
+			}
+
+			seen[name] = struct{}{}
+			toLoad = append(toLoad, name)
+		}
+	}
+
+	return toLoad, nil
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -177,13 +236,19 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		if err := appsecCfg.LoadByPath(w.config.AppsecConfigPath); err != nil {
 			return fmt.Errorf("unable to load appsec_config: %w", err)
 		}
-	} else if w.config.AppsecConfig != "" {
-		if err := appsecCfg.Load(w.config.AppsecConfig, w.hub); err != nil {
-			return fmt.Errorf("unable to load appsec_config: %w", err)
+	} else if w.config.AppsecConfig != "" || len(w.config.AppsecConfigs) > 0 {
+		entries := w.config.AppsecConfigs
+		if w.config.AppsecConfig != "" {
+			entries = []string{w.config.AppsecConfig}
 		}
-	} else if len(w.config.AppsecConfigs) > 0 {
-		for _, appsecConfig := range w.config.AppsecConfigs {
-			if err := appsecCfg.Load(appsecConfig, w.hub); err != nil {
+
+		names, err := resolveAppsecConfigEntries(entries, w.hub)
+		if err != nil {
+			return err
+		}
+
+		for _, name := range names {
+			if err := appsecCfg.Load(name, w.hub); err != nil {
 				return fmt.Errorf("unable to load appsec_config: %w", err)
 			}
 		}
@@ -199,7 +264,23 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		return fmt.Errorf("unable to build appsec_config: %w", err)
 	}
 
+	if appsecRuntime.NeedWASMVM {
+		logger.Info("Initializing WASM runtime for challenge obfuscation")
+
+		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge, appsecCfg.Logger)
+		if err != nil {
+			return fmt.Errorf("unable to build challenge options: %w", err)
+		}
+
+		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)
+		if err != nil {
+			return fmt.Errorf("unable to create challenge runtime: %w", err)
+		}
+		appsecRuntime.ChallengeRuntime = challengeRuntime
+	}
+
 	w.AppsecRuntime = appsecRuntime
+	w.AppsecRuntime.Labels = w.config.Labels
 	w.AppsecRuntime.DataDir = w.hub.GetDataDir()
 
 	err = w.AppsecRuntime.ProcessOnLoadRules()
@@ -213,14 +294,11 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
-		// we copy AppsecRuntime for each runner
-		wrt := *w.AppsecRuntime
-		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
 			inChan:                 w.InChan,
 			UUID:                   appsecRunnerUUID,
 			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
-			AppsecRuntime:          &wrt,
+			AppsecRuntime:          w.AppsecRuntime,
 			Labels:                 w.config.Labels,
 			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
