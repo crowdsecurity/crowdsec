@@ -142,12 +142,7 @@ func parseBotAddr(s string) (netip.Addr, bool) {
 
 // MatchKnownBot reports whether the request (source address, User-Agent, path)
 // matches a bot definition in any of the named "bots" data files:
-// (UA && PATH) && (IP || RANGE || RDNS). Fail-closed: an unparseable address,
-// an unknown file, or a DNS failure means "no match", never an error.
-//
-// It is a pure matcher — a match does not by itself change how the request is
-// handled. The appsec challenge flow pairs it with ExemptFromChallenge().
-//
+// (UA && PATH) && (IP || RANGE || RDNS).
 // The expensive FCrDNS resolution runs at most once per call — after the cheap
 // checks across all named files, against every candidate entry at once — and is
 // cached per IP.
