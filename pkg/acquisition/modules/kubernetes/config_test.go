@@ -72,6 +72,14 @@ func TestValidate(t *testing.T) {
 			expectedErr: "selector must be set",
 		},
 		{
+			name: "invalid selector",
+			cfg: Configuration{
+				DataSourceCommonCfg: configuration.DataSourceCommonCfg{Mode: configuration.TAIL_MODE},
+				Selector:            "app in (",
+			},
+			expectedErr: "invalid selector",
+		},
+		{
 			name: "unsupported mode",
 			cfg: Configuration{
 				DataSourceCommonCfg: configuration.DataSourceCommonCfg{Mode: configuration.CAT_MODE},

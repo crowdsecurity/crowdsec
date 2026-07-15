@@ -9,6 +9,7 @@ import (
 
 	yaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -57,6 +58,9 @@ func (c *Configuration) SetDefaults() {
 func (c *Configuration) Validate() error {
 	if c.Selector == "" {
 		return errors.New("selector must be set in kubernetes acquisition")
+	}
+	if _, err := labels.Parse(c.Selector); err != nil {
+		return fmt.Errorf("invalid selector %q in kubernetes acquisition: %w", c.Selector, err)
 	}
 	if c.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %q in kubernetes acquisition, only %q is supported", c.Mode, configuration.TAIL_MODE)
