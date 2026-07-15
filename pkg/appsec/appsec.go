@@ -455,7 +455,7 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 // so challenge configs no longer gate the challenge on an explicit bot check.
 // The counter is bumped only on the first exemption so multiple matching
 // configs don't inflate the count.
-func (w *AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+func (*AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, request *ParsedRequest, reason string) error {
 	if state.ChallengeExempt {
 		return nil
 	}
