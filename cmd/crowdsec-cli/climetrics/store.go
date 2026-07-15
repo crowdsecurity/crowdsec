@@ -260,6 +260,9 @@ func (ms metricStore) processAppsecChallengeMetric(name string, l metricLabels, 
 			mAppsecChallenge.Process(l.appsecEngine, "rejected_cookie", ival)
 			mAppsecChallenge.ProcessReason(l.appsecEngine, "cookie", l.reason, ival)
 		}
+	case metrics.AppsecChallengeExemptMetricName:
+		mAppsecChallenge.Process(l.appsecEngine, "exempt", ival)
+		mAppsecChallenge.ProcessReason(l.appsecEngine, "exempt", l.reason, ival)
 	//
 	// bot detection / challenge infrastructure (process-global, no engine label)
 	//
