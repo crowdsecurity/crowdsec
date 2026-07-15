@@ -144,8 +144,7 @@ func (s *statAppsecChallenge) renderAccepted(out io.Writer, wantColor string, no
 }
 
 // renderExempted renders the per-engine breakdown of ExemptFromChallenge
-// reasons (a bot kind like "gptbot" or a path class like "api"). One reason
-// per row, footer carries a grand total across engines and reasons.
+// reasons.
 func (s *statAppsecChallenge) renderExempted(out io.Writer, wantColor string, noUnit bool) {
 	engines := make([]string, 0, len(s.Reasons))
 	for e, byKind := range s.Reasons {
