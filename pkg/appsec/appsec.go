@@ -462,6 +462,10 @@ func (w *AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, req
 
 	state.ChallengeExempt = true
 
+	if reason == "" {
+		reason = "unspecified"
+	}
+
 	// Challenge handling is an in-band concern; don't emit during the
 	// out-of-band phase (mirrors emitChallengeEvent).
 	if request.IsInBand {
