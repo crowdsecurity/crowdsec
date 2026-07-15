@@ -133,6 +133,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "MatchKnownBot",
+		function: MatchKnownBotExpr,
+		signature: []any{
+			new(func(string, string, string, ...string) bool),
+		},
+	},
+	{
 		name:     "Upper",
 		function: Upper,
 		signature: []any{

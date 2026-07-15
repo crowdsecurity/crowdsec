@@ -127,6 +127,19 @@ var AppsecChallengeRejected = prometheus.NewCounterVec(
 	[]string{"source", "appsec_engine", "kind", "reason"},
 )
 
+const AppsecChallengeExemptMetricName = "cs_appsec_challenge_exempt_total"
+
+// AppsecChallengeExempt counts requests flagged exempt from the challenge by
+// the ExemptFromChallenge helper, split by the mandatory reason (a bot kind
+// like "gptbot" or a path class like "api"). Counted once per request.
+var AppsecChallengeExempt = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeExemptMetricName,
+		Help: "Total requests exempt from the challenge, by reason (bot kind or path class).",
+	},
+	[]string{"source", "appsec_engine", "reason"},
+)
+
 const AppsecValidationOKCounterMetricName = "cs_appsec_validation_ok_total"
 
 // AppsecValidationOKCounter counts successful OpenAPI schema validations.
