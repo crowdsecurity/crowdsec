@@ -27,26 +27,14 @@ func listHubItemTable(out io.Writer, wantColor string, title string, items []*cw
 
 // collectionSummary returns a short count of a collection's contents, eg. "2 parser(s) / 3 scenario(s)".
 func collectionSummary(item *cwhub.Item) string {
-	// mirror of cwhub.Dependencies.byType(), which is not exported
-	groups := []struct {
-		typeName string
-		names    []string
-	}{
-		{cwhub.PARSERS, item.Parsers},
-		{cwhub.POSTOVERFLOWS, item.PostOverflows},
-		{cwhub.SCENARIOS, item.Scenarios},
-		{cwhub.CONTEXTS, item.Contexts},
-		{cwhub.APPSEC_CONFIGS, item.AppsecConfigs},
-		{cwhub.APPSEC_RULES, item.AppsecRules},
-		{cwhub.COLLECTIONS, item.Collections},
-	}
+	groups := item.ByType()
 
 	parts := make([]string, 0, len(groups))
 
 	for _, g := range groups {
-		if len(g.names) > 0 {
-			label := strings.TrimSuffix(g.typeName, "s") + "(s)"
-			parts = append(parts, fmt.Sprintf("%d %s", len(g.names), label))
+		if len(g.Names) > 0 {
+			label := strings.TrimSuffix(g.Type, "s") + "(s)"
+			parts = append(parts, fmt.Sprintf("%d %s", len(g.Names), label))
 		}
 	}
 
