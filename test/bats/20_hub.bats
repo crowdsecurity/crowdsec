@@ -73,6 +73,21 @@ teardown() {
     refute_output --partial 'crowdsecurity/iptables'
 }
 
+@test "taint does not propagate to non-installed parent collections" {
+    hub_purge_all
+    # sshd-logs is a dependency of several collections we do NOT install (linux, freebsd, ...)
+    rune -0 cscli parsers install crowdsecurity/sshd-logs
+    rune -0 truncate -s0 "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
+
+    # the installed parser is tainted
+    rune -0 cscli parsers inspect crowdsecurity/sshd-logs -o json --no-metrics
+    rune -0 jq -e '.tainted == true' <(output)
+
+    # a collection that merely lists it, but is not installed, must not be marked tainted
+    rune -0 cscli collections inspect crowdsecurity/linux -o json --no-metrics
+    rune -0 jq -e '(.installed == false) and (.tainted == false)' <(output)
+}
+
 @test "cscli hub list (sub-collections are nested under their parent)" {
     hub_purge_all
     rune -0 cscli collections install crowdsecurity/nginx

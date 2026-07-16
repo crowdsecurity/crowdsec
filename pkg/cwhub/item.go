@@ -410,7 +410,12 @@ func (i *Item) FQName() string {
 
 // addTaint marks the item as tainted, and propagates the taint to the ancestors.
 // sub: the sub-item that caused the taint. May be the item itself!
+// Taint only applies to installed items.
 func (i *Item) addTaint(sub *Item) {
+	if !i.State.IsInstalled() {
+		return
+	}
+
 	i.State.Tainted = true
 	taintedBy := sub.FQName()
 
