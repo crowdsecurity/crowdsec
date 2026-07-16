@@ -54,6 +54,101 @@ func SelectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return wantedItems, nil
 }
 
+// validItemStatuses are the accepted values for the --status filter of hub list/search.
+var validItemStatuses = []string{"installed", cwhub.StatusNotInstalled, cwhub.StatusUpToDate, cwhub.StatusOutdated, cwhub.StatusTainted, cwhub.StatusLocal}
+
+// validateStatuses returns an error if a token is not a recognized status filter.
+func validateStatuses(statuses []string) error {
+	for _, s := range statuses {
+		if !slices.Contains(validItemStatuses, s) {
+			return fmt.Errorf("invalid status %q (valid values: %s)", s, strings.Join(validItemStatuses, ", "))
+		}
+	}
+
+	return nil
+}
+
+// itemMatchesStatus reports whether an item's local state matches any of the given status tokens.
+// An empty list matches everything. All tokens except "installed" map to a cwhub.Status* word.
+func itemMatchesStatus(item *cwhub.Item, statuses []string) bool {
+	if len(statuses) == 0 {
+		return true
+	}
+
+	for _, s := range statuses {
+		if s == "installed" {
+			if item.State.IsInstalled() {
+				return true
+			}
+
+			continue
+		}
+
+		if item.State.Status() == s {
+			return true
+		}
+	}
+
+	return false
+}
+
+// filterItemsByStatus returns the items whose state matches any of the given status tokens.
+func filterItemsByStatus(items []*cwhub.Item, statuses []string) []*cwhub.Item {
+	if len(statuses) == 0 {
+		return items
+	}
+
+	ret := make([]*cwhub.Item, 0, len(items))
+
+	for _, item := range items {
+		if itemMatchesStatus(item, statuses) {
+			ret = append(ret, item)
+		}
+	}
+
+	return ret
+}
+
+// belongsToInstalledCollection reports whether the item is pulled in by at least one installed
+// collection (as opposed to being installed on its own).
+func belongsToInstalledCollection(item *cwhub.Item) bool {
+	return len(item.InstalledParents()) > 0
+}
+
+// installedRootCollections returns installed collections that are not contained in any other
+// installed collection. They are the roots of the "cscli hub list" tree.
+func installedRootCollections(hub *cwhub.Hub) []*cwhub.Item {
+	ret := make([]*cwhub.Item, 0)
+
+	for _, item := range hub.GetInstalledByType(cwhub.COLLECTIONS, true) {
+		if !belongsToInstalledCollection(item) {
+			ret = append(ret, item)
+		}
+	}
+
+	return ret
+}
+
+// installedStandalone returns installed non-collection items that are not part of any installed
+// collection (eg. directly-installed or local items), sorted by type then name.
+func installedStandalone(hub *cwhub.Hub) []*cwhub.Item {
+	ret := make([]*cwhub.Item, 0)
+
+	for _, itemType := range cwhub.ItemTypes {
+		if itemType == cwhub.COLLECTIONS {
+			continue
+		}
+
+		for _, item := range hub.GetInstalledByType(itemType, true) {
+			if !belongsToInstalledCollection(item) {
+				ret = append(ret, item)
+			}
+		}
+	}
+
+	return ret
+}
+
 func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":

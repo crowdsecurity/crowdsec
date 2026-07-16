@@ -264,6 +264,21 @@ func (i *Item) Ancestors() []*Item {
 	return ret
 }
 
+// InstalledParents returns the installed collections that have this item as a direct or indirect
+// dependency. BelongsToCollections is populated for every collection in the index (installed or
+// not), so callers that care about the actual local state should use this instead of Ancestors.
+func (i *Item) InstalledParents() []*Item {
+	ret := make([]*Item, 0)
+
+	for _, parent := range i.Ancestors() {
+		if parent.State.IsInstalled() {
+			ret = append(ret, parent)
+		}
+	}
+
+	return ret
+}
+
 // SafeToRemoveDeps returns a slice of dependencies that can be safely removed when this item is removed.
 // The returned slice can contain items that are not installed, or not downloaded.
 func (i *Item) SafeToRemoveDeps() ([]*Item, error) {

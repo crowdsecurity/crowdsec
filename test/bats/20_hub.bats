@@ -44,33 +44,107 @@ teardown() {
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
-    # some items: with output=human, show only non-empty tables
-    rune -0 cscli parsers install crowdsecurity/whitelists
-    rune -0 cscli scenarios install crowdsecurity/telnet-bf
+    # default view is collection-centric: an installed collection shows a content summary,
+    # and its (clean) sub-items are not listed individually
+    rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli hub list
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*SCENARIOS.*crowdsecurity/telnet-bf.*"
-    refute_output --partial 'POSTOVERFLOWS'
-    refute_output --partial 'COLLECTIONS'
+    assert_output --regexp "collections.*crowdsecurity/sshd.*parser\(s\)"
+    refute_output --partial 'crowdsecurity/ssh-bf'
 
-    rune -0 cscli hub list -o json
-    rune -0 jq -e '(.parsers | length == 1) and (.scenarios | length == 1)' <(output)
-    rune -0 cscli hub list -o raw
+    # an item that belongs to no installed collection shows in the standalone group
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    rune -0 cscli hub list
+    assert_output --partial 'crowdsecurity/sshd'
     assert_output --partial 'crowdsecurity/whitelists'
-    assert_output --partial 'crowdsecurity/telnet-bf'
-    refute_output --partial 'crowdsecurity/iptables'
 
-    # all items
-    mkdir -p "$CONFIG_DIR/contexts"
-    # there are no contexts yet, so we create a local one
-    touch "$CONFIG_DIR/contexts/mycontext.yaml"
+    # -a is a flat list of every item type, including those not installed
     rune -0 cscli hub list -a
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*CONTEXTS.*mycontext.yaml.*COLLECTIONS.*crowdsecurity/iptables.*"
-    rune -0 cscli hub list -a -o json
-    rune -0 jq -e '(.parsers | length > 1) and (.scenarios | length > 1)' <(output)
-    rune -0 cscli hub list -a -o raw
+    assert_output --partial 'crowdsecurity/sshd'
     assert_output --partial 'crowdsecurity/whitelists'
-    assert_output --partial 'crowdsecurity/telnet-bf'
+    assert_output --partial 'crowdsecurity/ssh-bf'
     assert_output --partial 'crowdsecurity/iptables'
+
+    # json/raw keep the full installed per-type structure for scripts
+    rune -0 cscli hub list -o json
+    rune -0 jq -e '(.collections | length == 1) and (.parsers | length >= 1)' <(output)
+    rune -0 cscli hub list -o raw
+    assert_output --partial 'crowdsecurity/sshd'
+    assert_output --partial 'crowdsecurity/whitelists'
+    refute_output --partial 'crowdsecurity/iptables'
+}
+
+@test "cscli hub list (sub-collections are nested under their parent)" {
+    hub_purge_all
+    rune -0 cscli collections install crowdsecurity/nginx
+
+    rune -0 cscli hub list
+    # nginx is a root collection; base-http-scenarios is one of its dependencies
+    assert_output --regexp "collections.*crowdsecurity/nginx"
+    # the sub-collection is shown indented beneath it, not as its own root row
+    assert_output --regexp "└─.*crowdsecurity/base-http-scenarios"
+}
+
+@test "cscli hub list (tainted collection shows tainted sub-items as a tree)" {
+    hub_purge_all
+    rune -0 cscli collections install crowdsecurity/sshd
+
+    # taint one scenario that belongs to the collection
+    rune -0 truncate -s0 "$CONFIG_DIR/scenarios/ssh-bf.yaml"
+
+    rune -0 cscli hub list --status tainted
+    # the collection is reported tainted...
+    assert_output --regexp "collections.*crowdsecurity/sshd.*tainted"
+    # ...with the tainted sub-item indented beneath it
+    assert_output --regexp "crowdsecurity/ssh-bf.*edited locally"
+    # a clean sibling is not listed as its own row
+    refute_output --partial 'crowdsecurity/ssh-slow-bf'
+}
+
+@test "cscli hub list --status" {
+    hub_purge_all
+    rune -0 cscli parsers install crowdsecurity/whitelists
+
+    rune -0 cscli hub list --status up-to-date
+    assert_output --partial 'crowdsecurity/whitelists'
+
+    # a freshly installed item is not outdated
+    rune -0 cscli hub list --status outdated
+    assert_output 'No items to display'
+
+    # not-installed candidates only show up with -a
+    rune -0 cscli hub list -a --status not-installed
+    assert_output --partial 'crowdsecurity/iptables'
+    refute_output --partial 'crowdsecurity/whitelists'
+
+    rune -1 cscli hub list --status bogus
+    assert_stderr --partial 'invalid status "bogus"'
+}
+
+@test "cscli hub search" {
+    hub_purge_all
+
+    # search the local index by name, no install required
+    rune -0 cscli hub search sshd
+    assert_output --partial 'crowdsecurity/sshd'
+
+    # multiple terms are ANDed together
+    rune -0 cscli hub search http cve
+    assert_output --partial 'http-cve'
+
+    # no match: friendly message, exit 0
+    rune -0 cscli hub search zzzznotanitem
+    assert_output 'No matching items'
+
+    # json output keeps the per-type structure
+    rune -0 cscli hub search sshd -o json
+    rune -0 jq -e '[.[][].name] | any(. == "crowdsecurity/sshd")' <(output)
+
+    # status filter applies to search results
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli hub search sshd --status installed
+    assert_output --partial 'crowdsecurity/sshd'
+    rune -0 cscli hub search sshd --status tainted
+    assert_output 'No matching items'
 }
 
 @test "cscli hub list (invalid index)" {
