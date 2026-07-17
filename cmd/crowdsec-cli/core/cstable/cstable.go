@@ -24,6 +24,13 @@ func shouldWeColorize(wantColor string) bool {
 	}
 }
 
+// ShouldColorize reports whether output should be colorized for the given --color value
+// ("yes"/"no"/"auto"). Callers that colorize cells themselves should gate on this so they
+// match the table's own styling decision (and respect TTY detection / NO_COLOR).
+func ShouldColorize(wantColor string) bool {
+	return shouldWeColorize(wantColor)
+}
+
 type Table struct {
 	Writer      table.Writer
 	output      io.Writer

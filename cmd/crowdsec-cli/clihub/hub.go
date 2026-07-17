@@ -60,7 +60,7 @@ cscli hub upgrade`,
 	return cmd
 }
 
-func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, statuses []string) error {
+func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, statuses []string) error {
 	cfg := cli.cfg()
 
 	for _, v := range hub.Warnings {
@@ -111,7 +111,7 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, statuses []stri
 	roots := installedRootCollections(hub)
 	standalone := filterItemsByStatus(installedStandalone(hub), statuses)
 
-	listHubOverviewTable(out, hub, cfg.Cscli.Color, roots, standalone, statuses)
+	listHubOverviewTable(out, hub, cfg.Cscli.Color, roots, standalone, statuses, full)
 
 	return nil
 }
@@ -145,6 +145,7 @@ func (cli *cliHub) newBranchCmd() *cobra.Command {
 func (cli *cliHub) newListCmd() *cobra.Command {
 	var (
 		all      bool
+		full     bool
 		statuses []string
 	)
 
@@ -152,7 +153,8 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 		Use:   "list [-a]",
 		Short: "List relevant installed items",
 		Long: `List installed relevant items (collections, standalone items) and shows their status.
-Use --all to list all items, including those not installed.`,
+Use --all to list all items, including those not installed.
+Use --full to expand every installed item in the tree, not just collections.`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -165,13 +167,15 @@ Use --all to list all items, including those not installed.`,
 				return err
 			}
 
-			return cli.List(color.Output, hub, all, statuses)
+			return cli.List(color.Output, hub, all, full, statuses)
 		},
 	}
 
 	flags := cmd.Flags()
 	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
+	flags.BoolVar(&full, "full", false, "Show every installed item in the tree, not just collections")
 	flags.StringSliceVar(&statuses, "status", nil, "Filter by status ("+strings.Join(validItemStatuses, ", ")+")")
+	cmd.MarkFlagsMutuallyExclusive("all", "full")
 
 	_ = cmd.RegisterFlagCompletionFunc("status", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return validItemStatuses, cobra.ShellCompDirectiveNoFileComp

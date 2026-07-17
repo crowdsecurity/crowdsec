@@ -99,6 +99,23 @@ teardown() {
     assert_output --regexp "└─.*crowdsecurity/base-http-scenarios"
 }
 
+@test "cscli hub list --full expands every installed leaf into the tree" {
+    hub_purge_all
+    rune -0 cscli collections install crowdsecurity/sshd
+
+    # default view summarizes clean leaves: ssh-bf is not shown as its own row
+    rune -0 cscli hub list
+    refute_output --partial 'crowdsecurity/ssh-bf'
+
+    # --full shows every installed leaf, indented under its collection
+    rune -0 cscli hub list --full
+    assert_output --regexp "└─.*crowdsecurity/ssh-bf"
+
+    # --full and -a are mutually exclusive
+    rune -1 cscli hub list -a --full
+    assert_stderr --partial 'none of the others can be'
+}
+
 @test "cscli hub list (tainted collection shows tainted sub-items as a tree)" {
     hub_purge_all
     rune -0 cscli collections install crowdsecurity/sshd

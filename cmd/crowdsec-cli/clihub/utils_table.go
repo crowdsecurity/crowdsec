@@ -6,11 +6,39 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
+
+// dimColor is the faint style used for secondary info (tree markers, type, details).
+var dimColor = text.Colors{text.FgHiBlack}
+
+// 256-color codes for shades not in the basic 16-color ANSI set.
+const (
+	color256Limeade = 154 // yellow-green
+	color256Orange  = 208
+)
+
+// statusColor maps a status word to its palette, tracking the status emoji.
+func statusColor(status string) text.Colors {
+	switch status {
+	case cwhub.StatusUpToDate:
+		return text.Colors{text.FgGreen}
+	case cwhub.StatusOutdated:
+		return text.Colors{text.Fg256Color(color256Limeade)}
+	case cwhub.StatusTainted:
+		return text.Colors{text.Fg256Color(color256Orange), text.Bold}
+	case cwhub.StatusLocal:
+		return text.Colors{text.FgCyan}
+	case cwhub.StatusNotInstalled:
+		return text.Colors{text.FgHiBlack}
+	default:
+		return nil
+	}
+}
 
 func listHubItemTable(out io.Writer, wantColor string, title string, items []*cwhub.Item) {
 	t := cstable.NewLight(out, wantColor).Writer
@@ -78,9 +106,32 @@ func hubTableHeader(showDesc bool) table.Row {
 	return header
 }
 
-func appendItemRow(t table.Writer, item *cwhub.Item, namePrefix string, showDesc bool) {
-	status := fmt.Sprintf("%v  %s", item.State.Emoji(), item.State.Status())
-	row := table.Row{item.Type, namePrefix + item.Name, status, item.State.LocalVersion, itemDetails(item)}
+func appendItemRow(t table.Writer, item *cwhub.Item, namePrefix string, showDesc, colorize bool) {
+	statusWord := item.State.Status()
+	name := item.Name
+	itemType := item.Type
+	prefix := namePrefix
+	details := itemDetails(item)
+
+	if colorize {
+		statusWord = statusColor(statusWord).Sprint(statusWord)
+		if item.Type == cwhub.COLLECTIONS {
+			name = text.Bold.Sprint(name)
+		}
+
+		if prefix != "" {
+			prefix = dimColor.Sprint(prefix)
+		}
+
+		itemType = dimColor.Sprint(itemType)
+
+		if details != "" {
+			details = dimColor.Sprint(details)
+		}
+	}
+
+	status := fmt.Sprintf("%v  %s", item.State.Emoji(), statusWord)
+	row := table.Row{itemType, prefix + name, status, item.State.LocalVersion, details}
 
 	if showDesc {
 		row = append(row, strings.TrimSpace(item.Description))
@@ -91,8 +142,8 @@ func appendItemRow(t table.Writer, item *cwhub.Item, namePrefix string, showDesc
 
 // appendItemTree appends an item row and, for a tainted collection, its tainted sub-items
 // (from State.TaintedBy) as indented child rows.
-func appendItemTree(t table.Writer, hub *cwhub.Hub, item *cwhub.Item, showDesc bool) {
-	appendItemRow(t, item, "", showDesc)
+func appendItemTree(t table.Writer, hub *cwhub.Hub, item *cwhub.Item, showDesc, colorize bool) {
+	appendItemRow(t, item, "", showDesc, colorize)
 
 	if item.Type != cwhub.COLLECTIONS || item.State.Status() != cwhub.StatusTainted {
 		return
@@ -108,7 +159,7 @@ func appendItemTree(t table.Writer, hub *cwhub.Hub, item *cwhub.Item, showDesc b
 			continue
 		}
 
-		appendItemRow(t, sub, "  └─ ", showDesc)
+		appendItemRow(t, sub, "  └─ ", showDesc, colorize)
 	}
 }
 
@@ -133,6 +184,8 @@ func taintChildFQNames(items []*cwhub.Item) map[string]bool {
 // listHubItemCompactTable renders a single flat table across all item types.
 // A tainted collection expands its culprit sub-items as indented child rows.
 func listHubItemCompactTable(out io.Writer, hub *cwhub.Hub, wantColor string, items []*cwhub.Item, showDesc bool) {
+	colorize := cstable.ShouldColorize(wantColor)
+
 	t := cstable.NewLight(out, wantColor).Writer
 	t.AppendHeader(hubTableHeader(showDesc))
 
@@ -143,7 +196,7 @@ func listHubItemCompactTable(out io.Writer, hub *cwhub.Hub, wantColor string, it
 			continue
 		}
 
-		appendItemTree(t, hub, item, showDesc)
+		appendItemTree(t, hub, item, showDesc, colorize)
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -163,9 +216,9 @@ type overviewRow struct {
 }
 
 // collectionRows returns the rows for a collection subtree: the collection itself, its installed
-// sub-collections (recursively), and its tainted direct sub-items. Non-tainted leaf sub-items are
-// only counted in the Details column.
-func collectionRows(hub *cwhub.Hub, item *cwhub.Item, depth int, statuses []string, seen map[string]bool) []overviewRow {
+// sub-collections (recursively), and its direct leaf sub-items. By default only tainted leaves get
+// a row (others are counted in the Details column); with full, every installed leaf is shown.
+func collectionRows(hub *cwhub.Hub, item *cwhub.Item, depth int, statuses []string, seen map[string]bool, full bool) []overviewRow {
 	if seen[item.FQName()] {
 		return nil
 	}
@@ -180,11 +233,17 @@ func collectionRows(hub *cwhub.Hub, item *cwhub.Item, depth int, statuses []stri
 		}
 
 		if sub.Type == cwhub.COLLECTIONS {
-			children = append(children, collectionRows(hub, sub, depth+1, statuses, seen)...)
+			children = append(children, collectionRows(hub, sub, depth+1, statuses, seen, full)...)
 			continue
 		}
 
-		if sub.State.Status() == cwhub.StatusTainted && itemMatchesStatus(sub, statuses) {
+		// a leaf shared by several installed collections is shown once, under the first
+		if seen[sub.FQName()] {
+			continue
+		}
+
+		if (full || sub.State.Status() == cwhub.StatusTainted) && itemMatchesStatus(sub, statuses) {
+			seen[sub.FQName()] = true
 			children = append(children, overviewRow{sub, depth + 1})
 		}
 	}
@@ -196,13 +255,14 @@ func collectionRows(hub *cwhub.Hub, item *cwhub.Item, depth int, statuses []stri
 	return append([]overviewRow{{item, depth}}, children...)
 }
 
-// listHubOverviewTable renders the default "cscli hub list" view: a tree of relevant installed items
-func listHubOverviewTable(out io.Writer, hub *cwhub.Hub, wantColor string, roots, standalone []*cwhub.Item, statuses []string) {
+// listHubOverviewTable renders the default "cscli hub list" view: a tree of relevant installed items.
+// With full, every installed leaf sub-item is shown instead of only the tainted ones.
+func listHubOverviewTable(out io.Writer, hub *cwhub.Hub, wantColor string, roots, standalone []*cwhub.Item, statuses []string, full bool) {
 	seen := make(map[string]bool)
 
 	var rows []overviewRow
 	for _, root := range roots {
-		rows = append(rows, collectionRows(hub, root, 0, statuses, seen)...)
+		rows = append(rows, collectionRows(hub, root, 0, statuses, seen, full)...)
 	}
 
 	if len(rows) == 0 && len(standalone) == 0 {
@@ -210,11 +270,13 @@ func listHubOverviewTable(out io.Writer, hub *cwhub.Hub, wantColor string, roots
 		return
 	}
 
+	colorize := cstable.ShouldColorize(wantColor)
+
 	t := cstable.NewLight(out, wantColor).Writer
 	t.AppendHeader(hubTableHeader(false))
 
 	for _, row := range rows {
-		appendItemRow(t, row.item, treePrefix(row.depth), false)
+		appendItemRow(t, row.item, treePrefix(row.depth), false, colorize)
 	}
 
 	if len(rows) > 0 && len(standalone) > 0 {
@@ -222,7 +284,7 @@ func listHubOverviewTable(out io.Writer, hub *cwhub.Hub, wantColor string, roots
 	}
 
 	for _, item := range standalone {
-		appendItemRow(t, item, "", false)
+		appendItemRow(t, item, "", false, colorize)
 	}
 
 	fmt.Fprintln(out, t.Render())
