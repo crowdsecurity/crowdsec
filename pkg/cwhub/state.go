@@ -55,9 +55,7 @@ func (s *ItemState) Text() string {
 	return ret
 }
 
-// Status returns the item's state as a single mutually-exclusive word (see the Status* constants).
-// Taint is only reported for installed items: it propagates to ancestor collections even when they
-// are not installed themselves.
+// Status returns the item's state as a single mutually-exclusive word
 func (s *ItemState) Status() string {
 	switch {
 	case !s.IsInstalled():

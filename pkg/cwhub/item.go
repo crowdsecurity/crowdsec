@@ -267,8 +267,7 @@ func (i *Item) Ancestors() []*Item {
 }
 
 // InstalledParents returns the installed collections that have this item as a direct or indirect
-// dependency. BelongsToCollections is populated for every collection in the index (installed or
-// not), so callers that care about the actual local state should use this instead of Ancestors.
+// dependency.
 func (i *Item) InstalledParents() []*Item {
 	ret := make([]*Item, 0)
 
