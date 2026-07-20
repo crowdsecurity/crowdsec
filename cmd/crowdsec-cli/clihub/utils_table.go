@@ -165,7 +165,8 @@ func treeRows(node *cwhub.ItemNode, depth int, statuses []string, full bool) []o
 			continue
 		}
 
-		if (full || child.Item.State.Status() == cwhub.StatusTainted) && itemMatchesStatus(child.Item, statuses) {
+		leafMatches := itemMatchesStatus(child.Item, statuses)
+		if leafMatches && (full || len(statuses) > 0 || child.Item.State.Status() == cwhub.StatusTainted) {
 			children = append(children, overviewRow{child.Item, depth + 1})
 		}
 	}
