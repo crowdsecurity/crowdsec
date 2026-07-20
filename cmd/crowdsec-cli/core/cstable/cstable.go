@@ -13,7 +13,8 @@ import (
 	isatty "github.com/mattn/go-isatty"
 )
 
-func shouldWeColorize(wantColor string) bool {
+// ShouldColorize reports whether output should be colorized for the given --color value.
+func ShouldColorize(wantColor string) bool {
 	switch wantColor {
 	case "yes":
 		return true
@@ -22,13 +23,6 @@ func shouldWeColorize(wantColor string) bool {
 	default:
 		return isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
 	}
-}
-
-// ShouldColorize reports whether output should be colorized for the given --color value
-// ("yes"/"no"/"auto"). Callers that colorize cells themselves should gate on this so they
-// match the table's own styling decision (and respect TTY detection / NO_COLOR).
-func ShouldColorize(wantColor string) bool {
-	return shouldWeColorize(wantColor)
 }
 
 type Table struct {
@@ -46,7 +40,7 @@ func New(out io.Writer, wantColor string) *Table {
 	t := table.NewWriter()
 
 	// colorize output, use unicode box characters
-	fancy := shouldWeColorize(wantColor)
+	fancy := ShouldColorize(wantColor)
 
 	colorOptions := table.ColorOptions{}
 
