@@ -109,46 +109,6 @@ func filterItemsByStatus(items []*cwhub.Item, statuses []string) []*cwhub.Item {
 	return ret
 }
 
-// belongsToInstalledCollection reports whether the item is pulled in by at least one installed
-// collection (as opposed to being installed on its own).
-func belongsToInstalledCollection(item *cwhub.Item) bool {
-	return len(item.InstalledParents()) > 0
-}
-
-// installedRootCollections returns installed collections that are not contained in any other
-// installed collection. They are the roots of the "cscli hub list" tree.
-func installedRootCollections(hub *cwhub.Hub) []*cwhub.Item {
-	ret := make([]*cwhub.Item, 0)
-
-	for _, item := range hub.GetInstalledByType(cwhub.COLLECTIONS, true) {
-		if !belongsToInstalledCollection(item) {
-			ret = append(ret, item)
-		}
-	}
-
-	return ret
-}
-
-// installedStandalone returns installed non-collection items that are not part of any installed
-// collection (eg. directly-installed or local items), sorted by type then name.
-func installedStandalone(hub *cwhub.Hub) []*cwhub.Item {
-	ret := make([]*cwhub.Item, 0)
-
-	for _, itemType := range cwhub.ItemTypes {
-		if itemType == cwhub.COLLECTIONS {
-			continue
-		}
-
-		for _, item := range hub.GetInstalledByType(itemType, true) {
-			if !belongsToInstalledCollection(item) {
-				ret = append(ret, item)
-			}
-		}
-	}
-
-	return ret
-}
-
 func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":

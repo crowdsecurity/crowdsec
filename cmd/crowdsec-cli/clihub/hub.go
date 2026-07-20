@@ -101,17 +101,24 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, stat
 			return nil
 		}
 
-		listHubItemCompactTable(out, hub, cfg.Cscli.Color, merged, false)
+		renderItemTable(out, cfg.Cscli.Color, flatRows(merged), false)
 
 		return nil
 	}
 
-	// default: a tree of installed collections (sub-collections nested) + a group of
-	// standalone installed items. Status pruning happens inside the tree walk.
-	roots := installedRootCollections(hub)
-	standalone := filterItemsByStatus(installedStandalone(hub), statuses)
+	// default: a tree of installed items (sub-collections nested), then standalone items.
+	// cwhub owns the tree; status/full pruning happens in the flatten walk.
+	var rows []overviewRow
+	for _, node := range hub.InstalledItems() {
+		rows = append(rows, treeRows(node, 0, statuses, full)...)
+	}
 
-	listHubOverviewTable(out, hub, cfg.Cscli.Color, roots, standalone, statuses, full)
+	if len(rows) == 0 {
+		fmt.Fprintln(out, "No items to display")
+		return nil
+	}
+
+	renderItemTable(out, cfg.Cscli.Color, rows, false)
 
 	return nil
 }

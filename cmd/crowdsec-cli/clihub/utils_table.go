@@ -140,68 +140,6 @@ func appendItemRow(t table.Writer, item *cwhub.Item, namePrefix string, showDesc
 	t.AppendRow(row)
 }
 
-// appendItemTree appends an item row and, for a tainted collection, its tainted sub-items
-// (from State.TaintedBy) as indented child rows.
-func appendItemTree(t table.Writer, hub *cwhub.Hub, item *cwhub.Item, showDesc, colorize bool) {
-	appendItemRow(t, item, "", showDesc, colorize)
-
-	if item.Type != cwhub.COLLECTIONS || item.State.Status() != cwhub.StatusTainted {
-		return
-	}
-
-	for _, fq := range item.State.TaintedBy {
-		if fq == item.FQName() {
-			continue
-		}
-
-		sub, err := hub.GetItemFQ(fq)
-		if err != nil || sub == nil {
-			continue
-		}
-
-		appendItemRow(t, sub, "  └─ ", showDesc, colorize)
-	}
-}
-
-// taintChildFQNames returns the set of sub-items that will be shown indented under a tainted
-// collection, so they are not also rendered as top-level rows.
-func taintChildFQNames(items []*cwhub.Item) map[string]bool {
-	asChild := make(map[string]bool)
-
-	for _, item := range items {
-		if item.Type == cwhub.COLLECTIONS && item.State.Status() == cwhub.StatusTainted {
-			for _, fq := range item.State.TaintedBy {
-				if fq != item.FQName() {
-					asChild[fq] = true
-				}
-			}
-		}
-	}
-
-	return asChild
-}
-
-// listHubItemCompactTable renders a single flat table across all item types.
-// A tainted collection expands its culprit sub-items as indented child rows.
-func listHubItemCompactTable(out io.Writer, hub *cwhub.Hub, wantColor string, items []*cwhub.Item, showDesc bool) {
-	colorize := cstable.ShouldColorize(wantColor)
-
-	t := cstable.NewLight(out, wantColor).Writer
-	t.AppendHeader(hubTableHeader(showDesc))
-
-	asChild := taintChildFQNames(items)
-
-	for _, item := range items {
-		if asChild[item.FQName()] {
-			continue
-		}
-
-		appendItemTree(t, hub, item, showDesc, colorize)
-	}
-
-	fmt.Fprintln(out, t.Render())
-}
-
 func treePrefix(depth int) string {
 	if depth == 0 {
 		return ""
@@ -215,76 +153,63 @@ type overviewRow struct {
 	depth int
 }
 
-// collectionRows returns the rows for a collection subtree: the collection itself, its installed
-// sub-collections (recursively), and its direct leaf sub-items. By default only tainted leaves get
-// a row (others are counted in the Details column); with full, every installed leaf is shown.
-func collectionRows(hub *cwhub.Hub, item *cwhub.Item, depth int, statuses []string, seen map[string]bool, full bool) []overviewRow {
-	if seen[item.FQName()] {
-		return nil
-	}
-
-	seen[item.FQName()] = true
-
+// treeRows flattens an installed-item node into display rows, applying view policy: a collection
+// always shows; a leaf shows only when full or tainted, and must match the status filter; a
+// collection with no shown children and a non-matching status is omitted.
+func treeRows(node *cwhub.ItemNode, depth int, statuses []string, full bool) []overviewRow {
 	var children []overviewRow
 
-	for sub := range item.CurrentDependencies().SubItems(hub) {
-		if !sub.State.IsInstalled() {
+	for _, child := range node.Children {
+		if child.Item.Type == cwhub.COLLECTIONS {
+			children = append(children, treeRows(child, depth+1, statuses, full)...)
 			continue
 		}
 
-		if sub.Type == cwhub.COLLECTIONS {
-			children = append(children, collectionRows(hub, sub, depth+1, statuses, seen, full)...)
-			continue
-		}
-
-		// a leaf shared by several installed collections is shown once, under the first
-		if seen[sub.FQName()] {
-			continue
-		}
-
-		if (full || sub.State.Status() == cwhub.StatusTainted) && itemMatchesStatus(sub, statuses) {
-			seen[sub.FQName()] = true
-			children = append(children, overviewRow{sub, depth + 1})
+		if (full || child.Item.State.Status() == cwhub.StatusTainted) && itemMatchesStatus(child.Item, statuses) {
+			children = append(children, overviewRow{child.Item, depth + 1})
 		}
 	}
 
-	if len(children) == 0 && !itemMatchesStatus(item, statuses) {
+	if len(children) == 0 && !itemMatchesStatus(node.Item, statuses) {
 		return nil
 	}
 
-	return append([]overviewRow{{item, depth}}, children...)
+	return append([]overviewRow{{node.Item, depth}}, children...)
 }
 
-// listHubOverviewTable renders the default "cscli hub list" view: a tree of relevant installed items.
-// With full, every installed leaf sub-item is shown instead of only the tainted ones.
-func listHubOverviewTable(out io.Writer, hub *cwhub.Hub, wantColor string, roots, standalone []*cwhub.Item, statuses []string, full bool) {
-	seen := make(map[string]bool)
-
-	var rows []overviewRow
-	for _, root := range roots {
-		rows = append(rows, collectionRows(hub, root, 0, statuses, seen, full)...)
+// flatRows turns a flat list of items into depth-0 rows for the search / -a views.
+func flatRows(items []*cwhub.Item) []overviewRow {
+	rows := make([]overviewRow, 0, len(items))
+	for _, item := range items {
+		rows = append(rows, overviewRow{item, 0})
 	}
 
-	if len(rows) == 0 && len(standalone) == 0 {
-		fmt.Fprintln(out, "No items to display")
-		return
-	}
+	return rows
+}
 
+// renderItemTable is the single renderer for the tree (list) and flat (-a, search) views.
+// A separator is drawn once at the depth-0 collection→non-collection boundary, which only happens
+// in the default list view (collections first, then standalone items).
+func renderItemTable(out io.Writer, wantColor string, rows []overviewRow, showDesc bool) {
 	colorize := cstable.ShouldColorize(wantColor)
 
 	t := cstable.NewLight(out, wantColor).Writer
-	t.AppendHeader(hubTableHeader(false))
+	t.AppendHeader(hubTableHeader(showDesc))
+
+	afterCollectionRoot := false
 
 	for _, row := range rows {
-		appendItemRow(t, row.item, treePrefix(row.depth), false, colorize)
-	}
+		if row.depth == 0 && afterCollectionRoot && row.item.Type != cwhub.COLLECTIONS {
+			t.AppendSeparator()
 
-	if len(rows) > 0 && len(standalone) > 0 {
-		t.AppendSeparator()
-	}
+			afterCollectionRoot = false
+		}
 
-	for _, item := range standalone {
-		appendItemRow(t, item, "", false, colorize)
+		appendItemRow(t, row.item, treePrefix(row.depth), showDesc, colorize)
+
+		if row.depth == 0 && row.item.Type == cwhub.COLLECTIONS {
+			afterCollectionRoot = true
+		}
 	}
 
 	fmt.Fprintln(out, t.Render())

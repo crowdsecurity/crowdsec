@@ -43,7 +43,7 @@ func (cli *cliHub) search(out io.Writer, hub *cwhub.Hub, terms []string, statuse
 		items[itemType] = matched
 	}
 
-	// human output is a single compact table; json/raw keep the per-type structure for scripts
+	// human output is a single flat table; json/raw keep the per-type structure for scripts
 	if cfg.Cscli.Output == "human" {
 		merged := make([]*cwhub.Item, 0)
 		for _, itemType := range cwhub.ItemTypes {
@@ -55,7 +55,7 @@ func (cli *cliHub) search(out io.Writer, hub *cwhub.Hub, terms []string, statuse
 			return nil
 		}
 
-		listHubItemCompactTable(out, hub, cfg.Cscli.Color, merged, true)
+		renderItemTable(out, cfg.Cscli.Color, flatRows(merged), true)
 
 		return nil
 	}
