@@ -17,7 +17,7 @@ import (
 // fakeResolver implements dnscache.Resolver from in-memory maps so no test
 // ever hits real DNS. ptrCalls lets tests assert how many lookups ran.
 // (The cache/singleflight internals are tested in pkg/dnscache; here the
-// fake only backs the end-to-end IsLegitimateBot checks.)
+// fake only backs the end-to-end MatchKnownBot checks.)
 type fakeResolver struct {
 	ptr      map[string][]string     // ip → PTR names
 	fwd      map[string][]net.IPAddr // hostname → addresses
@@ -125,7 +125,7 @@ func TestBotFileUnknownType(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown data type")
 }
 
-func TestIsLegitimateBotNoDNS(t *testing.T) {
+func TestMatchKnownBotNoDNS(t *testing.T) {
 	resolver := &fakeResolver{}
 	setupBotTest(t, resolver)
 
@@ -159,7 +159,7 @@ func TestIsLegitimateBotNoDNS(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expected, IsLegitimateBot(tc.ip, tc.ua, tc.path))
+			assert.Equal(t, tc.expected, MatchKnownBot(tc.ip, tc.ua, tc.path, "test_data_bots.json"))
 		})
 	}
 
@@ -170,15 +170,16 @@ func TestIsLegitimateBotNoDNS(t *testing.T) {
 	assert.Equal(t, int32(0), resolver.ptrCalls.Load(), "no DNS lookup expected")
 }
 
-func TestIsLegitimateBotNoFiles(t *testing.T) {
+func TestMatchKnownBotNoFiles(t *testing.T) {
 	resolver := &fakeResolver{}
 	setupBotTest(t, resolver)
 
-	assert.False(t, IsLegitimateBot("10.1.2.3", "googlebot", "/"))
+	// nothing loaded, and an unknown filename must fail closed without DNS
+	assert.False(t, MatchKnownBot("10.1.2.3", "googlebot", "/", "test_data_bots.json"))
 	assert.Equal(t, int32(0), resolver.ptrCalls.Load())
 }
 
-func TestIsLegitimateBotFCrDNS(t *testing.T) {
+func TestMatchKnownBotFCrDNS(t *testing.T) {
 	tests := []struct {
 		name     string
 		resolver *fakeResolver
@@ -244,12 +245,12 @@ func TestIsLegitimateBotFCrDNS(t *testing.T) {
 			err := FileInit("testdata", "test_data_bots.json", "bots")
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.expected, IsLegitimateBot(tc.ip, tc.ua, "/"))
+			assert.Equal(t, tc.expected, MatchKnownBot(tc.ip, tc.ua, "/", "test_data_bots.json"))
 		})
 	}
 }
 
-func TestIsLegitimateBotDNSCache(t *testing.T) {
+func TestMatchKnownBotDNSCache(t *testing.T) {
 	resolver := &fakeResolver{
 		ptr: map[string][]string{"66.249.66.1": {"crawl-66-249-66-1.googlebot.com."}},
 		fwd: map[string][]net.IPAddr{"crawl-66-249-66-1.googlebot.com": {{IP: net.ParseIP("66.249.66.1")}}},
@@ -259,18 +260,18 @@ func TestIsLegitimateBotDNSCache(t *testing.T) {
 	err := FileInit("testdata", "test_data_bots.json", "bots")
 	require.NoError(t, err)
 
-	assert.True(t, IsLegitimateBot("66.249.66.1", "googlebot", "/"))
-	assert.True(t, IsLegitimateBot("66.249.66.1", "googlebot", "/other"))
+	assert.True(t, MatchKnownBot("66.249.66.1", "googlebot", "/", "test_data_bots.json"))
+	assert.True(t, MatchKnownBot("66.249.66.1", "googlebot", "/other", "test_data_bots.json"))
 	assert.Equal(t, int32(1), resolver.ptrCalls.Load(), "second call must be served from cache")
 
 	// negative results are cached too
-	assert.False(t, IsLegitimateBot("203.0.113.9", "googlebot", "/"))
-	assert.False(t, IsLegitimateBot("203.0.113.9", "googlebot", "/"))
+	assert.False(t, MatchKnownBot("203.0.113.9", "googlebot", "/", "test_data_bots.json"))
+	assert.False(t, MatchKnownBot("203.0.113.9", "googlebot", "/", "test_data_bots.json"))
 	assert.Equal(t, int32(2), resolver.ptrCalls.Load(), "failed lookup must be cached as negative")
 }
 
 // bot data files are loaded per-file via FileInit(dir, name, "bots"), driven
-// by the data reference on each appsec-rule (see LoadCollection).
+// by the data reference on each appsec-config (see LoadCollection / Build).
 func TestFileInitBots(t *testing.T) {
 	setupBotTest(t, nil)
 
@@ -290,8 +291,12 @@ func TestFileInitBots(t *testing.T) {
 	assert.Contains(t, dataFileBots, "google.json")
 	assert.Contains(t, dataFileBots, "partners.json")
 
-	// any-file semantics: an entry from the second file matches
-	assert.True(t, IsLegitimateBot("192.0.2.10", "", "/"))
+	// MatchKnownBot is scoped to the named files: the partner entry only
+	// matches when partners.json is queried.
+	assert.False(t, MatchKnownBot("192.0.2.10", "", "/", "google.json"))
+	assert.True(t, MatchKnownBot("192.0.2.10", "", "/", "partners.json"))
+	// multiple files in one call: match if any of them matches
+	assert.True(t, MatchKnownBot("192.0.2.10", "", "/", "google.json", "partners.json"))
 }
 
 func TestFileInitBotsInvalidFile(t *testing.T) {
