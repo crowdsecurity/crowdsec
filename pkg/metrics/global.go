@@ -83,6 +83,16 @@ var GlobalAlerts = prometheus.NewGaugeVec(
 	[]string{"reason"},
 )
 
+const GlobalMachinesHeartbeatMetricName = "cs_machines_heartbeat_seconds"
+
+var GlobalMachinesHeartbeat = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: GlobalMachinesHeartbeatMetricName,
+		Help: "Elapsed time in seconds since a machine's last heartbeat.",
+	},
+	[]string{"machine"},
+)
+
 const GlobalParsingHistogramMetricName = "cs_parsing_time_seconds"
 
 var GlobalParsingHistogram = prometheus.NewHistogramVec(
