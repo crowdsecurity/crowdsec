@@ -140,51 +140,34 @@ func parseBotAddr(s string) (netip.Addr, bool) {
 	return addr.WithZone("").Unmap(), true
 }
 
-// IsLegitimateBot reports whether the request (source address, User-Agent,
-// path) matches a bot definition from the loaded "bots" data files:
-// (UA && PATH) && (IP || RANGE || RDNS). Fail-closed: an unparseable
-// address or a DNS failure means "not a legitimate bot", never an error.
-//
-// The expensive FCrDNS resolution runs at most once per call — after the
-// cheap checks, against all candidate entries at once — and is cached per IP.
-func IsLegitimateBot(ip string, ua string, path string) bool {
-	if len(dataFileBots) == 0 {
+// MatchKnownBot reports whether the request (source address, User-Agent, path)
+// matches a bot definition in any of the named "bots" data files:
+// (UA && PATH) && (IP || RANGE || RDNS).
+// The expensive FCrDNS resolution runs at most once per call — after the cheap
+// checks across all named files, against every candidate entry at once — and is
+// cached per IP.
+func MatchKnownBot(ip string, ua string, path string, filenames ...string) bool {
+	if len(dataFileBots) == 0 || len(filenames) == 0 {
 		return false
 	}
 
 	addr, ok := parseBotAddr(ip)
 	if !ok {
-		log.Debugf("IsLegitimateBot: invalid source address '%s'", ip)
+		log.Debugf("MatchKnownBot: invalid source address '%s'", ip)
 		return false
 	}
 
 	var rdnsCandidates []*botEntry
 
-	for _, entries := range dataFileBots {
-		for _, entry := range entries {
-			if entry.uaRegex != nil && !entry.uaRegex.MatchString(ua) {
-				continue
-			}
+	for _, filename := range filenames {
+		entries, ok := dataFileBots[filename]
+		if !ok {
+			log.Debugf("MatchKnownBot: unknown bot data file '%s'", filename)
+			continue
+		}
 
-			if len(entry.pathRegexes) > 0 && !matchAnyRegex(entry.pathRegexes, path) {
-				continue
-			}
-
-			if _, found := entry.ipSet[addr]; found {
-				log.Debugf("IsLegitimateBot: %s verified as '%s' via exact IP", ip, entry.Name)
-				return true
-			}
-
-			for _, prefix := range entry.prefixes {
-				if prefix.Contains(addr) {
-					log.Debugf("IsLegitimateBot: %s verified as '%s' via range %s", ip, entry.Name, prefix)
-					return true
-				}
-			}
-
-			if len(entry.rdnsRegexes) > 0 {
-				rdnsCandidates = append(rdnsCandidates, entry)
-			}
+		if matchBotEntriesByAddr(addr, ua, path, entries, &rdnsCandidates) {
+			return true
 		}
 	}
 
@@ -195,9 +178,60 @@ func IsLegitimateBot(ip string, ua string, path string) bool {
 	for _, name := range dnscache.ForwardConfirmedNames(addr) {
 		for _, entry := range rdnsCandidates {
 			if matchAnyRegex(entry.rdnsRegexes, name) {
-				log.Debugf("IsLegitimateBot: %s verified as '%s' via FCrDNS (%s)", ip, entry.Name, name)
+				log.Debugf("MatchKnownBot: %s verified as '%s' via FCrDNS (%s)", addr, entry.Name, name)
 				return true
 			}
+		}
+	}
+
+	return false
+}
+
+// MatchKnownBotExpr is the expr-registry entrypoint for MatchKnownBot.
+// Signature: MatchKnownBot(ip, ua, path string, files ...string) bool.
+func MatchKnownBotExpr(params ...any) (any, error) {
+	ip, _ := params[0].(string)
+	ua, _ := params[1].(string)
+	path, _ := params[2].(string)
+
+	filenames := make([]string, 0, len(params)-3)
+	for _, p := range params[3:] {
+		if s, ok := p.(string); ok {
+			filenames = append(filenames, s)
+		}
+	}
+
+	return MatchKnownBot(ip, ua, path, filenames...), nil
+}
+
+// matchBotEntriesByAddr runs the cheap (non-DNS) checks for one file's entries.
+// It returns true on an exact-IP or CIDR-range match, and collects entries that
+// still need FCrDNS verification into rdnsCandidates for the caller to resolve
+// once across all files.
+func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, entries []*botEntry, rdnsCandidates *[]*botEntry) bool {
+	for _, entry := range entries {
+		if entry.uaRegex != nil && !entry.uaRegex.MatchString(ua) {
+			continue
+		}
+
+		if len(entry.pathRegexes) > 0 && !matchAnyRegex(entry.pathRegexes, path) {
+			continue
+		}
+
+		if _, found := entry.ipSet[addr]; found {
+			log.Debugf("MatchKnownBot: %s verified as '%s' via exact IP", addr, entry.Name)
+			return true
+		}
+
+		for _, prefix := range entry.prefixes {
+			if prefix.Contains(addr) {
+				log.Debugf("MatchKnownBot: %s verified as '%s' via range %s", addr, entry.Name, prefix)
+				return true
+			}
+		}
+
+		if len(entry.rdnsRegexes) > 0 {
+			*rdnsCandidates = append(*rdnsCandidates, entry)
 		}
 	}
 

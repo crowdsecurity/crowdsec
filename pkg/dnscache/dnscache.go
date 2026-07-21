@@ -5,7 +5,7 @@
 // singleflight, so a given DNS fact costs at most one query per TTL.
 //
 // Consumers: the parser's reverse_dns enricher (PTR only) and the
-// IsLegitimateBot appsec helper (FCrDNS).
+// MatchKnownBot expr helper (FCrDNS).
 package dnscache
 
 import (
