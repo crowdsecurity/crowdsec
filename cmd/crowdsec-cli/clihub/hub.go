@@ -108,9 +108,25 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, stat
 
 	// default: a tree of installed items (sub-collections nested), then standalone items.
 	// cwhub owns the tree; status/full pruning happens in the flatten walk.
+	forest := hub.InstalledItems()
+
 	var rows []overviewRow
-	for _, node := range hub.InstalledItems() {
+	for _, node := range forest {
 		rows = append(rows, treeRows(node, 0, statuses, full)...)
+	}
+
+	// --full is exhaustive: also surface installed items the tree places nowhere (e.g. a sub-item
+	// kept after its parent collection was removed). items[] is already installed + status-filtered.
+	if full {
+		placed := placedInTree(forest)
+
+		for _, itemType := range cwhub.ItemTypes {
+			for _, item := range items[itemType] {
+				if !placed[item.FQName()] {
+					rows = append(rows, overviewRow{item, 0})
+				}
+			}
+		}
 	}
 
 	if len(rows) == 0 {
@@ -161,7 +177,7 @@ func (cli *cliHub) newListCmd() *cobra.Command {
 		Short: "List relevant installed items",
 		Long: `List installed relevant items (collections, standalone items) and shows their status.
 Use --all to list all items, including those not installed.
-Use --full to expand every installed item in the tree, not just collections.`,
+Use --full to list every installed item individually, instead of summarizing collection contents.`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -180,7 +196,7 @@ Use --full to expand every installed item in the tree, not just collections.`,
 
 	flags := cmd.Flags()
 	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
-	flags.BoolVar(&full, "full", false, "Show every installed item in the tree, not just collections")
+	flags.BoolVar(&full, "full", false, "List every installed item individually instead of summarizing collection contents")
 	flags.StringSliceVar(&statuses, "status", nil, "Filter by status ("+strings.Join(validItemStatuses, ", ")+")")
 	cmd.MarkFlagsMutuallyExclusive("all", "full")
 

@@ -178,6 +178,26 @@ func treeRows(node *cwhub.ItemNode, depth int, statuses []string, full bool) []o
 	return append([]overviewRow{{node.Item, depth}}, children...)
 }
 
+// placedInTree collects the FQNames of every item present in the installed-item forest, so
+// callers can detect installed items that the tree does not place anywhere.
+func placedInTree(forest []*cwhub.ItemNode) map[string]bool {
+	placed := make(map[string]bool)
+
+	var walk func(n *cwhub.ItemNode)
+	walk = func(n *cwhub.ItemNode) {
+		placed[n.Item.FQName()] = true
+		for _, c := range n.Children {
+			walk(c)
+		}
+	}
+
+	for _, n := range forest {
+		walk(n)
+	}
+
+	return placed
+}
+
 // flatRows turns a flat list of items into depth-0 rows for the search / -a views.
 func flatRows(items []*cwhub.Item) []overviewRow {
 	rows := make([]overviewRow, 0, len(items))
