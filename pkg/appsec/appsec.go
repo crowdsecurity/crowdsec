@@ -24,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/cookie"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -244,9 +245,10 @@ type AppsecRequestState struct {
 	ChallengeBypassed bool
 
 	// ChallengeExempt is set by the ExemptFromChallenge expr helper to exempt
-	// the current request from the bot challenge. It works by short-circuiting
-	// every later IsLegitimateBot call to true (without datafile or DNS checks);
-	// It only affects thhe current request and doesn't mint a cookie (unlike GrantChallengeCookie)
+	// the current request from the bot challenge: SendChallenge becomes a no-op
+	// once it is set. It only affects the current request and doesn't mint a
+	// cookie (unlike GrantChallengeCookie). Deliberately not cleared by
+	// ResetResponse so a pre_eval exemption survives into post_eval.
 	ChallengeExempt bool
 
 	// HooksHalted is flipped by terminal hook actions (currently
@@ -448,6 +450,35 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 	w.OutChan <- ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 }
 
+// ExemptFromChallenge flags the current request as exempt from the bot
+// challenge and records why. The flag is set once and honored by SendChallenge,
+// so challenge configs no longer gate the challenge on an explicit bot check.
+// The counter is bumped only on the first exemption so multiple matching
+// configs don't inflate the count.
+func (*AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	if state.ChallengeExempt {
+		return nil
+	}
+
+	state.ChallengeExempt = true
+
+	if reason == "" {
+		reason = "unspecified"
+	}
+
+	// Challenge handling is an in-band concern; don't emit during the
+	// out-of-band phase (mirrors emitChallengeEvent).
+	if request.IsInBand {
+		metrics.AppsecChallengeExempt.With(prometheus.Labels{
+			"source":        request.RemoteAddrNormalized,
+			"appsec_engine": request.AppsecEngine,
+			"reason":        reason,
+		}).Inc()
+	}
+
+	return nil
+}
+
 // classifyProtocolErr maps a challenge-validation error to one of a small
 // closed vocabulary.
 func classifyProtocolErr(err error) string {
@@ -509,6 +540,11 @@ type AppsecConfig struct {
 
 	InBand    *AppsecPhaseConfig `yaml:"inband"`
 	OutOfBand *AppsecPhaseConfig `yaml:"outofband"`
+
+	// Data declares datafiles (e.g. bot lists queried by MatchKnownBot) that
+	// cwhub downloads and Build() loads into the expr datafile registry — the
+	// same `data:` mechanism parsers/scenarios/appsec-rules use.
+	Data []*enrichment.DataProvider `yaml:"data"`
 
 	// Challenge carries the WAF challenge / bot-detection runtime tuning.
 	// All fields are optional; unset fields fall back to the runtime
@@ -646,6 +682,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	if tmp.VariablesTracking != nil {
 		wc.VariablesTracking = append(wc.VariablesTracking, tmp.VariablesTracking...)
+	}
+
+	if tmp.Data != nil {
+		wc.Data = append(wc.Data, tmp.Data...)
 	}
 
 	// Append phase-scoped hooks
@@ -888,6 +928,21 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 	}
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
+
+	// Load datafiles declared directly on the appsec-config (e.g. bot lists for
+	// MatchKnownBot) into the expr datafile registry. cwhub has already
+	// downloaded them; this mirrors initRuleData for appsec-rules.
+	for _, d := range wc.Data {
+		if d.DestPath == "" {
+			wc.Logger.Errorf("missing dest_file for data in appsec-config %s: %+v", wc.Name, d)
+			continue
+		}
+
+		if err := exprhelpers.FileInit(hub.GetDataDir(), d.DestPath, d.Type); err != nil {
+			wc.Logger.Errorf("unable to initialize data file %s: %s", d.DestPath, err)
+			continue
+		}
+	}
 
 	patcher := &appsecExprPatcher{}
 
@@ -1515,6 +1570,12 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	// allowlist cookie; refuse to overwrite it with a challenge page.
 	if state.ChallengeBypassed {
 		w.Logger.Debugf("SendChallenge no-op: allowlist cookie already granted this request")
+		return nil
+	}
+
+	// A hook flagged this request as exempt (verified bot, well-known path, ...).
+	if state.ChallengeExempt {
+		w.Logger.Debugf("SendChallenge no-op: request exempt from challenge")
 		return nil
 	}
 
