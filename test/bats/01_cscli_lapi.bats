@@ -204,6 +204,29 @@ teardown() {
     assert_output "true"
 }
 
+@test "cscli lapi register --token (no pre-existing credentials file)" {
+    config_set '.api.server.auto_registration.enabled=true'
+    config_set '.api.server.auto_registration.token="12345678901234567890123456789012"'
+    config_set '.api.server.auto_registration.allowed_ranges=["127.0.0.1/32"]'
+
+    rune -0 ./instance-crowdsec start
+
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    rm -f "$LOCAL_API_CREDENTIALS"
+
+    rune -0 cscli lapi register --machine freshmachine --url http://127.0.0.1:8080 --token 12345678901234567890123456789012
+    assert_stderr --partial "Successfully registered to Local API"
+    assert_stderr --partial "Local API credentials written to '$LOCAL_API_CREDENTIALS'"
+
+    # the written credentials authenticate (the machine was auto-validated)
+    rune -0 cscli lapi status
+
+    # subcommands that read the LAPI still require the credentials file
+    rm -f "$LOCAL_API_CREDENTIALS"
+    rune -1 cscli lapi status
+    assert_stderr --partial "no such file or directory"
+}
+
 @test "cscli lapi register --token (bad source ip)" {
     config_set '.api.server.auto_registration.enabled=true'
     config_set '.api.server.auto_registration.token="12345678901234567890123456789012"'
