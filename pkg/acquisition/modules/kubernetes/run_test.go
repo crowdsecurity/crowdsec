@@ -114,7 +114,7 @@ func TestFollowPodLogs_FatalOnLineProcessingError(t *testing.T) {
 	elapsed := time.Since(start)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, simpleErr)
+	require.ErrorIs(t, err, simpleErr)
 	assert.Less(t, elapsed, retryBackoffMidpoint, "a fatal onLineFunc error must not go through the retry backoff")
 }
 
@@ -145,7 +145,7 @@ func TestFollowPodLogs_StopsOnContextCancel(t *testing.T) {
 
 	s := &Source{logger: testLogger(), client: client}
 	// Unbuffered on purpose: followPodLogs must never write to out once ctx
-	// is already cancelled. If it did, this blocking send would hang the
+	// is already canceled. If it did, this blocking send would hang the
 	// test instead of silently passing.
 	out := make(chan pipeline.Event)
 
