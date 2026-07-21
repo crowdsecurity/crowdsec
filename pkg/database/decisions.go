@@ -24,7 +24,7 @@ type DecisionsByScenario struct {
 	Origin         string
 	Type           string
 	Machine        string
-	AlertDecisions int
+	AlertDecisions int `sql:"alert_decisions"`
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, now time.Time, filter map[string][]string) ([]*ent.Decision, error) {
