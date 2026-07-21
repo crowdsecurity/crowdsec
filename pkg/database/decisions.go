@@ -12,16 +12,19 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 )
 
 const decisionDeleteBulkSize = 256 // scientifically proven to be the best value for bulk delete
 
 type DecisionsByScenario struct {
-	Scenario string
-	Count    int
-	Origin   string
-	Type     string
+	Scenario       string
+	Count          int
+	Origin         string
+	Type           string
+	Machine        string
+	AlertDecisions int
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, now time.Time, filter map[string][]string) ([]*ent.Decision, error) {
@@ -83,9 +86,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, now time.
 }
 
 func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*DecisionsByScenario, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now().UTC()),
-	)
+	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
 
 	query, err := applyDecisionFilter(query, make(map[string][]string))
 	if err != nil {
@@ -93,15 +94,92 @@ func (c *Client) QueryDecisionCountByScenario(ctx context.Context) ([]*Decisions
 		return nil, fmt.Errorf("count all decisions with filters: %w", QueryFail)
 	}
 
-	var r []*DecisionsByScenario
+	var raw []*DecisionsByScenario
 
-	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(ctx, &r)
+	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType, decision.FieldAlertDecisions).
+		Aggregate(ent.Count()).Scan(ctx, &raw)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
 		return nil, fmt.Errorf("count all decisions with filters: %w", QueryFail)
 	}
 
-	return r, nil
+	machineByAlertID, err := c.resolveMachinesByAlertID(ctx, raw)
+	if err != nil {
+		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
+		return nil, fmt.Errorf("count all decisions with filters: %w", QueryFail)
+	}
+
+	return foldByMachine(raw, machineByAlertID), nil
+}
+
+// resolveMachinesByAlertID looks up, for each distinct alert referenced in rows,
+// the MachineId of its owning machine. Alerts with no owning machine (Edges.Owner
+// == nil) are simply absent from the returned map — callers must fall back to "N/A".
+func (c *Client) resolveMachinesByAlertID(ctx context.Context, rows []*DecisionsByScenario) (map[int]string, error) {
+	seen := make(map[int]struct{})
+	alertIDs := make([]int, 0, len(rows))
+
+	for _, row := range rows {
+		if row.AlertDecisions == 0 {
+			continue
+		}
+		if _, ok := seen[row.AlertDecisions]; !ok {
+			seen[row.AlertDecisions] = struct{}{}
+			alertIDs = append(alertIDs, row.AlertDecisions)
+		}
+	}
+
+	machineByAlertID := make(map[int]string, len(alertIDs))
+	if len(alertIDs) == 0 {
+		return machineByAlertID, nil
+	}
+
+	alerts, err := c.Ent.Alert.Query().Where(alert.IDIn(alertIDs...)).WithOwner().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, a := range alerts {
+		if a.Edges.Owner != nil {
+			machineByAlertID[a.ID] = a.Edges.Owner.MachineId
+		}
+	}
+
+	return machineByAlertID, nil
+}
+
+// foldByMachine re-aggregates rows (grouped by scenario/origin/type/alert) into rows
+// grouped by scenario/origin/type/machine, summing counts for alerts owned by the
+// same machine. Falls back to "N/A" for alerts with no owning machine, matching the
+// convention in pkg/apiserver/controllers/v1/alerts.go's FormatOneAlert.
+func foldByMachine(rows []*DecisionsByScenario, machineByAlertID map[int]string) []*DecisionsByScenario {
+	type key struct{ scenario, origin, typ, machine string }
+
+	folded := make(map[key]*DecisionsByScenario, len(rows))
+	order := make([]key, 0, len(rows))
+
+	for _, row := range rows {
+		machineID, ok := machineByAlertID[row.AlertDecisions]
+		if !ok {
+			machineID = "N/A"
+		}
+
+		k := key{row.Scenario, row.Origin, row.Type, machineID}
+		if existing, ok := folded[k]; ok {
+			existing.Count += row.Count
+			continue
+		}
+
+		folded[k] = &DecisionsByScenario{Scenario: row.Scenario, Origin: row.Origin, Type: row.Type, Machine: machineID, Count: row.Count}
+		order = append(order, k)
+	}
+
+	result := make([]*DecisionsByScenario, 0, len(order))
+	for _, k := range order {
+		result = append(result, folded[k])
+	}
+
+	return result
 }
 
 func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string][]string) ([]*ent.Decision, error) {
