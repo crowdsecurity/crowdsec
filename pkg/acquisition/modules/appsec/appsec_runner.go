@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -36,21 +37,26 @@ type AppsecRunner struct {
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
 
+// ruleIDDirective matches the generated id so dedup can ignore it: rules that
+// differ only by id (same content, different position) are duplicates.
+var ruleIDDirective = regexp.MustCompile(`"id:\d+,phase:`)
+
 func (*AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logger *log.Entry) string {
 	var rulesArr []string
 	dedupRules := make(map[string]struct{})
 	discarded := 0
 
 	for _, collection := range collections {
-		// Dedup *our* rules
+		// Dedup *our* rules, ignoring the generated id.
 		for _, rule := range collection.Rules {
-			if _, ok := dedupRules[rule]; ok {
+			key := ruleIDDirective.ReplaceAllString(rule, `"id:,phase:`)
+			if _, ok := dedupRules[key]; ok {
 				discarded++
 				logger.Debugf("Discarding duplicate rule : %s", rule)
 				continue
 			}
 			rulesArr = append(rulesArr, rule)
-			dedupRules[rule] = struct{}{}
+			dedupRules[key] = struct{}{}
 		}
 		// Don't mess up with native modsec rules
 		rulesArr = append(rulesArr, collection.NativeRules...)

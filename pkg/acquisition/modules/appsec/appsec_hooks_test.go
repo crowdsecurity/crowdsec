@@ -531,7 +531,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			pre_eval: []appsec.Hook{
-				{Apply: []string{"RemoveInBandRuleByID(1516470898)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+				{Apply: []string{"RemoveInBandRuleByID(407789510)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
@@ -756,7 +756,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			pre_eval: []appsec.Hook{
-				{Apply: []string{"SetRemediationByID(1516470898, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+				{Apply: []string{"SetRemediationByID(407789510, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",

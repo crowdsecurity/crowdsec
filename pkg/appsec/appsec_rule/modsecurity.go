@@ -12,6 +12,10 @@ import (
 
 type ModsecurityRule struct {
 	ids []uint32
+	// ruleIndex is the rule's position in its collection, mixed into ids so
+	// identical leaves of different rules don't collide (positions restart at 0
+	// per rule).
+	ruleIndex int
 }
 
 var zonesMap = map[string]string{
@@ -94,7 +98,9 @@ var bodyTypeMatch = map[string]string{
 
 const maxDNFGroups = 50
 
-func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string) (string, []uint32, error) {
+func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, ruleIndex int) (string, []uint32, error) {
+	m.ruleIndex = ruleIndex
+
 	if rule.Severity == "" {
 		rule.Severity = cztypes.RuleSeverityEmergency.String()
 	}
@@ -222,6 +228,8 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	h.Write([]byte(rule.Match.Type))
 	h.Write([]byte(rule.Match.Value))
 	h.Write([]byte(fmt.Sprintf("%d", position)))
+
+	h.Write([]byte(fmt.Sprintf("rule:%d", m.ruleIndex)))
 
 	for _, zone := range rule.Zones {
 		h.Write([]byte(zone))
