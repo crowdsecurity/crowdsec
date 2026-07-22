@@ -96,7 +96,7 @@ teardown() {
     # nginx is a root collection; base-http-scenarios is one of its dependencies
     assert_output --regexp "collections.*crowdsecurity/nginx"
     # the sub-collection is shown indented beneath it, not as its own root row
-    assert_output --regexp "└─.*crowdsecurity/base-http-scenarios"
+    assert_output --regexp "[├└]─.*crowdsecurity/base-http-scenarios"
 }
 
 @test "cscli hub list --full expands every installed leaf into the tree" {
@@ -109,7 +109,7 @@ teardown() {
 
     # --full shows every installed leaf, indented under its collection
     rune -0 cscli hub list --full
-    assert_output --regexp "└─.*crowdsecurity/ssh-bf"
+    assert_output --regexp "[├└]─.*crowdsecurity/ssh-bf"
 
     # --full and -a are mutually exclusive
     rune -1 cscli hub list -a --full
@@ -154,6 +154,10 @@ teardown() {
 
 @test "cscli hub search" {
     hub_purge_all
+
+    # at least one search term is required
+    rune -1 cscli hub search
+    assert_stderr --partial 'requires at least 1 arg'
 
     # search the local index by name, no install required
     rune -0 cscli hub search sshd
