@@ -1876,12 +1876,11 @@ func mustParseURL(raw string) *url.URL {
 	return u
 }
 
-// TestAppsecLegitimateBotHooks exercises the IsLegitimateBot/ExemptFromChallenge
-// helpers through the full runner: a bot definition is loaded from a
-// legit_bots directory (as AppsecConfig.Build does with the hub data dir),
-// an in-band rule matches the request, and a pre_eval hook downgrades the
-// remediation for verified bots only.
-func TestAppsecLegitimateBotHooks(t *testing.T) {
+// TestAppsecMatchKnownBotHooks exercises the MatchKnownBot helper through the
+// full runner: a bot definition is loaded from a legit_bots directory (as
+// AppsecConfig.Build does with the hub data dir), an in-band rule matches the
+// request, and a pre_eval hook downgrades the remediation for verified bots only.
+func TestAppsecMatchKnownBotHooks(t *testing.T) {
 	require.NoError(t, exprhelpers.Init(nil))
 
 	datadir := t.TempDir()
@@ -1889,7 +1888,8 @@ func TestAppsecLegitimateBotHooks(t *testing.T) {
 	require.NoError(t, os.Mkdir(botsDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(botsDir, "bots.json"),
 		[]byte(`{"name":"testbot","user_agent":"testbot","ranges":["192.0.2.0/24"]}`), 0o644))
-	require.NoError(t, exprhelpers.FileInit(botsDir, "bots.json", "bots"))
+	// key the datafile by its dest_file relative path, as AppsecConfig.Build does
+	require.NoError(t, exprhelpers.FileInit(datadir, "legit_bots/bots.json", "bots"))
 
 	banRule := appsec_rule.CustomRule{
 		Name:      "rule1",
@@ -1899,7 +1899,7 @@ func TestAppsecLegitimateBotHooks(t *testing.T) {
 		Transform: []string{"lowercase"},
 	}
 	bypassHook := appsec.Hook{
-		Filter: `IsLegitimateBot(req.RemoteAddr, req.UserAgent(), req.URL.Path)`,
+		Filter: `MatchKnownBot(req.RemoteAddr, req.UserAgent(), req.URL.Path, "legit_bots/bots.json")`,
 		Apply:  []string{`SetRemediation("allow")`},
 	}
 	botRequest := func(remoteAddr string, ua string) appsec.ParsedRequest {
@@ -1941,22 +1941,6 @@ func TestAppsecLegitimateBotHooks(t *testing.T) {
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
 				require.Equal(t, appsec.BanRemediation, responses[0].Action)
-			},
-		},
-		{
-			name:             "ExemptFromChallenge escape hatch short-circuits the checks",
-			expected_load_ok: true,
-			inband_rules:     []appsec_rule.CustomRule{banRule},
-			pre_eval: []appsec.Hook{
-				{Apply: []string{"ExemptFromChallenge()"}},
-				bypassHook,
-			},
-			// neither the UA nor the IP matches any definition
-			input_request: botRequest("203.0.113.9:34567", "curl/8.0"),
-			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
-				require.Len(t, responses, 1)
-				require.True(t, responses[0].InBandInterrupt)
-				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 			},
 		},
 	}

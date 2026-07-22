@@ -65,9 +65,9 @@ func (s *statAppsecChallenge) ProcessReason(appsecEngine, kind, reason string, v
 
 func (s *statAppsecChallenge) Table(out io.Writer, wantColor string, noUnit bool, showEmpty bool) {
 	t := cstable.New(out, wantColor).Writer
-	t.AppendHeader(table.Row{"Bot Detection", "Requested", "Submitted", "Solved", "Granted", "Protocol Failures", "Submissions Rejected", "Cookies Invalid"})
+	t.AppendHeader(table.Row{"Bot Detection", "Requested", "Submitted", "Solved", "Granted", "Exempt", "Protocol Failures", "Submissions Rejected", "Cookies Invalid"})
 
-	keys := []string{"requested", "submitted", "solved", "granted", "rejected_protocol", "rejected_submission", "rejected_cookie"}
+	keys := []string{"requested", "submitted", "solved", "granted", "exempt", "rejected_protocol", "rejected_submission", "rejected_cookie"}
 
 	numRows, err := metricsToTable(t, s.Funnel, keys, noUnit)
 	if err != nil {
@@ -89,6 +89,7 @@ func (s *statAppsecChallenge) Table(out io.Writer, wantColor string, noUnit bool
 	// rejected) so the kind dimension only needs to show up where it
 	// actually varies.
 	s.renderAccepted(out, wantColor, noUnit)
+	s.renderExempted(out, wantColor, noUnit)
 	s.renderRejected(out, wantColor, noUnit)
 }
 
@@ -139,6 +140,42 @@ func (s *statAppsecChallenge) renderAccepted(out io.Writer, wantColor string, no
 
 	t.AppendFooter(table.Row{"Total", "", formatNumber(total, !noUnit)})
 	t.SetTitle("Bot Detection — Accepted")
+	fmt.Fprintln(out, t.Render())
+}
+
+// renderExempted renders the per-engine breakdown of ExemptFromChallenge
+// reasons.
+func (s *statAppsecChallenge) renderExempted(out io.Writer, wantColor string, noUnit bool) {
+	engines := make([]string, 0, len(s.Reasons))
+	for e, byKind := range s.Reasons {
+		if _, ok := byKind["exempt"]; ok {
+			engines = append(engines, e)
+		}
+	}
+	if len(engines) == 0 {
+		return
+	}
+	sort.Strings(engines)
+
+	t := cstable.New(out, wantColor).Writer
+	t.AppendHeader(table.Row{"Appsec Engine", "Reason", "Count"})
+
+	total := int64(0)
+	for _, engine := range engines {
+		counts := s.Reasons[engine]["exempt"]
+		reasons := make([]string, 0, len(counts))
+		for r := range counts {
+			reasons = append(reasons, r)
+		}
+		sort.Strings(reasons)
+		for _, r := range reasons {
+			t.AppendRow(table.Row{engine, r, formatNumber(int64(counts[r]), !noUnit)})
+			total += int64(counts[r])
+		}
+	}
+
+	t.AppendFooter(table.Row{"Total", "", formatNumber(total, !noUnit)})
+	t.SetTitle("Bot Detection — Exempted")
 	fmt.Fprintln(out, t.Render())
 }
 
