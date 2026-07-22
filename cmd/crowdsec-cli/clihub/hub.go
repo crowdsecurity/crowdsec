@@ -71,26 +71,23 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, stat
 		fmt.Fprintln(os.Stderr, line)
 	}
 
-	items := make(map[string][]*cwhub.Item)
-
-	var err error
-
-	for _, itemType := range cwhub.ItemTypes {
-		items[itemType], err = SelectItems(hub, itemType, nil, !all)
+	// json/raw keep the per-type structure for scripts, regardless of the human view
+	if cfg.Cscli.Output != "human" {
+		items, err := itemsByType(hub, all, statuses)
 		if err != nil {
 			return err
 		}
 
-		items[itemType] = filterItemsByStatus(items[itemType], statuses)
-	}
-
-	// json/raw keep the per-type structure for scripts, regardless of the human view
-	if cfg.Cscli.Output != "human" {
 		return ListItems(out, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	}
 
 	// -a: flat table of every item type (installed and not)
 	if all {
+		items, err := itemsByType(hub, all, statuses)
+		if err != nil {
+			return err
+		}
+
 		merged := make([]*cwhub.Item, 0)
 		for _, itemType := range cwhub.ItemTypes {
 			merged = append(merged, items[itemType]...)
@@ -118,6 +115,11 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, stat
 	// --full is exhaustive: also surface installed items the tree places nowhere (e.g. a sub-item
 	// kept after its parent collection was removed). items[] is already installed + status-filtered.
 	if full {
+		items, err := itemsByType(hub, all, statuses)
+		if err != nil {
+			return err
+		}
+
 		placed := placedInTree(forest)
 
 		for _, itemType := range cwhub.ItemTypes {

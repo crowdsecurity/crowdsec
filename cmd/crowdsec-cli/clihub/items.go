@@ -109,6 +109,23 @@ func filterItemsByStatus(items []*cwhub.Item, statuses []string) []*cwhub.Item {
 	return ret
 }
 
+// itemsByType returns installed items grouped by type (or every item when all is true), each
+// group filtered by the given status tokens.
+func itemsByType(hub *cwhub.Hub, all bool, statuses []string) (map[string][]*cwhub.Item, error) {
+	items := make(map[string][]*cwhub.Item)
+
+	for _, itemType := range cwhub.ItemTypes {
+		selected, err := SelectItems(hub, itemType, nil, !all)
+		if err != nil {
+			return nil, err
+		}
+
+		items[itemType] = filterItemsByStatus(selected, statuses)
+	}
+
+	return items, nil
+}
+
 func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":
