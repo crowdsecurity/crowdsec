@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -67,13 +68,14 @@ func (cli *cliHub) newSearchCmd() *cobra.Command {
 	var statuses []string
 
 	cmd := &cobra.Command{
-		Use:   "search [term]...",
+		Use:   "search <term>...",
 		Short: "Search the local hub index by name and description",
 		Long: `Search the local hub index.
 An item matches when its name or description contains all the given terms.`,
 		Example: `cscli hub search nginx
 cscli hub search http cve
 cscli hub search ssh --status installed`,
+		Args:              args.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, terms []string) error {
 			if err := validateStatuses(statuses); err != nil {
