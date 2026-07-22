@@ -54,6 +54,78 @@ func SelectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return wantedItems, nil
 }
 
+// validItemStatuses are the accepted values for the --status filter of hub list/search.
+var validItemStatuses = []string{"installed", cwhub.StatusNotInstalled, cwhub.StatusUpToDate, cwhub.StatusOutdated, cwhub.StatusTainted, cwhub.StatusLocal}
+
+// validateStatuses returns an error if a token is not a recognized status filter.
+func validateStatuses(statuses []string) error {
+	for _, s := range statuses {
+		if !slices.Contains(validItemStatuses, s) {
+			return fmt.Errorf("invalid status %q (valid values: %s)", s, strings.Join(validItemStatuses, ", "))
+		}
+	}
+
+	return nil
+}
+
+// itemMatchesStatus reports whether an item's local state matches any of the given status tokens.
+// An empty list matches everything. All tokens except "installed" map to a cwhub.Status* word.
+func itemMatchesStatus(item *cwhub.Item, statuses []string) bool {
+	if len(statuses) == 0 {
+		return true
+	}
+
+	for _, s := range statuses {
+		if s == "installed" {
+			if item.State.IsInstalled() {
+				return true
+			}
+
+			continue
+		}
+
+		if item.State.Status() == s {
+			return true
+		}
+	}
+
+	return false
+}
+
+// filterItemsByStatus returns the items whose state matches any of the given status tokens.
+func filterItemsByStatus(items []*cwhub.Item, statuses []string) []*cwhub.Item {
+	if len(statuses) == 0 {
+		return items
+	}
+
+	ret := make([]*cwhub.Item, 0, len(items))
+
+	for _, item := range items {
+		if itemMatchesStatus(item, statuses) {
+			ret = append(ret, item)
+		}
+	}
+
+	return ret
+}
+
+// itemsByType returns installed items grouped by type (or every item when all is true), each
+// group filtered by the given status tokens.
+func itemsByType(hub *cwhub.Hub, all bool, statuses []string) (map[string][]*cwhub.Item, error) {
+	items := make(map[string][]*cwhub.Item)
+
+	for _, itemType := range cwhub.ItemTypes {
+		selected, err := SelectItems(hub, itemType, nil, !all)
+		if err != nil {
+			return nil, err
+		}
+
+		items[itemType] = filterItemsByStatus(selected, statuses)
+	}
+
+	return items, nil
+}
+
 func ListItems(out io.Writer, wantColor string, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool, output string) error {
 	switch output {
 	case "human":

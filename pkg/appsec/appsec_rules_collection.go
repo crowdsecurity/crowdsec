@@ -117,29 +117,30 @@ func loadSecLangFilesRules(appsecRule AppsecCollectionConfig, hub *cwhub.Hub, lo
 
 // registerRuleDetails records the metadata and debug flags for a converted custom rule.
 func registerRuleDetails(appsecRule AppsecCollectionConfig, ruleName string, rulesId []uint32, logger *log.Entry) {
-	// We only take the first id, as it's the one of the "main" rule
-	if _, ok := AppsecRulesDetails[int(rulesId[0])]; !ok {
-		AppsecRulesDetails[int(rulesId[0])] = RulesDetails{
-			LogLevel: log.InfoLevel,
-			Hash:     appsecRule.hash,
-			Version:  appsecRule.version,
-			Name:     appsecRule.Name,
-		}
-	} else {
-		logger.Warnf("conflicting id %d for rule %s !", rulesId[0], ruleName)
-	}
-
+	// An `or` expands into several SecRules; register every id (not just the
+	// first) so the name resolves whichever branch matches.
 	for _, id := range rulesId {
+		if _, ok := AppsecRulesDetails[int(id)]; !ok {
+			AppsecRulesDetails[int(id)] = RulesDetails{
+				LogLevel: log.InfoLevel,
+				Hash:     appsecRule.hash,
+				Version:  appsecRule.version,
+				Name:     appsecRule.Name,
+			}
+		} else {
+			logger.Warnf("conflicting id %d for rule %s !", id, ruleName)
+		}
+
 		SetRuleDebug(int(id), appsecRule.Debug)
 	}
 }
 
 // loadCustomRules converts the YAML custom rules and appends the resulting seclang rules to appsecCol.
 func loadCustomRules(appsecRule AppsecCollectionConfig, logger *log.Entry, appsecCol *AppsecCollection) error {
-	for _, rule := range appsecRule.Rules {
+	for i, rule := range appsecRule.Rules {
 		rule.Severity = appsecRule.Severity
 
-		strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description)
+		strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name, appsecRule.Description, i)
 		if err != nil {
 			logger.Errorf("unable to convert rule %s : %s", appsecRule.Name, err)
 			return err
