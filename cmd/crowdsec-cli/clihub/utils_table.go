@@ -55,7 +55,7 @@ func listHubItemTable(out io.Writer, wantColor string, title string, items []*cw
 
 // collectionSummary returns a short count of a collection's contents, eg. "2 parser(s) / 3 scenario(s)".
 func collectionSummary(item *cwhub.Item) string {
-	groups := item.ByType()
+	groups := item.CurrentDependencies().ByType()
 
 	parts := make([]string, 0, len(groups))
 
