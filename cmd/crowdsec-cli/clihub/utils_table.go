@@ -140,42 +140,66 @@ func appendItemRow(t table.Writer, item *cwhub.Item, namePrefix string, showDesc
 	t.AppendRow(row)
 }
 
-func treePrefix(depth int) string {
-	if depth == 0 {
-		return ""
-	}
-
-	return strings.Repeat("  ", depth) + "└─ "
+type overviewRow struct {
+	item   *cwhub.Item
+	depth  int
+	prefix string // tree branch drawing (├─/└─ with │ guides); empty for depth-0 rows
 }
 
-type overviewRow struct {
-	item  *cwhub.Item
-	depth int
+// leafShown reports whether a non-collection leaf renders as its own row: it must match the status
+// filter, and then only when --full, a status filter is active, or it is tainted.
+func leafShown(item *cwhub.Item, statuses []string, full bool) bool {
+	return itemMatchesStatus(item, statuses) &&
+		(full || len(statuses) > 0 || item.State.Status() == cwhub.StatusTainted)
 }
 
 // treeRows flattens an installed-item node into display rows, applying view policy: a collection
 // always shows; a leaf shows only when full or tainted, and must match the status filter; a
-// collection with no shown children and a non-matching status is omitted.
+// collection with no shown children and a non-matching status is omitted. Each nested row carries a
+// ├─/└─ branch marker, with │ guides connecting an ancestor to its siblings further down.
 func treeRows(node *cwhub.ItemNode, depth int, statuses []string, full bool) []overviewRow {
-	var children []overviewRow
+	// render each visible direct child as its own subtree, with prefixes relative to that child;
+	// the branch marker and guides are prepended below, once we know which child is last.
+	var childSubtrees [][]overviewRow
 
 	for _, child := range node.Children {
 		if child.Item.Type == cwhub.COLLECTIONS {
-			children = append(children, treeRows(child, depth+1, statuses, full)...)
+			if sub := treeRows(child, depth+1, statuses, full); len(sub) > 0 {
+				childSubtrees = append(childSubtrees, sub)
+			}
+
 			continue
 		}
 
-		leafMatches := itemMatchesStatus(child.Item, statuses)
-		if leafMatches && (full || len(statuses) > 0 || child.Item.State.Status() == cwhub.StatusTainted) {
-			children = append(children, overviewRow{child.Item, depth + 1})
+		if leafShown(child.Item, statuses, full) {
+			childSubtrees = append(childSubtrees, []overviewRow{{item: child.Item, depth: depth + 1}})
 		}
 	}
 
-	if len(children) == 0 && !itemMatchesStatus(node.Item, statuses) {
+	if len(childSubtrees) == 0 && !itemMatchesStatus(node.Item, statuses) {
 		return nil
 	}
 
-	return append([]overviewRow{{node.Item, depth}}, children...)
+	rows := []overviewRow{{item: node.Item, depth: depth}}
+
+	for i, sub := range childSubtrees {
+		branch, guide := "├─ ", "│  "
+		if i == len(childSubtrees)-1 {
+			branch, guide = "└─ ", "   "
+		}
+
+		for j := range sub {
+			if j == 0 {
+				sub[j].prefix = branch + sub[j].prefix
+			} else {
+				sub[j].prefix = guide + sub[j].prefix
+			}
+
+			rows = append(rows, sub[j])
+		}
+	}
+
+	return rows
 }
 
 // placedInTree collects the FQNames of every item present in the installed-item forest, so
@@ -202,7 +226,7 @@ func placedInTree(forest []*cwhub.ItemNode) map[string]bool {
 func flatRows(items []*cwhub.Item) []overviewRow {
 	rows := make([]overviewRow, 0, len(items))
 	for _, item := range items {
-		rows = append(rows, overviewRow{item, 0})
+		rows = append(rows, overviewRow{item: item})
 	}
 
 	return rows
@@ -226,7 +250,7 @@ func renderItemTable(out io.Writer, wantColor string, rows []overviewRow, showDe
 			afterCollectionRoot = false
 		}
 
-		appendItemRow(t, row.item, treePrefix(row.depth), showDesc, colorize)
+		appendItemRow(t, row.item, row.prefix, showDesc, colorize)
 
 		if row.depth == 0 && row.item.Type == cwhub.COLLECTIONS {
 			afterCollectionRoot = true

@@ -125,7 +125,7 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, stat
 		for _, itemType := range cwhub.ItemTypes {
 			for _, item := range items[itemType] {
 				if !placed[item.FQName()] {
-					rows = append(rows, overviewRow{item, 0})
+					rows = append(rows, overviewRow{item: item})
 				}
 			}
 		}
