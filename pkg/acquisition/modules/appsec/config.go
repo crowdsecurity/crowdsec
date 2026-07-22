@@ -41,8 +41,10 @@ var (
 type Configuration struct {
 	ListenAddr        string         `yaml:"listen_addr"`
 	ListenSocket      string         `yaml:"listen_socket"`
+	TLSAuth           bool           `yaml:"tls_auth"`
 	CertFilePath      string         `yaml:"cert_file"`
 	KeyFilePath       string         `yaml:"key_file"`
+	CaCertPath        string         `yaml:"ca_cert_file"`
 	Path              string         `yaml:"path"`
 	Routines          int            `yaml:"routines"`
 	AppsecConfig      string         `yaml:"appsec_config"`
@@ -80,6 +82,20 @@ func (w *Source) UnmarshalConfig(yamlConfig []byte) error {
 	// always have at least one appsec routine
 	if w.config.Routines == 0 {
 		w.config.Routines = 1
+	}
+
+	if w.config.TLSAuth {
+		if w.config.CaCertPath == "" {
+			return errors.New("TLSAuth is enabled, but ca_cert is not provided")
+		}
+
+		if w.config.CertFilePath == "" {
+			return errors.New("cert_file is required")
+		}
+
+		if w.config.KeyFilePath == "" {
+			return errors.New("key_file is required")
+		}
 	}
 
 	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" && len(w.config.AppsecConfigs) == 0 {
@@ -126,7 +142,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 }
 
 // expandAppsecConfigEntry resolves a single appsec_config(s) entry into the list
-// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character 
+// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character
 // is matched against the installed appsec-configs with the same matcher used
 // to expand appsec-rule patterns; it errors when no installed config matches.
 func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
@@ -180,6 +196,49 @@ func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, err
 	return toLoad, nil
 }
 
+func (w *Source) configureHTTPServer() error {
+	w.mux = http.NewServeMux()
+
+	w.server = &http.Server{
+		Addr:      w.config.ListenAddr,
+		Handler:   w.mux,
+		Protocols: &http.Protocols{},
+	}
+
+	w.server.Protocols.SetHTTP1(true)
+	w.server.Protocols.SetUnencryptedHTTP2(true)
+	w.server.Protocols.SetHTTP2(true)
+
+	if w.config.TLSAuth {
+		tlsConfig := tls.Config{}
+
+		if w.config.CaCertPath == "" {
+			return fmt.Errorf("missing ca certificate")
+		}
+
+		if w.config.CertFilePath == "" || w.config.KeyFilePath == "" {
+			return fmt.Errorf("missing server cert/key")
+		}
+
+		cert, err := tls.LoadX509KeyPair(w.config.CertFilePath, w.config.KeyFilePath)
+		if err != nil {
+			return fmt.Errorf("failed to load server cert/key: %w", err)
+		}
+
+		caCertPool, err := loadCertPool(w.config.CaCertPath, w.logger)
+		if err != nil {
+			return fmt.Errorf("unable to load Appsec CA cert pool: %w", err)
+		}
+
+		tlsConfig.Certificates = []tls.Certificate{cert}
+		tlsConfig.ClientCAs = caCertPool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+
+		w.server.TLSConfig = &tlsConfig
+	}
+	return nil
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -213,17 +272,9 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		w.logger.Infof("Body read timeout not set, using default: %v", *w.config.BodyReadTimeout)
 	}
 
-	w.mux = http.NewServeMux()
-
-	w.server = &http.Server{
-		Addr:      w.config.ListenAddr,
-		Handler:   w.mux,
-		Protocols: &http.Protocols{},
+	if err := w.configureHTTPServer(); err != nil {
+		return err
 	}
-
-	w.server.Protocols.SetHTTP1(true)
-	w.server.Protocols.SetUnencryptedHTTP2(true)
-	w.server.Protocols.SetHTTP2(true)
 
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
@@ -414,14 +465,16 @@ func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
 
-	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
-	clientIP := r.Header.Get(appsec.IPHeaderName)
-	remoteIP := r.RemoteAddr
+	if !w.config.TLSAuth {
+		apiKey := r.Header.Get(appsec.APIKeyHeaderName)
+		clientIP := r.Header.Get(appsec.IPHeaderName)
+		remoteIP := r.RemoteAddr
 
-	if err := w.checkAuth(ctx, apiKey); err != nil {
-		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
+		if err := w.checkAuth(ctx, apiKey); err != nil {
+			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Force client to send the body quickly enough.
