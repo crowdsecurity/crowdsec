@@ -4,6 +4,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
+// Single-word item statuses returned by ItemState.Status(). Unlike Text(), which composes a
+// compound status (eg. "enabled,tainted"), these are mutually exclusive.
+const (
+	StatusNotInstalled = "not-installed"
+	StatusTainted      = "tainted"
+	StatusLocal        = "local"
+	StatusOutdated     = "outdated"
+	StatusUpToDate     = "up-to-date"
+)
+
 // ItemState is used to keep the local state (i.e. at runtime) of an item.
 // This data is not stored in the index, but is displayed with "cscli ... inspect".
 type ItemState struct {
@@ -43,6 +53,22 @@ func (s *ItemState) Text() string {
 	}
 
 	return ret
+}
+
+// Status returns the item's state as a single mutually-exclusive word
+func (s *ItemState) Status() string {
+	switch {
+	case !s.IsInstalled():
+		return StatusNotInstalled
+	case s.Tainted:
+		return StatusTainted
+	case s.IsLocal():
+		return StatusLocal
+	case !s.UpToDate:
+		return StatusOutdated
+	default:
+		return StatusUpToDate
+	}
 }
 
 // Emoji returns the status of the item as an emoji (eg. emoji.Warning).
