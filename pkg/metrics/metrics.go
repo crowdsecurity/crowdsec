@@ -46,7 +46,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			GlobalCsInfo, GlobalParsingHistogram, GlobalPourHistogram,
 			LapiRouteHits, LapiMachineHits, LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions, LapiResponseTime,
 			BucketsPour, BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow, BucketsCurrentCount,
-			GlobalActiveDecisions, GlobalAlerts, GlobalMachinesHeartbeat, NodesWlHitsOk, NodesWlHits,
+			GlobalActiveDecisions, GlobalAlerts, GlobalMachinesLastHeartbeatTimestamp, NodesWlHitsOk, NodesWlHits,
 			CacheMetrics, RegexpCacheMetrics,
 			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
 	default:

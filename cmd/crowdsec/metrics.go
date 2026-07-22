@@ -4,7 +4,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,7 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
@@ -69,31 +67,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			metrics.GlobalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
 		}
 
-		machines, err := dbClient.ListMachines(ctx)
-		if err != nil {
-			log.WithError(err).Error("listing machines for metrics")
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		updateMachinesHeartbeatMetric(machines)
-
 		next.ServeHTTP(w, r)
 	})
-}
-
-func updateMachinesHeartbeatMetric(machines []*ent.Machine) {
-	metrics.GlobalMachinesHeartbeat.Reset()
-
-	for _, m := range machines {
-		if m.LastHeartbeat == nil {
-			continue
-		}
-
-		elapsed := time.Now().UTC().Sub(*m.LastHeartbeat)
-		metrics.GlobalMachinesHeartbeat.With(prometheus.Labels{"machine": m.MachineId}).Set(elapsed.Seconds())
-	}
 }
 
 func registerPrometheus(config *csconfig.PrometheusCfg) {
