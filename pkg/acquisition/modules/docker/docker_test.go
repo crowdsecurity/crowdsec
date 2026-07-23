@@ -680,7 +680,8 @@ func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
 	assert.Equal(t, "keepme", first["other"])
 	assert.Equal(t, map[string]any{"foo": "bar"}, first["enable"])
 
-	for i := 0; i < 50; i++ {
+	// Try to parse the same labels multiple times to ensure deterministic behavior
+	for range 50 {
 		assert.Equal(t, first, parseLabels(labels))
 	}
 }
