@@ -273,4 +273,4 @@ require (
 
 replace golang.org/x/time => github.com/crowdsecurity/time v0.13.0-crowdsec.20250912
 
-replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.3.3-crowdsec.20251113
+replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260723

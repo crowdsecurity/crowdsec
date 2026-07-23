@@ -126,7 +126,7 @@ func TestVPatchRuleString(t *testing.T) {
 				},
 			},
 			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:3951337643,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain"
-SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1797871498,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',t:lowercase"`,
+SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1797871498,phase:2,log,msg:'test rule',tag:'crowdsec-Basic AND',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
 			name:        "Basic OR",
@@ -180,10 +180,10 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:2619082328,phase:2,deny,log,msg:'test r
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1202606032,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain"
-SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:359710097,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase,skip:2"
+			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:1202606032,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain,skip:1"
+SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:359710097,phase:2,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase"
 SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:3120021894,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase,chain"
-SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:2229098023,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase"`,
+SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:2229098023,phase:2,log,msg:'test rule',tag:'crowdsec-OR AND mix',tag:'cs-custom-rule',t:lowercase"`,
 		},
 		{
 			// (A OR B) AND C → DNF: (A AND C) OR (B AND C)
@@ -214,10 +214,10 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:2229098023,phase:2,deny,log,msg:'test r
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:a "@rx x" "id:1800648982,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain"
-SecRule REQUEST_METHOD "@streq GET" "id:1587988738,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule',skip:2"
+			expected: `SecRule ARGS_GET:a "@rx x" "id:1800648982,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule',severity:'emergency',t:lowercase,chain,skip:1"
+SecRule REQUEST_METHOD "@streq GET" "id:1587988738,phase:2,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule'"
 SecRule ARGS_GET:b "@rx x" "id:3192999968,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule',t:lowercase,chain"
-SecRule REQUEST_METHOD "@streq GET" "id:3752698388,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule'"`,
+SecRule REQUEST_METHOD "@streq GET" "id:3752698388,phase:2,log,msg:'test rule',tag:'crowdsec-OR inside AND',tag:'cs-custom-rule'"`,
 		},
 		{
 			// (A OR B) AND (C OR D) → DNF: (A,C) OR (A,D) OR (B,C) OR (B,D)
@@ -256,14 +256,14 @@ SecRule REQUEST_METHOD "@streq GET" "id:3752698388,phase:2,deny,log,msg:'test ru
 					},
 				},
 			},
-			expected: `SecRule ARGS_GET:a "@rx x" "id:4076736575,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',severity:'emergency',chain"
-SecRule REQUEST_HEADERS:c "@contains y" "id:3029228238,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',skip:6"
-SecRule ARGS_GET:a "@rx x" "id:3671513773,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',chain"
-SecRule REQUEST_HEADERS:d "@contains y" "id:2068477400,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',skip:4"
-SecRule ARGS_GET:b "@rx x" "id:2234139251,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',chain"
-SecRule REQUEST_HEADERS:c "@contains y" "id:1870138418,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',skip:2"
+			expected: `SecRule ARGS_GET:a "@rx x" "id:4076736575,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',severity:'emergency',chain,skip:3"
+SecRule REQUEST_HEADERS:c "@contains y" "id:3029228238,phase:2,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule'"
+SecRule ARGS_GET:a "@rx x" "id:3671513773,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',chain,skip:2"
+SecRule REQUEST_HEADERS:d "@contains y" "id:2068477400,phase:2,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule'"
+SecRule ARGS_GET:b "@rx x" "id:2234139251,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',chain,skip:1"
+SecRule REQUEST_HEADERS:c "@contains y" "id:1870138418,phase:2,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule'"
 SecRule ARGS_GET:b "@rx x" "id:1039790593,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule',chain"
-SecRule REQUEST_HEADERS:d "@contains y" "id:3758321836,phase:2,deny,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule'"`,
+SecRule REQUEST_HEADERS:d "@contains y" "id:3758321836,phase:2,log,msg:'test rule',tag:'crowdsec-OR cross product',tag:'cs-custom-rule'"`,
 		},
 		{
 			// Same level and+or: POST AND (a OR b)
@@ -290,10 +290,10 @@ SecRule REQUEST_HEADERS:d "@contains y" "id:3758321836,phase:2,deny,log,msg:'tes
 					},
 				},
 			},
-			expected: `SecRule REQUEST_METHOD "@streq POST" "id:3395404975,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule',severity:'emergency',chain"
-SecRule ARGS_GET:a "@rx x" "id:3880988910,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule',skip:2"
+			expected: `SecRule REQUEST_METHOD "@streq POST" "id:3395404975,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule',severity:'emergency',chain,skip:1"
+SecRule ARGS_GET:a "@rx x" "id:3880988910,phase:2,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule'"
 SecRule REQUEST_METHOD "@streq POST" "id:3808442053,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule',chain"
-SecRule ARGS_GET:b "@rx x" "id:1637823048,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule'"`,
+SecRule ARGS_GET:b "@rx x" "id:1637823048,phase:2,log,msg:'test rule',tag:'crowdsec-Same level AND OR',tag:'cs-custom-rule'"`,
 		},
 		{
 			// A AND (B OR (C AND D)) → DNF: (A,B) OR (A,C,D)
@@ -331,11 +331,11 @@ SecRule ARGS_GET:b "@rx x" "id:1637823048,phase:2,deny,log,msg:'test rule',tag:'
 					},
 				},
 			},
-			expected: `SecRule REQUEST_METHOD "@streq POST" "id:4151628139,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',severity:'emergency',chain"
-SecRule REQUEST_FILENAME "@contains /admin" "id:2534092724,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',t:lowercase,skip:3"
+			expected: `SecRule REQUEST_METHOD "@streq POST" "id:4151628139,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',severity:'emergency',chain,skip:1"
+SecRule REQUEST_FILENAME "@contains /admin" "id:2534092724,phase:2,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',t:lowercase"
 SecRule REQUEST_METHOD "@streq POST" "id:220760465,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',chain"
-SecRule ARGS_GET:cmd "@rx exec" "id:2515501355,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',chain"
-SecRule REQUEST_HEADERS:x-debug "@streq true" "id:1447329030,phase:2,deny,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule'"`,
+SecRule ARGS_GET:cmd "@rx exec" "id:2515501355,phase:2,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule',chain"
+SecRule REQUEST_HEADERS:x-debug "@streq true" "id:1447329030,phase:2,log,msg:'test rule',tag:'crowdsec-Deep nesting',tag:'cs-custom-rule'"`,
 		},
 		{
 			name: "all transforms",
