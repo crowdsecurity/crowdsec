@@ -74,6 +74,12 @@ func PourItemToBucket(
 	var buckey = bucket.Mapkey
 	var err error
 
+	// Make a copy of the various maps for this bucket
+	// Otherwise, we could risk reading and writing to the same map concurrently
+	// (eg, with a call to evt.SetMeta in a filter, which the same event has lead to an overflow for another bucket)
+	localEvt := parsed.CopyForBucket()
+	parsed = &localEvt
+
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
