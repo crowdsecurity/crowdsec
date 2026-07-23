@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -566,7 +567,31 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
+// closeEngine releases the resources cached by a coraza engine. Compiled
+// regexes and operators are memoized process-wide and only freed on Close, so
+// skipping it leaks them for every engine we build across reloads.
+func (r *AppsecRunner) closeEngine(band string, engine coraza.WAF) {
+	// coraza.WAF doesn't expose Close, but the type NewWAF returns does.
+	closer, ok := engine.(io.Closer)
+	if !ok {
+		return
+	}
+
+	if err := closer.Close(); err != nil {
+		r.logger.Errorf("Error closing %s engine: %s", band, err)
+	}
+}
+
+// Close releases both engines. Safe to call once the Run loop has stopped: the
+// engines are only ever used from that goroutine.
+func (r *AppsecRunner) Close() {
+	r.closeEngine("inband", r.AppsecInbandEngine)
+	r.closeEngine("outband", r.AppsecOutbandEngine)
+}
+
 func (r *AppsecRunner) Run(ctx context.Context, t *tomb.Tomb) error {
+	defer r.Close()
+
 	r.logger.Infof("Appsec Runner ready to process event")
 	for {
 		select {

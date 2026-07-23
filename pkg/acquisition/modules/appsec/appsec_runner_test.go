@@ -1,8 +1,10 @@
 package appsecacquisition
 
 import (
+	"io"
 	"testing"
 
+	"github.com/corazawaf/coraza/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -283,4 +285,18 @@ func TestAppsecRuleLoad(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+// AppsecRunner.closeEngine reaches Close through an io.Closer assertion, because
+// coraza.WAF doesn't declare Close. If the concrete type ever stops implementing
+// it, that assertion turns the whole teardown into a silent no-op.
+func TestEngineImplementsCloser(t *testing.T) {
+	waf, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(
+		`SecRule REQUEST_URI "@rx abc" "id:1,phase:2,deny,log"`))
+	require.NoError(t, err)
+
+	closer, ok := waf.(io.Closer)
+	require.True(t, ok, "coraza.NewWAF result must implement io.Closer")
+	require.NoError(t, closer.Close())
+	require.NoError(t, closer.Close(), "Close must be idempotent")
 }
