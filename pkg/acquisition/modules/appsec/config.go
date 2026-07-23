@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/httpserver"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -215,15 +216,10 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	w.mux = http.NewServeMux()
 
-	w.server = &http.Server{
-		Addr:      w.config.ListenAddr,
-		Handler:   w.mux,
-		Protocols: &http.Protocols{},
+	w.server = &httpserver.Server{
+		Handler: w.mux,
+		Logger:  w.logger,
 	}
-
-	w.server.Protocols.SetHTTP1(true)
-	w.server.Protocols.SetUnencryptedHTTP2(true)
-	w.server.Protocols.SetHTTP2(true)
 
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}

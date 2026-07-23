@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/httpserver"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -20,7 +21,7 @@ type Source struct {
 	lapiClientConfig      *csconfig.LocalApiClientCfg
 	logger                *log.Entry
 	mux                   *http.ServeMux
-	server                *http.Server
+	server                *httpserver.Server
 	InChan                chan appsec.ParsedRequest
 	AppsecRuntime         *appsec.AppsecRuntimeConfig
 	AppsecConfigs         map[string]appsec.AppsecConfig
