@@ -46,7 +46,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		metrics.GlobalActiveDecisions.Reset()
 
 		for _, d := range decisions {
-			metrics.GlobalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type}).Set(float64(d.Count))
+			metrics.GlobalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type, "machine": d.Machine}).Set(float64(d.Count))
 		}
 
 		metrics.GlobalAlerts.Reset()
