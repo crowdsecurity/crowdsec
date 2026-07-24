@@ -4,6 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 func (c *Controller) HeartBeat(gctx *gin.Context) {
@@ -15,6 +18,8 @@ func (c *Controller) HeartBeat(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
+	metrics.GlobalMachinesLastHeartbeatTimestamp.With(prometheus.Labels{"machine": machineID}).SetToCurrentTime()
 
 	gctx.Status(http.StatusOK)
 }

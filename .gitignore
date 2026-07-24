@@ -70,3 +70,4 @@ __pycache__
 # local agent/tooling dirs (not part of the repo)
 .agents/
 .claude/
+.worktrees/

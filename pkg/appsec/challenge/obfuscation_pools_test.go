@@ -39,16 +39,19 @@ func TestCryptoObfuscationDefaultPoolSize(t *testing.T) {
 	require.Equal(t, cryptoObfuscationPoolDefaultSize, rt.cryptoPoolSize,
 		"default crypto pool size must be cryptoObfuscationPoolDefaultSize")
 
-	// The pre-warmer runs currentDynamicModule at construction; the
-	// cache for the current epoch must hold exactly 1 variant.
-	currentEpoch, _ := rt.keys.Current()
-
+	// The pre-warmer runs currentDynamicModule at construction, so at least
+	// one epoch must be cached. We assert on the cache contents rather than
+	// re-reading the clock: obfuscation spans several seconds, so a 5m
+	// rotation boundary can cross during construction and advance the current
+	// epoch away from the one that was warmed. Whatever epochs are cached, the
+	// default pool must hold exactly 1 variant each.
 	rt.dynamicModuleCacheMu.RLock()
-	variants, ok := rt.dynamicModuleCache[currentEpoch]
-	rt.dynamicModuleCacheMu.RUnlock()
+	defer rt.dynamicModuleCacheMu.RUnlock()
 
-	require.True(t, ok, "current epoch must be cached after construction (pre-warmer ran)")
-	require.Len(t, variants, 1, "default crypto pool keeps 1 variant per epoch")
+	require.NotEmpty(t, rt.dynamicModuleCache, "pre-warmer must cache at least the current epoch")
+	for epoch, variants := range rt.dynamicModuleCache {
+		require.Lenf(t, variants, 1, "default crypto pool keeps 1 variant per epoch (epoch %d)", epoch)
+	}
 }
 
 // TestCryptoObfuscationPoolSize asserts that when
