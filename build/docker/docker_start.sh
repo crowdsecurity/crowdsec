@@ -424,18 +424,17 @@ fi
 
 # Enroll instance if enroll key is provided
 if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
-    enroll_args=""
+    enroll_args=()
     if [ "$ENROLL_INSTANCE_NAME" != "" ]; then
-        enroll_args="--name $ENROLL_INSTANCE_NAME"
+        enroll_args+=(--name "$ENROLL_INSTANCE_NAME")
     fi
     if [ "$ENROLL_TAGS" != "" ]; then
         # shellcheck disable=SC2086
         for tag in ${ENROLL_TAGS}; do
-            enroll_args="$enroll_args --tags $tag"
+            enroll_args+=(--tags "$tag")
         done
     fi
-    # shellcheck disable=SC2086
-    cscli console enroll $enroll_args "$ENROLL_KEY"
+    cscli console enroll "${enroll_args[@]}" "$ENROLL_KEY"
 fi
 
 # crowdsec sqlite database permissions
