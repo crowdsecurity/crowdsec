@@ -1160,6 +1160,10 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 
+		// ValidateChallengeResponse rewrote HTTPRequest.URL.Path to the original
+		// page the visitor requested (recovered from the challenge payload).
+		request.URI = request.HTTPRequest.URL.Path
+
 		// Populate state.Fingerprint so on_challenge_submit expressions see
 		// the freshly-decrypted fingerprint via the env. CookiePowDifficulty
 		// records the difficulty just proven so the Solved event and
