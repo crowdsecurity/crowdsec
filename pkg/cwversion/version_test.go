@@ -57,6 +57,16 @@ func TestStripTags(t *testing.T) {
 			input: "v1.6.5.r1",
 			want:  "v1.6.5",
 		},
+		{
+			name:  "dev build (latest release tag + dev marker)",
+			input: "v1.7.8-dev-ga88b497b",
+			want:  "v1.7.8",
+		},
+		{
+			name:  "dev build, dirty worktree",
+			input: "v1.7.8-dev-ga88b497b-dirty",
+			want:  "v1.7.8",
+		},
 	}
 
 	for _, tt := range tests {
