@@ -128,8 +128,8 @@ github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7Do
 github.com/creack/pty v1.1.17/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
 github.com/creack/pty v1.1.24 h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=
 github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfvcwE=
-github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260723 h1:lkgSQYhJnJFRmiCrE4vUSbdQZw/lIRqtCOv/jkBUcOM=
-github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260723/go.mod h1:i+MkCB5Vb0Gl+273BjKHptdkahHrEIPoR3Cgcj21N/U=
+github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260730 h1:mbgglC8hhUlOjjh23E1vymYAHLthA84VXsHCTaJRwFY=
+github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260730/go.mod h1:i+MkCB5Vb0Gl+273BjKHptdkahHrEIPoR3Cgcj21N/U=
 github.com/crowdsecurity/dlog v0.0.2 h1:nj/7jLKO0o8tYn79O+g51ASeGLr5oOVahSoJ6Umq51g=
 github.com/crowdsecurity/dlog v0.0.2/go.mod h1:zpv7r+7KXwgVUZnUNjyP22zc/D7LKjyoY02weH2RBbk=
 github.com/crowdsecurity/go-cs-lib v0.0.25 h1:Ov6VPW9yV+OPsbAIQk1iTkEWhwkpaG0v3lrBzeqjzj4=
