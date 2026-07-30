@@ -34,6 +34,7 @@ var (
 
 var (
 	DefaultAuthCacheDuration = (1 * time.Minute)
+	DefaultAuthTimeout       = (200 * time.Millisecond)
 	DefaultBodyReadTimeout   = (1 * time.Second)
 )
 
@@ -49,6 +50,9 @@ type Configuration struct {
 	AppsecConfigs     []string       `yaml:"appsec_configs"`
 	AppsecConfigPath  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration *time.Duration `yaml:"auth_cache_duration"`
+	// AuthTimeout bounds the LAPI round-trip that validates a bouncer API key.
+	// Raise it when LAPI is several hops away. Set to 0 to disable. Defaults to DefaultAuthTimeout.
+	AuthTimeout *time.Duration `yaml:"auth_timeout"`
 	// BodyReadTimeout bounds how long we wait for the bouncer to finish sending the request body.
 	// Set to 0 to disable. Defaults to DefaultBodyReadTimeout.
 	BodyReadTimeout                   *time.Duration `yaml:"body_read_timeout"`
@@ -208,6 +212,11 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		w.logger.Infof("Cache duration for auth not set, using default: %v", *w.config.AuthCacheDuration)
 	}
 
+	if w.config.AuthTimeout == nil {
+		w.config.AuthTimeout = &DefaultAuthTimeout
+		w.logger.Infof("Auth timeout not set, using default: %v", *w.config.AuthTimeout)
+	}
+
 	if w.config.BodyReadTimeout == nil {
 		w.config.BodyReadTimeout = &DefaultBodyReadTimeout
 		w.logger.Infof("Body read timeout not set, using default: %v", *w.config.BodyReadTimeout)
@@ -327,7 +336,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 	}
 
 	w.httpClient = &http.Client{
-		Timeout: 200 * time.Millisecond,
+		Timeout: *w.config.AuthTimeout,
 	}
 	if w.lapiCACertPool != nil {
 		w.httpClient.Transport = &http.Transport{
@@ -361,52 +370,56 @@ func (w *Source) isValidKey(ctx context.Context, apiKey string) (bool, error) {
 	return resp.StatusCode == http.StatusOK, nil
 }
 
+// validateKey probes LAPI, collapsing concurrent probes for the same key into one.
+func (w *Source) validateKey(ctx context.Context, apiKey string) (bool, error) {
+	// The probe is shared, so it must not die with whichever request happened to
+	// trigger it. w.httpClient.Timeout bounds it.
+	ctx = context.WithoutCancel(ctx)
+
+	res, err, _ := w.authGroup.Do(apiKey, func() (any, error) {
+		return w.isValidKey(ctx, apiKey)
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return res.(bool), nil
+}
+
 func (w *Source) checkAuth(ctx context.Context, apiKey string) error {
 	if apiKey == "" {
 		return errMissingAPIKey
 	}
 
-	w.authMutex.Lock()
-	defer w.authMutex.Unlock()
-
 	expiration, exists := w.AuthCache.Get(apiKey)
 	now := time.Now()
 
-	if !exists { // No key in cache, require a valid check
-		isAuth, err := w.isValidKey(ctx, apiKey)
-		if err != nil || !isAuth {
-			if err != nil {
-				w.logger.Errorf("Error checking auth for API key: %s", err)
-			}
+	if exists && !now.After(expiration) {
+		return nil
+	}
 
+	isAuth, err := w.validateKey(ctx, apiKey)
+	if err != nil {
+		if !exists { // Nothing cached, we cannot vouch for this key
+			w.logger.Errorf("Error checking auth for API key: %s", err)
 			return errInvalidAPIKey
 		}
-		// Cache the valid API key
-		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
 
-		return nil
-	}
-
-	if !now.After(expiration) {
-		return nil
-	}
-
-	// Key is expired, recheck the value OR keep it if we cannot contact LAPI
-	isAuth, err := w.isValidKey(ctx, apiKey)
-	if err != nil { // General error when querying LAPI, consider the key still valid
+		// Known key and LAPI is unreachable, keep it rather than break traffic
 		w.logger.Errorf("Error checking auth for API key: %s, extending cache duration", err)
 		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+
 		return nil
 	}
 
-	if isAuth {
-		w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
-		return nil
+	if !isAuth {
+		w.AuthCache.Delete(apiKey)
+		return errInvalidAPIKey
 	}
 
-	// Key is not valid, remove it from cache
-	w.AuthCache.Delete(apiKey)
-	return errInvalidAPIKey
+	w.AuthCache.Set(apiKey, now.Add(*w.config.AuthCacheDuration))
+
+	return nil
 }
 
 // should this be in the runner ?

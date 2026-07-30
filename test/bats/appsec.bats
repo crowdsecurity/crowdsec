@@ -47,6 +47,46 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_DIR/appsec.yaml: datasource of type appsec: unable to parse appsec configuration: appsec_config or appsec_config_path must be set"
 }
 
+@test "auth_timeout is configurable" {
+    config_set '.common.log_media="stdout"'
+
+    rune -0 cscli collections install crowdsecurity/appsec-virtual-patching
+    rune -0 cscli collections install crowdsecurity/appsec-generic-rules
+
+    socket="$BATS_TEST_TMPDIR"/sock
+
+    cat > "$ACQUIS_DIR"/appsec.yaml <<-EOT
+	source: appsec
+	listen_socket: $socket
+	labels:
+	  type: appsec
+	appsec_config: crowdsecurity/appsec-default
+	auth_cache_duration: 5m
+	auth_timeout: 2s
+	EOT
+
+    rune -0 wait-for \
+        --err "Appsec Runner ready to process event" \
+        "$CROWDSEC"
+
+    refute_stderr --partial "Auth timeout not set, using default"
+
+    ./instance-crowdsec start
+
+    rune -0 cscli bouncers add appsecbouncer --key appkey
+
+    # the HEAD request validating the key must go through with the configured timeout
+    rune -0 curl -sS --fail-with-body --unix-socket "$socket" \
+        -H "x-crowdsec-appsec-api-key: appkey" \
+        -H "x-crowdsec-appsec-ip: 1.2.3.4" \
+        -H 'x-crowdsec-appsec-uri: /' \
+        -H 'x-crowdsec-appsec-host: foo.com' \
+        -H 'x-crowdsec-appsec-verb: GET' \
+        'http://fakehost'
+
+    assert_json '{action:"allow",http_status:200}'
+}
+
 @test "appsec allow and ban" {
     config_set '.common.log_media="stdout"'
 
