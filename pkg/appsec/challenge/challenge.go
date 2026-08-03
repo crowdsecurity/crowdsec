@@ -107,6 +107,15 @@ type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
 
+	// preWarmCancel stops the background dynamicModulePreWarmer. The pre-warmer
+	// runs under a context Close() can cancel rather than the constructor ctx,
+	// because on reload the process ctx outlives the runtime — without this the
+	// old goroutine would tick forever against a closed runtime. Nil for runtimes
+	// built without the pre-warmer (e.g. in tests). Close() cancels before
+	// closing the runtime, so a teardown-time obfuscation error is always paired
+	// with a canceled ctx and the pre-warmer suppresses its warning.
+	preWarmCancel context.CancelFunc
+
 	// challengeCode is the build-time-obfuscated challenge crypto/glue code,
 	// decompressed once at startup from initial_bundle.js.gz and injected inline
 	// on every challenge page. Static for the life of the process (no runtime
@@ -433,10 +442,12 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	// The dynamic-module pre-warmer is always on — the per-epoch key must be
-	// re-obfuscated on every rotation (bounded cost, one pass per variant). The
-	// challenge code itself is static (build-time obfuscated), so there is no
-	// library refresher anymore.
-	go challengeRuntime.dynamicModulePreWarmer(ctx)
+	// re-obfuscated on every rotation (bounded cost, one pass per variant). It
+	// runs under a context owned by Close() rather than the constructor ctx, so
+	// a reload (which reuses the process ctx) can stop it — see Close().
+	runCtx, cancel := context.WithCancel(ctx)
+	challengeRuntime.preWarmCancel = cancel
+	go challengeRuntime.dynamicModulePreWarmer(runCtx)
 
 	logger.WithFields(log.Fields{
 		"rotation_interval": rotationInterval,
@@ -453,6 +464,15 @@ func (c *ChallengeRuntime) Close(ctx context.Context) error {
 	if c == nil || c.r == nil {
 		return nil
 	}
+
+	// Stop the pre-warmer before closing the runtime. Cancel is synchronous, so
+	// once it returns the pre-warmer's ctx is canceled; if closing the runtime
+	// then trips an in-flight obfuscation, the pre-warmer sees the canceled ctx
+	// and suppresses the otherwise-spurious "runtime closed" warning.
+	if c.preWarmCancel != nil {
+		c.preWarmCancel()
+	}
+
 	return c.r.Close(ctx)
 }
 
