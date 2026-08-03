@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"golang.org/x/sync/singleflight"
+	"golang.org/x/sys/cpu"
 )
 
 // Internal URL paths the challenge runtime intercepts. Bouncers MUST forward
@@ -324,19 +326,43 @@ func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.Comp
 	return compiledMod, nil
 }
 
+// compilerSupported mimics the check performed by wazero for SSE4.1
+// We cannot rely in wazero on the wazero check, as it is used to choose whether to use the compiler or interpreter mode
+// If we force the compiler mode, and it's not supported, we will crash with SIGILL on the 1st instruction.
+// Compiler mode is required as interpreter mode is way too slow for the obfuscation (measured at at least 60 times slower)
+func compilerSupported() error {
+	switch runtime.GOARCH {
+	case "arm64":
+		return nil
+	case "amd64":
+		if !cpu.X86.HasSSE41 {
+			return errors.New("CPU lacks SSE4.1")
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("GOARCH %s has no wasm compiler backend", runtime.GOARCH)
+	}
+}
+
 func newWazeroRuntime(ctx context.Context) (wazero.Runtime, error) {
+	if err := compilerSupported(); err != nil {
+		return nil, fmt.Errorf("wasm compiler mode unavailable: %w", err)
+	}
+
 	var r wazero.Runtime
 	var err error
 
 	func() {
+		// wazero checks for executable memory, and panics if it cannot allocat it.
+		// Catch the panic and return an error instead, so we can provide a more helpful message to the user.
 		defer func() {
 			if rec := recover(); rec != nil {
-				err = fmt.Errorf("failed to create wasm runtime in compiler mode: %v", rec)
+				err = fmt.Errorf("failed to create wasm runtime in compiler mode: %v "+
+					"(the kernel likely denied an executable memory mapping: check W^X hardening, seccomp or SELinux policy)", rec)
 			}
 		}()
 
-		// We require wazero to run in compiler mode otherwise the JS compilation takes forever
-		// Compiler mode requires SSE4.1 + executable memory
 		r = wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfigCompiler())
 	}()
 
