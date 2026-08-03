@@ -113,7 +113,7 @@ type ChallengeRuntime struct {
 	// old goroutine would tick forever against a closed runtime. Nil for runtimes
 	// built without the pre-warmer (e.g. in tests). Close() cancels before
 	// closing the runtime, so a teardown-time obfuscation error is always paired
-	// with a cancelled ctx and the pre-warmer suppresses its warning.
+	// with a canceled ctx and the pre-warmer suppresses its warning.
 	preWarmCancel context.CancelFunc
 
 	// challengeCode is the build-time-obfuscated challenge crypto/glue code,
@@ -466,8 +466,8 @@ func (c *ChallengeRuntime) Close(ctx context.Context) error {
 	}
 
 	// Stop the pre-warmer before closing the runtime. Cancel is synchronous, so
-	// once it returns the pre-warmer's ctx is cancelled; if closing the runtime
-	// then trips an in-flight obfuscation, the pre-warmer sees the cancelled ctx
+	// once it returns the pre-warmer's ctx is canceled; if closing the runtime
+	// then trips an in-flight obfuscation, the pre-warmer sees the canceled ctx
 	// and suppresses the otherwise-spurious "runtime closed" warning.
 	if c.preWarmCancel != nil {
 		c.preWarmCancel()
