@@ -329,7 +329,7 @@ func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.Comp
 // compilerSupported mimics the check performed by wazero for SSE4.1
 // We cannot rely in wazero on the wazero check, as it is used to choose whether to use the compiler or interpreter mode
 // If we force the compiler mode, and it's not supported, we will crash with SIGILL on the 1st instruction.
-// Compiler mode is required as interpreter mode is way too slow for the obfuscation (measured at at least 60 times slower)
+// Compiler mode is required as interpreter mode is way too slow for the obfuscation (measured as being at least 60 times slower)
 func compilerSupported() error {
 	switch runtime.GOARCH {
 	case "arm64":
