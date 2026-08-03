@@ -324,6 +324,29 @@ func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.Comp
 	return compiledMod, nil
 }
 
+func newWazeroRuntime(ctx context.Context) (wazero.Runtime, error) {
+	var r wazero.Runtime
+	var err error
+
+	func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				err = fmt.Errorf("failed to create wasm runtime in compiler mode: %v", rec)
+			}
+		}()
+
+		// We require wazero to run in compiler mode otherwise the JS compilation takes forever
+		// Compiler mode requires SSE4.1 + executable memory
+		r = wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfigCompiler())
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
 	resolvedOpts := runtimeOptions{}
 	for _, opt := range opts {
@@ -380,7 +403,10 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		spentSetMaxEntries = spentSetDefaultMaxEntries
 	}
 
-	r := wazero.NewRuntime(ctx)
+	r, err := newWazeroRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
 	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
