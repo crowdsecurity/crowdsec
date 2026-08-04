@@ -120,8 +120,6 @@ func (o *OnlineApiClientCfg) Load() error {
 	switch {
 	case o.Credentials.Login == "" && o.Credentials.Password == "" && o.Credentials.URL == "":
 		// An empty credentials file just means the engine was never registered against CAPI.
-		// That is a normal state (cscli console/capi status report it and point to 'capi
-		// register'), so it should not look like a misconfiguration.
 		log.Debugf("no CAPI credentials found in '%s', engine is not registered", o.CredentialsFilePath)
 		o.Credentials = nil
 	case o.Credentials.Login == "":
