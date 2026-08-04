@@ -363,7 +363,7 @@ type liveConsoleStatus struct {
 }
 
 // fetchConsoleStatus queries CAPI (and PAPI when enrolled) for the live console link.
-func (cli *cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Config) liveConsoleStatus {
+func (*cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Config) liveConsoleStatus {
 	st := liveConsoleStatus{}
 
 	online := cfg.API.Server.OnlineClient

@@ -39,10 +39,9 @@ func cmdConsoleConnectionTable(out io.Writer, wantColor string, st liveConsoleSt
 		t.AddRow("Enrolled", emoji.CrossMark+" not enrolled")
 		t.Render()
 		return
-	} else {
-		t.AddRow("Enrolled", emoji.CheckMarkButton+" enrolled")
 	}
 
+	t.AddRow("Enrolled", emoji.CheckMarkButton+" enrolled")
 	t.AddRow("Plan", st.capi.SubscriptionType)
 
 	if st.decisionManagement {
