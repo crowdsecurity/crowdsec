@@ -345,8 +345,6 @@ Disable given information push to the central API.`,
 	return cmd
 }
 
-// liveConsoleStatus is the current link between this engine and the console, fetched from
-// CAPI/PAPI.
 type liveConsoleStatus struct {
 	capi               consolestatus.CAPIStatus
 	registered         bool
@@ -361,8 +359,7 @@ func (cli *cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Con
 
 	online := cfg.API.Server.OnlineClient
 
-	// Credentials are loaded here (not at config time) so that a missing or invalid
-	// credentials file degrades to a "not registered" status instead of aborting the command.
+	// load credz here to gracefully handle missing/invalid file.
 	if online == nil || online.CredentialsFilePath == "" {
 		return st
 	}
@@ -372,7 +369,6 @@ func (cli *cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Con
 		return st
 	}
 
-	// blank or incomplete credentials: the engine was never registered against CAPI
 	if online.Credentials == nil {
 		return st
 	}
@@ -427,10 +423,9 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		// Unlike the other console subcommands, status must run even when the engine is not
-		// registered against CAPI or can't reach it, so it can report that state instead of
-		// erroring out. We skip loading online credentials here (they're loaded best-effort in
-		// fetchConsoleStatus) so a missing/invalid credentials file doesn't abort the command.
-		// This overrides the parent's stricter PersistentPreRunE.
+		// registered against CAPI or can't reach it.
+		// We skip loading online credentials here (they're loaded best-effort in
+		// fetchConsoleStatus). This overrides the parent's stricter PersistentPreRunE.
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			return require.LAPINoOnlineCreds(cli.cfg())
 		},

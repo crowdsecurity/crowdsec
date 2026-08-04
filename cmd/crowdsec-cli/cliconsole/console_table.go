@@ -12,7 +12,7 @@ import (
 )
 
 // cmdConsoleConnectionTable renders the live link to the console: enrollment, plan and the
-// real decision-management state (derived from the plan, not the console_management flag).
+// real decision-management state.
 func cmdConsoleConnectionTable(out io.Writer, wantColor string, st liveConsoleStatus) {
 	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
@@ -61,9 +61,7 @@ func cmdConsoleConnectionTable(out io.Writer, wantColor string, st liveConsoleSt
 	t.Render()
 }
 
-// cmdConsoleStatusTable renders the sharing options (what the engine forwards to the
-// console). console_management is intentionally excluded here — its real state is shown
-// by cmdConsoleConnectionTable as "Decision management".
+// cmdConsoleStatusTable renders the sharing options.
 func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.ConsoleConfig) {
 	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)

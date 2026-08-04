@@ -1,6 +1,5 @@
 // Package consolestatus fetches the live state of an engine's link to the CrowdSec
-// console (CAPI/PAPI): enrollment, plan, and decision-management state. It is shared
-// by the capi/papi/console status commands so they report the same thing.
+// console (CAPI/PAPI): enrollment, plan, and decision-management state.
 package consolestatus
 
 import (
@@ -33,16 +32,15 @@ type PAPIInfo struct {
 	LastOrder  string
 }
 
-// DecisionManagementActive reports whether the console actually pushes decisions to this
-// engine. This is driven by the plan (from the CAPI JWT), not by the console_management
-// config flag, which no longer gates PAPI — see the subscription gating in pkg/apiserver/papi.go.
+// DecisionManagementActive reports whether the console pushes decisions to this
+// engine, from PAPI.
 func DecisionManagementActive(subscriptionType string) bool {
 	return subscriptionType == apiclient.SubscriptionTypeEnterprise ||
 		subscriptionType == apiclient.SubscriptionTypeSecOps
 }
 
-// QueryCAPIStatus authenticates against the Central API to check the credentials are
-// valid, then reads enrollment and subscription type from the returned JWT.
+// QueryCAPIStatus authenticates against the Central API
+// and reads enrollment and subscription type from the returned JWT.
 func QueryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, credURL string, login string, password string) (CAPIStatus, error) {
 	apiURL, err := url.Parse(credURL)
 	if err != nil {
@@ -87,8 +85,7 @@ func QueryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 	return CAPIStatus{Authenticated: true}, nil
 }
 
-// QueryPAPIInfo asks the Polling API for the plan/categories the engine is entitled to
-// and looks up when it last pulled an order.
+// QueryPAPIInfo asks PAPI for the plan/categories the engine is entitled to
 func QueryPAPIInfo(ctx context.Context, serverCfg *csconfig.LocalApiServerCfg, db *database.Client) (PAPIInfo, error) {
 	apic, err := apiserver.NewAPIC(ctx, serverCfg.OnlineClient, db, serverCfg.ConsoleConfig, serverCfg.CapiWhitelists)
 	if err != nil {
