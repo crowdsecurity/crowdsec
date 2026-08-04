@@ -75,12 +75,7 @@ setup() {
     assert_output --partial " on https://api.crowdsec.net/"
     assert_output --partial "You can successfully interact with Central API (CAPI)"
     
-    # For the time, PAPI is always enabled config-wise
-    rune -1 cscli papi status
-    assert_stderr --partial "unable to get PAPI permissions"
-    assert_stderr --partial "Forbidden for plan"
-
-    rune -0 cscli console enable console_management
+    # papi_url is always set (auto-defaulted), so papi status reaches CAPI and is refused by plan
     rune -1 cscli papi status
     assert_stderr --partial "unable to get PAPI permissions"
     assert_stderr --partial "Forbidden for plan"

@@ -108,10 +108,17 @@ setup() {
     assert_stderr --partial "manual already set to true"
     assert_stderr --partial "tainted already set to true"
     assert_stderr --partial "context already set to true"
-    assert_stderr --partial "console_management set to true"
     assert_stderr --partial "All features have been enabled successfully"
     rune -1 cscli console enable tralala
     assert_stderr --partial "unknown flag tralala"
+}
+
+@test "cscli console enable console_management: deprecated no-op" {
+    # console_management is gone but still accepted as a deprecated no-op (exit 0 + warning)
+    rune -0 cscli console enable console_management
+    assert_stderr --partial "'console_management' is deprecated"
+    rune -0 cscli console disable console_management
+    assert_stderr --partial "'console_management' is deprecated"
 }
 
 @test "cscli console disable" {
@@ -129,7 +136,6 @@ setup() {
     assert_stderr --partial "manual already set to false"
     assert_stderr --partial "tainted already set to false"
     assert_stderr --partial "context already set to false"
-    assert_stderr --partial "console_management already set to false"
     assert_stderr --partial "All features have been disabled"
     rune -1 cscli console disable tralala
     assert_stderr --partial "unknown flag tralala"

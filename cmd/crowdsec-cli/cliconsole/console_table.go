@@ -69,7 +69,7 @@ func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.
 	t.SetHeaders("Option Name", "Activated", "Description")
 	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
-	for _, option := range csconfig.CONSOLE_SHARE_CONFIGS {
+	for _, option := range csconfig.CONSOLE_CONFIGS {
 		activated := emoji.CrossMark
 
 		switch option {

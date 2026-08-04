@@ -141,6 +141,11 @@ func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {
 			continue
 		}
 
+		if opt == csconfig.CONSOLE_MANAGEMENT {
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
+			continue
+		}
+
 		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
 			return nil, fmt.Errorf("option %s doesn't exist", opt)
 		}
@@ -162,6 +167,11 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 		if opt == "all" {
 			opts = []string{}
 			// keep validating the rest of the option names
+			continue
+		}
+
+		if opt == csconfig.CONSOLE_MANAGEMENT {
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
 			continue
 		}
 
@@ -217,7 +227,6 @@ cscli console enroll --quick
 cscli console enroll --quick --name [instance_name]
 cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-cscli console enroll --enable console_management YOUR-ENROLL-KEY
 cscli console enroll --disable context YOUR-ENROLL-KEY
 
 valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
@@ -529,38 +538,8 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			// for each flag check if it's already set before setting it
-			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
-				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-			} else {
-				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				consoleCfg.ConsoleManagement = new(wanted)
-			}
-
-			if cfg.API.Server.OnlineClient.Credentials != nil {
-				changed := false
-				if wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL == "" {
-					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = csconfig.PAPIBaseURL
-				} else if !wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL != "" {
-					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = ""
-				}
-
-				if changed {
-					fileContent, err := yaml.Marshal(cfg.API.Server.OnlineClient.Credentials)
-					if err != nil {
-						return fmt.Errorf("cannot serialize credentials: %w", err)
-					}
-
-					log.Infof("Updating credentials file: %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-
-					err = os.WriteFile(cfg.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
-					if err != nil {
-						return fmt.Errorf("cannot write credentials file: %w", err)
-					}
-				}
-			}
+			// deprecated no-op: decision management is now enabled automatically based on the plan
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {

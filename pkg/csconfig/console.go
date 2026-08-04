@@ -12,23 +12,20 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
-	CONSOLE_MANAGEMENT     = "console_management"
 	SEND_CONTEXT           = "context"
+
+	// CONSOLE_MANAGEMENT is a deprecated option kept only so the CLI can recognize it and
+	// warn: decision management is now enabled automatically based on the console plan.
+	CONSOLE_MANAGEMENT = "console_management"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
-
-// CONSOLE_SHARE_CONFIGS is the subset of options that control what the engine forwards to
-// the console. It excludes console_management (decision management), whose state is
-// derived from the plan and reported separately by `cscli console status`.
-var CONSOLE_SHARE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT}
 
 var CONSOLE_CONFIGS_HELP = map[string]string{
 	SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
 	SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",
 	SEND_TAINTED_SCENARIOS: "Forward alerts from tainted scenarios to the console",
 	SEND_CONTEXT:           "Forward context with alerts to the console",
-	CONSOLE_MANAGEMENT:     "Receive decisions from console",
 }
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
@@ -37,7 +34,6 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
-	ConsoleManagement     *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
 }
 
@@ -59,23 +55,11 @@ func (c *ConsoleConfig) EnabledOptions() []string {
 		ret = append(ret, SEND_MANUAL_SCENARIOS)
 	}
 
-	if c.ConsoleManagement != nil && *c.ConsoleManagement {
-		ret = append(ret, CONSOLE_MANAGEMENT)
-	}
-
 	if c.ShareContext != nil && *c.ShareContext {
 		ret = append(ret, SEND_CONTEXT)
 	}
 
 	return ret
-}
-
-func (c *ConsoleConfig) IsPAPIEnabled() bool {
-	if c == nil || c.ConsoleManagement == nil {
-		return false
-	}
-
-	return *c.ConsoleManagement
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -86,7 +70,6 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = new(true)
 		c.ConsoleConfig.ShareTaintedScenarios = new(true)
 		c.ConsoleConfig.ShareManualDecisions = new(false)
-		c.ConsoleConfig.ConsoleManagement = new(false)
 		c.ConsoleConfig.ShareContext = new(false)
 
 		return nil
@@ -115,11 +98,6 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
 		c.ConsoleConfig.ShareManualDecisions = new(false)
-	}
-
-	if c.ConsoleConfig.ConsoleManagement == nil {
-		log.Debugf("no console_management found, setting to false")
-		c.ConsoleConfig.ConsoleManagement = new(false)
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {
