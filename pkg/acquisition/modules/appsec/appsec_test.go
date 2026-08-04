@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
@@ -92,7 +91,8 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	outofbandRules := []string{}
 	nativeOutofbandRules := []string{}
 	InChan := make(chan appsec.ParsedRequest)
-	OutChan := make(chan pipeline.Event)
+	// buffered so handleRequest's synchronous sends never block; the harness drains afterwards
+	OutChan := make(chan pipeline.Event, 128)
 
 	logger := log.WithField("test", test.name)
 
@@ -244,51 +244,27 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 
 	input := test.input_request
-	input.ResponseChannel = make(chan appsec.AppsecTempResponse)
-
-	// collect both responses and events until no activity for idleDuration
-	idleDuration := 200 * time.Millisecond
-	idle := time.NewTimer(idleDuration)
-	defer idle.Stop()
-
-	// when we receive something, drain and restart the idle timer
-	reset := func() {
-		if !idle.Stop() {
-			select {
-			case <-idle.C:
-			default:
-			}
-		}
-		idle.Reset(idleDuration)
-	}
+	// buffered so handleRequest's synchronous sends never block; drained below
+	input.ResponseChannel = make(chan appsec.AppsecTempResponse, 128)
 
 	responses := []appsec.AppsecTempResponse{}
 	events := []pipeline.Event{}
 
-	done := make(chan struct{})
-
-	// collect in a goroutine so a receiver is ready
-	go func() {
-		for {
-			select {
-			case r := <-input.ResponseChannel:
-				responses = append(responses, r)
-				reset()
-			case e := <-OutChan:
-				events = append(events, e)
-				reset()
-			case <-idle.C:
-				close(done)
-				return
-			}
-		}
-	}()
-
+	// handleRequest is synchronous: once it returns, every response and event it emits has
+	// already been buffered, so we can drain both channels deterministically without relying
+	// on a timer (which used to deadlock when a slow request outran the idle timeout).
 	runner.handleRequest(t.Context(), &input)
-	time.Sleep(50 * time.Millisecond)
 
-	// wait for the idle duration
-	<-done
+	for draining := true; draining; {
+		select {
+		case r := <-input.ResponseChannel:
+			responses = append(responses, r)
+		case e := <-OutChan:
+			events = append(events, e)
+		default:
+			draining = false
+		}
+	}
 
 	require.NotEmpty(t, responses)
 	httpStatus, appsecResponse := AppsecRuntime.GenerateResponse(responses[0], logger)
