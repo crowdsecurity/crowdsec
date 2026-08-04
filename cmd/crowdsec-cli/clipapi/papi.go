@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -59,38 +60,17 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 
-	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	info, err := consolestatus.QueryPAPIInfo(ctx, cfg.API.Server, db)
 	if err != nil {
-		return fmt.Errorf("unable to initialize API client: %w", err)
-	}
-
-	papiLogger := cfg.API.Server.NewPAPILogger()
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
-	if err != nil {
-		return fmt.Errorf("unable to initialize PAPI client: %w", err)
-	}
-
-	perms, err := papi.GetPermissions(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to get PAPI permissions: %w", err)
-	}
-
-	lastTimestampStr, err := db.GetConfigItem(ctx, apiserver.PapiPullKey)
-	if err != nil {
-		lastTimestampStr = "never"
-	}
-
-	// both can and did happen
-	if lastTimestampStr == "" || lastTimestampStr == "0001-01-01T00:00:00Z" {
-		lastTimestampStr = "never"
+		return err
 	}
 
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
-	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
-	fmt.Fprintf(out, "Last order received: %s\n", lastTimestampStr)
+	fmt.Fprintf(out, "Console plan: %s\n", info.Plan)
+	fmt.Fprintf(out, "Last order received: %s\n", info.LastOrder)
 	fmt.Fprint(out, "PAPI subscriptions:\n")
 
-	for _, sub := range perms.Categories {
+	for _, sub := range info.Categories {
 		fmt.Fprintf(out, " - %s\n", sub)
 	}
 

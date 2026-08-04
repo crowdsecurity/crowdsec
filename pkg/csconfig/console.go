@@ -17,6 +17,12 @@ const (
 )
 
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
+
+// CONSOLE_SHARE_CONFIGS is the subset of options that control what the engine forwards to
+// the console. It excludes console_management (decision management), whose real state is
+// derived from the plan and reported separately by `cscli console status`.
+var CONSOLE_SHARE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT}
+
 var CONSOLE_CONFIGS_HELP = map[string]string{
 	SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
 	SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",

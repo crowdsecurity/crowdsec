@@ -44,9 +44,12 @@ setup() {
     rune -1 cscli capi status
     assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing password field)"
 
+    # with every field removed, the engine is simply not registered: this is a normal
+    # state, so no scary warning - just a clear message pointing to 'capi register'
     config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.login)'
     rune -1 cscli capi status
-    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing login field)"
+    refute_stderr --partial "missing login field"
+    assert_stderr --partial "the Central API (CAPI) must be configured with 'cscli capi register'"
 
     rm "${ONLINE_API_CREDENTIALS_YAML}"
     rune -1 cscli capi status

@@ -2,6 +2,7 @@ package cliconsole
 
 import (
 	"io"
+	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/text"
 
@@ -10,6 +11,59 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
+// cmdConsoleConnectionTable renders the live link to the console: enrollment, plan and the
+// real decision-management state (derived from the plan, not the console_management flag).
+func cmdConsoleConnectionTable(out io.Writer, wantColor string, st liveConsoleStatus) {
+	t := cstable.New(out, wantColor)
+	t.SetRowLines(false)
+	t.SetHeaders("Console connection", "")
+	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft)
+
+	if !st.registered {
+		t.AddRow("Central API (CAPI)", emoji.CrossMark+" not registered, see 'cscli capi register'")
+		t.Render()
+
+		return
+	}
+
+	if !st.reachable {
+		t.AddRow("Central API (CAPI)", emoji.CrossMark+" unreachable - showing local options only")
+		t.Render()
+
+		return
+	}
+
+	t.AddRow("Central API (CAPI)", emoji.CheckMarkButton+" authenticated")
+
+	if !st.capi.Enrolled {
+		t.AddRow("Enrolled", emoji.CrossMark+" not enrolled")
+		t.Render()
+		return
+	} else {
+		t.AddRow("Enrolled", emoji.CheckMarkButton+" enrolled")
+	}
+
+	t.AddRow("Plan", st.capi.SubscriptionType)
+
+	if st.decisionManagement {
+		t.AddRow("Decision management", emoji.CheckMarkButton+" active")
+	} else {
+		t.AddRow("Decision management", emoji.CrossMark+" inactive (requires SECOPS or ENTERPRISE plan)")
+	}
+
+	if st.papi != nil {
+		t.AddRow("Last order received", st.papi.LastOrder)
+		if len(st.papi.Categories) > 0 {
+			t.AddRow("PAPI subscriptions", strings.Join(st.papi.Categories, ", "))
+		}
+	}
+
+	t.Render()
+}
+
+// cmdConsoleStatusTable renders the sharing options (what the engine forwards to the
+// console). console_management is intentionally excluded here — its real state is shown
+// by cmdConsoleConnectionTable as "Decision management".
 func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.ConsoleConfig) {
 	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
@@ -17,7 +71,7 @@ func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.
 	t.SetHeaders("Option Name", "Activated", "Description")
 	t.SetHeaderAlignment(text.AlignLeft, text.AlignLeft, text.AlignLeft)
 
-	for _, option := range csconfig.CONSOLE_CONFIGS {
+	for _, option := range csconfig.CONSOLE_SHARE_CONFIGS {
 		activated := emoji.CrossMark
 
 		switch option {
@@ -35,10 +89,6 @@ func cmdConsoleStatusTable(out io.Writer, wantColor string, consoleCfg csconfig.
 			}
 		case csconfig.SEND_CONTEXT:
 			if *consoleCfg.ShareContext {
-				activated = emoji.CheckMarkButton
-			}
-		case csconfig.CONSOLE_MANAGEMENT:
-			if *consoleCfg.ConsoleManagement {
 				activated = emoji.CheckMarkButton
 			}
 		}

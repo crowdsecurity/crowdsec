@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -344,6 +345,80 @@ Disable given information push to the central API.`,
 	return cmd
 }
 
+// liveConsoleStatus is the current link between this engine and the console, fetched from
+// CAPI/PAPI.
+type liveConsoleStatus struct {
+	capi               consolestatus.CAPIStatus
+	registered         bool
+	reachable          bool
+	decisionManagement bool
+	papi               *consolestatus.PAPIInfo
+}
+
+// fetchConsoleStatus queries CAPI (and PAPI when enrolled) for the live console link.
+func (cli *cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Config) liveConsoleStatus {
+	st := liveConsoleStatus{}
+
+	online := cfg.API.Server.OnlineClient
+
+	// Credentials are loaded here (not at config time) so that a missing or invalid
+	// credentials file degrades to a "not registered" status instead of aborting the command.
+	if online == nil || online.CredentialsFilePath == "" {
+		return st
+	}
+
+	if err := online.Load(); err != nil {
+		log.Warnf("could not load CAPI credentials: %s", err)
+		return st
+	}
+
+	// blank or incomplete credentials: the engine was never registered against CAPI
+	if online.Credentials == nil {
+		return st
+	}
+
+	st.registered = true
+
+	hub, err := require.Hub(cfg, nil)
+	if err != nil {
+		log.Warnf("could not load hub, skipping live console status: %s", err)
+		return st
+	}
+
+	db, err := require.DBClient(ctx, cfg.DbConfig)
+	if err != nil {
+		log.Warnf("could not connect to database, skipping live console status: %s", err)
+		return st
+	}
+
+	cred := online.Credentials
+
+	capi, err := consolestatus.QueryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
+	if err != nil {
+		log.Warnf("could not reach Central API (CAPI): %s", err)
+		return st
+	}
+
+	st.capi = capi
+	st.reachable = true
+
+	if !capi.Enrolled {
+		return st
+	}
+
+	st.decisionManagement = consolestatus.DecisionManagementActive(capi.SubscriptionType)
+
+	papi, err := consolestatus.QueryPAPIInfo(ctx, cfg.API.Server, db)
+	if err != nil {
+		log.Debugf("could not reach Polling API (PAPI): %s", err)
+		return st
+	}
+
+	st.papi = &papi
+
+	return st
+}
+
 func (cli *cliConsole) newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "status",
@@ -351,20 +426,48 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		Example:           `sudo cscli console status`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		// Unlike the other console subcommands, status must run even when the engine is not
+		// registered against CAPI or can't reach it, so it can report that state instead of
+		// erroring out. We skip loading online credentials here (they're loaded best-effort in
+		// fetchConsoleStatus) so a missing/invalid credentials file doesn't abort the command.
+		// This overrides the parent's stricter PersistentPreRunE.
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			return require.LAPINoOnlineCreds(cli.cfg())
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
+			ctx := cmd.Context()
 			consoleCfg := cfg.API.Server.ConsoleConfig
 
 			switch cfg.Cscli.Output {
 			case "human":
+				st := cli.fetchConsoleStatus(ctx, cfg)
+				cmdConsoleConnectionTable(color.Output, cfg.Cscli.Color, st)
 				cmdConsoleStatusTable(color.Output, cfg.Cscli.Color, *consoleCfg)
 			case "json":
-				out := map[string]*bool{
-					csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,
-					csconfig.SEND_CUSTOM_SCENARIOS:  consoleCfg.ShareCustomScenarios,
-					csconfig.SEND_TAINTED_SCENARIOS: consoleCfg.ShareTaintedScenarios,
-					csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
-					csconfig.CONSOLE_MANAGEMENT:     consoleCfg.ConsoleManagement,
+				st := cli.fetchConsoleStatus(ctx, cfg)
+
+				console := map[string]any{
+					"registered":          st.registered,
+					"authenticated":       st.reachable,
+					"enrolled":            st.capi.Enrolled,
+					"plan":                st.capi.SubscriptionType,
+					"decision_management": st.decisionManagement,
+				}
+
+				if st.papi != nil {
+					console["last_order_received"] = st.papi.LastOrder
+					console["papi_categories"] = st.papi.Categories
+				}
+
+				out := map[string]any{
+					"sharing_options": map[string]*bool{
+						csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,
+						csconfig.SEND_CUSTOM_SCENARIOS:  consoleCfg.ShareCustomScenarios,
+						csconfig.SEND_TAINTED_SCENARIOS: consoleCfg.ShareTaintedScenarios,
+						csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
+					},
+					"console": console,
 				}
 
 				data, err := json.MarshalIndent(out, "", "  ")
@@ -386,7 +489,6 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					{csconfig.SEND_CUSTOM_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareCustomScenarios)},
 					{csconfig.SEND_TAINTED_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareTaintedScenarios)},
 					{csconfig.SEND_CONTEXT, strconv.FormatBool(*consoleCfg.ShareContext)},
-					{csconfig.CONSOLE_MANAGEMENT, strconv.FormatBool(*consoleCfg.ConsoleManagement)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
