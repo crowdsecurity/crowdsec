@@ -365,16 +365,64 @@ Six hook stages, two of which are challenge-specific:
 | Hook | When | Env | Notable helpers |
 |---|---|---|---|
 | `on_load` | Engine startup, once | runtime config | `SetChallengeDifficulty` (sets runtime default) |
-| `pre_eval` | Before WAF | request + state | `SendChallenge`, `GrantChallengeCookie(reason, ttl?)`, `SetChallengeDifficulty` (per-req) |
+| `pre_eval` | Before WAF | request + state | `SendChallenge`, `GrantChallengeCookie(reason, ttl?)`, `SetChallengeDifficulty` (per-req), `AddRequestScore`/`RequestScore` |
 | `post_eval` | After WAF | request + state | same as `pre_eval` |
 | `on_match` | Per-rule match | event + state | `SetRemediation`, `SetReturnCode` |
-| `on_challenge` | Valid cookie/submission, fingerprint available | fingerprint + state | `SendChallenge`, `SetChallengeDifficulty`, `EvaluateMismatches`, `fingerprint.*` |
-| `on_challenge_submit` | POST `/submit` after crypto validation | fingerprint + state | `RejectSubmission`, `GrantChallengeCookie(reason, ttl?)` (inline), `EvaluateMismatches` |
+| `on_challenge` | Valid cookie/submission, fingerprint available | fingerprint + state | `SendChallenge`, `SetChallengeDifficulty`, `EvaluateMismatches`, `fingerprint.*`, `AddRequestScore`/`RequestScore` |
+| `on_challenge_submit` | POST `/submit` after crypto validation | fingerprint + state | `RejectSubmission`, `GrantChallengeCookie(reason, ttl?)` (inline), `EvaluateMismatches`, `AddRequestScore`/`RequestScore` |
 
 `on_challenge` is skipped if `state.Fingerprint` is nil (no valid cookie or
 submission). `on_challenge_submit` is deliberately narrow: only helpers that
 preserve the challenge-submit JSON envelope shape are exposed — a 307 redirect
 from this phase would break the client JS state machine.
+
+### 1.7b Request score accumulator
+
+`AppsecRequestState.RequestScore` ([`pkg/appsec/score.go`](../score.go)) lets rules
+express a **threshold** policy instead of a boolean one: each signal credits a
+weight and a later rule acts only once the total crosses a bar. This is what makes
+a soft signal usable — a literal `UTC` browser timezone is worth a few points, never
+a block on its own.
+
+Four helpers, registered by `addRequestScoreHelpers` in
+[`waf_helpers.go`](../waf_helpers.go) into **every request phase** (`pre_eval`,
+`post_eval`, `on_match`, `on_challenge`, `on_challenge_submit`). `on_load` is
+deliberately excluded — there is no request state yet, so scoring there is a
+config-load error rather than a silent no-op.
+
+| Helper | Semantics |
+|---|---|
+| `AddRequestScore(points, reason)` | Credits `points` to `reason`. Repeats on the same reason **sum**, so CRS-style per-matched-rule scoring works. `points` may be negative (trust credit) or zero (observe-only: registers the reason without moving the total). Blank reasons normalize to `"unspecified"` |
+| `RequestScore()` | Running total; 0 before anything scored |
+| `RequestScoreReasons()` | Distinct reasons, first-seen order (stable output) |
+| `RequestScoreFor(reason)` | Running total for one reason |
+
+The accumulator is domain-neutral on purpose: bot-detection weights and CRS anomaly
+scores are the same mechanism, and the name should not tie it to the first use.
+
+**Not cleared by `ResetResponse`**, joining `HookVars`, `LastMismatchReport` and
+`ChallengeExempt` in the deliberately-preserved set. `ResetResponse`'s contract is
+response fields, and `ClearResponse` is exported — a mid-request caller must not be
+able to wipe an accumulated verdict.
+
+**Observability.** Each call publishes `request_score`, `request_score_reasons` and
+`request_score_detail` into `hook_vars`, and logs one Debug line (a twenty-signal
+config would otherwise emit twenty Info lines per request). Because `copyHookVars`
+only fires on a WAF interrupt — and a challenge issued purely because a score crossed
+a threshold matches no rule — the score is *also* carried on `ChallengeEventInfo`
+(§1.6 of the hub docs): `SendChallenge` and the rejected-submission path stamp
+`evt.Parsed["request_score"]` / `["request_score_reasons"]`.
+
+**Ordering facts for rule authors** (documentation-level; nothing guards them):
+
+1. `on_challenge` runs **before** `pre_eval`, so a score built in `pre_eval` cannot
+   influence an `on_challenge` decision in the same request.
+2. Top-level (non band-scoped) `pre_eval:` / `post_eval:` / `on_match:` hooks run
+   once per band against the same state, so an unconditional adder there scores
+   twice. Scope the hook under `inband:` / `outofband:` to avoid it.
+
+See §3.3 for the config-composition rule that keeps a weights/thresholds split
+order-independent.
 
 ### 1.8 Fingerprint mismatch report
 
@@ -787,6 +835,10 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `fingerprint.UAMobileMismatch()` | wherever `fingerprint` is non-nil | Atomic check, no aggregation |
 | `fingerprint.AcceptLanguageMismatch(req)` | same | Atomic check |
 | `fingerprint.TimezoneCountryMismatch(country)` | same | Atomic check |
+| `AddRequestScore(points, reason)` | every request phase | Credits weighted evidence; repeats on a reason sum. See §1.11 |
+| `RequestScore()` | same | Running total, 0 before anything scored |
+| `RequestScoreReasons()` | same | Distinct reasons, first-seen order |
+| `RequestScoreFor(reason)` | same | Running total for one reason |
 
 #### `MismatchReport` API
 
@@ -826,6 +878,30 @@ challenge:
 Other top-level YAML keys follow the existing appsec-config patterns: rules
 and hooks are *appended* across configs; scalars like `default_remediation`,
 HTTP codes, and challenge fields are *overridden*.
+
+#### Hook ordering across configs
+
+Hooks are *appended*, in the order the configs are listed, so a config whose rule
+depends on what an earlier config did is order-sensitive. The hub's
+`appsec-bot-challenge-scoring` split is the worked example: the weights
+(`AddRequestScore`) must run before the thresholds (`RequestScore() >= N`), or the
+threshold sees an empty score and silently never fires.
+
+Two things to know when designing such a split:
+
+- A glob (`appsec_configs: [crowdsecurity/appsec-bot-*]`) expands to a
+  **case-insensitively sorted** list of item names
+  (`config.go` → `cwhub.GetItemsByType`), so it is the *names* that decide the
+  order, not the operator. Item names carry no `.yaml` suffix — which is what makes
+  `…-scoring` sort ahead of `…-scoring-balanced` (prefix rule). Had the sort been on
+  filenames it would invert, since `-` (0x2D) precedes `.` (0x2E).
+- Within one config, `Build` concatenates the top-level hook list before the
+  `inband:` one (`onChallengeHooks := wc.OnChallenge` then
+  `append(…, wc.InBand.OnChallenge...)`), and `LoadByPath` accumulates the two
+  across configs separately. Splitting a producer into top-level and a consumer
+  into `inband:` therefore makes the pair order-*independent* — at the cost of a
+  config shaped unlike every other one in the collection, which is why the hub
+  configs don't do it and rely on naming instead.
 
 ### 3.4 Single-instance vs distributed deployment
 
@@ -870,6 +946,35 @@ the keyring tolerates one rotation interval of clock skew, no more.
   `SetChallengeDifficulty("high")` for suspect fingerprints. Reserve
   `"impossible"` for known-bad: solving it server-side is rejected, so it
   acts as a soft block via the challenge flow rather than a hard `ban`.
+- **Threshold mode** (§1.7b): when no single signal is decisive, weight them
+  and act on the total. Scale the weights so 100 means "conclusive on its own",
+  then pick a bar:
+
+  ```yaml
+  inband:
+    on_challenge_submit:
+      - filter: EvaluateMismatches().Has("utc_timezone")
+        apply: [ 'AddRequestScore(15, "utc_timezone")' ]
+      - filter: EvaluateMismatches().Has("cdp")
+        apply: [ 'AddRequestScore(100, "cdp")' ]
+      - filter: RequestScore() >= 75
+        apply: [ 'RejectSubmission("score " + string(RequestScore()), "verbose")' ]
+  ```
+
+  **Score at the submit gate, not on every request.** `on_challenge_submit` is
+  the only path to a cookie, and the fingerprint it measures is the one sealed
+  into that cookie — so a threshold tested there decides the visitor's fate
+  once. Re-scoring from `on_challenge` re-derives the same verdict from
+  immutable data on every subsequent request; reach for it only when the action
+  needs a helper the submit env deliberately withholds (`SetChallengeDifficulty`,
+  `SetRemediation`, `SendChallenge`), e.g. to escalate PoW difficulty for a
+  grey-zone visitor rather than refuse them. Note that the submit POST
+  short-circuits before pre_eval / WAF / post_eval
+  (`appsec_runner.go`: `if state.RequireChallenge { return }`), so those phases
+  never see it at all.
+
+  The hub ships this as `crowdsecurity/appsec-bot-challenge-scoring` plus a
+  `-permissive` / `-balanced` / `-strict` threshold config.
 
 ### 3.6 Operational notes
 
