@@ -118,6 +118,10 @@ func (o *OnlineApiClientCfg) Load() error {
 	}
 
 	switch {
+	case o.Credentials.Login == "" && o.Credentials.Password == "" && o.Credentials.URL == "":
+		// An empty credentials file just means the engine was never registered against CAPI.
+		log.Debugf("no CAPI credentials found in '%s', engine is not registered", o.CredentialsFilePath)
+		o.Credentials = nil
 	case o.Credentials.Login == "":
 		log.Warningf("can't load CAPI credentials from '%s' (missing login field)", o.CredentialsFilePath)
 		o.Credentials = nil
