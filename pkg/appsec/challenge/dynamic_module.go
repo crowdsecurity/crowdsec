@@ -89,6 +89,12 @@ func (c *ChallengeRuntime) dynamicModulePreWarmer(ctx context.Context) {
 			}).Debug("pre-warming dynamic key module for upcoming epoch")
 
 			if _, err := c.dynamicModuleForEpoch(ctx, nextEpoch); err != nil {
+				// On shutdown Close() cancels us then closes the runtime; the
+				// resulting instantiation error isn't a real pre-warm failure,
+				// so don't log it — just exit.
+				if ctx.Err() != nil {
+					return
+				}
 				c.log().WithError(err).WithField("epoch", nextEpoch).
 					Warn("pre-warm of next epoch failed; first request after rotation will pay obfuscation cost")
 			}

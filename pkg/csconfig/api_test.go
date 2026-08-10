@@ -203,7 +203,6 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareTaintedScenarios: new(true),
 					ShareCustomScenarios:  new(true),
 					ShareContext:          new(false),
-					ConsoleManagement:     new(false),
 				},
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",

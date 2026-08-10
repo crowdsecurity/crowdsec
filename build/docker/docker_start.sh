@@ -481,7 +481,7 @@ if [ "$ENABLE_CONSOLE_ALL" != "" ]; then
 else
     CONSOLE_FLAGS=""
     if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
-        CONSOLE_FLAGS="$CONSOLE_FLAGS console_management"
+        echo "WARNING: ENABLE_CONSOLE_MANAGEMENT is deprecated and ignored; decision management is enabled automatically based on your console plan." >&2
     fi
     if [ "$ENABLE_CONSOLE_CONTEXT" != "" ]; then
         CONSOLE_FLAGS="$CONSOLE_FLAGS context"

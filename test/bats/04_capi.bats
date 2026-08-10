@@ -44,9 +44,12 @@ setup() {
     rune -1 cscli capi status
     assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing password field)"
 
+    # with every field removed, the engine is simply not registered: this is a normal
+    # state, so no scary warning - just a clear message pointing to 'capi register'
     config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.login)'
     rune -1 cscli capi status
-    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing login field)"
+    refute_stderr --partial "missing login field"
+    assert_stderr --partial "the Central API (CAPI) must be configured with 'cscli capi register'"
 
     rm "${ONLINE_API_CREDENTIALS_YAML}"
     rune -1 cscli capi status
@@ -72,12 +75,7 @@ setup() {
     assert_output --partial " on https://api.crowdsec.net/"
     assert_output --partial "You can successfully interact with Central API (CAPI)"
     
-    # For the time, PAPI is always enabled config-wise
-    rune -1 cscli papi status
-    assert_stderr --partial "unable to get PAPI permissions"
-    assert_stderr --partial "Forbidden for plan"
-
-    rune -0 cscli console enable console_management
+    # papi_url is always set (auto-defaulted), so papi status reaches CAPI and is refused by plan
     rune -1 cscli papi status
     assert_stderr --partial "unable to get PAPI permissions"
     assert_stderr --partial "Forbidden for plan"

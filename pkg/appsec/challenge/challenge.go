@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"golang.org/x/sync/singleflight"
+	"golang.org/x/sys/cpu"
 )
 
 // Internal URL paths the challenge runtime intercepts. Bouncers MUST forward
@@ -106,6 +108,15 @@ var PowWorkerJS string
 type ChallengeRuntime struct {
 	r             wazero.Runtime
 	obfuscatorMod wazero.CompiledModule
+
+	// preWarmCancel stops the background dynamicModulePreWarmer. The pre-warmer
+	// runs under a context Close() can cancel rather than the constructor ctx,
+	// because on reload the process ctx outlives the runtime — without this the
+	// old goroutine would tick forever against a closed runtime. Nil for runtimes
+	// built without the pre-warmer (e.g. in tests). Close() cancels before
+	// closing the runtime, so a teardown-time obfuscation error is always paired
+	// with a canceled ctx and the pre-warmer suppresses its warning.
+	preWarmCancel context.CancelFunc
 
 	// challengeCode is the build-time-obfuscated challenge crypto/glue code,
 	// decompressed once at startup from initial_bundle.js.gz and injected inline
@@ -324,6 +335,53 @@ func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.Comp
 	return compiledMod, nil
 }
 
+// compilerSupported mimics the check performed by wazero for SSE4.1
+// We cannot rely in wazero on the wazero check, as it is used to choose whether to use the compiler or interpreter mode
+// If we force the compiler mode, and it's not supported, we will crash with SIGILL on the 1st instruction.
+// Compiler mode is required as interpreter mode is way too slow for the obfuscation (measured as being at least 60 times slower)
+func compilerSupported() error {
+	switch runtime.GOARCH {
+	case "arm64":
+		return nil
+	case "amd64":
+		if !cpu.X86.HasSSE41 {
+			return errors.New("CPU lacks SSE4.1")
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("GOARCH %s has no wasm compiler backend", runtime.GOARCH)
+	}
+}
+
+func newWazeroRuntime(ctx context.Context) (wazero.Runtime, error) {
+	if err := compilerSupported(); err != nil {
+		return nil, fmt.Errorf("wasm compiler mode unavailable: %w", err)
+	}
+
+	var r wazero.Runtime
+	var err error
+
+	func() {
+		// wazero checks for executable memory, and panics if it cannot allocat it.
+		// Catch the panic and return an error instead, so we can provide a more helpful message to the user.
+		defer func() {
+			if rec := recover(); rec != nil {
+				err = fmt.Errorf("failed to create wasm runtime in compiler mode: %v "+
+					"(the kernel likely denied an executable memory mapping: check W^X hardening, seccomp or SELinux policy)", rec)
+			}
+		}()
+
+		r = wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfigCompiler())
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
 func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime, error) {
 	resolvedOpts := runtimeOptions{}
 	for _, opt := range opts {
@@ -380,7 +438,10 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		spentSetMaxEntries = spentSetDefaultMaxEntries
 	}
 
-	r := wazero.NewRuntime(ctx)
+	r, err := newWazeroRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// No need to keep the closer around, we can just close the runtime itself when stopping
 	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
@@ -433,10 +494,12 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	// The dynamic-module pre-warmer is always on — the per-epoch key must be
-	// re-obfuscated on every rotation (bounded cost, one pass per variant). The
-	// challenge code itself is static (build-time obfuscated), so there is no
-	// library refresher anymore.
-	go challengeRuntime.dynamicModulePreWarmer(ctx)
+	// re-obfuscated on every rotation (bounded cost, one pass per variant). It
+	// runs under a context owned by Close() rather than the constructor ctx, so
+	// a reload (which reuses the process ctx) can stop it — see Close().
+	runCtx, cancel := context.WithCancel(ctx)
+	challengeRuntime.preWarmCancel = cancel
+	go challengeRuntime.dynamicModulePreWarmer(runCtx)
 
 	logger.WithFields(log.Fields{
 		"rotation_interval": rotationInterval,
@@ -453,6 +516,15 @@ func (c *ChallengeRuntime) Close(ctx context.Context) error {
 	if c == nil || c.r == nil {
 		return nil
 	}
+
+	// Stop the pre-warmer before closing the runtime. Cancel is synchronous, so
+	// once it returns the pre-warmer's ctx is canceled; if closing the runtime
+	// then trips an in-flight obfuscation, the pre-warmer sees the canceled ctx
+	// and suppresses the otherwise-spurious "runtime closed" warning.
+	if c.preWarmCancel != nil {
+		c.preWarmCancel()
+	}
+
 	return c.r.Close(ctx)
 }
 

@@ -204,6 +204,12 @@ func FileInit(directory string, filename string, fileType string) error {
 		return nil
 	}
 
+	if fileType == "modsec" {
+		// modsec files are referenced in rules just to have cscli download them
+		// They are loaded directly by coraza
+		return nil
+	}
+
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
 		log.Debugf("ignored file %s%s because already loaded", directory, filename)
