@@ -133,6 +133,12 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 		"ExemptFromChallenge":   func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"AddRequestScore": func(points int, reason string) error {
+			return w.AddRequestScore(state, points, reason)
+		},
+		"RequestScore":        func() int { return state.RequestScore.Total() },
+		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
 
@@ -161,6 +167,12 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"fingerprint":         state.Fingerprint,
 		"hook_vars":           state.HookVars,
 		"ExemptFromChallenge": func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"AddRequestScore": func(points int, reason string) error {
+			return w.AddRequestScore(state, points, reason)
+		},
+		"RequestScore":        func() int { return state.RequestScore.Total() },
+		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
 
@@ -198,6 +210,12 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)
 		},
+		"AddRequestScore": func(points int, reason string) error {
+			return w.AddRequestScore(state, points, reason)
+		},
+		"RequestScore":        func() int { return state.RequestScore.Total() },
+		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
 
@@ -274,6 +292,12 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
+		"AddRequestScore": func(points int, reason string) error {
+			return w.AddRequestScore(state, points, reason)
+		},
+		"RequestScore":        func() int { return state.RequestScore.Total() },
+		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
 
@@ -295,5 +319,11 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"SetChallengeCookie":  func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
 		"AppsecCookie":        cookie.NewAppsecCookie,
 		"ExemptFromChallenge": func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"AddRequestScore": func(points int, reason string) error {
+			return w.AddRequestScore(state, points, reason)
+		},
+		"RequestScore":        func() int { return state.RequestScore.Total() },
+		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }

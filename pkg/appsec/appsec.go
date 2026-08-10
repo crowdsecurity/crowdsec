@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -265,6 +266,9 @@ type AppsecRequestState struct {
 	// rule expression don't redo the work (or re-emit observability).
 	// nil until the first call.
 	LastMismatchReport *challenge.MismatchReport
+
+	// Tracks the request score + reasons
+	RequestScore RequestScore
 
 	// HookVars is a per-request scratch space exposed to expr hooks as
 	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
@@ -1030,9 +1034,8 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 // state, when non-nil, is consulted between rule iterations: if
 // state.HooksHalted is true (set by a terminal expr helper such as
 // RejectSubmission or the on_challenge_submit GrantChallengeCookie),
-// remaining rules in this phase are skipped. ProcessOnLoadRules and
-// the non-submit phases pass nil — they have no terminal actions
-// today.
+// remaining rules in this phase are skipped. ProcessOnLoadRules passes
+// nil — it has no request state at all.
 func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState) error {
 	has_match := false
 
@@ -1180,9 +1183,11 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
 			w.emitChallengeEvent(request, ChallengeEventInfo{
-				Reason:      ChallengeReasonRejected,
-				FailReason:  state.SubmissionRejection.Reason,
-				Fingerprint: &fpData,
+				Reason:       ChallengeReasonRejected,
+				FailReason:   state.SubmissionRejection.Reason,
+				Fingerprint:  &fpData,
+				Score:        state.RequestScore.Total(),
+				ScoreReasons: state.RequestScore.Reasons(),
 			})
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
@@ -1239,7 +1244,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", nil)
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", state)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
@@ -1523,6 +1528,32 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 	return report
 }
 
+const (
+	hookVarRequestScore        = "request_score"
+	hookVarRequestScoreReasons = "request_score_reasons"
+	hookVarRequestScoreDetail  = "request_score_detail"
+)
+
+func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string) error {
+	total := state.RequestScore.Add(points, reason)
+
+	if state.HookVars != nil {
+		state.HookVars[hookVarRequestScore] = strconv.Itoa(total)
+		state.HookVars[hookVarRequestScoreReasons] = strings.Join(state.RequestScore.Reasons(), ",")
+		state.HookVars[hookVarRequestScoreDetail] = state.RequestScore.String()
+	}
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"reason": reason,
+			"points": points,
+			"total":  total,
+		}).Debug("request score updated")
+	}
+
+	return nil
+}
+
 // emitMismatchObservability logs the report at Debug level and bumps the
 // per-reason/severity Prometheus counter. Called exactly once per request
 // from EvaluateMismatches (guarded by state.LastMismatchReport being nil
@@ -1606,9 +1637,11 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	}
 
 	w.emitChallengeEvent(request, ChallengeEventInfo{
-		Reason:      ChallengeReasonRequested,
-		Difficulty:  target,
-		Fingerprint: state.Fingerprint,
+		Reason:       ChallengeReasonRequested,
+		Difficulty:   target,
+		Fingerprint:  state.Fingerprint,
+		Score:        state.RequestScore.Total(),
+		ScoreReasons: state.RequestScore.Reasons(),
 	})
 
 	return nil

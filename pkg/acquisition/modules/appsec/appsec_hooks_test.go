@@ -1563,6 +1563,41 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			},
 		},
 		{
+			// The score accumulator is per-request state, which on_load
+			// predates entirely.
+			name:             "on_load AddRequestScore() fails to load",
+			expected_load_ok: false,
+			on_load: []appsec.Hook{
+				{Apply: []string{`AddRequestScore(15, "utc_timezone")`}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+		},
+		{
+			name:             "pre_eval score accumulates across hooks",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Filter: "true", Apply: []string{`AddRequestScore(30, "no_user_agent")`}},
+				{Filter: "true", Apply: []string{`AddRequestScore(20, "suspicious_path")`}},
+				{Filter: "RequestScore() >= 45", Apply: []string{`DropRequest("request score " + string(RequestScore()))`}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action,
+					"50 points across two hooks must cross the 45 bar")
+			},
+		},
+		{
 			// SendChallenge in an out-of-band post_eval hook is rejected at runtime
 			name:             "outofband post_eval SendChallenge() is rejected",
 			expected_load_ok: true,

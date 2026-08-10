@@ -48,6 +48,34 @@ func TestChallengeEventFromRequest(t *testing.T) {
 				require.Equal(t, ModuleName, evt.Line.Module)
 				// no fingerprint → no fingerprint fields
 				require.NotContains(t, evt.Parsed, "fsid")
+				// nothing scored → no score fields
+				require.NotContains(t, evt.Parsed, "request_score")
+				require.NotContains(t, evt.Parsed, "request_score_reasons")
+			},
+		},
+		{
+			name: "score rides along when contributions fired",
+			info: ChallengeEventInfo{
+				Reason:       ChallengeReasonRequested,
+				Difficulty:   15,
+				Score:        105,
+				ScoreReasons: []string{"cdp", "timezone_country"},
+			},
+			assert: func(t *testing.T, evt pipeline.Event) {
+				require.Equal(t, "105", evt.Parsed["request_score"])
+				require.Equal(t, "cdp,timezone_country", evt.Parsed["request_score_reasons"])
+			},
+		},
+		{
+			name: "a zero total with contributions is still reported",
+			info: ChallengeEventInfo{
+				Reason:       ChallengeReasonRequested,
+				Score:        0,
+				ScoreReasons: []string{"utc_timezone", "trusted_gpu"},
+			},
+			assert: func(t *testing.T, evt pipeline.Event) {
+				require.Equal(t, "0", evt.Parsed["request_score"])
+				require.Equal(t, "utc_timezone,trusted_gpu", evt.Parsed["request_score_reasons"])
 			},
 		},
 		{
