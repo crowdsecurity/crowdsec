@@ -1,15 +1,12 @@
 package appsecacquisition
 
 import (
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -19,7 +16,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -46,43 +42,6 @@ var CRSAnomalyScores = []string{
 	"http_violation_score",
 	"session_fixation_score",
 	"anomaly_score",
-}
-
-func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
-
-	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
-		return errors.New("source is nil or not an IP")
-	}
-
-	//GeoIP enrich
-	asndata, err := exprhelpers.GeoIPASNEnrich(src.IP)
-
-	if err != nil {
-		return err
-	} else if asndata != nil {
-		record := asndata.(*geoip2.ASN)
-		src.AsName = record.AutonomousSystemOrganization
-		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	}
-
-	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if cityData != nil {
-		record := cityData.(*geoip2.City)
-		src.Cn = record.Country.IsoCode
-		src.Latitude = float32(record.Location.Latitude)
-		src.Longitude = float32(record.Location.Longitude)
-	}
-
-	rangeData, err := exprhelpers.GeoIPRangeEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if rangeData != nil {
-		record := rangeData.(*net.IPNet)
-		src.Range = record.String()
-	}
-	return nil
 }
 
 func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMatches bool) string {
@@ -123,7 +82,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	}
 
 	// Enrich source with GeoIP data
-	if err := AppsecEventGenerationGeoIPEnrich(&source); err != nil {
+	if err := appsec.GeoIPEnrichSource(&source); err != nil {
 		log.Errorf("unable to enrich source with GeoIP data : %s", err)
 	}
 
