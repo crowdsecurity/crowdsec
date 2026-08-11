@@ -146,7 +146,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(request *ParsedRequest, info C
 		Meta:      eventMeta,
 	}
 
-	msg := fmt.Sprintf("AppSec bot-detection: %s %s by %s", source.IP, info.Reason, scenario)
+	msg := fmt.Sprintf("WAF bot-detection: %s %s by %s", source.IP, info.Reason, scenario)
 	if info.FailReason != "" {
 		msg += fmt.Sprintf(" (%s)", info.FailReason)
 	}
