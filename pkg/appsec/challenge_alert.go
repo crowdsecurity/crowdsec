@@ -179,9 +179,6 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 
 // buildChallengeOverflow doesn't send: emission is centralised in EmitAlertAndEvent.
 func (w *AppsecRuntimeConfig) buildChallengeOverflow(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo, hookVars map[string]string) *pipeline.Event {
-	if !request.IsInBand {
-		return nil
-	}
 	// Operators suppress the alert with CancelAlert() in on_challenge_submit.
 	if state != nil && !state.Response.SendAlert {
 		return nil

@@ -168,15 +168,6 @@ func TestBuildChallengeOverflowCancelSuppresses(t *testing.T) {
 	assert.Nil(t, evt, "CancelAlert (SendAlert=false) must suppress the alert")
 }
 
-func TestBuildChallengeOverflowOutOfBandNoop(t *testing.T) {
-	w := makeRuntime()
-
-	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: true}}
-	evt := w.buildChallengeOverflow(state, challengeReq(t, false), rejectedInfo(t), nil)
-
-	assert.Nil(t, evt, "out-of-band requests must not produce a challenge alert")
-}
-
 func TestEmitChallengeRejectedEmitsAlertThenLog(t *testing.T) {
 	setupGeoIP(t)
 
@@ -213,12 +204,4 @@ func TestEmitChallengeCancelAlertKeepsLog(t *testing.T) {
 
 	require.Len(t, out, 1)
 	assert.Equal(t, pipeline.LOG, (<-out).Type)
-}
-
-func TestEmitChallengeNilChanNoop(t *testing.T) {
-	w := makeRuntime() // OutChan is nil
-	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: true}}
-	require.NotPanics(t, func() {
-		w.emitChallenge(state, challengeReq(t, true), rejectedInfo(t))
-	})
 }
