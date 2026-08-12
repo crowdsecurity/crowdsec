@@ -80,9 +80,10 @@ func (w *AppsecRuntimeConfig) EmitEvent(evt pipeline.Event) {
 	w.OutChan <- evt
 }
 
-// EmitAlertAndEvent is the only place emission order is decided: the alert goes
-// first because the two can share internal maps (matched rules, hook vars) and
-// the parsers mutate the log event once it enters the pipeline. Either may be nil.
+// EmitAlertAndEvent fixes emission order in one place so call sites can't
+// diverge. The alert goes first: it is complete and short-circuits straight to
+// LAPI, while the log event still has to travel the pipeline, where the parsers
+// mutate it in place. Either may be nil.
 func (w *AppsecRuntimeConfig) EmitAlertAndEvent(overflow *pipeline.Event, evt *pipeline.Event) {
 	if overflow != nil {
 		w.EmitEvent(*overflow)
