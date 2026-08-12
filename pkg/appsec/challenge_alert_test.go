@@ -139,20 +139,17 @@ func TestBuildChallengeAlertContextFromConfig(t *testing.T) {
 	assert.Equal(t, []string{"105"}, contextValues(t, alert, "score_via_hookvar"))
 }
 
-func TestEmitChallengeAlertSendsOnChan(t *testing.T) {
+func TestBuildChallengeOverflow(t *testing.T) {
 	setupGeoIP(t)
-	out := make(chan pipeline.Event, 4)
 	w := makeRuntime()
-	w.OutChan = out
 
 	state := &AppsecRequestState{
 		Response: AppsecTempResponse{SendAlert: true},
 		HookVars: map[string]string{"request_score": "105"},
 	}
-	w.emitChallengeAlert(state, challengeReq(t, true), rejectedInfo(t))
+	evt := w.buildChallengeOverflow(state, challengeReq(t, true), rejectedInfo(t), state.HookVars)
 
-	require.Len(t, out, 1)
-	evt := <-out
+	require.NotNil(t, evt)
 	assert.Equal(t, pipeline.APPSEC, evt.Type)
 	require.NotNil(t, evt.Overflow.Alert)
 	assert.Equal(t, types.BotDetectionAlertKind.String(), evt.Overflow.Alert.Kind)
@@ -162,32 +159,49 @@ func TestEmitChallengeAlertSendsOnChan(t *testing.T) {
 	assert.Equal(t, "105", evt.Appsec.HookVars["request_score"])
 }
 
-func TestEmitChallengeAlertCancelSuppresses(t *testing.T) {
+func TestBuildChallengeOverflowCancelSuppresses(t *testing.T) {
+	w := makeRuntime()
+
+	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: false}}
+	evt := w.buildChallengeOverflow(state, challengeReq(t, true), rejectedInfo(t), nil)
+
+	assert.Nil(t, evt, "CancelAlert (SendAlert=false) must suppress the alert")
+}
+
+func TestEmitChallengeRejectedEmitsAlertThenLog(t *testing.T) {
+	setupGeoIP(t)
+
+	out := make(chan pipeline.Event, 4)
+	w := makeRuntime()
+	w.OutChan = out
+
+	state := &AppsecRequestState{
+		Response: AppsecTempResponse{SendAlert: true},
+		HookVars: map[string]string{"request_score": "105"},
+	}
+	w.emitChallenge(state, challengeReq(t, true), rejectedInfo(t))
+
+	require.Len(t, out, 2)
+
+	alertEvt := <-out
+	assert.Equal(t, pipeline.APPSEC, alertEvt.Type)
+	require.NotNil(t, alertEvt.Overflow.Alert)
+	assert.Equal(t, types.BotDetectionAlertKind.String(), alertEvt.Overflow.Alert.Kind)
+
+	logEvt := <-out
+	assert.Equal(t, SourceChallenge, logEvt.Parsed["source"])
+	assert.Equal(t, "105", logEvt.Appsec.HookVars["request_score"])
+}
+
+// CancelAlert suppresses the alert but never the challenge log event.
+func TestEmitChallengeCancelAlertKeepsLog(t *testing.T) {
 	out := make(chan pipeline.Event, 4)
 	w := makeRuntime()
 	w.OutChan = out
 
 	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: false}}
-	w.emitChallengeAlert(state, challengeReq(t, true), rejectedInfo(t))
+	w.emitChallenge(state, challengeReq(t, true), rejectedInfo(t))
 
-	assert.Empty(t, out, "CancelAlert (SendAlert=false) must suppress the alert")
-}
-
-func TestEmitChallengeAlertOutOfBandNoop(t *testing.T) {
-	out := make(chan pipeline.Event, 4)
-	w := makeRuntime()
-	w.OutChan = out
-
-	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: true}}
-	w.emitChallengeAlert(state, challengeReq(t, false), rejectedInfo(t))
-
-	assert.Empty(t, out, "out-of-band requests must not emit a challenge alert")
-}
-
-func TestEmitChallengeAlertNilChanNoop(t *testing.T) {
-	w := makeRuntime() // OutChan is nil
-	state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: true}}
-	require.NotPanics(t, func() {
-		w.emitChallengeAlert(state, challengeReq(t, true), rejectedInfo(t))
-	})
+	require.Len(t, out, 1)
+	assert.Equal(t, pipeline.LOG, (<-out).Type)
 }

@@ -405,16 +405,9 @@ type AppsecRuntimeConfig struct {
 	BodySettings BodySettings
 }
 
-// emitChallengeEvent builds and sends a challenge lifecycle event to the
-// pipeline. It is a no-op when no output channel is wired. Challenge handling is
-// an in-band concern, so we never emit during the out-of-band phase — a common
-// pre_eval/post_eval hook calling SendChallenge() runs in both phases, and the
-// out-of-band invocation is already a no-op for the client.
-func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info ChallengeEventInfo) {
-	if w.OutChan == nil || !request.IsInBand {
-		return
-	}
-
+// recordChallengeMetric is kept out of emission so counters still move when no
+// output channel is wired.
+func (*AppsecRuntimeConfig) recordChallengeMetric(request *ParsedRequest, info ChallengeEventInfo) {
 	labels := prometheus.Labels{
 		"source":        request.RemoteAddrNormalized,
 		"appsec_engine": request.AppsecEngine,
@@ -450,8 +443,32 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 		}
 		metrics.AppsecChallengeRejected.With(rejectedLabels).Inc()
 	}
+}
 
-	w.OutChan <- ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
+// Challenge handling is an in-band concern, so we never emit during the
+// out-of-band phase: a common pre_eval/post_eval hook calling SendChallenge()
+// runs in both phases, and the out-of-band invocation is already a no-op for the
+// client. The log event is deliberately not gated on state.Response.SendEvent —
+// CancelEvent() must not silence challenge telemetry.
+func (w *AppsecRuntimeConfig) emitChallenge(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) {
+	if !request.IsInBand {
+		return
+	}
+
+	w.recordChallengeMetric(request, info)
+
+	evt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
+	StampHookVars(&evt, state)
+
+	// A submission we refused is the only moment worth an alert of its own.
+	var overflow *pipeline.Event
+
+	switch info.Reason {
+	case ChallengeReasonRejected, ChallengeReasonFailed:
+		overflow = w.buildChallengeOverflow(state, request, info, evt.Appsec.HookVars)
+	}
+
+	w.EmitAlertAndEvent(overflow, &evt)
 }
 
 // ExemptFromChallenge flags the current request as exempt from the bot
@@ -471,7 +488,7 @@ func (*AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, reque
 	}
 
 	// Challenge handling is an in-band concern; don't emit during the
-	// out-of-band phase (mirrors emitChallengeEvent).
+	// out-of-band phase (mirrors emitChallenge).
 	if request.IsInBand {
 		metrics.AppsecChallengeExempt.With(prometheus.Labels{
 			"source":        request.RemoteAddrNormalized,
@@ -1149,7 +1166,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 	// on_challenge inspection happens on subsequent cookie-bearing requests.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("validating challenge response")
-		w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
+		w.emitChallenge(state, request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
 
 		ck, fpData, provenDifficulty, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
@@ -1159,8 +1176,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				FailReason: err.Error(),
 				FailErr:    err,
 			}
-			w.emitChallengeEvent(request, info)
-			w.emitChallengeAlert(state, request, info)
+			w.emitChallenge(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -1191,13 +1207,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				Score:        state.RequestScore.Total(),
 				ScoreReasons: state.RequestScore.Reasons(),
 			}
-			w.emitChallengeEvent(request, info)
-			w.emitChallengeAlert(state, request, info)
+			w.emitChallenge(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 
-		w.emitChallengeEvent(request, ChallengeEventInfo{
+		w.emitChallenge(state, request, ChallengeEventInfo{
 			Reason:      ChallengeReasonSolved,
 			Difficulty:  state.CookiePowDifficulty,
 			Fingerprint: &fpData,
@@ -1640,7 +1655,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 		return err
 	}
 
-	w.emitChallengeEvent(request, ChallengeEventInfo{
+	w.emitChallenge(state, request, ChallengeEventInfo{
 		Reason:       ChallengeReasonRequested,
 		Difficulty:   target,
 		Fingerprint:  state.Fingerprint,
