@@ -2,7 +2,6 @@ package appsec
 
 import (
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
@@ -75,8 +74,10 @@ type ChallengeEventInfo struct {
 	Difficulty  int                        // target PoW difficulty for this moment
 	Fingerprint *challenge.FingerprintData // nil when none available (e.g. requested w/o cookie)
 
-	Score        int
-	ScoreReasons []string
+	Score int
+	// ScoreDetail is the per-reason breakdown rendered by RequestScore.String()
+	// ("cdp=100,utc_timezone=15")
+	ScoreDetail string
 }
 
 // ChallengeEventFromRequest builds a LOG event for a challenge lifecycle moment.
@@ -93,9 +94,10 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 		evt.Parsed["challenge_fail_reason"] = info.FailReason
 	}
 
-	if len(info.ScoreReasons) > 0 {
+	// Score can net to zero even with contributions, so gate on the detail.
+	if info.ScoreDetail != "" {
 		evt.Parsed["request_score"] = strconv.Itoa(info.Score)
-		evt.Parsed["request_score_reasons"] = strings.Join(info.ScoreReasons, ",")
+		evt.Parsed["request_score_reasons"] = info.ScoreDetail
 	}
 
 	if fp := info.Fingerprint; fp != nil {

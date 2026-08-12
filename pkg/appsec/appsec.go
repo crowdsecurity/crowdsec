@@ -1201,11 +1201,11 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
 			info := ChallengeEventInfo{
-				Reason:       ChallengeReasonRejected,
-				FailReason:   state.SubmissionRejection.Reason,
-				Fingerprint:  &fpData,
-				Score:        state.RequestScore.Total(),
-				ScoreReasons: state.RequestScore.Reasons(),
+				Reason:      ChallengeReasonRejected,
+				FailReason:  state.SubmissionRejection.Reason,
+				Fingerprint: &fpData,
+				Score:       state.RequestScore.Total(),
+				ScoreDetail: state.RequestScore.String(),
 			}
 			w.emitChallenge(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
@@ -1548,9 +1548,10 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 }
 
 const (
-	hookVarRequestScore        = "request_score"
+	hookVarRequestScore = "request_score"
+	// Weighted form ("cdp=100,utc_timezone=15") so this hookvar and the
+	// event/alert key of the same name never disagree on format.
 	hookVarRequestScoreReasons = "request_score_reasons"
-	hookVarRequestScoreDetail  = "request_score_detail"
 )
 
 func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string) error {
@@ -1558,8 +1559,7 @@ func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points 
 
 	if state.HookVars != nil {
 		state.HookVars[hookVarRequestScore] = strconv.Itoa(total)
-		state.HookVars[hookVarRequestScoreReasons] = strings.Join(state.RequestScore.Reasons(), ",")
-		state.HookVars[hookVarRequestScoreDetail] = state.RequestScore.String()
+		state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
 	}
 
 	if w.Logger != nil {
@@ -1656,11 +1656,11 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	}
 
 	w.emitChallenge(state, request, ChallengeEventInfo{
-		Reason:       ChallengeReasonRequested,
-		Difficulty:   target,
-		Fingerprint:  state.Fingerprint,
-		Score:        state.RequestScore.Total(),
-		ScoreReasons: state.RequestScore.Reasons(),
+		Reason:      ChallengeReasonRequested,
+		Difficulty:  target,
+		Fingerprint: state.Fingerprint,
+		Score:       state.RequestScore.Total(),
+		ScoreDetail: state.RequestScore.String(),
 	})
 
 	return nil
