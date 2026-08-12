@@ -44,11 +44,11 @@ func contextValues(t *testing.T, alert *models.Alert, key string) []string {
 func rejectedInfo(t *testing.T) ChallengeEventInfo {
 	t.Helper()
 	return ChallengeEventInfo{
-		Reason:       ChallengeReasonRejected,
-		FailReason:   "score >= 75: cdp,webdriver",
-		Fingerprint:  fpEuropeParisCDP(t),
-		Score:        105,
-		ScoreReasons: []string{"cdp", "webdriver"},
+		Reason:      ChallengeReasonRejected,
+		FailReason:  "request score 105",
+		Fingerprint: fpEuropeParisCDP(t),
+		Score:       105,
+		ScoreDetail: "cdp=100,webdriver=5",
 	}
 }
 
@@ -84,7 +84,7 @@ func TestBuildChallengeAlertRejected(t *testing.T) {
 	// context (Meta) is left to the operator's context file, not hardcoded.
 	assert.Equal(t, string(ChallengeReasonRejected), metaValue(alert, "challenge_event"))
 	assert.Equal(t, "105", metaValue(alert, "request_score"))
-	assert.Equal(t, "cdp,webdriver", metaValue(alert, "request_score_reasons"))
+	assert.Equal(t, "cdp=100,webdriver=5", metaValue(alert, "request_score_reasons"))
 	assert.Equal(t, "true", metaValue(alert, "fingerprint_bot"))
 	assert.Contains(t, metaValue(alert, "bot_signals"), "cdp")
 	assert.Equal(t, "FS_RUNTIME", metaValue(alert, "fsid"))
@@ -121,7 +121,7 @@ func TestBuildChallengeAlertContextFromConfig(t *testing.T) {
 		"operating_system": {"evt.Meta.os"},
 		"bot_detected":     {"evt.Meta.fingerprint_bot"},
 		"challenge_event":  {"evt.Meta.challenge_event"},
-		"detected_signals": {`evt.Unmarshaled.fingerprint != nil ? evt.Unmarshaled.fingerprint.BotSignals() : ""`},
+		"score_reasons":    {"evt.Meta.request_score_reasons"},
 		// A config expression consuming a hook var off the appsec event.
 		"score_via_hookvar": {"evt.Appsec.HookVars.request_score"},
 	}, alertcontext.MaxContextValueLen))
@@ -134,7 +134,7 @@ func TestBuildChallengeAlertContextFromConfig(t *testing.T) {
 	assert.Equal(t, []string{"true"}, contextValues(t, alert, "bot_detected"))
 	assert.Equal(t, []string{string(ChallengeReasonRejected)}, contextValues(t, alert, "challenge_event"))
 	assert.NotEmpty(t, contextValues(t, alert, "operating_system"))
-	assert.Contains(t, contextValues(t, alert, "detected_signals"), "cdp")
+	assert.Equal(t, []string{"cdp=100,webdriver=5"}, contextValues(t, alert, "score_reasons"))
 	// The hook var is reachable by config expr via evt.Appsec.HookVars.
 	assert.Equal(t, []string{"105"}, contextValues(t, alert, "score_via_hookvar"))
 }

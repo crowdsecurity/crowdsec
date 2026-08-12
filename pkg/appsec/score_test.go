@@ -94,8 +94,7 @@ func TestAddRequestScoreMirrorsHookVars(t *testing.T) {
 	require.NoError(t, w.AddRequestScore(state, 15, "utc_timezone"))
 
 	assert.Equal(t, "115", state.HookVars[hookVarRequestScore])
-	assert.Equal(t, "cdp,utc_timezone", state.HookVars[hookVarRequestScoreReasons])
-	assert.Equal(t, "cdp=100,utc_timezone=15", state.HookVars[hookVarRequestScoreDetail])
+	assert.Equal(t, "cdp=100,utc_timezone=15", state.HookVars[hookVarRequestScoreReasons])
 }
 
 // ResetResponse clears response fields only. The score is per-request

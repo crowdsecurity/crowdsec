@@ -45,10 +45,10 @@ func challengeEventMeta(request *ParsedRequest, info ChallengeEventInfo) map[str
 	if request.HTTPRequest != nil {
 		meta["http_user_agent"] = request.HTTPRequest.UserAgent()
 	}
-	// Score can net to zero even with contributions, so gate on the reasons.
-	if len(info.ScoreReasons) > 0 {
+	// Score can net to zero even with contributions, so gate on the detail.
+	if info.ScoreDetail != "" {
 		meta["request_score"] = strconv.Itoa(info.Score)
-		meta["request_score_reasons"] = strings.Join(info.ScoreReasons, ",")
+		meta["request_score_reasons"] = info.ScoreDetail
 	}
 	if fp := info.Fingerprint; fp != nil {
 		meta["fsid"] = fp.FSID

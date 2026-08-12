@@ -56,26 +56,26 @@ func TestChallengeEventFromRequest(t *testing.T) {
 		{
 			name: "score rides along when contributions fired",
 			info: ChallengeEventInfo{
-				Reason:       ChallengeReasonRequested,
-				Difficulty:   15,
-				Score:        105,
-				ScoreReasons: []string{"cdp", "timezone_country"},
+				Reason:      ChallengeReasonRequested,
+				Difficulty:  15,
+				Score:       105,
+				ScoreDetail: "cdp=100,timezone_country=5",
 			},
 			assert: func(t *testing.T, evt pipeline.Event) {
 				require.Equal(t, "105", evt.Parsed["request_score"])
-				require.Equal(t, "cdp,timezone_country", evt.Parsed["request_score_reasons"])
+				require.Equal(t, "cdp=100,timezone_country=5", evt.Parsed["request_score_reasons"])
 			},
 		},
 		{
 			name: "a zero total with contributions is still reported",
 			info: ChallengeEventInfo{
-				Reason:       ChallengeReasonRequested,
-				Score:        0,
-				ScoreReasons: []string{"utc_timezone", "trusted_gpu"},
+				Reason:      ChallengeReasonRequested,
+				Score:       0,
+				ScoreDetail: "utc_timezone=15,trusted_gpu=-15",
 			},
 			assert: func(t *testing.T, evt pipeline.Event) {
 				require.Equal(t, "0", evt.Parsed["request_score"])
-				require.Equal(t, "utc_timezone,trusted_gpu", evt.Parsed["request_score_reasons"])
+				require.Equal(t, "utc_timezone=15,trusted_gpu=-15", evt.Parsed["request_score_reasons"])
 			},
 		},
 		{

@@ -384,7 +384,7 @@ weight and a later rule acts only once the total crosses a bar. This is what mak
 a soft signal usable — a literal `UTC` browser timezone is worth a few points, never
 a block on its own.
 
-Four helpers, registered by `addRequestScoreHelpers` in
+Five helpers, registered by `addRequestScoreHelpers` in
 [`waf_helpers.go`](../waf_helpers.go) into **every request phase** (`pre_eval`,
 `post_eval`, `on_match`, `on_challenge`, `on_challenge_submit`). `on_load` is
 deliberately excluded — there is no request state yet, so scoring there is a
@@ -395,6 +395,7 @@ config-load error rather than a silent no-op.
 | `AddRequestScore(points, reason)` | Credits `points` to `reason`. Repeats on the same reason **sum**, so CRS-style per-matched-rule scoring works. `points` may be negative (trust credit) or zero (observe-only: registers the reason without moving the total). Blank reasons normalize to `"unspecified"` |
 | `RequestScore()` | Running total; 0 before anything scored |
 | `RequestScoreReasons()` | Distinct reasons, first-seen order (stable output) |
+| `RequestScoreDetail()` | Same reasons with the points each contributed, rendered as `"cdp=100,utc_timezone=15"`. This is the form that reaches events and alerts |
 | `RequestScoreFor(reason)` | Running total for one reason |
 
 The accumulator is domain-neutral on purpose: bot-detection weights and CRS anomaly
@@ -405,9 +406,12 @@ scores are the same mechanism, and the name should not tie it to the first use.
 response fields, and `ClearResponse` is exported — a mid-request caller must not be
 able to wipe an accumulated verdict.
 
-**Observability.** Each call publishes `request_score`, `request_score_reasons` and
-`request_score_detail` into `hook_vars`, and logs one Debug line (a twenty-signal
-config would otherwise emit twenty Info lines per request). Because `copyHookVars`
+**Observability.** Each call publishes `request_score` and `request_score_reasons`
+into `hook_vars`, and logs one Debug line (a twenty-signal config would otherwise
+emit twenty Info lines per request). `request_score_reasons` carries the weighted
+form (`cdp=100,utc_timezone=15`) everywhere it appears — hook var, event and alert —
+so it is the single field describing what fired and how much it counted, and no
+separate fpscanner signal list is published alongside it. Because `copyHookVars`
 only fires on a WAF interrupt — and a challenge issued purely because a score crossed
 a threshold matches no rule — the score is *also* carried on `ChallengeEventInfo`
 (§1.6 of the hub docs): `SendChallenge` and the rejected-submission path stamp
@@ -838,6 +842,7 @@ mismatch` line, with their own `reasons` field. Correlate on `fsid` /
 | `AddRequestScore(points, reason)` | every request phase | Credits weighted evidence; repeats on a reason sum. See §1.11 |
 | `RequestScore()` | same | Running total, 0 before anything scored |
 | `RequestScoreReasons()` | same | Distinct reasons, first-seen order |
+| `RequestScoreDetail()` | same | Reasons with their points, `"cdp=100,utc_timezone=15"` |
 | `RequestScoreFor(reason)` | same | Running total for one reason |
 
 #### `MismatchReport` API

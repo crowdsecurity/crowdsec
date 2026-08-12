@@ -39,7 +39,7 @@ func scoringSignalHooks() []Hook {
 func scoringPolicyHook() Hook {
 	return Hook{
 		Filter: `RequestScore() >= 75`,
-		Apply:  []string{`RejectSubmission("request score " + string(RequestScore()) + ": " + join(RequestScoreReasons(), ","), "verbose")`},
+		Apply:  []string{`RejectSubmission("request score " + string(RequestScore()), "verbose")`},
 	}
 }
 
@@ -127,13 +127,12 @@ func TestOnChallengeSubmitScoreCrossesThreshold(t *testing.T) {
 	assert.Equal(t, []string{"cdp", "timezone_country"}, state.RequestScore.Reasons())
 
 	require.NotNil(t, state.SubmissionRejection)
-	assert.Equal(t, "request score 105: cdp,timezone_country", state.SubmissionRejection.Reason)
+	assert.Equal(t, "request score 105", state.SubmissionRejection.Reason)
 	assert.True(t, state.HooksHalted)
 	assert.NotContains(t, state.RequestScore.Reasons(), "sentinel", "sentinel hook must not have run")
 
 	assert.Equal(t, "105", state.HookVars[hookVarRequestScore])
-	assert.Equal(t, "cdp,timezone_country", state.HookVars[hookVarRequestScoreReasons])
-	assert.Equal(t, "cdp=100,timezone_country=5", state.HookVars[hookVarRequestScoreDetail])
+	assert.Equal(t, "cdp=100,timezone_country=5", state.HookVars[hookVarRequestScoreReasons])
 }
 
 // The motivating case: one weak signal on its own must not act. Same hooks,

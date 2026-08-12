@@ -138,6 +138,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		},
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
@@ -172,6 +173,7 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		},
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
@@ -215,6 +217,7 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		},
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
@@ -297,6 +300,7 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		},
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 		"CancelAlert":         func() error { return w.CancelAlert(state) },
 		"SendAlert":           func() error { return w.SendAlert(state) },
@@ -326,6 +330,7 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		},
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
 	}
 }
