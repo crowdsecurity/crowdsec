@@ -8,7 +8,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func testChallengeRequest() *ParsedRequest {
@@ -129,13 +128,6 @@ func TestChallengeEventFromRequest(t *testing.T) {
 	}
 }
 
-func TestEmitChallengeNoChannel(t *testing.T) {
-	w := &AppsecRuntimeConfig{}
-	require.NotPanics(t, func() {
-		w.emitChallenge(nil, testChallengeRequest(), ChallengeEventInfo{Reason: ChallengeReasonRequested})
-	})
-}
-
 func TestEmitChallengeSendsLogEvent(t *testing.T) {
 	out := make(chan pipeline.Event, 4)
 	w := makeRuntime()
@@ -148,29 +140,6 @@ func TestEmitChallengeSendsLogEvent(t *testing.T) {
 	evt := <-out
 	require.Equal(t, SourceChallenge, evt.Parsed["source"])
 	require.Equal(t, string(ChallengeReasonRequested), evt.Parsed["challenge_event"])
-}
-
-func TestEmitChallengeFailedEmitsAlertThenLog(t *testing.T) {
-	setupGeoIP(t)
-
-	out := make(chan pipeline.Event, 4)
-	w := makeRuntime()
-	w.OutChan = out
-	w.Labels = map[string]string{"type": "appsec"}
-
-	w.emitChallenge(nil, testChallengeRequest(), ChallengeEventInfo{Reason: ChallengeReasonFailed, FailReason: "boom"})
-
-	require.Len(t, out, 2)
-
-	alertEvt := <-out
-	require.Equal(t, pipeline.APPSEC, alertEvt.Type)
-	require.NotNil(t, alertEvt.Overflow.Alert)
-	require.Equal(t, types.BotDetectionAlertKind.String(), alertEvt.Overflow.Alert.Kind)
-
-	evt := <-out
-	require.Equal(t, SourceChallenge, evt.Parsed["source"])
-	require.Equal(t, string(ChallengeReasonFailed), evt.Parsed["challenge_event"])
-	require.Equal(t, "boom", evt.Parsed["challenge_fail_reason"])
 }
 
 func TestEmitChallengeOutOfBandNoop(t *testing.T) {

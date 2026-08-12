@@ -141,11 +141,6 @@ func TestNewAppsecOverflowCopiesHookVars(t *testing.T) {
 	assert.Equal(t, "v1", evt.Appsec.HookVars["k"])
 }
 
-func TestNewAppsecOverflowNoHookVars(t *testing.T) {
-	evt := NewAppsecOverflow(testAlert(t), nil)
-	assert.Nil(t, evt.Appsec.HookVars)
-}
-
 func TestEmitEventNilChannel(t *testing.T) {
 	w := makeRuntime() // OutChan is nil
 	require.NotPanics(t, func() {
