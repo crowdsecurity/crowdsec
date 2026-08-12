@@ -141,10 +141,10 @@ jobs:
         run: |
           set -e
           # ensure the version of 'protoc' matches the one that generated the files
-          PROTOBUF_VERSION="35.0"
+          PROTOBUF_VERSION="35.1"
           JAVY_VERSION="8.1.1"
           # sha256 of the release assets, verified before use
-          PROTOBUF_SHA256="a45cda0989c17dd950db55f6fbe1e5814c50fda08e87aa422980ac1f89dddbbc"
+          PROTOBUF_SHA256="6930ebf62bd4ea607b98fff052596c6ee564b9835b4ce172c75a3f53ae9d91b7"
           JAVY_SHA256="4bec224e1d51827808fd063541a2b4d94cf474744636b692be63e7a29bec83a6"
           # don't pollute the repo
           pushd $HOME
