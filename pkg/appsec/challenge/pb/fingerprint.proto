@@ -52,6 +52,7 @@ message fingerprintDevice {
   fingerprintScreenResolution screenResolution = 4;
   fingerprintMultimediaDevices multimediaDevices = 5;
   fingerprintDeviceMediaQueries mediaQueries = 6;
+  fingerprintDeviceKeyboard keyboard = 7;
 }
 
 message fingerprintScreenResolution {
@@ -84,6 +85,11 @@ message fingerprintDeviceMediaQueries {
   int32 colorDepth = 9;
 }
 
+message fingerprintDeviceKeyboard {
+  string layout = 1;
+  int32 layoutSize = 2;
+}
+
 message fingerprintBrowser {
   string userAgent = 1;
   fingerprintBrowserFeatures features = 2;
@@ -93,6 +99,12 @@ message fingerprintBrowser {
   int32 etsl = 6;
   string maths = 7;
   fingerprintBrowserToSourceError toSourceError = 8;
+  fingerprintBrowserAI ai = 9;
+}
+
+message fingerprintBrowserAI {
+  string summarizerAvailability = 1;
+  string summarizerLanguageAvailability = 2;
 }
 
 message fingerprintBrowserFeatures {
@@ -125,6 +137,7 @@ message fingerprintBrowserFeatures {
   bool fencedFrame = 27;
   bool sanitizer = 28;
   bool otpCredential = 29;
+  bool sumPrecise = 30;
 }
 
 message fingerprintBrowserPlugins {

@@ -111,6 +111,12 @@ func deviceFromProto(d *pb.FingerprintDevice) fingerprintDevice {
 			ColorDepth:                 FlexInt(mq.GetColorDepth()),
 		}
 	}
+	if kb := d.GetKeyboard(); kb != nil {
+		out.Keyboard = fingerprintDeviceKeyboard{
+			Layout:     kb.GetLayout(),
+			LayoutSize: FlexInt(kb.GetLayoutSize()),
+		}
+	}
 
 	return out
 }
@@ -152,6 +158,7 @@ func browserFromProto(b *pb.FingerprintBrowser) fingerprintBrowser {
 			FencedFrame:               FlexBool(ft.GetFencedFrame()),
 			Sanitizer:                 FlexBool(ft.GetSanitizer()),
 			OTPCredential:             FlexBool(ft.GetOtpCredential()),
+			SumPrecise:                FlexBool(ft.GetSumPrecise()),
 		}
 	}
 	if pl := b.GetPlugins(); pl != nil {
@@ -190,6 +197,12 @@ func browserFromProto(b *pb.FingerprintBrowser) fingerprintBrowser {
 		out.ToSourceError = fingerprintBrowserToSourceError{
 			ToSourceError: tse.GetToSourceError(),
 			HasToSource:   FlexBool(tse.GetHasToSource()),
+		}
+	}
+	if ai := b.GetAi(); ai != nil {
+		out.AI = fingerprintBrowserAI{
+			SummarizerAvailability:         ai.GetSummarizerAvailability(),
+			SummarizerLanguageAvailability: ai.GetSummarizerLanguageAvailability(),
 		}
 	}
 
@@ -372,6 +385,10 @@ func (d fingerprintDevice) toProto() *pb.FingerprintDevice {
 			AnyHover:                   bool(d.MediaQueries.AnyHover),
 			ColorDepth:                 int32(d.MediaQueries.ColorDepth),
 		},
+		Keyboard: &pb.FingerprintDeviceKeyboard{
+			Layout:     d.Keyboard.Layout,
+			LayoutSize: int32(d.Keyboard.LayoutSize),
+		},
 	}
 }
 
@@ -416,6 +433,7 @@ func (b fingerprintBrowser) toProto() *pb.FingerprintBrowser {
 			FencedFrame:               bool(b.Features.FencedFrame),
 			Sanitizer:                 bool(b.Features.Sanitizer),
 			OtpCredential:             bool(b.Features.OTPCredential),
+			SumPrecise:                bool(b.Features.SumPrecise),
 		},
 		Plugins: &pb.FingerprintBrowserPlugins{
 			IsValidPluginArray: bool(b.Plugins.IsValidPluginArray),
@@ -443,6 +461,10 @@ func (b fingerprintBrowser) toProto() *pb.FingerprintBrowser {
 		ToSourceError: &pb.FingerprintBrowserToSourceError{
 			ToSourceError: b.ToSourceError.ToSourceError,
 			HasToSource:   bool(b.ToSourceError.HasToSource),
+		},
+		Ai: &pb.FingerprintBrowserAI{
+			SummarizerAvailability:         b.AI.SummarizerAvailability,
+			SummarizerLanguageAvailability: b.AI.SummarizerLanguageAvailability,
 		},
 	}
 }
