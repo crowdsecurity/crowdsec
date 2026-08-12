@@ -1154,11 +1154,13 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		ck, fpData, provenDifficulty, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			w.Logger.Errorf("challenge validation failed: %s", err)
-			w.emitChallengeEvent(request, ChallengeEventInfo{
+			info := ChallengeEventInfo{
 				Reason:     ChallengeReasonFailed,
 				FailReason: err.Error(),
 				FailErr:    err,
-			})
+			}
+			w.emitChallengeEvent(request, info)
+			w.emitChallengeAlert(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -1182,13 +1184,15 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			// The expr-side RejectSubmission helper emits the reject log
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
-			w.emitChallengeEvent(request, ChallengeEventInfo{
+			info := ChallengeEventInfo{
 				Reason:       ChallengeReasonRejected,
 				FailReason:   state.SubmissionRejection.Reason,
 				Fingerprint:  &fpData,
 				Score:        state.RequestScore.Total(),
 				ScoreReasons: state.RequestScore.Reasons(),
-			})
+			}
+			w.emitChallengeEvent(request, info)
+			w.emitChallengeAlert(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}

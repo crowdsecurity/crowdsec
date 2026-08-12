@@ -298,6 +298,8 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		"RequestScore":        func() int { return state.RequestScore.Total() },
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		"CancelAlert":         func() error { return w.CancelAlert(state) },
+		"SendAlert":           func() error { return w.SendAlert(state) },
 	}
 }
 

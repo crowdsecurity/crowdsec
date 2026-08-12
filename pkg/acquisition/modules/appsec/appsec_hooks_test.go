@@ -18,7 +18,19 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+// findAppsecAlert returns the first APPSEC overflow event carrying an alert, or
+// nil if none is present.
+func findAppsecAlert(events []pipeline.Event) *pipeline.Event {
+	for i := range events {
+		if events[i].Type == pipeline.APPSEC && events[i].Overflow.Alert != nil {
+			return &events[i]
+		}
+	}
+	return nil
+}
 
 // jsonBody returns an io.ReadCloser that reads back `body` as many times as
 // the validator needs it, so we can reuse the same test request across phases.
@@ -1464,12 +1476,19 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
 				require.JSONEq(t, `{"status":"failed"}`, responses[0].UserHTTPBodyContent)
 				require.False(t, responses[0].InBandInterrupt, "on_challenge hooks must not run on invalid submission")
-				// A submission attempt emits "submitted", then "failed" (with a reason).
-				require.Len(t, events, 2)
+				// A submission attempt emits "submitted", then "failed" (with a
+				// reason) LOG events, plus a separate bot-detection alert overflow
+				// for the failure (mirrors how the WAF emits its alert alongside
+				// the LOG event).
+				require.Len(t, events, 3)
 				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
 				require.Equal(t, string(appsec.ChallengeReasonSubmitted), events[0].Parsed["challenge_event"])
 				require.Equal(t, string(appsec.ChallengeReasonFailed), events[1].Parsed["challenge_event"])
 				require.NotEmpty(t, events[1].Parsed["challenge_fail_reason"])
+
+				alertEvt := findAppsecAlert(events)
+				require.NotNil(t, alertEvt, "expected a bot-detection alert overflow")
+				require.Equal(t, types.BotDetectionAlertKind.String(), alertEvt.Overflow.Alert.Kind)
 			},
 		},
 		{
