@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,7 +26,6 @@ import (
 
 // that's the runtime structure of the Application security engine as seen from the acquis
 type AppsecRunner struct {
-	outChan                chan pipeline.Event
 	inChan                 chan appsec.ParsedRequest
 	UUID                   string
 	AppsecRuntime          *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
@@ -364,43 +362,31 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 		return
 	}
 
-	// Snapshot hook vars after on_match so any hook-published values are
-	// captured onto the event and onto each matched rule (for alert context).
-	copyHookVars(&evt, state)
+	r.emitMatch(&evt, state, request)
+}
 
-	// Should the in band match trigger an overflow ?
+// emitMatch runs after on_match so hook-published values make it onto the event.
+func (r *AppsecRunner) emitMatch(evt *pipeline.Event, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
+	appsec.StampHookVars(evt, state)
+
+	var overflow *pipeline.Event
+
 	if state.Response.SendAlert {
-		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
+		appsecOvlfw, err := AppsecEventGeneration(*evt, request.HTTPRequest)
 		if err != nil {
+			// Deliberately drops the log event too, as it always has.
 			r.logger.Errorf("unable to generate appsec event : %s", err)
 			return
 		}
-		if appsecOvlfw != nil {
-			r.outChan <- *appsecOvlfw
-		}
-	}
-	// Should the in band match trigger an event ?
-	if state.Response.SendEvent {
-		r.outChan <- evt
-	}
-}
 
-// copyHookVars snapshots the per-request HookVars onto the emitted event:
-//   - evt.Appsec.HookVars gets a shallow copy (state keeps mutating during the
-//     out-of-band phase, so the event must own its snapshot).
-//   - Each MatchedRule in evt.Appsec.MatchedRules gets the same snapshot
-//     under the "hook_vars" key, so alert-context expressions can access
-//     match.hook_vars.<key> alongside evt.Appsec.HookVars.<key>.
-func copyHookVars(evt *pipeline.Event, state *appsec.AppsecRequestState) {
-	if len(state.HookVars) == 0 {
-		return
+		overflow = appsecOvlfw
 	}
-	snapshot := make(map[string]string, len(state.HookVars))
-	maps.Copy(snapshot, state.HookVars)
-	evt.Appsec.HookVars = snapshot
-	for i := range evt.Appsec.MatchedRules {
-		evt.Appsec.MatchedRules[i]["hook_vars"] = snapshot
+
+	if !state.Response.SendEvent {
+		evt = nil
 	}
+
+	r.AppsecRuntime.EmitAlertAndEvent(overflow, evt)
 }
 
 func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) {
@@ -441,27 +427,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec
 		return
 	}
 
-	copyHookVars(&evt, state)
-
-	// The alert needs to be sent first:
-	// The event and the alert share the same internal map (parsed, meta, ...)
-	// The event can be modified by the parsers, which might cause a concurrent map read/write
-	// Should the match trigger an overflow ?
-	if state.Response.SendAlert {
-		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
-		if err != nil {
-			r.logger.Errorf("unable to generate appsec event : %s", err)
-			return
-		}
-		if appsecOvlfw != nil {
-			r.outChan <- *appsecOvlfw
-		}
-	}
-
-	// Should the match trigger an event ?
-	if state.Response.SendEvent {
-		r.outChan <- evt
-	}
+	r.emitMatch(&evt, state, request)
 }
 
 func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) {

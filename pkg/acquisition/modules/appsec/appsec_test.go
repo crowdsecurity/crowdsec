@@ -221,7 +221,6 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		logger:                 logger,
 		AppsecRuntime:          &wrt,
 		Labels:                 map[string]string{"foo": "bar"},
-		outChan:                OutChan,
 		appsecAllowlistsClient: allowlistClient,
 	}
 

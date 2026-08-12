@@ -66,14 +66,6 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		return nil, nil
 	}
 
-	evt := pipeline.Event{}
-	evt.Type = pipeline.APPSEC
-	evt.Process = true
-	// Carry hook-published vars onto the overflow event so downstream
-	// consumers of the APPSEC alert (not just the LOG event) can see them.
-	if len(inEvt.Appsec.HookVars) > 0 {
-		evt.Appsec.HookVars = inEvt.Appsec.HookVars
-	}
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
 		Value: &sourceIP,
@@ -86,13 +78,10 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		log.Errorf("unable to enrich source with GeoIP data : %s", err)
 	}
 
-	// Build overflow
-	evt.Overflow.Sources = make(map[string]models.Source)
-	evt.Overflow.Sources[sourceIP] = source
-
 	alert := models.Alert{}
 	alert.Capacity = new(int32(1))
-	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
+	// Length 0, not len(MatchedRules): the loop below appends.
+	alert.Events = make([]*models.Event, 0, len(inEvt.Appsec.MatchedRules))
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -223,10 +212,11 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	alert.Message = &msg
 	alert.StartAt = new(time.Now().UTC().Format(time.RFC3339))
 	alert.StopAt = new(time.Now().UTC().Format(time.RFC3339))
-	evt.Overflow.APIAlerts = []models.Alert{alert}
-	evt.Overflow.Alert = &alert
 
-	return &evt, nil
+	// Hook vars ride along so consumers of the alert, not just the log event, see them.
+	overflow := appsec.NewAppsecOverflow(&alert, inEvt.Appsec.HookVars)
+
+	return &overflow, nil
 }
 
 // Check if all the rule matched zones are part of the excluded zones

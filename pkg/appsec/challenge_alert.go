@@ -3,7 +3,6 @@ package appsec
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"net"
 	"sort"
 	"strconv"
@@ -68,17 +67,6 @@ func challengeEventMeta(request *ParsedRequest, info ChallengeEventInfo) map[str
 	}
 
 	return meta
-}
-
-// snapshotHookVars returns a shallow copy of the per-request hook vars, because state keeps mutating and
-// the overflow event travels asynchronously.
-func snapshotHookVars(state *AppsecRequestState) map[string]string {
-	if state == nil || len(state.HookVars) == 0 {
-		return nil
-	}
-	snapshot := make(map[string]string, len(state.HookVars))
-	maps.Copy(snapshot, state.HookVars)
-	return snapshot
 }
 
 // sortedMeta converts a Meta map into models.Meta with deterministic key order
@@ -154,7 +142,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 	// (parser-equivalent), fingerprint exposed via Unmarshaled
 	cevt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 	cevt.Meta = challengeEventMeta(request, info)
-	cevt.Appsec.HookVars = snapshotHookVars(state)
+	StampHookVars(&cevt, state)
 
 	contextMeta, errs := alertcontext.EventToContext([]pipeline.Event{cevt})
 	for _, err := range errs {
@@ -189,27 +177,17 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 	}
 }
 
-// emitChallengeAlert sends the direct bot-detection alert on the pipeline
-// output channel, wrapped as an APPSEC overflow event so it reaches LAPI the
-// same way WAF alerts do.
-func (w *AppsecRuntimeConfig) emitChallengeAlert(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) {
-	if w.OutChan == nil || !request.IsInBand {
-		return
+// buildChallengeOverflow doesn't send: emission is centralised in EmitAlertAndEvent.
+func (w *AppsecRuntimeConfig) buildChallengeOverflow(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo, hookVars map[string]string) *pipeline.Event {
+	if !request.IsInBand {
+		return nil
 	}
+	// Operators suppress the alert with CancelAlert() in on_challenge_submit.
 	if state != nil && !state.Response.SendAlert {
-		return
+		return nil
 	}
 
-	alert := w.buildChallengeAlert(state, request, info)
+	overflow := NewAppsecOverflow(w.buildChallengeAlert(state, request, info), hookVars)
 
-	evt := pipeline.Event{}
-	evt.Type = pipeline.APPSEC
-	evt.Process = true
-	evt.Overflow.Sources = map[string]models.Source{alert.Source.IP: *alert.Source}
-	evt.Overflow.APIAlerts = []models.Alert{*alert}
-	evt.Overflow.Alert = alert
-
-	evt.Appsec.HookVars = snapshotHookVars(state)
-
-	w.OutChan <- evt
+	return &overflow
 }
