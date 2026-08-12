@@ -125,6 +125,10 @@ func (d *Source) UnmarshalConfig(yamlConfig []byte) error {
 		d.compiledServiceID = append(d.compiledServiceID, compiled)
 	}
 
+	if d.Config.Since != "" && d.Config.Mode == configuration.TAIL_MODE && d.logger != nil {
+		d.logger.Warn("since is ignored in tail mode: containers and services are read from the moment they are discovered, to avoid re-reading logs when they restart")
+	}
+
 	if d.Config.Since == "" {
 		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
