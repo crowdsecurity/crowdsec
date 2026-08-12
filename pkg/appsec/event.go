@@ -80,8 +80,6 @@ type ChallengeEventInfo struct {
 }
 
 // ChallengeEventFromRequest builds a LOG event for a challenge lifecycle moment.
-// It carries SourceChallenge so it never collides with WAF scenarios, plus the
-// reason, difficulty and (when available) fingerprint scalars for filtering.
 func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUuid string, info ChallengeEventInfo) pipeline.Event {
 	evt := baseEventFromRequest(r, labels, txUuid, SourceChallenge)
 
@@ -95,8 +93,6 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 		evt.Parsed["challenge_fail_reason"] = info.FailReason
 	}
 
-	// Because scores can be either positive or negative, it's possible to end up with a zero total even with multiple rule matches
-	// Check the length of the reasons slice to determine if any contributions were made
 	if len(info.ScoreReasons) > 0 {
 		evt.Parsed["request_score"] = strconv.Itoa(info.Score)
 		evt.Parsed["request_score_reasons"] = strings.Join(info.ScoreReasons, ",")
@@ -104,12 +100,8 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 
 	if fp := info.Fingerprint; fp != nil {
 		// Expose the full fingerprint (all nested signals, bot-detection details,
-		// etc.) so scenarios and alert-context can traverse it as
-		// evt.Unmarshaled.fingerprint.Signals... Stored as a pointer so expr can
-		// also call the *FingerprintData helper methods (Platform(), BotSignals(),
-		// IsBot(), ...). It stays out of LAPI/CAPI unless explicitly mapped into Meta.
+		// etc.) so scenarios and alert-context can use it.
 		evt.Unmarshaled["fingerprint"] = fp
-		// Flat shortcuts for cheap scenario filtering.
 		evt.Parsed["fsid"] = fp.FSID
 		evt.Parsed["fingerprint_bot"] = strconv.FormatBool(fp.FastBotDetection.Bool())
 		evt.Parsed["fingerprint_allowlisted"] = strconv.FormatBool(fp.Allowlisted)
