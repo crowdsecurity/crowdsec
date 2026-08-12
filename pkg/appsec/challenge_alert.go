@@ -70,6 +70,18 @@ func challengeEventMeta(request *ParsedRequest, info ChallengeEventInfo) map[str
 	return meta
 }
 
+// snapshotHookVars returns a shallow copy of the per-request hook vars, or nil
+// when there are none. Copied (not referenced) because state keeps mutating and
+// the overflow event travels asynchronously.
+func snapshotHookVars(state *AppsecRequestState) map[string]string {
+	if state == nil || len(state.HookVars) == 0 {
+		return nil
+	}
+	snapshot := make(map[string]string, len(state.HookVars))
+	maps.Copy(snapshot, state.HookVars)
+	return snapshot
+}
+
 // sortedMeta converts a Meta map into models.Meta with deterministic key order
 // (mirrors EventsFromQueue in the leakybucket overflow path).
 func sortedMeta(m map[string]string) models.Meta {
@@ -135,7 +147,7 @@ func GeoIPEnrichSource(src *models.Source) error {
 // operator's context file (crowdsecurity/appsec-bot-detection) — never
 // hardcoded here. The scenario is a fixed name so these alerts group
 // consistently.
-func (w *AppsecRuntimeConfig) buildChallengeAlert(request *ParsedRequest, info ChallengeEventInfo) *models.Alert {
+func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) *models.Alert {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	sourceIP := request.ClientIP
@@ -152,10 +164,10 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(request *ParsedRequest, info C
 
 	// Build the challenge event the context engine consumes: raw fields in Meta
 	// (parser-equivalent), fingerprint exposed via Unmarshaled for helpers like
-	// BotSignals(). ChallengeEventFromRequest sets Unmarshaled/Parsed; we set the
-	// Meta the LOG-event parser would have produced.
+	// BotSignals(), and the hook vars
 	cevt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 	cevt.Meta = challengeEventMeta(request, info)
+	cevt.Appsec.HookVars = snapshotHookVars(state)
 
 	// Alert context (Meta) is dictated by the operator's context file, not
 	// hardcoded — same split the WAF uses (AppsecEventToContext).
@@ -195,9 +207,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(request *ParsedRequest, info C
 // emitChallengeAlert sends the direct bot-detection alert on the pipeline
 // output channel, wrapped as an APPSEC overflow event so it reaches LAPI the
 // same way WAF alerts do. It is gated by state.Response.SendAlert so operators
-// can suppress it with CancelAlert() (honored on the rejected path only; the
-// failed path emits before on_challenge_submit hooks run). Metrics are left to
-// emitChallengeEvent so the prometheus counters are not double-counted.
+// can suppress it with CancelAlert()// BotSignals(), and the hook var
 func (w *AppsecRuntimeConfig) emitChallengeAlert(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) {
 	if w.OutChan == nil || !request.IsInBand {
 		return
@@ -206,7 +216,7 @@ func (w *AppsecRuntimeConfig) emitChallengeAlert(state *AppsecRequestState, requ
 		return
 	}
 
-	alert := w.buildChallengeAlert(request, info)
+	alert := w.buildChallengeAlert(state, request, info)
 
 	evt := pipeline.Event{}
 	evt.Type = pipeline.APPSEC
@@ -215,14 +225,9 @@ func (w *AppsecRuntimeConfig) emitChallengeAlert(state *AppsecRequestState, requ
 	evt.Overflow.APIAlerts = []models.Alert{*alert}
 	evt.Overflow.Alert = alert
 
-	// Carry a snapshot of the per-request hook vars onto the overflow so
-	// consumers of the bot-detection alert see them too, mirroring the WAF
-	// alert path (AppsecEventGeneration).
-	if state != nil && len(state.HookVars) > 0 {
-		snapshot := make(map[string]string, len(state.HookVars))
-		maps.Copy(snapshot, state.HookVars)
-		evt.Appsec.HookVars = snapshot
-	}
+	// Carry the per-request hook vars onto the overflow so config expressions
+	// can consume evt.Appsec.HookVars.
+	evt.Appsec.HookVars = snapshotHookVars(state)
 
 	w.OutChan <- evt
 }

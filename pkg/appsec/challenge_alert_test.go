@@ -71,7 +71,7 @@ func TestBuildChallengeAlertRejected(t *testing.T) {
 	setupGeoIP(t)
 	w := makeRuntime()
 
-	alert := w.buildChallengeAlert(challengeReq(t, true), rejectedInfo(t))
+	alert := w.buildChallengeAlert(nil, challengeReq(t, true), rejectedInfo(t))
 
 	require.Equal(t, types.BotDetectionAlertKind.String(), alert.Kind)
 	require.NotNil(t, alert.Scenario)
@@ -100,7 +100,7 @@ func TestBuildChallengeAlertFailed(t *testing.T) {
 		Reason:     ChallengeReasonFailed,
 		FailReason: "cookie expired",
 	}
-	alert := w.buildChallengeAlert(challengeReq(t, true), info)
+	alert := w.buildChallengeAlert(nil, challengeReq(t, true), info)
 
 	require.NoError(t, alert.Validate(strfmt.Default))
 	assert.Equal(t, challengeScenario, *alert.Scenario)
@@ -122,16 +122,21 @@ func TestBuildChallengeAlertContextFromConfig(t *testing.T) {
 		"bot_detected":     {"evt.Meta.fingerprint_bot"},
 		"challenge_event":  {"evt.Meta.challenge_event"},
 		"detected_signals": {`evt.Unmarshaled.fingerprint != nil ? evt.Unmarshaled.fingerprint.BotSignals() : ""`},
+		// A config expression consuming a hook var off the appsec event.
+		"score_via_hookvar": {"evt.Appsec.HookVars.request_score"},
 	}, alertcontext.MaxContextValueLen))
 
 	w := makeRuntime()
-	alert := w.buildChallengeAlert(challengeReq(t, true), rejectedInfo(t))
+	state := &AppsecRequestState{HookVars: map[string]string{"request_score": "105"}}
+	alert := w.buildChallengeAlert(state, challengeReq(t, true), rejectedInfo(t))
 
 	assert.Equal(t, []string{"FS_RUNTIME"}, contextValues(t, alert, "fingerprint_id"))
 	assert.Equal(t, []string{"true"}, contextValues(t, alert, "bot_detected"))
 	assert.Equal(t, []string{string(ChallengeReasonRejected)}, contextValues(t, alert, "challenge_event"))
 	assert.NotEmpty(t, contextValues(t, alert, "operating_system"))
 	assert.Contains(t, contextValues(t, alert, "detected_signals"), "cdp")
+	// The hook var is reachable by config expr via evt.Appsec.HookVars.
+	assert.Equal(t, []string{"105"}, contextValues(t, alert, "score_via_hookvar"))
 }
 
 func TestEmitChallengeAlertSendsOnChan(t *testing.T) {
