@@ -21,6 +21,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+// readTimeout is only ever reached when a line never arrives: it's generous on
+// purpose, so that a slow machine doesn't turn into a test failure.
+const readTimeout = 10 * time.Second
+
+// quietPeriod is how long we wait to confirm that no extra line shows up. Kept
+// short on purpose: a line slower than this is missed, which is better than
+// failing at random on a loaded machine.
+const quietPeriod = 100 * time.Millisecond
+
 func TestConfigureDSN(t *testing.T) {
 	cstest.SkipOnWindows(t)
 
@@ -156,17 +165,35 @@ journalctl_filter:
 			err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
-			gotLines := 0
-			var wg sync.WaitGroup
+			var (
+				wg         sync.WaitGroup
+				extraLines int
+			)
 
 			if ts.wantLines != 0 {
 				wg.Go(func() {
+					// whatever happens below, the stream has to be stopped or
+					// j.Stream() would never return
+					defer cancel()
+
+					// consuming every line lets journalctl exit on its own
+					for i := range ts.wantLines {
+						select {
+						case <-out:
+						case <-time.After(readTimeout):
+							t.Errorf("timed out waiting for line %d/%d", i+1, ts.wantLines)
+							return
+						}
+					}
+
+					// keep draining for a moment: it catches extra lines, and it keeps a
+					// source that sends too many from deadlocking on the unbuffered
+					// channel instead of failing the test
 					for {
 						select {
 						case <-out:
-							gotLines++
-						case <-time.After(1 * time.Second):
-							cancel()
+							extraLines++
+						case <-time.After(quietPeriod):
 							return
 						}
 					}
@@ -183,12 +210,14 @@ journalctl_filter:
 
 			if ts.wantLines != 0 {
 				wg.Wait()
-				assert.Equal(t, ts.wantLines, gotLines)
+				assert.Zero(t, extraLines, "source emitted more lines than expected")
 			}
 
 			cancel()
 
-			output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
+			// not the ctx above: it's cancelled by now, which would make pgrep
+			// return nothing and the check below always pass
+			output, _ := exec.CommandContext(t.Context(), "pgrep", "-x", "journalctl").CombinedOutput()
 			assert.Empty(t, output, "zombie journalctl process detected!")
 		})
 	}
