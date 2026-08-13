@@ -402,65 +402,113 @@ func (*MockTail) GetUuid() string { return "" }
 
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
-func TestStartAcquisitionCat(t *testing.T) {
-	ctx := t.Context()
-	sources := []types.DataSource{
-		&MockCat{},
+// acquisitionTimeout is only ever reached when acquisition fails to terminate:
+// it's generous on purpose, a healthy run finishes in microseconds.
+const acquisitionTimeout = 10 * time.Second
+
+// quietPeriod is how long we wait to confirm that no extra event shows up. Kept
+// short on purpose: an unexpected event slower than this is missed, which is
+// better than failing at random on a loaded machine.
+const quietPeriod = 100 * time.Millisecond
+
+// startAcquisition starts an acquisition in the background. The returned channel
+// receives the result of StartAcquisition, i.e. it fires once the tomb is dead
+// and every datasource (and the transformer, if any) is done writing.
+func startAcquisition(t *testing.T, sources []types.DataSource, out chan pipeline.Event, acquisTomb *tomb.Tomb) chan error {
+	t.Helper()
+
+	done := make(chan error, 1)
+	go func() { done <- StartAcquisition(t.Context(), sources, out, acquisTomb) }()
+
+	return done
+}
+
+// waitForAcquisition waits for acquisition to terminate and returns its error.
+func waitForAcquisition(t *testing.T, done chan error) error {
+	t.Helper()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(acquisitionTimeout):
+		t.Fatal("acquisition did not terminate")
+		return nil
 	}
-	out := make(chan pipeline.Event)
-	acquisTomb := tomb.Tomb{}
+}
 
-	go func() {
-		err := StartAcquisition(ctx, sources, out, &acquisTomb)
-		assert.NoError(t, err)
-	}()
+// readEvents reads exactly n events, failing if they don't all show up in time.
+func readEvents(t *testing.T, out chan pipeline.Event, n int) []pipeline.Event {
+	t.Helper()
 
-	count := 0
+	evts := make([]pipeline.Event, 0, n)
 
-READLOOP:
-	for {
+	for i := range n {
 		select {
-		case <-out:
-			count++
-		case <-time.After(1 * time.Second):
-			break READLOOP
+		case evt := <-out:
+			evts = append(evts, evt)
+		case <-time.After(acquisitionTimeout):
+			t.Fatalf("timed out waiting for event %d/%d", i+1, n)
 		}
 	}
 
-	assert.Equal(t, 10, count)
+	return evts
+}
+
+// requireNoMoreEvents checks that acquisition doesn't emit more than expected.
+func requireNoMoreEvents(t *testing.T, out chan pipeline.Event) {
+	t.Helper()
+
+	select {
+	case evt := <-out:
+		t.Fatalf("unexpected extra event: %q", evt.Line.Raw)
+	case <-time.After(quietPeriod):
+	}
+}
+
+// runCatAcquisition runs a cat-mode acquisition to completion and returns the raw
+// lines it produced. Cat acquisition ends when the tomb dies, i.e. once every
+// datasource and the transformer (if any) are done writing, so the result is
+// complete and we never have to guess with a sleep.
+func runCatAcquisition(t *testing.T, sources []types.DataSource) []string {
+	t.Helper()
+
+	// buffered, so nothing can block on writing while we wait for termination
+	out := make(chan pipeline.Event, 100)
+	acquisTomb := tomb.Tomb{}
+
+	done := startAcquisition(t, sources, out, &acquisTomb)
+
+	if err := waitForAcquisition(t, done); err != nil {
+		acquisTomb.Kill(nil)
+		require.NoError(t, err)
+	}
+
+	got := []string{}
+	for len(out) > 0 {
+		got = append(got, (<-out).Line.Raw)
+	}
+
+	return got
+}
+
+func TestStartAcquisitionCat(t *testing.T) {
+	got := runCatAcquisition(t, []types.DataSource{&MockCat{}})
+
+	assert.Len(t, got, 10)
 }
 
 func TestStartAcquisitionTail(t *testing.T) {
-	ctx := t.Context()
-	sources := []types.DataSource{
-		&MockTail{},
-	}
-	out := make(chan pipeline.Event)
+	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	go func() {
-		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil {
-			t.Error("unexpected error")
-		}
-	}()
+	done := startAcquisition(t, []types.DataSource{&MockTail{}}, out, &acquisTomb)
 
-	count := 0
+	readEvents(t, out, 10)
+	requireNoMoreEvents(t, out)
 
-READLOOP:
-	for {
-		select {
-		case <-out:
-			count++
-		case <-time.After(1 * time.Second):
-			break READLOOP
-		}
-	}
-
-	assert.Equal(t, 10, count)
-
+	// tail mode never ends on its own, so ask it to stop and check that it does
 	acquisTomb.Kill(nil)
-	time.Sleep(1 * time.Second)
-	require.NoError(t, acquisTomb.Err(), "tomb is not dead")
+	require.NoError(t, waitForAcquisition(t, done), "tomb is not dead")
 }
 
 type MockTailError struct {
@@ -480,35 +528,17 @@ func (*MockTailError) StreamingAcquisition(_ context.Context, out chan pipeline.
 }
 
 func TestStartAcquisitionTailError(t *testing.T) {
-	ctx := t.Context()
-	sources := []types.DataSource{
-		&MockTailError{},
-	}
-	out := make(chan pipeline.Event)
+	// buffered: the datasource kills the tomb right after writing, we read afterwards
+	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	go func() {
-		if err := StartAcquisition(ctx, sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
-			t.Errorf("expected error, got '%s'", err)
-		}
-	}()
+	done := startAcquisition(t, []types.DataSource{&MockTailError{}}, out, &acquisTomb)
 
-	count := 0
+	// the datasource kills the tomb itself, so acquisition ends without our help
+	cstest.RequireErrorContains(t, waitForAcquisition(t, done), "got error (tomb)")
 
-READLOOP:
-	for {
-		select {
-		case <-out:
-			count++
-		case <-time.After(1 * time.Second):
-			break READLOOP
-		}
-	}
-
-	assert.Equal(t, 10, count)
-	// acquisTomb.Kill(nil)
-	time.Sleep(1 * time.Second)
-	cstest.RequireErrorContains(t, acquisTomb.Err(), "got error (tomb)")
+	// every write happened before the tomb died, so the events are all buffered
+	assert.Len(t, out, 10)
 }
 
 type MockSourceByDSN struct {
@@ -692,32 +722,11 @@ func TestStartAcquisitionTransform(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := t.Context()
 			uuid := "transform-" + tc.name
 
 			registerTransform(t, uuid, tc.expr)
 
-			sources := []types.DataSource{&MockCatTransform{uuid: uuid}}
-			out := make(chan pipeline.Event)
-			acquisTomb := tomb.Tomb{}
-
-			go func() {
-				_ = StartAcquisition(ctx, sources, out, &acquisTomb)
-			}()
-
-			got := []string{}
-
-		READLOOP:
-			for {
-				select {
-				case evt := <-out:
-					got = append(got, evt.Line.Raw)
-				case <-time.After(1 * time.Second):
-					break READLOOP
-				}
-			}
-
-			acquisTomb.Kill(nil)
+			got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
 
 			assert.Equal(t, tc.expected, got)
 		})
@@ -728,28 +737,11 @@ func TestStartAcquisitionTransform(t *testing.T) {
 // terminates on its own once the datasource is done reading, even when a transform
 // is configured. cmd/crowdsec relies on acquisTomb dying to trigger the shutdown.
 func TestStartAcquisitionCatTransformTerminates(t *testing.T) {
-	ctx := t.Context()
 	uuid := "transform-terminate"
 
 	registerTransform(t, uuid, `evt.Line.Raw + "-transformed"`)
 
-	sources := []types.DataSource{&MockCatTransform{uuid: uuid}}
-	// buffered, so the transformer is never blocked writing its result
-	out := make(chan pipeline.Event, 10)
-	acquisTomb := tomb.Tomb{}
+	got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
 
-	done := make(chan error, 1)
-
-	go func() { done <- StartAcquisition(ctx, sources, out, &acquisTomb) }()
-
-	select {
-	case err := <-done:
-		require.NoError(t, err)
-	case <-time.After(2 * time.Second):
-		acquisTomb.Kill(nil)
-		t.Fatal("StartAcquisition did not return: cat mode with a transform never terminates")
-	}
-
-	require.Len(t, out, 1)
-	assert.Equal(t, "original-transformed", (<-out).Line.Raw)
+	assert.Equal(t, []string{"original-transformed"}, got)
 }
