@@ -723,3 +723,33 @@ func TestStartAcquisitionTransform(t *testing.T) {
 		})
 	}
 }
+
+// TestStartAcquisitionCatTransformTerminates checks that in cat mode, acquisition
+// terminates on its own once the datasource is done reading, even when a transform
+// is configured. cmd/crowdsec relies on acquisTomb dying to trigger the shutdown.
+func TestStartAcquisitionCatTransformTerminates(t *testing.T) {
+	ctx := t.Context()
+	uuid := "transform-terminate"
+
+	registerTransform(t, uuid, `evt.Line.Raw + "-transformed"`)
+
+	sources := []types.DataSource{&MockCatTransform{uuid: uuid}}
+	// buffered, so the transformer is never blocked writing its result
+	out := make(chan pipeline.Event, 10)
+	acquisTomb := tomb.Tomb{}
+
+	done := make(chan error, 1)
+
+	go func() { done <- StartAcquisition(ctx, sources, out, &acquisTomb) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		acquisTomb.Kill(nil)
+		t.Fatal("StartAcquisition did not return: cat mode with a transform never terminates")
+	}
+
+	require.Len(t, out, 1)
+	assert.Equal(t, "original-transformed", (<-out).Line.Raw)
+}
