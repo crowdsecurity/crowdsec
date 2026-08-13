@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/expr-lang/expr"
 	"github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -621,4 +623,103 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&CatModeNoFetcher{}}, out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
+}
+
+// MockCatTransform emits a single event in cat mode, and reports a configurable
+// uuid so a transform expression can be attached to it.
+type MockCatTransform struct {
+	configuration.DataSourceCommonCfg `yaml:",inline"`
+	uuid                              string
+}
+
+func (*MockCatTransform) UnmarshalConfig(_ []byte) error { return nil }
+func (f *MockCatTransform) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+	f.Mode = configuration.CAT_MODE
+	return nil
+}
+func (*MockCatTransform) GetMode() string   { return configuration.CAT_MODE }
+func (*MockCatTransform) GetName() string   { return "mock_cat_transform" }
+func (f *MockCatTransform) GetUuid() string { return f.uuid }
+func (f *MockCatTransform) Dump() any       { return f }
+func (*MockCatTransform) CanRun() error     { return nil }
+
+func (*MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
+	evt := pipeline.Event{}
+	evt.Line.Src = "test"
+	evt.Line.Raw = "original"
+	out <- evt
+
+	return nil
+}
+
+// registerTransform compiles expr and attaches it to the given datasource uuid
+// for the duration of the test.
+func registerTransform(t *testing.T, uuid string, exprStr string) {
+	t.Helper()
+
+	prog, err := expr.Compile(exprStr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+	require.NoError(t, err)
+
+	transformRuntimes[uuid] = prog
+
+	t.Cleanup(func() { delete(transformRuntimes, uuid) })
+}
+
+// TestStartAcquisitionTransform checks that events emitted by a datasource with
+// a transform expression actually go through the transformer.
+func TestStartAcquisitionTransform(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		expected []string
+	}{
+		{
+			name:     "string",
+			expr:     `evt.Line.Raw + "-transformed"`,
+			expected: []string{"original-transformed"},
+		},
+		{
+			name:     "slice",
+			expr:     `[evt.Line.Raw + "-1", evt.Line.Raw + "-2"]`,
+			expected: []string{"original-1", "original-2"},
+		},
+		{
+			name:     "invalid type, event is sent as-is",
+			expr:     `42`,
+			expected: []string{"original"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			uuid := "transform-" + tc.name
+
+			registerTransform(t, uuid, tc.expr)
+
+			sources := []types.DataSource{&MockCatTransform{uuid: uuid}}
+			out := make(chan pipeline.Event)
+			acquisTomb := tomb.Tomb{}
+
+			go func() {
+				_ = StartAcquisition(ctx, sources, out, &acquisTomb)
+			}()
+
+			got := []string{}
+
+		READLOOP:
+			for {
+				select {
+				case evt := <-out:
+					got = append(got, evt.Line.Raw)
+				case <-time.After(1 * time.Second):
+					break READLOOP
+				}
+			}
+
+			acquisTomb.Kill(nil)
+
+			assert.Equal(t, tc.expected, got)
+		})
+	}
 }

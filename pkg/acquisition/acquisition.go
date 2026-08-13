@@ -650,7 +650,7 @@ func StartAcquisition(
 				})
 			}
 
-			if err := acquireSource(ctx, subsrc, subsrc.GetName(), output, acquisTomb); err != nil {
+			if err := acquireSource(ctx, subsrc, subsrc.GetName(), outChan, acquisTomb); err != nil {
 				// if one of the acquisitions returns an error, we kill the others to properly shutdown
 				acquisTomb.Kill(err)
 			}
