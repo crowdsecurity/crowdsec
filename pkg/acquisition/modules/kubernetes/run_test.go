@@ -27,6 +27,11 @@ import (
 // asserting against the exact backoff duration.
 const retryBackoffMidpoint = 500 * time.Millisecond
 
+// waitTimeout is only ever reached when what we're waiting for never happens:
+// it's generous on purpose, so that a loaded machine doesn't turn into a test
+// failure.
+const waitTimeout = 10 * time.Second
+
 func testLogger() *log.Entry {
 	return log.WithField("type", ModuleName)
 }
@@ -183,7 +188,7 @@ func TestTailPod_StartsWorkerAndStopPodCancelsIt(t *testing.T) {
 	select {
 	case evt := <-out:
 		assert.Equal(t, "hello", evt.Line.Raw)
-	case <-time.After(time.Second):
+	case <-time.After(waitTimeout):
 		t.Fatal("timed out waiting for a log line from the tailed pod")
 	}
 
@@ -197,7 +202,7 @@ func TestTailPod_StartsWorkerAndStopPodCancelsIt(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(waitTimeout):
 		t.Fatal("stopPod did not stop the worker goroutine in time")
 	}
 
