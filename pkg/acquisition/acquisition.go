@@ -469,7 +469,12 @@ func transform(
 		case <-acquisTomb.Dying():
 			logger.Debugf("transformer is dying")
 			return
-		case evt := <-transformChan:
+		case evt, ok := <-transformChan:
+			if !ok {
+				logger.Debugf("transform channel is closed, transformer is exiting")
+				return
+			}
+
 			logger.Tracef("Received event %s", evt.Line.Raw)
 
 			out, err := expr.Run(transformRuntime, map[string]any{"evt": &evt})
@@ -631,12 +636,14 @@ func StartAcquisition(
 
 			outChan := output
 
+			var transformChan chan pipeline.Event
+
 			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
 
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
-				transformChan := make(chan pipeline.Event)
+				transformChan = make(chan pipeline.Event)
 				outChan = transformChan
 				transformLogger := log.WithFields(log.Fields{
 					"component":  "transform",
@@ -645,12 +652,23 @@ func StartAcquisition(
 
 				acquisTomb.Go(func() error {
 					defer trace.ReportPanic()
-					transform(outChan, output, acquisTomb, transformRuntime, transformLogger)
+					transform(transformChan, output, acquisTomb, transformRuntime, transformLogger)
 					return nil
 				})
 			}
 
-			if err := acquireSource(ctx, subsrc, subsrc.GetName(), output, acquisTomb); err != nil {
+			err := acquireSource(ctx, subsrc, subsrc.GetName(), outChan, acquisTomb)
+
+			// In cat mode the datasource is done writing when acquireSource returns, so we
+			// close the transform channel to let the transformer drain and exit: the tomb
+			// can then die on its own, which is what signals the end of a cat run.
+			// In tail mode datasources may keep writing from goroutines they spawned, so
+			// closing here would panic; the transformer exits on Dying() instead.
+			if transformChan != nil && subsrc.GetMode() == configuration.CAT_MODE {
+				close(transformChan)
+			}
+
+			if err != nil {
 				// if one of the acquisitions returns an error, we kill the others to properly shutdown
 				acquisTomb.Kill(err)
 			}

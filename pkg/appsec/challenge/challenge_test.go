@@ -292,6 +292,16 @@ func TestPoWVerification(t *testing.T) {
 	assert.True(t, hasLeadingZeroBits(powHash[:], difficulty))
 }
 
+// withoutPreWarm skips the constructor's synchronous obfuscation and the
+// background pre-warmer; currentDynamicModule then obfuscates lazily. Lives
+// here rather than in challenge.go so it cannot reach production builds:
+// serving that way would pay ~4s per pool slot on the first request.
+func withoutPreWarm() Option {
+	return func(o *runtimeOptions) {
+		o.skipPreWarm = true
+	}
+}
+
 // testSecret is a fixed master secret used by all test helpers below so that
 // tickets / MACs / cookies issued in one helper validate in another.
 var testSecret = []byte("test-secret-test-secret-test-sec") // 32 bytes

@@ -96,7 +96,9 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, opts, 8, "every populated field + the component logger must emit an option")
 
-	rt, err := NewChallengeRuntime(t.Context(), opts...)
+	// withoutPreWarm: this only reads config-derived fields, it never serves
+	// a page.
+	rt, err := NewChallengeRuntime(t.Context(), append(opts, withoutPreWarm())...)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2*time.Hour, rt.cookieTTL, "CookieTTL must reach the runtime")
@@ -125,6 +127,7 @@ func TestSealAllowlistCookieTTLOverride(t *testing.T) {
 	rt, err := NewChallengeRuntime(t.Context(),
 		WithMasterSecret([]byte("0123456789abcdef0123456789abcdef")),
 		WithCookieTTL(12*time.Hour),
+		withoutPreWarm(),
 	)
 	require.NoError(t, err)
 
