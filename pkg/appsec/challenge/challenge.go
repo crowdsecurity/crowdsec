@@ -184,6 +184,7 @@ type runtimeOptions struct {
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
 	logger                    *log.Entry // nil → default "challenge" sublogger
+	skipPreWarm               bool       // test-only, see withoutPreWarm
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -248,6 +249,16 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 		if n >= 1 {
 			o.cryptoObfuscationPoolSize = n
 		}
+	}
+}
+
+// withoutPreWarm skips the constructor's synchronous obfuscation and the
+// background pre-warmer; currentDynamicModule then obfuscates lazily.
+// Unexported: a test-only seam to avoid paying ~4s per pool slot at
+// construction, not a supported deployment mode.
+func withoutPreWarm() Option {
+	return func(o *runtimeOptions) {
+		o.skipPreWarm = true
 	}
 }
 
@@ -488,18 +499,19 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	}
 
 	// Pre-warm the current epoch's dynamic module so the first GetChallengePage
-	// doesn't pay the ~5s obfuscation cost on the request path.
-	if _, err := challengeRuntime.currentDynamicModule(ctx); err != nil {
-		return nil, fmt.Errorf("warm dynamic key module: %w", err)
-	}
+	// doesn't pay the ~5s obfuscation cost on the request path. The background
+	// pre-warmer then re-obfuscates on every rotation; it runs under a context
+	// owned by Close() rather than the constructor ctx, so a reload (which
+	// reuses the process ctx) can stop it — see Close().
+	if !resolvedOpts.skipPreWarm {
+		if _, err := challengeRuntime.currentDynamicModule(ctx); err != nil {
+			return nil, fmt.Errorf("warm dynamic key module: %w", err)
+		}
 
-	// The dynamic-module pre-warmer is always on — the per-epoch key must be
-	// re-obfuscated on every rotation (bounded cost, one pass per variant). It
-	// runs under a context owned by Close() rather than the constructor ctx, so
-	// a reload (which reuses the process ctx) can stop it — see Close().
-	runCtx, cancel := context.WithCancel(ctx)
-	challengeRuntime.preWarmCancel = cancel
-	go challengeRuntime.dynamicModulePreWarmer(runCtx)
+		runCtx, cancel := context.WithCancel(ctx)
+		challengeRuntime.preWarmCancel = cancel
+		go challengeRuntime.dynamicModulePreWarmer(runCtx)
+	}
 
 	logger.WithFields(log.Fields{
 		"rotation_interval": rotationInterval,
