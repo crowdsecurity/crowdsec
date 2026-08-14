@@ -156,13 +156,15 @@ journalctl_filter:
 	}
 	for idx, ts := range tests {
 		t.Run(strconv.Itoa(idx), func(t *testing.T) {
-			ctx, cancel := context.WithCancel(ctx)
+			// not shadowing ctx: the zombie check at the end needs a context that
+			// is still alive after the stream has been stopped
+			streamCtx, cancel := context.WithCancel(ctx)
 			out := make(chan pipeline.Event)
 			j := Source{}
 
 			logger, _ := logtest.NewNullLogger()
 
-			err := j.Configure(ctx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
+			err := j.Configure(streamCtx, []byte(ts.config), logrus.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			var (
@@ -200,7 +202,7 @@ journalctl_filter:
 				})
 			}
 
-			err = j.Stream(ctx, out)
+			err = j.Stream(streamCtx, out)
 			cstest.RequireErrorContains(t, err, ts.wantErr)
 
 			if ts.wantErr != "" {
@@ -215,9 +217,9 @@ journalctl_filter:
 
 			cancel()
 
-			// not the ctx above: it's cancelled by now, which would make pgrep
-			// return nothing and the check below always pass
-			output, _ := exec.CommandContext(t.Context(), "pgrep", "-x", "journalctl").CombinedOutput()
+			// streamCtx is canceled by now, and running pgrep with it would make
+			// it return nothing and the check below always pass
+			output, _ := exec.CommandContext(ctx, "pgrep", "-x", "journalctl").CombinedOutput()
 			assert.Empty(t, output, "zombie journalctl process detected!")
 		})
 	}
