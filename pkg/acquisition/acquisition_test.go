@@ -411,10 +411,10 @@ const acquisitionTimeout = 10 * time.Second
 // better than failing at random on a loaded machine.
 const quietPeriod = 100 * time.Millisecond
 
-// startAcquisition starts an acquisition in the background. The returned channel
+// launchAcquisition starts an acquisition in the background. The returned channel
 // receives the result of StartAcquisition, i.e. it fires once the tomb is dead
 // and every datasource (and the transformer, if any) is done writing.
-func startAcquisition(t *testing.T, sources []types.DataSource, out chan pipeline.Event, acquisTomb *tomb.Tomb) chan error {
+func launchAcquisition(t *testing.T, sources []types.DataSource, out chan pipeline.Event, acquisTomb *tomb.Tomb) chan error {
 	t.Helper()
 
 	done := make(chan error, 1)
@@ -476,7 +476,7 @@ func runCatAcquisition(t *testing.T, sources []types.DataSource) []string {
 	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	done := startAcquisition(t, sources, out, &acquisTomb)
+	done := launchAcquisition(t, sources, out, &acquisTomb)
 
 	if err := waitForAcquisition(t, done); err != nil {
 		acquisTomb.Kill(nil)
@@ -501,7 +501,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	done := startAcquisition(t, []types.DataSource{&MockTail{}}, out, &acquisTomb)
+	done := launchAcquisition(t, []types.DataSource{&MockTail{}}, out, &acquisTomb)
 
 	readEvents(t, out, 10)
 	requireNoMoreEvents(t, out)
@@ -532,7 +532,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	done := startAcquisition(t, []types.DataSource{&MockTailError{}}, out, &acquisTomb)
+	done := launchAcquisition(t, []types.DataSource{&MockTailError{}}, out, &acquisTomb)
 
 	// the datasource kills the tomb itself, so acquisition ends without our help
 	cstest.RequireErrorContains(t, waitForAcquisition(t, done), "got error (tomb)")
@@ -543,7 +543,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Toto                              string `yaml:"toto"`
+	Toto                              string     `yaml:"toto"`
 	logger                            *log.Entry //nolint:unused
 }
 
@@ -582,7 +582,7 @@ func TestConfigureByDSN(t *testing.T) {
 			ExpectedError: "no acquisition for protocol foobar://",
 		},
 		{
-			dsn:            "mockdsn://test_expect",
+			dsn: "mockdsn://test_expect",
 		},
 		{
 			dsn:           "mockdsn://bad",
@@ -609,16 +609,18 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 }
 
-
 // TailModeNoTailer configures itself in "tail" mode but does not implement the Tailer methods.
-type TailModeNoTailer struct {}
+type TailModeNoTailer struct{}
+
 func (*TailModeNoTailer) UnmarshalConfig(_ []byte) error { return nil }
-func (*TailModeNoTailer) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error { return nil }
-func (*TailModeNoTailer) GetMode() string   { return configuration.TAIL_MODE }
-func (*TailModeNoTailer) GetName() string   { return "tail_no_tailer" }
-func (*TailModeNoTailer) GetUuid() string   { return "" }
-func (s *TailModeNoTailer) Dump() any       { return s }
-func (*TailModeNoTailer) CanRun() error     { return nil }
+func (*TailModeNoTailer) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+	return nil
+}
+func (*TailModeNoTailer) GetMode() string { return configuration.TAIL_MODE }
+func (*TailModeNoTailer) GetName() string { return "tail_no_tailer" }
+func (*TailModeNoTailer) GetUuid() string { return "" }
+func (s *TailModeNoTailer) Dump() any     { return s }
+func (*TailModeNoTailer) CanRun() error   { return nil }
 
 func TestStartAcquisition_MissingTailer(t *testing.T) {
 	ctx := t.Context()
@@ -632,15 +634,17 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
 
-
 // CatModeNoTailer configures itself in "cat" mode but does not implement the Fetcher methods.
-type CatModeNoFetcher struct {}
+type CatModeNoFetcher struct{}
+
 func (*CatModeNoFetcher) UnmarshalConfig(_ []byte) error { return nil }
-func (*CatModeNoFetcher) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error { return nil }
+func (*CatModeNoFetcher) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
+	return nil
+}
 func (*CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
 func (*CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
 func (*CatModeNoFetcher) GetUuid() string { return "" }
-func (s *CatModeNoFetcher) Dump() any       { return s }
+func (s *CatModeNoFetcher) Dump() any     { return s }
 func (*CatModeNoFetcher) CanRun() error   { return nil }
 
 func TestStartAcquisition_MissingFetcher(t *testing.T) {
