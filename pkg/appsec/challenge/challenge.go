@@ -184,7 +184,9 @@ type runtimeOptions struct {
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
 	logger                    *log.Entry // nil → default "challenge" sublogger
-	skipPreWarm               bool       // test-only, see withoutPreWarm
+	// skipPreWarm drops the constructor's synchronous obfuscation and the
+	// background pre-warmer. Only withoutPreWarm (challenge_test.go) sets it.
+	skipPreWarm bool
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -249,16 +251,6 @@ func WithCryptoObfuscationPoolSize(n int) Option {
 		if n >= 1 {
 			o.cryptoObfuscationPoolSize = n
 		}
-	}
-}
-
-// withoutPreWarm skips the constructor's synchronous obfuscation and the
-// background pre-warmer; currentDynamicModule then obfuscates lazily.
-// Unexported: a test-only seam to avoid paying ~4s per pool slot at
-// construction, not a supported deployment mode.
-func withoutPreWarm() Option {
-	return func(o *runtimeOptions) {
-		o.skipPreWarm = true
 	}
 }
 

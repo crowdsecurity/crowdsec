@@ -214,9 +214,9 @@ const hookSentinel = "__CSEC_CHALLENGE_HOOK_v1__"
 
 // newChallengeRuntimeForSplitTest builds a runtime with WASM + the baked-in
 // initial bundle but a deterministic keyring, so split-bundle assertions
-// can be made against a known key. withoutPreWarm leaves the module cache
-// empty, so the first call builds against the keyring swapped in below
-// rather than the constructor's.
+// can be made against a known key. Built withoutPreWarm so the module cache
+// starts empty and the first call builds against the keyring swapped in
+// below rather than the constructor's.
 func newChallengeRuntimeForSplitTest(t *testing.T, keys *KeyRing) *ChallengeRuntime {
 	t.Helper()
 	rt, err := NewChallengeRuntime(t.Context(),
