@@ -336,20 +336,20 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 
 		gctx.Writer.WriteString(`], "deleted": [`)
 
-		// Use a 2-second overlap to avoid missing decisions that expired around the last pull time
-		var expiredSince *time.Time
+		// A bouncer that never completed a pull holds no decision, so it has nothing to remove:
+		// skip the query instead of scanning every decision that ever expired.
 		if bouncerInfo.LastPull != nil {
-			since := bouncerInfo.LastPull.Add(-2 * time.Second)
-			expiredSince = &since
-		}
+			// Use a 2-second overlap to avoid missing decisions that expired around the last pull time
+			expiredSince := bouncerInfo.LastPull.Add(-2 * time.Second)
 
-		err = writeDeltaDecisions(gctx, now, filters, expiredSince, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.WriteString("]}")
-			gctx.Writer.Flush()
+			err = writeDeltaDecisions(gctx, now, filters, &expiredSince, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
+			if err != nil {
+				log.Errorf("failed sending expired decisions for delta: %v", err)
+				gctx.Writer.WriteString("]}")
+				gctx.Writer.Flush()
 
-			return err
+				return err
+			}
 		}
 
 		gctx.Writer.WriteString("]}")

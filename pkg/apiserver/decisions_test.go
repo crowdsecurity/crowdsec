@@ -257,6 +257,47 @@ func TestDeleteDecision(t *testing.T) {
 	assert.Equal(t, "3", resp.NbDeleted)
 }
 
+func TestStreamDeltaFirstPull(t *testing.T) {
+	ctx := t.Context()
+
+	// A bouncer that never completed a pull has no decision to remove, so the
+	// deleted list must be empty instead of holding every expired decision.
+	lapi := SetupLAPITest(t, ctx)
+
+	// Create Valid Alert: one decision for 91.121.79.179 (id=1), one for 91.121.79.178 (id=2)
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_minibulk.json")
+
+	// Expire the first one, so the database holds one active and one expired decision
+	w := lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions/1", emptyBody, PASSWORD)
+	assert.Equal(t, 200, w.Code)
+
+	// First pull ever for this bouncer (last_pull is NULL), without startup=true
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code := readDecisionsStreamResp(t, w)
+	assert.Equal(t, 200, code)
+	assert.Len(t, decisions["new"], 1)
+	assert.Equal(t, int64(2), decisions["new"][0].ID)
+	assert.Empty(t, decisions["deleted"])
+
+	// The pull above set last_pull, so the following delta behaves as usual
+	w = lapi.RecordResponse(t, ctx, "DELETE", "/v1/decisions/2", emptyBody, PASSWORD)
+	assert.Equal(t, 200, w.Code)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code = readDecisionsStreamResp(t, w)
+	assert.Equal(t, 200, code)
+	assert.Empty(t, decisions["new"])
+
+	// Decision 1 expired just before the previous pull, so the 2-second overlap
+	// may legitimately send it again: only require the one expired since then.
+	deleted := make([]int64, 0, len(decisions["deleted"]))
+	for _, d := range decisions["deleted"] {
+		deleted = append(deleted, d.ID)
+	}
+
+	assert.Contains(t, deleted, int64(2))
+}
+
 func TestStreamStartDecisionDedup(t *testing.T) {
 	ctx := t.Context()
 
