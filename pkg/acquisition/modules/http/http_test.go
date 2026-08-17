@@ -258,6 +258,139 @@ max_body_size: 5`), 0)
 	require.NoError(t, err)
 }
 
+// A gzip bomb compresses to less than max_body_size but decompresses to much more.
+func TestStreamingAcquisitionGzipMaxBodySize(t *testing.T) {
+	ctx := t.Context()
+	h := &Source{}
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: test
+max_body_size: 1024`), 0)
+
+	time.Sleep(1 * time.Second)
+
+	// a single event, so nothing is sent to the output channel before the limit is hit
+	rawEvt := fmt.Sprintf(`{"test": %q}`, strings.Repeat("a", 100*1024))
+
+	var b strings.Builder
+
+	gz := gzip.NewWriter(&b)
+	_, err := gz.Write([]byte(rawEvt))
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+
+	require.Less(t, b.Len(), 1024, "compressed payload must be under max_body_size")
+
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
+	require.NoError(t, err)
+
+	req.Header.Add("Key", "test")
+	req.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
+	closeBody(t, resp)
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	err = tomb.Wait()
+	require.NoError(t, err)
+}
+
+func TestStreamingAcquisitionGzipUnderMaxBodySize(t *testing.T) {
+	ctx := t.Context()
+	h := &Source{}
+	out, reg, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: test
+max_body_size: 1024`), 2)
+
+	time.Sleep(1 * time.Second)
+
+	rawEvt := `{"test": "test"}`
+	errChan := make(chan error)
+
+	go assertEvents(out, []string{rawEvt, rawEvt}, errChan)
+
+	var b strings.Builder
+
+	gz := gzip.NewWriter(&b)
+	_, err := gz.Write([]byte(rawEvt + rawEvt))
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), strings.NewReader(b.String()))
+	require.NoError(t, err)
+
+	req.Header.Add("Key", "test")
+	req.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	closeBody(t, resp)
+
+	err = <-errChan
+	require.NoError(t, err)
+
+	assertMetrics(t, reg, h.GetMetrics(), 2)
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	err = tomb.Wait()
+	require.NoError(t, err)
+}
+
+// A body sent without a known length must not bypass max_body_size.
+func TestStreamingAcquisitionChunkedMaxBodySize(t *testing.T) {
+	ctx := t.Context()
+	h := &Source{}
+	_, _, tomb := SetupAndRunHTTPSource(t, h, []byte(`
+source: http
+listen_addr: 127.0.0.1:8080
+path: /test
+auth_type: headers
+headers:
+  key: test
+max_body_size: 1024`), 0)
+
+	time.Sleep(1 * time.Second)
+
+	rawEvt := fmt.Sprintf(`{"test": %q}`, strings.Repeat("a", 4096))
+
+	// wrapping in NopCloser hides the length from net/http, which then uses chunked encoding
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/test", testHTTPServerAddr), io.NopCloser(strings.NewReader(rawEvt)))
+	require.NoError(t, err)
+
+	req.Header.Add("Key", "test")
+	require.Zero(t, req.ContentLength, "net/http must not have been able to determine the body length")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
+	closeBody(t, resp)
+
+	h.Server.Close()
+	tomb.Kill(nil)
+	err = tomb.Wait()
+	require.NoError(t, err)
+}
+
 func TestStreamingAcquisitionSuccess(t *testing.T) {
 	ctx := t.Context()
 	h := &Source{}
