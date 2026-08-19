@@ -47,7 +47,7 @@ func runPowWorkerJS(t *testing.T, salt string, difficulty, start, stride int) (s
 	worker, err := filepath.Abs("pow-worker.js")
 	require.NoError(t, err)
 
-	out, err := exec.Command(node, shim, worker, salt,
+	out, err := exec.CommandContext(t.Context(), node, shim, worker, salt,
 		strconv.Itoa(difficulty), strconv.Itoa(start), strconv.Itoa(stride)).Output()
 
 	return string(out), err
@@ -158,6 +158,6 @@ func TestPowWorkerJS_Parses(t *testing.T) {
 		t.Skip("node not found in PATH")
 	}
 
-	out, err := exec.Command(node, "--check", "pow-worker.js").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "--check", "pow-worker.js").CombinedOutput()
 	require.NoError(t, err, "pow-worker.js is not valid JS: %s", out)
 }
