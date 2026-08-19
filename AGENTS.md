@@ -28,6 +28,12 @@ Say which, in the PR body.
 - Full suite: `make test`. Needs `gotestsum` installed, and `make localstack` running in
   another shell, or set `TEST_LOCAL_ONLY=1` to skip the tests that need containers.
 - If you touched `pkg/exprhelpers`, use `make test`.
+- Lint while iterating: `golangci-lint run ./pkg/<what you changed>/...`
+- Before pushing: `make lint`. It lints linux, windows and freebsd, same as CI — so expect
+  findings outside your change if it's platform-specific.
+- Use golangci-lint v2.10, the version CI pins. Other versions report different things.
+- Don't restructure working code to satisfy a linter that's switched off. Check the `disable:`
+  list in `.golangci.yml` before "fixing" something it never complained about.
 
 ### Running it for real
 
