@@ -107,6 +107,7 @@ function saltBytes(s) {
   var out = new Uint8Array(s.length);
   for (var i = 0; i < s.length; i++) {
     var c = s.charCodeAt(i);
+    //this cannot happen right now, but can happen if we change the prefix generation to allow non-ascii chars.
     if (c > 127) return null;
     out[i] = c;
   }
