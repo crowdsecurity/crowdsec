@@ -1,0 +1,139 @@
+# Working in this repository
+
+For anyone opening a pull request against crowdsec — human, or human driving an LLM.
+`CLAUDE.md` is a symlink to this file.
+
+If a rule can be enforced by CI or a linter, it does not belong in this file. What's left is
+what a machine can't check: scope, evidence, and not wasting a reviewer's time.
+
+PRs that ignore the rules below get closed rather than reviewed. Not to be unkind — a PR
+nobody can review is worse than no PR.
+
+## Keep the change small
+
+- One concern per PR. A bug fix and a refactor are two PRs.
+- No drive-by reformatting, renaming, or restructuring. Don't touch lines you didn't need to.
+- Don't bump dependencies. Dependabot owns `go.mod` and `go.sum`.
+- If the diff is over ~400 lines, either split it, or say in the first line of the PR body why
+  it can't be split.
+
+## A human must have tested and reviewed this
+
+An agent running a test suite is not verification, and neither is output nobody read.
+
+Before you open the PR, a human must have:
+
+- read the diff line by line, and
+- run the change, or supervised and independently verified the testing an agent did.
+
+Say which, in the PR body. "The agent says tests pass" is not an answer.
+
+### Automated checks
+
+- While iterating: `go test ./pkg/<what you changed>/...`
+- Full suite: `make test`. Needs `gotestsum` installed, and `make localstack` running in
+  another shell — or set `TEST_LOCAL_ONLY=1` to skip the tests that need containers.
+- If you touched `pkg/exprhelpers`, use `make test`. That package needs build tags the
+  Makefile supplies and fails on purpose without them.
+
+### Running it for real
+
+This is how you actually exercise a change:
+
+```
+make build                        # crowdsec, cscli and the notification plugins
+scripts/test_env.sh -d ./tests    # working config tree in ./tests
+cd ./tests
+$EDITOR config/acquis.yaml        # point it at a log file you can write to
+./crowdsec -c dev.yaml
+```
+
+`scripts/test_env.sh` copies the binaries out of the source tree, so `make build` has to run
+first.
+
+Look up the crowdSec-skill to deploy, configure and troubleshoot CrowdSec instances: https://www.skills.sh/crowdsecurity/crowdsec-skill/crowdsec 
+
+## Tests
+
+- New behaviour needs a test. A bug fix needs a test that fails before the fix.
+- `require` over `assert` — a failed `assert` keeps going and buries the real error.
+- Table-driven, with `t.Run` subtests.
+- Unit tests live next to the code. Functional tests are BATS under `test/bats/`; see
+  `test/README.md`.
+- Docs, packaging and CI-only PRs don't need tests.
+
+## Be concise
+
+Humans read your output. Verbosity is a tax on every reviewer, and LLMs default to paying it
+with someone else's money.
+
+**PR and issue bodies** — what changed, why, and how it was tested. Nothing else. No prose
+restatement of the diff. No "Summary / Motivation / Implementation Details / Testing Strategy /
+Future Considerations" scaffolding. No emoji-headed bullet walls.
+
+Instead of:
+
+> ## Summary
+> This PR introduces a comprehensive enhancement to the syslog acquisition module...
+> ## Motivation
+> Currently, the existing implementation suffers from a limitation whereby...
+> ## Implementation Details
+> - ✅ Added a new `timeout` field to the configuration struct
+> - ✅ Updated the parsing logic to respect the new field
+> ## Testing Strategy
+> Comprehensive unit tests have been added to ensure correctness...
+
+Write:
+
+> syslog acquisition hung forever when the remote stopped sending. Adds a configurable
+> `timeout` (default 30s) and closes the connection when it expires.
+>
+> Tested: `go test ./pkg/acquisition/modules/syslog/...`, plus a local run against a syslog
+> source that goes silent — connection now drops after 30s instead of hanging.
+
+**Code comments** — explain why, not what. If the comment restates the line under it, delete
+it. Don't add comments to code you didn't change.
+
+**Review replies** — answer the question that was asked. Don't re-explain the PR, and don't
+paste your agent's output into the thread. Read it, then reply in your own words, in a few
+lines.
+
+## Don't break these
+
+Each one is a one-way door — users are already depending on it.
+
+- **LAPI/CAPI payloads** — change `pkg/models/localapi_swagger.yaml` or
+  `pkg/modelscapi/centralapi_swagger.yaml` and regenerate. Never edit the generated Go by hand.
+- **Database schema** — your migration lands on existing user databases.
+- **Config keys** in `pkg/csconfig` — renaming or removing one breaks upgrades.
+- **`cscli -o json` and `-o raw`** — bouncers and scripts parse these. `-o human` is the only
+  output you can freely change.
+
+If you have to break one of these, say so explicitly at the top of the PR body.
+
+## Where things live
+
+`acquisition -> parser -> pipeline/leakybucket -> apiserver (LAPI) -> database`
+
+| If you're changing | Look in |
+| --- | --- |
+| a datasource | `pkg/acquisition/modules/<name>/`, stub `pkg/acquisition/<name>.go`, `pkg/cwversion/component` |
+| parsing, enrichment, whitelists | `pkg/parser/`, `pkg/enrichment/`, `pkg/alertcontext/` |
+| detection, buckets | `pkg/leakybucket/`, `pkg/pipeline/` |
+| an `expr` helper | `pkg/exprhelpers/` |
+| WAF / AppSec, JS challenge | `pkg/appsec/` |
+| the Local API | `pkg/apiserver/` (payloads: `pkg/models/localapi_swagger.yaml`) |
+| API client, CAPI, CTI | `pkg/apiclient/`, `pkg/modelscapi/`, `pkg/cticlient/` |
+| the database | `pkg/database/ent/schema/`, then regenerate |
+| hub items | `pkg/cwhub/`, `pkg/hubops/` |
+| config keys | `pkg/csconfig/` |
+| a `cscli` command | `cmd/crowdsec-cli/cli<area>/` |
+| daemon startup and lifecycle | `cmd/crowdsec/` |
+| a notification plugin | `cmd/notification-<name>/`, `pkg/csplugin/` |
+
+## Commits and PRs
+
+- Base branch is `master`.
+- Commit titles are loose: `area: what changed` or `type(scope): what changed`, both fine.
+- Never write `(#1234)` in a commit title. Squash-merge adds it. Yours will be wrong.
+- One `kind/*` label and one `area/*` label.
