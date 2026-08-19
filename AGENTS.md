@@ -101,26 +101,6 @@ Each one is a one-way door — users are already depending on it.
 
 If you have to break one of these, say so explicitly at the top of the PR body.
 
-## Where things live
-
-`acquisition -> parser -> pipeline/leakybucket -> apiserver (LAPI) -> database`
-
-| If you're changing | Look in |
-| --- | --- |
-| a datasource | `pkg/acquisition/modules/<name>/`, stub `pkg/acquisition/<name>.go`, `pkg/cwversion/component` |
-| parsing, enrichment, whitelists | `pkg/parser/`, `pkg/enrichment/`, `pkg/alertcontext/` |
-| detection, buckets | `pkg/leakybucket/`, `pkg/pipeline/` |
-| an `expr` helper | `pkg/exprhelpers/` |
-| WAF / AppSec, JS challenge | `pkg/appsec/` |
-| the Local API | `pkg/apiserver/` (payloads: `pkg/models/localapi_swagger.yaml`) |
-| API client, CAPI, CTI | `pkg/apiclient/`, `pkg/modelscapi/`, `pkg/cticlient/` |
-| the database | `pkg/database/ent/schema/`, then regenerate |
-| hub items | `pkg/cwhub/`, `pkg/hubops/` |
-| config keys | `pkg/csconfig/` |
-| a `cscli` command | `cmd/crowdsec-cli/cli<area>/` |
-| daemon startup and lifecycle | `cmd/crowdsec/` |
-| a notification plugin | `cmd/notification-<name>/`, `pkg/csplugin/` |
-
 ## Commits and PRs
 
 - Base branch is `master`.
