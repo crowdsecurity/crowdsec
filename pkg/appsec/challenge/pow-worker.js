@@ -30,13 +30,16 @@ var K = [
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ];
 
-// A message under 56 bytes pads into a single 64-byte block (64 minus the 0x80
-// terminator and the 8-byte length field).
+// SHA-256 (FIPS 180-4) pads every message with a 0x80 byte, zeros, then a
+// 64-bit big-endian bit length, up to a multiple of the 64-byte block. So 55
+// bytes is the most that still fits one block — the standard's arithmetic, not
+// a tuning knob. It is what lets this file drop the multi-block loop.
 var SINGLE_BLOCK_MAX = 55;
 // Number.MAX_SAFE_INTEGER in base36 is 11 chars, so the nonce can never outgrow
 // this no matter how long the search runs.
 var MAX_NONCE_CHARS = 11;
-// Keep in sync with powSaltMaxHexLen in ticket.go.
+// powSaltMaxHexLen in ticket.go is the authoritative copy — the server owns the
+// salt. challenge.js carries a third for its pre-flight check.
 var MAX_SALT_BYTES = SINGLE_BLOCK_MAX - MAX_NONCE_CHARS;
 
 // Scratch reused across every iteration: the whole point is that the inner loop
@@ -45,11 +48,17 @@ var msg = new Uint8Array(64);
 var dv = new DataView(msg.buffer);
 var w = new Int32Array(64);
 var digits = new Uint8Array(MAX_NONCE_CHARS);
-var H1 = 0; // second output word, only read when difficulty > 32
+// Global purely to hand back a second output word without allocating a pair on
+// every attempt. Only meaningful immediately after compress(), and only read
+// when difficulty > 32.
+var H1 = 0;
 
 // compress runs one SHA-256 block over msg and returns h0 (h1 lands in H1).
 // The salt never changes between iterations, so when it covers a whole number
 // of 32-bit words we reload only the tail of the schedule.
+//
+// The caller must have already loaded w[0..fixedWords-1]. Getting that wrong
+// doesn't crash — it silently hashes as if the salt weren't there.
 function compress(fixedWords) {
   for (var i = fixedWords; i < 16; i++) w[i] = dv.getInt32(i << 2, false);
   for (var i = 16; i < 64; i++) {
@@ -79,15 +88,20 @@ function writeNonce(n, off) {
   var len = 0;
   while (n > 0) {
     var r = n % 36;
-    digits[len++] = r < 10 ? 48 + r : 87 + r;
-    n = (n - r) / 36;
+    digits[len++] = r < 10 ? 48 + r : 87 + r; // 48 is '0', 87 + 10 is 'a'
+    n = (n - r) / 36;                         // exact on doubles, unlike n / 36
   }
   for (var i = 0; i < len; i++) msg[off + i] = digits[len - 1 - i];
   return len;
 }
 
-// saltBytes returns the salt as ASCII bytes, or null if it isn't plain ASCII or
-// is too long to leave room for a nonce inside one block.
+// saltBytes returns the salt as bytes, or null if it can't be used.
+//
+// ASCII-only because we write charCodeAt straight into a byte: that matches the
+// UTF-8 the server hashes only below 128. Above it the byte would differ from
+// Go's encoding, and s.length would stop counting bytes at all — which is also
+// what makes the length check below meaningful. The server always sends hex
+// (generatePowPrefix), so this only fires if that contract breaks.
 function saltBytes(s) {
   if (s.length > MAX_SALT_BYTES) return null;
   var out = new Uint8Array(s.length);
@@ -104,9 +118,10 @@ function solve(salt, difficulty, start, stride) {
   msg.fill(0);
   msg.set(salt, 0);
 
+  // Only whole 32-bit words of salt are invariant: on a ragged salt the last
+  // word holds nonce bytes too, so nothing can be cached and we reload it all.
   var fixedWords = (p & 3) === 0 ? p >> 2 : 0;
-  // compress() only refills w[fixedWords..15], so load the invariant salt
-  // words once up front.
+  // compress() only refills w[fixedWords..15], so prime the rest once here.
   for (var i = 0; i < fixedWords; i++) w[i] = dv.getInt32(i << 2, false);
 
   // Test the output words directly against a shifted mask instead of building
@@ -121,7 +136,8 @@ function solve(salt, difficulty, start, stride) {
   for (var nonce = start; ; nonce += stride) {
     var len = writeNonce(nonce, p);
     msg[p + len] = 0x80;
-    // p + len <= 55 keeps the bit length inside w[15], so w[14] stays zero.
+    // Only the low half of the 64-bit length field: a <=55-byte message is at
+    // most 440 bits, so bytes 56-59 stay zero from the fill above.
     dv.setUint32(60, (p + len) << 3, false);
 
     var h0 = compress(fixedWords);
@@ -145,8 +161,10 @@ self.onmessage = function (e) {
 
   var salt = saltBytes(String(m.p == null ? "" : m.p));
   if (salt === null) {
-    // Fail loudly: a salt this shape means the server broke its own contract,
-    // and solving anything at this point would only produce a nonce it rejects.
+    // Deliberately redundant with challenge.js's pre-flight check — this one
+    // covers callers that drive the worker directly, such as the differential
+    // test. There is no slow path to fall back to: a salt this shape means the
+    // server broke its own contract, and any nonce found would be rejected.
     throw new Error("pow: unusable salt");
   }
 

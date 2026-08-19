@@ -185,8 +185,8 @@ const powWorkerPath = "__CROWDSEC_POW_WORKER_PATH__";
 const powMaxWorkers = 4;
 
 // Longest salt that still leaves room for a base36 nonce inside one SHA-256
-// block. Keep in sync with MAX_SALT_BYTES in pow-worker.js and
-// powSaltMaxHexLen in ticket.go.
+// block, which is the shape pow-worker.js is built around. powSaltMaxHexLen in
+// ticket.go is the authoritative copy — the server owns the salt.
 const powMaxSaltLen = 44;
 
 function powWorkerCount() {
@@ -196,6 +196,8 @@ function powWorkerCount() {
 
 // The server always sends 32 hex chars. Anything else means it broke its own
 // contract, so fail the challenge instead of mining a nonce it would reject.
+// Checked here so we never spawn a pool that is only going to throw; the worker
+// re-checks for callers that bypass this path.
 function powSaltUsable(salt) {
   if (typeof salt !== "string" || salt.length === 0 || salt.length > powMaxSaltLen) {
     return false;
