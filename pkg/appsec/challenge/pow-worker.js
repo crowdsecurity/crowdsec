@@ -1,3 +1,14 @@
+// PoW solver worker. Served unobfuscated (see PowWorkerJS in challenge.go)
+//
+// The page spawns one of these per core (capped) and gives each a disjoint
+// slice of the nonce space: worker i searches start=i, stride=n, so together
+// they cover every nonce exactly once.
+//
+// The salt is always 32 hex chars (generatePowPrefix in ticket.go), so a
+// candidate always fits one 64-byte SHA-256 block.
+//
+// in : { p: salt, d: bits, start: int, stride: int }
+// out: base36 nonce string
 "use strict";
 
 var K = [
@@ -19,59 +30,125 @@ var K = [
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ];
 
-function sha256(data) {
-  var h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a,
-      h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
-  var len = data.length, bitLen = len * 8;
-  var padLen = 64 - ((len + 9) % 64);
-  var totalLen = len + 1 + (padLen === 64 ? 0 : padLen) + 8;
-  var msg = new Uint8Array(totalLen);
-  msg.set(data); msg[len] = 0x80;
-  var dv = new DataView(msg.buffer);
-  dv.setUint32(totalLen - 4, bitLen, false);
-  var w = new Int32Array(64);
-  for (var offset = 0; offset < totalLen; offset += 64) {
-    for (var i = 0; i < 16; i++) w[i] = dv.getInt32(offset + i * 4, false);
-    for (var i = 16; i < 64; i++) {
-      var s0 = (((w[i-15] >>> 7) | (w[i-15] << 25)) ^ ((w[i-15] >>> 18) | (w[i-15] << 14)) ^ (w[i-15] >>> 3)) | 0;
-      var s1 = (((w[i-2] >>> 17) | (w[i-2] << 15)) ^ ((w[i-2] >>> 19) | (w[i-2] << 13)) ^ (w[i-2] >>> 10)) | 0;
-      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
-    }
-    var a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
-    for (var i = 0; i < 64; i++) {
-      var S1 = (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) | 0;
-      var ch = ((e & f) ^ (~e & g)) | 0;
-      var t1 = (h + S1 + ch + K[i] + w[i]) | 0;
-      var S0 = (((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) | 0;
-      var maj = ((a & b) ^ (a & c) ^ (b & c)) | 0;
-      var t2 = (S0 + maj) | 0;
-      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
-    }
-    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
-    h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+// A message under 56 bytes pads into a single 64-byte block (64 minus the 0x80
+// terminator and the 8-byte length field).
+var SINGLE_BLOCK_MAX = 55;
+// Number.MAX_SAFE_INTEGER in base36 is 11 chars, so the nonce can never outgrow
+// this no matter how long the search runs.
+var MAX_NONCE_CHARS = 11;
+// Keep in sync with powSaltMaxHexLen in ticket.go.
+var MAX_SALT_BYTES = SINGLE_BLOCK_MAX - MAX_NONCE_CHARS;
+
+// Scratch reused across every iteration: the whole point is that the inner loop
+// allocates nothing.
+var msg = new Uint8Array(64);
+var dv = new DataView(msg.buffer);
+var w = new Int32Array(64);
+var digits = new Uint8Array(MAX_NONCE_CHARS);
+var H1 = 0; // second output word, only read when difficulty > 32
+
+// compress runs one SHA-256 block over msg and returns h0 (h1 lands in H1).
+// The salt never changes between iterations, so when it covers a whole number
+// of 32-bit words we reload only the tail of the schedule.
+function compress(fixedWords) {
+  for (var i = fixedWords; i < 16; i++) w[i] = dv.getInt32(i << 2, false);
+  for (var i = 16; i < 64; i++) {
+    var x = w[i - 15], y = w[i - 2];
+    var s0 = (((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3)) | 0;
+    var s1 = (((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10)) | 0;
+    w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
   }
-  var out = new Uint8Array(32);
-  var ov = new DataView(out.buffer);
-  ov.setUint32(0, h0, false); ov.setUint32(4, h1, false);
-  ov.setUint32(8, h2, false); ov.setUint32(12, h3, false);
-  ov.setUint32(16, h4, false); ov.setUint32(20, h5, false);
-  ov.setUint32(24, h6, false); ov.setUint32(28, h7, false);
+  var a = 0x6a09e667 | 0, b = 0xbb67ae85 | 0, c = 0x3c6ef372 | 0, d = 0xa54ff53a | 0,
+      e = 0x510e527f | 0, f = 0x9b05688c | 0, g = 0x1f83d9ab | 0, h = 0x5be0cd19 | 0;
+  for (var i = 0; i < 64; i++) {
+    var S1 = (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) | 0;
+    var t1 = (h + S1 + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+    var S0 = (((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) | 0;
+    var t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+  }
+  H1 = ((0xbb67ae85 | 0) + b) | 0;
+  return ((0x6a09e667 | 0) + a) | 0;
+}
+
+// writeNonce renders n as lowercase base36 into msg at off and returns its
+// length. Digits come out least-significant first, so they are reversed on the
+// way into the buffer.
+function writeNonce(n, off) {
+  if (n === 0) { msg[off] = 48; return 1; }
+  var len = 0;
+  while (n > 0) {
+    var r = n % 36;
+    digits[len++] = r < 10 ? 48 + r : 87 + r;
+    n = (n - r) / 36;
+  }
+  for (var i = 0; i < len; i++) msg[off + i] = digits[len - 1 - i];
+  return len;
+}
+
+// saltBytes returns the salt as ASCII bytes, or null if it isn't plain ASCII or
+// is too long to leave room for a nonce inside one block.
+function saltBytes(s) {
+  if (s.length > MAX_SALT_BYTES) return null;
+  var out = new Uint8Array(s.length);
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c > 127) return null;
+    out[i] = c;
+  }
   return out;
 }
 
-self.onmessage = function(e) {
-  var prefix = e.data.p, difficulty = e.data.d, nonce = 0;
-  var enc = new TextEncoder();
-  while (true) {
-    var candidate = prefix + nonce.toString(36);
-    var hash = sha256(enc.encode(candidate));
-    var fullBytes = difficulty >> 3, remainBits = difficulty & 7, ok = true;
-    for (var i = 0; i < fullBytes; i++) { if (hash[i] !== 0) { ok = false; break; } }
-    if (ok && remainBits > 0) {
-      var mask = (0xff << (8 - remainBits)) & 0xff;
-      if ((hash[fullBytes] & mask) !== 0) ok = false;
+function solve(salt, difficulty, start, stride) {
+  var p = salt.length;
+  msg.fill(0);
+  msg.set(salt, 0);
+
+  var fixedWords = (p & 3) === 0 ? p >> 2 : 0;
+  // compress() only refills w[fixedWords..15], so load the invariant salt
+  // words once up front.
+  for (var i = 0; i < fixedWords; i++) w[i] = dv.getInt32(i << 2, false);
+
+  // Test the output words directly against a shifted mask instead of building
+  // and scanning a 32-byte digest.
+  var wide = difficulty > 32;
+  var shift0 = wide ? 0 : 32 - difficulty;
+  var shift1 = wide ? 64 - difficulty : 0;
+
+  // The nonce climbs, so its base36 length never shrinks: a longer one
+  // overwrites the previous terminator itself, and everything past it is still
+  // zero from the fill above. Nothing needs clearing between iterations.
+  for (var nonce = start; ; nonce += stride) {
+    var len = writeNonce(nonce, p);
+    msg[p + len] = 0x80;
+    // p + len <= 55 keeps the bit length inside w[15], so w[14] stays zero.
+    dv.setUint32(60, (p + len) << 3, false);
+
+    var h0 = compress(fixedWords);
+    if (wide ? (h0 === 0 && (H1 >>> shift1) === 0) : ((h0 >>> shift0) === 0)) {
+      return nonce.toString(36);
     }
-    if (ok) { self.postMessage(nonce.toString(36)); return; }
-    nonce++;
   }
+}
+
+self.onmessage = function (e) {
+  var m = e.data || {};
+  var difficulty = m.d | 0;
+
+  // d <= 0 is "disabled". d > 64 is the server's Impossible hard-block, which
+  // is rejected before the nonce is ever looked at — searching for it would
+  // just pin every core forever.
+  if (difficulty <= 0 || difficulty > 64) {
+    self.postMessage("0");
+    return;
+  }
+
+  var salt = saltBytes(String(m.p == null ? "" : m.p));
+  if (salt === null) {
+    // Fail loudly: a salt this shape means the server broke its own contract,
+    // and solving anything at this point would only produce a nonce it rejects.
+    throw new Error("pow: unusable salt");
+  }
+
+  self.postMessage(solve(salt, difficulty, m.start | 0, (m.stride | 0) || 1));
 };

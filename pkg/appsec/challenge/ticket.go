@@ -3,9 +3,8 @@
 // helpers to derive the per-challenge secret `s = HMAC(K_epoch, r)`. The browser
 // solves the PoW (leading-zero-bits) and signs its submission with `s`;
 // ValidateChallengeResponse (in challenge.go) re-derives `s`, checks the
-// signature and PoW, then burns `r` (single-use). PoW difficulty levels are
-// tuned for pure-JS SHA-256 through the obfuscated runtime; see the
-// PowDifficulty* constants below.
+// signature and PoW, then burns `r` (single-use). See the PowDifficulty*
+// constants below for how the levels are calibrated.
 
 package challenge
 
@@ -20,13 +19,23 @@ import (
 	"time"
 )
 
-// PoW difficulty levels in leading zero bits. Pure JS SHA-256 through the
-// obfuscator runs ~500-5000 ops/sec, so keep these conservative.
+// PoW difficulty levels in leading SHA-256 zero bits.
+//
+// A solution takes 2^d hashes in expectation (median 0.69*2^d, p99 4.6*2^d).
+// The browser solves it in a pool of min(hardwareConcurrency, 4) Web Workers
+// (see solvePoWAsync in challenge.js) running pow-worker.js, which is served
+// unobfuscated precisely so it runs at full engine speed. Measured: 2.5M H/s
+// on one worker and 10.2M H/s across four (Chromium 146, Ryzen 7 3700X).
+//
+// The levels are calibrated for the weakest device we still want to let
+// through — a low-end 2-core phone, assumed at ~500k H/s aggregate — giving
+// roughly 0.5s / 2s / 8s. A desktop is ~20x faster than that, so these are
+// nearly free there; that spread is inherent to a fixed bit target.
 const (
 	PowDifficultyDisabled   = 0   // no PoW required, nonce "0" always valid
-	PowDifficultyLow        = 10  // ~1024 avg iterations ≈ 0.2-2s
-	PowDifficultyMedium     = 12  // ~4096 avg iterations ≈ 1-8s
-	PowDifficultyHigh       = 15  // ~32768 avg iterations ≈ 7-60s
+	PowDifficultyLow        = 18  // 2^18 = 262k hashes ≈ 0.5s low-end mobile, 0.03s desktop
+	PowDifficultyMedium     = 20  // 2^20 = 1.05M hashes ≈ 2s low-end mobile, 0.10s desktop
+	PowDifficultyHigh       = 22  // 2^22 = 4.19M hashes ≈ 8s low-end mobile, 0.41s desktop
 	PowDifficultyImpossible = 256 // full SHA-256 width: clients cannot solve, server always rejects
 
 	defaultPowDifficulty = PowDifficultyMedium
@@ -74,14 +83,24 @@ func (c *ChallengeRuntime) epochForTimestamp(ts string) int64 {
 	return tsVal / int64(time.Second) / int64(c.keys.rotationInterval/time.Second)
 }
 
-// generatePowPrefix returns a freshly-generated 16-byte random PoW salt
-// rendered as a hex string. Errors from crypto/rand.Read indicate a broken
-// kernel entropy pool, which is recoverable at the request layer (we can
-// reject the current challenge and let the client retry) — returning the
-// error rather than panicking keeps a single failing request from taking
-// down the whole WAF.
+// The browser's solver (pow-worker.js) hashes salt+nonce in a single SHA-256
+// block, which is what makes it fast enough to justify the difficulty levels
+// above. That budget is 55 bytes, and a base36 nonce can reach 11 chars, so the
+// hex salt has to fit in the rest. The solver refuses to run on a salt that
+// doesn't, this is the server's half of
+// the contract. TestPowSaltFitsClientFastPath guards it.
+const (
+	powSaltBytes     = 16
+	powSaltMaxHexLen = 44
+)
+
+// generatePowPrefix returns a freshly-generated random PoW salt rendered as a
+// hex string. Errors from crypto/rand.Read indicate a broken kernel entropy
+// pool, which is recoverable at the request layer (we can reject the current
+// challenge and let the client retry) — returning the error rather than
+// panicking keeps a single failing request from taking down the whole WAF.
 func generatePowPrefix() (string, error) {
-	buf := make([]byte, 16)
+	buf := make([]byte, powSaltBytes)
 	if _, err := crand.Read(buf); err != nil {
 		return "", fmt.Errorf("generate PoW prefix: %w", err)
 	}

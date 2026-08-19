@@ -175,32 +175,130 @@ function hmacSHA256HexKey(keyHex, msgStr) {
   return toHex(hmacSHA256(hexToBytes(keyHex), encode(msgStr)));
 }
 
-// --- Proof-of-Work (offloaded to Web Worker) ---
+// --- Proof-of-Work (offloaded to a pool of Web Workers) ---
 
 const powWorkerPath = "__CROWDSEC_POW_WORKER_PATH__";
 
+// Capped rather than using every core: past four the returns flatten out on
+// desktops while phones just get hot and janky, and the difficulty is tuned for
+// the weakest device anyway.
+const powMaxWorkers = 4;
+
+// Longest salt that still leaves room for a base36 nonce inside one SHA-256
+// block. Keep in sync with MAX_SALT_BYTES in pow-worker.js and
+// powSaltMaxHexLen in ticket.go.
+const powMaxSaltLen = 44;
+
+function powWorkerCount() {
+  const cores = (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 1;
+  return Math.max(1, Math.min(cores, powMaxWorkers));
+}
+
+// The server always sends 32 hex chars. Anything else means it broke its own
+// contract, so fail the challenge instead of mining a nonce it would reject.
+function powSaltUsable(salt) {
+  if (typeof salt !== "string" || salt.length === 0 || salt.length > powMaxSaltLen) {
+    return false;
+  }
+  for (let i = 0; i < salt.length; i++) {
+    if (salt.charCodeAt(i) > 127) return false;
+  }
+  return true;
+}
+
+// powWorkerURL fetches the worker source once and wraps it in a blob URL, so a
+// pool of N costs one request on a cold cache instead of N. Resolves to null
+// (meaning: just use the path) whenever that isn't possible.
+function powWorkerURL() {
+  try {
+    if (typeof fetch !== "function" || typeof Blob !== "function" ||
+        typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+      return Promise.resolve(null);
+    }
+    return fetch(powWorkerPath, { credentials: "same-origin" })
+      .then((res) => (res.ok ? res.text() : Promise.reject(new Error("pow worker http " + res.status))))
+      .then((src) => URL.createObjectURL(new Blob([src], { type: "text/javascript" })))
+      .catch(() => null);
+  } catch (_) {
+    return Promise.resolve(null);
+  }
+}
+
 function solvePoWAsync(prefix, difficulty) {
-  if (difficulty <= 0) {
+  // Mirrors the worker's guard: 0 is "disabled", anything past 64 is the
+  // server's unsolvable hard-block and is rejected before the nonce is read.
+  if (difficulty <= 0 || difficulty > 64) {
     return Promise.resolve("0");
   }
 
-  try {
-    const worker = new Worker(powWorkerPath);
+  if (!powSaltUsable(prefix)) {
+    return Promise.reject(new Error("pow: unusable salt"));
+  }
 
-    return new Promise((resolve) => {
+  return powWorkerURL()
+    .then((blobURL) =>
+      runPowPool(blobURL, prefix, difficulty).catch((err) =>
+        // A blob worker can still be refused by an operator CSP that omits
+        // blob: from worker-src. Retry against the real path before giving up.
+        blobURL ? runPowPool(null, prefix, difficulty) : Promise.reject(err),
+      ),
+    )
+    .catch(() => solvePoWMainThread(prefix, difficulty));
+}
+
+// runPowPool splits the nonce space across n workers: worker i walks
+// i, i+n, i+2n, ... so together they cover every nonce exactly once. First one
+// to land a solution wins.
+function runPowPool(blobURL, prefix, difficulty) {
+  const n = powWorkerCount();
+  const url = blobURL || powWorkerPath;
+
+  return new Promise((resolve, reject) => {
+    const workers = new Array(n).fill(null);
+    let settled = false;
+    let alive = n;
+
+    const cleanup = () => {
+      for (const worker of workers) {
+        if (worker) {
+          try { worker.terminate(); } catch (_) { /* already gone */ }
+        }
+      }
+      if (blobURL) {
+        try { URL.revokeObjectURL(blobURL); } catch (_) { /* already revoked */ }
+      }
+    };
+
+    for (let i = 0; i < n; i++) {
+      let worker;
+      try {
+        worker = new Worker(url);
+      } catch (_) {
+        if (--alive <= 0 && !settled) { settled = true; cleanup(); reject(new Error("no pow worker")); }
+        continue;
+      }
+      workers[i] = worker;
+
       worker.onmessage = (e) => {
-        worker.terminate();
+        if (settled) return;
+        settled = true;
+        cleanup();
         resolve(e.data);
       };
-      worker.onerror = () => {
-        worker.terminate();
-        resolve(solvePoWMainThread(prefix, difficulty));
+
+      // A dead worker abandons its slice, but every remaining slice is still
+      // infinite and solutions are uniformly dense, so the survivors just take
+      // proportionally longer. Only a fully empty pool is fatal.
+      worker.onerror = worker.onmessageerror = () => {
+        if (settled) return;
+        try { worker.terminate(); } catch (_) { /* already gone */ }
+        workers[i] = null;
+        if (--alive <= 0) { settled = true; cleanup(); reject(new Error("pow pool died")); }
       };
-      worker.postMessage({ p: prefix, d: difficulty });
-    });
-  } catch (_) {
-    return Promise.resolve(solvePoWMainThread(prefix, difficulty));
-  }
+
+      worker.postMessage({ p: prefix, d: difficulty, start: i, stride: n });
+    }
+  });
 }
 
 function solvePoWMainThread(prefix, difficulty) {
@@ -256,7 +354,7 @@ function encryptFingerprint(key, fingerprint) {
 const ts = typeof _ts !== "undefined" ? _ts : "";
 const powPrefix = typeof _powP !== "undefined" ? _powP : "";
 const powMAC = typeof _powM !== "undefined" ? _powM : "";
-const powDifficulty = typeof _powD !== "undefined" ? _powD : 12;
+const powDifficulty = typeof _powD !== "undefined" ? _powD : 20; // PowDifficultyMedium
 const r = typeof _r !== "undefined" ? _r : "";
 const submitPath = "__CROWDSEC_SUBMIT_PATH__";
 
@@ -291,10 +389,19 @@ async function runChallenge(epochKey) {
     return;
   }
 
-  const [nonce, fpResult] = await Promise.all([
-    solvePoWAsync(powPrefix, powDifficulty),
-    new Scanner().collectFingerprint({ encrypt: false }),
-  ]);
+  // Fail closed on an unusable salt or a solver that couldn't run at all —
+  // runChallenge is called fire-and-forget, so an escaping rejection would be
+  // silent and the page would sit on the spinner forever.
+  let nonce, fpResult;
+  try {
+    [nonce, fpResult] = await Promise.all([
+      solvePoWAsync(powPrefix, powDifficulty),
+      new Scanner().collectFingerprint({ encrypt: false }),
+    ]);
+  } catch (_) {
+    reportChallengeStatus("fail");
+    return;
+  }
 
   // Per-challenge secret s = HMAC(K_epoch, r). Never transmitted; the server
   // derives the same s from its per-epoch key and the cleartext r. epochKey is
