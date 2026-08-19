@@ -1,45 +1,37 @@
 # Working in this repository
 
-For anyone opening a pull request against crowdsec — human, or human driving an LLM.
+For anyone opening a pull request against crowdsec: human, or LLM.
 `CLAUDE.md` is a symlink to this file.
 
-If a rule can be enforced by CI or a linter, it does not belong in this file. What's left is
-what a machine can't check: scope, evidence, and not wasting a reviewer's time.
-
-PRs that ignore the rules below get closed rather than reviewed. Not to be unkind — a PR
-nobody can review is worse than no PR.
+PRs that ignore the rules below are unlikely to be reviewed.
 
 ## Keep the change small
 
 - One concern per PR. A bug fix and a refactor are two PRs.
-- No drive-by reformatting, renaming, or restructuring. Don't touch lines you didn't need to.
+- No drive-by reformatting, renaming, or restructuring.
 - Don't bump dependencies. Dependabot owns `go.mod` and `go.sum`.
 - If the diff is over ~400 lines, either split it, or say in the first line of the PR body why
   it can't be split.
 
 ## A human must have tested and reviewed this
 
-An agent running a test suite is not verification, and neither is output nobody read.
-
 Before you open the PR, a human must have:
 
 - read the diff line by line, and
 - run the change, or supervised and independently verified the testing an agent did.
 
-Say which, in the PR body. "The agent says tests pass" is not an answer.
+Say which, in the PR body.
 
 ### Automated checks
 
 - While iterating: `go test ./pkg/<what you changed>/...`
 - Full suite: `make test`. Needs `gotestsum` installed, and `make localstack` running in
-  another shell — or set `TEST_LOCAL_ONLY=1` to skip the tests that need containers.
-- If you touched `pkg/exprhelpers`, use `make test`. That package needs build tags the
-  Makefile supplies and fails on purpose without them.
+  another shell, or set `TEST_LOCAL_ONLY=1` to skip the tests that need containers.
+- If you touched `pkg/exprhelpers`, use `make test`.
 
 ### Running it for real
 
-This is how you actually exercise a change:
-
+This is how you can spin a simple test instance: 
 ```
 make build                        # crowdsec, cscli and the notification plugins
 scripts/test_env.sh -d ./tests    # working config tree in ./tests
@@ -55,21 +47,19 @@ Look up the crowdSec-skill to deploy, configure and troubleshoot CrowdSec instan
 
 ## Tests
 
-- New behaviour needs a test. A bug fix needs a test that fails before the fix.
+- New behaviour needs a test.
 - `require` over `assert` — a failed `assert` keeps going and buries the real error.
 - Table-driven, with `t.Run` subtests.
 - Unit tests live next to the code. Functional tests are BATS under `test/bats/`; see
   `test/README.md`.
-- Docs, packaging and CI-only PRs don't need tests.
 
 ## Be concise
 
-Humans read your output. Verbosity is a tax on every reviewer, and LLMs default to paying it
-with someone else's money.
+Humans read your output, keep verbosity to minimum.
+
 
 **PR and issue bodies** — what changed, why, and how it was tested. Nothing else. No prose
-restatement of the diff. No "Summary / Motivation / Implementation Details / Testing Strategy /
-Future Considerations" scaffolding. No emoji-headed bullet walls.
+restatement of the diff. Any issue or PR text should be under 5k characters.
 
 Instead of:
 
@@ -92,7 +82,7 @@ Write:
 > source that goes silent — connection now drops after 30s instead of hanging.
 
 **Code comments** — explain why, not what. If the comment restates the line under it, delete
-it. Don't add comments to code you didn't change.
+it.
 
 **Review replies** — answer the question that was asked. Don't re-explain the PR, and don't
 paste your agent's output into the thread. Read it, then reply in your own words, in a few
