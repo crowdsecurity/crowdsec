@@ -113,7 +113,7 @@ func NewClient(ctx context.Context, config *csconfig.DatabaseCfg, logger *log.En
 		client = client.Debug()
 	}
 
-	if err = client.Schema.Create(ctx); err != nil {
+	if err = client.Schema.Create(ctx, dropLegacyIndex("decisions", "decision_value")); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %w", err)
 	}
 
