@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 )
 
-const decisionDeleteBulkSize = 256 // scientifically proven to be the best value for bulk delete
+const decisionDeleteBulkSize = 2000 // bulk expire/delete batch; matches csconfig.maxDecisionBulkSize used for inserts
 
 type DecisionsByScenario struct {
 	Scenario string
