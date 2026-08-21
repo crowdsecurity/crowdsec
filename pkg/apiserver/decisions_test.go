@@ -2,8 +2,10 @@ package apiserver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -339,4 +341,66 @@ type DecisionTest struct {
 	NewChecks     []DecisionCheck
 	DelChecks     []DecisionCheck
 	AuthType      string
+}
+
+// Regression for cs-firewall-bouncer#508.
+//
+// A blocklist import stamps created_at inside its transaction, so a decision can commit after a
+// pull that could not see it, carrying a created_at older than that pull. Keyed on a timestamp
+// such a decision is skipped by every later delta and only comes back on a full resync; keyed on
+// the id cursor it is delivered on the next pull.
+func TestStreamDecisionLateCommit(t *testing.T) {
+	ctx := t.Context()
+	lapi := SetupLAPITest(t, ctx)
+
+	// A first pull establishes the bouncer position.
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+	_, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+
+	// A decision whose transaction started before that pull and committed after it.
+	_, err := lapi.DBClient.Ent.Decision.Create().
+		SetCreatedAt(time.Now().UTC().Add(-time.Hour)).
+		SetUntil(time.Now().UTC().Add(time.Hour)).
+		SetScenario("test/late-commit").
+		SetType("ban").
+		SetScope("Ip").
+		SetValue("11.22.33.44").
+		SetOrigin("lists").
+		Save(ctx)
+	require.NoError(t, err)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
+	require.Equal(t, "11.22.33.44", *decisions["new"][0].Value)
+
+	// And it is not resent once the cursor has moved past it.
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code = readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Empty(t, decisions["new"])
+}
+
+// A cursor past the end of the decisions table (partial restore, or MySQL < 8.0 recomputing
+// AUTO_INCREMENT) must fall back to a full resync rather than silently starving the bouncer.
+func TestStreamDecisionCursorAheadOfTable(t *testing.T) {
+	ctx := t.Context()
+	lapi := SetupLAPITest(t, ctx)
+
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
+
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+	decisions, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
+
+	_, err := lapi.DBClient.Ent.Bouncer.Update().SetStreamCursor(999999).Save(ctx)
+	require.NoError(t, err)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code = readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
 }
