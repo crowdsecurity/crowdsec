@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"math"
 	"os"
 	"os/exec"
@@ -18,6 +17,8 @@ import (
 
 	"golang.org/x/sys/unix"
 )
+
+const rootUID = 0
 
 func (pb *PluginBroker) CreateCmd(ctx context.Context, binaryPath string) (*exec.Cmd, error) {
 	var err error
@@ -93,26 +94,29 @@ func getProcessAttr(username string, groupname string) (*unix.SysProcAttr, error
 }
 
 func pluginIsValid(path string) error {
-	var details fs.FileInfo
-	var err error
-
-	// check if it exists
-	if details, err = os.Stat(path); err != nil {
-		return fmt.Errorf("plugin at %s does not exist: %w", path, err)
-	}
-
-	// check if it is owned by current user
 	currentUser, err := user.Current()
 	if err != nil {
 		return fmt.Errorf("while getting current user: %w", err)
 	}
-	currentUID, err := getUID(currentUser.Username)
+
+	return pluginIsValidForUser(path, currentUser)
+}
+
+func pluginIsValidForUser(path string, u *user.User) error {
+	// check if it exists
+	details, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("while looking up the current uid: %w", err)
+		return fmt.Errorf("plugin at %s does not exist: %w", path, err)
 	}
+
+	uid, err := strconv.ParseUint(u.Uid, 10, 32)
+	if err != nil {
+		return fmt.Errorf("while parsing the uid of user '%s': %w", u.Username, err)
+	}
+
 	stat := details.Sys().(*syscall.Stat_t)
-	if stat.Uid != currentUID {
-		return fmt.Errorf("plugin at %s is not owned by user '%s'", path, currentUser.Username)
+	if stat.Uid != uint32(uid) && stat.Uid != rootUID {
+		return fmt.Errorf("plugin at %s is not owned by root or by the current user '%s', but by uid %d", path, u.Username, stat.Uid)
 	}
 
 	mode := details.Mode()
