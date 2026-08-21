@@ -2,6 +2,7 @@ package hubops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -43,18 +44,26 @@ func (*DataRefreshCommand) Prepare(_ *ActionPlan) (bool, error) {
 }
 
 func (c *DataRefreshCommand) Run(ctx context.Context, plan *ActionPlan) error {
+	var errs []error
+
 	for _, itemType := range cwhub.ItemTypes {
 		for _, item := range plan.hub.GetInstalledByType(itemType, true) {
+			if err := ctx.Err(); err != nil {
+				errs = append(errs, err)
+
+				return errors.Join(errs...)
+			}
+
 			needReload, err := DownloadDataIfNeeded(ctx, plan.hub, item, c.Force)
 			if err != nil {
-				return err
+				errs = append(errs, err)
 			}
 
 			plan.ReloadNeeded = plan.ReloadNeeded || needReload
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (*DataRefreshCommand) OperationType() string {

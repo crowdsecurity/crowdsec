@@ -101,6 +101,8 @@ type DataSet struct {
 func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader io.Reader) (bool, error) {
 	needReload := false
 
+	var errs []error
+
 	dec := yaml.NewDecoder(reader)
 
 	for {
@@ -111,7 +113,9 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				break
 			}
 
-			return needReload, fmt.Errorf("while reading file: %w", err)
+			errs = append(errs, fmt.Errorf("while reading file: %w", err))
+
+			break
 		}
 
 		for _, dataS := range data.Data {
@@ -119,17 +123,31 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 				continue
 			}
 
-			// twopenny validation
-			if u, err := url.Parse(dataS.SourceURL); err != nil {
-				return false, err
-			} else if u.Scheme == "" {
-				return false, fmt.Errorf("a valid URL was expected (note: local items can download data too): %s", dataS.SourceURL)
+			if err := ctx.Err(); err != nil {
+				errs = append(errs, err)
+
+				return needReload, errors.Join(errs...)
 			}
 
-			// XXX: check context cancellation
+			// twopenny validation
+			u, err := url.Parse(dataS.SourceURL)
+			if err != nil {
+				errs = append(errs, err)
+
+				continue
+			}
+
+			if u.Scheme == "" {
+				errs = append(errs, fmt.Errorf("a valid URL was expected (note: local items can download data too): %s", dataS.SourceURL))
+
+				continue
+			}
+
 			destPath, err := cwhub.SafePath(dataFolder, dataS.DestPath)
 			if err != nil {
-				return needReload, err
+				errs = append(errs, err)
+
+				continue
 			}
 
 			d := downloader.
@@ -150,14 +168,16 @@ func downloadDataSet(ctx context.Context, dataFolder string, force bool, reader 
 
 			downloaded, err := d.Download(ctx, dataS.SourceURL)
 			if err != nil {
-				return needReload, fmt.Errorf("while getting data: %w", err)
+				errs = append(errs, fmt.Errorf("while getting data: %w", err))
+
+				continue
 			}
 
 			needReload = needReload || downloaded
 		}
 	}
 
-	return needReload, nil
+	return needReload, errors.Join(errs...)
 }
 
 func (c *DownloadCommand) Run(ctx context.Context, plan *ActionPlan) error {
