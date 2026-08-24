@@ -151,6 +151,7 @@ var (
 		{Name: "type", Type: field.TypeString, Nullable: true},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
+		{Name: "stream_cursor", Type: field.TypeInt, Default: 0},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 		{Name: "osname", Type: field.TypeString, Nullable: true},
 		{Name: "osfamily", Type: field.TypeString, Nullable: true},
@@ -167,7 +168,7 @@ var (
 			{
 				Name:    "bouncer_api_key_auth_type",
 				Unique:  false,
-				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[10]},
+				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[11]},
 			},
 			{
 				Name:    "bouncer_api_key_ip_address",
@@ -381,6 +382,18 @@ var (
 		Name:       "metrics",
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "metric_received_at",
+				Unique:  false,
+				Columns: []*schema.Column{MetricsColumns[3]},
+			},
+			{
+				Name:    "metric_generated_type_generated_by_pushed_at",
+				Unique:  false,
+				Columns: []*schema.Column{MetricsColumns[1], MetricsColumns[2], MetricsColumns[4]},
+			},
+		},
 	}
 	// AllowListAllowlistItemsColumns holds the columns for the "allow_list_allowlist_items" table.
 	AllowListAllowlistItemsColumns = []*schema.Column{
