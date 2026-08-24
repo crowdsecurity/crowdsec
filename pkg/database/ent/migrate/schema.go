@@ -246,11 +246,6 @@ var (
 				Columns: []*schema.Column{DecisionsColumns[3]},
 			},
 			{
-				Name:    "decision_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{DecisionsColumns[1]},
-			},
-			{
 				Name:    "decision_alert_decisions",
 				Unique:  false,
 				Columns: []*schema.Column{DecisionsColumns[16]},

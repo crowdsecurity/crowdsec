@@ -56,8 +56,6 @@ func (Decision) Indexes() []ent.Index {
 		index.Fields("start_ip", "end_ip"),
 		index.Fields("value", "type", "scope", "until"),
 		index.Fields("until"),
-		// stream deltas: bouncers pull decisions created since their last pull
-		index.Fields("created_at"),
 		index.Fields("alert_decisions"),
 	}
 }
