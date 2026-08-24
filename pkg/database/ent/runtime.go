@@ -98,12 +98,16 @@ func init() {
 	bouncerDescIPAddress := bouncerFields[5].Descriptor()
 	// bouncer.DefaultIPAddress holds the default value on creation for the ip_address field.
 	bouncer.DefaultIPAddress = bouncerDescIPAddress.Default.(string)
+	// bouncerDescStreamCursor is the schema descriptor for stream_cursor field.
+	bouncerDescStreamCursor := bouncerFields[9].Descriptor()
+	// bouncer.DefaultStreamCursor holds the default value on creation for the stream_cursor field.
+	bouncer.DefaultStreamCursor = bouncerDescStreamCursor.Default.(int)
 	// bouncerDescAuthType is the schema descriptor for auth_type field.
-	bouncerDescAuthType := bouncerFields[9].Descriptor()
+	bouncerDescAuthType := bouncerFields[10].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
 	bouncer.DefaultAuthType = bouncerDescAuthType.Default.(string)
 	// bouncerDescAutoCreated is the schema descriptor for auto_created field.
-	bouncerDescAutoCreated := bouncerFields[14].Descriptor()
+	bouncerDescAutoCreated := bouncerFields[15].Descriptor()
 	// bouncer.DefaultAutoCreated holds the default value on creation for the auto_created field.
 	bouncer.DefaultAutoCreated = bouncerDescAutoCreated.Default.(bool)
 	configitemFields := schema.ConfigItem{}.Fields()
