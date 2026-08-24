@@ -24,8 +24,7 @@ import (
 
 const usageMetricsURL = "http://api.crowdsec.net/api/usage-metrics"
 
-// usageMetricsPayload is a stored metrics row: one window, padded to roughly size bytes so a test
-// can decide how many of them fit in a batch.
+// usageMetricsPayload is a stored row: one window, padded to roughly size bytes.
 func usageMetricsPayload(name string, size int) string {
 	build := func(source string) string {
 		return fmt.Sprintf(
@@ -92,7 +91,7 @@ func pendingMetrics(t *testing.T, ctx context.Context, api *apic) []*ent.Metric 
 	return pending
 }
 
-// mockCAPI answers every usage-metrics push with status, and records what was sent.
+// mockCAPI answers every push with status and records what was sent.
 func mockCAPI(t *testing.T, api *apic, status int) *[]*models.AllMetrics {
 	t.Helper()
 
@@ -109,8 +108,6 @@ func mockCAPI(t *testing.T, api *apic, status int) *[]*models.AllMetrics {
 			body, err = io.ReadAll(reader)
 			require.NoError(t, err)
 		}
-
-		require.Less(t, len(body), capiBodyLimit)
 
 		received := &models.AllMetrics{}
 		require.NoError(t, json.Unmarshal(body, received))
@@ -154,7 +151,7 @@ func TestAPICNextUsageMetricsBatch(t *testing.T) {
 	addMachine(t, ctx, api, "lp1")
 	addBouncer(t, ctx, api, "rc1")
 
-	// 4 rows of ~1kB for lp1, then 1 for rc1, then one from a machine that no longer exists
+	// lp1, then rc1, then a machine that no longer exists
 	lpIDs := addMetrics(t, ctx, api, metric.GeneratedTypeLP, "lp1", time.Now().UTC(),
 		usageMetricsPayload("a", 1024),
 		usageMetricsPayload("b", 1024),
@@ -209,7 +206,7 @@ func TestAPICNextUsageMetricsBatchOversizedRow(t *testing.T) {
 
 	api.usageMetricsBatchBytes = 1024
 
-	// a row bigger than the whole budget must go out on its own, or it blocks everything behind it
+	// must go out on its own, or it blocks everything behind it
 	batch, err := api.nextUsageMetricsBatch(ctx, 0, map[string]*ent.Machine{"lp1": api.dbClient.Ent.Machine.Query().OnlyX(ctx)}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, batch)

@@ -74,9 +74,8 @@ func (c *Client) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
 	return nil
 }
 
-// GetUnsentMetrics returns up to limit metrics that have not been pushed to CAPI yet, across all
-// sources, ordered by id and starting after afterID. Callers walk the backlog by passing back the
-// id of the last row they consumed.
+// GetUnsentMetrics returns metrics not pushed to CAPI yet, across all sources, ordered by id.
+// Callers walk the backlog by passing back the id of the last row they consumed.
 func (c *Client) GetUnsentMetrics(ctx context.Context, afterID int, limit int) ([]*ent.Metric, error) {
 	metrics, err := c.Ent.Metric.Query().
 		Where(
@@ -94,9 +93,8 @@ func (c *Client) GetUnsentMetrics(ctx context.Context, afterID int, limit int) (
 	return metrics, nil
 }
 
-// MarkStaleUsageMetricsAsSent gives up on metrics that are too old to be worth pushing. The rows
-// stay around until the age flush, so cscli still reports them, but they stop being pending: a
-// CAPI outage cannot leave an ever-growing backlog behind.
+// MarkStaleUsageMetricsAsSent gives up on metrics too old to be worth pushing, so a CAPI outage
+// cannot leave a growing backlog behind. The rows live on until the age flush, for cscli.
 func (c *Client) MarkStaleUsageMetricsAsSent(ctx context.Context, before time.Time) (int, error) {
 	updated, err := c.Ent.Metric.Update().
 		Where(

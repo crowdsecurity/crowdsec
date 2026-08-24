@@ -21,22 +21,17 @@ import (
 )
 
 const (
-	// what the CAPI refuses: "http code 415, response: HTTP content length exceeded 10485760 bytes"
-	capiBodyLimit = 10 * 1024 * 1024
+	// The CAPI answers 413 above 6MiB, measured on the body *after* json escaping (it hands ours
+	// to its backend inside a json string). Escaping inflates metrics payloads by ~18%, so
+	// budgeting unescaped bytes at 4MiB keeps a fifth of the limit spare.
+	usageMetricsBatchBytes = 4 * 1024 * 1024
 
-	// We budget on uncompressed bytes while the request body is gzipped, so this already
-	// over-estimates what the CAPI measures. The slack covers the json structure and the lapi block.
-	usageMetricsBatchBytes = capiBodyLimit - 1024*1024
-
-	// Bounds the number of source envelopes in a batch, and keeps the id list we mark as sent
-	// under the sqlite variable limit (cf. paginationSize in pkg/database/alerts.go).
+	// also keeps the id list we mark as sent under the sqlite variable limit
 	usageMetricsBatchRows = 256
 
-	// rows read per query while filling a batch
 	usageMetricsPageSize = 32
 
-	// A snapshot describes a 30 minutes window. Once it is a day late the console has nothing
-	// useful left to do with it, so we stop dragging it along.
+	// past that, the console has nothing useful left to do with a snapshot
 	usageMetricsMaxAge = 24 * time.Hour
 )
 
@@ -47,9 +42,9 @@ type dbPayload struct {
 // usageMetricsBatch is one CAPI request worth of the backlog.
 type usageMetricsBatch struct {
 	metrics *models.AllMetrics
-	// rows settled by this batch, whether the CAPI takes them or refuses them
+	// settled by this batch, whether the CAPI takes them or refuses them
 	ids []int
-	// highest row id in the batch, to feed back as the cursor for the next one
+	// cursor for the next batch
 	lastID int
 }
 
@@ -72,8 +67,7 @@ func newUsageMetricsBatch(lps map[string]*models.LogProcessorsMetrics, rcs map[s
 	return &usageMetricsBatch{metrics: metrics, ids: ids, lastID: lastID}
 }
 
-// envelopeSize is how much a source adds to a request on top of the payloads it carries. It is not
-// negligible: hub_items alone is tens of kilobytes for a log processor with a large hub.
+// envelopeSize is what a source costs on top of its payloads: hub_items alone is tens of kilobytes.
 func envelopeSize(v any) int {
 	serialized, err := json.Marshal(v)
 	if err != nil {
@@ -172,9 +166,8 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 	return ret
 }
 
-// nextUsageMetricsBatch folds the rows after afterID into a single request worth of metrics,
-// bounded by usageMetricsBatchBytes so that neither the request nor our memory usage depends on
-// how much of a backlog we have. It returns nil when nothing is pending.
+// nextUsageMetricsBatch folds the rows after afterID into one request worth of metrics, so that
+// neither the request nor our memory usage depends on the size of the backlog. Nil when drained.
 func (a *apic) nextUsageMetricsBatch(ctx context.Context, afterID int, lps map[string]*ent.Machine, rcs map[string]*ent.Bouncer) (*usageMetricsBatch, error) {
 	var (
 		lpMetrics = make(map[string]*models.LogProcessorsMetrics)
@@ -195,13 +188,12 @@ readLoop:
 		}
 
 		for _, row := range rows {
-			// a row larger than the whole budget goes out on its own: leaving it behind would
-			// block everything queued after it
+			// a row over budget on its own would otherwise block everything queued behind it
 			if len(ids) > 0 && size+len(row.Payload) > a.usageMetricsBatchBytes {
 				break readLoop
 			}
 
-			// account for the row before anything can go wrong with it, or it stays pending forever
+			// account for it first, or a row we choke on stays pending forever
 			lastID = row.ID
 			ids = append(ids, row.ID)
 			size += len(row.Payload)
@@ -216,7 +208,7 @@ readLoop:
 			case metric.GeneratedTypeLP:
 				lp, ok := lps[row.GeneratedBy]
 				if !ok {
-					// the log processor is gone, there is nothing left to attach these to
+					// the log processor is gone, nothing left to attach these to
 					continue
 				}
 
@@ -257,10 +249,8 @@ readLoop:
 	return newUsageMetricsBatch(lpMetrics, rcMetrics, ids, lastID), nil
 }
 
-// usageMetricsBatchRefused reports whether the CAPI turned down the request because of what we
-// sent. It would refuse the same body again, so the batch has to be dropped or it blocks
-// everything queued behind it. The listed statuses are about our credentials, our request rate or
-// the route rather than the body, so retrying those later can work.
+// usageMetricsBatchRefused reports whether the CAPI turned us down over the body itself, in which
+// case resending it is pointless. The listed statuses are about credentials, rate or route.
 func usageMetricsBatchRefused(code int) bool {
 	switch code {
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
@@ -296,8 +286,7 @@ func (a *apic) sendUsageMetricsBatch(ctx context.Context, batch *usageMetricsBat
 			return usageMetricsRetryLater
 		}
 
-		// The CAPI will never accept this payload. Drop it, or we send it again on every run,
-		// bigger every time, until the LAPI runs out of memory.
+		// drop it, or we resend it every run, bigger every time, until we run out of memory
 		log.Errorf("dropping %d usage metrics refused by the CAPI (http code %d)", len(batch.ids), resp.Response.StatusCode)
 
 		result = usageMetricsDropped
@@ -346,13 +335,13 @@ func (a *apic) pushUsageMetrics(ctx context.Context) {
 		rcs[bouncer.Name] = bouncer
 	}
 
-	// The lapi block rides on the first request, which goes out even when nothing is pending:
-	// it is how the console learns our version and console options.
+	// rides on the first request, which goes out even with nothing pending: it is how the console
+	// learns our version and console options
 	lapi := a.lapiMetrics()
 	afterID := 0
 	sent := 0
 
-	// report what went out even when the drain stops halfway
+	// report progress even when the drain stops halfway
 	defer func() {
 		log.Infof("Sent %d usage metrics", sent)
 	}()
