@@ -335,8 +335,6 @@ func (a *apic) pushUsageMetrics(ctx context.Context) {
 		rcs[bouncer.Name] = bouncer
 	}
 
-	// rides on the first request, which goes out even with nothing pending: it is how the console
-	// learns our version and console options
 	lapi := a.lapiMetrics()
 	afterID := 0
 	sent := 0
