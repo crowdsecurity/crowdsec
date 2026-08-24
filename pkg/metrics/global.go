@@ -70,7 +70,7 @@ var GlobalActiveDecisions = prometheus.NewGaugeVec(
 		Name: GlobalActiveDecisionsMetricName,
 		Help: "Number of active decisions.",
 	},
-	[]string{"reason", "origin", "action"},
+	[]string{"reason", "origin", "action", "machine"},
 )
 
 const GlobalAlertsMetricName = "cs_alerts"
