@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -13,178 +14,387 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+)
+
+const (
+	// what the CAPI refuses: "http code 415, response: HTTP content length exceeded 10485760 bytes"
+	capiBodyLimit = 10 * 1024 * 1024
+
+	// We budget on uncompressed bytes while the request body is gzipped, so this already
+	// over-estimates what the CAPI measures. The slack covers the json structure and the lapi block.
+	usageMetricsBatchBytes = capiBodyLimit - 1024*1024
+
+	// Bounds the number of source envelopes in a batch, and keeps the id list we mark as sent
+	// under the sqlite variable limit (cf. paginationSize in pkg/database/alerts.go).
+	usageMetricsBatchRows = 256
+
+	// rows read per query while filling a batch
+	usageMetricsPageSize = 32
+
+	// A snapshot describes a 30 minutes window. Once it is a day late the console has nothing
+	// useful left to do with it, so we stop dragging it along.
+	usageMetricsMaxAge = 24 * time.Hour
 )
 
 type dbPayload struct {
 	Metrics []*models.DetailedMetrics `json:"metrics"`
 }
 
-func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, error) {
-	allMetrics := &models.AllMetrics{}
-	metricsIDs := make([]int, 0)
+// usageMetricsBatch is one CAPI request worth of the backlog.
+type usageMetricsBatch struct {
+	metrics *models.AllMetrics
+	// rows settled by this batch, whether the CAPI takes them or refuses them
+	ids []int
+	// highest row id in the batch, to feed back as the cursor for the next one
+	lastID int
+}
 
-	lps, err := a.dbClient.ListMachines(ctx)
+func newUsageMetricsBatch(lps map[string]*models.LogProcessorsMetrics, rcs map[string]*models.RemediationComponentsMetrics, ids []int, lastID int) *usageMetricsBatch {
+	metrics := &models.AllMetrics{
+		// force actual slices to avoid non existing fields in the json
+		LogProcessors:         make([]*models.LogProcessorsMetrics, 0, len(lps)),
+		RemediationComponents: make([]*models.RemediationComponentsMetrics, 0, len(rcs)),
+	}
+
+	// sorted, to keep the payload stable
+	for _, name := range slices.Sorted(maps.Keys(lps)) {
+		metrics.LogProcessors = append(metrics.LogProcessors, lps[name])
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(rcs)) {
+		metrics.RemediationComponents = append(metrics.RemediationComponents, rcs[name])
+	}
+
+	return &usageMetricsBatch{metrics: metrics, ids: ids, lastID: lastID}
+}
+
+// envelopeSize is how much a source adds to a request on top of the payloads it carries. It is not
+// negligible: hub_items alone is tens of kilobytes for a log processor with a large hub.
+func envelopeSize(v any) int {
+	serialized, err := json.Marshal(v)
 	if err != nil {
-		return nil, nil, err
+		return 0
 	}
 
-	bouncers, err := a.dbClient.ListBouncers(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	return len(serialized)
+}
 
-	for _, bouncer := range bouncers {
-		dbMetrics, err := a.dbClient.GetBouncerUsageMetricsByName(ctx, bouncer.Name)
-		if err != nil {
-			log.Errorf("unable to get bouncer usage metrics: %s", err)
-			continue
-		}
+func lpBaseMetrics(lp *ent.Machine) *models.LogProcessorsMetrics {
+	hubItems := models.HubItems{}
 
-		rcMetrics := models.RemediationComponentsMetrics{}
-
-		rcMetrics.Os = &models.OSversion{
-			Name:    &bouncer.Osname,
-			Family:  bouncer.Osfamily,
-			Version: &bouncer.Osversion,
-		}
-		rcMetrics.Type = bouncer.Type
-		rcMetrics.FeatureFlags = strings.Split(bouncer.Featureflags, ",")
-		rcMetrics.Version = &bouncer.Version
-		rcMetrics.Name = bouncer.Name
-
-		rcMetrics.LastPull = 0
-		if bouncer.LastPull != nil {
-			rcMetrics.LastPull = bouncer.LastPull.UTC().Unix()
-		}
-
-		rcMetrics.Metrics = make([]*models.DetailedMetrics, 0)
-
-		// Might seem weird, but we duplicate the bouncers if we have multiple unsent metrics
-		for _, dbMetric := range dbMetrics {
-			dbPayload := &dbPayload{}
-			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIDs = append(metricsIDs, dbMetric.ID)
-
-			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
-			if err != nil {
-				log.Errorf("unable to parse bouncer metric (%s)", err)
-				continue
-			}
-
-			rcMetrics.Metrics = append(rcMetrics.Metrics, dbPayload.Metrics...)
-		}
-
-		allMetrics.RemediationComponents = append(allMetrics.RemediationComponents, &rcMetrics)
-	}
-
-	for _, lp := range lps {
-		dbMetrics, err := a.dbClient.GetLPUsageMetricsByMachineID(ctx, lp.MachineId, true)
-		if err != nil {
-			log.Errorf("unable to get LP usage metrics: %s", err)
-			continue
-		}
-
-		lpMetrics := models.LogProcessorsMetrics{}
-
-		lpMetrics.Os = &models.OSversion{
-			Name:    &lp.Osname,
-			Family:  lp.Osfamily,
-			Version: &lp.Osversion,
-		}
-		lpMetrics.FeatureFlags = strings.Split(lp.Featureflags, ",")
-		lpMetrics.Version = &lp.Version
-		lpMetrics.Name = lp.MachineId
-
-		lpMetrics.LastPush = 0
-		if lp.LastPush != nil {
-			lpMetrics.LastPush = lp.LastPush.UTC().Unix()
-		}
-
-		lpMetrics.LastUpdate = lp.UpdatedAt.UTC().Unix()
-		lpMetrics.Datasources = lp.Datasources
-
-		hubItems := models.HubItems{}
-
-		if lp.Hubstate != nil {
-			// must carry over the hub state even if nothing is installed
-			for itemType, items := range lp.Hubstate {
-				hubItems[itemType] = []models.HubItem{}
-				for _, item := range items {
-					hubItems[itemType] = append(hubItems[itemType], models.HubItem{
-						Name:    item.Name,
-						Status:  item.Status,
-						Version: item.Version,
-					})
-				}
+	if lp.Hubstate != nil {
+		// must carry over the hub state even if nothing is installed
+		for itemType, items := range lp.Hubstate {
+			hubItems[itemType] = []models.HubItem{}
+			for _, item := range items {
+				hubItems[itemType] = append(hubItems[itemType], models.HubItem{
+					Name:    item.Name,
+					Status:  item.Status,
+					Version: item.Version,
+				})
 			}
 		}
-
-		lpMetrics.HubItems = hubItems
-
-		lpMetrics.Metrics = make([]*models.DetailedMetrics, 0)
-
-		for _, dbMetric := range dbMetrics {
-			dbPayload := &dbPayload{}
-			// Append no matter what, if we cannot unmarshal, there's no way we'll be able to fix it automatically
-			metricsIDs = append(metricsIDs, dbMetric.ID)
-
-			err := json.Unmarshal([]byte(dbMetric.Payload), dbPayload)
-			if err != nil {
-				log.Errorf("unable to parse log processor metric (%s)", err)
-				continue
-			}
-
-			lpMetrics.Metrics = append(lpMetrics.Metrics, dbPayload.Metrics...)
-		}
-
-		allMetrics.LogProcessors = append(allMetrics.LogProcessors, &lpMetrics)
 	}
 
-	// FIXME: all of this should only be done once on startup/reload
-	consoleOptions := strings.Join(csconfig.GetConfig().API.Server.ConsoleConfig.EnabledOptions(), ",")
-	allMetrics.Lapi = &models.LapiMetrics{
+	ret := &models.LogProcessorsMetrics{
+		Datasources: lp.Datasources,
+		HubItems:    hubItems,
+		LastUpdate:  lp.UpdatedAt.UTC().Unix(),
+		Name:        lp.MachineId,
+	}
+
+	if lp.LastPush != nil {
+		ret.LastPush = lp.LastPush.UTC().Unix()
+	}
+
+	ret.Os = &models.OSversion{
+		Name:    &lp.Osname,
+		Family:  lp.Osfamily,
+		Version: &lp.Osversion,
+	}
+	ret.FeatureFlags = strings.Split(lp.Featureflags, ",")
+	ret.Version = &lp.Version
+	ret.Metrics = make([]*models.DetailedMetrics, 0)
+
+	return ret
+}
+
+func rcBaseMetrics(rc *ent.Bouncer) *models.RemediationComponentsMetrics {
+	ret := &models.RemediationComponentsMetrics{
+		Name: rc.Name,
+		Type: rc.Type,
+	}
+
+	if rc.LastPull != nil {
+		ret.LastPull = rc.LastPull.UTC().Unix()
+	}
+
+	ret.Os = &models.OSversion{
+		Name:    &rc.Osname,
+		Family:  rc.Osfamily,
+		Version: &rc.Osversion,
+	}
+	ret.FeatureFlags = strings.Split(rc.Featureflags, ",")
+	ret.Version = &rc.Version
+	ret.Metrics = make([]*models.DetailedMetrics, 0)
+
+	return ret
+}
+
+func (a *apic) lapiMetrics() *models.LapiMetrics {
+	osName, osFamily, osVersion := version.DetectOS()
+
+	ret := &models.LapiMetrics{
 		ConsoleOptions: models.ConsoleOptions{
-			consoleOptions,
+			strings.Join(a.consoleConfig.EnabledOptions(), ","),
 		},
 	}
 
-	osName, osFamily, osVersion := version.DetectOS()
-
-	allMetrics.Lapi.Os = &models.OSversion{
+	ret.Os = &models.OSversion{
 		Name:    &osName,
 		Family:  osFamily,
 		Version: &osVersion,
 	}
-	allMetrics.Lapi.Version = new(version.String())
-	allMetrics.Lapi.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
-
-	allMetrics.Lapi.Metrics = make([]*models.DetailedMetrics, 0)
-
-	allMetrics.Lapi.Metrics = append(allMetrics.Lapi.Metrics, &models.DetailedMetrics{
+	ret.Version = new(version.String())
+	ret.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
+	ret.Metrics = []*models.DetailedMetrics{{
 		Meta: &models.MetricsMeta{
 			UtcNowTimestamp:   new(time.Now().UTC().Unix()),
 			WindowSizeSeconds: new(int64(a.metricsInterval.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
-	})
+	}}
 
-	// Force an actual slice to avoid non existing fields in the json
-	if allMetrics.RemediationComponents == nil {
-		allMetrics.RemediationComponents = make([]*models.RemediationComponentsMetrics, 0)
-	}
-
-	if allMetrics.LogProcessors == nil {
-		allMetrics.LogProcessors = make([]*models.LogProcessorsMetrics, 0)
-	}
-
-	return allMetrics, metricsIDs, nil
+	return ret
 }
 
-func (a *apic) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
-	return a.dbClient.MarkUsageMetricsAsSent(ctx, ids)
+// nextUsageMetricsBatch folds the rows after afterID into a single request worth of metrics,
+// bounded by usageMetricsBatchBytes so that neither the request nor our memory usage depends on
+// how much of a backlog we have. It returns nil when nothing is pending.
+func (a *apic) nextUsageMetricsBatch(ctx context.Context, afterID int, lps map[string]*ent.Machine, rcs map[string]*ent.Bouncer) (*usageMetricsBatch, error) {
+	var (
+		lpMetrics = make(map[string]*models.LogProcessorsMetrics)
+		rcMetrics = make(map[string]*models.RemediationComponentsMetrics)
+		ids       []int
+		size      int
+	)
+
+	lastID := afterID
+
+readLoop:
+	for len(ids) < usageMetricsBatchRows && size < a.usageMetricsBatchBytes {
+		limit := min(usageMetricsPageSize, usageMetricsBatchRows-len(ids))
+
+		rows, err := a.dbClient.GetUnsentMetrics(ctx, lastID, limit)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, row := range rows {
+			// a row larger than the whole budget goes out on its own: leaving it behind would
+			// block everything queued after it
+			if len(ids) > 0 && size+len(row.Payload) > a.usageMetricsBatchBytes {
+				break readLoop
+			}
+
+			// account for the row before anything can go wrong with it, or it stays pending forever
+			lastID = row.ID
+			ids = append(ids, row.ID)
+			size += len(row.Payload)
+
+			payload := &dbPayload{}
+			if err := json.Unmarshal([]byte(row.Payload), payload); err != nil {
+				log.Errorf("unable to parse %s usage metrics from %s: %s", row.GeneratedType, row.GeneratedBy, err)
+				continue
+			}
+
+			switch row.GeneratedType {
+			case metric.GeneratedTypeLP:
+				lp, ok := lps[row.GeneratedBy]
+				if !ok {
+					// the log processor is gone, there is nothing left to attach these to
+					continue
+				}
+
+				met, ok := lpMetrics[row.GeneratedBy]
+				if !ok {
+					met = lpBaseMetrics(lp)
+					lpMetrics[row.GeneratedBy] = met
+					size += envelopeSize(met)
+				}
+
+				met.Metrics = append(met.Metrics, payload.Metrics...)
+			case metric.GeneratedTypeRC:
+				rc, ok := rcs[row.GeneratedBy]
+				if !ok {
+					continue
+				}
+
+				met, ok := rcMetrics[row.GeneratedBy]
+				if !ok {
+					met = rcBaseMetrics(rc)
+					rcMetrics[row.GeneratedBy] = met
+					size += envelopeSize(met)
+				}
+
+				met.Metrics = append(met.Metrics, payload.Metrics...)
+			}
+		}
+
+		if len(rows) < limit {
+			break
+		}
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	return newUsageMetricsBatch(lpMetrics, rcMetrics, ids, lastID), nil
+}
+
+// usageMetricsBatchRefused reports whether the CAPI turned down the request because of what we
+// sent. It would refuse the same body again, so the batch has to be dropped or it blocks
+// everything queued behind it. The listed statuses are about our credentials, our request rate or
+// the route rather than the body, so retrying those later can work.
+func usageMetricsBatchRefused(code int) bool {
+	switch code {
+	case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusRequestTimeout, http.StatusTooManyRequests:
+		return false
+	}
+
+	return code >= http.StatusBadRequest && code < http.StatusInternalServerError
+}
+
+type usageMetricsResult int
+
+const (
+	usageMetricsAccepted usageMetricsResult = iota
+	usageMetricsDropped
+	usageMetricsRetryLater
+)
+
+// sendUsageMetricsBatch pushes one batch and settles its rows.
+func (a *apic) sendUsageMetricsBatch(ctx context.Context, batch *usageMetricsBatch) usageMetricsResult {
+	result := usageMetricsAccepted
+
+	_, resp, err := a.apiClient.UsageMetrics.Add(ctx, batch.metrics)
+	if err != nil {
+		log.Errorf("unable to send usage metrics: %s", err)
+
+		if resp == nil || resp.Response == nil {
+			// most likely a transient network error, it will be retried later
+			return usageMetricsRetryLater
+		}
+
+		if !usageMetricsBatchRefused(resp.Response.StatusCode) {
+			return usageMetricsRetryLater
+		}
+
+		// The CAPI will never accept this payload. Drop it, or we send it again on every run,
+		// bigger every time, until the LAPI runs out of memory.
+		log.Errorf("dropping %d usage metrics refused by the CAPI (http code %d)", len(batch.ids), resp.Response.StatusCode)
+
+		result = usageMetricsDropped
+	}
+
+	if len(batch.ids) == 0 {
+		return result
+	}
+
+	if err := a.dbClient.MarkUsageMetricsAsSent(ctx, batch.ids); err != nil {
+		log.Errorf("unable to mark usage metrics as sent: %s", err)
+		return usageMetricsRetryLater
+	}
+
+	return result
+}
+
+// pushUsageMetrics drains the pending usage metrics, one bounded batch per request.
+func (a *apic) pushUsageMetrics(ctx context.Context) {
+	dropped, err := a.dbClient.MarkStaleUsageMetricsAsSent(ctx, time.Now().UTC().Add(-usageMetricsMaxAge))
+	if err != nil {
+		log.Errorf("unable to drop stale usage metrics: %s", err)
+	} else if dropped > 0 {
+		log.Warnf("dropped %d usage metrics older than %s", dropped, usageMetricsMaxAge)
+	}
+
+	machines, err := a.dbClient.ListMachines(ctx)
+	if err != nil {
+		log.Errorf("unable to get log processors: %s", err)
+		return
+	}
+
+	bouncers, err := a.dbClient.ListBouncers(ctx)
+	if err != nil {
+		log.Errorf("unable to get remediation components: %s", err)
+		return
+	}
+
+	lps := make(map[string]*ent.Machine, len(machines))
+	for _, machine := range machines {
+		lps[machine.MachineId] = machine
+	}
+
+	rcs := make(map[string]*ent.Bouncer, len(bouncers))
+	for _, bouncer := range bouncers {
+		rcs[bouncer.Name] = bouncer
+	}
+
+	// The lapi block rides on the first request, which goes out even when nothing is pending:
+	// it is how the console learns our version and console options.
+	lapi := a.lapiMetrics()
+	afterID := 0
+	sent := 0
+
+	// report what went out even when the drain stops halfway
+	defer func() {
+		log.Infof("Sent %d usage metrics", sent)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-a.metricsTomb.Dying():
+			return
+		default:
+		}
+
+		batch, err := a.nextUsageMetricsBatch(ctx, afterID, lps, rcs)
+		if err != nil {
+			log.Errorf("unable to get usage metrics: %s", err)
+			return
+		}
+
+		if batch == nil {
+			if lapi == nil {
+				break
+			}
+
+			batch = newUsageMetricsBatch(nil, nil, nil, afterID)
+		}
+
+		if lapi != nil {
+			batch.metrics.Lapi = lapi
+			lapi = nil
+		}
+
+		switch a.sendUsageMetricsBatch(ctx, batch) {
+		case usageMetricsRetryLater:
+			return
+		case usageMetricsAccepted:
+			sent += len(batch.ids)
+		case usageMetricsDropped:
+		}
+
+		afterID = batch.lastID
+	}
 }
 
 func (a *apic) GetMetrics(ctx context.Context) (*models.Metrics, error) {
@@ -356,35 +566,7 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 				ticker.Reset(a.usageMetricsInterval)
 			}
 
-			metrics, metricsID, err := a.GetUsageMetrics(ctx)
-			if err != nil {
-				log.Errorf("unable to get usage metrics: %s", err)
-				continue
-			}
-
-			_, resp, err := a.apiClient.UsageMetrics.Add(ctx, metrics)
-			if err != nil {
-				log.Errorf("unable to send usage metrics: %s", err)
-
-				if resp == nil || resp.Response == nil {
-					// Most likely a transient network error, it will be retried later
-					continue
-				}
-
-				if resp.Response.StatusCode >= http.StatusBadRequest && resp.Response.StatusCode != http.StatusUnprocessableEntity {
-					// In case of 422, mark the metrics as sent anyway, the API did not like what we sent,
-					// and it's unlikely we'll be able to fix it
-					continue
-				}
-			}
-
-			err = a.MarkUsageMetricsAsSent(ctx, metricsID)
-			if err != nil {
-				log.Errorf("unable to mark usage metrics as sent: %s", err)
-				continue
-			}
-
-			log.Infof("Sent %d usage metrics", len(metricsID))
+			a.pushUsageMetrics(ctx)
 		}
 	}
 }

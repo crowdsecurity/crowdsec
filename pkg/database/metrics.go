@@ -73,3 +73,42 @@ func (c *Client) MarkUsageMetricsAsSent(ctx context.Context, ids []int) error {
 
 	return nil
 }
+
+// GetUnsentMetrics returns up to limit metrics that have not been pushed to CAPI yet, across all
+// sources, ordered by id and starting after afterID. Callers walk the backlog by passing back the
+// id of the last row they consumed.
+func (c *Client) GetUnsentMetrics(ctx context.Context, afterID int, limit int) ([]*ent.Metric, error) {
+	metrics, err := c.Ent.Metric.Query().
+		Where(
+			metric.PushedAtIsNil(),
+			metric.IDGT(afterID),
+		).
+		Order(ent.Asc(metric.FieldID)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		c.Log.Warningf("GetUnsentMetrics: %s", err)
+		return nil, fmt.Errorf("getting unsent usage metrics: %w", err)
+	}
+
+	return metrics, nil
+}
+
+// MarkStaleUsageMetricsAsSent gives up on metrics that are too old to be worth pushing. The rows
+// stay around until the age flush, so cscli still reports them, but they stop being pending: a
+// CAPI outage cannot leave an ever-growing backlog behind.
+func (c *Client) MarkStaleUsageMetricsAsSent(ctx context.Context, before time.Time) (int, error) {
+	updated, err := c.Ent.Metric.Update().
+		Where(
+			metric.PushedAtIsNil(),
+			metric.ReceivedAtLT(before),
+		).
+		SetPushedAt(time.Now().UTC()).
+		Save(ctx)
+	if err != nil {
+		c.Log.Warningf("MarkStaleUsageMetricsAsSent: %s", err)
+		return 0, fmt.Errorf("marking stale usage metrics as sent: %w", err)
+	}
+
+	return updated, nil
+}

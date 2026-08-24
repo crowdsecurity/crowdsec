@@ -75,10 +75,11 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 			ShareCustomScenarios:  new(false),
 			ShareContext:          new(false),
 		},
-		isPulling:      make(chan bool, 1),
-		shareSignals:   true,
-		pullBlocklists: true,
-		pullCommunity:  true,
+		isPulling:              make(chan bool, 1),
+		usageMetricsBatchBytes: usageMetricsBatchBytes,
+		shareSignals:           true,
+		pullBlocklists:         true,
+		pullCommunity:          true,
 	}
 }
 
