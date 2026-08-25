@@ -3,6 +3,7 @@ package kubernetesauditacquisition
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -59,10 +60,30 @@ func (s *Source) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Tracef("webhookHandler called")
 
+	maxBodySize := *s.config.MaxBodySize
+
+	// Shortcut for clients announcing an oversized body, so we don't read it at all.
+	if r.ContentLength > maxBodySize {
+		s.logger.Errorf("Request body too large: %d > %d", r.ContentLength, maxBodySize)
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+
+		return
+	}
+
+	// Content-Length can be absent (chunked, HTTP/2) or a lie, so bound what we actually read.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
 	var auditEvents audit.EventList
 
 	jsonBody, err := io.ReadAll(r.Body)
 	if err != nil {
+		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			s.logger.Errorf("Request body too large: exceeds %d bytes", maxBytesErr.Limit)
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+
+			return
+		}
+
 		s.logger.Errorf("Error reading request body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 
