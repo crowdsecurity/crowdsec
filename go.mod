@@ -3,6 +3,7 @@ module github.com/crowdsecurity/crowdsec
 go 1.26.1
 
 require (
+	ariga.io/atlas v1.1.0
 	entgo.io/ent v0.14.6
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/semver/v3 v3.5.0
@@ -107,7 +108,6 @@ require (
 )
 
 require (
-	ariga.io/atlas v1.1.0 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
