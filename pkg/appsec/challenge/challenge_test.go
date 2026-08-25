@@ -749,3 +749,16 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 		})
 	}
 }
+
+// The challenge outcome is carried by a cookie, so a browser with cookies
+// disabled would loop forever: solve, get a Set-Cookie it drops, reload,
+// get challenged again. The page detects that client-side and says so.
+func TestChallengePageChecksCookiesEnabled(t *testing.T) {
+	for _, want := range []string{
+		"navigator.cookieEnabled",
+		`document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax"`,
+		"Cookies are disabled",
+	} {
+		require.Contains(t, htmlTemplate, want)
+	}
+}
