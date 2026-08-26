@@ -3,12 +3,15 @@ package database
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -155,4 +158,92 @@ func TestFlushAlerts_MaxItemsKeepsActiveDecisions(t *testing.T) {
 	decCount, err := c.Ent.Decision.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, decCount, "active decision must not be cascade-deleted")
+}
+
+func countMetas(t *testing.T, ctx context.Context, c *Client) (total int, orphans int) {
+	t.Helper()
+
+	total, err := c.Ent.Meta.Query().Count(ctx)
+	require.NoError(t, err)
+
+	orphans, err = c.Ent.Meta.Query().Where(meta.Not(meta.HasOwner())).Count(ctx)
+	require.NoError(t, err)
+
+	return total, orphans
+}
+
+// A dropped alert must not leave its metas behind: they are inserted before the
+// alert row, and only the alert insert links them.
+func TestCreateAlert_DroppedAlertLeavesNoMetas(t *testing.T) {
+	ctx := t.Context()
+	c := getDBClient(t, ctx)
+
+	machineID := "test-dropped-alert-metas"
+	registerFlushTestMachine(t, ctx, c, machineID)
+
+	// the decision value is not a valid address, so the decision is discarded and
+	// the alert with it
+	dropped := makeFlushAlert("not-an-ip", true)
+	dropped.Meta = models.Meta{{Key: "k1", Value: "v1"}, {Key: "k2", Value: "v2"}}
+
+	kept := makeFlushAlert("1.2.3.4", true)
+	kept.Meta = models.Meta{{Key: "k1", Value: "v1"}}
+
+	_, err := c.CreateAlert(ctx, machineID, []*models.Alert{dropped, kept})
+	require.NoError(t, err)
+
+	alerts, err := c.Ent.Alert.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, alerts)
+
+	total, orphans := countMetas(t, ctx, c)
+	require.Equal(t, 1, total)
+	require.Zero(t, orphans)
+}
+
+// Metas orphaned by an older version are reaped, linked ones are not.
+func TestFlushOrphans_DeletesOrphanMetas(t *testing.T) {
+	tests := []struct {
+		name    string
+		orphans int
+	}{
+		{name: "single batch", orphans: 3},
+		{name: "several batches", orphans: orphanMetaBatchSize + 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			c := getDBClient(t, ctx)
+
+			machineID := "test-orphan-metas"
+			registerFlushTestMachine(t, ctx, c, machineID)
+
+			alert := makeFlushAlert("1.2.3.4", true)
+			alert.Meta = models.Meta{{Key: "k1", Value: "v1"}}
+
+			_, err := c.CreateAlert(ctx, machineID, []*models.Alert{alert})
+			require.NoError(t, err)
+
+			for chunk := range slices.Chunk(make([]struct{}, tc.orphans), 500) {
+				builders := make([]*ent.MetaCreate, len(chunk))
+				for i := range chunk {
+					builders[i] = c.Ent.Meta.Create().SetKey("orphan").SetValue("v")
+				}
+
+				_, err := c.Ent.Meta.CreateBulk(builders...).Save(ctx)
+				require.NoError(t, err)
+			}
+
+			total, orphans := countMetas(t, ctx, c)
+			require.Equal(t, tc.orphans+1, total)
+			require.Equal(t, tc.orphans, orphans)
+
+			c.FlushOrphans(ctx)
+
+			total, orphans = countMetas(t, ctx, c)
+			require.Equal(t, 1, total)
+			require.Zero(t, orphans)
+		})
+	}
 }

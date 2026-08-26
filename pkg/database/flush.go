@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -27,6 +28,11 @@ const (
 	// how long to keep metrics in the local database
 	defaultMetricsMaxAge = 7 * 24 * time.Hour
 	flushInterval        = 1 * time.Minute
+	// orphan metas are deleted in bounded batches: an install upgrading with a
+	// backlog can carry hundreds of millions of them, and a single unbounded
+	// DELETE would hold the table for minutes.
+	orphanMetaBatchSize = 5_000
+	orphanMetaMaxPerRun = 500_000
 )
 
 func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (gocron.Scheduler, error) {
@@ -183,6 +189,54 @@ func (c *Client) FlushOrphans(ctx context.Context) {
 	if eventsCount > 0 {
 		c.Log.Infof("%d deleted orphan decisions", eventsCount)
 	}
+
+	metasCount, err := c.flushOrphanMetas(ctx)
+	if err != nil {
+		c.Log.Warningf("error while deleting orphan metas: %s", err)
+		return
+	}
+
+	if metasCount > 0 {
+		c.Log.Infof("%d deleted orphan metas", metasCount)
+	}
+}
+
+// flushOrphanMetas deletes meta rows that were never linked to an alert, up to
+// orphanMetaMaxPerRun per call. Versions before 1.8.0 inserted metas outside the
+// alert transaction, so an upgraded database can hold a large backlog: it is
+// drained over several runs instead of in one statement.
+func (c *Client) flushOrphanMetas(ctx context.Context) (int, error) {
+	deleted := 0
+
+	for deleted < orphanMetaMaxPerRun {
+		ids, err := c.Ent.Meta.Query().Where(meta.Not(meta.HasOwner())).Limit(orphanMetaBatchSize).IDs(ctx)
+		if err != nil {
+			return deleted, err
+		}
+
+		if len(ids) == 0 {
+			break
+		}
+
+		count, err := c.Ent.Meta.Delete().Where(meta.IDIn(ids...)).Exec(ctx)
+		if err != nil {
+			return deleted, err
+		}
+
+		// nothing deleted for a full batch means someone else got there first: stop
+		// rather than spin on the same rows
+		if count == 0 {
+			break
+		}
+
+		deleted += count
+
+		if len(ids) < orphanMetaBatchSize {
+			break
+		}
+	}
+
+	return deleted, nil
 }
 
 func (c *Client) flushBouncers(ctx context.Context, authType string, duration *time.Duration) {
