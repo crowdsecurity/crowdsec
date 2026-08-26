@@ -1061,7 +1061,14 @@ func (a *apic) Pull(ctx context.Context) error {
 			toldOnce = true
 		}
 
-		time.Sleep(1 * time.Second)
+		select {
+		case <-time.After(1 * time.Second):
+		case <-a.pullTomb.Dying():
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
+
+			return nil
+		}
 	}
 
 	if err := a.PullTop(ctx, false); err != nil {

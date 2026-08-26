@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -90,6 +89,26 @@ func absDiff(a int, b int) int {
 	}
 
 	return c
+}
+
+// safeBuffer collects log output written by a background goroutine while the test reads it.
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
 }
 
 func assertTotalDecisionCount(t *testing.T, ctx context.Context, dbClient *database.Client, count int) {
@@ -1145,21 +1164,45 @@ func TestAPICPull(t *testing.T) {
 			)))
 			tc.setUp()
 
-			var buf bytes.Buffer
+			buf := &safeBuffer{}
+
+			oldOut := logrus.StandardLogger().Out
+			logrus.SetOutput(buf)
+
+			t.Cleanup(func() { logrus.SetOutput(oldOut) })
+
+			pullDone := make(chan error, 1)
 
 			go func() {
-				logrus.SetOutput(&buf)
-
-				if err := api.Pull(ctx); err != nil {
-					panic(err)
-				}
+				pullDone <- api.Pull(ctx)
 			}()
 
-			// Slightly long because the CI runner for windows are slow, and this can lead to random failure
-			time.Sleep(time.Millisecond * 500)
-			logrus.SetOutput(os.Stderr)
-			assert.Contains(t, buf.String(), tc.logContains)
-			assertTotalDecisionCount(t, ctx, api.dbClient, tc.expectedDecisionCount)
+			// join the pull routine before the buffer and the db go away, even if an assertion below fails
+			t.Cleanup(func() {
+				api.Shutdown()
+
+				select {
+				case err := <-pullDone:
+					assert.NoError(t, err)
+				case <-time.After(10 * time.Second):
+					t.Error("Pull() did not return after Shutdown()")
+				}
+			})
+
+			if tc.logContains != "" {
+				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					assert.Contains(c, buf.String(), tc.logContains)
+				}, 10*time.Second, 20*time.Millisecond)
+			}
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				decisions, err := api.dbClient.Ent.Decision.Query().All(ctx)
+				if !assert.NoError(c, err) {
+					return
+				}
+
+				assert.Len(c, decisions, tc.expectedDecisionCount)
+			}, 10*time.Second, 20*time.Millisecond)
 		})
 	}
 }
