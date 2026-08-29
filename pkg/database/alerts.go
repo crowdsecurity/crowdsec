@@ -653,11 +653,6 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 			return nil, rollbackOnError(tx, err, fmt.Sprintf("building events for alert %s", alertItem.UUID))
 		}
 
-		metas, err := buildMetaCreates(ctx, c.Log, txEnt, alertItem)
-		if err != nil {
-			c.Log.Warningf("error creating alert meta: %s", err)
-		}
-
 		decisions, discardCount, err := c.buildDecisions(ctx, c.Log, txEnt, alertItem, stopAtTime)
 		if err != nil {
 			return nil, rollbackOnError(tx, err, fmt.Sprintf("building decisions for alert %s", alertItem.UUID))
@@ -667,6 +662,13 @@ func (c *Client) createAlertBatch(ctx context.Context, machineID string, owner *
 		if discardCount > 0 && len(decisions) == 0 {
 			c.Log.Warningf("dropping alert %s: all decisions invalid", alertItem.UUID)
 			continue
+		}
+
+		// after the discard check: metas are linked to the alert only when it is built,
+		// so inserting them earlier leaves orphan rows behind when the alert is dropped
+		metas, err := buildMetaCreates(ctx, c.Log, txEnt, alertItem)
+		if err != nil {
+			c.Log.Warningf("error creating alert meta: %s", err)
 		}
 
 		builder := txEnt.Alert.

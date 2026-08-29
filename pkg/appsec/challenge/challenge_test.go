@@ -114,6 +114,43 @@ func TestDifficultyFromLevel(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestPowDifficultyLevels pins the tuned bit values so changing what a level
+// costs a real user is a deliberate, reviewed edit rather than a silent one.
+// See the calibration notes on the constants in ticket.go.
+func TestPowDifficultyLevels(t *testing.T) {
+	assert.Equal(t, 18, PowDifficultyLow)
+	assert.Equal(t, 20, PowDifficultyMedium)
+	assert.Equal(t, 22, PowDifficultyHigh)
+
+	// SendChallenge skips re-challenging when the cookie already proves >= the
+	// target, so the ladder has to stay strictly ordered to be an escalation.
+	assert.Less(t, PowDifficultyDisabled, PowDifficultyLow)
+	assert.Less(t, PowDifficultyLow, PowDifficultyMedium)
+	assert.Less(t, PowDifficultyMedium, PowDifficultyHigh)
+	assert.Less(t, PowDifficultyHigh, PowDifficultyImpossible)
+
+	// The solver short-circuits anything past 64 bits rather than spinning every
+	// core forever, so Impossible must sit above that line and the real levels
+	// below it.
+	assert.Greater(t, PowDifficultyImpossible, 64)
+	assert.LessOrEqual(t, PowDifficultyHigh, 64)
+}
+
+// TestPowSaltFitsClientFastPath holds up the server's half of the contract with
+// pow-worker.js: the solver has no slow path to fall back to, so a salt that
+// doesn't fit one SHA-256 block breaks every challenge rather than slowing it.
+func TestPowSaltFitsClientFastPath(t *testing.T) {
+	salt := mustGeneratePowPrefix(t)
+
+	assert.LessOrEqual(t, len(salt), powSaltMaxHexLen,
+		"salt no longer fits the browser's single-block solver")
+	assert.Len(t, salt, powSaltBytes*2, "hex encoding should double the byte length")
+
+	for _, c := range salt {
+		require.Less(t, c, rune(128), "salt must be ASCII for the browser solver")
+	}
+}
+
 func TestSetDifficulty(t *testing.T) {
 	c := newTestRuntimeWithDifficulty(defaultPowDifficulty)
 
@@ -290,6 +327,16 @@ func TestPoWVerification(t *testing.T) {
 
 	powHash := sha256.Sum256([]byte(prefix + nonce))
 	assert.True(t, hasLeadingZeroBits(powHash[:], difficulty))
+}
+
+// withoutPreWarm skips the constructor's synchronous obfuscation and the
+// background pre-warmer; currentDynamicModule then obfuscates lazily. Lives
+// here rather than in challenge.go so it cannot reach production builds:
+// serving that way would pay ~4s per pool slot on the first request.
+func withoutPreWarm() Option {
+	return func(o *runtimeOptions) {
+		o.skipPreWarm = true
+	}
 }
 
 // testSecret is a fixed master secret used by all test helpers below so that
@@ -700,5 +747,18 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 			_, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
 			assert.ErrorContains(t, err, "invalid ticket")
 		})
+	}
+}
+
+// The challenge outcome is carried by a cookie, so a browser with cookies
+// disabled would loop forever: solve, get a Set-Cookie it drops, reload,
+// get challenged again. The page detects that client-side and says so.
+func TestChallengePageChecksCookiesEnabled(t *testing.T) {
+	for _, want := range []string{
+		"navigator.cookieEnabled",
+		`document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax"`,
+		"Cookies are disabled",
+	} {
+		require.Contains(t, htmlTemplate, want)
 	}
 }

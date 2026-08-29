@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -266,6 +267,9 @@ type AppsecRequestState struct {
 	// nil until the first call.
 	LastMismatchReport *challenge.MismatchReport
 
+	// Tracks the request score + reasons
+	RequestScore RequestScore
+
 	// HookVars is a per-request scratch space exposed to expr hooks as
 	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
 	// values here so that later hook expressions — including the `apply`
@@ -401,16 +405,9 @@ type AppsecRuntimeConfig struct {
 	BodySettings BodySettings
 }
 
-// emitChallengeEvent builds and sends a challenge lifecycle event to the
-// pipeline. It is a no-op when no output channel is wired. Challenge handling is
-// an in-band concern, so we never emit during the out-of-band phase — a common
-// pre_eval/post_eval hook calling SendChallenge() runs in both phases, and the
-// out-of-band invocation is already a no-op for the client.
-func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info ChallengeEventInfo) {
-	if w.OutChan == nil || !request.IsInBand {
-		return
-	}
-
+// recordChallengeMetric is kept out of emission so counters still move when no
+// output channel is wired.
+func (*AppsecRuntimeConfig) recordChallengeMetric(request *ParsedRequest, info ChallengeEventInfo) {
 	labels := prometheus.Labels{
 		"source":        request.RemoteAddrNormalized,
 		"appsec_engine": request.AppsecEngine,
@@ -446,8 +443,32 @@ func (w *AppsecRuntimeConfig) emitChallengeEvent(request *ParsedRequest, info Ch
 		}
 		metrics.AppsecChallengeRejected.With(rejectedLabels).Inc()
 	}
+}
 
-	w.OutChan <- ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
+// Challenge handling is an in-band concern, so we never emit during the
+// out-of-band phase: a common pre_eval/post_eval hook calling SendChallenge()
+// runs in both phases, and the out-of-band invocation is already a no-op for the
+// client. The log event is deliberately not gated on state.Response.SendEvent —
+// CancelEvent() must not silence challenge telemetry.
+func (w *AppsecRuntimeConfig) emitChallenge(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) {
+	if !request.IsInBand {
+		return
+	}
+
+	w.recordChallengeMetric(request, info)
+
+	evt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
+	StampHookVars(&evt, state)
+
+	// A submission we refused is the only moment worth an alert of its own.
+	var overflow *pipeline.Event
+
+	switch info.Reason {
+	case ChallengeReasonRejected, ChallengeReasonFailed:
+		overflow = w.buildChallengeOverflow(state, request, info, evt.Appsec.HookVars)
+	}
+
+	w.EmitAlertAndEvent(overflow, &evt)
 }
 
 // ExemptFromChallenge flags the current request as exempt from the bot
@@ -467,7 +488,7 @@ func (*AppsecRuntimeConfig) ExemptFromChallenge(state *AppsecRequestState, reque
 	}
 
 	// Challenge handling is an in-band concern; don't emit during the
-	// out-of-band phase (mirrors emitChallengeEvent).
+	// out-of-band phase (mirrors emitChallenge).
 	if request.IsInBand {
 		metrics.AppsecChallengeExempt.With(prometheus.Labels{
 			"source":        request.RemoteAddrNormalized,
@@ -1030,9 +1051,8 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 // state, when non-nil, is consulted between rule iterations: if
 // state.HooksHalted is true (set by a terminal expr helper such as
 // RejectSubmission or the on_challenge_submit GrantChallengeCookie),
-// remaining rules in this phase are skipped. ProcessOnLoadRules and
-// the non-submit phases pass nil — they have no terminal actions
-// today.
+// remaining rules in this phase are skipped. ProcessOnLoadRules passes
+// nil — it has no request state at all.
 func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState) error {
 	has_match := false
 
@@ -1146,16 +1166,17 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 	// on_challenge inspection happens on subsequent cookie-bearing requests.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
 		w.Logger.Debugf("validating challenge response")
-		w.emitChallengeEvent(request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
+		w.emitChallenge(state, request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
 
 		ck, fpData, provenDifficulty, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
 			w.Logger.Errorf("challenge validation failed: %s", err)
-			w.emitChallengeEvent(request, ChallengeEventInfo{
+			info := ChallengeEventInfo{
 				Reason:     ChallengeReasonFailed,
 				FailReason: err.Error(),
 				FailErr:    err,
-			})
+			}
+			w.emitChallenge(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeFailed,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
@@ -1179,16 +1200,19 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			// The expr-side RejectSubmission helper emits the reject log
 			// itself (with the operator-chosen verbosity), so we don't
 			// re-log here — just serve the rejection envelope.
-			w.emitChallengeEvent(request, ChallengeEventInfo{
+			info := ChallengeEventInfo{
 				Reason:      ChallengeReasonRejected,
 				FailReason:  state.SubmissionRejection.Reason,
 				Fingerprint: &fpData,
-			})
+				Score:       state.RequestScore.Total(),
+				ScoreDetail: state.RequestScore.String(),
+			}
+			w.emitChallenge(state, request, info)
 			return w.setChallengeResponse(state, http.StatusOK, bodyChallengeRejected,
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 
-		w.emitChallengeEvent(request, ChallengeEventInfo{
+		w.emitChallenge(state, request, ChallengeEventInfo{
 			Reason:      ChallengeReasonSolved,
 			Difficulty:  state.CookiePowDifficulty,
 			Fingerprint: &fpData,
@@ -1239,7 +1263,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", nil)
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", state)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
@@ -1523,6 +1547,32 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 	return report
 }
 
+const (
+	hookVarRequestScore = "request_score"
+	// Weighted form ("cdp=100,utc_timezone=15") so this hookvar and the
+	// event/alert key of the same name never disagree on format.
+	hookVarRequestScoreReasons = "request_score_reasons"
+)
+
+func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string) error {
+	total := state.RequestScore.Add(points, reason)
+
+	if state.HookVars != nil {
+		state.HookVars[hookVarRequestScore] = strconv.Itoa(total)
+		state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
+	}
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"reason": reason,
+			"points": points,
+			"total":  total,
+		}).Debug("request score updated")
+	}
+
+	return nil
+}
+
 // emitMismatchObservability logs the report at Debug level and bumps the
 // per-reason/severity Prometheus counter. Called exactly once per request
 // from EvaluateMismatches (guarded by state.LastMismatchReport being nil
@@ -1605,10 +1655,12 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 		return err
 	}
 
-	w.emitChallengeEvent(request, ChallengeEventInfo{
+	w.emitChallenge(state, request, ChallengeEventInfo{
 		Reason:      ChallengeReasonRequested,
 		Difficulty:  target,
 		Fingerprint: state.Fingerprint,
+		Score:       state.RequestScore.Total(),
+		ScoreDetail: state.RequestScore.String(),
 	})
 
 	return nil

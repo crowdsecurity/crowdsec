@@ -35,6 +35,8 @@ type Bouncer struct {
 	Version string `json:"version"`
 	// LastPull holds the value of the "last_pull" field.
 	LastPull *time.Time `json:"last_pull"`
+	// StreamCursor holds the value of the "stream_cursor" field.
+	StreamCursor int `json:"stream_cursor,omitempty"`
 	// AuthType holds the value of the "auth_type" field.
 	AuthType string `json:"auth_type"`
 	// Osname holds the value of the "osname" field.
@@ -57,7 +59,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case bouncer.FieldRevoked, bouncer.FieldAutoCreated:
 			values[i] = new(sql.NullBool)
-		case bouncer.FieldID:
+		case bouncer.FieldID, bouncer.FieldStreamCursor:
 			values[i] = new(sql.NullInt64)
 		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType, bouncer.FieldOsname, bouncer.FieldOsfamily, bouncer.FieldOsversion, bouncer.FieldFeatureflags:
 			values[i] = new(sql.NullString)
@@ -138,6 +140,12 @@ func (_m *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastPull = new(time.Time)
 				*_m.LastPull = value.Time
+			}
+		case bouncer.FieldStreamCursor:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_cursor", values[i])
+			} else if value.Valid {
+				_m.StreamCursor = int(value.Int64)
 			}
 		case bouncer.FieldAuthType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -238,6 +246,9 @@ func (_m *Bouncer) String() string {
 		builder.WriteString("last_pull=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("stream_cursor=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamCursor))
 	builder.WriteString(", ")
 	builder.WriteString("auth_type=")
 	builder.WriteString(_m.AuthType)

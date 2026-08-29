@@ -47,7 +47,19 @@ func authorizeRequest(r *http.Request, hc *Configuration) error {
 	return nil
 }
 
+func rejectBody(w http.ResponseWriter, err error) error {
+	if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return fmt.Errorf("body size exceeds max body size: %d", maxBytesErr.Limit)
+	}
+
+	w.WriteHeader(http.StatusBadRequest)
+
+	return fmt.Errorf("failed to read body: %w", err)
+}
+
 func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Configuration, out chan pipeline.Event) error {
+	// Shortcut for clients announcing an oversized body, so we don't read it at all.
 	if hc.MaxBodySize != nil && r.ContentLength > *hc.MaxBodySize {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return fmt.Errorf("body size exceeds max body size: %d > %d", r.ContentLength, *hc.MaxBodySize)
@@ -56,6 +68,12 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 	srcHost, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return err
+	}
+
+	// Content-Length can be absent (chunked, HTTP/2) or a lie, so bound what we actually read.
+	// This also caps gzip streams that consume input without producing output.
+	if hc.MaxBodySize != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, *hc.MaxBodySize)
 	}
 
 	defer r.Body.Close()
@@ -74,12 +92,17 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 	reader := r.Body
 
 	if r.Header.Get("Content-Encoding") == "gzip" {
-		reader, err = gzip.NewReader(r.Body)
+		gz, err := gzip.NewReader(r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return fmt.Errorf("failed to create gzip reader: %w", err)
+			return rejectBody(w, err)
 		}
-		defer reader.Close()
+
+		defer gz.Close()
+
+		reader = gz
+		if hc.MaxBodySize != nil {
+			reader = http.MaxBytesReader(w, gz, *hc.MaxBodySize)
+		}
 	}
 
 	decoder := json.NewDecoder(reader)
@@ -88,13 +111,11 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 		var message json.RawMessage
 
 		if err := decoder.Decode(&message); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 
-			w.WriteHeader(http.StatusBadRequest)
-
-			return fmt.Errorf("failed to decode: %w", err)
+			return rejectBody(w, err)
 		}
 
 		line := pipeline.Line{

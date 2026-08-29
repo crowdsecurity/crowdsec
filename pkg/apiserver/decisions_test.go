@@ -1,9 +1,16 @@
 package apiserver
 
 import (
+	"context"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -339,4 +346,179 @@ type DecisionTest struct {
 	NewChecks     []DecisionCheck
 	DelChecks     []DecisionCheck
 	AuthType      string
+}
+
+// Regression for cs-firewall-bouncer#508.
+//
+// A blocklist import stamps created_at inside its transaction, so a decision can commit after a
+// pull that could not see it, carrying a created_at older than that pull. Keyed on a timestamp
+// such a decision is skipped by every later delta and only comes back on a full resync; keyed on
+// the id cursor it is delivered on the next pull.
+func TestStreamDecisionLateCommit(t *testing.T) {
+	ctx := t.Context()
+	lapi := SetupLAPITest(t, ctx)
+
+	// A first pull establishes the bouncer position.
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+	_, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+
+	// A decision whose transaction started before that pull and committed after it.
+	_, err := lapi.DBClient.Ent.Decision.Create().
+		SetCreatedAt(time.Now().UTC().Add(-time.Hour)).
+		SetUntil(time.Now().UTC().Add(time.Hour)).
+		SetScenario("test/late-commit").
+		SetType("ban").
+		SetScope("Ip").
+		SetValue("11.22.33.44").
+		SetOrigin("lists").
+		Save(ctx)
+	require.NoError(t, err)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
+	require.Equal(t, "11.22.33.44", *decisions["new"][0].Value)
+
+	// And it is not resent once the cursor has moved past it.
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code = readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Empty(t, decisions["new"])
+}
+
+// A cursor past the end of the decisions table (partial restore, or MySQL < 8.0 recomputing
+// AUTO_INCREMENT) must fall back to a full resync rather than silently starving the bouncer.
+func TestStreamDecisionCursorAheadOfTable(t *testing.T) {
+	ctx := t.Context()
+	lapi := SetupLAPITest(t, ctx)
+
+	lapi.InsertAlertFromFile(t, ctx, "./tests/alert_sample.json")
+
+	w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+	decisions, code := readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
+
+	_, err := lapi.DBClient.Ent.Bouncer.Update().SetStreamCursor(999999).Save(ctx)
+	require.NoError(t, err)
+
+	w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+	decisions, code = readDecisionsStreamResp(t, w)
+	require.Equal(t, 200, code)
+	require.Len(t, decisions["new"], 1)
+}
+
+// The delta is now driven by the id cursor rather than a timestamp, so every filter has to keep
+// working on top of it, and the cursor has to advance even when a filter matches nothing.
+func TestStreamDecisionDeltaFilters(t *testing.T) {
+	seed := func(t *testing.T, ctx context.Context, lapi LAPI) {
+		t.Helper()
+
+		seedOne(t, ctx, lapi, "1.0.0.1", "lists", "crowdsecurity/ssh_bf", types.Ip, "ban")
+		seedOne(t, ctx, lapi, "1.0.0.2", "crowdsec", "crowdsecurity/http_probing", types.Ip, "ban")
+		seedOne(t, ctx, lapi, "1.0.0.3", "CAPI", "crowdsecurity/ssh_bf", types.Ip, "captcha")
+		seedOne(t, ctx, lapi, "someuser", "crowdsec", "crowdsecurity/test", "user", "ban")
+	}
+
+	tests := []struct {
+		name  string
+		query string
+		want  []string
+	}{
+		{"no filter", "", []string{"1.0.0.1", "1.0.0.2", "1.0.0.3"}},
+		{"origins", "&origins=lists", []string{"1.0.0.1"}},
+		{"multiple origins", "&origins=lists,CAPI", []string{"1.0.0.1", "1.0.0.3"}},
+		{"unknown origin", "&origins=nope", nil},
+		{"scenarios_containing", "&scenarios_containing=ssh_bf", []string{"1.0.0.1", "1.0.0.3"}},
+		{"scenarios_not_containing", "&scenarios_not_containing=ssh_bf", []string{"1.0.0.2"}},
+		{"multiple scenarios_containing", "&scenarios_containing=ssh_bf,http_probing", []string{"1.0.0.1", "1.0.0.2", "1.0.0.3"}},
+		{"unknown scenarios_containing", "&scenarios_containing=nope", nil},
+		{"scopes", "&scopes=user", []string{"someuser"}},
+		{"scopes ip+user", "&scopes=ip,user", []string{"1.0.0.1", "1.0.0.2", "1.0.0.3", "someuser"}},
+		{"value", "&value=1.0.0.2", []string{"1.0.0.2"}},
+		{"type", "&type=captcha", []string{"1.0.0.3"}},
+		{"ip", "&ip=1.0.0.1", []string{"1.0.0.1"}},
+		{"range", "&range=1.0.0.0/30&contains=false", []string{"1.0.0.1", "1.0.0.2", "1.0.0.3"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			lapi := SetupLAPITest(t, ctx)
+
+			// decisions already delivered before the cursor was parked: they match several of
+			// the filters below, so they resurface if the cursor is ignored
+			lapi.InsertAlertFromFile(t, ctx, "./tests/alert_minibulk.json")
+			seedOne(t, ctx, lapi, "9.9.9.9", "lists", "crowdsecurity/ssh_bf", types.Ip, "ban")
+
+			w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+			_, code := readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+
+			before, err := lapi.DBClient.LatestDecisionID(ctx)
+			require.NoError(t, err)
+			require.NotZero(t, before, "cursor must be non-zero so the delta really is id > cursor")
+
+			seed(t, ctx, lapi)
+
+			w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?"+tc.query, emptyBody, APIKEY)
+			decisions, code := readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+
+			got := make([]string, 0, len(decisions["new"]))
+			for _, d := range decisions["new"] {
+				got = append(got, *d.Value)
+			}
+
+			sort.Strings(got)
+			require.Equal(t, tc.want, nilIfEmpty(got))
+
+			// the cursor advances to the end of the table whatever the filter matched,
+			// otherwise a filtered bouncer would rescan a widening range forever
+			latest, err := lapi.DBClient.LatestDecisionID(ctx)
+			require.NoError(t, err)
+
+			b, err := lapi.DBClient.Ent.Bouncer.Get(ctx, 1)
+			require.NoError(t, err)
+			require.Equal(t, latest, b.StreamCursor)
+
+			// and nothing is resent
+			w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?"+tc.query, emptyBody, APIKEY)
+			decisions, code = readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+			require.Empty(t, decisions["new"])
+		})
+	}
+}
+
+func seedOne(t *testing.T, ctx context.Context, lapi LAPI, value, origin, scenario, scope, dtype string) {
+	t.Helper()
+
+	rng, err := csnet.NewRange(value)
+	if scope == types.Ip {
+		require.NoError(t, err)
+	}
+
+	_, err = lapi.DBClient.Ent.Decision.Create().
+		SetUntil(time.Now().UTC().Add(time.Hour)).
+		SetScenario(scenario).
+		SetType(dtype).
+		SetScope(scope).
+		SetValue(value).
+		SetOrigin(origin).
+		SetStartIP(rng.Start.Addr).
+		SetEndIP(rng.End.Addr).
+		SetIPSize(int64(rng.Size())).
+		Save(ctx)
+	require.NoError(t, err)
+}
+
+func nilIfEmpty(s []string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+
+	return s
 }

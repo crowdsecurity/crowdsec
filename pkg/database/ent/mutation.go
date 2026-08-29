@@ -4476,28 +4476,30 @@ func (m *AllowListItemMutation) ResetEdge(name string) error {
 // BouncerMutation represents an operation that mutates the Bouncer nodes in the graph.
 type BouncerMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	created_at    *time.Time
-	updated_at    *time.Time
-	name          *string
-	api_key       *string
-	revoked       *bool
-	ip_address    *string
-	_type         *string
-	version       *string
-	last_pull     *time.Time
-	auth_type     *string
-	osname        *string
-	osfamily      *string
-	osversion     *string
-	featureflags  *string
-	auto_created  *bool
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Bouncer, error)
-	predicates    []predicate.Bouncer
+	op               Op
+	typ              string
+	id               *int
+	created_at       *time.Time
+	updated_at       *time.Time
+	name             *string
+	api_key          *string
+	revoked          *bool
+	ip_address       *string
+	_type            *string
+	version          *string
+	last_pull        *time.Time
+	stream_cursor    *int
+	addstream_cursor *int
+	auth_type        *string
+	osname           *string
+	osfamily         *string
+	osversion        *string
+	featureflags     *string
+	auto_created     *bool
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*Bouncer, error)
+	predicates       []predicate.Bouncer
 }
 
 var _ ent.Mutation = (*BouncerMutation)(nil)
@@ -4974,6 +4976,62 @@ func (m *BouncerMutation) ResetLastPull() {
 	delete(m.clearedFields, bouncer.FieldLastPull)
 }
 
+// SetStreamCursor sets the "stream_cursor" field.
+func (m *BouncerMutation) SetStreamCursor(i int) {
+	m.stream_cursor = &i
+	m.addstream_cursor = nil
+}
+
+// StreamCursor returns the value of the "stream_cursor" field in the mutation.
+func (m *BouncerMutation) StreamCursor() (r int, exists bool) {
+	v := m.stream_cursor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStreamCursor returns the old "stream_cursor" field's value of the Bouncer entity.
+// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BouncerMutation) OldStreamCursor(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStreamCursor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStreamCursor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStreamCursor: %w", err)
+	}
+	return oldValue.StreamCursor, nil
+}
+
+// AddStreamCursor adds i to the "stream_cursor" field.
+func (m *BouncerMutation) AddStreamCursor(i int) {
+	if m.addstream_cursor != nil {
+		*m.addstream_cursor += i
+	} else {
+		m.addstream_cursor = &i
+	}
+}
+
+// AddedStreamCursor returns the value that was added to the "stream_cursor" field in this mutation.
+func (m *BouncerMutation) AddedStreamCursor() (r int, exists bool) {
+	v := m.addstream_cursor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStreamCursor resets all changes to the "stream_cursor" field.
+func (m *BouncerMutation) ResetStreamCursor() {
+	m.stream_cursor = nil
+	m.addstream_cursor = nil
+}
+
 // SetAuthType sets the "auth_type" field.
 func (m *BouncerMutation) SetAuthType(s string) {
 	m.auth_type = &s
@@ -5276,7 +5334,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -5303,6 +5361,9 @@ func (m *BouncerMutation) Fields() []string {
 	}
 	if m.last_pull != nil {
 		fields = append(fields, bouncer.FieldLastPull)
+	}
+	if m.stream_cursor != nil {
+		fields = append(fields, bouncer.FieldStreamCursor)
 	}
 	if m.auth_type != nil {
 		fields = append(fields, bouncer.FieldAuthType)
@@ -5348,6 +5409,8 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.Version()
 	case bouncer.FieldLastPull:
 		return m.LastPull()
+	case bouncer.FieldStreamCursor:
+		return m.StreamCursor()
 	case bouncer.FieldAuthType:
 		return m.AuthType()
 	case bouncer.FieldOsname:
@@ -5387,6 +5450,8 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldVersion(ctx)
 	case bouncer.FieldLastPull:
 		return m.OldLastPull(ctx)
+	case bouncer.FieldStreamCursor:
+		return m.OldStreamCursor(ctx)
 	case bouncer.FieldAuthType:
 		return m.OldAuthType(ctx)
 	case bouncer.FieldOsname:
@@ -5471,6 +5536,13 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLastPull(v)
 		return nil
+	case bouncer.FieldStreamCursor:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStreamCursor(v)
+		return nil
 	case bouncer.FieldAuthType:
 		v, ok := value.(string)
 		if !ok {
@@ -5520,13 +5592,21 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *BouncerMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addstream_cursor != nil {
+		fields = append(fields, bouncer.FieldStreamCursor)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *BouncerMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case bouncer.FieldStreamCursor:
+		return m.AddedStreamCursor()
+	}
 	return nil, false
 }
 
@@ -5535,6 +5615,13 @@ func (m *BouncerMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *BouncerMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case bouncer.FieldStreamCursor:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStreamCursor(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Bouncer numeric field %s", name)
 }
@@ -5639,6 +5726,9 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldLastPull:
 		m.ResetLastPull()
+		return nil
+	case bouncer.FieldStreamCursor:
+		m.ResetStreamCursor()
 		return nil
 	case bouncer.FieldAuthType:
 		m.ResetAuthType()

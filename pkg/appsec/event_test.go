@@ -48,6 +48,34 @@ func TestChallengeEventFromRequest(t *testing.T) {
 				require.Equal(t, ModuleName, evt.Line.Module)
 				// no fingerprint → no fingerprint fields
 				require.NotContains(t, evt.Parsed, "fsid")
+				// nothing scored → no score fields
+				require.NotContains(t, evt.Parsed, "request_score")
+				require.NotContains(t, evt.Parsed, "request_score_reasons")
+			},
+		},
+		{
+			name: "score rides along when contributions fired",
+			info: ChallengeEventInfo{
+				Reason:      ChallengeReasonRequested,
+				Difficulty:  15,
+				Score:       105,
+				ScoreDetail: "cdp=100,timezone_country=5",
+			},
+			assert: func(t *testing.T, evt pipeline.Event) {
+				require.Equal(t, "105", evt.Parsed["request_score"])
+				require.Equal(t, "cdp=100,timezone_country=5", evt.Parsed["request_score_reasons"])
+			},
+		},
+		{
+			name: "a zero total with contributions is still reported",
+			info: ChallengeEventInfo{
+				Reason:      ChallengeReasonRequested,
+				Score:       0,
+				ScoreDetail: "utc_timezone=15,trusted_gpu=-15",
+			},
+			assert: func(t *testing.T, evt pipeline.Event) {
+				require.Equal(t, "0", evt.Parsed["request_score"])
+				require.Equal(t, "utc_timezone=15,trusted_gpu=-15", evt.Parsed["request_score_reasons"])
 			},
 		},
 		{
@@ -100,23 +128,29 @@ func TestChallengeEventFromRequest(t *testing.T) {
 	}
 }
 
-// emitChallengeEvent must be a no-op (and not panic) when no output channel is wired.
-func TestEmitChallengeEventNoChannel(t *testing.T) {
-	w := &AppsecRuntimeConfig{}
-	require.NotPanics(t, func() {
-		w.emitChallengeEvent(testChallengeRequest(), ChallengeEventInfo{Reason: ChallengeReasonRequested})
-	})
-}
+func TestEmitChallengeSendsLogEvent(t *testing.T) {
+	out := make(chan pipeline.Event, 4)
+	w := makeRuntime()
+	w.OutChan = out
+	w.Labels = map[string]string{"type": "appsec"}
 
-// emitChallengeEvent sends the built event on the wired channel.
-func TestEmitChallengeEventSendsOnChannel(t *testing.T) {
-	out := make(chan pipeline.Event, 1)
-	w := &AppsecRuntimeConfig{OutChan: out, Labels: map[string]string{"type": "appsec"}}
+	w.emitChallenge(nil, testChallengeRequest(), ChallengeEventInfo{Reason: ChallengeReasonRequested})
 
-	w.emitChallengeEvent(testChallengeRequest(), ChallengeEventInfo{Reason: ChallengeReasonFailed, FailReason: "boom"})
-
+	require.Len(t, out, 1)
 	evt := <-out
 	require.Equal(t, SourceChallenge, evt.Parsed["source"])
-	require.Equal(t, string(ChallengeReasonFailed), evt.Parsed["challenge_event"])
-	require.Equal(t, "boom", evt.Parsed["challenge_fail_reason"])
+	require.Equal(t, string(ChallengeReasonRequested), evt.Parsed["challenge_event"])
+}
+
+func TestEmitChallengeOutOfBandNoop(t *testing.T) {
+	out := make(chan pipeline.Event, 4)
+	w := makeRuntime()
+	w.OutChan = out
+
+	req := testChallengeRequest()
+	req.IsInBand = false
+
+	w.emitChallenge(nil, req, ChallengeEventInfo{Reason: ChallengeReasonFailed, FailReason: "boom"})
+
+	require.Empty(t, out)
 }

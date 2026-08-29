@@ -357,6 +357,7 @@
         <div class="modal-body">
           <p>This page runs a brief security check to confirm you are not a bot.</p>
           <p>The verification is automatic and typically completes within a few seconds. No action is required on your part.</p>
+          <p>Cookies must be enabled for this site: the result of the check is stored in one.</p>
           <p>This check is powered by <strong>CrowdSec</strong>, a collaborative cybersecurity platform.</p>
         </div>
       </div>
@@ -420,9 +421,36 @@
           if (dotsInterval) { clearInterval(dotsInterval); dotsInterval = null; }
         }
 
+        // The challenge outcome is carried by a cookie, so without cookie support
+        // the browser would solve the challenge and be challenged again on every
+        // reload. Detect it up front and tell the user instead of looping.
+        function cookiesEnabled() {
+          try {
+            if (navigator.cookieEnabled === false) return false;
+            document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax";
+            const stored = document.cookie.indexOf("__crowdsec_cookie_test=") !== -1;
+            document.cookie = "__crowdsec_cookie_test=; path=/; SameSite=Lax; Max-Age=0";
+            return stored;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        const cookiesBlocked = !cookiesEnabled();
+
         function setChallengeStatus(status) {
           if (!coin || !statusText) return;
           const s = typeof status === "string" ? status.toLowerCase() : "pending";
+
+          if (cookiesBlocked) {
+            stopDots();
+            reloadTriggered = true;
+            coin.className = "fail";
+            statusText.textContent = "Cookies are disabled";
+            statusText.style.color = "var(--error)";
+            if (statusSub) statusSub.textContent = "This check needs cookies. Enable them for this site, then reload the page.";
+            return;
+          }
 
           if (s === "pending" || s === "") {
             coin.className = "flipping";
