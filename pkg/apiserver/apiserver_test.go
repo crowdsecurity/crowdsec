@@ -53,13 +53,9 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 		MaxAge: maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
+		DbPath: filepath.Join(t.TempDir(), "ent"),
 		Flush:  &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
@@ -103,13 +99,9 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 		MaxAge: maxAge,
 	}
 
-	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
-
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
+		DbPath: filepath.Join(t.TempDir(), "ent"),
 		Flush:  &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
