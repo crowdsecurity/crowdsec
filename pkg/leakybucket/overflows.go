@@ -35,7 +35,15 @@ func overflowEventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.S
 	for k, v := range evt.Overflow.Sources {
 		/*the scopes are already similar, nothing to do*/
 		if leaky.Factory.Spec.ScopeType.Scope == *v.Scope {
-			srcs[k] = v
+			// but the strings must not be shared: v belongs to the overflow being
+			// reprocessed, which is concurrently queued for LAPI
+			src := v
+			src.Scope = new(string)
+			*src.Scope = *v.Scope
+			src.Value = new(string)
+			*src.Value = *v.Value
+			srcs[k] = src
+
 			continue
 		}
 
@@ -107,7 +115,10 @@ func eventSources(evt pipeline.Event, leaky *Leaky) (map[string]models.Source, e
 		}
 
 		src.IP = v
-		src.Scope = &leaky.Factory.Spec.ScopeType.Scope
+		// not &leaky.Factory.Spec.ScopeType.Scope: the factory is shared by every
+		// bucket of the scenario, and postoverflow statics write through this pointer
+		src.Scope = new(string)
+		*src.Scope = leaky.Factory.Spec.ScopeType.Scope
 
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
@@ -306,17 +317,23 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 	leakSpeed := leaky.Factory.leakspeed.String()
 	startAt := string(start_at)
 	stopAt := string(stop_at)
+	// the alert must own its strings: the factory is shared by every bucket of the
+	// scenario, and the pointer can be written to by using a "target" expr (in a postoverflow or overflow reprocess)
+	scenario := leaky.Factory.Spec.Name
+	scenarioHash := leaky.Factory.scenarioHash
+	scenarioVersion := leaky.Factory.Spec.ScenarioVersion
+	simulated := leaky.Factory.Simulated
 	apiAlert := models.Alert{
-		Scenario:        &leaky.Factory.Spec.Name,
-		ScenarioHash:    &leaky.Factory.scenarioHash,
-		ScenarioVersion: &leaky.Factory.Spec.ScenarioVersion,
+		Scenario:        &scenario,
+		ScenarioHash:    &scenarioHash,
+		ScenarioVersion: &scenarioVersion,
 		Capacity:        &capacity,
 		EventsCount:     &EventsCount,
 		Leakspeed:       &leakSpeed,
 		Message:         new(string),
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
-		Simulated:       &leaky.Factory.Simulated,
+		Simulated:       &simulated,
 		Kind:            types.CrowdsecAlertKind.String(),
 	}
 
