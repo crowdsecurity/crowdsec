@@ -385,6 +385,20 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "ReplaceRegexp",
+		function: ReplaceRegexp,
+		signature: []any{
+			new(func(string, string, string) string),
+		},
+	},
+	{
+		name:     "ReplaceAllRegex",
+		function: ReplaceAllRegex,
+		signature: []any{
+			new(func(string, string, string) string),
+		},
+	},
+	{
 		name:     "Trim",
 		function: Trim,
 		signature: []any{
@@ -459,6 +473,13 @@ var exprFuncs = []exprCustomFunc{
 		function: LogInfo,
 		signature: []any{
 			new(func(string, ...any) bool),
+		},
+	},
+	{
+		name:     "AnsiRegex",
+		function: AnsiRegex,
+		signature: []any{
+			new(func() string),
 		},
 	},
 	{
