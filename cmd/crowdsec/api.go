@@ -57,7 +57,7 @@ func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 		}()
 
 		pluginTomb.Go(func() error {
-			pluginBroker.Run(&pluginTomb)
+			pluginBroker.Run(pluginTomb)
 			return nil
 		})
 
