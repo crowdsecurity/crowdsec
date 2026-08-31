@@ -24,10 +24,10 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 
 	serverError := make(chan error, 2)
 
-	startServer := func(listener net.Listener, canTLS bool) {
+	startServer := func(listener net.Listener) {
 		var err error
 
-		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
+		if w.config.TLSAuth || w.config.CertFilePath != "" || w.config.KeyFilePath != "" {
 			if w.config.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
@@ -74,7 +74,7 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		}
 
 		w.logger.Infof("Appsec listening on Unix socket %s", socket)
-		startServer(listener, false)
+		startServer(listener)
 	}(w.config.ListenSocket)
 
 	// Starting TCP listener
@@ -90,7 +90,7 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		}
 
 		w.logger.Infof("Appsec listening on %s", url)
-		startServer(listener, true)
+		startServer(listener)
 	}(w.config.ListenAddr)
 
 	select {
