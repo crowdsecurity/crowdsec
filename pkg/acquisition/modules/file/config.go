@@ -29,6 +29,8 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
+	TailMode                          string        `yaml:"tail_mode"`          // "default" or "stat" (defaults to "default" if empty)
+	StatPollInterval                  time.Duration `yaml:"stat_poll_interval"` // stat poll interval used when tail_mode=stat (default 1s, 0=1s, -1=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
