@@ -307,11 +307,12 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.HooksHalted = false
 }
 
-// HasValidChallengeCookie reports whether the request presented a valid
-// challenge cookie. A cookie minted during this request (submission,
-// GrantChallengeCookie) doesn't count — the visitor presents it on the next hop.
+// HasValidChallengeCookie reports whether the request has cleared the
+// challenge: either it presented a valid cookie, or a hook exempted it. A
+// cookie minted during this request (submission, GrantChallengeCookie)
+// doesn't count — the visitor presents it on the next hop.
 func (s *AppsecRequestState) HasValidChallengeCookie() bool {
-	return s.ChallengeCookieValid
+	return s.ChallengeCookieValid || s.ChallengeExempt
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {

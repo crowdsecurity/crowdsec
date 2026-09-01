@@ -473,6 +473,19 @@ func TestHasValidChallengeCookie(t *testing.T) {
 	}
 }
 
+func TestHasValidChallengeCookieOnExempt(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/protected", nil)
+
+	require.False(t, state.HasValidChallengeCookie())
+	require.NoError(t, rt.ExemptFromChallenge(state, req, "verified-bot"))
+	assert.True(t, state.HasValidChallengeCookie())
+}
+
 func TestHasValidChallengeCookieFalseOnGrant(t *testing.T) {
 	rt := newChallengeTestRuntime(t, nil)
 
