@@ -2,6 +2,7 @@
 // returns: FlexInt / FlexBool tolerant primitives and the nested
 // FingerprintData / fingerprintBotAlias structures that mirror the JSON
 // payload one-to-one. Handwritten accessors live in fingerprint_helpers.go,
+// tolerant decoding of the object-shaped signals in fingerprint_flex.go,
 // proto ↔ struct conversion in fingerprint_proto.go, and mismatch detection
 // methods in fingerprint_mismatch.go.
 
