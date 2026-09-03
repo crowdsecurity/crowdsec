@@ -8,43 +8,11 @@
 package challenge
 
 import (
-	"net/url"
-	"unicode/utf8"
-
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 )
 
-// MaxFingerprintURLLen bounds the href stored in the cookie. fpscanner reports
-// window.location.href.
-const MaxFingerprintURLLen = 256
-
-// boundFingerprintURL degrades in the order that keeps the most signal: keep the
-// href whole when it fits, drop the query when it doesn't, and only then cut.
-func boundFingerprintURL(raw string) string {
-	if len(raw) <= MaxFingerprintURLLen {
-		return raw
-	}
-
-	// Drop the query (and fragment) before resorting to a blind cut. Parsing
-	// can fail on a hostile value; falling through to the cut is fine.
-	if u, err := url.Parse(raw); err == nil && (u.RawQuery != "" || u.Fragment != "") {
-		u.RawQuery = ""
-		u.ForceQuery = false
-		u.Fragment = ""
-
-		if stripped := u.String(); len(stripped) <= MaxFingerprintURLLen {
-			return stripped
-		}
-	}
-
-	cut := raw[:MaxFingerprintURLLen]
-	for cut != "" && !utf8.ValidString(cut) {
-		cut = cut[:len(cut)-1]
-	}
-
-	return cut
-}
-
+// Still read, so cookies sealed before the field stopped being written keep
+// their value until they expire.
 func fingerprintDataFromProto(p *pb.FingerprintData) FingerprintData {
 	f := FingerprintData{
 		FSID:             p.GetFsid(),
@@ -369,9 +337,8 @@ func (f *FingerprintData) ToProto() *pb.FingerprintData {
 		Fsid:  f.FSID,
 		Nonce: f.Nonce,
 		Time:  f.Time,
-		// Bounded only here, not at decode: on_challenge_submit rules still see
-		// the full href.
-		Url:                     boundFingerprintURL(f.URL),
+		// Url is deliberately not carried: fpscanner report window.location.href.
+		// It can be big and it ain't useful to us outside on_challenge_submit.
 		FastBotDetection:        bool(f.FastBotDetection),
 		FastBotDetectionDetails: f.FastBotDetectionDetails.toProto(),
 		Bot:                     f.Bot.toProto(),
