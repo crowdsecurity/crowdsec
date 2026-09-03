@@ -127,7 +127,8 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 			}
 			return w.GrantChallengeCookie(state, request, reason, ttlOverride)
 		},
-		"fingerprint": state.Fingerprint,
+		"fingerprint":             state.Fingerprint,
+		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		"ValidateRequestWithSchema": func(ref string) bool {
 			return w.ValidateRequestWithSchema(ctx, state, request, ref)
 		},
@@ -165,9 +166,10 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		"fingerprint":         state.Fingerprint,
-		"hook_vars":           state.HookVars,
-		"ExemptFromChallenge": func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"fingerprint":             state.Fingerprint,
+		"hook_vars":               state.HookVars,
+		"HasValidChallengeCookie": state.HasValidChallengeCookie,
+		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
 		"AddRequestScore": func(points int, reason string) error {
 			return w.AddRequestScore(state, points, reason)
 		},
@@ -309,22 +311,23 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 
 func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
-		"evt":                 evt,
-		"req":                 request.HTTPRequest,
-		"hook_vars":           state.HookVars,
-		"IsInBand":            request.IsInBand,
-		"IsOutBand":           request.IsOutBand,
-		"SetRemediation":      func(action string) error { return w.SetAction(state, action) },
-		"SetReturnCode":       func(code int) error { return w.SetHTTPCode(state, code) },
-		"CancelEvent":         func() error { return w.CancelEvent(state) },
-		"SendEvent":           func() error { return w.SendEvent(state) },
-		"CancelAlert":         func() error { return w.CancelAlert(state) },
-		"SendAlert":           func() error { return w.SendAlert(state) },
-		"DumpRequest":         request.DumpRequest,
-		"SetChallengeBody":    func(body string) error { return w.SetChallengeBody(state, body) },
-		"SetChallengeCookie":  func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
-		"AppsecCookie":        cookie.NewAppsecCookie,
-		"ExemptFromChallenge": func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"evt":                     evt,
+		"req":                     request.HTTPRequest,
+		"hook_vars":               state.HookVars,
+		"IsInBand":                request.IsInBand,
+		"IsOutBand":               request.IsOutBand,
+		"SetRemediation":          func(action string) error { return w.SetAction(state, action) },
+		"SetReturnCode":           func(code int) error { return w.SetHTTPCode(state, code) },
+		"CancelEvent":             func() error { return w.CancelEvent(state) },
+		"SendEvent":               func() error { return w.SendEvent(state) },
+		"CancelAlert":             func() error { return w.CancelAlert(state) },
+		"SendAlert":               func() error { return w.SendAlert(state) },
+		"DumpRequest":             request.DumpRequest,
+		"SetChallengeBody":        func(body string) error { return w.SetChallengeBody(state, body) },
+		"SetChallengeCookie":      func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
+		"AppsecCookie":            cookie.NewAppsecCookie,
+		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		"AddRequestScore": func(points int, reason string) error {
 			return w.AddRequestScore(state, points, reason)
 		},

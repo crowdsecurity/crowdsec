@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -437,4 +438,93 @@ func TestGenerateResponseChallengeNilHeaders(t *testing.T) {
 		require.NotNil(t, body.UserHeaders)
 		assert.Equal(t, []string{challenge.DefaultChallengeCSP}, body.UserHeaders["Content-Security-Policy"])
 	})
+}
+
+func TestHasValidChallengeCookie(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	mintReq := newInBandRequest(http.MethodGet, "/", nil)
+	ck, err := rt.ChallengeRuntime.SealAllowlistCookie(mintReq.HTTPRequest, "has-valid-cookie", nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		cookie   string
+		expected bool
+	}{
+		{name: "no cookie", expected: false},
+		{name: "invalid cookie", cookie: "garbage", expected: false},
+		{name: "valid cookie", cookie: ck.Val, expected: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := newInBandRequest(http.MethodGet, "/protected", nil)
+			if tc.cookie != "" {
+				req.HTTPRequest.Header.Set("Cookie", challenge.ChallengeCookieName+"="+tc.cookie)
+			}
+
+			state := &AppsecRequestState{}
+			state.ResetResponse(rt.Config)
+
+			require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
+			assert.Equal(t, tc.expected, state.HasValidChallengeCookie())
+		})
+	}
+}
+
+func TestHasValidChallengeCookieOnExempt(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/protected", nil)
+
+	require.False(t, state.HasValidChallengeCookie())
+	require.NoError(t, rt.ExemptFromChallenge(state, req, "verified-bot"))
+	assert.True(t, state.HasValidChallengeCookie())
+}
+
+func TestHasValidChallengeCookieFalseOnGrant(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	state := &AppsecRequestState{}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/protected", nil)
+
+	require.NoError(t, rt.GrantChallengeCookie(state, req, "granted", nil))
+	assert.False(t, state.HasValidChallengeCookie())
+}
+
+func TestHasValidChallengeCookieInPreEval(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	compiled, err := buildHookList(t.Context(), []Hook{
+		{
+			Filter: "HasValidChallengeCookie()",
+			Apply:  []string{"SetRemediation('allow')"},
+		},
+	}, hookPreEval, &appsecExprPatcher{})
+	require.NoError(t, err)
+
+	for _, valid := range []bool{false, true} {
+		t.Run(fmt.Sprintf("valid=%t", valid), func(t *testing.T) {
+			state := &AppsecRequestState{HookVars: map[string]string{}}
+			state.ResetResponse(rt.Config)
+			state.ChallengeCookieValid = valid
+
+			req := newInBandRequest(http.MethodGet, "/protected", nil)
+
+			require.NoError(t, rt.processHooks(compiled, GetPreEvalEnv(t.Context(), rt, state, req), "pre_eval", state))
+
+			if valid {
+				require.NotNil(t, state.PendingAction)
+				assert.Equal(t, AllowRemediation, *state.PendingAction)
+			} else {
+				assert.Nil(t, state.PendingAction)
+			}
+		})
+	}
 }

@@ -245,6 +245,11 @@ type AppsecRequestState struct {
 	// the allowlist cookie itself, not by this flag.
 	ChallengeBypassed bool
 
+	// ChallengeCookieValid is set when the request presented a cookie that
+	// passed ValidCookie. Not cleared by ResetResponse: it stays true for
+	// the whole request, out-of-band included.
+	ChallengeCookieValid bool
+
 	// ChallengeExempt is set by the ExemptFromChallenge expr helper to exempt
 	// the current request from the bot challenge: SendChallenge becomes a no-op
 	// once it is set. It only affects the current request and doesn't mint a
@@ -300,6 +305,14 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.SubmissionRejection = nil
 	s.ChallengeBypassed = false
 	s.HooksHalted = false
+}
+
+// HasValidChallengeCookie reports whether the request has cleared the
+// challenge: either it presented a valid cookie, or a hook exempted it. A
+// cookie minted during this request (submission, GrantChallengeCookie)
+// doesn't count — the visitor presents it on the next hop.
+func (s *AppsecRequestState) HasValidChallengeCookie() bool {
+	return s.ChallengeCookieValid || s.ChallengeExempt
 }
 
 func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
@@ -1244,6 +1257,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			fp.AllowlistReason = cookieData.AllowlistReason
 			state.Fingerprint = &fp
 			state.CookiePowDifficulty = cookieData.PowDifficulty
+			state.ChallengeCookieValid = true
 			// An allowlist cookie minted on a prior request must short-circuit
 			// SendChallenge on every replay, exactly like a GrantChallengeCookie
 			// call within the current request would. Without this, the visitor

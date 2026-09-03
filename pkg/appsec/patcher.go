@@ -15,6 +15,8 @@ var challengeRuntimeCallees = map[string]struct{}{
 	"GrantChallengeCookie": {},
 	"RejectSubmission":     {},
 	"LogAccepted":          {},
+	// no runtime, no cookie validation: the helper would always return false
+	"HasValidChallengeCookie": {},
 }
 
 func (p *appsecExprPatcher) Visit(node *ast.Node) { //nolint:gocritic // signature fixed by expr-lang ast.Visitor interface

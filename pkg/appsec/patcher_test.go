@@ -46,3 +46,22 @@ func TestAppsecConfigBuildDoesNotDetectRequireValidChallengeWhenUnused(t *testin
 	require.NoError(t, err)
 	assert.False(t, runtimeCfg.NeedWASMVM)
 }
+
+func TestAppsecConfigBuildDetectsHasValidChallengeCookie(t *testing.T) {
+	logger := log.New()
+	logger.SetOutput(io.Discard)
+
+	cfg := AppsecConfig{
+		Logger: log.NewEntry(logger),
+		PreEval: []Hook{
+			{
+				Filter: "HasValidChallengeCookie()",
+				Apply:  []string{"SetRemediation(\"allow\")"},
+			},
+		},
+	}
+
+	runtimeCfg, err := cfg.Build(t.Context(), nil)
+	require.NoError(t, err)
+	assert.True(t, runtimeCfg.NeedWASMVM)
+}
