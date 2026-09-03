@@ -220,9 +220,9 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 				return nil, err
 			}
 		case "decision_type":
-			predicates = append(predicates, alert.HasDecisionsWith(decision.TypeEQ(value[0])))
+			predicates = append(predicates, alert.HasDecisionsMatching(decision.TypeEQ(value[0])))
 		case "origin":
-			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
+			predicates = append(predicates, alert.HasDecisionsMatching(decision.OriginEQ(value[0])))
 		case "include_capi": // allows to exclude one or more specific origins
 			if err = handleIncludeCapiFilter(value[0], &predicates); err != nil {
 				return nil, err
@@ -233,7 +233,7 @@ func alertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			}
 
 			if hasActiveDecision {
-				predicates = append(predicates, alert.HasDecisionsWith(decision.UntilGTE(time.Now().UTC())))
+				predicates = append(predicates, alert.HasDecisionsMatching(decision.UntilGTE(time.Now().UTC())))
 			} else {
 				predicates = append(predicates, alert.Not(alert.HasDecisions()))
 			}
