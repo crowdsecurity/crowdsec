@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -73,7 +74,7 @@ func TestReadRequestLine_Standard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readRequestLine: %v", err)
 	}
-	if rl.Method != "GET" || rl.Target != "/foo" || rl.Proto != "HTTP/1.1" {
+	if rl.Method != http.MethodGet || rl.Target != "/foo" || rl.Proto != "HTTP/1.1" {
 		t.Errorf("got %+v", rl)
 	}
 	if rl.ProtoMajor != 1 || rl.ProtoMinor != 1 {
@@ -87,7 +88,7 @@ func TestReadRequestLine_SkipsBlankLines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readRequestLine: %v", err)
 	}
-	if rl.Method != "POST" || rl.Target != "/a" {
+	if rl.Method != http.MethodPost || rl.Target != "/a" {
 		t.Errorf("got %+v", rl)
 	}
 }
@@ -188,7 +189,7 @@ func TestReadHeaders_SkipInvalidName(t *testing.T) {
 		t.Errorf("X-Good missing: %v", h)
 	}
 	if h.Get("X Foo") != "" {
-		t.Errorf("invalid header should have been dropped")
+		t.Error("invalid header should have been dropped")
 	}
 }
 
@@ -245,9 +246,9 @@ func TestReadHeaders_TrimsOWS(t *testing.T) {
 
 func TestParseHTTPVersion(t *testing.T) {
 	cases := []struct {
-		in          string
+		in           string
 		major, minor int
-		ok          bool
+		ok           bool
 	}{
 		{"HTTP/1.1", 1, 1, true},
 		{"HTTP/1.0", 1, 0, true},
@@ -259,9 +260,9 @@ func TestParseHTTPVersion(t *testing.T) {
 		{"HTTP/1", 0, 0, false},
 	}
 	for _, c := range cases {
-		maj, min, ok := parseHTTPVersion(c.in)
-		if ok != c.ok || maj != c.major || min != c.minor {
-			t.Errorf("parseHTTPVersion(%q) = (%d, %d, %v), want (%d, %d, %v)", c.in, maj, min, ok, c.major, c.minor, c.ok)
+		major, minor, ok := parseHTTPVersion(c.in)
+		if ok != c.ok || major != c.major || minor != c.minor {
+			t.Errorf("parseHTTPVersion(%q) = (%d, %d, %v), want (%d, %d, %v)", c.in, major, minor, ok, c.major, c.minor, c.ok)
 		}
 	}
 }

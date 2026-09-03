@@ -3,6 +3,7 @@ package httpserver
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -15,7 +16,8 @@ import (
 // plus a teardown function.
 func startServer(t *testing.T, h http.Handler) (string, func()) {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	l, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -30,13 +32,13 @@ func startServer(t *testing.T, h http.Handler) (string, func()) {
 	}()
 	addr := l.Addr().String()
 	return addr, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctx)
 		select {
 		case <-serveErr:
 		case <-time.After(2 * time.Second):
-			t.Errorf("server did not return from Serve in time")
+			t.Error("server did not return from Serve in time")
 		}
 	}
 }
@@ -44,7 +46,7 @@ func startServer(t *testing.T, h http.Handler) (string, func()) {
 // dial returns a connected client with a bufio.Reader for reading the response.
 func dial(t *testing.T, addr string) (net.Conn, *bufio.Reader) {
 	t.Helper()
-	c, err := net.Dial("tcp", addr)
+	c, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -54,7 +56,7 @@ func dial(t *testing.T, addr string) (net.Conn, *bufio.Reader) {
 
 func TestServer_BasicGET(t *testing.T) {
 	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != "/foo" {
+		if r.Method != http.MethodGet || r.URL.Path != "/foo" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		_, _ = w.Write([]byte("ok"))
@@ -69,10 +71,11 @@ func TestServer_BasicGET(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status %d", resp.StatusCode)
 	}
 	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	if string(body) != "ok" {
 		t.Errorf("body %q", body)
 	}
@@ -97,7 +100,8 @@ func TestServer_AcceptsControlCharsInHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status %d", resp.StatusCode)
 	}
 	got, _ := seen.Load().(string)
@@ -118,14 +122,14 @@ func TestServer_KeepAlive(t *testing.T) {
 	defer c.Close()
 
 	// Send two requests on the same connection.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nHost: x\r\n\r\n")
 		resp, err := http.ReadResponse(br, nil)
 		if err != nil {
 			t.Fatalf("request %d: %v", i, err)
 		}
 		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 	if got := count.Load(); got != 2 {
 		t.Errorf("handler called %d times, want 2", got)
@@ -145,15 +149,16 @@ func TestServer_ConnectionClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
+	defer resp.Body.Close()
 	// http.ReadResponse strips Connection into resp.Close — check there.
 	if !resp.Close {
-		t.Errorf("resp.Close = false, want true")
+		t.Error("resp.Close = false, want true")
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	one := make([]byte, 1)
 	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	if _, err := c.Read(one); err == nil {
-		t.Errorf("expected error reading from closed connection")
+		t.Error("expected error reading from closed connection")
 	}
 }
 
@@ -170,7 +175,8 @@ func TestServer_HTTP10DefaultsClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status %d", resp.StatusCode)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
@@ -178,7 +184,7 @@ func TestServer_HTTP10DefaultsClose(t *testing.T) {
 	one := make([]byte, 1)
 	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 	if _, err := c.Read(one); err == nil {
-		t.Errorf("expected close after HTTP/1.0 response")
+		t.Error("expected close after HTTP/1.0 response")
 	}
 }
 
@@ -203,6 +209,7 @@ func TestServer_PostWithBody(t *testing.T) {
 		t.Fatalf("read response: %v", err)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 	if string(got) != body {
 		t.Errorf("handler got body %q, want %q", got, body)
 	}
@@ -229,6 +236,7 @@ func TestServer_PostChunkedBody(t *testing.T) {
 		t.Fatalf("read response: %v", err)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 	if string(got) != "hello world" {
 		t.Errorf("handler got %q", got)
 	}
@@ -236,7 +244,7 @@ func TestServer_PostChunkedBody(t *testing.T) {
 
 func TestServer_BadRequestLine(t *testing.T) {
 	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		t.Errorf("handler should not be called for malformed request")
+		t.Error("handler should not be called for malformed request")
 	}))
 	defer stop()
 
@@ -247,13 +255,15 @@ func TestServer_BadRequestLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if resp.StatusCode != 400 {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("status %d, want 400", resp.StatusCode)
 	}
 }
 
 func TestServer_Shutdown(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	l, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -265,17 +275,17 @@ func TestServer_Shutdown(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(l) }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Fatalf("Shutdown: %v", err)
 	}
 	select {
 	case err := <-done:
-		if err != http.ErrServerClosed {
+		if !errors.Is(err, http.ErrServerClosed) {
 			t.Errorf("Serve returned %v, want http.ErrServerClosed", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Errorf("Serve did not return after Shutdown")
+		t.Error("Serve did not return after Shutdown")
 	}
 }

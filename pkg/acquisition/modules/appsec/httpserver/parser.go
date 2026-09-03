@@ -54,7 +54,7 @@ func (l Limits) withDefaults() Limits {
 //
 // The bufio.Reader's buffer must be sized to hold the longest acceptable line;
 // callers configure this via bufio.NewReaderSize.
-func readLine(r *bufio.Reader, max int) ([]byte, error) {
+func readLine(r *bufio.Reader, maxSize int) ([]byte, error) {
 	line, err := r.ReadSlice('\n')
 	if err != nil {
 		if errors.Is(err, bufio.ErrBufferFull) {
@@ -65,7 +65,7 @@ func readLine(r *bufio.Reader, max int) ([]byte, error) {
 		}
 		return nil, err
 	}
-	if len(line) > max+1 {
+	if len(line) > maxSize+1 {
 		return nil, ErrLineTooLong
 	}
 	if n := len(line); n > 0 && line[n-1] == '\n' {

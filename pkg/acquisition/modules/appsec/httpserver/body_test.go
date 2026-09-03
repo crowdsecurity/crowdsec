@@ -51,7 +51,7 @@ func TestNewBodyReader_Chunked(t *testing.T) {
 		t.Fatalf("newBodyReader: %v", err)
 	}
 	if !info.Chunked {
-		t.Errorf("expected chunked=true")
+		t.Error("expected chunked=true")
 	}
 	got, err := io.ReadAll(info.Body)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestNewBodyReader_ChunkedDropsContentLength(t *testing.T) {
 		t.Fatalf("newBodyReader: %v", err)
 	}
 	if !info.Chunked {
-		t.Errorf("expected chunked=true")
+		t.Error("expected chunked=true")
 	}
 	if h.Get("Content-Length") != "" {
 		t.Errorf("Content-Length should have been removed: %v", h)

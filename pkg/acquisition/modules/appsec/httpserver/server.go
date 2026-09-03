@@ -56,7 +56,7 @@ type Server struct {
 // Serve accepts connections on l and serves each one in its own goroutine.
 // Returns http.ErrServerClosed after a successful Shutdown.
 func (s *Server) Serve(l net.Listener) error {
-	return s.serve(l, false)
+	return s.serveListener(l, false)
 }
 
 // ServeTLS wraps l in a TLS listener using TLSConfig and the provided certificate
@@ -75,10 +75,10 @@ func (s *Server) ServeTLS(l net.Listener, certFile, keyFile string) error {
 		}
 		cfg.Certificates = append(cfg.Certificates, cert)
 	}
-	return s.serve(tls.NewListener(l, cfg), true)
+	return s.serveListener(tls.NewListener(l, cfg), true)
 }
 
-func (s *Server) serve(l net.Listener, isTLS bool) error {
+func (s *Server) serveListener(l net.Listener, isTLS bool) error {
 	if s.inShutdown.Load() {
 		return http.ErrServerClosed
 	}
@@ -150,7 +150,7 @@ func (s *Server) serveConn(conn net.Conn, isTLS bool) {
 			_ = conn.SetReadDeadline(time.Now().Add(s.ReadHeaderTimeout))
 		}
 
-		req, info, closeAfter, err := s.readRequest(br, conn, isTLS, limits)
+		req, info, closeAfter, err := readRequest(br, conn, isTLS, limits)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				s.logf("read request: %v", err)
@@ -198,7 +198,7 @@ func (s *Server) serveConn(conn net.Conn, isTLS bool) {
 	}
 }
 
-func (s *Server) readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*http.Request, bodyInfo, bool, error) {
+func readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*http.Request, bodyInfo, bool, error) {
 	rl, err := readRequestLine(br, limits.MaxLineSize)
 	if err != nil {
 		return nil, bodyInfo{}, true, err

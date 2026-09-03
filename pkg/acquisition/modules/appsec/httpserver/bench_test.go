@@ -66,7 +66,8 @@ func buildRequest(bodySize int) string {
 }
 
 func runBench(b *testing.B, start serverStarter, bodySize int) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	var listenConfig net.ListenConfig
+	l, err := listenConfig.Listen(b.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -81,7 +82,7 @@ func runBench(b *testing.B, start serverStarter, bodySize int) {
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
-		c, err := net.Dial("tcp", addr)
+		c, err := (&net.Dialer{}).DialContext(b.Context(), "tcp", addr)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -73,6 +73,8 @@ func (w *responseWriter) SetWriteDeadline(t time.Time) error {
 // flush writes the status line, headers, and buffered body to the connection.
 // Server-controlled headers (Content-Length, Connection) are written directly
 // to avoid map operations; handler-set duplicates are skipped.
+//
+//nolint:errcheck // bufio.Writer retains the first write error and returns it from Flush.
 func (w *responseWriter) flush() error {
 	if !w.headerSent {
 		w.WriteHeader(http.StatusOK)

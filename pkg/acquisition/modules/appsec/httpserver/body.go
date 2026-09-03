@@ -93,14 +93,14 @@ func (b *fixedBody) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (b *fixedBody) Close() error { return nil }
+func (*fixedBody) Close() error { return nil }
 
 // chunkedBody wraps a chunkedReader in an io.ReadCloser without allocating an
 // io.NopCloser indirection.
 type chunkedBody struct{ r *chunkedReader }
 
 func (b *chunkedBody) Read(p []byte) (int, error) { return b.r.Read(p) }
-func (b *chunkedBody) Close() error               { return nil }
+func (*chunkedBody) Close() error                 { return nil }
 
 func parseTransferEncoding(raw string) []string {
 	if raw == "" {
