@@ -302,7 +302,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		Authenticator:   jwtMiddleware.Authenticator,
 		Authorizator:    Authorizator,
 		Unauthorized:    Unauthorized,
-		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
+		TokenLookup:     "header: Authorization, cookie: jwt",
 		TokenHeadName:   "Bearer",
 		TimeFunc:        time.Now,
 	})

@@ -99,7 +99,8 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 
 // FormatAlerts : Format results from the database to be swagger model compliant
 func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
-	var data models.AddAlertsRequest
+	// not "var data ...": the swagger says array, a nil slice would marshal to null
+	data := make(models.AddAlertsRequest, 0, len(result))
 	for _, alertItem := range result {
 		data = append(data, FormatOneAlert(alertItem))
 	}
@@ -269,12 +270,12 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	if stopFlush {
-		c.DBClient.CanFlush = false
+		// don't let the flush job trim the batch mid-import
+		resumeFlush := c.DBClient.PauseFlush()
+		defer resumeFlush()
 	}
 
 	alerts, err := c.DBClient.CreateAlert(ctx, machineID, alertsToSave)
-	c.DBClient.CanFlush = true
-
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

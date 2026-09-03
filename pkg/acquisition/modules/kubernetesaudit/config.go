@@ -13,10 +13,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
+// defaultMaxBodySize is the maximum size of a request body, in bytes.
+const defaultMaxBodySize = int64(10 * 1024 * 1024)
+
 type Configuration struct {
 	ListenAddr                        string `yaml:"listen_addr"`
 	ListenPort                        int    `yaml:"listen_port"`
 	WebhookPath                       string `yaml:"webhook_path"`
+	MaxBodySize                       *int64 `yaml:"max_body_size"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -42,6 +46,10 @@ func (c *Configuration) SetDefaults() {
 	if c.Mode == "" {
 		c.Mode = configuration.TAIL_MODE
 	}
+
+	if c.MaxBodySize == nil {
+		c.MaxBodySize = new(defaultMaxBodySize)
+	}
 }
 
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
@@ -66,6 +74,10 @@ func (c *Configuration) Validate() error {
 
 	if c.WebhookPath == "" {
 		return errors.New("webhook_path cannot be empty")
+	}
+
+	if c.MaxBodySize != nil && *c.MaxBodySize <= 0 {
+		return errors.New("max_body_size must be positive")
 	}
 
 	return nil

@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 )
 
-const decisionDeleteBulkSize = 256 // scientifically proven to be the best value for bulk delete
+const decisionDeleteBulkSize = 2000 // bulk expire/delete batch; matches csconfig.maxDecisionBulkSize used for inserts
 
 type DecisionsByScenario struct {
 	Scenario string
@@ -52,6 +52,24 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, now time.Time
 	}
 
 	return data, nil
+}
+
+func (c *Client) LatestDecisionID(ctx context.Context) (int, error) {
+	latest, err := c.Ent.Decision.Query().
+		Select(decision.FieldID).
+		Order(ent.Desc(decision.FieldID)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return 0, nil
+		}
+
+		c.Log.Warningf("LatestDecisionID : %s", err)
+
+		return 0, fmt.Errorf("latest decision id: %w", QueryFail)
+	}
+
+	return latest.ID, nil
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, now time.Time, filter map[string][]string) ([]*ent.Decision, error) {
@@ -193,45 +211,6 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, now 
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, fmt.Errorf("expired decisions with filters: %w", QueryFail)
-	}
-
-	return data, nil
-}
-
-func (c *Client) QueryNewDecisionsSinceWithFilters(ctx context.Context, now time.Time, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().
-		Select(decision.FieldID, decision.FieldUntil, decision.FieldScenario, decision.FieldScope, decision.FieldValue, decision.FieldType, decision.FieldOrigin, decision.FieldUUID).
-		Where(
-			decision.UntilGT(now),
-		)
-
-	errorMsg := "new decisions"
-
-	if since != nil {
-		query = query.Where(decision.CreatedAtGT(*since))
-
-		errorMsg = fmt.Sprintf("%s since %q", errorMsg, since)
-	}
-
-	// Allow a bouncer to ask for non-deduplicated results
-	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
-		query = query.Where(longestDecisionForScopeTypeValue)
-	}
-
-	query, err := applyDecisionFilter(query, filter)
-	if err != nil {
-		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
-
-		return nil, fmt.Errorf("%w: %s", QueryFail, errorMsg)
-	}
-
-	query = query.Order(ent.Asc(decision.FieldID))
-
-	data, err := query.All(ctx)
-	if err != nil {
-		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
-
-		return nil, fmt.Errorf("%w: %s", QueryFail, errorMsg)
 	}
 
 	return data, nil

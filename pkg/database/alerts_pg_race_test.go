@@ -147,11 +147,17 @@ func TestAlertCreateVsFlushOrphansRace(t *testing.T) {
 	require.Zero(t, edgeErrCount.Load(), "got %d edge-constraint errors (events deleted out from under alert insert)", edgeErrCount.Load())
 	require.Zero(t, otherErrCount.Load(), "got %d unexpected errors", otherErrCount.Load())
 	require.Positive(t, successCount.Load(), "no alerts were inserted at all — test setup is wrong")
+
+	// every meta of a committed alert must still be there: the orphan flush must not
+	// see rows that are still in flight
+	metaCount, err := dbClient.Ent.Meta.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, int(successCount.Load())*2, metaCount, "orphan flush deleted metas of in-flight alerts")
 }
 
-// makeRaceAlerts builds a batch of distinct alerts with several events and a
-// decision each, so the create path actually exercises Event.CreateBulk plus
-// the alert↔events O2M edge update plus decision attachment.
+// makeRaceAlerts builds a batch of distinct alerts with several events, metas and
+// a decision each, so the create path actually exercises Event.CreateBulk and
+// Meta.CreateBulk plus the alert↔events O2M edge update plus decision attachment.
 func makeRaceAlerts(workerID, batchID, eventsPerAlert int) []*models.Alert {
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -201,6 +207,10 @@ func makeRaceAlerts(workerID, batchID, eventsPerAlert int) []*models.Alert {
 				IP:    value,
 			},
 			Events: events,
+			Meta: models.Meta{
+				{Key: "datasource_path", Value: "/var/log/test.log"},
+				{Key: "datasource_type", Value: "file"},
+			},
 			Decisions: []*models.Decision{
 				{
 					Duration:  &duration,

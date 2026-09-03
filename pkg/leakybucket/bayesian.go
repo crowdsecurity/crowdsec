@@ -75,7 +75,7 @@ func (p *BayesianProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event
 	if p.posterior > p.threshold {
 		l.logger.Debugf("Bayesian bucket overflow")
 		l.Ovflw_ts = l.Last_ts
-		l.Out <- l.Queue
+		l.pendingOverflow = l.Queue
 		return nil
 	}
 

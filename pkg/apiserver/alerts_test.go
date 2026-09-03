@@ -178,7 +178,7 @@ func TestCreateAllowlistedAlert(t *testing.T) {
 	// We should have no alert as the IP is allowlisted
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// Create Alert with expired allowlisted IP
 	alertContent = GetAlertReaderFromFile(t, "./tests/alert_allowlisted_expired.json")
@@ -261,7 +261,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?decision_type=ratata", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test scope (ok)
 
@@ -274,7 +274,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scope=rarara", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test scenario (ok)
 
@@ -287,7 +287,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?scenario=crowdsecurity/nope", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test ip (ok)
 
@@ -300,7 +300,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?ip=99.122.77.195", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test ip (invalid value)
 
@@ -319,7 +319,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?range=99.122.77.0/24&contains=false", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test range (invalid value)
 
@@ -338,7 +338,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?since=1ns", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test since (invalid value)
 
@@ -357,7 +357,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?until=1m", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test until (invalid value)
 
@@ -390,7 +390,7 @@ func TestAlertListFilters(t *testing.T) {
 
 	w = lapi.RecordResponse(t, ctx, "GET", "/v1/alerts?has_active_decision=false", emptyBody, "password")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "null", w.Body.String())
+	assert.Equal(t, "[]", w.Body.String())
 
 	// test has active decision (invalid value)
 

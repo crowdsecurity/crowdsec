@@ -77,10 +77,8 @@ func (cli *cliItem) removePlan(hub *cwhub.Hub, args []string, purge bool, force 
 func installedParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
-	for _, parent := range item.Ancestors() {
-		if parent.State.IsInstalled() {
-			ret = append(ret, parent.Name)
-		}
+	for _, parent := range item.InstalledParents() {
+		ret = append(ret, parent.Name)
 	}
 
 	return ret

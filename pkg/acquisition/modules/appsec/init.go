@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/registry"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 	_ types.LAPIClientAware = (*Source)(nil)
 )
 
-const ModuleName = "appsec"
+const ModuleName = appsec.ModuleName
 
 //nolint:gochecknoinits
 func init() {

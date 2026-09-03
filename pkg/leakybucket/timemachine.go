@@ -43,7 +43,7 @@ func TimeMachinePour(l *Leaky, _ pourGate, msg pipeline.Event) {
 		l.Ovflw_ts = d
 		l.logger.Debugf("Bucket overflow at %s", l.Ovflw_ts)
 		l.Queue.Add(msg)
-		l.Out <- l.Queue
+		l.pendingOverflow = l.Queue
 	}
 }
 

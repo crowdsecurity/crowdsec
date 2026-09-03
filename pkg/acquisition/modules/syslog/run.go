@@ -43,8 +43,6 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	})
 
 	g.Go(func() error {
-		defer close(out)
-
 		for {
 			select {
 			case <-ctx.Done():

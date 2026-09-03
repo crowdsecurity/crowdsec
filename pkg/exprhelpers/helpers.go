@@ -122,6 +122,7 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 	dbClient = databaseClient
 
 	XMLCacheInit()
@@ -131,12 +132,15 @@ func Init(databaseClient *database.Client) error {
 
 // ResetDataFiles clears all datafile-related global variables.
 // This should be called during HUP reload to ensure clean state.
+// The DNS cache (pkg/dnscache) is deliberately kept: DNS facts don't change
+// with the configuration, and a reload shouldn't trigger a re-lookup storm.
 func ResetDataFiles() {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileRegexCache = make(map[string]gcache.Cache)
 	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 }
 
 func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
@@ -200,6 +204,12 @@ func FileInit(directory string, filename string, fileType string) error {
 		return nil
 	}
 
+	if fileType == "modsec" {
+		// modsec files are referenced in rules just to have cscli download them
+		// They are loaded directly by coraza
+		return nil
+	}
+
 	ok, err := existsInFileMaps(filename, fileType)
 	if ok {
 		log.Debugf("ignored file %s%s because already loaded", directory, filename)
@@ -240,6 +250,10 @@ func FileInit(directory string, filename string, fileType string) error {
 			if err := fileMapInit(filename, scanner.Text()); err != nil {
 				return err
 			}
+		case "bots":
+			if err := botFileInit(filename, scanner.Text()); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -260,19 +274,16 @@ func FileInit(directory string, filename string, fileType string) error {
 // Expr helpers
 
 func Distinct(params ...any) (any, error) {
-	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
+	v := reflect.ValueOf(params[0])
+	if k := v.Kind(); k != reflect.Slice && k != reflect.Array {
 		return nil, nil
 	}
 
-	array := params[0].([]any)
-	if array == nil {
-		return []any{}, nil
-	}
-
 	exists := make(map[any]bool)
-	ret := make([]any, 0)
+	ret := make([]any, 0, v.Len())
 
-	for _, val := range array {
+	for i := range v.Len() {
+		val := v.Index(i).Interface()
 		if _, ok := exists[val]; !ok {
 			exists[val] = true
 			ret = append(ret, val)
@@ -322,6 +333,8 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 		_, ok = dataFile[filename]
 	case "map":
 		_, ok = dataFileMap[filename]
+	case "bots":
+		_, ok = dataFileBots[filename]
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
 	}

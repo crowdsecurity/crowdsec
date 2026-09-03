@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,8 +15,30 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+func findAppsecAlert(events []pipeline.Event) *pipeline.Event {
+	for i := range events {
+		if events[i].Type == pipeline.APPSEC && events[i].Overflow.Alert != nil {
+			return &events[i]
+		}
+	}
+	return nil
+}
+
+// Looked up rather than indexed: alerts are interleaved with the log events.
+func findChallengeLog(events []pipeline.Event, reason appsec.ChallengeReason) *pipeline.Event {
+	for i := range events {
+		if events[i].Type == pipeline.LOG && events[i].Parsed["challenge_event"] == string(reason) {
+			return &events[i]
+		}
+	}
+	return nil
+}
 
 // jsonBody returns an io.ReadCloser that reads back `body` as many times as
 // the validator needs it, so we can reuse the same test request across phases.
@@ -527,7 +551,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			pre_eval: []appsec.Hook{
-				{Apply: []string{"RemoveInBandRuleByID(1516470898)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+				{Apply: []string{"RemoveInBandRuleByID(407789510)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
@@ -752,7 +776,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			pre_eval: []appsec.Hook{
-				{Apply: []string{"SetRemediationByID(1516470898, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+				{Apply: []string{"SetRemediationByID(407789510, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
@@ -1348,6 +1372,318 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 	runTests(t, tests)
 }
 
+func TestAppsecOnChallengeHooks(t *testing.T) {
+	powWorkerURL, err := url.Parse(challenge.ChallengePowWorkerPath)
+	require.NoError(t, err)
+
+	tests := []appsecRuleTest{
+		{
+			name:             "post_eval issues a challenge when no cookie is present",
+			expected_load_ok: true,
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.NotEmpty(t, responses[0].UserHTTPBodyContent)
+				require.Contains(t, responses[0].UserHeaders["Content-Type"], "text/html")
+				// Issuing the challenge page must emit a single "requested" event
+				// on a source distinct from the WAF one.
+				require.Len(t, events, 1)
+				require.Equal(t, pipeline.LOG, events[0].Type)
+				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
+				require.Equal(t, string(appsec.ChallengeReasonRequested), events[0].Parsed["challenge_event"])
+			},
+		},
+		{
+			name:             "on_challenge: no cookie → user hooks skipped (filter would nil-deref)",
+			expected_load_ok: true,
+			// This filter would nil-deref if it ran without a fingerprint. The
+			// dispatcher must skip it when no cookie is present.
+			on_challenge: []appsec.Hook{
+				{Filter: "fingerprint.Bot.MismatchWebGLInWorker", Apply: []string{"DropRequest('bot')"}},
+			},
+			// Must reference SendChallenge() somewhere to force ChallengeRuntime init.
+			post_eval: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt, "on_challenge must not fire without a fingerprint")
+			},
+		},
+		{
+			name:             "on_challenge: PoW worker path served, WAF evaluation skipped",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			// Force the challenge runtime to be initialized by referencing SendChallenge()
+			// in a hook that won't match this request.
+			on_challenge: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         challenge.ChallengePowWorkerPath,
+				Args:        url.Values{"foo": []string{"toto"}}, // would normally trigger rule1
+				HTTPRequest: &http.Request{Host: "example.com", URL: powWorkerURL},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Empty(t, events, "WAF should not have evaluated the infrastructure path")
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.Equal(t, challenge.PowWorkerJS, responses[0].UserHTTPBodyContent)
+				require.Contains(t, responses[0].UserHeaders["Content-Type"], "application/javascript")
+			},
+		},
+		{
+			name:             "on_challenge: invalid submission returns failed body, no hooks run",
+			expected_load_ok: true,
+			// Unconditional DropRequest in on_challenge must NOT fire on an
+			// invalid submission — the dispatcher returns the failed JSON
+			// body and skips user hooks.
+			on_challenge: []appsec.Hook{
+				{Apply: []string{"DropRequest('should not fire')"}},
+			},
+			// Force ChallengeRuntime init.
+			post_eval: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "POST",
+				URI:        challenge.ChallengeSubmitPath,
+				HTTPRequest: func() *http.Request {
+					u, _ := url.Parse(challenge.ChallengeSubmitPath)
+					return &http.Request{Host: "example.com", URL: u, Method: http.MethodPost}
+				}(),
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.JSONEq(t, `{"status":"failed"}`, responses[0].UserHTTPBodyContent)
+				require.False(t, responses[0].InBandInterrupt, "on_challenge hooks must not run on invalid submission")
+				// submitted + failed log events, plus the bot-detection alert.
+				require.Len(t, events, 3)
+
+				submitted := findChallengeLog(events, appsec.ChallengeReasonSubmitted)
+				require.NotNil(t, submitted, "expected a submitted challenge log")
+				require.Equal(t, appsec.SourceChallenge, submitted.Parsed["source"])
+
+				failed := findChallengeLog(events, appsec.ChallengeReasonFailed)
+				require.NotNil(t, failed, "expected a failed challenge log")
+				require.NotEmpty(t, failed.Parsed["challenge_fail_reason"])
+
+				alertEvt := findAppsecAlert(events)
+				require.NotNil(t, alertEvt, "expected a bot-detection alert overflow")
+				require.Equal(t, types.BotDetectionAlertKind.String(), alertEvt.Overflow.Alert.Kind)
+			},
+		},
+		{
+			// Mock LAPI (see testAppSecEngine in appsec_test.go) exposes 5.4.3.2
+			// as an allowlisted IP. SendChallenge() must be a no-op for it: no
+			// challenge HTML, no Set-Cookie, response stays at the default pass
+			// action so the request goes through cleanly.
+			name:             "allowlisted IP: post_eval SendChallenge() is suppressed",
+			expected_load_ok: true,
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.3.2",
+				RemoteAddr:  "5.4.3.2",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"allowlisted IP must not be challenged")
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Empty(t, responses[0].UserHTTPBodyContent, "no challenge HTML must be served")
+				require.Empty(t, responses[0].UserHTTPCookies, "no challenge cookie must be issued")
+				require.False(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			// Same allowlisted IP, but inside a /24 CIDR entry (5.4.4.0/24) —
+			// confirms range matches are honored the same way as exact IPs.
+			name:             "allowlisted CIDR: post_eval SendChallenge() is suppressed",
+			expected_load_ok: true,
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.4.42",
+				RemoteAddr:  "5.4.4.42",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Empty(t, responses[0].UserHTTPBodyContent)
+				require.Empty(t, responses[0].UserHTTPCookies)
+			},
+		},
+		{
+			// Allowlisted IPs hitting infrastructure paths must not get the PoW
+			// worker JS served either — ProcessOnChallengeRules short-circuits
+			// before the path-based branch, so the request flows through normal
+			// WAF processing.
+			name:             "allowlisted IP: PoW worker path is not served",
+			expected_load_ok: true,
+			// Reference SendChallenge() so ChallengeRuntime initializes.
+			on_challenge: []appsec.Hook{
+				{Filter: "false", Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "5.4.3.2",
+				RemoteAddr:  "5.4.3.2",
+				Method:      "GET",
+				URI:         challenge.ChallengePowWorkerPath,
+				HTTPRequest: &http.Request{Host: "example.com", URL: powWorkerURL},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"allowlisted IP must not receive the PoW worker JS")
+				require.NotEqual(t, challenge.PowWorkerJS, responses[0].UserHTTPBodyContent)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
+		{
+			// SendChallenge is restricted to on_challenge + in-band post_eval
+			name:             "pre_eval SendChallenge() fails to load",
+			expected_load_ok: false,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+		},
+		{
+			// The score accumulator is per-request state, which on_load
+			// predates entirely.
+			name:             "on_load AddRequestScore() fails to load",
+			expected_load_ok: false,
+			on_load: []appsec.Hook{
+				{Apply: []string{`AddRequestScore(15, "utc_timezone")`}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+		},
+		{
+			name:             "pre_eval score accumulates across hooks",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Filter: "true", Apply: []string{`AddRequestScore(30, "no_user_agent")`}},
+				{Filter: "true", Apply: []string{`AddRequestScore(20, "suspicious_path")`}},
+				{Filter: "RequestScore() >= 45", Apply: []string{`DropRequest("request score " + string(RequestScore()))`}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action,
+					"50 points across two hooks must cross the 45 bar")
+			},
+		},
+		{
+			// SendChallenge in an out-of-band post_eval hook is rejected at runtime
+			name:             "outofband post_eval SendChallenge() is rejected",
+			expected_load_ok: true,
+			outofband_post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.NotEqual(t, appsec.ChallengeRemediation, responses[0].Action,
+					"out-of-band SendChallenge must not issue a challenge")
+				require.Empty(t, responses[0].UserHTTPBodyContent, "no challenge HTML must be served")
+			},
+		},
+		{
+			// A challenged request is served the challenge and never reaches the
+			// backend;
+			name:             "challenge skips out-of-band evaluation",
+			expected_load_ok: true,
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "oob-rule",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				Args:        url.Values{"foo": []string{"toto"}}, // would match oob-rule
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.ChallengeRemediation, responses[0].Action)
+				// Only the challenge "requested" event must be present; the OOB rule
+				// was skipped, so no appsec match event is emitted.
+				require.Len(t, events, 1)
+				require.Equal(t, appsec.SourceChallenge, events[0].Parsed["source"])
+				require.Equal(t, string(appsec.ChallengeReasonRequested), events[0].Parsed["challenge_event"])
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
 // minimal schema used by the hook_vars-in-event tests: /users only accepts
 // a POST whose body has a required username field.
 const testUsersSchema = `openapi: 3.0.0
@@ -1420,6 +1756,13 @@ func TestAppsecHookVarsSurfacedInEvent(t *testing.T) {
 				// Overflow carries HookVars (propagated by AppsecEventGeneration).
 				require.Equal(t, "request_body", overflow.Appsec.HookVars["validation_error_reason"])
 				require.Equal(t, "username", overflow.Appsec.HookVars["validation_error_field"])
+
+				// ...on its own map: the parsers mutate the LOG event downstream,
+				// so the two must not alias.
+				logEvt.Appsec.HookVars["validation_error_field"] = "mutated"
+				require.Equal(t, "username", overflow.Appsec.HookVars["validation_error_field"],
+					"overflow must not share its HookVars map with the LOG event")
+				logEvt.Appsec.HookVars["validation_error_field"] = "username"
 
 				// LOG event has HookVars, matched-rules list, and drop_reason.
 				require.Equal(t, "request_body", logEvt.Appsec.HookVars["validation_error_reason"])
@@ -1601,4 +1944,76 @@ func mustParseURL(raw string) *url.URL {
 		panic(err)
 	}
 	return u
+}
+
+// TestAppsecMatchKnownBotHooks exercises the MatchKnownBot helper through the
+// full runner: a bot definition is loaded from a legit_bots directory (as
+// AppsecConfig.Build does with the hub data dir), an in-band rule matches the
+// request, and a pre_eval hook downgrades the remediation for verified bots only.
+func TestAppsecMatchKnownBotHooks(t *testing.T) {
+	require.NoError(t, exprhelpers.Init(nil))
+
+	datadir := t.TempDir()
+	botsDir := filepath.Join(datadir, "legit_bots")
+	require.NoError(t, os.Mkdir(botsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(botsDir, "bots.json"),
+		[]byte(`{"name":"testbot","user_agent":"testbot","ranges":["192.0.2.0/24"]}`), 0o644))
+	// key the datafile by its dest_file relative path, as AppsecConfig.Build does
+	require.NoError(t, exprhelpers.FileInit(datadir, "legit_bots/bots.json", "bots"))
+
+	banRule := appsec_rule.CustomRule{
+		Name:      "rule1",
+		Zones:     []string{"ARGS"},
+		Variables: []string{"foo"},
+		Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+		Transform: []string{"lowercase"},
+	}
+	bypassHook := appsec.Hook{
+		Filter: `MatchKnownBot(req.RemoteAddr, req.UserAgent(), req.URL.Path, "legit_bots/bots.json")`,
+		Apply:  []string{`SetRemediation("allow")`},
+	}
+	botRequest := func(remoteAddr string, ua string) appsec.ParsedRequest {
+		return appsec.ParsedRequest{
+			RemoteAddr: remoteAddr,
+			Method:     "GET",
+			URI:        "/crawl",
+			Args:       url.Values{"foo": []string{"toto"}},
+			HTTPRequest: &http.Request{
+				Host:       "example.com",
+				RemoteAddr: remoteAddr,
+				URL:        mustParseURL("http://example.com/crawl"),
+				Header:     http.Header{"User-Agent": []string{ua}},
+			},
+		}
+	}
+
+	tests := []appsecRuleTest{
+		{
+			name:             "verified bot bypasses the ban",
+			expected_load_ok: true,
+			inband_rules:     []appsec_rule.CustomRule{banRule},
+			pre_eval:         []appsec.Hook{bypassHook},
+			// the IP is in the declared range; ip:port proves address normalization end to end
+			input_request: botRequest("192.0.2.10:34567", "Mozilla/5.0 (compatible; TestBot/1.0)"),
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt, "the rule still matches, only the remediation changes")
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+			},
+		},
+		{
+			name:             "spoofed UA from a foreign IP is still banned",
+			expected_load_ok: true,
+			inband_rules:     []appsec_rule.CustomRule{banRule},
+			pre_eval:         []appsec.Hook{bypassHook},
+			input_request:    botRequest("203.0.113.9:34567", "Mozilla/5.0 (compatible; TestBot/1.0)"),
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+			},
+		},
+	}
+
+	runTests(t, tests)
 }

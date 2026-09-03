@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -326,24 +327,130 @@ func TestBuildNilPhaseConfig(t *testing.T) {
 	assert.Empty(t, rt.OutOfBandHooks.OnMatch)
 }
 
-func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
-	cases := []string{
-		"../escape.yaml",
-		"../../etc/passwd",
-		"/etc/passwd",
+func TestBuildOnChallengeTopLevelAndInband(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OnChallenge: []Hook{
+			{Apply: []string{"SetRemediation('allow')"}},
+		},
+		InBand: &AppsecPhaseConfig{
+			OnChallenge: []Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(418)"}},
+			},
+		},
 	}
 
-	for _, filename := range cases {
-		t.Run(filename, func(t *testing.T) {
-			rt := &AppsecRuntimeConfig{
-				Logger:  log.NewEntry(log.StandardLogger()),
-				DataDir: t.TempDir(),
-			}
+	hub := &cwhub.Hub{}
+	rt, err := cfg.Build(t.Context(), hub)
+	require.NoError(t, err)
 
-			err := rt.LoadAPISchemaWithName("ref", filename)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), "must be relative to schemas")
-		})
+	// Both top-level and inband on_challenge hooks end up in CompiledOnChallenge.
+	require.Len(t, rt.CompiledOnChallenge, 2)
+	assert.NotNil(t, rt.CompiledOnChallenge[0].ApplyExpr)
+	assert.NotNil(t, rt.CompiledOnChallenge[1].FilterExpr)
+
+	// Defining on_challenge must force the challenge runtime on.
+	assert.True(t, rt.NeedWASMVM)
+}
+
+func TestBuildOnChallengeUnderOutofbandRejected(t *testing.T) {
+	cfg := AppsecConfig{
+		Logger:             log.NewEntry(log.StandardLogger()),
+		DefaultRemediation: "ban",
+		OutOfBand: &AppsecPhaseConfig{
+			OnChallenge: []Hook{{Apply: []string{"SetRemediation('allow')"}}},
+		},
+	}
+
+	hub := &cwhub.Hub{}
+	_, err := cfg.Build(t.Context(), hub)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "on_challenge hooks are only valid in-band")
+}
+
+func TestLoadByPathOnChallengeYAML(t *testing.T) {
+	cfg := newTestConfig()
+	f := writeTempYAML(t, `
+name: test-on-challenge
+on_challenge:
+  - filter: "fingerprint != nil"
+    apply:
+      - SetRemediation('allow')
+inband:
+  on_challenge:
+    - apply:
+        - SendChallenge()
+`)
+
+	require.NoError(t, cfg.LoadByPath(f))
+	assert.Len(t, cfg.OnChallenge, 1)
+	require.NotNil(t, cfg.InBand)
+	assert.Len(t, cfg.InBand.OnChallenge, 1)
+}
+
+// TestLoadByPathChallengeBlockMergesAcrossFiles confirms that a `challenge:`
+// block in an appsec-config YAML is parsed onto AppsecConfig.Challenge, and
+// that loading a second config with a disjoint subset of fields *merges*
+// rather than replacing — fields set in earlier configs survive when not
+// touched by later ones, and overlapping fields take the later value.
+func TestLoadByPathChallengeBlockMergesAcrossFiles(t *testing.T) {
+	cfg := newTestConfig()
+
+	first := writeTempYAML(t, `
+name: base
+challenge:
+  master_secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  key_rotation_interval: 5m
+  max_live_epochs: 3
+  cookie_ttl: 12h
+`)
+	require.NoError(t, cfg.LoadByPath(first))
+	require.NotNil(t, cfg.Challenge)
+	require.NotNil(t, cfg.Challenge.MasterSecret)
+	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
+	assert.Equal(t, 3, *cfg.Challenge.MaxLiveEpochs)
+	assert.Equal(t, 12*time.Hour, *cfg.Challenge.CookieTTL)
+
+	// Second config overrides CookieTTL and adds crypto/spent-set fields,
+	// leaving master_secret / rotation / max_live_epochs from the first
+	// config untouched. This is the multi-config last-wins-per-field
+	// behavior collections rely on.
+	second := writeTempYAML(t, `
+name: overlay
+challenge:
+  cookie_ttl: 1h
+  crypto_obfuscation_pool_size: 2
+  spent_set_max_entries: 250000
+`)
+	require.NoError(t, cfg.LoadByPath(second))
+	require.NotNil(t, cfg.Challenge)
+	assert.Equal(t, 1*time.Hour, *cfg.Challenge.CookieTTL, "later config overrides cookie_ttl")
+	require.NotNil(t, cfg.Challenge.MasterSecret, "master_secret from first config must survive")
+	assert.Equal(t, 5*time.Minute, *cfg.Challenge.KeyRotationInterval)
+	require.NotNil(t, cfg.Challenge.CryptoObfuscationPoolSize)
+	assert.Equal(t, 2, *cfg.Challenge.CryptoObfuscationPoolSize, "new field from second config appears")
+	require.NotNil(t, cfg.Challenge.SpentSetMaxEntries)
+	assert.Equal(t, 250000, *cfg.Challenge.SpentSetMaxEntries)
+}
+
+// TestLoadByPathRejectsRemovedLibraryObfuscationKeys confirms that an
+// appsec-config carrying any of the removed `library_*` obfuscation keys
+// fails to parse (strict YAML mode). fpscanner is now served unobfuscated,
+// so these knobs are gone and stale configs must fail loudly rather than
+// silently doing nothing.
+func TestLoadByPathRejectsRemovedLibraryObfuscationKeys(t *testing.T) {
+	for _, key := range []string{
+		"library_runtime_obfuscation_enabled: true",
+		"library_obfuscation_pool_size: 2",
+		"library_obfuscation_refresh_interval: 30m",
+	} {
+		cfg := newTestConfig()
+		f := writeTempYAML(t, "name: stale\nchallenge:\n  "+key+"\n")
+		err := cfg.LoadByPath(f)
+		require.Error(t, err, "stale key %q must be rejected", key)
+		assert.Contains(t, err.Error(), "library_",
+			"strict YAML parse error must name the unknown field")
 	}
 }
 
@@ -365,4 +472,25 @@ func TestBuildOnLoadStaysOutOfPhaseHooks(t *testing.T) {
 	assert.Empty(t, rt.CommonHooks.PreEval)
 	assert.Empty(t, rt.CommonHooks.PostEval)
 	assert.Empty(t, rt.CommonHooks.OnMatch)
+}
+
+func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
+	cases := []string{
+		"../escape.yaml",
+		"../../etc/passwd",
+		"/etc/passwd",
+	}
+
+	for _, filename := range cases {
+		t.Run(filename, func(t *testing.T) {
+			rt := &AppsecRuntimeConfig{
+				Logger:  log.NewEntry(log.StandardLogger()),
+				DataDir: t.TempDir(),
+			}
+
+			err := rt.LoadAPISchemaWithName("ref", filename)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "must be relative to schemas")
+		})
+	}
 }

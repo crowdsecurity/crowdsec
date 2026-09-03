@@ -92,6 +92,14 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v any) (*Response
 	}
 
 	if err != nil {
+		// http.Client.Do returns a nil response on transport errors: keep it nil
+		// instead of wrapping it, so callers testing the returned *Response don't
+		// dereference a nil http.Response.
+		var response *Response
+		if resp != nil {
+			response = newResponse(resp)
+		}
+
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
 		select {
@@ -105,13 +113,11 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v any) (*Response
 		if errors.As(err, &urlErr) {
 			if parsedURL, parseErr := url.Parse(urlErr.URL); parseErr == nil {
 				urlErr.URL = parsedURL.String()
-				return newResponse(resp), urlErr
+				return response, urlErr
 			}
-
-			return newResponse(resp), err
 		}
 
-		return newResponse(resp), err
+		return response, err
 	}
 
 	if log.IsLevelEnabled(log.DebugLevel) {

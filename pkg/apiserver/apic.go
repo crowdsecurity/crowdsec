@@ -54,6 +54,7 @@ type apic struct {
 	metricsIntervalFirst      time.Duration
 	usageMetricsInterval      time.Duration
 	usageMetricsIntervalFirst time.Duration
+	usageMetricsBatchBytes    int
 	dbClient                  *database.Client
 	apiClient                 *apiclient.ApiClient
 	AlertsAddChan             chan []*models.Alert
@@ -210,6 +211,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		metricsIntervalFirst:      randomDuration(metricsIntervalDefault, metricsIntervalDelta),
 		usageMetricsInterval:      usageMetricsInterval,
 		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalDelta),
+		usageMetricsBatchBytes:    usageMetricsBatchBytes,
 		isPulling:                 make(chan bool, 1),
 		whitelists:                apicWhitelist,
 		pullBlocklists:            *config.PullConfig.Blocklists,
@@ -1059,7 +1061,14 @@ func (a *apic) Pull(ctx context.Context) error {
 			toldOnce = true
 		}
 
-		time.Sleep(1 * time.Second)
+		select {
+		case <-time.After(1 * time.Second):
+		case <-a.pullTomb.Dying():
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
+
+			return nil
+		}
 	}
 
 	if err := a.PullTop(ctx, false); err != nil {

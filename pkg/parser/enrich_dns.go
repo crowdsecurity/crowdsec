@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"net"
+	"net/netip"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -12,16 +13,21 @@ import (
 //var ExportedFuncs = []string{"reverse_dns"}
 
 func reverse_dns(field string, p *pipeline.Event, plog *log.Entry) (map[string]string, error) {
-	ret := make(map[string]string)
 	if field == "" {
 		return nil, nil
 	}
-	rets, err := net.LookupAddr(field)
+
+	addr, err := netip.ParseAddr(field)
 	if err != nil {
-		plog.Debugf("failed to resolve '%s'", field)
-		return nil, nil //nolint:nilerr
+		plog.Debugf("invalid address '%s'", field)
+		return nil, nil //nolint:nilerr // a non-resolvable field is not an enrichment error
 	}
-	//When using the host C library resolver, at most one result will be returned. To bypass the host resolver, use a custom Resolver.
-	ret["reverse_dns"] = rets[0]
-	return ret, nil
+
+	rets := dnscache.PTRRecords(addr)
+	if len(rets) == 0 {
+		plog.Debugf("failed to resolve '%s'", field)
+		return nil, nil
+	}
+
+	return map[string]string{"reverse_dns": rets[0]}, nil
 }

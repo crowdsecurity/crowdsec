@@ -1,97 +1,15 @@
 package appsecacquisition
 
 import (
+	"io"
 	"testing"
 
+	"github.com/corazawaf/coraza/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
-	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
-
-func TestCopyHookVars(t *testing.T) {
-	t.Run("no hook vars is a no-op", func(t *testing.T) {
-		evt := pipeline.Event{
-			Appsec: pipeline.AppsecEvent{
-				MatchedRules: pipeline.MatchedRules{{"id": 1}},
-			},
-		}
-		state := &appsec.AppsecRequestState{HookVars: map[string]string{}}
-
-		copyHookVars(&evt, state)
-
-		require.Nil(t, evt.Appsec.HookVars)
-		_, ok := evt.Appsec.MatchedRules[0]["hook_vars"]
-		require.False(t, ok, "matched rule should not gain a hook_vars key when state has none")
-	})
-
-	t.Run("snapshots into event and onto each match", func(t *testing.T) {
-		evt := pipeline.Event{
-			Appsec: pipeline.AppsecEvent{
-				MatchedRules: pipeline.MatchedRules{
-					{"id": 1, "name": "rule-a"},
-					{"id": 2, "name": "rule-b"},
-				},
-			},
-		}
-		state := &appsec.AppsecRequestState{
-			HookVars: map[string]string{
-				"validation_error":       "request_body: ...",
-				"validation_error_field": "username",
-			},
-		}
-
-		copyHookVars(&evt, state)
-
-		require.Equal(t, "request_body: ...", evt.Appsec.HookVars["validation_error"])
-		require.Equal(t, "username", evt.Appsec.HookVars["validation_error_field"])
-
-		for i, match := range evt.Appsec.MatchedRules {
-			hv, ok := match["hook_vars"].(map[string]string)
-			require.True(t, ok, "match %d missing hook_vars", i)
-			require.Equal(t, "username", hv["validation_error_field"])
-		}
-	})
-
-	t.Run("event snapshot is decoupled from subsequent state mutations", func(t *testing.T) {
-		evt := pipeline.Event{}
-		state := &appsec.AppsecRequestState{
-			HookVars: map[string]string{"k": "v1"},
-		}
-
-		copyHookVars(&evt, state)
-
-		// Simulate an out-of-band phase mutating the scratch space.
-		state.HookVars["k"] = "v2"
-		state.HookVars["new"] = "x"
-
-		require.Equal(t, "v1", evt.Appsec.HookVars["k"])
-		_, hasNew := evt.Appsec.HookVars["new"]
-		require.False(t, hasNew, "event snapshot must not reflect post-snapshot state mutations")
-	})
-
-	t.Run("all matches share the same snapshot reference", func(t *testing.T) {
-		evt := pipeline.Event{
-			Appsec: pipeline.AppsecEvent{
-				MatchedRules: pipeline.MatchedRules{
-					{"id": 1},
-					{"id": 2},
-				},
-			},
-		}
-		state := &appsec.AppsecRequestState{HookVars: map[string]string{"k": "v"}}
-
-		copyHookVars(&evt, state)
-
-		m0 := evt.Appsec.MatchedRules[0]["hook_vars"].(map[string]string)
-		m1 := evt.Appsec.MatchedRules[1]["hook_vars"].(map[string]string)
-		// Matches share the same snapshot map: mutating one is observable via the other.
-		m0["extra"] = "y"
-		require.Equal(t, "y", m1["extra"], "matches should share the same snapshot map")
-	})
-}
 
 func TestAppsecConflictRuleLoad(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
@@ -283,4 +201,18 @@ func TestAppsecRuleLoad(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+// AppsecRunner.closeEngine reaches Close through an io.Closer assertion, because
+// coraza.WAF doesn't declare Close. If the concrete type ever stops implementing
+// it, that assertion turns the whole teardown into a silent no-op.
+func TestEngineImplementsCloser(t *testing.T) {
+	waf, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(
+		`SecRule REQUEST_URI "@rx abc" "id:1,phase:2,deny,log"`))
+	require.NoError(t, err)
+
+	closer, ok := waf.(io.Closer)
+	require.True(t, ok, "coraza.NewWAF result must implement io.Closer")
+	require.NoError(t, closer.Close())
+	require.NoError(t, closer.Close(), "Close must be idempotent")
 }

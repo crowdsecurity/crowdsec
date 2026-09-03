@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -140,6 +141,11 @@ func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {
 			continue
 		}
 
+		if opt == csconfig.CONSOLE_MANAGEMENT {
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
+			continue
+		}
+
 		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
 			return nil, fmt.Errorf("option %s doesn't exist", opt)
 		}
@@ -161,6 +167,11 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 		if opt == "all" {
 			opts = []string{}
 			// keep validating the rest of the option names
+			continue
+		}
+
+		if opt == csconfig.CONSOLE_MANAGEMENT {
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
 			continue
 		}
 
@@ -216,7 +227,6 @@ cscli console enroll --quick
 cscli console enroll --quick --name [instance_name]
 cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-cscli console enroll --enable console_management YOUR-ENROLL-KEY
 cscli console enroll --disable context YOUR-ENROLL-KEY
 
 valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
@@ -344,6 +354,76 @@ Disable given information push to the central API.`,
 	return cmd
 }
 
+type liveConsoleStatus struct {
+	capi               consolestatus.CAPIStatus
+	registered         bool
+	reachable          bool
+	decisionManagement bool
+	papi               *consolestatus.PAPIInfo
+}
+
+// fetchConsoleStatus queries CAPI (and PAPI when enrolled) for the live console link.
+func (*cliConsole) fetchConsoleStatus(ctx context.Context, cfg *csconfig.Config) liveConsoleStatus {
+	st := liveConsoleStatus{}
+
+	online := cfg.API.Server.OnlineClient
+
+	// load credz here to gracefully handle missing/invalid file.
+	if online == nil || online.CredentialsFilePath == "" {
+		return st
+	}
+
+	if err := online.Load(); err != nil {
+		log.Warnf("could not load CAPI credentials: %s", err)
+		return st
+	}
+
+	if online.Credentials == nil {
+		return st
+	}
+
+	st.registered = true
+
+	hub, err := require.Hub(cfg, nil)
+	if err != nil {
+		log.Warnf("could not load hub, skipping live console status: %s", err)
+		return st
+	}
+
+	db, err := require.DBClient(ctx, cfg.DbConfig)
+	if err != nil {
+		log.Warnf("could not connect to database, skipping live console status: %s", err)
+		return st
+	}
+
+	cred := online.Credentials
+
+	capi, err := consolestatus.QueryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
+	if err != nil {
+		log.Warnf("could not reach Central API (CAPI): %s", err)
+		return st
+	}
+
+	st.capi = capi
+	st.reachable = true
+
+	if !capi.Enrolled {
+		return st
+	}
+
+	st.decisionManagement = consolestatus.DecisionManagementActive(capi.SubscriptionType)
+
+	papi, err := consolestatus.QueryPAPIInfo(ctx, cfg.API.Server, db)
+	if err != nil {
+		log.Debugf("could not reach Polling API (PAPI): %s", err)
+		return st
+	}
+
+	st.papi = &papi
+
+	return st
+}
+
 func (cli *cliConsole) newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "status",
@@ -351,20 +431,47 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 		Example:           `sudo cscli console status`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		// Unlike the other console subcommands, status must run even when the engine is not
+		// registered against CAPI or can't reach it.
+		// We skip loading online credentials here (they're loaded best-effort in
+		// fetchConsoleStatus). This overrides the parent's stricter PersistentPreRunE.
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			return require.LAPINoOnlineCreds(cli.cfg())
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
+			ctx := cmd.Context()
 			consoleCfg := cfg.API.Server.ConsoleConfig
 
 			switch cfg.Cscli.Output {
 			case "human":
+				st := cli.fetchConsoleStatus(ctx, cfg)
+				cmdConsoleConnectionTable(color.Output, cfg.Cscli.Color, st)
 				cmdConsoleStatusTable(color.Output, cfg.Cscli.Color, *consoleCfg)
 			case "json":
-				out := map[string]*bool{
-					csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,
-					csconfig.SEND_CUSTOM_SCENARIOS:  consoleCfg.ShareCustomScenarios,
-					csconfig.SEND_TAINTED_SCENARIOS: consoleCfg.ShareTaintedScenarios,
-					csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
-					csconfig.CONSOLE_MANAGEMENT:     consoleCfg.ConsoleManagement,
+				st := cli.fetchConsoleStatus(ctx, cfg)
+
+				console := map[string]any{
+					"registered":          st.registered,
+					"authenticated":       st.reachable,
+					"enrolled":            st.capi.Enrolled,
+					"plan":                st.capi.SubscriptionType,
+					"decision_management": st.decisionManagement,
+				}
+
+				if st.papi != nil {
+					console["last_order_received"] = st.papi.LastOrder
+					console["papi_categories"] = st.papi.Categories
+				}
+
+				out := map[string]any{
+					"sharing_options": map[string]*bool{
+						csconfig.SEND_MANUAL_SCENARIOS:  consoleCfg.ShareManualDecisions,
+						csconfig.SEND_CUSTOM_SCENARIOS:  consoleCfg.ShareCustomScenarios,
+						csconfig.SEND_TAINTED_SCENARIOS: consoleCfg.ShareTaintedScenarios,
+						csconfig.SEND_CONTEXT:           consoleCfg.ShareContext,
+					},
+					"console": console,
 				}
 
 				data, err := json.MarshalIndent(out, "", "  ")
@@ -386,7 +493,6 @@ func (cli *cliConsole) newStatusCmd() *cobra.Command {
 					{csconfig.SEND_CUSTOM_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareCustomScenarios)},
 					{csconfig.SEND_TAINTED_SCENARIOS, strconv.FormatBool(*consoleCfg.ShareTaintedScenarios)},
 					{csconfig.SEND_CONTEXT, strconv.FormatBool(*consoleCfg.ShareContext)},
-					{csconfig.CONSOLE_MANAGEMENT, strconv.FormatBool(*consoleCfg.ConsoleManagement)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -432,38 +538,8 @@ func (cli *cliConsole) setConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			// for each flag check if it's already set before setting it
-			if consoleCfg.ConsoleManagement != nil && *consoleCfg.ConsoleManagement == wanted {
-				log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-			} else {
-				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				consoleCfg.ConsoleManagement = new(wanted)
-			}
-
-			if cfg.API.Server.OnlineClient.Credentials != nil {
-				changed := false
-				if wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL == "" {
-					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = csconfig.PAPIBaseURL
-				} else if !wanted && cfg.API.Server.OnlineClient.Credentials.PapiURL != "" {
-					changed = true
-					cfg.API.Server.OnlineClient.Credentials.PapiURL = ""
-				}
-
-				if changed {
-					fileContent, err := yaml.Marshal(cfg.API.Server.OnlineClient.Credentials)
-					if err != nil {
-						return fmt.Errorf("cannot serialize credentials: %w", err)
-					}
-
-					log.Infof("Updating credentials file: %s", cfg.API.Server.OnlineClient.CredentialsFilePath)
-
-					err = os.WriteFile(cfg.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
-					if err != nil {
-						return fmt.Errorf("cannot write credentials file: %w", err)
-					}
-				}
-			}
+			// deprecated no-op: decision management is now enabled automatically based on the plan
+			log.Warnf("'%s' is deprecated and has no effect: decision management is enabled automatically based on your console plan", csconfig.CONSOLE_MANAGEMENT)
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			// for each flag check if it's already set before setting it
 			if consoleCfg.ShareCustomScenarios != nil && *consoleCfg.ShareCustomScenarios == wanted {

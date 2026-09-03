@@ -10,3 +10,6 @@
 [submodule "tests/lib/bats-support"]
 	path = test/lib/bats-support
 	url = https://github.com/bats-core/bats-support.git
+[submodule "pkg/appsec/challenge/js/fpscanner/fpscanner"]
+	path = pkg/appsec/challenge/js/fpscanner/fpscanner
+	url = https://github.com/antoinevastel/fpscanner
