@@ -11,8 +11,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 )
 
-// Still read, so cookies sealed before the field stopped being written keep
-// their value until they expire.
 func fingerprintDataFromProto(p *pb.FingerprintData) FingerprintData {
 	f := FingerprintData{
 		FSID:             p.GetFsid(),
