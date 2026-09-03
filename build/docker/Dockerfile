@@ -49,6 +49,8 @@ COPY --from=build /go/src/crowdsec/build/docker/config.yaml /staging/etc/crowdse
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
+RUN chmod -R a+rX /staging
+
 ENTRYPOINT ["/bin/bash", "/docker_start.sh"]
 
 FROM slim AS full
