@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // A rejection has to name the rules that produced the score. `signals` only
@@ -17,8 +18,8 @@ func TestWithRequestScoreAddsBreakdown(t *testing.T) {
 
 	entry := withRequestScore(log.NewEntry(log.StandardLogger()), state)
 
-	assert.Equal(t, 130, entry.Data["score"])
-	assert.Equal(t, "realm_font_mismatch=100,gpu_mismatch=30", entry.Data["score_detail"])
+	require.Equal(t, 130, entry.Data["score"])
+	require.Equal(t, "realm_font_mismatch=100,gpu_mismatch=30", entry.Data["score_detail"])
 }
 
 // An unscored request must not gain empty fields.
