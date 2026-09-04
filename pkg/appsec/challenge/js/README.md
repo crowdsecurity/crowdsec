@@ -9,6 +9,9 @@ the generated artifacts are committed to the repository and pulled in via
 `//go:embed`. The pipeline is only exercised when someone intentionally
 changes the JS sources.
 
+Writing a detection script that ships through the hub is a different job from this build
+pipeline: see [../custom_js.md](../custom_js.md).
+
 ## What gets generated
 
 Three pipeline steps, all driven by `go:generate` directives in

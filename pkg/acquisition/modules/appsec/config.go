@@ -130,9 +130,9 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 }
 
 // expandAppsecConfigEntry resolves a single appsec_config(s) entry into the list
-// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character 
-// is matched against the installed appsec-configs with the same matcher used
-// to expand appsec-rule patterns; it errors when no installed config matches.
+// of appsec-config item names to load. A literal entry is returned untouched.
+// An entry containing a glob meta-character is matched against the installed appsec-configs,
+// errors when no installed config matches.
 func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
 	if !strings.ContainsAny(entry, "*?") {
 		return []string{entry}, nil
@@ -279,6 +279,11 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		challengeOpts, err := challenge.BuildOptions(appsecCfg.Challenge, appsecCfg.Logger)
 		if err != nil {
 			return fmt.Errorf("unable to build challenge options: %w", err)
+		}
+
+		// cwhub manages the script.
+		if customJS := appsecCfg.LoadCustomJS(w.hub.GetDataDir()); customJS != "" {
+			challengeOpts = append(challengeOpts, challenge.WithCustomJS(customJS))
 		}
 
 		challengeRuntime, err := challenge.NewChallengeRuntime(ctx, challengeOpts...)

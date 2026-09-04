@@ -52,6 +52,8 @@ const (
 	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
 	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 	ChallengeFPScannerPath = "/crowdsec-internal/challenge/fpscanner.js"
+	// ChallengeCustomJSPath serves the custom detection script; see WithCustomJS.
+	ChallengeCustomJSPath = "/crowdsec-internal/challenge/custom.js"
 )
 
 // Sentinel errors (reasons) returned by ValidateChallengeResponse.
@@ -77,6 +79,15 @@ const cryptoObfuscationPoolDefaultSize = 1
 // keyring window (enforced by not_after in the envelope), so cookies can
 // outlive the per-epoch signing window without widening forgery exposure.
 const defaultCookieTTL = 12 * time.Hour
+
+// DefaultCustomJSTimeout is the wall-clock all detection hooks share when
+// custom_js_timeout is unset. It is time the visitor spends on the challenge
+// page, so it is deliberately short.
+const DefaultCustomJSTimeout = 500 * time.Millisecond
+
+// customJSTimeoutWarn is the point past which a configured budget is honored
+// but flagged: beyond a few seconds the visitor is watching a spinner.
+const customJSTimeoutWarn = 5 * time.Second
 
 // DefaultChallengeCSP is the Content-Security-Policy header used on the
 // challenge page when the operator hasn't configured a custom one. Allows
@@ -124,6 +135,21 @@ type ChallengeRuntime struct {
 	// re-obfuscation or pool); the sensitive per-epoch key module lives in
 	// dynamic_module.go.
 	challengeCode string
+
+	// customJS is the concatenated detection script shipped through the hub.
+	// Empty unless an appsec-config declares one, in which case the challenge
+	// page omits the script tag.
+	customJS string
+
+	// customJSTimeout is the budget those hooks share, sent to the browser on
+	// each challenge page.
+	customJSTimeout time.Duration
+
+	// customJSVersion is a digest of customJS, carried in the script URL. The
+	// script is cached for an hour, so without it a detection change reaches
+	// returning visitors up to an hour late — running old detections against
+	// new scoring rules, silently.
+	customJSVersion string
 
 	powDifficulty int
 
@@ -183,10 +209,27 @@ type runtimeOptions struct {
 	maxCookieLen              int
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
+	customJS                  string
+	customJSTimeout           time.Duration
 	logger                    *log.Entry // nil → default "challenge" sublogger
 	// skipPreWarm drops the constructor's synchronous obfuscation and the
 	// background pre-warmer. Only withoutPreWarm (challenge_test.go) sets it.
 	skipPreWarm bool
+}
+
+// WithCustomJS sets the hub-distributed detection script. Empty disables it.
+func WithCustomJS(src string) Option {
+	return func(o *runtimeOptions) {
+		o.customJS = src
+	}
+}
+
+// WithCustomJSTimeout sets the shared detection-hook budget; zero or negative
+// is ignored, leaving DefaultCustomJSTimeout.
+func WithCustomJSTimeout(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		o.customJSTimeout = d
+	}
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -426,6 +469,14 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL = defaultCookieTTL
 	}
 
+	customJSTimeout := resolvedOpts.customJSTimeout
+	if customJSTimeout <= 0 {
+		customJSTimeout = DefaultCustomJSTimeout
+	} else if customJSTimeout > customJSTimeoutWarn {
+		logger.WithField("custom_js_timeout", customJSTimeout).
+			Warn("custom_js_timeout is long; visitors wait this out on the challenge page before the submission is sent")
+	}
+
 	maxCookieLen := resolvedOpts.maxCookieLen
 	if maxCookieLen <= 0 {
 		maxCookieLen = MaxCookieLen
@@ -476,7 +527,19 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		maxCookieLen:       maxCookieLen,
 		htmlTpl:            htmlTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
+		customJS:           resolvedOpts.customJS,
+		customJSTimeout:    customJSTimeout,
 		logger:             logger,
+	}
+
+	if challengeRuntime.customJS != "" {
+		sum := sha256.Sum256([]byte(challengeRuntime.customJS))
+		challengeRuntime.customJSVersion = hex.EncodeToString(sum[:4])
+
+		logger.WithFields(log.Fields{
+			"bytes":   len(challengeRuntime.customJS),
+			"timeout": customJSTimeout,
+		}).Info("serving hub-provided custom detection script")
 	}
 
 	// Load the build-time-obfuscated challenge code from the baked-in bundle so
@@ -585,17 +648,27 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		return "", fmt.Errorf("build dynamic key module: %w", err)
 	}
 
+	// Empty drops the script tag, rather than pointing every challenge page at
+	// an empty file.
+	// The query is only a cache key; the dispatcher matches on path alone.
+	customJSPath := ""
+	if c.customJS != "" {
+		customJSPath = ChallengeCustomJSPath + "?v=" + c.customJSVersion
+	}
+
 	var renderedPage strings.Builder
 
 	if err := c.htmlTpl.Execute(&renderedPage, map[string]interface{}{
-		"JSChallenge":   challengeCode,
-		"DynamicModule": dynamicModule,
-		"FPScannerPath": ChallengeFPScannerPath,
-		"PowDifficulty": difficulty,
-		"PowPrefix":     powSalt,
-		"PowMAC":        powMAC,
-		"Timestamp":     ts,
-		"R":             r,
+		"JSChallenge":       challengeCode,
+		"DynamicModule":     dynamicModule,
+		"FPScannerPath":     ChallengeFPScannerPath,
+		"CustomJSPath":      customJSPath,
+		"CustomJSTimeoutMS": c.customJSTimeout.Milliseconds(),
+		"PowDifficulty":     difficulty,
+		"PowPrefix":         powSalt,
+		"PowMAC":            powMAC,
+		"Timestamp":         ts,
+		"R":                 r,
 	}); err != nil {
 		return "", fmt.Errorf("render challenge page: %w", err)
 	}
@@ -696,6 +769,16 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, 0, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
 	}
 
+	// Sanitizing is silent so a bad entry can't cost a visitor the submission;
+	// without this a script that outgrew the caps looks like it stopped
+	// reporting.
+	if fpData.CustomDropped > 0 {
+		c.log().WithFields(log.Fields{
+			"dropped": fpData.CustomDropped,
+			"kept":    fpData.CustomKeys(),
+		}).Debug("dropped custom detection entries")
+	}
+
 	// Debug diagnostic: a validated submission. Guarded so `k_epoch` (forgeable
 	// signing material — DESIGN.md §2.1) is only formatted at debug.
 	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
@@ -705,6 +788,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 			"k_epoch": fmt.Sprintf("%x", signKey),
 			"fsid":    fpData.FSID,
 			"is_bot":  fpData.FastBotDetection,
+			"custom":  fpData.CustomKeys(),
 		}).Debug("validated submission")
 	}
 
@@ -793,4 +877,29 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		Allowlisted:     envelope.Allowlisted,
 		AllowlistReason: envelope.AllowlistReason,
 	}, nil
+}
+
+// setCustomJS keeps the script and the digest in its URL in step. They must be
+// set together: a stale digest would leave the hour-long cache unbroken across a
+// script change.
+func (c *ChallengeRuntime) setCustomJS(src string) {
+	c.customJS = src
+
+	if src == "" {
+		c.customJSVersion = ""
+		return
+	}
+
+	sum := sha256.Sum256([]byte(src))
+	c.customJSVersion = hex.EncodeToString(sum[:4])
+}
+
+// CustomJS returns the detection script the dispatcher serves at
+// ChallengeCustomJSPath, empty when none is loaded.
+func (c *ChallengeRuntime) CustomJS() string {
+	if c == nil {
+		return ""
+	}
+
+	return c.customJS
 }

@@ -1174,6 +1174,15 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
 	}
 
+	// Unreferenced when no appsec-config shipped a script, so the path then
+	// falls through to normal request handling.
+	if path == challenge.ChallengeCustomJSPath {
+		if customJS := w.ChallengeRuntime.CustomJS(); customJS != "" {
+			return w.setChallengeResponse(state, http.StatusOK, customJS,
+				map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+		}
+	}
+
 	// Challenge submission: validate, give on_challenge_submit hooks a chance
 	// to reject the submission, then issue (or deny) the cookie. Per-route
 	// on_challenge inspection happens on subsequent cookie-bearing requests.

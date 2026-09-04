@@ -1,6 +1,8 @@
 package challenge
 
 import (
+	"sort"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -414,4 +416,32 @@ func addVerboseFingerprintFields(fields log.Fields, f *FingerprintData) {
 	if f.Time != 0 {
 		fields["fp_time"] = f.Time
 	}
+}
+
+// HasCustom tells "absent" from "present and false", which matters for a
+// detection expected to always report. Rules that only need falsiness can index
+// Custom directly.
+func (f *FingerprintData) HasCustom(key string) bool {
+	if f == nil {
+		return false
+	}
+
+	return f.Custom[key].IsSet()
+}
+
+// CustomKeys lists the surviving keys, sorted, for logging and for rules that
+// iterate rather than look up by name.
+func (f *FingerprintData) CustomKeys() []string {
+	if f == nil || len(f.Custom) == 0 {
+		return nil
+	}
+
+	keys := make([]string, 0, len(f.Custom))
+	for k := range f.Custom {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
