@@ -24,11 +24,11 @@ try {
   const sourceCode = readStdin();
 
   // Spread the high-obfuscation preset, then add reservedStrings so the
-  // sentinel that bridges the static bundle and the per-epoch dynamic key
-  // module (CSEC_CHALLENGE_HOOK_v1) survives the string-array transform
-  // identically in both bundles. Without this, the two independently-
-  // obfuscated artifacts wouldn't agree on the globalThis symbol they
-  // need to meet at.
+  // sentinels bridging separately-built bundles survive the string-array
+  // transform identically in each; otherwise the artifacts disagree on the
+  // globalThis symbols they meet at:
+  //   CSEC_CHALLENGE_HOOK_v1 — static bundle <-> per-epoch dynamic key module
+  //   CSEC_CUSTOM_DETECT_v1  — static bundle <-> hub-shipped custom.js
   //
   // disableConsoleOutput is forced off because fpscanner's CDP detection
   // (signals/cdp.ts) relies on `console.log(err)` triggering DevTools'
@@ -40,7 +40,10 @@ try {
     {},
     JavaScriptObfuscator.getOptionsByPreset("high-obfuscation"),
     {
-      reservedStrings: ["__CSEC_CHALLENGE_HOOK_v1__"],
+      reservedStrings: [
+        "__CSEC_CHALLENGE_HOOK_v1__",
+        "__CSEC_CUSTOM_DETECT_v1__",
+      ],
       disableConsoleOutput: false,
     },
   );

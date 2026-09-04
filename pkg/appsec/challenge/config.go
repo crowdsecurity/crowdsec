@@ -42,6 +42,11 @@ type Config struct {
 	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
+	// CustomJSTimeout bounds the time all CUSTOM_JS detection hooks get, in
+	// total rather than each.
+	// Defaults to DefaultCustomJSTimeout.
+	CustomJSTimeout *time.Duration `yaml:"custom_js_timeout"`
+
 	// MaxCookieSize caps the challenge cookie's encoded size, enforced on both
 	// seal and open. It bounds the memory allocated from the (attacker-supplied)
 	// fingerprint envelope, closing an over-allocation DoS. Defaults to
@@ -83,6 +88,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.CookieTTL != nil {
 		c.CookieTTL = other.CookieTTL
+	}
+	if other.CustomJSTimeout != nil {
+		c.CustomJSTimeout = other.CustomJSTimeout
 	}
 	if other.MaxCookieSize != nil {
 		c.MaxCookieSize = other.MaxCookieSize
@@ -136,6 +144,9 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.CookieTTL != nil {
 		opts = append(opts, WithCookieTTL(*c.CookieTTL))
+	}
+	if c.CustomJSTimeout != nil {
+		opts = append(opts, WithCustomJSTimeout(*c.CustomJSTimeout))
 	}
 	if c.MaxCookieSize != nil && *c.MaxCookieSize > 0 {
 		opts = append(opts, WithMaxCookieLen(*c.MaxCookieSize))
