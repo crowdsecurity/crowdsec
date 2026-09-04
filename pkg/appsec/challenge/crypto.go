@@ -132,9 +132,8 @@ func sealCookieV0(envelope *pb.ChallengeCookie, masterCookieKey []byte, notAfter
 	// Reject an over-limit envelope before marshaling it.
 	maxPlaintext := maxCookieLen/4*3 - 1 - gcm.NonceSize() - gcm.Overhead()
 
-	// The custom map is browser-supplied and so the one part of the envelope an
-	// attacker can inflate. Shedding it beats failing the seal, which would
-	// leave the visitor unable to obtain a cookie at all.
+	// The custom map is browser-supplied.
+	// Limit its size to avoid breaking max cookie size.
 	fitCustomToBudget(envelope, maxPlaintext-cookiePlaintextFixedHeaderLen-len(reason))
 
 	if plaintextLen := cookiePlaintextFixedHeaderLen + len(reason) + proto.Size(envelope); plaintextLen > maxPlaintext {
