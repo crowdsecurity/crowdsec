@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,9 +46,16 @@ func (w *responseWriter) Header() http.Header {
 	return w.header
 }
 
+// WriteHeader records the status code. Codes outside the range a status line
+// can carry are coerced to 500: net/http panics on those, and taking down the
+// appsec listener because a hub config carries a bad user_blocked_http_code is
+// worse than answering 500.
 func (w *responseWriter) WriteHeader(code int) {
 	if w.headerSent {
 		return
+	}
+	if code < 100 || code > 999 {
+		code = http.StatusInternalServerError
 	}
 	w.status = code
 	w.headerSent = true
@@ -97,24 +105,90 @@ func (w *responseWriter) flush() error {
 	bw.WriteString(reason)
 	bw.WriteString("\r\n")
 
-	bw.WriteString("Content-Length: ")
-	bw.Write(strconv.AppendInt(nbuf[:0], int64(w.body.Len()), 10))
-	bw.WriteString("\r\n")
+	// A 1xx/204/304 response carries no body, so a Content-Length would leave
+	// the client reading our JSON as the start of the next response.
+	withBody := bodyAllowedForStatus(status)
+	if withBody {
+		bw.WriteString("Content-Length: ")
+		bw.Write(strconv.AppendInt(nbuf[:0], int64(w.body.Len()), 10))
+		bw.WriteString("\r\n")
+	}
 	if w.closeConn {
 		bw.WriteString("Connection: close\r\n")
 	}
 	for name, vals := range w.header {
-		if name == "Content-Length" || name == "Connection" || name == "Date" {
+		if reservedResponseHeader(name) {
+			continue
+		}
+		// A name that isn't a token, or a value carrying CR/LF, would let a
+		// handler emit a second response message on the same connection.
+		if !isValidHeaderName([]byte(name)) {
 			continue
 		}
 		for _, v := range vals {
 			bw.WriteString(name)
 			bw.WriteString(": ")
-			bw.WriteString(v)
+			bw.WriteString(sanitizeHeaderValue(v))
 			bw.WriteString("\r\n")
 		}
 	}
 	bw.WriteString("\r\n")
-	bw.Write(w.body.Bytes())
+	if withBody {
+		bw.Write(w.body.Bytes())
+	}
 	return bw.Flush()
+}
+
+// bodyAllowedForStatus mirrors net/http: these statuses are defined to have no
+// message body.
+func bodyAllowedForStatus(status int) bool {
+	switch {
+	case status >= 100 && status <= 199:
+		return false
+	case status == http.StatusNoContent, status == http.StatusNotModified:
+		return false
+	}
+
+	return true
+}
+
+// reservedResponseHeader reports whether the server frames this header itself.
+// The comparison is case-insensitive: a handler writing straight into the map
+// bypasses http.Header.Set's canonicalization, and a second Content-Length is
+// enough to desync a client.
+func reservedResponseHeader(name string) bool {
+	return strings.EqualFold(name, "Content-Length") ||
+		strings.EqualFold(name, "Connection") ||
+		strings.EqualFold(name, "Transfer-Encoding") ||
+		strings.EqualFold(name, "Date")
+}
+
+// sanitizeHeaderValue replaces every byte a header value cannot carry with a
+// space. CR and LF would let a handler split the response into two messages;
+// the other control bytes make strict clients — net/http's own included —
+// reject the whole response.
+func sanitizeHeaderValue(v string) string {
+	i := 0
+	for ; i < len(v); i++ {
+		if !validHeaderValueByte(v[i]) {
+			break
+		}
+	}
+
+	if i == len(v) {
+		return v
+	}
+
+	b := []byte(v)
+	for ; i < len(b); i++ {
+		if !validHeaderValueByte(b[i]) {
+			b[i] = ' '
+		}
+	}
+
+	return string(b)
+}
+
+func validHeaderValueByte(c byte) bool {
+	return c == '\t' || (c >= 0x20 && c != 0x7f)
 }

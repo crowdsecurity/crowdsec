@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	errInvalidContentLength = errors.New("invalid Content-Length")
-	errMalformedChunkSize   = errors.New("malformed chunk size")
-	errMalformedChunk       = errors.New("missing CRLF after chunk data")
+	errInvalidContentLength     = errors.New("invalid Content-Length")
+	errConflictingContentLength = errors.New("conflicting Content-Length headers")
+	errMalformedChunkSize       = errors.New("malformed chunk size")
+	errMalformedChunk           = errors.New("missing CRLF after chunk data")
 )
 
 // bodyInfo describes how the request body is framed on the wire.
@@ -28,12 +29,18 @@ type bodyInfo struct {
 // newBodyReader builds an io.ReadCloser bounded by Transfer-Encoding /
 // Content-Length so the server never relies on the connection EOF for framing.
 //
-// If both Transfer-Encoding: chunked and Content-Length are present, chunked
-// wins (per RFC 7230 §3.3.3) and Content-Length is dropped. When chunked is
-// used, the returned reader does NOT consume the trailer section — the caller
-// must drain it before reading the next request.
-func newBodyReader(src *bufio.Reader, headers http.Header) (bodyInfo, error) {
-	te := parseTransferEncoding(headers.Get("Transfer-Encoding"))
+// Framing follows net/http exactly, because a WAF that disagrees with the
+// origin about where the body ends is a smuggling oracle: Transfer-Encoding is
+// ignored below HTTP/1.1 (golang/go#12785), chunked beats Content-Length (RFC
+// 7230 §3.3.3), and Content-Length headers that disagree are refused. When
+// chunked is used, the returned reader does NOT consume the trailer section —
+// the caller must drain it before reading the next request.
+func newBodyReader(src *bufio.Reader, headers http.Header, major, minor int) (bodyInfo, error) {
+	var te []string
+	if major > 1 || (major == 1 && minor >= 1) {
+		te = parseTransferEncoding(headers.Get("Transfer-Encoding"))
+	}
+
 	chunked := len(te) > 0 && te[len(te)-1] == "chunked"
 	if chunked {
 		headers.Del("Content-Length")
@@ -53,10 +60,21 @@ func newBodyReader(src *bufio.Reader, headers http.Header) (bodyInfo, error) {
 			TransferEncoding: te,
 		}, nil
 	}
-	cl, err := strconv.ParseInt(strings.TrimSpace(cls[0]), 10, 64)
-	if err != nil || cl < 0 {
+
+	first := strings.TrimSpace(cls[0])
+	for _, cl := range cls[1:] {
+		if strings.TrimSpace(cl) != first {
+			return bodyInfo{}, errConflictingContentLength
+		}
+	}
+
+	// ParseUint with 63 bits rejects a leading sign, which origins disagree
+	// on; net/http does the same.
+	cl, err := strconv.ParseUint(first, 10, 63)
+	if err != nil {
 		return bodyInfo{}, errInvalidContentLength
 	}
+
 	if cl == 0 {
 		return bodyInfo{
 			Body:             http.NoBody,
@@ -64,9 +82,10 @@ func newBodyReader(src *bufio.Reader, headers http.Header) (bodyInfo, error) {
 			TransferEncoding: te,
 		}, nil
 	}
+
 	return bodyInfo{
-		Body:             &fixedBody{r: src, remaining: cl},
-		ContentLength:    cl,
+		Body:             &fixedBody{r: src, remaining: int64(cl)},
+		ContentLength:    int64(cl),
 		TransferEncoding: te,
 	}, nil
 }
@@ -126,7 +145,9 @@ type chunkedReader struct {
 	eof       bool
 }
 
-const maxChunkSizeLine = 256
+// maxChunkSizeLine matches net/http's limit on a chunk size line, extensions
+// included: a shorter one would reject bodies the origin accepts.
+const maxChunkSizeLine = 4096
 
 func newChunkedReader(r *bufio.Reader) *chunkedReader {
 	return &chunkedReader{r: r}

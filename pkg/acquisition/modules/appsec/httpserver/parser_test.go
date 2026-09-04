@@ -179,8 +179,8 @@ func TestReadHeaders_MultipleValues(t *testing.T) {
 }
 
 func TestReadHeaders_SkipInvalidName(t *testing.T) {
-	// "X Foo" has a space — invalid token. Should be silently dropped.
-	r := bufReader("X Foo: bad\r\nX-Good: ok\r\n\r\n")
+	// A NUL is not a token byte and not the space net/textproto tolerates.
+	r := bufReader("X\x00Foo: bad\r\nX-Good: ok\r\n\r\n")
 	h, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
@@ -188,19 +188,48 @@ func TestReadHeaders_SkipInvalidName(t *testing.T) {
 	if h.Get("X-Good") != "ok" {
 		t.Errorf("X-Good missing: %v", h)
 	}
-	if h.Get("X Foo") != "" {
+	if h.Get("X\x00Foo") != "" {
 		t.Error("invalid header should have been dropped")
 	}
 }
 
-func TestReadHeaders_DropObsFold(t *testing.T) {
-	r := bufReader("X-Foo: a\r\n b\r\n\r\n")
+// A space before the colon is kept, uncanonicalized, the way net/http does it:
+// the appsec engine has to see any header an origin might act on.
+func TestReadHeaders_SpaceBeforeColon(t *testing.T) {
+	r := bufReader("X-Evil : payload\r\n\r\n")
 	h, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
-	if h.Get("X-Foo") != "a" {
-		t.Errorf("got %q, continuation line should have been dropped", h.Get("X-Foo"))
+	if got := h["X-Evil "]; len(got) != 1 || got[0] != "payload" {
+		t.Errorf("got %v, want [payload] under the verbatim name", h)
+	}
+}
+
+func TestReadHeaders_ObsFold(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		key   string
+		want  string
+	}{
+		{"single continuation", "X-Foo: a\r\n b\r\n\r\n", "X-Foo", "a b"},
+		{"tab continuation", "X-Foo: a\r\n\tb\r\n\r\n", "X-Foo", "a b"},
+		{"two continuations", "X-Foo: a\r\n b\r\n  c\r\n\r\n", "X-Foo", "a b c"},
+		{"fold does not leak into next header", "X-Foo: a\r\n b\r\nX-Bar: c\r\n\r\n", "X-Bar", "c"},
+		{"leading fold has nothing to fold into", " orphan\r\nX-Foo: a\r\n\r\n", "X-Foo", "a"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := readHeaders(bufReader(tc.input), Limits{})
+			if err != nil {
+				t.Fatalf("readHeaders: %v", err)
+			}
+			if got := h.Get(tc.key); got != tc.want {
+				t.Errorf("%s = %q, want %q", tc.key, got, tc.want)
+			}
+		})
 	}
 }
 
@@ -264,5 +293,28 @@ func TestParseHTTPVersion(t *testing.T) {
 		if ok != c.ok || major != c.major || minor != c.minor {
 			t.Errorf("parseHTTPVersion(%q) = (%d, %d, %v), want (%d, %d, %v)", c.in, major, minor, ok, c.major, c.minor, c.ok)
 		}
+	}
+}
+
+// A long run of continuation lines must stay linear: folding by rewriting the
+// stored string each time would be quadratic and DoS-able within MaxHeaderBytes.
+func TestReadHeaders_ManyFolds(t *testing.T) {
+	var b strings.Builder
+
+	b.WriteString("X-Foo: a\r\n")
+
+	for range 20000 {
+		b.WriteString(" b\r\n")
+	}
+
+	b.WriteString("\r\n")
+
+	h, err := readHeaders(bufReader(b.String()), Limits{})
+	if err != nil {
+		t.Fatalf("readHeaders: %v", err)
+	}
+
+	if got, want := len(h.Get("X-Foo")), 1+20000*2; got != want {
+		t.Errorf("folded value length = %d, want %d", got, want)
 	}
 }

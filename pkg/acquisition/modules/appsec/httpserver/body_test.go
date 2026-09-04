@@ -12,7 +12,7 @@ import (
 func TestNewBodyReader_ContentLength(t *testing.T) {
 	r := bufio.NewReader(strings.NewReader("hello, world"))
 	h := http.Header{"Content-Length": {"12"}}
-	info, err := newBodyReader(r, h)
+	info, err := newBodyReader(r, h, 1, 1)
 	if err != nil {
 		t.Fatalf("newBodyReader: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestNewBodyReader_ContentLength(t *testing.T) {
 
 func TestNewBodyReader_NoBody(t *testing.T) {
 	r := bufio.NewReader(strings.NewReader(""))
-	info, err := newBodyReader(r, http.Header{})
+	info, err := newBodyReader(r, http.Header{}, 1, 1)
 	if err != nil {
 		t.Fatalf("newBodyReader: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestNewBodyReader_Chunked(t *testing.T) {
 	body := "4\r\nWiki\r\n6\r\npedia \r\nE\r\nin \r\n\r\nchunks.\r\n0\r\n\r\n"
 	r := bufio.NewReader(strings.NewReader(body))
 	h := http.Header{"Transfer-Encoding": {"chunked"}}
-	info, err := newBodyReader(r, h)
+	info, err := newBodyReader(r, h, 1, 1)
 	if err != nil {
 		t.Fatalf("newBodyReader: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestNewBodyReader_ChunkedDropsContentLength(t *testing.T) {
 		"Transfer-Encoding": {"chunked"},
 		"Content-Length":    {"42"},
 	}
-	info, err := newBodyReader(r, h)
+	info, err := newBodyReader(r, h, 1, 1)
 	if err != nil {
 		t.Fatalf("newBodyReader: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestNewBodyReader_ChunkedDropsContentLength(t *testing.T) {
 func TestNewBodyReader_InvalidContentLength(t *testing.T) {
 	r := bufio.NewReader(strings.NewReader(""))
 	h := http.Header{"Content-Length": {"abc"}}
-	if _, err := newBodyReader(r, h); !errors.Is(err, errInvalidContentLength) {
+	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
 		t.Errorf("got err=%v, want errInvalidContentLength", err)
 	}
 }
@@ -92,7 +92,7 @@ func TestNewBodyReader_InvalidContentLength(t *testing.T) {
 func TestNewBodyReader_NegativeContentLength(t *testing.T) {
 	r := bufio.NewReader(strings.NewReader(""))
 	h := http.Header{"Content-Length": {"-1"}}
-	if _, err := newBodyReader(r, h); !errors.Is(err, errInvalidContentLength) {
+	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
 		t.Errorf("got err=%v, want errInvalidContentLength", err)
 	}
 }
@@ -155,5 +155,57 @@ func TestChunkedReader_ChunkExt(t *testing.T) {
 	}
 	if string(got) != "hello" {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestNewBodyReader_ConflictingContentLength(t *testing.T) {
+	h := http.Header{"Content-Length": []string{"4", "40"}}
+	r := bufio.NewReader(strings.NewReader("bodyGET /smuggled HTTP/1.1\r\n\r\n"))
+
+	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errConflictingContentLength) {
+		t.Errorf("got err=%v, want errConflictingContentLength", err)
+	}
+}
+
+func TestNewBodyReader_DuplicateContentLengthAgrees(t *testing.T) {
+	h := http.Header{"Content-Length": []string{"4", " 4 "}}
+	r := bufio.NewReader(strings.NewReader("body"))
+
+	info, err := newBodyReader(r, h, 1, 1)
+	if err != nil {
+		t.Fatalf("newBodyReader: %v", err)
+	}
+
+	if info.ContentLength != 4 {
+		t.Errorf("ContentLength = %d, want 4", info.ContentLength)
+	}
+}
+
+func TestNewBodyReader_SignedContentLength(t *testing.T) {
+	h := http.Header{"Content-Length": []string{"+4"}}
+	r := bufio.NewReader(strings.NewReader("body"))
+
+	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
+		t.Errorf("got err=%v, want errInvalidContentLength", err)
+	}
+}
+
+// net/http ignores Transfer-Encoding below HTTP/1.1 (golang/go#12785). Framing
+// the body differently from the origin is what makes smuggling possible.
+func TestNewBodyReader_ChunkedIgnoredBelowHTTP11(t *testing.T) {
+	h := http.Header{"Transfer-Encoding": []string{"chunked"}}
+	r := bufio.NewReader(strings.NewReader("4\r\nbody\r\n0\r\n\r\n"))
+
+	info, err := newBodyReader(r, h, 1, 0)
+	if err != nil {
+		t.Fatalf("newBodyReader: %v", err)
+	}
+
+	if info.Chunked {
+		t.Error("Transfer-Encoding should be ignored on HTTP/1.0")
+	}
+
+	if info.ContentLength != 0 {
+		t.Errorf("ContentLength = %d, want 0", info.ContentLength)
 	}
 }

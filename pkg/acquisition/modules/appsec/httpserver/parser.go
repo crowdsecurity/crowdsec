@@ -146,19 +146,46 @@ func parseHTTPVersion(proto string) (major, minor int, ok bool) {
 
 // readHeaders reads header lines until an empty line. Lenient: any byte except
 // CR/LF is allowed in values (including control chars). Invalid names (non-token
-// bytes) are skipped silently. Obsolete line folding is dropped.
+// bytes) are skipped silently.
+//
+// Obsolete line folding is joined into the preceding value with a single space,
+// the way net/http does it: dropping the continuation would hide bytes from the
+// appsec engine that the protected application still sees.
 func readHeaders(r *bufio.Reader, limits Limits) (http.Header, error) {
 	limits = limits.withDefaults()
 	// Pre-size to a typical header count to avoid map growth allocations.
 	h := make(http.Header, 16)
 	totalBytes := 0
 	count := 0
+
+	// A continuation line rewrites the value already stored for lastName. The
+	// buffer is only touched when a fold actually shows up, and accumulating
+	// into it keeps a run of continuations linear rather than quadratic.
+	var (
+		lastName string
+		folded   []byte
+		folding  bool
+	)
+
+	// Leading whitespace is stripped once the folded value is complete, not
+	// per line: that is what net/http does, and the difference shows when a
+	// continuation line is empty.
+	endFold := func() {
+		if !folding {
+			return
+		}
+		vals := h[lastName]
+		vals[len(vals)-1] = string(bytes.TrimLeft(folded, " \t"))
+		folding = false
+	}
+
 	for {
 		line, err := readLine(r, limits.MaxLineSize)
 		if err != nil {
 			return nil, err
 		}
 		if len(line) == 0 {
+			endFold()
 			return h, nil
 		}
 		totalBytes += len(line) + 2
@@ -166,27 +193,72 @@ func readHeaders(r *bufio.Reader, limits Limits) (http.Header, error) {
 			return nil, ErrHeadersTooLarge
 		}
 		if line[0] == ' ' || line[0] == '\t' {
+			if lastName == "" {
+				continue // a fold with no header to fold into
+			}
+			if !folding {
+				vals := h[lastName]
+				folded = append(folded[:0], vals[len(vals)-1]...)
+				folding = true
+			}
+			folded = append(folded, ' ')
+			folded = append(folded, trimOWS(line)...)
 			continue
 		}
+		endFold()
 		colon := bytes.IndexByte(line, ':')
 		if colon <= 0 {
 			continue
 		}
-		nameBytes := line[:colon]
-		if !isValidHeaderName(nameBytes) {
+		name, ok := canonicalHeaderName(line[:colon])
+		if !ok {
 			continue
 		}
 		count++
 		if count > limits.MaxHeaderCount {
 			return nil, ErrTooManyHeaders
 		}
-		name := textproto.CanonicalMIMEHeaderKey(string(nameBytes))
-		value := bytes.TrimLeft(line[colon+1:], " \t")
-		value = bytes.TrimRight(value, " \t")
-		h[name] = append(h[name], string(value))
+		lastName = name
+		h[name] = append(h[name], string(trimOWS(line[colon+1:])))
 	}
 }
 
+// trimOWS strips optional leading and trailing whitespace (RFC 7230 OWS).
+func trimOWS(b []byte) []byte {
+	return bytes.TrimRight(bytes.TrimLeft(b, " \t"), " \t")
+}
+
+// canonicalHeaderName mirrors net/textproto, including its deliberate tolerance
+// for a space before the colon (go.dev/issue/34540); such a name is kept
+// verbatim rather than canonicalized. Rejecting "X-Evil : payload" outright
+// would hide the value from the appsec engine while origins that tolerate it
+// still act on the header.
+func canonicalHeaderName(name []byte) (string, bool) {
+	if len(name) == 0 {
+		return "", false
+	}
+
+	spaced := false
+
+	for _, b := range name {
+		switch {
+		case isTokenByte(b):
+		case b == ' ':
+			spaced = true
+		default:
+			return "", false
+		}
+	}
+
+	if spaced {
+		return string(name), true
+	}
+
+	return textproto.CanonicalMIMEHeaderKey(string(name)), true
+}
+
+// isValidHeaderName reports whether name is a bare RFC 7230 token. Used on the
+// response side, where we are the one framing the message and can be strict.
 func isValidHeaderName(name []byte) bool {
 	if len(name) == 0 {
 		return false

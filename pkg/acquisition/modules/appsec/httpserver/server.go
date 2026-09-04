@@ -207,7 +207,7 @@ func readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*h
 	if err != nil {
 		return nil, bodyInfo{}, true, err
 	}
-	info, err := newBodyReader(br, headers)
+	info, err := newBodyReader(br, headers, rl.ProtoMajor, rl.ProtoMinor)
 	if err != nil {
 		return nil, bodyInfo{}, true, err
 	}
