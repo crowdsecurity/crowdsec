@@ -43,14 +43,8 @@ type Config struct {
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
 	// CustomJSTimeout bounds the time all CUSTOM_JS detection hooks get, in
-	// total rather than each: it is what the visitor waits on the challenge
-	// page no matter how many detection scripts are installed. Raise it when
-	// adding detectors, or the later ones are cut off before they report.
+	// total rather than each.
 	// Defaults to DefaultCustomJSTimeout.
-	//
-	// Keep this to operator-local configs. LoadByPath is a strict unmarshal, so
-	// a hub item carrying this key would fail outright on any engine released
-	// before it existed.
 	CustomJSTimeout *time.Duration `yaml:"custom_js_timeout"`
 
 	// MaxCookieSize caps the challenge cookie's encoded size, enforced on both
