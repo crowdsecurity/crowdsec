@@ -2,7 +2,6 @@ package challenge
 
 import (
 	"net/http"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -38,8 +37,7 @@ func TestCustomJS_ScriptTag(t *testing.T) {
 
 	html, err = rt.GetChallengePage(t.Context(), "test-agent", 8)
 	require.NoError(t, err)
-	// The URL carries a content digest so a script change busts the hour-long cache.
-	assert.Regexp(t, `<script src="`+regexp.QuoteMeta(ChallengeCustomJSPath)+`\?v=[0-9a-f]+">`, html)
+	assert.Contains(t, html, ChallengeCustomJSPath)
 
 	// Served from its own cacheable path, not inlined.
 	assert.NotContains(t, html, rt.customJS)

@@ -137,8 +137,6 @@ type ChallengeRuntime struct {
 	challengeCode string
 
 	// customJS is the concatenated detection script shipped through the hub.
-	// Empty unless an appsec-config declares one, in which case the challenge
-	// page omits the script tag.
 	customJS string
 
 	// customJSTimeout is the budget those hooks share, sent to the browser on
