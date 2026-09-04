@@ -439,10 +439,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		delete(r.Header, h)
 	}
 
-	parsedURL, err := url.Parse(clientURI)
-	if err != nil {
-		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
-	}
+	parsedURL := exprhelpers.ParseURL(clientURI)
 
 	originalHTTPRequest := r.Clone(r.Context())
 	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
