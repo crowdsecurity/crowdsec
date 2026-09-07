@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -88,4 +89,44 @@ func TestCustomDetectSurvivesFullSubmission(t *testing.T) {
 	assert.True(t, cd.Fingerprint.HasCustom("clearedByHook"))
 	assert.False(t, cd.Fingerprint.Custom["clearedByHook"].Bool)
 	assert.False(t, cd.Fingerprint.HasCustom("neverSet"))
+}
+
+// A script that reports more than the cookie can hold must not cost the visitor
+// their submission: the map is dropped, the cookie is still minted, and the
+// rules on this request still see everything that was reported.
+func TestOversizedCustomStillYieldsACookie(t *testing.T) {
+	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
+
+	custom := make(map[string]CustomValue, 40)
+	for i := range 40 {
+		custom[fmt.Sprintf("detector%02d", i)] = CustomValue{
+			Kind: CustomKindString,
+			Str:  strings.Repeat("x", 200),
+		}
+	}
+
+	submitted := FingerprintData{FSID: "FS1_fat", Custom: custom}
+
+	r, ts := freshChallenge(t)
+	body := buildValidBodyWithFingerprint(t, c.powDifficulty, r, ts, submitted)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "test-agent")
+
+	ck, decoded, _, err := c.ValidateChallengeResponse(req, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, ck)
+
+	assert.Equal(t, custom, decoded.Custom)
+
+	parsed, err := http.ParseSetCookie(ck.String())
+	require.NoError(t, err)
+
+	cd, err := c.ValidCookie(parsed, "test-agent")
+	require.NoError(t, err)
+
+	// Shed on the way into the cookie, so later requests see none of it.
+	assert.Empty(t, cd.Fingerprint.Custom)
+	assert.Equal(t, "FS1_fat", cd.Fingerprint.FSID)
 }

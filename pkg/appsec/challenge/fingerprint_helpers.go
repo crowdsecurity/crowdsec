@@ -429,7 +429,7 @@ func (f *FingerprintData) HasCustom(key string) bool {
 	return f.Custom[key].IsSet()
 }
 
-// CustomKeys lists the surviving keys, sorted, for logging and for rules that
+// CustomKeys lists the reported keys, sorted, for logging and for rules that
 // iterate rather than look up by name.
 func (f *FingerprintData) CustomKeys() []string {
 	if f == nil || len(f.Custom) == 0 {

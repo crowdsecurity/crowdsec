@@ -767,16 +767,6 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, 0, fmt.Errorf("%w: failed to unmarshal fingerprint data: %w", ErrChallengePayload, err)
 	}
 
-	// Sanitizing is silent so a bad entry can't cost a visitor the submission;
-	// without this a script that outgrew the caps looks like it stopped
-	// reporting.
-	if fpData.CustomDropped > 0 {
-		c.log().WithFields(log.Fields{
-			"dropped": fpData.CustomDropped,
-			"kept":    fpData.CustomKeys(),
-		}).Debug("dropped custom detection entries")
-	}
-
 	// Debug diagnostic: a validated submission. Guarded so `k_epoch` (forgeable
 	// signing material — DESIGN.md §2.1) is only formatted at debug.
 	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
@@ -803,6 +793,16 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// rotation); the browser Max-Age below matches so both expire together.
 	notAfter := time.Now().Add(c.cookieTTL).Unix()
 	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
+
+	// If the cookie is too large, try to drop custom detection as a last chance to fit it within the size limit.
+	if errors.Is(err, ErrCookieTooLarge) && envelope.GetFingerprint().GetCustom() != nil {
+		c.log().WithField("custom", fpData.CustomKeys()).
+			Warn("custom detections do not fit in the cookie, dropped")
+
+		envelope.Fingerprint.Custom = nil
+		cookieValue, err = sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
+	}
+
 	if err != nil {
 		return nil, FingerprintData{}, 0, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}

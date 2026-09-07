@@ -2,9 +2,7 @@ package challenge
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/expr-lang/expr"
 	"github.com/stretchr/testify/assert"
@@ -63,27 +61,6 @@ func TestCustomValueDecode(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
-}
-
-func TestCustomValueCaps(t *testing.T) {
-	t.Run("long string is truncated", func(t *testing.T) {
-		var got CustomValue
-		require.NoError(t, json.Unmarshal([]byte(`"`+strings.Repeat("x", 900)+`"`), &got))
-		assert.Len(t, got.Str, MaxCustomStringLen)
-	})
-
-	t.Run("truncation keeps valid utf8", func(t *testing.T) {
-		var got CustomValue
-		require.NoError(t, json.Unmarshal([]byte(`"`+strings.Repeat("é", 400)+`"`), &got))
-		assert.True(t, utf8.ValidString(got.Str))
-		assert.LessOrEqual(t, len(got.Str), MaxCustomStringLen)
-	})
-
-	t.Run("long slice is truncated", func(t *testing.T) {
-		var got CustomValue
-		require.NoError(t, json.Unmarshal([]byte("["+strings.Repeat(`"a",`, 99)+`"a"]`), &got))
-		assert.Len(t, got.Strings, MaxCustomSliceLen)
-	})
 }
 
 func TestCustomValueMarshal(t *testing.T) {
@@ -146,67 +123,15 @@ func TestFingerprintCustomDecode(t *testing.T) {
 	assert.InDelta(t, 512.0, fp.Custom["collectMs"].Number, 0.001)
 	assert.Equal(t, []string{"Arial", "Helvetica"}, fp.Custom["fonts"].Strings)
 
+	// An unrepresentable entry is kept as the zero value rather than dropped: it
+	// reads as absent to a rule, and costs the submission nothing.
 	assert.False(t, fp.HasCustom("broken"))
-	assert.Equal(t, 1, fp.CustomDropped)
-	assert.Equal(t, []string{"audioCtxNoise", "audioHash", "collectMs", "fonts"}, fp.CustomKeys())
+	assert.Equal(t, []string{"audioCtxNoise", "audioHash", "broken", "collectMs", "fonts"}, fp.CustomKeys())
 
 	// Round-trips in the browser's shape, which is what DumpFingerprint shows.
 	out, err := json.Marshal(fp)
 	require.NoError(t, err)
 	assert.Contains(t, string(out), `"audioCtxNoise":true`)
-}
-
-func TestSanitizeCustomKeys(t *testing.T) {
-	tests := []struct {
-		name string
-		key  string
-		keep bool
-	}{
-		{name: "alnum", key: "audioCtxNoise", keep: true},
-		{name: "underscore dash dot", key: "a_b-c.d", keep: true},
-		{name: "at the limit", key: strings.Repeat("a", MaxCustomKeyLen), keep: true},
-		{name: "empty", key: "", keep: false},
-		{name: "space", key: "has space", keep: false},
-		{name: "quote", key: `a"b`, keep: false},
-		{name: "non-ascii", key: "clé", keep: false},
-		{name: "too long", key: strings.Repeat("a", MaxCustomKeyLen+1), keep: false},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, dropped := sanitizeCustom(map[string]CustomValue{
-				tc.key: {Kind: CustomKindBool, Bool: true},
-			})
-
-			if tc.keep {
-				assert.Len(t, got, 1)
-				assert.Equal(t, 0, dropped)
-
-				return
-			}
-
-			assert.Empty(t, got)
-			assert.Equal(t, 1, dropped)
-		})
-	}
-}
-
-// Which entries survive an over-long map must not depend on map iteration
-// order, or the same submission would seal to a different cookie each time.
-func TestSanitizeCustomIsDeterministic(t *testing.T) {
-	in := make(map[string]CustomValue, MaxCustomKeys*2)
-	for i := range MaxCustomKeys * 2 {
-		in[string(rune('a'+i/26))+string(rune('a'+i%26))] = CustomValue{Kind: CustomKindBool, Bool: true}
-	}
-
-	first, dropped := sanitizeCustom(in)
-	require.Len(t, first, MaxCustomKeys)
-	require.Equal(t, MaxCustomKeys, dropped)
-
-	for range 20 {
-		again, _ := sanitizeCustom(in)
-		require.Equal(t, first, again)
-	}
 }
 
 // Storing CustomValue by value is what lets rules read an unknown key without a

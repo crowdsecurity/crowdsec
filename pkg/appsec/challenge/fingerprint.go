@@ -332,9 +332,7 @@ type FingerprintData struct {
 	// Custom holds what the hub-distributed detection script reported, read by
 	// rules as fingerprint.Custom["name"].Bool (see fingerprint_custom.go).
 	// Unset keys yield the zero CustomValue, so filters need no presence check.
-	// CustomDropped lets the caller log a truncation that is otherwise silent.
-	Custom        map[string]CustomValue `json:"custom"`
-	CustomDropped int                    `json:"-"`
+	Custom map[string]CustomValue `json:"custom"`
 
 	// Allowlisted is true on cookies minted by GrantChallengeCookie (operator
 	// bypass for trusted bots like Googlebot) — these cookies never went
@@ -654,7 +652,6 @@ func (f *FingerprintData) UnmarshalJSON(data []byte) error {
 
 	*f = FingerprintData(raw)
 	f.Bot = newFingerprintBotAlias(f.FastBotDetectionDetails)
-	f.Custom, f.CustomDropped = sanitizeCustom(f.Custom)
 
 	return nil
 }
