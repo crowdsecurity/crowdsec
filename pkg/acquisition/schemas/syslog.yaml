@@ -1,0 +1,88 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Syslog datasource
+description: >
+  Schema for syslog acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/syslog.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: syslog
+    description: >
+      Must be syslog to bind this acquisition entry to the Syslog datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: syslog).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  protocol:
+    type: string
+    enum: [udp, tcp]
+    description: Transport protocol to listen on.
+  listen_addr:
+    type: string
+    default: 127.0.0.1
+    description: IPv4 or IPv6 address to listen on.
+    anyOf:
+      - format: ipv4
+      - format: ipv6
+  listen_port:
+    type: integer
+    minimum: 1
+    maximum: 65535
+    default: 514
+    description: Port to listen on.
+  max_message_len:
+    type: integer
+    minimum: 1
+    default: 2048
+    description: Maximum accepted syslog message length, in bytes.
+  disable_rfc_parser:
+    type: boolean
+    default: false
+    description: >
+      Skip RFC3164/RFC5424 parsing and only strip the PRI header.
+required:
+  - source
+examples:
+  - source: syslog
+    listen_addr: 0.0.0.0
+    listen_port: 514
+    protocol: udp
+    labels:
+      type: syslog
