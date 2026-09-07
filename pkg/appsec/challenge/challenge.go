@@ -470,9 +470,6 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	customJSTimeout := resolvedOpts.customJSTimeout
 	if customJSTimeout <= 0 {
 		customJSTimeout = DefaultCustomJSTimeout
-	} else if customJSTimeout > customJSTimeoutWarn {
-		logger.WithField("custom_js_timeout", customJSTimeout).
-			Warn("custom_js_timeout is long; visitors wait this out on the challenge page before the submission is sent")
 	}
 
 	maxCookieLen := resolvedOpts.maxCookieLen
