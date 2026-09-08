@@ -716,6 +716,79 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 		},
 		{
+			name:             "pre_eval : skip processing helper bypasses a matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SkipProcessing('skip requested by config')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Empty(t, events)
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt)
+				require.False(t, responses[0].OutOfBandInterrupt)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, 200, responses[0].UserHTTPResponseCode)
+				require.Equal(t, 200, responses[0].BouncerHTTPResponseCode)
+			},
+		},
+		{
+			name:             "pre_eval : first outcome wins, skip then drop",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SkipProcessing('skip first')", "DropRequest('drop second')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Empty(t, events)
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+			},
+		},
+		{
+			name:             "pre_eval : first outcome wins, drop then skip",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"DropRequest('drop first')", "SkipProcessing('skip second')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/urllll",
+				Args:        url.Values{"foo": []string{"toto"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 3)
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				require.Equal(t, "drop first", events[1].Parsed["appsec_drop_reason"])
+			},
+		},
+		{
 			name:             "pre_eval : set remediation and return code",
 			expected_load_ok: true,
 			pre_eval: []appsec.Hook{
