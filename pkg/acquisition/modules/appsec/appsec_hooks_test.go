@@ -1476,6 +1476,51 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			},
 		},
 		{
+			name:             "post_eval SendChallenge is a no-op after pre_eval SkipProcessing",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SkipProcessing('skipped')"}},
+			},
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Empty(t, responses[0].UserHTTPBodyContent, "a skipped request must not carry a challenge page")
+				require.Empty(t, events)
+			},
+		},
+		{
+			name:             "post_eval SendChallenge is a no-op after pre_eval DropRequest",
+			expected_load_ok: true,
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"DropRequest('dropped')"}},
+			},
+			post_eval: []appsec.Hook{
+				{Apply: []string{"SendChallenge()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr:  "1.2.3.4",
+				Method:      "GET",
+				URI:         "/protected",
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				// The bug this guards: a "ban" remediation shipping a challenge page.
+				require.Empty(t, responses[0].UserHTTPBodyContent)
+			},
+		},
+		{
 			name:             "on_challenge: no cookie → user hooks skipped (filter would nil-deref)",
 			expected_load_ok: true,
 			// This filter would nil-deref if it ran without a fingerprint. The

@@ -1735,6 +1735,14 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 		return errors.New("SendChallenge can only be called from an in-band hook (on_challenge or post_eval)")
 	}
 
+	// A hook already took a terminal decision for this band (DropRequest,
+	// SkipProcessing). Serving a challenge on top of it produced an
+	// incoherent response: a "ban" remediation carrying a challenge page.
+	if outcome := state.Outcome(request); outcome != nil {
+		w.Logger.Debugf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
+		return nil
+	}
+
 	// GrantChallengeCookie earlier in the same request already minted an
 	// allowlist cookie; refuse to overwrite it with a challenge page.
 	if state.ChallengeBypassed {
