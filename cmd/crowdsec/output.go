@@ -104,16 +104,19 @@ func handleOverflow(
 ) {
 	parsed, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, sd.StageParse)
 	if err != nil {
-		scenario := ""
+		// the parser already logged which node failed, so identify the alert we
+		// are about to lose instead
+		fields := log.Fields{"sources": event.Overflow.GetSources()}
+
 		if event.Overflow.Alert != nil && event.Overflow.Alert.Scenario != nil {
-			scenario = *event.Overflow.Alert.Scenario
+			fields["scenario"] = *event.Overflow.Alert.Scenario
 		}
 
-		log.WithFields(log.Fields{
-			"scenario":  scenario,
-			"bucket_id": event.Overflow.BucketId,
-			"sources":   event.Overflow.GetSources(),
-		}).Errorf("postoverflow failed: %s", err)
+		if event.Overflow.BucketId != "" {
+			fields["bucket_id"] = event.Overflow.BucketId
+		}
+
+		log.WithFields(fields).Errorf("postoverflow failed, discarding alert: %s", err)
 
 		return
 	}
