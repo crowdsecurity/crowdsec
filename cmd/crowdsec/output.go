@@ -101,12 +101,24 @@ func handleOverflow(
 	postOverflowNodes []parser.Node,
 	sd *StateDumper,
 	pendingAlerts *alertBuffer,
-) error {
-	event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, sd.StageParse)
+) {
+	parsed, err := parser.Parse(postOverflowCTX, event, postOverflowNodes, sd.StageParse)
 	if err != nil {
-		return fmt.Errorf("postoverflow failed: %w", err)
+		scenario := ""
+		if event.Overflow.Alert != nil && event.Overflow.Alert.Scenario != nil {
+			scenario = *event.Overflow.Alert.Scenario
+		}
+
+		log.WithFields(log.Fields{
+			"scenario":  scenario,
+			"bucket_id": event.Overflow.BucketId,
+			"sources":   event.Overflow.GetSources(),
+		}).Errorf("postoverflow failed: %s", err)
+
+		return
 	}
 
+	event = parsed
 	ov := event.Overflow
 	log.Info(*ov.Alert.Message)
 
@@ -120,7 +132,7 @@ func handleOverflow(
 
 	if ov.Whitelisted {
 		log.Infof("[%s] is whitelisted, skip.", *ov.Alert.Message)
-		return nil
+		return
 	}
 
 	if ov.Reprocess {
@@ -133,33 +145,27 @@ func handleOverflow(
 	}
 
 	if flags.DumpDir != "" {
-		return nil
+		return
 	}
 
 	pendingAlerts.add(ov)
-
-	return nil
 }
 
-type overflowProcessor func(context.Context, pipeline.Event) error
+type overflowProcessor func(context.Context, pipeline.Event)
 
 // Decouples the pipeline from postoverflow latency: parsing inline in outputLoop
 // backpressured the whole engine, down to the appsec in-band responses (#4600).
-func postOverflowWorker(ctx context.Context, queue chan pipeline.Event, process overflowProcessor) error {
+func postOverflowWorker(ctx context.Context, queue chan pipeline.Event, process overflowProcessor) {
 	for event := range queue {
 		// the alerts we'd produce past this point have no one left to flush them
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
 
-		if err := process(ctx, event); err != nil {
-			return err
-		}
+		process(ctx, event)
 	}
-
-	return nil
 }
 
 // Warns on crossing 75% full, then on falling back under 25%: once we drop, it's
@@ -171,7 +177,7 @@ func warnQueuePressure(depth int, size int, warned bool) bool {
 		log.Warnf("postoverflow queue is %d/%d full, a postoverflow parser is slow (dns?): overflows will be dropped if it fills up", depth, size)
 		return true
 	case depth*4 < size && warned:
-		log.Info("postoverflow queue is draining")
+		log.Infof("postoverflow queue is draining, back under 25%% (%d/%d)", depth, size)
 		return false
 	}
 
@@ -191,8 +197,8 @@ func runOutput(
 ) error {
 	pendingAlerts := &alertBuffer{}
 
-	process := func(ctx context.Context, event pipeline.Event) error {
-		return handleOverflow(ctx, event, input, *parsers.PovfwCtx, parsers.Povfwnodes, sd, pendingAlerts)
+	process := func(ctx context.Context, event pipeline.Event) {
+		handleOverflow(ctx, event, input, *parsers.PovfwCtx, parsers.Povfwnodes, sd, pendingAlerts)
 	}
 
 	return outputLoop(ctx, idx, overflow, bucketStore, process, client, pendingAlerts, queueSize, outputsTomb.Dying())
@@ -220,7 +226,7 @@ func outputLoop(
 	dropCounter := metrics.GlobalPostOverflowDropped.With(labels)
 
 	povfw := make(chan pipeline.Event, queueSize)
-	workerErr := make(chan error, 1)
+	workerDone := make(chan struct{})
 
 	var (
 		warnedPressure   bool
@@ -231,7 +237,8 @@ func outputLoop(
 	if !inlinePostOverflow {
 		go func() {
 			defer trace.ReportPanic()
-			workerErr <- postOverflowWorker(ctx, povfw, process)
+			defer close(workerDone)
+			postOverflowWorker(ctx, povfw, process)
 		}()
 	}
 
@@ -265,9 +272,6 @@ func outputLoop(
 				}
 				return nil
 			})
-		case err := <-workerErr:
-			// a postoverflow failure killed the output routine before, keep that
-			return err
 		case <-dying:
 			if !inlinePostOverflow {
 				close(povfw)
@@ -275,10 +279,7 @@ func outputLoop(
 				timer := time.NewTimer(postOverflowDrainTimeout)
 
 				select {
-				case err := <-workerErr:
-					if err != nil {
-						log.Errorf("while draining postoverflow queue: %s", err)
-					}
+				case <-workerDone:
 				case <-timer.C:
 					log.Warnf("timeout draining the postoverflow queue, %d overflow(s) lost", len(povfw))
 				}
@@ -302,10 +303,7 @@ func outputLoop(
 			}
 
 			if inlinePostOverflow {
-				if err := process(ctx, event); err != nil {
-					return err
-				}
-
+				process(ctx, event)
 				break
 			}
 

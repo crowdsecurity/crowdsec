@@ -39,11 +39,9 @@ func TestOutputLoopSlowPostOverflow(t *testing.T) {
 	release := make(chan struct{})
 	processed := make(chan pipeline.Event, 16)
 
-	process := func(_ context.Context, evt pipeline.Event) error {
+	process := func(_ context.Context, evt pipeline.Event) {
 		<-release
 		processed <- evt
-
-		return nil
 	}
 
 	overflow := make(chan pipeline.Event)
