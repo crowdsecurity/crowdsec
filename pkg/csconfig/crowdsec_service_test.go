@@ -64,6 +64,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
+				PostOverflowQueueSize:     defaultPostOverflowQueueSize,
 				ConsoleContextValueLength: 2500,
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./testdata/simulation.yaml",
@@ -101,6 +102,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
+				PostOverflowQueueSize:     defaultPostOverflowQueueSize,
 				ConsoleContextValueLength: 0,
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
 				// context is loaded in pkg/alertcontext
@@ -136,6 +138,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
+				PostOverflowQueueSize:     defaultPostOverflowQueueSize,
 				ConsoleContextValueLength: 10,
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
@@ -164,12 +167,13 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expected: &CrowdsecServiceCfg{
-				Enable:               new(true),
-				AcquisitionFilePath:  notExistFullPath,
-				AcquisitionFiles:     []string{},
-				ParserRoutinesCount:  1,
-				OutputRoutinesCount:  1,
-				BucketsRoutinesCount: 1,
+				Enable:                new(true),
+				AcquisitionFilePath:   notExistFullPath,
+				AcquisitionFiles:      []string{},
+				ParserRoutinesCount:   1,
+				OutputRoutinesCount:   1,
+				PostOverflowQueueSize: defaultPostOverflowQueueSize,
+				BucketsRoutinesCount:  1,
 			},
 		},
 		{
@@ -223,4 +227,121 @@ dns_cache:
 	bare := CrowdsecServiceCfg{}
 	require.NoError(t, yaml.Unmarshal([]byte("acquisition_path: ./testdata/acquis.yaml"), &bare))
 	assert.Nil(t, bare.DNSCache)
+}
+
+func TestPipelineCfg(t *testing.T) {
+	tests := []struct {
+		name            string
+		yamlConfig      string
+		expectedParser  int
+		expectedBuckets int
+		expectedOutput  int
+		expectedQueue   int
+	}{
+		{
+			name:            "nothing set",
+			yamlConfig:      "",
+			expectedParser:  1,
+			expectedBuckets: 1,
+			expectedOutput:  1,
+			expectedQueue:   256,
+		},
+		{
+			name: "legacy keys only",
+			yamlConfig: `
+parser_routines: 4
+buckets_routines: 2
+output_routines: 3
+`,
+			expectedParser:  4,
+			expectedBuckets: 2,
+			expectedOutput:  3,
+			expectedQueue:   256,
+		},
+		{
+			name: "nested keys only",
+			yamlConfig: `
+pipeline:
+  parser:
+    routines: 4
+  buckets:
+    routines: 2
+  output:
+    routines: 3
+    queue_size: 512
+`,
+			expectedParser:  4,
+			expectedBuckets: 2,
+			expectedOutput:  3,
+			expectedQueue:   512,
+		},
+		{
+			// config.yaml ships parser_routines, so this is what an upgrade looks like
+			name: "nested overrides legacy",
+			yamlConfig: `
+parser_routines: 1
+pipeline:
+  parser:
+    routines: 8
+`,
+			expectedParser:  8,
+			expectedBuckets: 1,
+			expectedOutput:  1,
+			expectedQueue:   256,
+		},
+		{
+			name:            "a negative legacy value falls back to the default",
+			yamlConfig:      "parser_routines: -1",
+			expectedParser:  1,
+			expectedBuckets: 1,
+			expectedOutput:  1,
+			expectedQueue:   256,
+		},
+		{
+			name: "zero and negative values fall back to the defaults",
+			yamlConfig: `
+pipeline:
+  parser:
+    routines: 0
+  output:
+    routines: -1
+    queue_size: 0
+`,
+			expectedParser:  1,
+			expectedBuckets: 1,
+			expectedOutput:  1,
+			expectedQueue:   256,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			crowdsecCfg := CrowdsecServiceCfg{}
+			require.NoError(t, yaml.Unmarshal([]byte(tc.yamlConfig), &crowdsecCfg))
+
+			crowdsecCfg.AcquisitionFilePath = "./testdata/acquis.yaml"
+			crowdsecCfg.SimulationFilePath = "./testdata/simulation.yaml"
+
+			cfg := &Config{
+				ConfigPaths: &ConfigurationPaths{
+					ConfigDir: "./testdata",
+					DataDir:   "./data",
+					HubDir:    "./hub",
+				},
+				API: &APICfg{
+					Client: &LocalApiClientCfg{
+						CredentialsFilePath: "./testdata/lapi-secrets.yaml",
+					},
+				},
+				Crowdsec: &crowdsecCfg,
+			}
+
+			require.NoError(t, cfg.LoadCrowdsec())
+
+			require.Equal(t, tc.expectedParser, cfg.Crowdsec.ParserRoutinesCount)
+			require.Equal(t, tc.expectedBuckets, cfg.Crowdsec.BucketsRoutinesCount)
+			require.Equal(t, tc.expectedOutput, cfg.Crowdsec.OutputRoutinesCount)
+			require.Equal(t, tc.expectedQueue, cfg.Crowdsec.PostOverflowQueueSize)
+		})
+	}
 }

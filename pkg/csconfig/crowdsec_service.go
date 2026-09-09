@@ -23,6 +23,7 @@ type CrowdsecServiceCfg struct {
 	ParserRoutinesCount       int              `yaml:"parser_routines"`
 	BucketsRoutinesCount      int              `yaml:"buckets_routines"`
 	OutputRoutinesCount       int              `yaml:"output_routines"`
+	Pipeline                  *PipelineCfg     `yaml:"pipeline,omitempty"`
 	SimulationConfig          SimulationConfig `yaml:"-"`
 	BucketStateFile           string           `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string           `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
@@ -31,6 +32,59 @@ type CrowdsecServiceCfg struct {
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
+
+	PostOverflowQueueSize int `yaml:"-"` // resolved from Pipeline
+}
+
+type PipelineStageCfg struct {
+	Routines *int `yaml:"routines,omitempty"`
+}
+
+// The output stage is the only one with a queue in front of it, for postoverflow.
+type PipelineOutputCfg struct {
+	Routines  *int `yaml:"routines,omitempty"`
+	QueueSize *int `yaml:"queue_size,omitempty"`
+}
+
+// Supersedes the flat *_routines keys, which remain the fallback when unset here.
+type PipelineCfg struct {
+	Parser  *PipelineStageCfg  `yaml:"parser,omitempty"`
+	Buckets *PipelineStageCfg  `yaml:"buckets,omitempty"`
+	Output  *PipelineOutputCfg `yaml:"output,omitempty"`
+}
+
+// ~30x the worst case burst in #4600 (arrival rate x the 3s dnscache bound), and
+// small enough that a stuck pipeline hits the drop counter in minutes.
+const defaultPostOverflowQueueSize = 256
+
+// The nested value wins; warn when the legacy key disagrees so it doesn't look effective.
+func resolveRoutines(stage string, cfg *PipelineStageCfg, legacy int) int {
+	if cfg == nil || cfg.Routines == nil {
+		if legacy <= 0 {
+			return 1
+		}
+
+		return legacy
+	}
+
+	n := *cfg.Routines
+	if n <= 0 {
+		n = 1
+	}
+
+	if legacy > 1 && legacy != n {
+		log.Warnf("pipeline.%s.routines (%d) overrides %s_routines (%d)", stage, n, stage, legacy)
+	}
+
+	return n
+}
+
+func resolveQueueSize(cfg *PipelineOutputCfg, def int) int {
+	if cfg == nil || cfg.QueueSize == nil || *cfg.QueueSize <= 0 {
+		return def
+	}
+
+	return *cfg.QueueSize
 }
 
 // Cache config for DNS lookups (legit bots, rdns PO)
@@ -143,17 +197,20 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("load error (simulation): %w", err)
 	}
 
-	if c.Crowdsec.ParserRoutinesCount <= 0 {
-		c.Crowdsec.ParserRoutinesCount = 1
+	pipelineCfg := c.Crowdsec.Pipeline
+	if pipelineCfg == nil {
+		pipelineCfg = &PipelineCfg{}
 	}
 
-	if c.Crowdsec.BucketsRoutinesCount <= 0 {
-		c.Crowdsec.BucketsRoutinesCount = 1
+	c.Crowdsec.ParserRoutinesCount = resolveRoutines("parser", pipelineCfg.Parser, c.Crowdsec.ParserRoutinesCount)
+	c.Crowdsec.BucketsRoutinesCount = resolveRoutines("buckets", pipelineCfg.Buckets, c.Crowdsec.BucketsRoutinesCount)
+	outputRoutines := &PipelineStageCfg{}
+	if pipelineCfg.Output != nil {
+		outputRoutines.Routines = pipelineCfg.Output.Routines
 	}
 
-	if c.Crowdsec.OutputRoutinesCount <= 0 {
-		c.Crowdsec.OutputRoutinesCount = 1
-	}
+	c.Crowdsec.OutputRoutinesCount = resolveRoutines("output", outputRoutines, c.Crowdsec.OutputRoutinesCount)
+	c.Crowdsec.PostOverflowQueueSize = resolveQueueSize(pipelineCfg.Output, defaultPostOverflowQueueSize)
 
 	if err = c.LoadAPIClient(); err != nil {
 		return fmt.Errorf("loading api client: %w", err)

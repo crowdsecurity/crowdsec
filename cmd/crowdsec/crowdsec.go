@@ -130,7 +130,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 		log.WithField("idx", idx).Info("Starting output routine")
 		outputsTomb.Go(func() error {
 			defer trace.ReportPanic()
-			return runOutput(ctx, inEvents, outEvents, bucketStore, *parsers.PovfwCtx, parsers.Povfwnodes, apiClient, sd)
+			return runOutput(ctx, idx, inEvents, outEvents, bucketStore, parsers, apiClient, sd, cConfig.Crowdsec.PostOverflowQueueSize)
 		})
 	}
 }
