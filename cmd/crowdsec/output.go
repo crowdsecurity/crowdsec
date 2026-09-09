@@ -25,6 +25,9 @@ import (
 // final flush never runs.
 const postOverflowDrainTimeout = 2 * time.Second
 
+// Drops come in bursts, and the counter carries the exact number anyway.
+const postOverflowDropWarnInterval = time.Minute
+
 type alertBuffer struct {
 	mu     sync.Mutex
 	alerts []pipeline.RuntimeAlert
@@ -221,7 +224,8 @@ func outputLoop(
 
 	var (
 		warnedPressure   bool
-		droppedSinceTick int
+		droppedSinceWarn int
+		lastDropWarn     time.Time
 	)
 
 	if !inlinePostOverflow {
@@ -238,9 +242,10 @@ func outputLoop(
 			queueDepth.Set(float64(depth))
 			warnedPressure = warnQueuePressure(depth, queueSize, warnedPressure)
 
-			if droppedSinceTick > 0 {
-				log.Warnf("postoverflow queue full, dropped %d overflow(s)", droppedSinceTick)
-				droppedSinceTick = 0
+			if droppedSinceWarn > 0 && time.Since(lastDropWarn) >= postOverflowDropWarnInterval {
+				log.Warnf("postoverflow queue full, dropped %d overflow(s) since the last warning", droppedSinceWarn)
+				droppedSinceWarn = 0
+				lastDropWarn = time.Now()
 			}
 
 			batch := pendingAlerts.takeAll()
@@ -310,7 +315,7 @@ func outputLoop(
 				// Dropping is the fail-safe direction: postoverflow runs the
 				// whitelists, so an unparsed alert would mean false positive bans.
 				dropCounter.Inc()
-				droppedSinceTick++
+				droppedSinceWarn++
 			}
 		}
 	}
