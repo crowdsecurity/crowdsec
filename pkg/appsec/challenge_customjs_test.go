@@ -36,27 +36,34 @@ func challengeJSData(dest string) *enrichment.DataProvider {
 	return &enrichment.DataProvider{DestPath: dest, Type: exprhelpers.ChallengeJSDataType}
 }
 
-func TestLoadCustomJS(t *testing.T) {
+func TestReadCustomJS(t *testing.T) {
 	tests := []struct {
 		name  string
 		files map[string]string
 		data  []*enrichment.DataProvider
-		want  string
+		want  []string // dest_file of each module, in order
 	}{
 		{
 			name:  "single script",
 			files: map[string]string{"challenge/custom.js": "hookA();"},
 			data:  []*enrichment.DataProvider{challengeJSData("challenge/custom.js")},
-			want:  "hookA();",
+			want:  []string{"challenge/custom.js"},
 		},
 		{
-			// A base detection bundle and a site-specific fix compose. The
-			// separator keeps a file with no trailing newline or semicolon from
-			// splicing into the next.
-			name:  "concatenated in declaration order",
+			// A base detection bundle and a site-specific fix compose, and hook
+			// order follows the declaration order.
+			name:  "read in declaration order",
 			files: map[string]string{"challenge/a.js": "hookA()", "challenge/b.js": "hookB()"},
 			data:  []*enrichment.DataProvider{challengeJSData("challenge/a.js"), challengeJSData("challenge/b.js")},
-			want:  "hookA()\n;\nhookB()",
+			want:  []string{"challenge/a.js", "challenge/b.js"},
+		},
+		{
+			// esbuild resolves a module once per path, so the repeat would
+			// register the same hook twice.
+			name:  "repeated dest_file read once",
+			files: map[string]string{"challenge/a.js": "hookA()"},
+			data:  []*enrichment.DataProvider{challengeJSData("challenge/a.js"), challengeJSData("challenge/a.js")},
+			want:  []string{"challenge/a.js"},
 		},
 		{
 			name:  "other data types ignored",
@@ -65,39 +72,59 @@ func TestLoadCustomJS(t *testing.T) {
 				{DestPath: "legit_bots/gptbot.json", Type: "bots"},
 				{DestPath: "crs/rules.conf", Type: "modsec"},
 			},
-			want: "",
 		},
 		{
 			// Bot detection has to survive a data file that hasn't downloaded.
 			name:  "missing file skipped",
 			files: map[string]string{"challenge/present.js": "hookB()"},
 			data:  []*enrichment.DataProvider{challengeJSData("challenge/absent.js"), challengeJSData("challenge/present.js")},
-			want:  "hookB()",
+			want:  []string{"challenge/present.js"},
 		},
 		{
 			name: "empty dest_file skipped",
 			data: []*enrichment.DataProvider{{Type: exprhelpers.ChallengeJSDataType}},
-			want: "",
 		},
 		{
 			name: "no data at all",
-			want: "",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, dataDir := challengeJSConfig(t, tc.files, tc.data...)
-			assert.Equal(t, tc.want, cfg.LoadCustomJS(dataDir))
+
+			var got []string
+			for _, d := range cfg.readCustomJS(dataDir) {
+				got = append(got, d.Name)
+			}
+
+			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+// The point of compiling each module separately: one file that cannot be built
+// used to cost every other detector its registration.
+func TestLoadCustomJSDropsBrokenScript(t *testing.T) {
+	cfg, dataDir := challengeJSConfig(t,
+		map[string]string{
+			"challenge/broken.js": "export function collectSignals(fp) {\n",
+			"challenge/good.js":   "export function collectSignals(fp) { fp.custom = { ok: \"GOOD\" } }\n",
+		},
+		challengeJSData("challenge/broken.js"), challengeJSData("challenge/good.js"))
+
+	out := cfg.LoadCustomJS(dataDir)
+
+	require.NotEmpty(t, out)
+	assert.Contains(t, out, "GOOD")
+	assert.Contains(t, out, "__CSEC_CUSTOM_DETECT_v1__")
 }
 
 func TestLoadCustomJSRejectsTraversal(t *testing.T) {
 	cfg, dataDir := challengeJSConfig(t, nil, challengeJSData("../outside.js"))
 	require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(dataDir), "outside.js"), []byte("pwn()"), 0o600))
 
-	assert.Empty(t, cfg.LoadCustomJS(dataDir))
+	assert.Empty(t, cfg.readCustomJS(dataDir))
 }
 
 // Without the early return in FileInit, an unknown data type reaches

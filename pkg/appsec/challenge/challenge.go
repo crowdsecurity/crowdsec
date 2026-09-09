@@ -85,10 +85,6 @@ const defaultCookieTTL = 12 * time.Hour
 // page, so it is deliberately short.
 const DefaultCustomJSTimeout = 500 * time.Millisecond
 
-// customJSTimeoutWarn is the point past which a configured budget is honored
-// but flagged: beyond a few seconds the visitor is watching a spinner.
-const customJSTimeoutWarn = 5 * time.Second
-
 // DefaultChallengeCSP is the Content-Security-Policy header used on the
 // challenge page when the operator hasn't configured a custom one. Allows
 // inline script/style (the challenge runtime injects both) and blob workers
