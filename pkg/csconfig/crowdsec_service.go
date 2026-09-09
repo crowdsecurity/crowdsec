@@ -48,9 +48,9 @@ type PipelineOutputCfg struct {
 
 // Supersedes the flat *_routines keys, which remain the fallback when unset here.
 type PipelineCfg struct {
-	Parser  *PipelineStageCfg  `yaml:"parser,omitempty"`
-	Buckets *PipelineStageCfg  `yaml:"buckets,omitempty"`
-	Output  *PipelineOutputCfg `yaml:"output,omitempty"`
+	Parser *PipelineStageCfg  `yaml:"parser,omitempty"`
+	Bucket *PipelineStageCfg  `yaml:"bucket,omitempty"`
+	Output *PipelineOutputCfg `yaml:"output,omitempty"`
 }
 
 // ~30x the worst case burst in #4600 (arrival rate x the 3s dnscache bound), and
@@ -58,7 +58,7 @@ type PipelineCfg struct {
 const defaultPostOverflowQueueSize = 256
 
 // The nested value wins; warn when the legacy key disagrees so it doesn't look effective.
-func resolveRoutines(stage string, cfg *PipelineStageCfg, legacy int) int {
+func resolveRoutines(stage string, legacyKey string, cfg *PipelineStageCfg, legacy int) int {
 	if cfg == nil || cfg.Routines == nil {
 		if legacy <= 0 {
 			return 1
@@ -73,7 +73,7 @@ func resolveRoutines(stage string, cfg *PipelineStageCfg, legacy int) int {
 	}
 
 	if legacy > 1 && legacy != n {
-		log.Warnf("pipeline.%s.routines (%d) overrides %s_routines (%d)", stage, n, stage, legacy)
+		log.Warnf("pipeline.%s.routines (%d) overrides %s (%d)", stage, n, legacyKey, legacy)
 	}
 
 	return n
@@ -202,14 +202,14 @@ func (c *Config) LoadCrowdsec() error {
 		pipelineCfg = &PipelineCfg{}
 	}
 
-	c.Crowdsec.ParserRoutinesCount = resolveRoutines("parser", pipelineCfg.Parser, c.Crowdsec.ParserRoutinesCount)
-	c.Crowdsec.BucketsRoutinesCount = resolveRoutines("buckets", pipelineCfg.Buckets, c.Crowdsec.BucketsRoutinesCount)
+	c.Crowdsec.ParserRoutinesCount = resolveRoutines("parser", "parser_routines", pipelineCfg.Parser, c.Crowdsec.ParserRoutinesCount)
+	c.Crowdsec.BucketsRoutinesCount = resolveRoutines("bucket", "buckets_routines", pipelineCfg.Bucket, c.Crowdsec.BucketsRoutinesCount)
 	outputRoutines := &PipelineStageCfg{}
 	if pipelineCfg.Output != nil {
 		outputRoutines.Routines = pipelineCfg.Output.Routines
 	}
 
-	c.Crowdsec.OutputRoutinesCount = resolveRoutines("output", outputRoutines, c.Crowdsec.OutputRoutinesCount)
+	c.Crowdsec.OutputRoutinesCount = resolveRoutines("output", "output_routines", outputRoutines, c.Crowdsec.OutputRoutinesCount)
 	c.Crowdsec.PostOverflowQueueSize = resolveQueueSize(pipelineCfg.Output, defaultPostOverflowQueueSize)
 
 	if err = c.LoadAPIClient(); err != nil {

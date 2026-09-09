@@ -264,7 +264,7 @@ output_routines: 3
 pipeline:
   parser:
     routines: 4
-  buckets:
+  bucket:
     routines: 2
   output:
     routines: 3
