@@ -68,12 +68,21 @@ type mappedMemory struct {
 	res []byte
 }
 
-// Reallocate re-slices the mapping rather than allocating: a grow must keep
+// Reallocate commits what the guest asked for and re-slices the reservation
+// rather than allocating: a grow must keep
 // everything the guest already wrote, so every call returns the same bytes with
 // a longer tail. Only that tail is new, and it is still zero — wasm memory only
 // grows, and the guest could not address past its previous length.
 func (m *mappedMemory) Reallocate(size uint64) []byte {
 	if size > uint64(len(m.res)) {
+		return nil
+	}
+
+	if err := commitWasmMemory(m.res, size); err != nil {
+		// Returning nil fails the guest's grow, which surfaces as an
+		// ObfuscateJS error — better than handing it memory it can't write.
+		log.WithError(err).Error("failed to commit wasm linear memory")
+
 		return nil
 	}
 
