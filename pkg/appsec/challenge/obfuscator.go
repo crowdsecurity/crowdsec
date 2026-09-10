@@ -12,18 +12,12 @@ import (
 	crand "crypto/rand"
 	_ "embed"
 	"fmt"
-	"sync"
 
 	"github.com/tetratelabs/wazero"
 )
 
 //go:embed js/obfuscate/index.wasm.gz
 var obfuscatorWasmGz []byte
-
-var (
-	obfuscatorWasm     []byte
-	obfuscatorWasmOnce sync.Once
-)
 
 // ObfuscateJS runs the input source through the embedded `javascript-obfuscator`
 // wasm module and returns the obfuscated output. Thread-safe: wazero allows
