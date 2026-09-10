@@ -92,6 +92,8 @@ func getTLSClient(c *PluginConfig) error {
 		}
 
 		tlsConfig.Certificates = []tls.Certificate{cert}
+	} else if c.CertPath != "" || c.KeyPath != "" {
+		return fmt.Errorf("both cert_path and key_path must be specified")
 	}
 
 	transport := &http.Transport{

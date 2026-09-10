@@ -28,6 +28,11 @@ method: POST
 
 # skip_tls_verification:  # true or false. Default is false
 
+# mTLS / TLS configuration:
+# cert_path: /etc/crowdsec/tls/client.crt
+# key_path: /etc/crowdsec/tls/client.key
+# ca_cert_path: /etc/crowdsec/tls/ca.crt
+
 ---
 
 # type: http
