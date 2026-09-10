@@ -28,6 +28,10 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	// The guest grows its linear memory page by page; back it with a mapping
+	// instead of the Go heap. See wasm_memory.go.
+	ctx = withWasmMemoryAllocator(ctx)
+
 	config := wazero.NewModuleConfig().
 		WithStdin(stdin).
 		WithStdout(&stdout).
