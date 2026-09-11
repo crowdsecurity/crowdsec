@@ -556,3 +556,95 @@ mode: tail
 	tomb.Kill(nil)
 	require.NoError(t, tomb.Wait())
 }
+
+// The tailer can reach EOF in the middle of a line, for instance when a write
+// crosses a page boundary: the partial line must not be sent on its own, and
+// the lines written after it must not be skipped.
+func TestLiveAcquisitionPartialLine(t *testing.T) {
+	ctx := t.Context()
+
+	// Generous on purpose, so that a slow machine doesn't turn into a test failure
+	const readTimeout = 10 * time.Second
+	// How long we wait to confirm that no extra line shows up
+	const quietPeriod = 100 * time.Millisecond
+
+	tests := []struct {
+		name     string
+		truncate bool   // truncate the file while the partial line is pending
+		rest     string // written after the partial line
+		expected []string
+	}{
+		{
+			name:     "completed",
+			rest:     "1}\nsecond\nthird\n",
+			expected: []string{"first", `{"a":1}`, "second", "third"},
+		},
+		{
+			name:     "truncated",
+			truncate: true,
+			rest:     "new\n",
+			expected: []string{"first", "new"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			testFile := filepath.Join(t.TempDir(), "test.log")
+
+			fd, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+			require.NoError(t, err)
+
+			defer fd.Close()
+
+			config := fmt.Sprintf("mode: tail\nfilename: '%s'", testFile)
+
+			f := fileacquisition.Source{}
+			err = f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			out := make(chan pipeline.Event)
+			tomb := tomb.Tomb{}
+
+			err = f.StreamingAcquisition(ctx, out, &tomb)
+			require.NoError(t, err)
+
+			// Let the tailer open the file and seek to the end
+			time.Sleep(100 * time.Millisecond)
+			// Nothing reads "first" yet: without CompleteLines, the tailer is still
+			// blocked sending the partial line when the rest is written, then skips it
+			_, err = fd.WriteString("first\n" + `{"a":`)
+			require.NoError(t, err)
+			// Let the tailer read the partial line and reach EOF
+			time.Sleep(100 * time.Millisecond)
+
+			if tc.truncate {
+				require.NoError(t, os.Truncate(testFile, 0))
+			}
+
+			_, err = fd.WriteString(tc.rest)
+			require.NoError(t, err)
+
+			var got []string
+
+			for range tc.expected {
+				select {
+				case evt := <-out:
+					got = append(got, evt.Line.Raw)
+				case <-time.After(readTimeout):
+					t.Fatalf("timeout waiting for lines, got %q", got)
+				}
+			}
+
+			select {
+			case evt := <-out:
+				got = append(got, evt.Line.Raw)
+			case <-time.After(quietPeriod):
+			}
+
+			require.Equal(t, tc.expected, got)
+
+			tomb.Kill(nil)
+			require.NoError(t, tomb.Wait())
+		})
+	}
+}
