@@ -754,11 +754,17 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 // disabled would loop forever: solve, get a Set-Cookie it drops, reload,
 // get challenged again. The page detects that client-side and says so.
 func TestChallengePageChecksCookiesEnabled(t *testing.T) {
+	rt := newChallengeRuntimeForSplitTest(t, testKeyRing())
+
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	require.NoError(t, err)
+
 	for _, want := range []string{
 		"navigator.cookieEnabled",
 		`document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax"`,
+		"cookies-disabled",
 		"Cookies are disabled",
 	} {
-		require.Contains(t, htmlTemplate, want)
+		require.Contains(t, html, want)
 	}
 }
