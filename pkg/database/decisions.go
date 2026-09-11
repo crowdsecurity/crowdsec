@@ -171,6 +171,10 @@ func longestDecisionForScopeTypeValue(s *sql.Selector) {
 			t.C(decision.FieldScope),
 			s.C(decision.FieldScope),
 		),
+		sql.ColumnsEQ(
+			t.C(decision.FieldSimulated),
+			s.C(decision.FieldSimulated),
+		),
 		sql.ColumnsGT(
 			t.C(decision.FieldUntil),
 			s.C(decision.FieldUntil),
