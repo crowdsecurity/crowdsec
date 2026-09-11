@@ -264,11 +264,10 @@ linters:
     modernize:
       disable:
         - any
-        - fmtappendf
         - forvar
         - omitzero
         - stringsbuilder
-        - waitgroup
+        - waitgroupgo
 
     nestif:
       # lower this after refactoring
