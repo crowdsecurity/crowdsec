@@ -46,11 +46,12 @@ type Event struct {
 	Meta map[string]string `json:"Meta,omitempty" yaml:"Meta,omitempty"`
 }
 
+// CopyForBucket gives the event private copies of the maps a scenario can write
+// to: SetMeta and SetParsed are the only mutators reachable from an expression,
+// and everything else is read-only once the event leaves the parsers.
 func (e *Event) CopyForBucket() Event {
 	out := *e
 	out.Parsed = maps.Clone(e.Parsed)
-	out.Enriched = maps.Clone(e.Enriched)
-	out.Unmarshaled = maps.Clone(e.Unmarshaled)
 	out.Meta = maps.Clone(e.Meta)
 
 	return out

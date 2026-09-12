@@ -3,7 +3,6 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,24 +17,17 @@ func TestCopyForBucketIndependence(t *testing.T) {
 	cp := src.CopyForBucket()
 
 	// same content right after the copy
-	assert.Equal(t, src.Meta, cp.Meta)
-	assert.Equal(t, src.Parsed, cp.Parsed)
-	assert.Equal(t, src.Enriched, cp.Enriched)
+	require.Equal(t, src.Meta, cp.Meta)
+	require.Equal(t, src.Parsed, cp.Parsed)
+	require.Equal(t, src.Enriched, cp.Enriched)
+	require.Equal(t, src.Unmarshaled, cp.Unmarshaled)
 
 	// mutating the copy must not affect the source (this is the #4459 guarantee)
 	cp.SetMeta("injected", "1")
 	cp.SetParsed("verb", "POST")
-	cp.Enriched["IsoCode"] = "US"
 
-	_, ok := src.Meta["injected"]
-	assert.False(t, ok, "writing copy.Meta leaked into source")
-	assert.Equal(t, "GET", src.Parsed["verb"], "writing copy.Parsed leaked into source")
-	assert.Equal(t, "FR", src.Enriched["IsoCode"], "writing copy.Enriched leaked into source")
-
-	// the top-level Unmarshaled map is cloned (key add/remove is isolated)
-	cp.Unmarshaled["new"] = 2
-	_, ok = src.Unmarshaled["new"]
-	assert.False(t, ok, "adding a key to copy.Unmarshaled leaked into source")
+	require.NotContains(t, src.Meta, "injected", "writing copy.Meta leaked into source")
+	require.Equal(t, "GET", src.Parsed["verb"], "writing copy.Parsed leaked into source")
 }
 
 func TestCopyForBucketNilMapsStayNil(t *testing.T) {
@@ -46,12 +38,10 @@ func TestCopyForBucketNilMapsStayNil(t *testing.T) {
 	// maps.Clone preserves nil, which the downstream nil checks rely on
 	require.Nil(t, cp.Meta)
 	require.Nil(t, cp.Parsed)
-	require.Nil(t, cp.Enriched)
-	require.Nil(t, cp.Unmarshaled)
 }
 
 // BenchmarkCopyForBucket isolates the per-pour cost of the #4459 fix: cloning
-// the four data maps of a realistic parsed HTTP event.
+// the writable maps of a realistic parsed HTTP event.
 func BenchmarkCopyForBucket(b *testing.B) {
 	src := Event{
 		Meta: map[string]string{
