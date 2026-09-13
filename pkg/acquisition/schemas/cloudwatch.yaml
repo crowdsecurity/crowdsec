@@ -1,0 +1,126 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Cloudwatch datasource
+description: >
+  Schema for cloudwatch acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/cloudwatch.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: cloudwatch
+    description: >
+      Must be cloudwatch to bind this acquisition entry to the Cloudwatch
+      datasource.
+  mode:
+    type: string
+    enum: [tail, cat]
+    default: tail
+    description: >
+      Acquisition mode (tail streams logs, cat performs a finite read).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: cloudwatch).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  group_name:
+    type: string
+    minLength: 1
+    description: The Cloudwatch log group to monitor.
+  stream_regexp:
+    type: string
+    format: regex
+    description: >
+      Regular expression used to select streams within the log group.
+      Mutually exclusive in practice with stream_name.
+  stream_name:
+    type: string
+    description: >
+      Exact stream name to follow within the log group.
+  describelogstreams_limit:
+    type: integer
+    minimum: 1
+    description: >
+      Batch size for the DescribeLogStreams pagination.
+  getlogeventspages_limit:
+    type: integer
+    minimum: 1
+    description: >
+      Batch size for the GetLogEvents pagination.
+  poll_new_stream_interval:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Frequency at which new streams are discovered within the log group.
+  max_stream_age:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Only monitor streams that have been updated within this duration.
+  poll_stream_interval:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: Frequency at which each stream is polled.
+  stream_read_timeout:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Stop monitoring a stream that hasn't been updated within this
+      duration; it may be reopened later.
+  aws_api_timeout:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: Timeout applied to AWS API calls.
+  aws_profile:
+    type: string
+    description: Named AWS profile to use for credentials.
+  prepend_cloudwatch_timestamp:
+    type: boolean
+    description: >
+      Prepend the Cloudwatch event timestamp to the log line.
+  aws_config_dir:
+    type: string
+    description: >
+      Directory containing an AWS config/credentials pair, used instead of
+      aws_region and the default credential chain.
+  aws_region:
+    type: string
+    description: >
+      AWS region to use; required unless aws_config_dir is set.
+required:
+  - source
+  - group_name
+examples:
+  - source: cloudwatch
+    group_name: /my/log/group
+    aws_region: eu-west-1
+    labels:
+      type: cloudwatch
