@@ -556,3 +556,84 @@ mode: tail
 	tomb.Kill(nil)
 	require.NoError(t, tomb.Wait())
 }
+
+// TestPartialLine checks that a line which is only partially visible when the
+// tailer reaches EOF is not emitted as a truncated event, and that the writes
+// following it are not skipped.
+func TestPartialLine(t *testing.T) {
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+	logFile := filepath.Join(tmpDir, "partial.log")
+
+	config := fmt.Sprintf(`
+mode: tail
+filename: %s`, logFile)
+
+	logger, _ := test.NewNullLogger()
+	logger.SetLevel(log.WarnLevel)
+	subLogger := logger.WithField("type", fileacquisition.ModuleName)
+
+	tomb := tomb.Tomb{}
+	out := make(chan pipeline.Event, 10)
+
+	fd, err := os.Create(logFile)
+	require.NoError(t, err, "could not create test file")
+
+	defer fd.Close()
+
+	f := fileacquisition.Source{}
+	err = f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	err = f.StreamingAcquisition(ctx, out, &tomb)
+	require.NoError(t, err)
+
+	defer tomb.Kill(nil)
+
+	waitingForTail := true
+	for waitingForTail {
+		select {
+		case <-time.After(2 * time.Second):
+			t.Fatal("Timeout waiting for file to be tailed")
+		default:
+			if !f.IsTailing(logFile) {
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+
+			waitingForTail = false
+		}
+	}
+
+	// IsTailing only reports that the file was registered: the tailer opens it
+	// and seeks to the end asynchronously. Give it time to settle, otherwise the
+	// first write below can land before the seek and be skipped entirely.
+	time.Sleep(500 * time.Millisecond)
+
+	// Write the first half of a line and let the tailer hit EOF on it.
+	_, err = fd.WriteString(`{"msg":"hello`)
+	require.NoError(t, err, "could not write test file")
+	time.Sleep(500 * time.Millisecond)
+
+	// Complete that line and append a second, whole one.
+	_, err = fd.WriteString(" world\"}\n{\"msg\":\"second\"}\n")
+	require.NoError(t, err, "could not write test file")
+	time.Sleep(2 * time.Second)
+
+	var got []string
+
+	for {
+		select {
+		case evt := <-out:
+			got = append(got, evt.Line.Raw)
+			continue
+		default:
+		}
+
+		break
+	}
+
+	t.Logf("received %d event(s): %q", len(got), got)
+
+	require.Equal(t, []string{`{"msg":"hello world"}`, `{"msg":"second"}`}, got)
+}

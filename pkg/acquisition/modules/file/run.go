@@ -268,12 +268,18 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
 
+	// CompleteLines buffers partial reads until a newline arrives. Without it, a
+	// read that lands in the middle of a line (the writer's data being only
+	// partially visible to us yet) is emitted as if it were a whole line, and the
+	// tailer then seeks to EOF, silently discarding the remainder of that line
+	// and anything written in between.
 	tail, err := tail.TailFile(file, tail.Config{
-		ReOpen:   true,
-		Follow:   true,
-		Poll:     pollFile,
-		Location: seekInfo,
-		Logger:   log.NewEntry(log.StandardLogger()),
+		ReOpen:        true,
+		Follow:        true,
+		Poll:          pollFile,
+		CompleteLines: true,
+		Location:      seekInfo,
+		Logger:        log.NewEntry(log.StandardLogger()),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
