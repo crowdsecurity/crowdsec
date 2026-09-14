@@ -124,6 +124,20 @@ func (_c *BouncerCreate) SetNillableLastPull(v *time.Time) *BouncerCreate {
 	return _c
 }
 
+// SetStreamCursor sets the "stream_cursor" field.
+func (_c *BouncerCreate) SetStreamCursor(v int) *BouncerCreate {
+	_c.mutation.SetStreamCursor(v)
+	return _c
+}
+
+// SetNillableStreamCursor sets the "stream_cursor" field if the given value is not nil.
+func (_c *BouncerCreate) SetNillableStreamCursor(v *int) *BouncerCreate {
+	if v != nil {
+		_c.SetStreamCursor(*v)
+	}
+	return _c
+}
+
 // SetAuthType sets the "auth_type" field.
 func (_c *BouncerCreate) SetAuthType(v string) *BouncerCreate {
 	_c.mutation.SetAuthType(v)
@@ -255,6 +269,10 @@ func (_c *BouncerCreate) defaults() {
 		v := bouncer.DefaultIPAddress
 		_c.mutation.SetIPAddress(v)
 	}
+	if _, ok := _c.mutation.StreamCursor(); !ok {
+		v := bouncer.DefaultStreamCursor
+		_c.mutation.SetStreamCursor(v)
+	}
 	if _, ok := _c.mutation.AuthType(); !ok {
 		v := bouncer.DefaultAuthType
 		_c.mutation.SetAuthType(v)
@@ -281,6 +299,9 @@ func (_c *BouncerCreate) check() error {
 	}
 	if _, ok := _c.mutation.Revoked(); !ok {
 		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "Bouncer.revoked"`)}
+	}
+	if _, ok := _c.mutation.StreamCursor(); !ok {
+		return &ValidationError{Name: "stream_cursor", err: errors.New(`ent: missing required field "Bouncer.stream_cursor"`)}
 	}
 	if _, ok := _c.mutation.AuthType(); !ok {
 		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
@@ -350,6 +371,10 @@ func (_c *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LastPull(); ok {
 		_spec.SetField(bouncer.FieldLastPull, field.TypeTime, value)
 		_node.LastPull = &value
+	}
+	if value, ok := _c.mutation.StreamCursor(); ok {
+		_spec.SetField(bouncer.FieldStreamCursor, field.TypeInt, value)
+		_node.StreamCursor = value
 	}
 	if value, ok := _c.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
@@ -532,6 +557,24 @@ func (u *BouncerUpsert) UpdateLastPull() *BouncerUpsert {
 // ClearLastPull clears the value of the "last_pull" field.
 func (u *BouncerUpsert) ClearLastPull() *BouncerUpsert {
 	u.SetNull(bouncer.FieldLastPull)
+	return u
+}
+
+// SetStreamCursor sets the "stream_cursor" field.
+func (u *BouncerUpsert) SetStreamCursor(v int) *BouncerUpsert {
+	u.Set(bouncer.FieldStreamCursor, v)
+	return u
+}
+
+// UpdateStreamCursor sets the "stream_cursor" field to the value that was provided on create.
+func (u *BouncerUpsert) UpdateStreamCursor() *BouncerUpsert {
+	u.SetExcluded(bouncer.FieldStreamCursor)
+	return u
+}
+
+// AddStreamCursor adds v to the "stream_cursor" field.
+func (u *BouncerUpsert) AddStreamCursor(v int) *BouncerUpsert {
+	u.Add(bouncer.FieldStreamCursor, v)
 	return u
 }
 
@@ -793,6 +836,27 @@ func (u *BouncerUpsertOne) UpdateLastPull() *BouncerUpsertOne {
 func (u *BouncerUpsertOne) ClearLastPull() *BouncerUpsertOne {
 	return u.Update(func(s *BouncerUpsert) {
 		s.ClearLastPull()
+	})
+}
+
+// SetStreamCursor sets the "stream_cursor" field.
+func (u *BouncerUpsertOne) SetStreamCursor(v int) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetStreamCursor(v)
+	})
+}
+
+// AddStreamCursor adds v to the "stream_cursor" field.
+func (u *BouncerUpsertOne) AddStreamCursor(v int) *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.AddStreamCursor(v)
+	})
+}
+
+// UpdateStreamCursor sets the "stream_cursor" field to the value that was provided on create.
+func (u *BouncerUpsertOne) UpdateStreamCursor() *BouncerUpsertOne {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateStreamCursor()
 	})
 }
 
@@ -1234,6 +1298,27 @@ func (u *BouncerUpsertBulk) UpdateLastPull() *BouncerUpsertBulk {
 func (u *BouncerUpsertBulk) ClearLastPull() *BouncerUpsertBulk {
 	return u.Update(func(s *BouncerUpsert) {
 		s.ClearLastPull()
+	})
+}
+
+// SetStreamCursor sets the "stream_cursor" field.
+func (u *BouncerUpsertBulk) SetStreamCursor(v int) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.SetStreamCursor(v)
+	})
+}
+
+// AddStreamCursor adds v to the "stream_cursor" field.
+func (u *BouncerUpsertBulk) AddStreamCursor(v int) *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.AddStreamCursor(v)
+	})
+}
+
+// UpdateStreamCursor sets the "stream_cursor" field to the value that was provided on create.
+func (u *BouncerUpsertBulk) UpdateStreamCursor() *BouncerUpsertBulk {
+	return u.Update(func(s *BouncerUpsert) {
+		s.UpdateStreamCursor()
 	})
 }
 

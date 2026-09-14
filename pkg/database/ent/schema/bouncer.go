@@ -30,6 +30,10 @@ func (Bouncer) Fields() []ent.Field {
 		field.String("type").Optional().StructTag(`json:"type"`),
 		field.String("version").Optional().StructTag(`json:"version"`),
 		field.Time("last_pull").Nillable().Optional().StructTag(`json:"last_pull"`),
+		// Highest decision id already streamed to this bouncer. Distinct from last_pull,
+		// which is a wall clock heartbeat: a decision can commit after a pull that could
+		// not see it yet, so a timestamp can never be a safe cursor.
+		field.Int("stream_cursor").Default(0),
 		field.String("auth_type").StructTag(`json:"auth_type"`).Default(types.ApiKeyAuthType),
 		field.String("osname").Optional(),
 		field.String("osfamily").Optional(),

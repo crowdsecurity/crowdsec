@@ -366,7 +366,7 @@ func (p *Papi) SyncDecisions(ctx context.Context) error {
 				go p.SendDeletedDecisions(ctx, &cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
-			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ConsoleManagement != nil && *p.consoleConfig.ConsoleManagement) {
+			if p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions {
 				var tmpDecisions []models.DecisionsDeleteRequestItem
 
 				p.Logger.Debugf("%d decisions deletion to add in cache", len(deletedDecisions))

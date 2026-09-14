@@ -43,3 +43,41 @@ def test_register_bouncer_env(crowdsec, flavor: str) -> None:
         assert res.exit_code == 0
         j = json.loads(res.output)
         assert len(j) == 0
+
+
+def test_register_bouncer_secret(crowdsec, flavor: str, tmp_path) -> None:
+    """Test that bouncer name is correctly parsed from Docker secret filename.
+
+    Secret file: /run/secrets/bouncer_key_caddy
+    Expected bouncer name: caddy  (not key_caddy)
+
+    Regression test for https://github.com/crowdsecurity/crowdsec/issues/4301
+    """
+    secret_dir = tmp_path / "secrets"
+    secret_dir.mkdir()
+    secret_file = secret_dir / "bouncer_key_caddy"
+    secret_file.write_text("test-api-key-caddy")
+
+    volumes = {
+        str(secret_dir / "bouncer_key_caddy"): {
+            "bind": "/run/secrets/bouncer_key_caddy",
+            "mode": "ro",
+        }
+    }
+
+    with crowdsec(flavor=flavor, volumes=volumes) as cs:
+        cs.wait_for_log("*Starting processing data*")
+        cs.wait_for_http(8080, "/health", want_status=HTTPStatus.OK)
+
+        res = cs.cont.exec_run("cscli bouncers list -o json")
+        assert res.exit_code == 0
+
+        j = json.loads(res.output)
+        assert len(j) == 1, f"Expected 1 bouncer, got {len(j)}: {j}"
+
+        bouncer = j[0]
+        assert bouncer["name"] == "caddy", (
+            f"Bouncer name is '{bouncer['name']}' — "
+            f"expected 'caddy'. The secret filename 'bouncer_key_caddy' "
+            f"is being split at the wrong field."
+        )

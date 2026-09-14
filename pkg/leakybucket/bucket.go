@@ -29,8 +29,11 @@ type Leaky struct {
 	Queue *pipeline.Queue
 	// Leaky buckets are receiving message through a chan
 	In chan *pipeline.Event `json:"-"`
-	// Leaky buckets are pushing their overflows through a chan
-	Out chan *pipeline.Queue `json:"-"`
+	// pendingOverflow holds the queue an event source (Pour or an overflow
+	// processor) decided to overflow with. It is emitted at the end of the same
+	// LeakRoutine iteration that produced it, before any further event can be
+	// poured into the (shared, bounded-ring) queue.
+	pendingOverflow *pipeline.Queue
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan pipeline.Event `json:"-"`
 	// the unique identifier of the bucket (a hash)
@@ -88,7 +91,6 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Limiter: limiter,
 		Uuid:    seed.Generate(),
 		Queue:   pipeline.NewQueue(Qsize),
-		Out:     make(chan *pipeline.Queue, 1),
 		Suicide: make(chan bool, 1),
 		AllOut:  f.ret,
 		Factory: f,
@@ -205,9 +207,6 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			if l.Factory.orderEvent {
 				orderEvent[l.Mapkey].Done()
 			}
-		case ofw := <-l.Out:
-			l.overflow(ofw)
-			return
 		// suiciiiide
 		case <-l.Suicide:
 			// don't wait defer to close the channel, in case we are blocked before returning
@@ -219,52 +218,34 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			return
 		// we underflow or reach bucket deadline (timers)
 		case <-durationTickerChan:
-			var (
-				alert pipeline.RuntimeAlert
-				err   error
-			)
 			l.Ovflw_ts = time.Now().UTC()
-			l.markDone()
-			ofw := l.Queue
-			alert = pipeline.RuntimeAlert{Mapkey: l.Mapkey}
-
 			if l.timedOverflow {
-				metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
-
-				alert, err = NewAlert(l, ofw)
-				if err != nil {
-					log.Error(err)
-				}
-				for _, f := range l.Factory.processors {
-					alert, ofw = f.OnBucketOverflow(l.Factory, l, alert, ofw)
-					if ofw == nil {
-						l.logger.Debugf("Overflow has been discarded (%T)", f)
-						break
-					}
-				}
+				// a counter bucket reached its deadline: this is a real overflow,
+				// emit it through the same path as a capacity overflow.
 				l.logger.Infof("Timed Overflow")
+				l.overflow(l.Queue)
 			} else {
 				l.logger.Debugf("bucket underflow, destroy")
+				l.markDone()
 				metrics.BucketsUnderflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
+				l.AllOut <- pipeline.Event{Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}, Type: pipeline.OVFLW}
 			}
-			if l.logger.Level >= log.TraceLevel {
-				// don't sdump if it's not going to be printed, it's expensive
-				l.logger.Tracef("Overflow event: %s", spew.Sdump(pipeline.Event{Overflow: alert}))
-			}
-
-			l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		case <-ctx.Done():
 			l.logger.Debugf("Bucket externally killed, return")
-			for len(l.Out) > 0 {
-				ofw := <-l.Out
-				l.overflow(ofw)
-			}
 			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
 			return
 		}
 	End:
+		// An event source (Pour or an overflow processor) may have decided to
+		// overflow during this iteration. Emit it now, in the same iteration that
+		// produced it and after the ordering gate was released, so no further
+		// event can be poured into the shared queue the alert is built from.
+		if l.pendingOverflow != nil {
+			l.overflow(l.pendingOverflow)
+			return
+		}
 	}
 }
 
@@ -285,7 +266,7 @@ func Pour(l *Leaky, gate pourGate, msg pipeline.Event) {
 		l.Ovflw_ts = time.Now().UTC()
 		l.logger.Debugf("Last event to be poured, bucket overflow.")
 		l.Queue.Add(msg)
-		l.Out <- l.Queue
+		l.pendingOverflow = l.Queue
 	}
 }
 

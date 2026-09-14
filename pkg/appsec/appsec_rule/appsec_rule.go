@@ -46,7 +46,9 @@ type CustomRule struct {
 	BodyType string `yaml:"body_type,omitempty"`
 }
 
-func (v *CustomRule) Convert(ruleType string, appsecRuleName string, appsecRuleDescription string) (string, []uint32, error) {
+// Convert renders the rule; ruleIndex is its position in the collection, used
+// to keep ids unique across rules that share identical leaves.
+func (v *CustomRule) Convert(ruleType string, appsecRuleName string, appsecRuleDescription string, ruleIndex int) (string, []uint32, error) {
 	if v.Zones == nil && v.And == nil && v.Or == nil {
 		return "", nil, errors.New("no zones defined")
 	}
@@ -62,7 +64,7 @@ func (v *CustomRule) Convert(ruleType string, appsecRuleName string, appsecRuleD
 	switch ruleType {
 	case ModsecurityRuleType:
 		r := ModsecurityRule{}
-		return r.Build(v, appsecRuleName, appsecRuleDescription)
+		return r.Build(v, appsecRuleName, appsecRuleDescription, ruleIndex)
 	default:
 		return "", nil, fmt.Errorf("unknown rule format '%s'", ruleType)
 	}

@@ -17,6 +17,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
+// defaultMaxBodySize is the maximum size of a request body, after decompression.
+const defaultMaxBodySize = int64(10 * 1024 * 1024)
+
 type Configuration struct {
 	// IPFilter                       []string          `yaml:"ip_filter"`
 	// ChunkSize                      *int64            `yaml:"chunk_size"`
@@ -70,6 +73,10 @@ func (c *Configuration) SetDefaults() {
 
 	if c.Path == "" {
 		c.Path = "/"
+	}
+
+	if c.MaxBodySize == nil {
+		c.MaxBodySize = new(defaultMaxBodySize)
 	}
 }
 

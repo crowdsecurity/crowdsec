@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
@@ -29,7 +30,7 @@ type Source struct {
 	AppsecRunners         []AppsecRunner // one for each go-routine
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
-	authMutex             sync.Mutex
+	authGroup             singleflight.Group
 	httpClient            *http.Client
 }
 

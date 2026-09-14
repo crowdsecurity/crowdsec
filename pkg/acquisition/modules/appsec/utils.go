@@ -1,15 +1,12 @@
 package appsecacquisition
 
 import (
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -19,7 +16,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -48,43 +44,6 @@ var CRSAnomalyScores = []string{
 	"anomaly_score",
 }
 
-func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
-
-	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
-		return errors.New("source is nil or not an IP")
-	}
-
-	//GeoIP enrich
-	asndata, err := exprhelpers.GeoIPASNEnrich(src.IP)
-
-	if err != nil {
-		return err
-	} else if asndata != nil {
-		record := asndata.(*geoip2.ASN)
-		src.AsName = record.AutonomousSystemOrganization
-		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	}
-
-	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if cityData != nil {
-		record := cityData.(*geoip2.City)
-		src.Cn = record.Country.IsoCode
-		src.Latitude = float32(record.Location.Latitude)
-		src.Longitude = float32(record.Location.Longitude)
-	}
-
-	rangeData, err := exprhelpers.GeoIPRangeEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if rangeData != nil {
-		record := rangeData.(*net.IPNet)
-		src.Range = record.String()
-	}
-	return nil
-}
-
 func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMatches bool) string {
 	msg := "anomaly score "
 	switch {
@@ -107,14 +66,6 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		return nil, nil
 	}
 
-	evt := pipeline.Event{}
-	evt.Type = pipeline.APPSEC
-	evt.Process = true
-	// Carry hook-published vars onto the overflow event so downstream
-	// consumers of the APPSEC alert (not just the LOG event) can see them.
-	if len(inEvt.Appsec.HookVars) > 0 {
-		evt.Appsec.HookVars = inEvt.Appsec.HookVars
-	}
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
 		Value: &sourceIP,
@@ -123,17 +74,14 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	}
 
 	// Enrich source with GeoIP data
-	if err := AppsecEventGenerationGeoIPEnrich(&source); err != nil {
+	if err := appsec.GeoIPEnrichSource(&source); err != nil {
 		log.Errorf("unable to enrich source with GeoIP data : %s", err)
 	}
 
-	// Build overflow
-	evt.Overflow.Sources = make(map[string]models.Source)
-	evt.Overflow.Sources[sourceIP] = source
-
 	alert := models.Alert{}
 	alert.Capacity = new(int32(1))
-	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
+	// Length 0, not len(MatchedRules): the loop below appends.
+	alert.Events = make([]*models.Event, 0, len(inEvt.Appsec.MatchedRules))
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -264,10 +212,11 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	alert.Message = &msg
 	alert.StartAt = new(time.Now().UTC().Format(time.RFC3339))
 	alert.StopAt = new(time.Now().UTC().Format(time.RFC3339))
-	evt.Overflow.APIAlerts = []models.Alert{alert}
-	evt.Overflow.Alert = &alert
 
-	return &evt, nil
+	// Hook vars ride along so consumers of the alert, not just the log event, see them.
+	overflow := appsec.NewAppsecOverflow(&alert, inEvt.Appsec.HookVars)
+
+	return &overflow, nil
 }
 
 // Check if all the rule matched zones are part of the excluded zones
@@ -286,37 +235,6 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 		}
 	}
 	return true
-}
-
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
-	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
-	// def needs fixing
-	evt.Stage = "s00-raw"
-	evt.Parsed = map[string]string{
-		"source_ip":           r.ClientIP,
-		"target_host":         r.Host,
-		"target_uri":          r.URI,
-		"method":              r.Method,
-		"req_uuid":            txUuid,
-		"source":              "crowdsec-appsec",
-		"remediation_cmpt_ip": r.RemoteAddrNormalized,
-		// TBD:
-		// http_status
-		// user_agent
-
-	}
-	evt.Line = pipeline.Line{
-		Time: time.Now(),
-		// should we add some info like listen addr/port/path ?
-		Labels:  labels,
-		Process: true,
-		Module:  ModuleName,
-		Src:     ModuleName,
-		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
-	}
-	evt.Appsec = pipeline.AppsecEvent{}
-
-	return evt, nil
 }
 
 type ruleData struct {

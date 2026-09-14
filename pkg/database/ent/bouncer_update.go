@@ -142,6 +142,27 @@ func (_u *BouncerUpdate) ClearLastPull() *BouncerUpdate {
 	return _u
 }
 
+// SetStreamCursor sets the "stream_cursor" field.
+func (_u *BouncerUpdate) SetStreamCursor(v int) *BouncerUpdate {
+	_u.mutation.ResetStreamCursor()
+	_u.mutation.SetStreamCursor(v)
+	return _u
+}
+
+// SetNillableStreamCursor sets the "stream_cursor" field if the given value is not nil.
+func (_u *BouncerUpdate) SetNillableStreamCursor(v *int) *BouncerUpdate {
+	if v != nil {
+		_u.SetStreamCursor(*v)
+	}
+	return _u
+}
+
+// AddStreamCursor adds value to the "stream_cursor" field.
+func (_u *BouncerUpdate) AddStreamCursor(v int) *BouncerUpdate {
+	_u.mutation.AddStreamCursor(v)
+	return _u
+}
+
 // SetAuthType sets the "auth_type" field.
 func (_u *BouncerUpdate) SetAuthType(v string) *BouncerUpdate {
 	_u.mutation.SetAuthType(v)
@@ -319,6 +340,12 @@ func (_u *BouncerUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.LastPullCleared() {
 		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
 	}
+	if value, ok := _u.mutation.StreamCursor(); ok {
+		_spec.SetField(bouncer.FieldStreamCursor, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedStreamCursor(); ok {
+		_spec.AddField(bouncer.FieldStreamCursor, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)
 	}
@@ -477,6 +504,27 @@ func (_u *BouncerUpdateOne) SetNillableLastPull(v *time.Time) *BouncerUpdateOne 
 // ClearLastPull clears the value of the "last_pull" field.
 func (_u *BouncerUpdateOne) ClearLastPull() *BouncerUpdateOne {
 	_u.mutation.ClearLastPull()
+	return _u
+}
+
+// SetStreamCursor sets the "stream_cursor" field.
+func (_u *BouncerUpdateOne) SetStreamCursor(v int) *BouncerUpdateOne {
+	_u.mutation.ResetStreamCursor()
+	_u.mutation.SetStreamCursor(v)
+	return _u
+}
+
+// SetNillableStreamCursor sets the "stream_cursor" field if the given value is not nil.
+func (_u *BouncerUpdateOne) SetNillableStreamCursor(v *int) *BouncerUpdateOne {
+	if v != nil {
+		_u.SetStreamCursor(*v)
+	}
+	return _u
+}
+
+// AddStreamCursor adds value to the "stream_cursor" field.
+func (_u *BouncerUpdateOne) AddStreamCursor(v int) *BouncerUpdateOne {
+	_u.mutation.AddStreamCursor(v)
 	return _u
 }
 
@@ -686,6 +734,12 @@ func (_u *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err er
 	}
 	if _u.mutation.LastPullCleared() {
 		_spec.ClearField(bouncer.FieldLastPull, field.TypeTime)
+	}
+	if value, ok := _u.mutation.StreamCursor(); ok {
+		_spec.SetField(bouncer.FieldStreamCursor, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedStreamCursor(); ok {
+		_spec.AddField(bouncer.FieldStreamCursor, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AuthType(); ok {
 		_spec.SetField(bouncer.FieldAuthType, field.TypeString, value)

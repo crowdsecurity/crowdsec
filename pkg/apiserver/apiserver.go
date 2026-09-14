@@ -307,10 +307,10 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 					return s.papiSync(ctx)
 				})
 			} else {
-				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console")
 			}
 		} else {
-			log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+			log.Warningf("Machine is not enrolled in the console, can't synchronize decisions")
 		}
 	}
 

@@ -140,6 +140,18 @@ func (c *Client) UpdateBouncerLastPull(ctx context.Context, lastPull time.Time, 
 	return nil
 }
 
+func (c *Client) UpdateBouncerStreamPull(ctx context.Context, lastPull time.Time, streamCursor int, id int) error {
+	_, err := c.Ent.Bouncer.UpdateOneID(id).
+		SetLastPull(lastPull).
+		SetStreamCursor(streamCursor).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to update bouncer stream pull in database: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) UpdateBouncerIP(ctx context.Context, ipAddr string, id int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(id).SetIPAddress(ipAddr).Save(ctx)
 	if err != nil {

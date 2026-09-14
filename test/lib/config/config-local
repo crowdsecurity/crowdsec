@@ -112,6 +112,35 @@ config_generate() {
     yq -i e '.cscli.hub_branch=strenv(HUB_BRANCH)' "${CONFIG_DIR}/config.yaml"
 }
 
+# Populate the hub index. By default this pulls it from the hub CDN, but the
+# CDN rate-limits shared CI IPs (403). Set TEST_HUB_CLONE=1 to instead fetch the
+# index from a git clone of the hub at the pinned branch: the committed
+# .index.json already embeds every item's content, so 'collections install'
+# needs no further downloads.
+# Print the runner's public IP, to debug hub CDN / git rate limiting (403).
+log_public_ip() {
+    local ip
+    ip=$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null) || ip="unknown"
+    echo >&2 "hub index fetch failed - runner public IP: ${ip}"
+}
+
+hub_update() {
+    if [[ -z "${TEST_HUB_CLONE:-}" ]]; then
+        "$CSCLI" --warning hub update --with-content || { log_public_ip; return 1; }
+        return
+    fi
+
+    echo "Fetching hub index from a git clone (branch $HUB_BRANCH)"
+    local clonedir
+    clonedir=$(mktemp -d)
+    # shellcheck disable=SC2064
+    trap "rm -rf '$clonedir'" RETURN
+    git clone --quiet --depth 1 --branch "$HUB_BRANCH" \
+        "${TEST_HUB_GIT_URL:-https://github.com/crowdsecurity/hub.git}" "$clonedir" \
+        || { log_public_ip; return 1; }
+    cp "$clonedir/.index.json" "$HUB_DIR/.index.json"
+}
+
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
@@ -126,7 +155,7 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" --warning hub update --with-content
+    hub_update
 
     # preload some content and data files
     "$CSCLI" collections install crowdsecurity/linux --download-only

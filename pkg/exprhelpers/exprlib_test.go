@@ -222,6 +222,64 @@ func TestParseQueryInExpr(t *testing.T) {
 	}
 }
 
+func TestDistinct(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Direct calls: any slice/array element type must dedupe while preserving order.
+	out, err := Distinct([]string{"a", "a", "b"})
+	require.NoError(t, err)
+	require.Equal(t, []any{"a", "b"}, out)
+
+	out, err = Distinct([]any{"a", "a", "b", 1, 1})
+	require.NoError(t, err)
+	require.Equal(t, []any{"a", "b", 1}, out)
+
+	// Empty and nil slices return an empty []any (not nil).
+	out, err = Distinct([]string{})
+	require.NoError(t, err)
+	require.Equal(t, []any{}, out)
+
+	out, err = Distinct([]any(nil))
+	require.NoError(t, err)
+	require.Equal(t, []any{}, out)
+
+	// Non-slice input returns nil (unchanged contract).
+	out, err = Distinct("notaslice")
+	require.NoError(t, err)
+	require.Nil(t, out)
+
+	// Expr-level: Distinct(Split(...)) — Split returns []string, the regressed case.
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result any
+		err    string
+	}{
+		{
+			name:   "Distinct(Split()) dedupes a []string",
+			env:    map[string]any{"raw": "a,a,b,b,c"},
+			code:   `Distinct(Split(raw, ","))`,
+			result: []any{"a", "b", "c"},
+		},
+		{
+			name:   "Distinct over an expr list literal",
+			env:    map[string]any{},
+			code:   `Distinct(["a", "a", "b"])`,
+			result: []any{"a", "b"},
+		},
+	}
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
 func TestDistanceHelper(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)

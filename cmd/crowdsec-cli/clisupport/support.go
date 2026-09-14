@@ -226,9 +226,20 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 	}
 
 	out := new(bytes.Buffer)
-	ch := clihub.New(cli.cfg)
 
-	if err := ch.List(out, hub, false); err != nil {
+	// dump every installed item for diagnostics, not the collection-centric "cscli hub list" view
+	items := make(map[string][]*cwhub.Item)
+
+	for _, itemType := range cwhub.ItemTypes {
+		selected, err := clihub.SelectItems(hub, itemType, nil, true)
+		if err != nil {
+			return err
+		}
+
+		items[itemType] = selected
+	}
+
+	if err := clihub.ListItems(out, "no", cwhub.ItemTypes, items, true, "human"); err != nil {
 		return err
 	}
 

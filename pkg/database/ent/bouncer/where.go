@@ -99,6 +99,11 @@ func LastPull(v time.Time) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldLastPull, v))
 }
 
+// StreamCursor applies equality check predicate on the "stream_cursor" field. It's identical to StreamCursorEQ.
+func StreamCursor(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldStreamCursor, v))
+}
+
 // AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
 func AuthType(v string) predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldEQ(FieldAuthType, v))
@@ -622,6 +627,46 @@ func LastPullIsNil() predicate.Bouncer {
 // LastPullNotNil applies the NotNil predicate on the "last_pull" field.
 func LastPullNotNil() predicate.Bouncer {
 	return predicate.Bouncer(sql.FieldNotNull(FieldLastPull))
+}
+
+// StreamCursorEQ applies the EQ predicate on the "stream_cursor" field.
+func StreamCursorEQ(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldEQ(FieldStreamCursor, v))
+}
+
+// StreamCursorNEQ applies the NEQ predicate on the "stream_cursor" field.
+func StreamCursorNEQ(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNEQ(FieldStreamCursor, v))
+}
+
+// StreamCursorIn applies the In predicate on the "stream_cursor" field.
+func StreamCursorIn(vs ...int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldIn(FieldStreamCursor, vs...))
+}
+
+// StreamCursorNotIn applies the NotIn predicate on the "stream_cursor" field.
+func StreamCursorNotIn(vs ...int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldNotIn(FieldStreamCursor, vs...))
+}
+
+// StreamCursorGT applies the GT predicate on the "stream_cursor" field.
+func StreamCursorGT(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGT(FieldStreamCursor, v))
+}
+
+// StreamCursorGTE applies the GTE predicate on the "stream_cursor" field.
+func StreamCursorGTE(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldGTE(FieldStreamCursor, v))
+}
+
+// StreamCursorLT applies the LT predicate on the "stream_cursor" field.
+func StreamCursorLT(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLT(FieldStreamCursor, v))
+}
+
+// StreamCursorLTE applies the LTE predicate on the "stream_cursor" field.
+func StreamCursorLTE(v int) predicate.Bouncer {
+	return predicate.Bouncer(sql.FieldLTE(FieldStreamCursor, v))
 }
 
 // AuthTypeEQ applies the EQ predicate on the "auth_type" field.

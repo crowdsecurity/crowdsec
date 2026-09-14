@@ -31,6 +31,8 @@ const (
 	FieldVersion = "version"
 	// FieldLastPull holds the string denoting the last_pull field in the database.
 	FieldLastPull = "last_pull"
+	// FieldStreamCursor holds the string denoting the stream_cursor field in the database.
+	FieldStreamCursor = "stream_cursor"
 	// FieldAuthType holds the string denoting the auth_type field in the database.
 	FieldAuthType = "auth_type"
 	// FieldOsname holds the string denoting the osname field in the database.
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldType,
 	FieldVersion,
 	FieldLastPull,
+	FieldStreamCursor,
 	FieldAuthType,
 	FieldOsname,
 	FieldOsfamily,
@@ -86,6 +89,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
+	// DefaultStreamCursor holds the default value on creation for the "stream_cursor" field.
+	DefaultStreamCursor int
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
 	// DefaultAutoCreated holds the default value on creation for the "auto_created" field.
@@ -143,6 +148,11 @@ func ByVersion(opts ...sql.OrderTermOption) OrderOption {
 // ByLastPull orders the results by the last_pull field.
 func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastPull, opts...).ToFunc()
+}
+
+// ByStreamCursor orders the results by the stream_cursor field.
+func ByStreamCursor(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamCursor, opts...).ToFunc()
 }
 
 // ByAuthType orders the results by the auth_type field.

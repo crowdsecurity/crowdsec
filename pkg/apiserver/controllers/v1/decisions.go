@@ -155,10 +155,13 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, dbFunc func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+// writeDecisions streams the decisions returned by query into the array the caller has already
+// opened, paginating by id from startID. A startup resync passes 0, a stream delta passes the
+// bouncer cursor: both are the same query, they only differ in where they start.
+func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	limit := 30000 // FIXME : make it configurable
 	needComma := false
-	lastId := 0
+	lastId := startID
 
 	ctx := gctx.Request.Context()
 
@@ -177,7 +180,7 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(ctx, now, filters)
+		data, err := query(ctx, now, filters)
 		if err != nil {
 			return err
 		}
@@ -211,7 +214,7 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 			lastId = data[len(data)-1].ID
 		}
 
-		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+		log.Debugf("stream: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 
 		if len(data) < limit {
 			gctx.Writer.Flush()
@@ -223,119 +226,28 @@ func writeStartupDecisions(gctx *gin.Context, now time.Time, filters map[string]
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, time.Time, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
-	limit := 30000 // FIXME : make it configurable
-	needComma := false
-	lastId := 0
-
-	ctx := gctx.Request.Context()
-
-	// We write to a buffer instead of directly to the writer to avoid the \n added by enc.Encode()
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-
-	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
-	// callers reuse the same filters map across calls; clear any pagination cursor left by a previous call.
-	delete(filters, "id_gt")
-
-	for {
-		if lastId > 0 {
-			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
-		}
-
-		data, err := dbFunc(ctx, now, lastPull, filters)
-		if err != nil {
-			return err
-		}
-
-		for _, d := range data {
-			if needComma {
-				gctx.Writer.WriteString(",")
-			} else {
-				needComma = true
-			}
-
-			buf.Reset()
-			if err := enc.Encode(formatOneDecision(d)); err != nil {
-				gctx.Writer.Flush()
-
-				return err
-			}
-			// Encode() appends a trailing newline; strip it to keep the wire format compact.
-			b := buf.Bytes()
-			if n := len(b); n > 0 && b[n-1] == '\n' {
-				b = b[:n-1]
-			}
-			if _, err := gctx.Writer.Write(b); err != nil {
-				gctx.Writer.Flush()
-
-				return err
-			}
-		}
-
-		if len(data) > 0 {
-			lastId = data[len(data)-1].ID
-		}
-
-		log.Debugf("delta: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
-
-		if len(data) < limit {
-			gctx.Writer.Flush()
-
-			break
-		}
-	}
-
-	return nil
-}
-
-func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, now time.Time, filters map[string][]string) error {
-	var err error
-
+func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, now time.Time, filters map[string][]string, cursor int, startup bool) error {
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
 	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
 
-	// if the blocker just started, return all decisions
-	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
-		// Active decisions
-		err := writeStartupDecisions(gctx, now, filters, c.DBClient.QueryAllDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for startup: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString(`], "deleted": [`)
-		// Expired decisions
-		err = writeStartupDecisions(gctx, now, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.WriteString(`]}`)
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString(`]}`)
+	// Active decisions. A startup resync is this same query with a zero cursor.
+	if err := writeDecisions(gctx, now, filters, cursor, c.DBClient.QueryAllDecisionsWithFilters); err != nil {
+		log.Errorf("failed sending new decisions: %v", err)
+		gctx.Writer.WriteString(`], "deleted": []}`)
 		gctx.Writer.Flush()
-	} else {
-		err = writeDeltaDecisions(gctx, now, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for delta: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
 
-			return err
-		}
+		return err
+	}
 
-		gctx.Writer.WriteString(`], "deleted": [`)
+	gctx.Writer.WriteString(`], "deleted": [`)
 
+	// Expired decisions. Unlike the active ones these are keyed on until, not on the cursor:
+	// a decision expires when the clock passes it, with no write to order against.
+	expired := c.DBClient.QueryExpiredDecisionsWithFilters
+
+	if !startup {
 		// Use a 2-second overlap to avoid missing decisions that expired around the last pull time
 		var expiredSince *time.Time
 		if bouncerInfo.LastPull != nil {
@@ -343,18 +255,21 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 			expiredSince = &since
 		}
 
-		err = writeDeltaDecisions(gctx, now, filters, expiredSince, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.WriteString("]}")
-			gctx.Writer.Flush()
-
-			return err
+		expired = func(ctx context.Context, now time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+			return c.DBClient.QueryExpiredDecisionsSinceWithFilters(ctx, now, expiredSince, filters)
 		}
-
-		gctx.Writer.WriteString("]}")
-		gctx.Writer.Flush()
 	}
+
+	if err := writeDecisions(gctx, now, filters, 0, expired); err != nil {
+		log.Errorf("failed sending expired decisions: %v", err)
+		gctx.Writer.WriteString(`]}`)
+		gctx.Writer.Flush()
+
+		return err
+	}
+
+	gctx.Writer.WriteString(`]}`)
+	gctx.Writer.Flush()
 
 	return nil
 }
@@ -382,12 +297,32 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		filters["scopes"] = []string{"ip,range"}
 	}
 
-	err = c.streamDecisions(gctx, bouncerInfo, streamStartTime, filters)
+	val, ok := filters["startup"]
+	startup := ok && val[0] == "true"
+
+	// Read the cursor before streaming anything: a decision we cannot see yet belongs to an
+	// uncommitted transaction and will get a higher id, so this value cannot step over it.
+	// A wall clock timestamp cannot make that promise, which is why last_pull is not used here.
+	latestID, err := c.DBClient.LatestDecisionID(gctx.Request.Context())
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+
+		return
+	}
+
+	cursor := bouncerInfo.StreamCursor
+	// A cursor past the end of the table means the decisions were rewound under us: a partial
+	// restore, or MySQL < 8.0 recomputing AUTO_INCREMENT after the highest rows were deleted.
+	if startup || cursor > latestID {
+		cursor = 0
+	}
+
+	err = c.streamDecisions(gctx, bouncerInfo, streamStartTime, filters, cursor, startup)
 
 	if err == nil {
-		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
+		// Only update the pull state if no error occurred when sending the decisions to avoid missing decisions
 		// Do not reuse the context provided by gin because we already have sent the response to the client, so there's a chance for it to already be canceled
-		if err := c.DBClient.UpdateBouncerLastPull(context.Background(), streamStartTime, bouncerInfo.ID); err != nil {
+		if err := c.DBClient.UpdateBouncerStreamPull(context.Background(), streamStartTime, latestID, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}
 	}

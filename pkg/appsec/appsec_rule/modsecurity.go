@@ -12,6 +12,10 @@ import (
 
 type ModsecurityRule struct {
 	ids []uint32
+	// ruleIndex is the rule's position in its collection, mixed into ids so
+	// identical leaves of different rules don't collide (positions restart at 0
+	// per rule).
+	ruleIndex int
 }
 
 var zonesMap = map[string]string{
@@ -94,7 +98,9 @@ var bodyTypeMatch = map[string]string{
 
 const maxDNFGroups = 50
 
-func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string) (string, []uint32, error) {
+func (m *ModsecurityRule) Build(rule *CustomRule, appsecRuleName string, appsecRuleDescription string, ruleIndex int) (string, []uint32, error) {
+	m.ruleIndex = ruleIndex
+
 	if rule.Severity == "" {
 		rule.Severity = cztypes.RuleSeverityEmergency.String()
 	}
@@ -223,6 +229,8 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	h.Write([]byte(rule.Match.Value))
 	h.Write([]byte(fmt.Sprintf("%d", position)))
 
+	h.Write([]byte(fmt.Sprintf("rule:%d", m.ruleIndex)))
+
 	for _, zone := range rule.Zones {
 		h.Write([]byte(zone))
 	}
@@ -241,36 +249,47 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, appsecRuleName string
 	return id
 }
 
+// leafOptions holds the per-directive decisions taken by buildFromDNF.
+type leafOptions struct {
+	// starter marks the first directive of an AND-group, i.e. the chain starter.
+	// Coraza only evaluates disruptive (deny) and flow (skip) actions on the
+	// starter, and rejects disruptive ones outright on chained rules.
+	starter bool
+	// chain marks a directive followed by another one of the same AND-group.
+	chain bool
+	// skip is the number of following chains to skip once this group matched.
+	// Only meaningful on a starter.
+	skip int
+	// position is the directive index across all groups, mixed into the rule id.
+	position int
+	// root marks the very first emitted directive, which carries the severity.
+	root bool
+}
+
 // buildFromDNF generates ModSecurity SecRule directives from DNF groups.
 // Rules within each AND-group get ,chain (except the last).
-// Last rule of each group (except the final group) gets ,skip:N.
+// First rule of each group (except the final group) gets ,skip:N.
 func (m *ModsecurityRule) buildFromDNF(dnf [][]*CustomRule, severity string, appsecRuleName string, appsecRuleDescription string) ([]string, error) {
-	groupSizes := make([]int, len(dnf))
-	for i, group := range dnf {
-		groupSizes[i] = len(group)
-	}
-
 	var rules []string
 
 	position := 0
 
 	for groupIdx, group := range dnf {
 		for leafIdx, leaf := range group {
-			isLastInGroup := leafIdx == len(group)-1
-			isLastGroup := groupIdx == len(dnf)-1
-
-			chain := !isLastInGroup
-
-			skip := 0
-			if isLastInGroup && !isLastGroup {
-				for k := groupIdx + 1; k < len(dnf); k++ {
-					skip += groupSizes[k]
-				}
+			opts := leafOptions{
+				starter:  leafIdx == 0,
+				chain:    leafIdx != len(group)-1,
+				position: position,
+				root:     position == 0,
 			}
 
-			isRoot := position == 0
+			// A chain is a single entry in coraza's rule list, so skip counts
+			// the remaining groups, not the remaining directives.
+			if opts.starter {
+				opts.skip = len(dnf) - groupIdx - 1
+			}
 
-			ruleStr, err := m.buildSingleRule(leaf, severity, appsecRuleName, appsecRuleDescription, chain, skip, position, isRoot)
+			ruleStr, err := m.buildSingleRule(leaf, severity, appsecRuleName, appsecRuleDescription, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -284,7 +303,7 @@ func (m *ModsecurityRule) buildFromDNF(dnf [][]*CustomRule, severity string, app
 }
 
 // buildSingleRule renders a single leaf CustomRule as a ModSecurity SecRule string.
-func (m *ModsecurityRule) buildSingleRule(rule *CustomRule, severity string, appsecRuleName string, appsecRuleDescription string, chain bool, skip int, position int, isRoot bool) (string, error) {
+func (m *ModsecurityRule) buildSingleRule(rule *CustomRule, severity string, appsecRuleName string, appsecRuleDescription string, opts leafOptions) (string, error) {
 	r := strings.Builder{}
 
 	r.WriteString("SecRule ")
@@ -343,9 +362,17 @@ func (m *ModsecurityRule) buildSingleRule(rule *CustomRule, severity string, app
 		msg = appsecRuleName
 	}
 
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, m.generateRuleID(rule, appsecRuleName, position), msg, appsecRuleName))
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:2`, m.generateRuleID(rule, appsecRuleName, opts.position)))
 
-	if severity != "" && isRoot {
+	// Disruptive actions are only accepted on the chain starter, where coraza
+	// evaluates them once the whole chain matched.
+	if opts.starter {
+		r.WriteString(",deny")
+	}
+
+	r.WriteString(fmt.Sprintf(`,log,msg:'%s',tag:'crowdsec-%s',tag:'cs-custom-rule'`, msg, appsecRuleName))
+
+	if severity != "" && opts.root {
 		r.WriteString(fmt.Sprintf(`,severity:'%s'`, severity))
 	}
 
@@ -373,12 +400,12 @@ func (m *ModsecurityRule) buildSingleRule(rule *CustomRule, severity string, app
 		r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
 	}
 
-	if chain {
+	if opts.chain {
 		r.WriteString(",chain")
 	}
 
-	if skip > 0 {
-		r.WriteString(fmt.Sprintf(",skip:%d", skip))
+	if opts.skip > 0 {
+		r.WriteString(fmt.Sprintf(",skip:%d", opts.skip))
 	}
 
 	r.WriteByte('"')

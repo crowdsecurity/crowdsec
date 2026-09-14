@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -26,9 +27,17 @@ type CrowdsecServiceCfg struct {
 	BucketStateFile           string           `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string           `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool             `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	DNSCache                  *DNSCacheCfg     `yaml:"dns_cache,omitempty"`
 
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
+}
+
+// Cache config for DNS lookups (legit bots, rdns PO)
+type DNSCacheCfg struct {
+	TTL         *time.Duration `yaml:"ttl,omitempty"`
+	NegativeTTL *time.Duration `yaml:"negative_ttl,omitempty"`
+	Size        *int           `yaml:"size,omitempty"`
 }
 
 var ErrNoAcquisitionDefined = errors.New("no acquisition_path or acquisition_dir specified")

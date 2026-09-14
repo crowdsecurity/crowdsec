@@ -138,8 +138,8 @@ func NewAppsecRule(cfg csconfig.Getter) *cliItem {
 		for _, ruleType := range appsec_rule.SupportedTypes() {
 			fmt.Fprintf(os.Stdout, "\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
 
-			for _, rule := range appsecRule.Rules {
-				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name, appsecRule.Description)
+			for i, rule := range appsecRule.Rules {
+				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name, appsecRule.Description, i)
 				if err != nil {
 					return fmt.Errorf("unable to convert rule %s: %w", rule.Name, err)
 				}

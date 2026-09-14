@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
@@ -21,7 +22,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var CAPIBaseURL = "https://api.crowdsec.net/"
@@ -158,61 +158,6 @@ func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	return cmd
 }
 
-type capiStatus struct {
-	authenticated    bool
-	enrolled         bool
-	subscriptionType string
-}
-
-// queryCAPIStatus checks if the Central API is reachable, and if the credentials are correct. It then checks if the instance is enrolled in the console.
-func queryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, credURL string, login string, password string) (capiStatus, error) {
-	apiURL, err := url.Parse(credURL)
-	if err != nil {
-		return capiStatus{}, err
-	}
-
-	itemsForAPI := hub.GetInstalledListForAPI()
-
-	passwd := strfmt.Password(password)
-
-	client := apiclient.NewClient(&apiclient.Config{
-		MachineID: login,
-		Password:  passwd,
-		URL:       apiURL,
-		// I don't believe papi is needed to check enrollement
-		// PapiURL:       papiURL,
-		VersionPrefix: "v3",
-		UpdateScenario: func(_ context.Context) ([]string, error) {
-			return itemsForAPI, nil
-		},
-	})
-
-	pw := strfmt.Password(password)
-
-	t := models.WatcherAuthRequest{
-		MachineID: &login,
-		Password:  &pw,
-		Scenarios: itemsForAPI,
-	}
-
-	authResp, _, err := client.Auth.AuthenticateWatcher(ctx, t)
-	if err != nil {
-		return capiStatus{}, err
-	}
-
-	if err := db.SaveAPICToken(ctx, authResp.Token); err != nil {
-		return capiStatus{}, err
-	}
-
-	client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
-
-	if client.IsEnrolled() {
-		return capiStatus{true, true, client.GetSubscriptionType()}, nil
-	}
-
-	return capiStatus{true, false, ""}, nil
-}
-
 func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writer, hub *cwhub.Hub) error {
 	cfg := cli.cfg()
 
@@ -225,18 +170,18 @@ func (cli *cliCapi) Status(ctx context.Context, db *database.Client, out io.Writ
 	fmt.Fprintf(out, "Loaded credentials from %s\n", cfg.API.Server.OnlineClient.CredentialsFilePath)
 	fmt.Fprintf(out, "Trying to authenticate with username %s on %s\n", cred.Login, cred.URL)
 
-	status, err := queryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
+	status, err := consolestatus.QueryCAPIStatus(ctx, db, hub, cred.URL, cred.Login, cred.Password)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
 
-	if status.authenticated {
+	if status.Authenticated {
 		fmt.Fprint(out, "You can successfully interact with Central API (CAPI)\n")
 	}
 
-	if status.enrolled {
+	if status.Enrolled {
 		fmt.Fprint(out, "Your instance is enrolled in the console\n")
-		fmt.Fprintf(out, "Subscription type: %s\n", status.subscriptionType)
+		fmt.Fprintf(out, "Subscription type: %s\n", status.SubscriptionType)
 	}
 
 	switch *cfg.API.Server.OnlineClient.Sharing {

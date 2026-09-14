@@ -133,6 +133,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "MatchKnownBot",
+		function: MatchKnownBotExpr,
+		signature: []any{
+			new(func(string, string, string, ...string) bool),
+		},
+	},
+	{
 		name:     "Upper",
 		function: Upper,
 		signature: []any{
@@ -532,6 +539,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "IPToCountry",
+		function: IPToCountry,
+		signature: []any{
+			new(func(string) string),
+		},
+	},
+	{
 		name:     "JA4H",
 		function: JA4H,
 		signature: []any{
@@ -552,6 +566,34 @@ var exprFuncs = []exprCustomFunc{
 		signature: []any{
 			new(func([]time.Time) time.Duration),
 			new(func([]interface{}) time.Duration),
+		},
+	},
+	{
+		name:     "HTTPGet",
+		function: HTTPGet,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPHead",
+		function: HTTPHead,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPPost",
+		function: HTTPPost,
+		signature: []any{
+			new(func(string, string, string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPRequest",
+		function: HTTPRequest,
+		signature: []any{
+			new(func(string, string, map[string]any, string) (*HTTPResponse, error)),
 		},
 	},
 }
