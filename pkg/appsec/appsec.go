@@ -652,7 +652,7 @@ func requestBand(request *ParsedRequest) (string, error) {
 // picked by the order of the runner's checks.
 func (w *AppsecRuntimeConfig) setOutcome(state *AppsecRequestState, request *ParsedRequest, outcome *HookOutcome) (bool, error) {
 	if existing := state.Outcome(request); existing != nil {
-		w.Logger.Debugf("ignoring %s outcome (%s): request already had a %s outcome (%s)",
+		w.Logger.Warnf("ignoring %s outcome (%s): request already had a %s outcome (%s)",
 			outcome.Action, outcome.Reason, existing.Action, existing.Reason)
 
 		return false, nil
@@ -1739,7 +1739,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	// SkipProcessing). Serving a challenge on top of it produced an
 	// incoherent response: a "ban" remediation carrying a challenge page.
 	if outcome := state.Outcome(request); outcome != nil {
-		w.Logger.Debugf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
+		w.Logger.Warnf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
 		return nil
 	}
 
