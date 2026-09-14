@@ -7,7 +7,14 @@
 package challenge
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -58,6 +65,18 @@ type Config struct {
 	// steady-state stays far below it. Defaults to spentSetDefaultMaxEntries.
 	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
 
+	// TemplatePath points at an operator-supplied HTML page that replaces the
+	// built-in challenge page. The page MUST contain {{.CrowdsecChallenge}},
+	// which expands to the challenge engine (status API, PoW parameters,
+	// fingerprint scanner, challenge module, cookie detection and the reload on
+	// success).
+	//
+	// The path is relative to the crowdsec data dir and must stay inside it;
+	// absolute paths are refused. If the file is missing or the template is
+	// unusable, the built-in page is used instead — a broken custom page must
+	// not take the instance down.
+	TemplatePath *string `yaml:"template_path"`
+
 	// LogLevel sets the challenge runtime's own log verbosity, independent of
 	// the global level. Note: `panic` is not supported — logrus.PanicLevel is 0,
 	// which SubLogger (pkg/logging/sublogger.go) treats as "inherit the parent level".
@@ -93,6 +112,9 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.SpentSetMaxEntries != nil {
 		c.SpentSetMaxEntries = other.SpentSetMaxEntries
 	}
+	if other.TemplatePath != nil {
+		c.TemplatePath = other.TemplatePath
+	}
 	if other.LogLevel != nil {
 		c.LogLevel = other.LogLevel
 	}
@@ -102,8 +124,9 @@ func (c *Config) MergeFrom(other *Config) {
 // Option list for NewChallengeRuntime; unset fields are omitted so the runtime
 // uses its built-in defaults. Returns an error if MasterSecret is set but
 // invalid. parent (may be nil) is the logger the "challenge" sublogger derives
-// from, at the configured log_level or parent's level.
-func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
+// from, at the configured log_level or parent's level. dataDir is the crowdsec
+// data dir, which a custom challenge page (TemplatePath) is resolved under.
+func BuildOptions(c *Config, parent *log.Entry, dataDir string) ([]Option, error) {
 	// Always give the runtime its own component sublogger.
 	base := log.StandardLogger()
 	if parent != nil {
@@ -115,7 +138,8 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 		lvl = *c.LogLevel
 	}
 
-	opts := []Option{WithLogger(logging.SubLogger(base, "challenge", lvl))}
+	logger := logging.SubLogger(base, "challenge", lvl)
+	opts := []Option{WithLogger(logger)}
 
 	if c == nil {
 		return opts, nil
@@ -146,6 +170,92 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	if c.SpentSetMaxEntries != nil && *c.SpentSetMaxEntries > 0 {
 		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))
 	}
+	if c.TemplatePath != nil && *c.TemplatePath != "" {
+		tpl, err := LoadPageTemplate(dataDir, *c.TemplatePath)
+		if err != nil {
+			logger.Warnf("ignoring challenge template_path, serving the built-in page instead: %s", err)
+		} else {
+			opts = append(opts, WithHTMLTemplate(tpl))
+		}
+	}
 
 	return opts, nil
+}
+
+// LoadPageTemplate reads, parses and validates an operator-supplied challenge
+// page named relative to dataDir. text/template, like the built-in page: the
+// values injected are JS we must not escape.
+func LoadPageTemplate(dataDir, path string) (*template.Template, error) {
+	resolved, err := resolveTemplatePath(dataDir, path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("read challenge template: %w", err)
+	}
+
+	tpl, err := template.New("challenge").Parse(string(content))
+	if err != nil {
+		return nil, fmt.Errorf("parse challenge template %s: %w", resolved, err)
+	}
+
+	if err := validatePageTemplate(tpl); err != nil {
+		return nil, fmt.Errorf("challenge template %s: %w", resolved, err)
+	}
+
+	return tpl, nil
+}
+
+// resolveTemplatePath places a configured template_path inside dataDir. The
+// page is served to anyone who gets challenged, so keeping it in the data dir
+// makes what can be published an explicit, reviewable part of the install
+// rather than any file the crowdsec user happens to be able to read. Symlinks
+// inside the data dir are followed: pointing one outside is a deliberate act
+// by the operator, not an accident this needs to catch.
+func resolveTemplatePath(dataDir, path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return "", fmt.Errorf("template_path %s must be relative to the data dir %s", path, dataDir)
+	}
+
+	if dataDir == "" {
+		return "", errors.New("no data dir configured to resolve template_path against")
+	}
+
+	base := filepath.Clean(dataDir)
+
+	resolved := filepath.Join(base, path)
+	if resolved != base && !strings.HasPrefix(resolved, base+string(filepath.Separator)) {
+		return "", fmt.Errorf("template_path %s escapes the data dir %s", path, base)
+	}
+
+	return resolved, nil
+}
+
+// validatePageTemplate renders the template against a marker to prove it both
+// executes and actually emits {{.CrowdsecChallenge}}. A page that drops it
+// looks fine but can never be solved, so this has to fail at config time
+// rather than on the first challenged visitor.
+func validatePageTemplate(tpl *template.Template) error {
+	marker := make([]byte, 16)
+	if _, err := rand.Read(marker); err != nil {
+		return fmt.Errorf("generate validation marker: %w", err)
+	}
+
+	sentinel := "crowdsec-challenge-" + hex.EncodeToString(marker)
+
+	data := zeroPageData()
+	data["CrowdsecChallenge"] = sentinel
+
+	var rendered strings.Builder
+	if err := tpl.Execute(&rendered, data); err != nil {
+		return fmt.Errorf("render: %w", err)
+	}
+
+	if !strings.Contains(rendered.String(), sentinel) {
+		return errors.New("the page must contain {{.CrowdsecChallenge}}, which carries the challenge itself")
+	}
+
+	return nil
 }
