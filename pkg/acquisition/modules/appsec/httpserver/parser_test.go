@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func bufReader(s string) *bufio.Reader {
@@ -134,7 +136,7 @@ func TestReadRequestLine_Malformed(t *testing.T) {
 
 func TestReadHeaders_Basic(t *testing.T) {
 	r := bufReader("Host: example\r\nX-Foo: bar\r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -147,7 +149,7 @@ func TestReadHeaders_ControlCharsInValue(t *testing.T) {
 	// This is the key acceptance test: header values with control characters
 	// must be preserved. net/http would reject this with 400.
 	r := bufReader("X-Evil: ab\x01cd\x7fef\r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -158,7 +160,7 @@ func TestReadHeaders_ControlCharsInValue(t *testing.T) {
 
 func TestReadHeaders_BareLF(t *testing.T) {
 	r := bufReader("A: 1\nB: 2\n\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -169,7 +171,7 @@ func TestReadHeaders_BareLF(t *testing.T) {
 
 func TestReadHeaders_MultipleValues(t *testing.T) {
 	r := bufReader("Set-Cookie: a=1\r\nSet-Cookie: b=2\r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -181,7 +183,7 @@ func TestReadHeaders_MultipleValues(t *testing.T) {
 func TestReadHeaders_SkipInvalidName(t *testing.T) {
 	// A NUL is not a token byte and not the space net/textproto tolerates.
 	r := bufReader("X\x00Foo: bad\r\nX-Good: ok\r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -197,7 +199,7 @@ func TestReadHeaders_SkipInvalidName(t *testing.T) {
 // the appsec engine has to see any header an origin might act on.
 func TestReadHeaders_SpaceBeforeColon(t *testing.T) {
 	r := bufReader("X-Evil : payload\r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -222,7 +224,7 @@ func TestReadHeaders_ObsFold(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			h, err := readHeaders(bufReader(tc.input), Limits{})
+			h, _, err := readHeaders(bufReader(tc.input), Limits{})
 			if err != nil {
 				t.Fatalf("readHeaders: %v", err)
 			}
@@ -242,7 +244,7 @@ func TestReadHeaders_TooMany(t *testing.T) {
 	}
 	b.WriteString("\r\n")
 	r := bufReader(b.String())
-	if _, err := readHeaders(r, Limits{MaxHeaderCount: 100}); !errors.Is(err, ErrTooManyHeaders) {
+	if _, _, err := readHeaders(r, Limits{MaxHeaderCount: 100}); !errors.Is(err, ErrTooManyHeaders) {
 		t.Errorf("got err=%v, want ErrTooManyHeaders", err)
 	}
 }
@@ -257,14 +259,14 @@ func TestReadHeaders_TooLarge(t *testing.T) {
 	}
 	b.WriteString("\r\n")
 	r := bufReader(b.String())
-	if _, err := readHeaders(r, Limits{MaxHeaderBytes: 64}); !errors.Is(err, ErrHeadersTooLarge) {
+	if _, _, err := readHeaders(r, Limits{MaxHeaderBytes: 64}); !errors.Is(err, ErrHeadersTooLarge) {
 		t.Errorf("got err=%v, want ErrHeadersTooLarge", err)
 	}
 }
 
 func TestReadHeaders_TrimsOWS(t *testing.T) {
 	r := bufReader("X-Foo:   bar  \r\n\r\n")
-	h, err := readHeaders(r, Limits{})
+	h, _, err := readHeaders(r, Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
@@ -309,12 +311,49 @@ func TestReadHeaders_ManyFolds(t *testing.T) {
 
 	b.WriteString("\r\n")
 
-	h, err := readHeaders(bufReader(b.String()), Limits{})
+	h, _, err := readHeaders(bufReader(b.String()), Limits{})
 	if err != nil {
 		t.Fatalf("readHeaders: %v", err)
 	}
 
 	if got, want := len(h.Get("X-Foo")), 1+20000*2; got != want {
 		t.Errorf("folded value length = %d, want %d", got, want)
+	}
+}
+
+func TestReadHeaders_Order(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "wire order, not map order",
+			input: "Zeta: 1\r\nAlpha: 2\r\nMiddle: 3\r\n\r\n",
+			want:  []string{"Zeta", "Alpha", "Middle"},
+		},
+		{
+			name:  "a repeated header appears once per line",
+			input: "Accept: a\r\nHost: x\r\nAccept: b\r\n\r\n",
+			want:  []string{"Accept", "Host", "Accept"},
+		},
+		{
+			name:  "a folded value does not add an entry",
+			input: "X-Fold: a\r\n b\r\nHost: x\r\n\r\n",
+			want:  []string{"X-Fold", "Host"},
+		},
+		{
+			name:  "a dropped header line is not recorded",
+			input: "X\x00Bad: 1\r\nnocolon\r\nHost: x\r\n\r\n",
+			want:  []string{"Host"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, order, err := readHeaders(bufReader(tc.input), Limits{})
+			require.NoError(t, err)
+			require.Equal(t, tc.want, order)
+		})
 	}
 }

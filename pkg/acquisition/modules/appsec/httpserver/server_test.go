@@ -10,6 +10,10 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/ja4h"
 )
 
 // startServer launches a Server on a loopback listener and returns the address
@@ -288,4 +292,25 @@ func TestServer_Shutdown(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("Serve did not return after Shutdown")
 	}
+}
+
+// The header order is only reachable through the request context, so check it
+// actually survives all the way to the handler.
+func TestServer_HeaderOrderInContext(t *testing.T) {
+	var seen atomic.Value
+	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen.Store(ja4h.HeaderOrder(r.Context()))
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer stop()
+
+	c, br := dial(t, addr)
+	defer c.Close()
+	_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nZeta: 1\r\nHost: x\r\nAlpha: 2\r\nConnection: close\r\n\r\n")
+
+	resp, err := http.ReadResponse(br, nil)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+
+	require.Equal(t, []string{"Zeta", "Host", "Alpha", "Connection"}, seen.Load())
 }

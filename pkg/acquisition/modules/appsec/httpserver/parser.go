@@ -151,10 +151,13 @@ func parseHTTPVersion(proto string) (major, minor int, ok bool) {
 // Obsolete line folding is joined into the preceding value with a single space,
 // the way net/http does it: dropping the continuation would hide bytes from the
 // appsec engine that the protected application still sees.
-func readHeaders(r *bufio.Reader, limits Limits) (http.Header, error) {
+// readHeaders returns the header map plus the header names in the order their
+// lines appeared, which the map cannot preserve. JA4H fingerprints that order.
+func readHeaders(r *bufio.Reader, limits Limits) (http.Header, []string, error) {
 	limits = limits.withDefaults()
 	// Pre-size to a typical header count to avoid map growth allocations.
 	h := make(http.Header, 16)
+	order := make([]string, 0, 16)
 	totalBytes := 0
 	count := 0
 
@@ -182,15 +185,15 @@ func readHeaders(r *bufio.Reader, limits Limits) (http.Header, error) {
 	for {
 		line, err := readLine(r, limits.MaxLineSize)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(line) == 0 {
 			endFold()
-			return h, nil
+			return h, order, nil
 		}
 		totalBytes += len(line) + 2
 		if totalBytes > limits.MaxHeaderBytes {
-			return nil, ErrHeadersTooLarge
+			return nil, nil, ErrHeadersTooLarge
 		}
 		if line[0] == ' ' || line[0] == '\t' {
 			if lastName == "" {
@@ -216,10 +219,11 @@ func readHeaders(r *bufio.Reader, limits Limits) (http.Header, error) {
 		}
 		count++
 		if count > limits.MaxHeaderCount {
-			return nil, ErrTooManyHeaders
+			return nil, nil, ErrTooManyHeaders
 		}
 		lastName = name
 		h[name] = append(h[name], string(trimOWS(line[colon+1:])))
+		order = append(order, name)
 	}
 }
 

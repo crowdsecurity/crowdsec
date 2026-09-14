@@ -20,6 +20,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/ja4h"
 )
 
 // Server is a minimal lenient HTTP/1.x server. The zero value is usable; set
@@ -203,7 +205,7 @@ func readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*h
 	if err != nil {
 		return nil, bodyInfo{}, true, err
 	}
-	headers, err := readHeaders(br, limits)
+	headers, order, err := readHeaders(br, limits)
 	if err != nil {
 		return nil, bodyInfo{}, true, err
 	}
@@ -241,8 +243,9 @@ func readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*h
 	}
 
 	// (*http.Request).Context() returns context.Background() when the unexported
-	// ctx field is nil, so we skip WithContext entirely — it would clone the
-	// whole request struct for no benefit.
+	// ctx field is nil, so WithContext is the only way to attach the header
+	// order, and it costs a clone of the request struct.
+	req = req.WithContext(ja4h.WithHeaderOrder(req.Context(), order))
 
 	return req, info, shouldClose(rl.ProtoMajor, rl.ProtoMinor, headers), nil
 }
