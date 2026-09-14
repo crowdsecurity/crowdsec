@@ -77,7 +77,8 @@ func TestJA4H_A(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := jA4H_a(tt.request())
+			req := tt.request()
+			result := jA4H_a(req, ja4hHeaders(req))
 			if result != tt.expectedResult {
 				t.Errorf("expected %s, got %s", tt.expectedResult, result)
 			}
@@ -138,7 +139,7 @@ func TestJA4H_B(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := jA4H_b(tt.request())
+			result := jA4H_b(ja4hHeaders(tt.request()))
 			if result != tt.expectedResult {
 				t.Errorf("expected %s, got %s", tt.expectedResult, result)
 			}
