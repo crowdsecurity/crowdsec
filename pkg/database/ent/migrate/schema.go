@@ -236,9 +236,9 @@ var (
 				Columns: []*schema.Column{DecisionsColumns[6], DecisionsColumns[7]},
 			},
 			{
-				Name:    "decision_value_type_scope_until",
+				Name:    "decision_value_type_scope_until_simulated",
 				Unique:  false,
-				Columns: []*schema.Column{DecisionsColumns[12], DecisionsColumns[5], DecisionsColumns[11], DecisionsColumns[3]},
+				Columns: []*schema.Column{DecisionsColumns[12], DecisionsColumns[5], DecisionsColumns[11], DecisionsColumns[3], DecisionsColumns[14]},
 			},
 			{
 				Name:    "decision_until",
