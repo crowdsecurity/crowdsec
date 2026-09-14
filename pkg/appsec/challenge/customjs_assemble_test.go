@@ -272,3 +272,24 @@ func TestAssembleLeaksNoBundlerRuntime(t *testing.T) {
 	assert.NotContains(t, out, "__toESM")
 	assert.NotContains(t, out, "__commonJS")
 }
+
+// The version keys an hour-cached URL, so it has to track the bytes exactly and
+// stay empty when there is no script — GetChallengePage hangs the whole script
+// tag off it.
+func TestCustomJSVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{name: "no script"},
+		{name: "digest of the bytes", src: "hookA();", want: "b3b45f2d"},
+		{name: "a changed script changes the version", src: "hookB();", want: "fd27dc63"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, CustomJSVersion(tc.src))
+		})
+	}
+}

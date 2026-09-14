@@ -7,6 +7,8 @@
 package challenge
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -78,6 +80,19 @@ func AssembleCustomJS(detectors []Detector) (string, []DetectorError) {
 	}
 
 	return strings.Join(fragments, ""), rejected
+}
+
+// CustomJSVersion digests the assembled script for the `?v=` key on
+// ChallengeCustomJSPath. Truncated: it only has to change when the bytes do, it
+// is not an integrity check.
+func CustomJSVersion(src string) string {
+	if src == "" {
+		return ""
+	}
+
+	sum := sha256.Sum256([]byte(src))
+
+	return hex.EncodeToString(sum[:4])
 }
 
 // buildDetector turns one ES module into a self-registering IIFE (self-executing function wrapper)

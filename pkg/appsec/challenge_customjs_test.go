@@ -7,9 +7,11 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
@@ -150,4 +152,59 @@ func TestChallengeCustomJSTimeoutLoadsFromConfig(t *testing.T) {
 	require.NotNil(t, cfg.Challenge)
 	require.NotNil(t, cfg.Challenge.CustomJSTimeout)
 	assert.Equal(t, 1500*time.Millisecond, *cfg.Challenge.CustomJSTimeout)
+}
+
+// Startup noise scales with the number of installed scripts unless the summary
+// is one line and the per-script detail sits at debug.
+func TestLoadCustomJSLogsOneSummary(t *testing.T) {
+	src := "export function collectSignals(fp) { fp.custom = { ok: true } }\n"
+
+	capture, hook := logtest.NewNullLogger()
+	capture.SetLevel(log.DebugLevel)
+
+	cfg, dataDir := challengeJSConfig(t,
+		map[string]string{"challenge/a.js": src, "challenge/b.js": src},
+		challengeJSData("challenge/a.js"), challengeJSData("challenge/b.js"))
+	cfg.Logger = log.NewEntry(capture)
+
+	out := cfg.LoadCustomJS(dataDir)
+	require.NotEmpty(t, out)
+
+	var (
+		infos  []*log.Entry
+		debugs int
+	)
+
+	for _, e := range hook.AllEntries() {
+		switch e.Level {
+		case log.InfoLevel:
+			infos = append(infos, e)
+		case log.DebugLevel:
+			debugs++
+		}
+	}
+
+	require.Len(t, infos, 1, "per-script detail belongs at debug")
+	require.Equal(t, 2, debugs)
+
+	// Declaration order is hook order, so the summary reports it as declared.
+	require.Equal(t, "challenge/a.js, challenge/b.js", infos[0].Data["scripts"])
+	require.Equal(t, challenge.CustomJSVersion(out), infos[0].Data["version"])
+}
+
+// Nothing served means nothing to summarize: the rejection error already named
+// the file, and a summary line here would claim a script the browser never gets.
+func TestLoadCustomJSAllRejected(t *testing.T) {
+	capture, hook := logtest.NewNullLogger()
+
+	cfg, dataDir := challengeJSConfig(t,
+		map[string]string{"challenge/broken.js": "export function collectSignals(fp) {\n"},
+		challengeJSData("challenge/broken.js"))
+	cfg.Logger = log.NewEntry(capture)
+
+	require.Empty(t, cfg.LoadCustomJS(dataDir))
+
+	for _, e := range hook.AllEntries() {
+		require.NotEqual(t, log.InfoLevel, e.Level, e.Message)
+	}
 }

@@ -25,8 +25,7 @@ try {
 
   // Spread the high-obfuscation preset, then add reservedStrings so the
   // sentinels bridging separately-built bundles survive the string-array
-  // transform identically in each; otherwise the artifacts disagree on the
-  // globalThis symbols they meet at:
+  // transform identically in each;
   //   CSEC_CHALLENGE_HOOK_v1 — static bundle <-> per-epoch dynamic key module
   //   CSEC_CUSTOM_DETECT_v1  — static bundle <-> hub-shipped custom.js
   //

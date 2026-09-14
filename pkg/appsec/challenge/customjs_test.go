@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -97,14 +99,7 @@ func TestCustomDetectSurvivesFullSubmission(t *testing.T) {
 func TestOversizedCustomStillYieldsACookie(t *testing.T) {
 	c := &ChallengeRuntime{keys: testKeyRing(), powDifficulty: 8, cookieTTL: time.Hour, spent: newSpentSet(spentSetDefaultMaxEntries)}
 
-	custom := make(map[string]CustomValue, 40)
-	for i := range 40 {
-		custom[fmt.Sprintf("detector%02d", i)] = CustomValue{
-			Kind: CustomKindString,
-			Str:  strings.Repeat("x", 200),
-		}
-	}
-
+	custom := oversizedCustom()
 	submitted := FingerprintData{FSID: "FS1_fat", Custom: custom}
 
 	r, ts := freshChallenge(t)
@@ -129,4 +124,68 @@ func TestOversizedCustomStillYieldsACookie(t *testing.T) {
 	// Shed on the way into the cookie, so later requests see none of it.
 	assert.Empty(t, cd.Fingerprint.Custom)
 	assert.Equal(t, "FS1_fat", cd.Fingerprint.FSID)
+}
+
+// oversizedCustom reports far more than the ~1kB the fingerprint leaves in the
+// cookie, so sealing always overflows.
+func oversizedCustom() map[string]CustomValue {
+	custom := make(map[string]CustomValue, 40)
+
+	for i := range 40 {
+		custom[fmt.Sprintf("detector%02d", i)] = CustomValue{
+			Kind: CustomKindString,
+			Str:  strings.Repeat("x", 200),
+		}
+	}
+
+	return custom
+}
+
+// Overflow follows from what the detectors report, not from the visitor, so an
+// operator has to see it — but not once per submission.
+func TestCustomOverflowWarnsOnce(t *testing.T) {
+	capture, hook := logtest.NewNullLogger()
+	capture.SetLevel(log.DebugLevel)
+
+	c := &ChallengeRuntime{
+		keys:          testKeyRing(),
+		powDifficulty: 8,
+		cookieTTL:     time.Hour,
+		spent:         newSpentSet(spentSetDefaultMaxEntries),
+		logger:        log.NewEntry(capture),
+	}
+
+	submitted := FingerprintData{FSID: "FS1_fat", Custom: oversizedCustom()}
+
+	for range 3 {
+		// A fresh nonce per iteration: the first one is burnt on use.
+		r, ts := freshChallenge(t)
+		body := buildValidBodyWithFingerprint(t, c.powDifficulty, r, ts, submitted)
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/submit", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("User-Agent", "test-agent")
+
+		ck, _, _, err := c.ValidateChallengeResponse(req, []byte(body))
+		require.NoError(t, err)
+		require.NotNil(t, ck)
+	}
+
+	var warns, debugs int
+
+	for _, e := range hook.AllEntries() {
+		if !strings.Contains(e.Message, "do not fit in the cookie") {
+			continue
+		}
+
+		switch e.Level {
+		case log.WarnLevel:
+			warns++
+		case log.DebugLevel:
+			debugs++
+		}
+	}
+
+	require.Equal(t, 1, warns)
+	require.Equal(t, 2, debugs)
 }

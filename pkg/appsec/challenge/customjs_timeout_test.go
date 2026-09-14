@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,4 +140,52 @@ func TestCustomJSURLIsVersionedByContent(t *testing.T) {
 // path itself must stay clean.
 func TestCustomJSPathUnversioned(t *testing.T) {
 	assert.NotContains(t, ChallengeCustomJSPath, "?")
+}
+
+// The startup summary is where an operator confirms that what the loader built
+// is what gets served, and matches it against the ?v= in devtools.
+func TestChallengeRuntimeSummaryCarriesCustomJS(t *testing.T) {
+	tests := []struct {
+		name   string
+		script string
+	}{
+		{name: "with a script", script: "hookA();"},
+		{name: "without a script"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			capture, hook := logtest.NewNullLogger()
+
+			opts := []Option{WithMasterSecret(testSecret), withoutPreWarm(), WithLogger(log.NewEntry(capture))}
+			if tc.script != "" {
+				opts = append(opts, WithCustomJS(tc.script))
+			}
+
+			_, err := NewChallengeRuntime(t.Context(), opts...)
+			require.NoError(t, err)
+
+			var summary *log.Entry
+
+			for _, e := range hook.AllEntries() {
+				if e.Message == "WAF challenge runtime initialized" {
+					summary = e
+				}
+			}
+
+			require.NotNil(t, summary)
+
+			// No script means no empty fields: an empty version on every
+			// challenge-mode startup would read as a failed load.
+			if tc.script == "" {
+				require.NotContains(t, summary.Data, "custom_js_version")
+				require.NotContains(t, summary.Data, "custom_js_timeout")
+
+				return
+			}
+
+			require.Equal(t, CustomJSVersion(tc.script), summary.Data["custom_js_version"])
+			require.Equal(t, DefaultCustomJSTimeout, summary.Data["custom_js_timeout"])
+		})
+	}
 }

@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -145,6 +146,11 @@ type ChallengeRuntime struct {
 	// returning visitors up to an hour late — running old detections against
 	// new scoring rules, silently.
 	customJSVersion string
+
+	// customOverflowWarned latches the first cookie-overflow warning. Overflow is
+	// a property of the deployment (a detector reporting too much), not of the
+	// visitor, so warning per submission repeats it for every visitor.
+	customOverflowWarned atomic.Bool
 
 	powDifficulty int
 
@@ -519,20 +525,11 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		maxCookieLen:       maxCookieLen,
 		htmlTpl:            htmlTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
-		customJS:           resolvedOpts.customJS,
 		customJSTimeout:    customJSTimeout,
 		logger:             logger,
 	}
 
-	if challengeRuntime.customJS != "" {
-		sum := sha256.Sum256([]byte(challengeRuntime.customJS))
-		challengeRuntime.customJSVersion = hex.EncodeToString(sum[:4])
-
-		logger.WithFields(log.Fields{
-			"bytes":   len(challengeRuntime.customJS),
-			"timeout": customJSTimeout,
-		}).Info("serving hub-provided custom detection script")
-	}
+	challengeRuntime.setCustomJS(resolvedOpts.customJS)
 
 	// Load the build-time-obfuscated challenge code from the baked-in bundle so
 	// we can serve immediately.
@@ -560,13 +557,22 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		go challengeRuntime.dynamicModulePreWarmer(runCtx)
 	}
 
-	logger.WithFields(log.Fields{
+	fields := log.Fields{
 		"rotation_interval": rotationInterval,
 		"cookie_ttl":        cookieTTL,
 		"max_cookie_len":    maxCookieLen,
 		"pow_difficulty":    defaultPowDifficulty,
 		"crypto_pool_size":  cryptoPoolSize,
-	}).Info("WAF challenge runtime initialized")
+	}
+
+	// Only with a script loaded: the timeout bounds nothing without hooks, and an
+	// empty version on every challenge-mode startup reads as a failed load.
+	if challengeRuntime.customJS != "" {
+		fields["custom_js_version"] = challengeRuntime.customJSVersion
+		fields["custom_js_timeout"] = customJSTimeout
+	}
+
+	logger.WithFields(fields).Info("WAF challenge runtime initialized")
 
 	return challengeRuntime, nil
 }
@@ -790,8 +796,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 
 	// If the cookie is too large, try to drop custom detection as a last chance to fit it within the size limit.
 	if errors.Is(err, ErrCookieTooLarge) && envelope.GetFingerprint().GetCustom() != nil {
-		c.log().WithField("custom", fpData.CustomKeys()).
-			Warn("custom detections do not fit in the cookie, dropped")
+		c.logCustomOverflow(&fpData)
 
 		envelope.Fingerprint.Custom = nil
 		cookieValue, err = sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
@@ -876,14 +881,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 // script change.
 func (c *ChallengeRuntime) setCustomJS(src string) {
 	c.customJS = src
-
-	if src == "" {
-		c.customJSVersion = ""
-		return
-	}
-
-	sum := sha256.Sum256([]byte(src))
-	c.customJSVersion = hex.EncodeToString(sum[:4])
+	c.customJSVersion = CustomJSVersion(src)
 }
 
 // CustomJS returns the detection script the dispatcher serves at
@@ -894,4 +892,21 @@ func (c *ChallengeRuntime) CustomJS() string {
 	}
 
 	return c.customJS
+}
+
+// logCustomOverflow reports a dropped custom map. The first one is the operator's
+// signal; the rest are the same deployment fact repeated once per visitor, so they
+// go to debug. CustomKeys allocates, hence the level check.
+func (c *ChallengeRuntime) logCustomOverflow(fpData *FingerprintData) {
+	const msg = "custom detections do not fit in the cookie, dropped"
+
+	if c.customOverflowWarned.CompareAndSwap(false, true) {
+		c.log().WithField("custom", fpData.CustomKeys()).Warn(msg)
+
+		return
+	}
+
+	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
+		c.log().WithField("custom", fpData.CustomKeys()).Debug(msg)
+	}
 }

@@ -11,6 +11,9 @@ package appsec
 
 import (
 	"os"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -27,13 +30,35 @@ func (wc *AppsecConfig) LoadCustomJS(dataDir string) string {
 
 	out, rejected := challenge.AssembleCustomJS(detectors)
 
+	// The page still renders and nothing at the HTTP layer shows a detector
+	// missing, so these lines are the only place a dropped one surfaces.
+	rejectedNames := make(map[string]bool, len(rejected))
+
 	for _, r := range rejected {
-		wc.Logger.Errorf("custom challenge script %s rejected: %s", r.Name, r.Err)
+		wc.Logger.Errorf("custom detection script %s rejected: %s", r.Name, r.Err)
+		rejectedNames[r.Name] = true
 	}
 
-	// The page still renders and nothing at the HTTP layer shows a detector
-	// missing, so this line is the only place a dropped one surfaces.
-	wc.Logger.Infof("custom challenge scripts: %d loaded, %d rejected", len(detectors)-len(rejected), len(rejected))
+	loaded := make([]string, 0, len(detectors)-len(rejected))
+
+	for _, d := range detectors {
+		if !rejectedNames[d.Name] {
+			loaded = append(loaded, d.Name)
+		}
+	}
+
+	// Nothing loaded: the per-script errors above already said why.
+	if len(loaded) == 0 {
+		return ""
+	}
+
+	// version is the ?v= the browser will request, tying this line to the runtime
+	// summary and to what devtools shows.
+	wc.Logger.WithFields(log.Fields{
+		"scripts": strings.Join(loaded, ", "),
+		"bytes":   len(out),
+		"version": challenge.CustomJSVersion(out),
+	}).Infof("loaded %d custom detection scripts", len(loaded))
 
 	return out
 }
@@ -60,7 +85,7 @@ func (wc *AppsecConfig) readCustomJS(dataDir string) []challenge.Detector {
 		// esbuild resolves a module once per path, so a repeated dest_file
 		// would otherwise register the same hook twice.
 		if seen[d.DestPath] {
-			wc.Logger.Warnf("custom challenge script %s declared more than once, ignoring the repeat", d.DestPath)
+			wc.Logger.Warnf("custom detection script %s declared more than once, ignoring the repeat", d.DestPath)
 			continue
 		}
 
@@ -72,13 +97,13 @@ func (wc *AppsecConfig) readCustomJS(dataDir string) []challenge.Detector {
 
 		content, err := os.ReadFile(path)
 		if err != nil {
-			wc.Logger.Errorf("unable to read custom challenge script %s: %s", d.DestPath, err)
+			wc.Logger.Errorf("unable to read custom detection script %s: %s", d.DestPath, err)
 			continue
 		}
 
 		seen[d.DestPath] = true
 
-		wc.Logger.Infof("loaded custom challenge script %s (%d bytes)", d.DestPath, len(content))
+		wc.Logger.Debugf("loaded custom detection script %s (%d bytes)", d.DestPath, len(content))
 
 		detectors = append(detectors, challenge.Detector{Name: d.DestPath, Source: string(content)})
 	}
