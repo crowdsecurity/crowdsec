@@ -87,9 +87,10 @@ const DefaultCustomJSTimeout = 500 * time.Millisecond
 
 // DefaultChallengeCSP is the Content-Security-Policy header used on the
 // challenge page when the operator hasn't configured a custom one. Allows
-// inline script/style (the challenge runtime injects both) and blob workers
-// (the PoW worker is loaded from a blob URL).
-const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
+// inline script/style (the challenge runtime injects both), blob workers
+// (the PoW worker is loaded from a blob URL) and WebAssembly compilation
+// (hub-shipped detection modules can use it).
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string

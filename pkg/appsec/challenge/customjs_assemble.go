@@ -2,7 +2,7 @@
 // through the hub into the script served at ChallengeCustomJSPath.
 //
 // Each module is built and wrapped in its own IIFE, to limit blast zone if a
-// a detector fails to parse etc.
+// detector fails to parse etc.
 
 package challenge
 
