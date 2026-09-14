@@ -27,18 +27,18 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 	startServer := func(listener net.Listener, canTLS bool) {
 		var err error
 
-		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
-			if w.config.KeyFilePath == "" {
+		if canTLS && w.config.TLSConfig != nil && (w.config.TLSConfig.CertFilePath != "" || w.config.TLSConfig.KeyFilePath != "") {
+			if w.config.TLSConfig.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
 			}
 
-			if w.config.CertFilePath == "" {
+			if w.config.TLSConfig.CertFilePath == "" {
 				serverError <- errors.New("missing TLS cert file")
 				return
 			}
 
-			err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
+			err = w.server.ServeTLS(listener, w.config.TLSConfig.CertFilePath, w.config.TLSConfig.KeyFilePath)
 		} else {
 			err = w.server.Serve(listener)
 		}

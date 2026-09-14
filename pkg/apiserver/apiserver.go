@@ -22,12 +22,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/tlsauth"
 )
 
 const keyLength = 32
@@ -559,7 +559,7 @@ func (s *APIServer) InitController() error {
 		cacheExpiration = *s.cfg.TLS.CacheExpiration
 	}
 
-	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedAgentsOU, s.cfg.TLS.CRLPath,
+	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = tlsauth.NewTLSAuth(s.cfg.TLS.AllowedAgentsOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",
@@ -569,7 +569,7 @@ func (s *APIServer) InitController() error {
 		return fmt.Errorf("while creating TLS auth for agents: %w", err)
 	}
 
-	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.cfg.TLS.AllowedBouncersOU, s.cfg.TLS.CRLPath,
+	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = tlsauth.NewTLSAuth(s.cfg.TLS.AllowedBouncersOU, s.cfg.TLS.CRLPath,
 		cacheExpiration,
 		log.WithFields(log.Fields{
 			"component": "tls-auth",

@@ -22,9 +22,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/tlsauth"
 )
 
 var (
@@ -36,20 +38,20 @@ var (
 	DefaultAuthCacheDuration = (1 * time.Minute)
 	DefaultAuthTimeout       = (200 * time.Millisecond)
 	DefaultBodyReadTimeout   = (1 * time.Second)
+	DefaultCacheExpiration   = (1 * time.Hour)
 )
 
 // configuration structure of the acquis for the application security engine
 type Configuration struct {
-	ListenAddr        string         `yaml:"listen_addr"`
-	ListenSocket      string         `yaml:"listen_socket"`
-	CertFilePath      string         `yaml:"cert_file"`
-	KeyFilePath       string         `yaml:"key_file"`
-	Path              string         `yaml:"path"`
-	Routines          int            `yaml:"routines"`
-	AppsecConfig      string         `yaml:"appsec_config"`
-	AppsecConfigs     []string       `yaml:"appsec_configs"`
-	AppsecConfigPath  string         `yaml:"appsec_config_path"`
-	AuthCacheDuration *time.Duration `yaml:"auth_cache_duration"`
+	ListenAddr        string           `yaml:"listen_addr"`
+	ListenSocket      string           `yaml:"listen_socket"`
+	TLSConfig         *csconfig.TLSCfg `yaml:"tls"`
+	Path              string           `yaml:"path"`
+	Routines          int              `yaml:"routines"`
+	AppsecConfig      string           `yaml:"appsec_config"`
+	AppsecConfigs     []string         `yaml:"appsec_configs"`
+	AppsecConfigPath  string           `yaml:"appsec_config_path"`
+	AuthCacheDuration *time.Duration   `yaml:"auth_cache_duration"`
 	// AuthTimeout bounds the LAPI round-trip that validates a bouncer API key.
 	// Raise it when LAPI is several hops away. Set to 0 to disable. Defaults to DefaultAuthTimeout.
 	AuthTimeout *time.Duration `yaml:"auth_timeout"`
@@ -130,7 +132,7 @@ func loadCertPool(caCertPath string, logger log.FieldLogger) (*x509.CertPool, er
 }
 
 // expandAppsecConfigEntry resolves a single appsec_config(s) entry into the list
-// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character 
+// of appsec-config item names to load. A literal entry is returned untouched. An entry containing a glob meta-character
 // is matched against the installed appsec-configs with the same matcher used
 // to expand appsec-rule patterns; it errors when no installed config matches.
 func expandAppsecConfigEntry(entry string, hub *cwhub.Hub) ([]string, error) {
@@ -184,6 +186,52 @@ func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, err
 	return toLoad, nil
 }
 
+func (w *Source) configureHTTPServer() error {
+	w.mux = http.NewServeMux()
+
+	if w.config.TLSConfig != nil {
+		// TLS is configured
+
+		if len(w.config.TLSConfig.AllowedBouncersOU) > 0 {
+			// Require TLS authentication with certificate OU
+
+			cacheExpiration := DefaultCacheExpiration
+			if w.config.TLSConfig.CacheExpiration != nil {
+				cacheExpiration = *w.config.TLSConfig.CacheExpiration
+			}
+
+			var err error
+			w.tlsAuth, err = tlsauth.NewTLSAuth(w.config.TLSConfig.AllowedBouncersOU, w.config.TLSConfig.CRLPath,
+				cacheExpiration,
+				log.WithFields(log.Fields{
+					"component": "appsec-tls-auth",
+					"type":      "bouncer",
+				}))
+			if err != nil {
+				return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
+			}
+		}
+	}
+
+	tlsCfg, err := w.config.TLSConfig.GetTLSConfig()
+	if err != nil {
+		return fmt.Errorf("while creating TLS config: %w", err)
+	}
+
+	w.server = &http.Server{
+		Addr:      w.config.ListenAddr,
+		Handler:   w.mux,
+		TLSConfig: tlsCfg,
+		Protocols: &http.Protocols{},
+	}
+
+	w.server.Protocols.SetHTTP1(true)
+	w.server.Protocols.SetUnencryptedHTTP2(true)
+	w.server.Protocols.SetHTTP2(true)
+
+	return nil
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -222,17 +270,9 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		w.logger.Infof("Body read timeout not set, using default: %v", *w.config.BodyReadTimeout)
 	}
 
-	w.mux = http.NewServeMux()
-
-	w.server = &http.Server{
-		Addr:      w.config.ListenAddr,
-		Handler:   w.mux,
-		Protocols: &http.Protocols{},
+	if err := w.configureHTTPServer(); err != nil {
+		return err
 	}
-
-	w.server.Protocols.SetHTTP1(true)
-	w.server.Protocols.SetUnencryptedHTTP2(true)
-	w.server.Protocols.SetHTTP2(true)
 
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
@@ -427,14 +467,22 @@ func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
 
-	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
-	clientIP := r.Header.Get(appsec.IPHeaderName)
-	remoteIP := r.RemoteAddr
+	if w.tlsAuth != nil {
+		if _, err := w.tlsAuth.ValidateCert(ctx, r.TLS); err != nil {
+			w.logger.Errorf("Unauthorized TLS request from '%s': %s", r.RemoteAddr, err)
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	} else {
+		apiKey := r.Header.Get(appsec.APIKeyHeaderName)
+		clientIP := r.Header.Get(appsec.IPHeaderName)
+		remoteIP := r.RemoteAddr
 
-	if err := w.checkAuth(ctx, apiKey); err != nil {
-		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
+		if err := w.checkAuth(ctx, apiKey); err != nil {
+			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s): %s", remoteIP, clientIP, err)
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Force client to send the body quickly enough.

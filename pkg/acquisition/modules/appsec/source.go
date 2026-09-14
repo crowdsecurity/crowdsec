@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/tlsauth"
 )
 
 type Source struct {
@@ -31,6 +32,7 @@ type Source struct {
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
 	authGroup             singleflight.Group
+	tlsAuth               *tlsauth.TLSAuth
 	httpClient            *http.Client
 }
 

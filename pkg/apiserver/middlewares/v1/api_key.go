@@ -14,6 +14,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/tlsauth"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -27,7 +28,7 @@ const (
 type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
-	TlsAuth    *TLSAuth
+	TlsAuth    *tlsauth.TLSAuth
 }
 
 // baseBouncerName removes any trailing "@<ip>" segments from a bouncer's name.
@@ -39,20 +40,20 @@ type APIKey struct {
 // this helper repeatedly strips the final "@<ip>" token until no valid IPv4/IPv6
 // address remains, returning the "base" bouncer name.
 func baseBouncerName(name string) string {
-    for {
-        i := strings.LastIndexByte(name, '@')
-        if i < 0 {
-            return name
-        }
+	for {
+		i := strings.LastIndexByte(name, '@')
+		if i < 0 {
+			return name
+		}
 
-        tail := name[i+1:]
-        if _, err := netip.ParseAddr(tail); err == nil {
-            name = name[:i]
-            continue
-        }
+		tail := name[i+1:]
+		if _, err := netip.ParseAddr(tail); err == nil {
+			name = name[:i]
+			continue
+		}
 
-        return name
-    }
+		return name
+	}
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -71,7 +72,7 @@ func NewAPIKey(dbClient *database.Client) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		TlsAuth:    &TLSAuth{},
+		TlsAuth:    &tlsauth.TLSAuth{},
 	}
 }
 
@@ -92,7 +93,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	ctx := c.Request.Context()
 
-	extractedCN, err := a.TlsAuth.ValidateCert(c)
+	extractedCN, err := a.TlsAuth.ValidateCert(c.Request.Context(), c.Request.TLS)
 	if err != nil {
 		logger.Warn(err)
 		return nil

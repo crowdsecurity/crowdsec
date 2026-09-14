@@ -1,14 +1,14 @@
-package v1
+package tlsauth
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"slices"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,7 +37,7 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 }
 
 // checkRevocationPath checks a single chain against OCSP and CRL
-//revive:disable-next-line:error-return
+// revive:disable-next-line:error-return
 func (ta *TLSAuth) checkRevocationPath(ctx context.Context, chain []*x509.Certificate) (error, bool) {
 	// if we ever fail to check OCSP or CRL, we should not cache the result
 	couldCheck := true
@@ -98,21 +98,21 @@ func (ta *TLSAuth) checkAllowedOU(ous []string) error {
 	return fmt.Errorf("client certificate OU %v doesn't match expected OU %v", ous, ta.AllowedOUs)
 }
 
-func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
+func (ta *TLSAuth) ValidateCert(ctx context.Context, state *tls.ConnectionState) (string, error) {
 	// Checks cert validity, Returns true + CN if client cert matches requested OU
 	var leaf *x509.Certificate
 
-	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
+	if state == nil || len(state.PeerCertificates) == 0 {
 		return "", errors.New("no certificate in request")
 	}
 
-	if len(c.Request.TLS.VerifiedChains) == 0 {
+	if len(state.VerifiedChains) == 0 {
 		return "", errors.New("no verified cert in request")
 	}
 
 	// although there can be multiple chains, the leaf certificate is the same
 	// we take the first one
-	leaf = c.Request.TLS.VerifiedChains[0][0]
+	leaf = state.VerifiedChains[0][0]
 
 	if err := ta.checkAllowedOU(leaf.Subject.OrganizationalUnit); err != nil {
 		return "", err
@@ -127,6 +127,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 			return "", fmt.Errorf("(cache) %w", validErr)
 		}
 
+		//return leaf.Subject.CommonName, nil
 		return leaf.Subject.CommonName, nil
 	}
 
@@ -137,8 +138,8 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 		couldCheck bool
 	)
 
-	for _, chain := range c.Request.TLS.VerifiedChains {
-		validErr, couldCheck = ta.checkRevocationPath(c.Request.Context(), chain)
+	for _, chain := range state.VerifiedChains {
+		validErr, couldCheck = ta.checkRevocationPath(ctx, chain)
 		okToCache = okToCache && couldCheck
 
 		if validErr != nil {
@@ -154,6 +155,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (string, error) {
 		return "", validErr
 	}
 
+	//return leaf.Subject.CommonName, nil
 	return leaf.Subject.CommonName, nil
 }
 

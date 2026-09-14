@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/tlsauth"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -26,7 +27,7 @@ const MachineIDKey = "id"
 type JWT struct {
 	Middleware *jwt.GinJWTMiddleware
 	DbClient   *database.Client
-	TlsAuth    *TLSAuth
+	TlsAuth    *tlsauth.TLSAuth
 }
 
 func PayloadFunc(data any) jwt.MapClaims {
@@ -65,7 +66,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		return nil, err
 	}
 
-	extractedCN, err := j.TlsAuth.ValidateCert(c)
+	extractedCN, err := j.TlsAuth.ValidateCert(c.Request.Context(), c.Request.TLS)
 	if err != nil {
 		log.Warn(err)
 		return nil, err
@@ -288,7 +289,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 
 	jwtMiddleware := &JWT{
 		DbClient: dbClient,
-		TlsAuth:  &TLSAuth{},
+		TlsAuth:  &tlsauth.TLSAuth{},
 	}
 
 	ret, err := jwt.New(&jwt.GinJWTMiddleware{
