@@ -1,7 +1,6 @@
 package csconfig
 
 import (
-	"bytes"
 	"cmp"
 	"crypto/tls"
 	"crypto/x509"
@@ -107,7 +106,9 @@ func (o *OnlineApiClientCfg) Load() error {
 		return err
 	}
 
-	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
+
+	dec := yaml.NewDecoder(strings.NewReader(configData))
 	dec.KnownFields(true)
 
 	err = dec.Decode(o.Credentials)

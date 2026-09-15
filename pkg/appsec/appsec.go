@@ -205,9 +205,20 @@ func (r AppsecTempResponse) Clone() AppsecTempResponse {
 	return clone
 }
 
-type AppsecDropInfo struct {
+// HookOutcome records a terminal decision taken by an expr hook: the current
+// band stops before (or instead of) WAF evaluation, and the request gets
+// Action. Interruption is set only for disruptive outcomes (DropRequest) —
+// an allow outcome carries none, so it produces neither event nor alert.
+type HookOutcome struct {
+	Action       string
 	Reason       string
 	Interruption *corazatypes.Interruption
+}
+
+// IsDisruptive reports whether the outcome must be treated like a rule match:
+// build an event, run on_match, apply a blocking remediation.
+func (o *HookOutcome) IsDisruptive() bool {
+	return o != nil && o.Interruption != nil
 }
 
 // SubmissionRejectInfo signals that an on_challenge_submit hook called
@@ -223,8 +234,11 @@ type AppsecRequestState struct {
 	CurrentPhase phase
 	Response     AppsecTempResponse
 
-	InBandDrop    *AppsecDropInfo
-	OutOfBandDrop *AppsecDropInfo
+	// InBandOutcome / OutOfBandOutcome hold the terminal decision an expr
+	// hook took for that band, if any. Per-band because a single state is
+	// reused across the in-band and out-of-band phases.
+	InBandOutcome    *HookOutcome
+	OutOfBandOutcome *HookOutcome
 
 	PendingAction   *string
 	PendingHTTPCode *int
@@ -315,15 +329,30 @@ func (s *AppsecRequestState) HasValidChallengeCookie() bool {
 	return s.ChallengeCookieValid || s.ChallengeExempt
 }
 
-func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *AppsecDropInfo {
+// Outcome returns the terminal hook decision recorded for the request's band,
+// or nil if no hook took one. The runner uses it to return early, whatever the
+// decision was.
+func (s *AppsecRequestState) Outcome(request *ParsedRequest) *HookOutcome {
 	switch {
 	case request != nil && request.IsInBand:
-		return s.InBandDrop
+		return s.InBandOutcome
 	case request != nil && request.IsOutBand:
-		return s.OutOfBandDrop
+		return s.OutOfBandOutcome
 	default:
 		return nil
 	}
+}
+
+// DropInfo returns the band's outcome only when it is disruptive. Event
+// building and on_match treat such an outcome exactly like a rule match; an
+// allow outcome must stay invisible to them.
+func (s *AppsecRequestState) DropInfo(request *ParsedRequest) *HookOutcome {
+	outcome := s.Outcome(request)
+	if !outcome.IsDisruptive() {
+		return nil
+	}
+
+	return outcome
 }
 
 func (s *AppsecRequestState) ApplyPendingResponse() {
@@ -603,10 +632,59 @@ func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 	state.ResetResponse(w.Config)
 }
 
+// requestBand names the phase a helper is running in, for tags and logs.
+func requestBand(request *ParsedRequest) (string, error) {
+	switch {
+	case request == nil:
+		return "", errors.New("unable to determine request band: no request")
+	case request.IsInBand:
+		return "inband", nil
+	case request.IsOutBand:
+		return "outofband", nil
+	default:
+		return "", errors.New("unable to determine request band")
+	}
+}
+
+// setOutcome records a terminal hook decision for the request's band and
+// reports whether it was kept. The first decision wins: a hook that drops and
+// then skips (or the reverse) gets the one it took first, rather than one
+// picked by the order of the runner's checks.
+func (w *AppsecRuntimeConfig) setOutcome(state *AppsecRequestState, request *ParsedRequest, outcome *HookOutcome) (bool, error) {
+	if existing := state.Outcome(request); existing != nil {
+		w.Logger.Warnf("ignoring %s outcome (%s): request already had a %s outcome (%s)",
+			outcome.Action, outcome.Reason, existing.Action, existing.Reason)
+
+		return false, nil
+	}
+
+	switch {
+	case request == nil:
+		return false, errors.New("unable to determine request band: no request")
+	case request.IsInBand:
+		state.InBandOutcome = outcome
+	case request.IsOutBand:
+		state.OutOfBandOutcome = outcome
+	default:
+		return false, errors.New("unable to determine request band")
+	}
+
+	return true, nil
+}
+
 func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *ParsedRequest, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		reason = "request dropped by drop helper"
+	}
+
+	band, err := requestBand(request)
+	if err != nil {
+		return err
+	}
+
+	if state.Tx.Tx == nil {
+		return fmt.Errorf("%s transaction not initialized", band)
 	}
 
 	interrupt := &corazatypes.Interruption{
@@ -614,34 +692,57 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 		Action: "deny",
 		Status: w.Config.UserBlockedHTTPCode,
 		Data:   reason,
-		Tags:   []string{"crowdsec:drop-request"},
+		Tags:   []string{"crowdsec:drop-request", "crowdsec:drop-request:" + band},
 	}
 
-	switch {
-	case request.IsInBand:
-		if state.Tx.Tx == nil {
-			return errors.New("inband transaction not initialized")
-		}
-		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:inband")
-		state.InBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+	recorded, err := w.setOutcome(state, request, &HookOutcome{
+		Action:       BanRemediation,
+		Reason:       reason,
+		Interruption: interrupt,
+	})
+	if err != nil || !recorded {
+		return err
+	}
+
+	if request.IsInBand {
 		state.Response.InBandInterrupt = true
 		state.Response.Action = w.DefaultRemediation
 		state.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
 		state.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
-		state.Tx.Interrupt(interrupt)
-		w.Logger.Debugf("drop request helper triggered for inband phase: %s", reason)
-	case request.IsOutBand:
-		if state.Tx.Tx == nil {
-			return errors.New("outofband transaction not initialized")
-		}
-		interrupt.Tags = append(interrupt.Tags, "crowdsec:drop-request:outofband")
-		state.OutOfBandDrop = &AppsecDropInfo{Reason: reason, Interruption: interrupt}
+	} else {
 		state.Response.OutOfBandInterrupt = true
-		state.Tx.Interrupt(interrupt)
-		w.Logger.Debugf("drop request helper triggered for out-of-band phase: %s", reason)
-	default:
-		return errors.New("unable to determine request band for drop helper")
 	}
+
+	state.Tx.Interrupt(interrupt)
+	w.Logger.Debugf("drop request helper triggered for %s phase: %s", band, reason)
+
+	return nil
+}
+
+// SkipProcessing is the allow-side counterpart of DropRequest: the current
+// band returns early with the default pass response, without evaluating a
+// single WAF rule and without producing an event or an alert. post_eval hooks
+// still run, as they do after a drop.
+func (w *AppsecRuntimeConfig) SkipProcessing(state *AppsecRequestState, request *ParsedRequest, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "request skipped by skip helper"
+	}
+
+	band, err := requestBand(request)
+	if err != nil {
+		return err
+	}
+
+	recorded, err := w.setOutcome(state, request, &HookOutcome{
+		Action: AllowRemediation,
+		Reason: reason,
+	})
+	if err != nil || !recorded {
+		return err
+	}
+
+	w.Logger.Debugf("skip processing helper triggered for %s phase: %s", band, reason)
 
 	return nil
 }
@@ -1641,6 +1742,14 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	// as it's the same expr-env, we need to detect here.
 	if state.CurrentPhase != PhaseInBand {
 		return errors.New("SendChallenge can only be called from an in-band hook (on_challenge or post_eval)")
+	}
+
+	// A hook already took a terminal decision for this band (DropRequest,
+	// SkipProcessing). Serving a challenge on top of it produced an
+	// incoherent response: a "ban" remediation carrying a challenge page.
+	if outcome := state.Outcome(request); outcome != nil {
+		w.Logger.Warnf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
+		return nil
 	}
 
 	// GrantChallengeCookie earlier in the same request already minted an

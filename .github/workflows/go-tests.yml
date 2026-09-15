@@ -142,10 +142,10 @@ jobs:
           set -e
           # ensure the version of 'protoc' matches the one that generated the files
           PROTOBUF_VERSION="35.1"
-          JAVY_VERSION="8.1.1"
+          JAVY_VERSION="9.1.0"
           # sha256 of the release assets, verified before use
           PROTOBUF_SHA256="6930ebf62bd4ea607b98fff052596c6ee564b9835b4ce172c75a3f53ae9d91b7"
-          JAVY_SHA256="4bec224e1d51827808fd063541a2b4d94cf474744636b692be63e7a29bec83a6"
+          JAVY_SHA256="a68b122d48eb3dfc1b801d4e14c39271fde3638243d3272d206e376ac9189e39"
           # don't pollute the repo
           pushd $HOME
           curl --fail --location --proto '=https' --tlsv1.2 -o protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
@@ -224,6 +224,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.10
+          version: v2.13
           args: --issues-exit-code=1 --timeout 10m
           only-new-issues: false
