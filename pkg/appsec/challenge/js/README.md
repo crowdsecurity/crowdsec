@@ -9,6 +9,10 @@ the generated artifacts are committed to the repository and pulled in via
 `//go:embed`. The pipeline is only exercised when someone intentionally
 changes the JS sources.
 
+esbuild is also linked into the daemon itself, separately from this pipeline:
+hub-shipped detection modules are compiled at startup, not at build time. See
+[../custom_js.md](../custom_js.md).
+
 ## What gets generated
 
 Three pipeline steps, all driven by `go:generate` directives in
