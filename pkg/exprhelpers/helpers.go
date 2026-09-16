@@ -196,6 +196,9 @@ func UpdateRegexpCacheMetrics() {
 	}
 }
 
+// ChallengeJSDataType marks the WAF challenge's custom detection script.
+const ChallengeJSDataType = "challenge-js"
+
 func FileInit(directory string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", directory, filename, fileType)
 
@@ -207,6 +210,11 @@ func FileInit(directory string, filename string, fileType string) error {
 	if fileType == "modsec" {
 		// modsec files are referenced in rules just to have cscli download them
 		// They are loaded directly by coraza
+		return nil
+	}
+
+	if fileType == ChallengeJSDataType {
+		// Read off disk by the challenge runtime; nothing to index here.
 		return nil
 	}
 
