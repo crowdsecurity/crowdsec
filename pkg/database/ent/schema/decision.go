@@ -54,7 +54,7 @@ func (Decision) Edges() []ent.Edge {
 func (Decision) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("start_ip", "end_ip"),
-		index.Fields("value", "type", "scope", "until"),
+		index.Fields("value", "type", "scope", "until", "simulated"),
 		index.Fields("until"),
 		index.Fields("alert_decisions"),
 	}
