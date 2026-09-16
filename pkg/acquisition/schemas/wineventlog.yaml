@@ -1,0 +1,97 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Windows Event Log datasource
+description: >
+  Schema for wineventlog acquisition entries consumed by CrowdSec. Every
+  field mirrors pkg/acquisition/modules/wineventlog.Configuration and the
+  embedded configuration.DataSourceCommonCfg. Windows-only datasource.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: wineventlog
+    description: >
+      Must be wineventlog to bind this acquisition entry to the Windows
+      Event Log datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported; forced regardless
+      of the configured value).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: wineventlog).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  event_channel:
+    type: string
+    minLength: 1
+    description: >
+      Windows event channel to subscribe to (for example Security).
+      Mutually exclusive with xpath_query; one of the two is required.
+  event_level:
+    type: string
+    enum: [CRITICAL, ERROR, WARNING, INFORMATION, VERBOSE]
+    description: >
+      Minimum event level to match, used to build the XPath query when
+      xpath_query is not set. Case-insensitive.
+  event_ids:
+    type: array
+    items:
+      type: integer
+    description: >
+      Event IDs to match, used to build the XPath query when xpath_query is
+      not set.
+  xpath_query:
+    type: string
+    minLength: 1
+    description: >
+      Raw XPath query to subscribe with. Mutually exclusive with
+      event_channel; one of the two is required.
+  pretty_name:
+    type: string
+    description: >
+      Friendly name used in logs in place of the generated query.
+required:
+  - source
+allOf:
+  - not:
+      required: [event_channel, xpath_query]
+  - anyOf:
+      - required: [event_channel]
+      - required: [xpath_query]
+examples:
+  - source: wineventlog
+    event_channel: Security
+    event_ids: [4625]
+    labels:
+      type: wineventlog
