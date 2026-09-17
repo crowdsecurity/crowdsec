@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -56,17 +55,27 @@ func hasReferer(referer string) string {
 	return "n"
 }
 
-// countHeaders counts the headers, excluding specific ones like Cookie and Referer.
-func countHeaders(headers http.Header) string {
-	count := len(headers)
-	if headers.Get("Cookie") != "" {
-		count--
+// ja4hHeaders lists the header names in wire order, minus the ones the spec
+// excludes: cookies (by prefix, so Cookie2 goes too) and referer. The reference
+// implementation derives both the header count and the JA4H_b hash from this
+// same list, so a header sent twice counts twice.
+func ja4hHeaders(req *http.Request) []string {
+	names := orderedHeaderNames(req)
+	out := names[:0]
+	for _, name := range names {
+		lower := strings.ToLower(name)
+		if name == "" || strings.HasPrefix(lower, "cookie") || lower == "referer" {
+			continue
+		}
+		out = append(out, name)
 	}
-	if headers.Get("Referer") != "" {
-		count--
-	}
+	return out
+}
+
+// countHeaders counts the header lines the spec keeps.
+func countHeaders(headerNames []string) string {
 	//header len needs to be on 2 chars: 3 -> 03 // 100 -> 99
-	return fmt.Sprintf("%02d", min(count, 99))
+	return fmt.Sprintf("%02d", min(len(headerNames), 99))
 }
 
 // primaryLanguage extracts the first four characters of the primary Accept-Language header.
@@ -85,7 +94,7 @@ func primaryLanguage(headers http.Header) string {
 }
 
 // jA4H_a generates a summary fingerprint for the HTTP request.
-func jA4H_a(req *http.Request) string {
+func jA4H_a(req *http.Request, headerNames []string) string {
 	var builder strings.Builder
 
 	builder.Grow(ja4hSubHashLength)
@@ -93,28 +102,18 @@ func jA4H_a(req *http.Request) string {
 	builder.WriteString(httpVersion(req.ProtoMajor, req.ProtoMinor))
 	builder.WriteString(hasCookie(req))
 	builder.WriteString(hasReferer(req.Referer()))
-	builder.WriteString(countHeaders(req.Header))
+	builder.WriteString(countHeaders(headerNames))
 	builder.WriteString(primaryLanguage(req.Header))
 	return builder.String()
 }
 
-// jA4H_b computes a truncated SHA256 hash of sorted header names.
-func jA4H_b(req *http.Request) string {
-
-	// The reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
-	// discards referer and headers **starting with "cookie"**
-	// If there's no headers, it hashes the empty string, instead of returning 0s
-	// like what is done for cookies. Not sure if it's intended or an oversight in the spec.
-	headers := make([]string, 0, len(req.Header))
-	for name := range req.Header {
-		if strings.HasPrefix(strings.ToLower(name), "cookie") || strings.ToLower(name) == "referer" {
-			continue
-		}
-		headers = append(headers, name)
-	}
-	sort.Strings(headers)
-
-	return hashTruncated(strings.Join(headers, ","))
+// jA4H_b computes a truncated SHA256 hash of the header names, in wire order.
+//
+// With no headers the reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
+// hashes the empty string instead of returning 0s like it does for cookies.
+// Not sure if it's intended or an oversight in the spec.
+func jA4H_b(headerNames []string) string {
+	return hashTruncated(strings.Join(headerNames, ","))
 }
 
 // hashTruncated computes a truncated SHA256 hash for the given input.
@@ -157,8 +156,9 @@ func jA4H_d(cookies []*http.Cookie) string {
 
 // JA4H computes the complete HTTP client fingerprint based on the request.
 func JA4H(req *http.Request) string {
-	JA4H_a := jA4H_a(req)
-	JA4H_b := jA4H_b(req)
+	headerNames := ja4hHeaders(req)
+	JA4H_a := jA4H_a(req, headerNames)
+	JA4H_b := jA4H_b(headerNames)
 
 	cookies := req.Cookies()
 
