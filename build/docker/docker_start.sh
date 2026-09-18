@@ -319,16 +319,14 @@ for target in "/staging/var/lib/crowdsec/data"/*; do
 done
 
 # Check and prestage /etc/crowdsec
-if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
-    echo "Populating configuration directory..."
-    # don't overwrite existing configuration files, which may come
-    # from bind-mount or even be read-only (configmaps)
-    if [ -e /staging/etc/crowdsec ]; then
-        mkdir -p /etc/crowdsec/
-        # if you change this, check that it still works
-        # under alpine and k8s, with and without tls
-        rsync -av --ignore-existing /staging/etc/crowdsec/* /etc/crowdsec
-    fi
+# don't overwrite existing configuration files, which may come
+# from bind-mount or even be read-only (configmaps)
+if [ -e /staging/etc/crowdsec ]; then
+    echo "Populating missing config files..."
+    mkdir -p /etc/crowdsec/
+    # if you change this, check that it still works
+    # under alpine and k8s, with and without tls
+    rsync -av --ignore-existing /staging/etc/crowdsec/* /etc/crowdsec
 fi
 
 # do this as soon as we have a config.yaml, to avoid useless warnings
