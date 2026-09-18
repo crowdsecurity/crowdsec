@@ -339,3 +339,61 @@ func TestParseBotAddr(t *testing.T) {
 		})
 	}
 }
+
+// TestExplainKnownBot covers the details cscli reports on top of the boolean:
+// which entry matched, in which file, and through which identity check.
+func TestExplainKnownBot(t *testing.T) {
+	resolver := &fakeResolver{
+		ptr: map[string][]string{"66.249.66.1": {"crawl-66-249-66-1.googlebot.com."}},
+		fwd: map[string][]net.IPAddr{"crawl-66-249-66-1.googlebot.com": {{IP: net.ParseIP("66.249.66.1")}}},
+	}
+
+	tests := []struct {
+		name     string
+		ip       string
+		ua       string
+		path     string
+		expected *BotMatch
+	}{
+		{
+			name:     "exact ip",
+			ip:       "10.1.2.3",
+			expected: &BotMatch{Name: "internal-scanner", File: "test_data_bots.json", Method: "ip", Detail: "10.1.2.3"},
+		},
+		{
+			name:     "range",
+			ip:       "192.0.2.7",
+			expected: &BotMatch{Name: "partner-range", File: "test_data_bots.json", Method: "range", Detail: "192.0.2.0/24"},
+		},
+		{
+			name:     "fcrdns",
+			ip:       "66.249.66.1",
+			ua:       "googlebot",
+			expected: &BotMatch{Name: "googlebot", File: "test_data_bots.json", Method: "rdns", Detail: "crawl-66-249-66-1.googlebot.com"},
+		},
+		{
+			name: "no match",
+			ip:   "203.0.113.1",
+			ua:   "googlebot",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setupBotTest(t, resolver)
+			require.NoError(t, FileInit("testdata", "test_data_bots.json", "bots"))
+
+			match, err := ExplainKnownBot(tc.ip, tc.ua, tc.path, "test_data_bots.json")
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, match)
+		})
+	}
+}
+
+func TestExplainKnownBotInvalidAddr(t *testing.T) {
+	setupBotTest(t, nil)
+	require.NoError(t, FileInit("testdata", "test_data_bots.json", "bots"))
+
+	_, err := ExplainKnownBot("not-an-ip", "", "/", "test_data_bots.json")
+	require.EqualError(t, err, "invalid source address 'not-an-ip'")
+}
