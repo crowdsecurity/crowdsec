@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -58,11 +59,15 @@ func (m *AllMetrics) validateLapi(formats strfmt.Registry) error {
 
 	if m.Lapi != nil {
 		if err := m.Lapi.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("lapi")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("lapi")
 			}
+
 			return err
 		}
 	}
@@ -82,11 +87,15 @@ func (m *AllMetrics) validateLogProcessors(formats strfmt.Registry) error {
 
 		if m.LogProcessors[i] != nil {
 			if err := m.LogProcessors[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -108,11 +117,15 @@ func (m *AllMetrics) validateRemediationComponents(formats strfmt.Registry) erro
 
 		if m.RemediationComponents[i] != nil {
 			if err := m.RemediationComponents[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -153,11 +166,15 @@ func (m *AllMetrics) contextValidateLapi(ctx context.Context, formats strfmt.Reg
 		}
 
 		if err := m.Lapi.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("lapi")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("lapi")
 			}
+
 			return err
 		}
 	}
@@ -176,11 +193,15 @@ func (m *AllMetrics) contextValidateLogProcessors(ctx context.Context, formats s
 			}
 
 			if err := m.LogProcessors[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("log_processors" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("log_processors" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -201,11 +222,15 @@ func (m *AllMetrics) contextValidateRemediationComponents(ctx context.Context, f
 			}
 
 			if err := m.RemediationComponents[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("remediation_components" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("remediation_components" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
