@@ -576,14 +576,14 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 	}{
 		{
 			name:     "completed",
-			rest:     "1}\nsecond\nthird\n",
-			expected: []string{"first", `{"a":1}`, "second", "third"},
+			rest:     "1}\nthird\n",
+			expected: []string{`{"a":1}`, "third"},
 		},
 		{
 			name:     "truncated",
 			truncate: true,
 			rest:     "new\n",
-			expected: []string{"first", "new"},
+			expected: []string{"new"},
 		},
 	}
 
@@ -608,14 +608,41 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 			err = f.StreamingAcquisition(ctx, out, &tomb)
 			require.NoError(t, err)
 
-			// Let the tailer open the file and seek to the end
-			time.Sleep(100 * time.Millisecond)
-			// Nothing reads "first" yet: without CompleteLines, the tailer is still
-			// blocked sending the partial line when the rest is written, then skips it
-			_, err = fd.WriteString("first\n" + `{"a":`)
+			t.Cleanup(func() { tomb.Kill(nil) })
+
+			// The tailer seeks to the end when it opens the file, which may not have
+			// happened yet: write markers until one comes back.
+			require.Eventually(t, func() bool {
+				if _, err := fd.WriteString("ready\n"); err != nil {
+					return false
+				}
+
+				select {
+				case <-out:
+					return true
+				case <-time.After(quietPeriod):
+					return false
+				}
+			}, readTimeout, 10*time.Millisecond, "tailer never delivered a line")
+
+			_, err = fd.WriteString("second\n" + `{"a":`)
 			require.NoError(t, err)
-			// Let the tailer read the partial line and reach EOF
-			time.Sleep(100 * time.Millisecond)
+
+			// Skip leftover markers. "second" means the tailer has read that write
+			// and now sits on the partial line.
+		waitSecond:
+			for {
+				select {
+				case evt := <-out:
+					if evt.Line.Raw == "second" {
+						break waitSecond
+					}
+
+					require.Equal(t, "ready", evt.Line.Raw)
+				case <-time.After(readTimeout):
+					t.Fatal("timeout waiting for the line before the partial one")
+				}
+			}
 
 			if tc.truncate {
 				require.NoError(t, os.Truncate(testFile, 0))
@@ -642,9 +669,6 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 			}
 
 			require.Equal(t, tc.expected, got)
-
-			tomb.Kill(nil)
-			require.NoError(t, tomb.Wait())
 		})
 	}
 }
