@@ -27,7 +27,7 @@ jobs:
     # inherit so the reusable job's `docker` environment secrets resolve
     secrets: inherit
     with:
-      platform: linux/amd64
+      platforms: '[{"platform": "linux/amd64", "runner": "ubuntu-latest"}]'
       crowdsec_version: ""
       image_version: dev
       latest: false
@@ -39,7 +39,7 @@ jobs:
     uses: ./.github/workflows/publish-docker.yml
     secrets: inherit
     with:
-      platform: linux/amd64
+      platforms: '[{"platform": "linux/amd64", "runner": "ubuntu-latest"}]'
       crowdsec_version: ""
       image_version: dev
       latest: false
