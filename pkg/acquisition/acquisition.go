@@ -50,7 +50,10 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
 
-var transformRuntimes = map[string]*vm.Program{}
+// transformRuntimes holds the compiled transform expression of each datasource
+// that has one. It is keyed on the datasource itself: the unique id is not usable
+// here, as it is only set for datasources configured from a DSN.
+var transformRuntimes = map[types.DataSource]*vm.Program{}
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
@@ -130,7 +133,7 @@ func LoadAcquisitionFromDSN(
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
 
-		transformRuntimes[uniqueID] = vm
+		transformRuntimes[dataSrc] = vm
 	}
 
 	if hubAware, ok := dataSrc.(types.HubAware); ok {
@@ -284,9 +287,6 @@ func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics
 		return nil, errors.New("missing labels")
 	}
 
-	uniqueID := uuid.NewString()
-	sub.UniqueId = uniqueID
-
 	src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
 	if err != nil {
 		return nil, fmt.Errorf("datasource of type %s: %w", sub.Source, err)
@@ -380,7 +380,7 @@ func sourcesFromFile(
 		}
 
 		if parsed.Transform != nil {
-			transformRuntimes[parsed.Common.UniqueId] = parsed.Transform
+			transformRuntimes[parsed.Source] = parsed.Transform
 		}
 
 		sources = append(sources, parsed.Source)
@@ -638,9 +638,7 @@ func StartAcquisition(
 
 			var transformChan chan pipeline.Event
 
-			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
-
-			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
+			if transformRuntime, ok := transformRuntimes[subsrc]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
 				transformChan = make(chan pipeline.Event)

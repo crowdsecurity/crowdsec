@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -659,11 +661,10 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }
 
-// MockCatTransform emits a single event in cat mode, and reports a configurable
-// uuid so a transform expression can be attached to it.
+// MockCatTransform emits a single, configurable event in cat mode.
 type MockCatTransform struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	uuid                              string
+	raw                               string
 }
 
 func (*MockCatTransform) UnmarshalConfig(_ []byte) error { return nil }
@@ -671,32 +672,32 @@ func (f *MockCatTransform) Configure(_ context.Context, _ []byte, _ *log.Entry, 
 	f.Mode = configuration.CAT_MODE
 	return nil
 }
-func (*MockCatTransform) GetMode() string   { return configuration.CAT_MODE }
-func (*MockCatTransform) GetName() string   { return "mock_cat_transform" }
-func (f *MockCatTransform) GetUuid() string { return f.uuid }
-func (f *MockCatTransform) Dump() any       { return f }
-func (*MockCatTransform) CanRun() error     { return nil }
+func (*MockCatTransform) GetMode() string { return configuration.CAT_MODE }
+func (*MockCatTransform) GetName() string { return "mock_cat_transform" }
+func (*MockCatTransform) GetUuid() string { return "" }
+func (f *MockCatTransform) Dump() any     { return f }
+func (*MockCatTransform) CanRun() error   { return nil }
 
-func (*MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
+func (f *MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
 	evt := pipeline.Event{}
 	evt.Line.Src = "test"
-	evt.Line.Raw = "original"
+	evt.Line.Raw = f.raw
 	out <- evt
 
 	return nil
 }
 
-// registerTransform compiles expr and attaches it to the given datasource uuid
-// for the duration of the test.
-func registerTransform(t *testing.T, uuid string, exprStr string) {
+// registerTransform compiles expr and attaches it to the given datasource for the
+// duration of the test.
+func registerTransform(t *testing.T, src types.DataSource, exprStr string) {
 	t.Helper()
 
 	prog, err := expr.Compile(exprStr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	require.NoError(t, err)
 
-	transformRuntimes[uuid] = prog
+	transformRuntimes[src] = prog
 
-	t.Cleanup(func() { delete(transformRuntimes, uuid) })
+	t.Cleanup(func() { delete(transformRuntimes, src) })
 }
 
 // TestStartAcquisitionTransform checks that events emitted by a datasource with
@@ -726,26 +727,84 @@ func TestStartAcquisitionTransform(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			uuid := "transform-" + tc.name
+			src := &MockCatTransform{raw: "original"}
 
-			registerTransform(t, uuid, tc.expr)
+			registerTransform(t, src, tc.expr)
 
-			got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
+			got := runCatAcquisition(t, []types.DataSource{src})
 
 			assert.Equal(t, tc.expected, got)
 		})
 	}
 }
 
+// TestStartAcquisitionTransformIsPerDatasource checks that a transform expression
+// only applies to the datasource it was declared on.
+func TestStartAcquisitionTransformIsPerDatasource(t *testing.T) {
+	withTransform := &MockCatTransform{raw: "first"}
+	withoutTransform := &MockCatTransform{raw: "second"}
+
+	registerTransform(t, withTransform, `evt.Line.Raw + "-transformed"`)
+
+	got := runCatAcquisition(t, []types.DataSource{withTransform, withoutTransform})
+
+	assert.ElementsMatch(t, []string{"first-transformed", "second"}, got)
+}
+
+// TestLoadAcquisitionFromFilesTransform checks, end to end, that a transform
+// expression declared on one datasource is applied to that datasource only.
+func TestLoadAcquisitionFromFilesTransform(t *testing.T) {
+	dir := t.TempDir()
+
+	first := filepath.Join(dir, "first.log")
+	second := filepath.Join(dir, "second.log")
+	acquisFile := filepath.Join(dir, "acquis.yaml")
+
+	require.NoError(t, os.WriteFile(first, []byte("first\n"), 0o600))
+	require.NoError(t, os.WriteFile(second, []byte("second\n"), 0o600))
+	require.NoError(t, os.WriteFile(acquisFile, fmt.Appendf(nil, `
+source: file
+mode: cat
+filename: %s
+labels:
+  type: syslog
+transform: evt.Line.Raw + "-transformed"
+---
+source: file
+mode: cat
+filename: %s
+labels:
+  type: syslog
+`, first, second), 0o600))
+
+	cfg := csconfig.CrowdsecServiceCfg{AcquisitionFiles: []string{acquisFile}}
+
+	hub := cwhub.Hub{}
+
+	sources, err := LoadAcquisitionFromFiles(t.Context(), &cfg, nil, &hub)
+	require.NoError(t, err)
+	require.Len(t, sources, 2)
+
+	t.Cleanup(func() {
+		for _, src := range sources {
+			delete(transformRuntimes, src)
+		}
+	})
+
+	got := runCatAcquisition(t, sources)
+
+	assert.ElementsMatch(t, []string{"first-transformed", "second"}, got)
+}
+
 // TestStartAcquisitionCatTransformTerminates checks that in cat mode, acquisition
 // terminates on its own once the datasource is done reading, even when a transform
 // is configured. cmd/crowdsec relies on acquisTomb dying to trigger the shutdown.
 func TestStartAcquisitionCatTransformTerminates(t *testing.T) {
-	uuid := "transform-terminate"
+	src := &MockCatTransform{raw: "original"}
 
-	registerTransform(t, uuid, `evt.Line.Raw + "-transformed"`)
+	registerTransform(t, src, `evt.Line.Raw + "-transformed"`)
 
-	got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
+	got := runCatAcquisition(t, []types.DataSource{src})
 
 	assert.Equal(t, []string{"original-transformed"}, got)
 }
