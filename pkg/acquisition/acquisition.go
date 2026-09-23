@@ -50,10 +50,7 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
 
-// transformRuntimes holds the compiled transform expression of each datasource
-// that has one. It is keyed on the datasource itself: the unique id is not usable
-// here, as it is only set for datasources configured from a DSN.
-var transformRuntimes = map[types.DataSource]*vm.Program{}
+var transformRuntimes = map[string]*vm.Program{}
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
@@ -99,6 +96,12 @@ func DataSourceConfigure(
 		lapiClientAware.SetClientConfig(cConfig.API.Client)
 	}
 
+	// Datasources build their configuration from yamlConfig alone, so this is how
+	// they get a unique id. It keys the transform expression in StartAcquisition.
+	if commonConfig.UniqueId == "" {
+		yamlConfig = slices.Concat(yamlConfig, []byte("\nunique_id: "+uuid.NewString()+"\n"))
+	}
+
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
@@ -133,7 +136,7 @@ func LoadAcquisitionFromDSN(
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
 
-		transformRuntimes[dataSrc] = vm
+		transformRuntimes[uniqueID] = vm
 	}
 
 	if hubAware, ok := dataSrc.(types.HubAware); ok {
@@ -380,7 +383,7 @@ func sourcesFromFile(
 		}
 
 		if parsed.Transform != nil {
-			transformRuntimes[parsed.Source] = parsed.Transform
+			transformRuntimes[parsed.Source.GetUuid()] = parsed.Transform
 		}
 
 		sources = append(sources, parsed.Source)
@@ -638,7 +641,9 @@ func StartAcquisition(
 
 			var transformChan chan pipeline.Event
 
-			if transformRuntime, ok := transformRuntimes[subsrc]; ok {
+			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
+
+			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
 				transformChan = make(chan pipeline.Event)
