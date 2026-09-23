@@ -45,6 +45,10 @@ func (d *Source) GetUuid() string {
 	return d.Config.UniqueId
 }
 
+func (d *Source) SetUuid(uuid string) {
+	d.Config.UniqueId = uuid
+}
+
 func (d *Source) GetMode() string {
 	return d.Config.Mode
 }

@@ -90,6 +90,10 @@ func (w *Source) GetUuid() string {
 	return w.config.UniqueId
 }
 
+func (w *Source) SetUuid(uuid string) {
+	w.config.UniqueId = uuid
+}
+
 func (w *Source) Dump() any {
 	return w
 }

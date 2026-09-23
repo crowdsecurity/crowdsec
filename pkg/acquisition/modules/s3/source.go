@@ -51,6 +51,10 @@ func (s *Source) GetUuid() string {
 	return s.Config.UniqueId
 }
 
+func (s *Source) SetUuid(uuid string) {
+	s.Config.UniqueId = uuid
+}
+
 func (*Source) CanRun() error {
 	return nil
 }

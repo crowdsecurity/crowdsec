@@ -21,6 +21,8 @@ func (*Source) GetUuid() string {
 	return ""
 }
 
+func (*Source) SetUuid(_ string) {}
+
 func (*Source) UnmarshalConfig(_ []byte) error {
 	return nil
 }

@@ -16,6 +16,10 @@ func (s *Source) GetUuid() string {
 	return s.config.UniqueId
 }
 
+func (s *Source) SetUuid(uuid string) {
+	s.config.UniqueId = uuid
+}
+
 func (*Source) GetName() string {
 	return ModuleName
 }

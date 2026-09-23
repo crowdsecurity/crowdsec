@@ -65,11 +65,12 @@ func (f *MockSource) Configure(_ context.Context, cfg []byte, logger *log.Entry,
 
 	return nil
 }
-func (f *MockSource) GetMode() string { return f.Mode }
-func (*MockSource) CanRun() error     { return nil }
-func (f *MockSource) Dump() any       { return f }
-func (*MockSource) GetName() string   { return "mock" }
-func (*MockSource) GetUuid() string   { return "" }
+func (f *MockSource) GetMode() string   { return f.Mode }
+func (*MockSource) CanRun() error       { return nil }
+func (f *MockSource) Dump() any         { return f }
+func (*MockSource) GetName() string     { return "mock" }
+func (f *MockSource) GetUuid() string   { return f.UniqueId }
+func (f *MockSource) SetUuid(id string) { f.UniqueId = id }
 
 // copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
@@ -78,6 +79,64 @@ type MockSourceCantRun struct {
 
 func (*MockSourceCantRun) CanRun() error   { return errors.New("can't run bro") }
 func (*MockSourceCantRun) GetName() string { return "mock_cant_run" }
+
+// MockSourceNoUuid is a datasource that does not keep the unique id it is given.
+type MockSourceNoUuid struct {
+	MockSource
+}
+
+func (*MockSourceNoUuid) SetUuid(_ string) {}
+func (*MockSourceNoUuid) GetName() string  { return "mock_no_uuid" }
+
+func TestDataSourceConfigureUniqueID(t *testing.T) {
+	tests := []struct {
+		name        string
+		factory     func() types.DataSource
+		uniqueID    string
+		expectedErr string
+	}{
+		{
+			name:    "generated",
+			factory: func() types.DataSource { return &MockSource{} },
+		},
+		{
+			name:     "user provided",
+			factory:  func() types.DataSource { return &MockSource{} },
+			uniqueID: "user-provided",
+		},
+		{
+			name:        "not kept by the datasource",
+			factory:     func() types.DataSource { return &MockSourceNoUuid{} },
+			expectedErr: "datasource mock_no_uuid did not keep its unique id",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			restore := registry.RegisterTestFactory("mock_uuid", tc.factory)
+			t.Cleanup(restore)
+
+			common := configuration.DataSourceCommonCfg{Source: "mock_uuid", UniqueId: tc.uniqueID}
+			yamlConfig := "source: mock_uuid\nmode: cat\ntoto: test\n"
+
+			hub := cwhub.Hub{}
+
+			ds, err := DataSourceConfigure(t.Context(), common, []byte(yamlConfig), metrics.AcquisitionMetricsLevelNone, &hub)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if tc.uniqueID != "" {
+				require.Equal(t, tc.uniqueID, ds.GetUuid())
+			} else {
+				require.NotEmpty(t, ds.GetUuid())
+			}
+		})
+	}
+}
 
 // appendMockSource is only used to add mock source for tests.
 func appendMockSource(t *testing.T) {
@@ -361,9 +420,10 @@ func (*MockCat) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _
 	return nil
 }
 
-func (*MockCat) CanRun() error   { return nil }
-func (f *MockCat) Dump() any     { return f }
-func (*MockCat) GetUuid() string { return "" }
+func (*MockCat) CanRun() error       { return nil }
+func (f *MockCat) Dump() any         { return f }
+func (f *MockCat) GetUuid() string   { return f.UniqueId }
+func (f *MockCat) SetUuid(id string) { f.UniqueId = id }
 
 // ----
 
@@ -398,9 +458,10 @@ func (*MockTail) StreamingAcquisition(_ context.Context, out chan pipeline.Event
 
 	return nil
 }
-func (*MockTail) CanRun() error   { return nil }
-func (f *MockTail) Dump() any     { return f }
-func (*MockTail) GetUuid() string { return "" }
+func (*MockTail) CanRun() error       { return nil }
+func (f *MockTail) Dump() any         { return f }
+func (f *MockTail) GetUuid() string   { return f.UniqueId }
+func (f *MockTail) SetUuid(id string) { f.UniqueId = id }
 
 // func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
@@ -565,7 +626,8 @@ func (*MockSourceByDSN) ConfigureByDSN(_ context.Context, dsn string, _ map[stri
 
 	return nil
 }
-func (*MockSourceByDSN) GetUuid() string { return "" }
+func (f *MockSourceByDSN) GetUuid() string   { return f.UniqueId }
+func (f *MockSourceByDSN) SetUuid(id string) { f.UniqueId = id }
 
 func TestConfigureByDSN(t *testing.T) {
 	ctx := t.Context()
@@ -618,11 +680,12 @@ func (*TailModeNoTailer) UnmarshalConfig(_ []byte) error { return nil }
 func (*TailModeNoTailer) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
-func (*TailModeNoTailer) GetMode() string { return configuration.TAIL_MODE }
-func (*TailModeNoTailer) GetName() string { return "tail_no_tailer" }
-func (*TailModeNoTailer) GetUuid() string { return "" }
-func (s *TailModeNoTailer) Dump() any     { return s }
-func (*TailModeNoTailer) CanRun() error   { return nil }
+func (*TailModeNoTailer) GetMode() string  { return configuration.TAIL_MODE }
+func (*TailModeNoTailer) GetName() string  { return "tail_no_tailer" }
+func (*TailModeNoTailer) GetUuid() string  { return "" }
+func (*TailModeNoTailer) SetUuid(_ string) {}
+func (s *TailModeNoTailer) Dump() any      { return s }
+func (*TailModeNoTailer) CanRun() error    { return nil }
 
 func TestStartAcquisition_MissingTailer(t *testing.T) {
 	ctx := t.Context()
@@ -643,11 +706,12 @@ func (*CatModeNoFetcher) UnmarshalConfig(_ []byte) error { return nil }
 func (*CatModeNoFetcher) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
-func (*CatModeNoFetcher) GetMode() string { return configuration.CAT_MODE }
-func (*CatModeNoFetcher) GetName() string { return "cat_no_fetcher" }
-func (*CatModeNoFetcher) GetUuid() string { return "" }
-func (s *CatModeNoFetcher) Dump() any     { return s }
-func (*CatModeNoFetcher) CanRun() error   { return nil }
+func (*CatModeNoFetcher) GetMode() string  { return configuration.CAT_MODE }
+func (*CatModeNoFetcher) GetName() string  { return "cat_no_fetcher" }
+func (*CatModeNoFetcher) GetUuid() string  { return "" }
+func (*CatModeNoFetcher) SetUuid(_ string) {}
+func (s *CatModeNoFetcher) Dump() any      { return s }
+func (*CatModeNoFetcher) CanRun() error    { return nil }
 
 func TestStartAcquisition_MissingFetcher(t *testing.T) {
 	ctx := t.Context()
@@ -672,11 +736,12 @@ func (f *MockCatTransform) Configure(_ context.Context, _ []byte, _ *log.Entry, 
 	f.Mode = configuration.CAT_MODE
 	return nil
 }
-func (*MockCatTransform) GetMode() string   { return configuration.CAT_MODE }
-func (*MockCatTransform) GetName() string   { return "mock_cat_transform" }
-func (f *MockCatTransform) GetUuid() string { return f.UniqueId }
-func (f *MockCatTransform) Dump() any       { return f }
-func (*MockCatTransform) CanRun() error     { return nil }
+func (*MockCatTransform) GetMode() string     { return configuration.CAT_MODE }
+func (*MockCatTransform) GetName() string     { return "mock_cat_transform" }
+func (f *MockCatTransform) GetUuid() string   { return f.UniqueId }
+func (f *MockCatTransform) SetUuid(id string) { f.UniqueId = id }
+func (f *MockCatTransform) Dump() any         { return f }
+func (*MockCatTransform) CanRun() error       { return nil }
 
 func (f *MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
 	evt := pipeline.Event{}

@@ -18,6 +18,10 @@ func (s *Source) GetUuid() string {
 	return s.Config.UniqueId
 }
 
+func (s *Source) SetUuid(uuid string) {
+	s.Config.UniqueId = uuid
+}
+
 func (s *Source) GetMode() string {
 	return s.Config.Mode
 }

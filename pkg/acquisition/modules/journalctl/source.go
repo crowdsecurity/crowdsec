@@ -20,6 +20,10 @@ func (s *Source) GetUuid() string {
 	return s.config.UniqueId
 }
 
+func (s *Source) SetUuid(uuid string) {
+	s.config.UniqueId = uuid
+}
+
 func (s *Source) GetMode() string {
 	return s.config.Mode
 }

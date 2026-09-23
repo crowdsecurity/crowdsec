@@ -33,6 +33,10 @@ func (l *Source) GetUuid() string {
 	return l.Config.UniqueId
 }
 
+func (l *Source) SetUuid(uuid string) {
+	l.Config.UniqueId = uuid
+}
+
 func (l *Source) Dump() any {
 	return l
 }

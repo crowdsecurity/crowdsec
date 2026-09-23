@@ -28,6 +28,10 @@ type DataSource interface {
 	// GetUuid returns a unique identifier for this datasource instance.
 	GetUuid() string
 
+	// SetUuid sets the unique identifier. It is called once the datasource is
+	// configured, as configuring it resets its configuration.
+	SetUuid(uuid string)
+
 	Dump() any
 
 	// CanRun reports whether the datasource can run on the current platform/environment

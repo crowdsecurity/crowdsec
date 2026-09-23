@@ -96,18 +96,33 @@ func DataSourceConfigure(
 		lapiClientAware.SetClientConfig(cConfig.API.Client)
 	}
 
-	// Datasources build their configuration from yamlConfig alone, so this is how
-	// they get a unique id. It keys the transform expression in StartAcquisition.
-	if commonConfig.UniqueId == "" {
-		yamlConfig = slices.Concat(yamlConfig, []byte("\nunique_id: "+uuid.NewString()+"\n"))
-	}
-
 	/* configure the actual datasource */
 	if err := dataSrc.Configure(ctx, yamlConfig, subLogger, metricsLevel); err != nil {
 		return nil, err
 	}
 
+	uniqueID := commonConfig.UniqueId
+	if uniqueID == "" {
+		uniqueID = uuid.NewString()
+	}
+
+	if err := setUniqueID(dataSrc, uniqueID); err != nil {
+		return nil, err
+	}
+
 	return dataSrc, nil
+}
+
+// setUniqueID sets the id that keys the transform expression of dataSrc in
+// StartAcquisition. A datasource that loses it would silently skip its transform.
+func setUniqueID(dataSrc types.DataSource, uniqueID string) error {
+	dataSrc.SetUuid(uniqueID)
+
+	if dataSrc.GetUuid() != uniqueID {
+		return fmt.Errorf("datasource %s did not keep its unique id - this is a bug, please report", dataSrc.GetName())
+	}
+
+	return nil
 }
 
 func LoadAcquisitionFromDSN(
@@ -157,6 +172,10 @@ func LoadAcquisitionFromDSN(
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
 		return nil, fmt.Errorf("datasource for %q: %w", dsn, err)
+	}
+
+	if err := setUniqueID(dataSrc, uniqueID); err != nil {
+		return nil, err
 	}
 
 	return dataSrc, nil

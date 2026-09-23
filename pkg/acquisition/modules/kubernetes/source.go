@@ -36,3 +36,7 @@ func (*Source) CanRun() error {
 func (s *Source) GetUuid() string {
 	return s.config.UniqueId
 }
+
+func (s *Source) SetUuid(uuid string) {
+	s.config.UniqueId = uuid
+}
