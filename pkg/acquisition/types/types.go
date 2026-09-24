@@ -13,24 +13,29 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// DataSource is the common interface implemented by all acquisition modules.
-//
-// A DataSource can always be configured from YAML.
-type DataSource interface {
-	// identity, lifecycle
-	
-	// GetMode returns the operating mode of the datasource (e.g. TAIL, CAT, SERVER).
-	GetMode() string
-
-	// GetName returns the module name (e.g. "file", "journalctl", "docker").
-	GetName() string
-
+// Identifiable is a datasource instance with a unique identifier.
+type Identifiable interface {
 	// GetUuid returns a unique identifier for this datasource instance.
 	GetUuid() string
 
 	// SetUuid sets the unique identifier. It is called once the datasource is
 	// configured, as configuring it resets its configuration.
 	SetUuid(uuid string)
+}
+
+// DataSource is the common interface implemented by all acquisition modules.
+//
+// A DataSource can always be configured from YAML.
+type DataSource interface {
+	// identity, lifecycle
+
+	// GetMode returns the operating mode of the datasource (e.g. TAIL, CAT, SERVER).
+	GetMode() string
+
+	// GetName returns the module name (e.g. "file", "journalctl", "docker").
+	GetName() string
+
+	Identifiable
 
 	Dump() any
 
