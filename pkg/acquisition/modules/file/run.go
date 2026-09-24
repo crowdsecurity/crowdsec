@@ -273,7 +273,10 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 		Follow:   true,
 		Poll:     pollFile,
 		Location: seekInfo,
-		Logger:   log.NewEntry(log.StandardLogger()),
+		// Without this, a line read while it is being written is sent
+		// incomplete, and the lines written after it can be skipped
+		CompleteLines: true,
+		Logger:        log.NewEntry(log.StandardLogger()),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
