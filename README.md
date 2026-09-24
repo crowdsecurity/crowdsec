@@ -1,6 +1,6 @@
 
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
+<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
 </br>
 </br>
@@ -15,40 +15,59 @@
 <img src="https://img.shields.io/twitter/follow/Crowd_Security?style=social">
 </p>
 
+<h1 align="center">CrowdSec: open-source IDS/IPS, WAF and bot detection</h1>
+
 _CrowdSec is an open-source and participative security solution offering crowdsourced server detection and protection against malicious IPs. Detect and block with our Security Engine, contribute to the network, and enjoy our real-time community blocklist._
 
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
+<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
 </p>
 
 ## Features & Advantages
 
 ### Versatile Security Engine
 
-[CrowdSec Security Engine](https://doc.crowdsec.net/docs/next/intro/) is an all-in-one [IDS/IPS](https://doc.crowdsec.net/docs/next/log_processor/intro) and [WAF](https://doc.crowdsec.net/docs/next/appsec/intro).
+[CrowdSec Security Engine](https://docs.crowdsec.net/docs/next/intro/) is an all-in-one [IDS/IPS](https://docs.crowdsec.net/docs/next/log_processor/intro) and [WAF](https://docs.crowdsec.net/docs/next/appsec/intro).
 
-It detects bad behaviors by analyzing log sources and HTTP requests, and allows active remediation thanks to the [Remediation Components](https://doc.crowdsec.net/u/bouncers/intro).
+It detects bad behaviors by analyzing log sources and HTTP requests, and allows active remediation thanks to the [Remediation Components](https://docs.crowdsec.net/u/bouncers/intro).
 
 [Detection rules are available on our hub](https://hub.crowdsec.net) under MIT license.
 
 ### CrowdSec Community Blocklist
 
-<a href="https://doc.crowdsec.net/docs/next/central_api/community_blocklist">
+<a href="https://docs.crowdsec.net/docs/next/central_api/community_blocklist">
 
 The "Community Blocklist" is a curated list of IP addresses identified as malicious by CrowdSec. The Security Engine proactively blocks the IP addresses of this blocklist, preventing malevolent IPs from reaching your systems.
 
-[![CrowdSec Community Blocklist](https://doc.crowdsec.net/assets/images/data_insights-1e7678f47cb672122cc847d068b6eadf.png)](https://doc.crowdsec.net/docs/next/central_api/community_blocklist)
+[![CrowdSec Community Blocklist](https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/console/blocklists/data_insights.png)](https://docs.crowdsec.net/docs/next/central_api/community_blocklist)
 
 </a>
 
 ### Console - Monitoring & Automation of your security stack
 
-[![CrowdSec Console](https://doc.crowdsec.net/assets/images/visualizer-summary-c8087e2eaef65d110bad6a7f274cf953.png)](https://doc.crowdsec.net/u/console/intro)
+[![CrowdSec Console](https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/console/alert-explorer/overview-full-dark.png)](https://docs.crowdsec.net/u/console/intro)
 
 ### Multiple Platforms support
 
-[![Multiple Platforms support](https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
+[![Multiple Platforms support](https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/supported_platforms.png)](https://docs.crowdsec.net/)
 
+
+## How CrowdSec compares
+
+**To fail2ban** — CrowdSec reads the same log files and bans the same IPs, but
+detection and remediation are decoupled: parse logs on one machine, block at the
+firewall, reverse proxy or CDN on another. Attacks you report feed a community
+blocklist, so an IP that hits one user gets blocked for everyone else before it
+reaches them.
+
+**To ModSecurity, Coraza and naxsi** — the AppSec component is a WAF built on
+Coraza, so SecLang rules and the OWASP Core Rule Set load as-is. On top of that 
+it adds a YAML rule format, and shares the IP reputation and remediation layer 
+with the log-based engine.
+
+**Bot and scraper detection** — AppSec can answer a suspicious request with a
+JavaScript proof-of-work challenge at a tunable difficulty, which stops headless
+browsers and scrapers while letting verified crawlers such as Googlebot through.
 
 ## Outnumbering hackers all together
 
@@ -60,13 +79,13 @@ CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.
 
 <!-- make this an image with link ?-->
 
-[Follow our documentation to install CrowdSec in a few minutes on Linux, Windows, Docker, OpnSense, Kubernetes, and more.](https://doc.crowdsec.net/)
+[Follow our documentation to install CrowdSec in a few minutes on Linux, Windows, Docker, OpnSense, Kubernetes, and more.](https://docs.crowdsec.net/)
 
 
 ## Resources
 
  - [Console](https://app.crowdsec.net): Supercharge your CrowdSec setup with visualization, management capabilities, extra blocklists and premium features.
- - [Documentation](https://doc.crowdsec.net): Learn how to exploit your CrowdSec setup to deter more attacks.
+ - [Documentation](https://docs.crowdsec.net): Learn how to exploit your CrowdSec setup to deter more attacks.
  - [Discord](https://discord.gg/crowdsec): A question or a suggestion? This is the place.
  - [Hub](https://hub.crowdsec.net): Improve your stack protection, find the relevant remediation components for your infrastructure.
  - [Public Roadmap](https://roadmap.crowdsec.net/): Vote for your favorite features and submit ideas to influence what we build next.
