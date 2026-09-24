@@ -3,31 +3,46 @@
 package challenge
 
 import (
+	"container/list"
 	"sync"
 	"time"
-
-	"github.com/bluele/gcache"
 )
 
 // spentSetDefaultMaxEntries is a deep DoS backstop. Growth is sig+PoW-gated and
 // TTL-bounded (ticketAgeBackstop), so steady-state stays far below this. If the
-// cap is ever hit, LRU evicts the oldest (maybe still-live) `r`, letting that
+// cap is ever hit, the oldest (maybe still-live) `r` is evicted, letting that
 // one submission replay once — acceptable at this size.
 const spentSetDefaultMaxEntries = 1_000_000
 
-// spentSet records consumed per-challenge nonces. Safe for concurrent use.
-type spentSet struct {
-	// mu makes the Has/Set pair in checkAndInsert atomic (gcache locks each op
-	// independently, which alone wouldn't stop two concurrent replays winning).
-	mu    sync.Mutex
-	cache gcache.Cache
+type spentEntry struct {
+	r         string
+	expiresAt time.Time
+}
 
-	// maxEntries is the configured LRU cap, retained for introspection.
+// spentSet records consumed per-challenge nonces. Safe for concurrent use.
+//
+// The store is a plain map plus an insertion-ordered list, grown on demand:
+// sizing it for maxEntries up front would cost ~70MB of resident memory on a
+// runtime that never sees a single challenge. Entries are only ever inserted
+// (a hit means replay, and doesn't refresh the entry), so insertion order is
+// also expiry order and eviction order — the list front is always both the
+// oldest and the soonest to expire.
+type spentSet struct {
+	// mu makes the lookup/insert pair in checkAndInsert atomic.
+	mu    sync.Mutex
+	items map[string]*list.Element
+	order *list.List
+
+	// maxEntries is the configured cap, retained for introspection.
 	maxEntries int
 }
 
 func newSpentSet(maxEntries int) *spentSet {
-	return &spentSet{cache: gcache.New(maxEntries).LRU().Build(), maxEntries: maxEntries}
+	return &spentSet{
+		items:      make(map[string]*list.Element),
+		order:      list.New(),
+		maxEntries: maxEntries,
+	}
 }
 
 // checkAndInsert atomically records `r` as spent, returning true if it was
@@ -37,12 +52,46 @@ func (s *spentSet) checkAndInsert(r string, ttl time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.cache.Has(r) {
+	now := time.Now()
+
+	s.evictExpired(now)
+
+	if _, ok := s.items[r]; ok {
 		return false
 	}
 
-	// SetWithExpire can't fail here: we configure no serialization/eviction hook.
-	_ = s.cache.SetWithExpire(r, struct{}{}, ttl)
+	// Cap reached with nothing expired to reclaim: drop the oldest.
+	if s.maxEntries > 0 && s.order.Len() >= s.maxEntries {
+		s.remove(s.order.Front())
+	}
+
+	s.items[r] = s.order.PushBack(&spentEntry{r: r, expiresAt: now.Add(ttl)})
 
 	return true
+}
+
+// evictExpired drops entries from the front of the list until it finds a live
+// one. Callers hold mu.
+func (s *spentSet) evictExpired(now time.Time) {
+	for e := s.order.Front(); e != nil; e = s.order.Front() {
+		if e.Value.(*spentEntry).expiresAt.After(now) {
+			return
+		}
+
+		s.remove(e)
+	}
+}
+
+// remove unlinks one entry from both the list and the map. Callers hold mu.
+func (s *spentSet) remove(e *list.Element) {
+	s.order.Remove(e)
+	delete(s.items, e.Value.(*spentEntry).r)
+}
+
+// len reports how many entries are currently held, expired ones included.
+func (s *spentSet) len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.order.Len()
 }

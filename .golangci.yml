@@ -26,6 +26,11 @@ linters:
 
     # Disabled atm, likely to be enabled later
 
+    # new checks in golangci-lint v2.13, to enable soon
+    - canonicalheader
+    - noctx
+    - recvcheck
+
     - funcorder
     - exhaustive
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
@@ -59,6 +64,7 @@ linters:
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
     - exhaustruct           # Checks if all structure fields are initialized
+    - exhaustruct_v5        # same, new major version
     - gochecknoglobals      # Check that no global variables exist.
     - goconst               # Finds repeated strings that could be replaced by a constant
     - tagliatelle           # Checks the struct tags.
@@ -238,6 +244,7 @@ linters:
     govet:
       disable:
         - fieldalignment
+        - inline  # new in v2.13, to enable soon
       enable-all: true
 
     iface:
@@ -264,11 +271,15 @@ linters:
     modernize:
       disable:
         - any
-        - fmtappendf
+        # embedlit, errorsastype, slicesbackward and stringscut are new in v2.13, to enable soon
+        - embedlit
+        - errorsastype
         - forvar
         - omitzero
+        - slicesbackward
         - stringsbuilder
-        - waitgroup
+        - stringscut
+        - waitgroupgo
 
     nestif:
       # lower this after refactoring
@@ -408,6 +419,9 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        # new in v2.13, to enable soon
+        - name: package-naming
+          disabled: true
         - name: package-directory-mismatch
           disabled: true
         - name: redundant-import-alias
@@ -436,6 +450,9 @@ linters:
           disabled: true
         - name: use-any
           disabled: true
+        # new in v2.13, to enable soon
+        - name: use-slices-sort
+          disabled: true
         - name: use-waitgroup-go
           disabled: true
         - name: useless-break
@@ -449,6 +466,7 @@ linters:
         - -ST1012  # error var ... should have name of the form ...
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
+        - -SA4023  # comparison is always true; new in v2.13, to enable soon
 
     unused:
       # Mark all struct fields that have been written to as used.

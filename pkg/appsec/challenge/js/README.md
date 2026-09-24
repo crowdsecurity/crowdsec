@@ -66,7 +66,7 @@ the upstream releases:
 
 ```sh
 curl -sL -o javy.gz \
-  https://github.com/bytecodealliance/javy/releases/download/v8.1.1/javy-x86_64-linux-v8.1.1.gz
+  https://github.com/bytecodealliance/javy/releases/download/v9.1.0/javy-x86_64-linux-v9.1.0.gz
 gunzip javy.gz && chmod +x javy && mv javy /usr/local/bin/
 ```
 
