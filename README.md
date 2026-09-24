@@ -1,6 +1,6 @@
 
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
+<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
 </br>
 </br>
@@ -15,10 +15,12 @@
 <img src="https://img.shields.io/twitter/follow/Crowd_Security?style=social">
 </p>
 
+<h1 align="center">CrowdSec: open-source IDS/IPS, WAF and bot detection</h1>
+
 _CrowdSec is an open-source and participative security solution offering crowdsourced server detection and protection against malicious IPs. Detect and block with our Security Engine, contribute to the network, and enjoy our real-time community blocklist._
 
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
+<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/simplified_SE_overview.svg" alt="CrowdSec schema" title="CrowdSec Schema"/>
 </p>
 
 ## Features & Advantages
@@ -47,8 +49,25 @@ The "Community Blocklist" is a curated list of IP addresses identified as malici
 
 ### Multiple Platforms support
 
-[![Multiple Platforms support](https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
+[![Multiple Platforms support](https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/supported_platforms.png)](https://doc.crowdsec.net/)
 
+
+## How CrowdSec compares
+
+**To fail2ban** — CrowdSec reads the same log files and bans the same IPs, but
+detection and remediation are decoupled: parse logs on one machine, block at the
+firewall, reverse proxy or CDN on another. Attacks you report feed a community
+blocklist, so an IP that hits one user gets blocked for everyone else before it
+reaches them.
+
+**To ModSecurity, Coraza and naxsi** — the AppSec component is a WAF built on
+Coraza, so SecLang rules and the OWASP Core Rule Set load as-is. On top of that 
+it adds a YAML rule format, and shares the IP reputation and remediation layer 
+with the log-based engine.
+
+**Bot and scraper detection** — AppSec can answer a suspicious request with a
+JavaScript proof-of-work challenge at a tunable difficulty, which stops headless
+browsers and scrapers while letting verified crawlers such as Googlebot through.
 
 ## Outnumbering hackers all together
 
