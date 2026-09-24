@@ -45,7 +45,7 @@ The "Community Blocklist" is a curated list of IP addresses identified as malici
 
 ### Console - Monitoring & Automation of your security stack
 
-[![CrowdSec Console](https://docs.crowdsec.net/img/console/alert-explorer/overview-full-dark.png)](https://doc.crowdsec.net/u/console/intro)
+[![CrowdSec Console](https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/crowdsec-docs/static/img/console/alert-explorer/overview-full-dark.png)](https://doc.crowdsec.net/u/console/intro)
 
 ### Multiple Platforms support
 
