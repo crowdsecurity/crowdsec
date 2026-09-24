@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
@@ -100,7 +100,7 @@ func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
 	}
 }
 
-func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, datasources []acquisitionTypes.DataSource) error {
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, datasources []acquisition.ConfiguredSource) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")

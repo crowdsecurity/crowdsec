@@ -12,7 +12,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -26,7 +25,7 @@ import (
 )
 
 // initCrowdsec prepares the log processor service
-func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*parser.Parsers, []acquisitionTypes.DataSource, error) {
+func initCrowdsec(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub, testMode bool) (*parser.Parsers, []acquisition.ConfiguredSource, error) {
 	var err error
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
 		return nil, nil, fmt.Errorf("while loading context: %w", err)
@@ -135,7 +134,7 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 	}
 }
 
-func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *apiclient.ApiClient, hub *cwhub.Hub, datasources []acquisitionTypes.DataSource) error {
+func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *apiclient.ApiClient, hub *cwhub.Hub, datasources []acquisition.ConfiguredSource) error {
 	mp := NewMetricsProvider(
 		apiClient,
 		lpMetricsDefaultInterval,
@@ -170,7 +169,7 @@ func runCrowdsec(
 	cConfig *csconfig.Config,
 	parsers *parser.Parsers,
 	hub *cwhub.Hub,
-	datasources []acquisitionTypes.DataSource,
+	datasources []acquisition.ConfiguredSource,
 	sd *StateDumper,
 	bucketStore *leakybucket.BucketStore,
 ) error {
@@ -208,7 +207,7 @@ func serveCrowdsec(
 	parsers *parser.Parsers,
 	cConfig *csconfig.Config,
 	hub *cwhub.Hub,
-	datasources []acquisitionTypes.DataSource,
+	datasources []acquisition.ConfiguredSource,
 	agentReady chan bool,
 	sd *StateDumper,
 ) {

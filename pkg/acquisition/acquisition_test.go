@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -414,7 +416,7 @@ const quietPeriod = 100 * time.Millisecond
 // launchAcquisition starts an acquisition in the background. The returned channel
 // receives the result of StartAcquisition, i.e. it fires once the tomb is dead
 // and every datasource (and the transformer, if any) is done writing.
-func launchAcquisition(t *testing.T, sources []types.DataSource, out chan pipeline.Event, acquisTomb *tomb.Tomb) chan error {
+func launchAcquisition(t *testing.T, sources []ConfiguredSource, out chan pipeline.Event, acquisTomb *tomb.Tomb) chan error {
 	t.Helper()
 
 	done := make(chan error, 1)
@@ -469,7 +471,16 @@ func requireNoMoreEvents(t *testing.T, out chan pipeline.Event) {
 // lines it produced. Cat acquisition ends when the tomb dies, i.e. once every
 // datasource and the transformer (if any) are done writing, so the result is
 // complete and we never have to guess with a sleep.
-func runCatAcquisition(t *testing.T, sources []types.DataSource) []string {
+func configuredSources(sources ...types.DataSource) []ConfiguredSource {
+	configured := make([]ConfiguredSource, 0, len(sources))
+	for _, source := range sources {
+		configured = append(configured, ConfiguredSource{DataSource: source})
+	}
+
+	return configured
+}
+
+func runCatAcquisition(t *testing.T, sources []ConfiguredSource) []string {
 	t.Helper()
 
 	// buffered, so nothing can block on writing while we wait for termination
@@ -492,7 +503,7 @@ func runCatAcquisition(t *testing.T, sources []types.DataSource) []string {
 }
 
 func TestStartAcquisitionCat(t *testing.T) {
-	got := runCatAcquisition(t, []types.DataSource{&MockCat{}})
+	got := runCatAcquisition(t, configuredSources(&MockCat{}))
 
 	assert.Len(t, got, 10)
 }
@@ -501,7 +512,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	done := launchAcquisition(t, []types.DataSource{&MockTail{}}, out, &acquisTomb)
+	done := launchAcquisition(t, configuredSources(&MockTail{}), out, &acquisTomb)
 
 	readEvents(t, out, 10)
 	requireNoMoreEvents(t, out)
@@ -532,7 +543,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 	out := make(chan pipeline.Event, 100)
 	acquisTomb := tomb.Tomb{}
 
-	done := launchAcquisition(t, []types.DataSource{&MockTailError{}}, out, &acquisTomb)
+	done := launchAcquisition(t, configuredSources(&MockTailError{}), out, &acquisTomb)
 
 	// the datasource kills the tomb itself, so acquisition ends without our help
 	cstest.RequireErrorContains(t, waitForAcquisition(t, done), "got error (tomb)")
@@ -570,6 +581,7 @@ func TestConfigureByDSN(t *testing.T) {
 
 	tests := []struct {
 		dsn            string
+		transform      string
 		ExpectedError  string
 		ExpectedResLen int
 	}{
@@ -585,6 +597,10 @@ func TestConfigureByDSN(t *testing.T) {
 			dsn: "mockdsn://test_expect",
 		},
 		{
+			dsn:       "mockdsn://test_expect",
+			transform: `evt.Line.Raw + "-transformed"`,
+		},
+		{
 			dsn:           "mockdsn://bad",
 			ExpectedError: "unexpected value",
 		},
@@ -596,15 +612,16 @@ func TestConfigureByDSN(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
 			hub := cwhub.Hub{}
-			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "", &hub)
+			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, tc.transform, &hub)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
 				return
 			}
 
-			assert.NotNil(t, source)
+			require.NotNil(t, source.DataSource)
 			assert.Equal(t, "mockdsn", source.GetName())
+			assert.Equal(t, tc.transform != "", source.transform != nil)
 		})
 	}
 }
@@ -629,7 +646,7 @@ func TestStartAcquisition_MissingTailer(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&TailModeNoTailer{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, configuredSources(&TailModeNoTailer{}), out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "tail_no_tailer: tail mode is set but the datasource does not support streaming acquisition")
 }
@@ -654,49 +671,42 @@ func TestStartAcquisition_MissingFetcher(t *testing.T) {
 
 	var tb tomb.Tomb
 
-	go func() { errCh <- StartAcquisition(ctx, []types.DataSource{&CatModeNoFetcher{}}, out, &tb) }()
+	go func() { errCh <- StartAcquisition(ctx, configuredSources(&CatModeNoFetcher{}), out, &tb) }()
 
 	require.ErrorContains(t, <-errCh, "cat_no_fetcher: cat mode is set but OneShotAcquisition is not supported")
 }
 
-// MockCatTransform emits a single event in cat mode, and reports a configurable
-// uuid so a transform expression can be attached to it.
+// MockCatTransform emits a single, configurable event in cat mode.
 type MockCatTransform struct {
-	configuration.DataSourceCommonCfg `yaml:",inline"`
-	uuid                              string
+	raw string
 }
 
 func (*MockCatTransform) UnmarshalConfig(_ []byte) error { return nil }
-func (f *MockCatTransform) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
-	f.Mode = configuration.CAT_MODE
+func (*MockCatTransform) Configure(_ context.Context, _ []byte, _ *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	return nil
 }
-func (*MockCatTransform) GetMode() string   { return configuration.CAT_MODE }
-func (*MockCatTransform) GetName() string   { return "mock_cat_transform" }
-func (f *MockCatTransform) GetUuid() string { return f.uuid }
-func (f *MockCatTransform) Dump() any       { return f }
-func (*MockCatTransform) CanRun() error     { return nil }
+func (*MockCatTransform) GetMode() string { return configuration.CAT_MODE }
+func (*MockCatTransform) GetName() string { return "mock_cat_transform" }
+func (*MockCatTransform) GetUuid() string { return "" }
+func (f *MockCatTransform) Dump() any     { return f }
+func (*MockCatTransform) CanRun() error   { return nil }
 
-func (*MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
+func (f *MockCatTransform) OneShotAcquisition(_ context.Context, out chan pipeline.Event, _ *tomb.Tomb) error {
 	evt := pipeline.Event{}
 	evt.Line.Src = "test"
-	evt.Line.Raw = "original"
+	evt.Line.Raw = f.raw
 	out <- evt
 
 	return nil
 }
 
-// registerTransform compiles expr and attaches it to the given datasource uuid
-// for the duration of the test.
-func registerTransform(t *testing.T, uuid string, exprStr string) {
+func transformSource(t *testing.T, src types.DataSource, exprStr string) ConfiguredSource {
 	t.Helper()
 
 	prog, err := expr.Compile(exprStr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	require.NoError(t, err)
 
-	transformRuntimes[uuid] = prog
-
-	t.Cleanup(func() { delete(transformRuntimes, uuid) })
+	return ConfiguredSource{DataSource: src, transform: prog}
 }
 
 // TestStartAcquisitionTransform checks that events emitted by a datasource with
@@ -726,26 +736,74 @@ func TestStartAcquisitionTransform(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			uuid := "transform-" + tc.name
+			src := transformSource(t, &MockCatTransform{raw: "original"}, tc.expr)
 
-			registerTransform(t, uuid, tc.expr)
-
-			got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
+			got := runCatAcquisition(t, []ConfiguredSource{src})
 
 			assert.Equal(t, tc.expected, got)
 		})
 	}
 }
 
+// TestStartAcquisitionTransformIsPerDatasource checks that a transform expression
+// only applies to the datasource it was declared on.
+func TestStartAcquisitionTransformIsPerDatasource(t *testing.T) {
+	withTransform := transformSource(t, &MockCatTransform{raw: "first"}, `evt.Line.Raw + "-transformed"`)
+	withoutTransform := &MockCatTransform{raw: "second"}
+
+	got := runCatAcquisition(t, []ConfiguredSource{withTransform, {DataSource: withoutTransform}})
+
+	assert.ElementsMatch(t, []string{"first-transformed", "second"}, got)
+}
+
+// TestLoadAcquisitionFromFilesTransform checks, end to end, that a transform
+// expression declared on one datasource is applied to that datasource only.
+func TestLoadAcquisitionFromFilesTransform(t *testing.T) {
+	dir := t.TempDir()
+
+	first := filepath.Join(dir, "first.log")
+	second := filepath.Join(dir, "second.log")
+	acquisFile := filepath.Join(dir, "acquis.yaml")
+
+	require.NoError(t, os.WriteFile(first, []byte("first\n"), 0o600))
+	require.NoError(t, os.WriteFile(second, []byte("second\n"), 0o600))
+	require.NoError(t, os.WriteFile(acquisFile, fmt.Appendf(nil, `
+source: file
+mode: cat
+filename: %s
+labels:
+  type: syslog
+transform: evt.Line.Raw + "-transformed"
+---
+source: file
+mode: cat
+filename: %s
+labels:
+  type: syslog
+`, first, second), 0o600))
+
+	cfg := csconfig.CrowdsecServiceCfg{AcquisitionFiles: []string{acquisFile}}
+
+	hub := cwhub.Hub{}
+
+	sources, err := LoadAcquisitionFromFiles(t.Context(), &cfg, nil, &hub)
+	require.NoError(t, err)
+	require.Len(t, sources, 2)
+	require.NotNil(t, sources[0].transform)
+	require.Nil(t, sources[1].transform)
+
+	got := runCatAcquisition(t, sources)
+
+	assert.ElementsMatch(t, []string{"first-transformed", "second"}, got)
+}
+
 // TestStartAcquisitionCatTransformTerminates checks that in cat mode, acquisition
 // terminates on its own once the datasource is done reading, even when a transform
 // is configured. cmd/crowdsec relies on acquisTomb dying to trigger the shutdown.
 func TestStartAcquisitionCatTransformTerminates(t *testing.T) {
-	uuid := "transform-terminate"
+	src := transformSource(t, &MockCatTransform{raw: "original"}, `evt.Line.Raw + "-transformed"`)
 
-	registerTransform(t, uuid, `evt.Line.Raw + "-transformed"`)
-
-	got := runCatAcquisition(t, []types.DataSource{&MockCatTransform{uuid: uuid}})
+	got := runCatAcquisition(t, []ConfiguredSource{src})
 
 	assert.Equal(t, []string{"original-transformed"}, got)
 }
