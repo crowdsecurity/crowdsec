@@ -87,6 +87,15 @@ const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inlin
 //go:embed challenge.html.tmpl
 var htmlTemplate string
 
+// challengeBlockTemplate is everything the challenge needs to run and to
+// complete: the status API, the PoW parameters, the fingerprint scanner tag
+// and the challenge module. It is rendered first and handed to the page
+// template as {{.CrowdsecChallenge}}, so a custom page (Config.TemplatePath)
+// only has to place that one action.
+//
+//go:embed challenge_block.html.tmpl
+var challengeBlockTemplate string
+
 // grantRedirectBody is the body of the 307 from GrantChallengeCookie — a no-JS
 // fallback for HTTP clients that don't auto-follow Location. Static, so no
 // per-request parsing is needed.
@@ -157,9 +166,13 @@ type ChallengeRuntime struct {
 	// fingerprint envelope. Defaults to MaxCookieLen (the browser limit).
 	maxCookieLen int
 
-	// htmlTpl is the challenge HTML template, parsed once and reused so
-	// GetChallengePage doesn't re-parse per request.
+	// htmlTpl is the challenge HTML page template (built-in, or the operator's
+	// via Config.TemplatePath), parsed once and reused so GetChallengePage
+	// doesn't re-parse per request.
 	htmlTpl *template.Template
+
+	// blockTpl renders the {{.CrowdsecChallenge}} value injected into htmlTpl.
+	blockTpl *template.Template
 
 	// spent burns consumed per-challenge nonces (`r`) to enforce single-use and
 	// eliminate replay (in-memory, single instance — see spent_set.go).
@@ -184,6 +197,9 @@ type runtimeOptions struct {
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
 	logger                    *log.Entry // nil → default "challenge" sublogger
+	// htmlTpl is the operator's challenge page (Config.TemplatePath), already
+	// parsed and validated by BuildOptions. nil → the built-in page.
+	htmlTpl *template.Template
 	// skipPreWarm drops the constructor's synchronous obfuscation and the
 	// background pre-warmer. Only withoutPreWarm (challenge_test.go) sets it.
 	skipPreWarm bool
@@ -259,6 +275,17 @@ func WithSpentSetMaxEntries(n int) Option {
 	return func(o *runtimeOptions) {
 		if n >= 1 {
 			o.spentSetMaxEntries = n
+		}
+	}
+}
+
+// WithHTMLTemplate replaces the built-in challenge page with an
+// operator-supplied one (see Config.TemplatePath). The template must already be
+// validated — use LoadPageTemplate; a nil template is ignored.
+func WithHTMLTemplate(tpl *template.Template) Option {
+	return func(o *runtimeOptions) {
+		if tpl != nil {
+			o.htmlTpl = tpl
 		}
 	}
 }
@@ -452,9 +479,17 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// is pretty much hardcoded and trusted; html/template would escape the JS
 	// we inject. Parsed once here so GetChallengePage doesn't re-parse on
 	// every request.
-	htmlTpl, err := template.New("challenge").Parse(htmlTemplate)
+	htmlTpl := resolvedOpts.htmlTpl
+	if htmlTpl == nil {
+		htmlTpl, err = template.New("challenge").Parse(htmlTemplate)
+		if err != nil {
+			return nil, fmt.Errorf("parse challenge html template: %w", err)
+		}
+	}
+
+	blockTpl, err := template.New("challenge_block").Parse(challengeBlockTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("parse challenge html template: %w", err)
+		return nil, fmt.Errorf("parse challenge block template: %w", err)
 	}
 
 	challengeRuntime := &ChallengeRuntime{
@@ -467,6 +502,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL:          cookieTTL,
 		maxCookieLen:       maxCookieLen,
 		htmlTpl:            htmlTpl,
+		blockTpl:           blockTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
 		logger:             logger,
 	}
@@ -577,9 +613,26 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		return "", fmt.Errorf("build dynamic key module: %w", err)
 	}
 
-	var renderedPage strings.Builder
+	data := newPageData(challengeCode, dynamicModule, difficulty, powSalt, powMAC, ts, r)
 
-	if err := c.htmlTpl.Execute(&renderedPage, map[string]interface{}{
+	var renderedBlock strings.Builder
+	if err := c.blockTpl.Execute(&renderedBlock, data); err != nil {
+		return "", fmt.Errorf("render challenge block: %w", err)
+	}
+
+	data["CrowdsecChallenge"] = renderedBlock.String()
+
+	var renderedPage strings.Builder
+	if err := c.htmlTpl.Execute(&renderedPage, data); err != nil {
+		return "", fmt.Errorf("render challenge page: %w", err)
+	}
+	return renderedPage.String(), nil
+}
+
+// newPageData builds the template data shared by the challenge block and the
+// page itself.
+func newPageData(challengeCode, dynamicModule string, difficulty int, powSalt, powMAC, ts, r string) map[string]interface{} {
+	return map[string]interface{}{
 		"JSChallenge":   challengeCode,
 		"DynamicModule": dynamicModule,
 		"FPScannerPath": ChallengeFPScannerPath,
@@ -588,10 +641,13 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		"PowMAC":        powMAC,
 		"Timestamp":     ts,
 		"R":             r,
-	}); err != nil {
-		return "", fmt.Errorf("render challenge page: %w", err)
 	}
-	return renderedPage.String(), nil
+}
+
+// zeroPageData is the render-path data with every value zeroed, so template
+// validation (config.go) offers the same keys and types the real render does.
+func zeroPageData() map[string]interface{} {
+	return newPageData("", "", 0, "", "", "", "")
 }
 
 // ValidateChallengeResponse parses a submit POST and runs the full chain:
