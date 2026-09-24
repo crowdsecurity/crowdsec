@@ -16,7 +16,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -85,7 +85,7 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 }
 
 // newStaticMetrics is called when the process starts, or reloads the configuration
-func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub) staticMetrics {
+func newStaticMetrics(datasources []acquisition.ConfiguredSource, hub *cwhub.Hub) staticMetrics {
 	datasourceMap := map[string]int64{}
 
 	for _, ds := range datasources {
@@ -109,7 +109,7 @@ func NewMetricsProvider(
 	apic *apiclient.ApiClient,
 	interval time.Duration,
 	logger *logrus.Entry,
-	datasources []acquisitionTypes.DataSource,
+	datasources []acquisition.ConfiguredSource,
 	hub *cwhub.Hub,
 ) *MetricsProvider {
 	static := newStaticMetrics(datasources, hub)
