@@ -474,7 +474,7 @@ func requireNoMoreEvents(t *testing.T, out chan pipeline.Event) {
 func configuredSources(sources ...types.DataSource) []ConfiguredSource {
 	configured := make([]ConfiguredSource, 0, len(sources))
 	for _, source := range sources {
-		configured = append(configured, configureSource(source, nil))
+		configured = append(configured, ConfiguredSource{DataSource: source})
 	}
 
 	return configured
@@ -706,7 +706,7 @@ func transformSource(t *testing.T, src types.DataSource, exprStr string) Configu
 	prog, err := expr.Compile(exprStr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
 	require.NoError(t, err)
 
-	return configureSource(src, prog)
+	return ConfiguredSource{DataSource: src, transform: prog}
 }
 
 // TestStartAcquisitionTransform checks that events emitted by a datasource with
@@ -751,7 +751,7 @@ func TestStartAcquisitionTransformIsPerDatasource(t *testing.T) {
 	withTransform := transformSource(t, &MockCatTransform{raw: "first"}, `evt.Line.Raw + "-transformed"`)
 	withoutTransform := &MockCatTransform{raw: "second"}
 
-	got := runCatAcquisition(t, []ConfiguredSource{withTransform, configureSource(withoutTransform, nil)})
+	got := runCatAcquisition(t, []ConfiguredSource{withTransform, {DataSource: withoutTransform}})
 
 	assert.ElementsMatch(t, []string{"first-transformed", "second"}, got)
 }

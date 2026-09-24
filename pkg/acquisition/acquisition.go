@@ -56,10 +56,6 @@ type ConfiguredSource struct {
 	transform *vm.Program
 }
 
-func configureSource(source types.DataSource, transform *vm.Program) ConfiguredSource {
-	return ConfiguredSource{DataSource: source, transform: transform}
-}
-
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
 // If the datasource can't be run (eg. journalctl not available), it still returns an error which
@@ -161,7 +157,7 @@ func LoadAcquisitionFromDSN(
 		return ConfiguredSource{}, fmt.Errorf("datasource for %q: %w", dsn, err)
 	}
 
-	return configureSource(dataSrc, transformRuntime), nil
+	return ConfiguredSource{DataSource: dataSrc, transform: transformRuntime}, nil
 }
 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.AcquisitionMetricsLevel {
@@ -384,7 +380,7 @@ func sourcesFromFile(
 			return nil, fmt.Errorf("%s: %w", loc, err)
 		}
 
-		sources = append(sources, configureSource(parsed.Source, parsed.Transform))
+		sources = append(sources, ConfiguredSource{DataSource: parsed.Source, transform: parsed.Transform})
 	}
 
 	return sources, nil
