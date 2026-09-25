@@ -102,48 +102,22 @@ func TestCustomJSTimeoutVarNameMatchesBundle(t *testing.T) {
 		"the challenge page must still inject _cjsT")
 }
 
-// The script is cached for an hour, so its URL has to change when it does —
-// otherwise a returning visitor keeps running old detections against new
-// scoring rules, with nothing to indicate it.
-func TestCustomJSURLIsVersionedByContent(t *testing.T) {
-	page := func(t *testing.T, script string) string {
-		t.Helper()
+// The script is served uncached, so the page must point at the bare path: a
+// query the dispatcher does not route on would only be dead weight.
+func TestCustomJSURLIsUnversioned(t *testing.T) {
+	rt, err := NewChallengeRuntime(t.Context(),
+		WithMasterSecret(testSecret), WithCustomJS("hookA();"), withoutPreWarm())
+	require.NoError(t, err)
 
-		rt, err := NewChallengeRuntime(t.Context(),
-			WithMasterSecret(testSecret), WithCustomJS(script), withoutPreWarm())
-		require.NoError(t, err)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	require.NoError(t, err)
 
-		html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
-		require.NoError(t, err)
-
-		return html
-	}
-
-	first := page(t, "hookA();")
-	again := page(t, "hookA();")
-	changed := page(t, "hookB();")
-
-	ref := regexp.MustCompile(`/crowdsec-internal/challenge/custom\.js\?v=([0-9a-f]+)`)
-
-	v1 := ref.FindStringSubmatch(first)
-	v2 := ref.FindStringSubmatch(again)
-	v3 := ref.FindStringSubmatch(changed)
-
-	require.NotNil(t, v1, "challenge page must reference a versioned custom.js")
-	require.NotNil(t, v3)
-
-	assert.Equal(t, v1[1], v2[1], "same script must keep the same URL, so the cache still works")
-	assert.NotEqual(t, v1[1], v3[1], "a changed script must change the URL")
+	require.Contains(t, html, ChallengeCustomJSPath)
+	assert.NotRegexp(t, regexp.QuoteMeta(ChallengeCustomJSPath)+`\?`, html)
 }
 
-// The version is a cache key only: the dispatcher routes on path, so the served
-// path itself must stay clean.
-func TestCustomJSPathUnversioned(t *testing.T) {
-	assert.NotContains(t, ChallengeCustomJSPath, "?")
-}
-
-// The startup summary is where an operator confirms that what the loader built
-// is what gets served, and matches it against the ?v= in devtools.
+// The startup summary is where an operator confirms which build of the shipped
+// detections an engine is running.
 func TestChallengeRuntimeSummaryCarriesCustomJS(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -52,8 +52,8 @@ func (wc *AppsecConfig) LoadCustomJS(dataDir string) string {
 		return ""
 	}
 
-	// version is the ?v= the browser will request, tying this line to the runtime
-	// summary and to what devtools shows.
+	// version ties this line to the runtime summary, so an operator can tell
+	// the two came from the same build.
 	wc.Logger.WithFields(log.Fields{
 		"scripts": strings.Join(loaded, ", "),
 		"bytes":   len(out),

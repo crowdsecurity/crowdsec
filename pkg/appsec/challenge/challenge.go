@@ -141,10 +141,9 @@ type ChallengeRuntime struct {
 	// each challenge page.
 	customJSTimeout time.Duration
 
-	// customJSVersion is a digest of customJS, carried in the script URL. The
-	// script is cached for an hour, so without it a detection change reaches
-	// returning visitors up to an hour late — running old detections against
-	// new scoring rules, silently.
+	// customJSVersion is a digest of customJS. It is reported at startup so an
+	// operator can tell which build of the shipped detections an engine is
+	// actually running; it is not part of the script URL.
 	customJSVersion string
 
 	// customOverflowWarned latches the first cookie-overflow warning. Overflow is
@@ -648,10 +647,9 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 
 	// Empty drops the script tag, rather than pointing every challenge page at
 	// an empty file.
-	// The query is only a cache key; the dispatcher matches on path alone.
 	customJSPath := ""
 	if c.customJS != "" {
-		customJSPath = ChallengeCustomJSPath + "?v=" + c.customJSVersion
+		customJSPath = ChallengeCustomJSPath
 	}
 
 	var renderedPage strings.Builder
@@ -876,9 +874,7 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 	}, nil
 }
 
-// setCustomJS keeps the script and the digest in its URL in step. They must be
-// set together: a stale digest would leave the hour-long cache unbroken across a
-// script change.
+// setCustomJS keeps the script and the digest reported for it in step.
 func (c *ChallengeRuntime) setCustomJS(src string) {
 	c.customJS = src
 	c.customJSVersion = CustomJSVersion(src)

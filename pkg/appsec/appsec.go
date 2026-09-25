@@ -1277,10 +1277,14 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 
 	// Unreferenced when no appsec-config shipped a script, so the path then
 	// falls through to normal request handling.
+	//
+	// Never cached: the script changes whenever an operator changes the shipped
+	// detections, and a returning visitor running old detections against new
+	// scoring rules would be silent.
 	if path == challenge.ChallengeCustomJSPath {
 		if customJS := w.ChallengeRuntime.CustomJS(); customJS != "" {
 			return w.setChallengeResponse(state, http.StatusOK, customJS,
-				map[string]string{"Content-Type": "application/javascript", "Cache-Control": "public, max-age=3600"}, nil)
+				map[string]string{"Content-Type": "application/javascript", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 	}
 
