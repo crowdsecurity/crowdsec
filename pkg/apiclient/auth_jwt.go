@@ -49,7 +49,7 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 			return fmt.Errorf("can't update scenario list: %w", err)
 		}
 
-		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
+		log.Tracef("scenarios list updated for '%s'", *t.MachineID)
 	}
 
 	auth := models.WatcherAuthRequest{
@@ -117,7 +117,7 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Debugf("received response status %q when fetching %v", resp.Status, req.URL)
+		log.Tracef("received response status %q when fetching %v", resp.Status, req.URL)
 
 		err = CheckResponse(resp)
 		if err != nil {
@@ -144,7 +144,9 @@ func (t *JWTTransport) refreshJwtToken(ctx context.Context) error {
 		}
 	}
 
-	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
+	if log.IsLevelEnabled(log.TraceLevel) {
+		log.Tracef("token %s will expire on %s", t.Token, t.Expiration.String())
+	}
 
 	select {
 	case t.TokenRefreshChan <- struct{}{}:
@@ -211,7 +213,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		if resp != nil {
-			log.Debugf("resp-jwt: %d", resp.StatusCode)
+			log.Debugf("resp-jwt: http %d", resp.StatusCode)
 		}
 
 		config, shouldRetry := t.RetryConfig.StatusCodeConfig[resp.StatusCode]
