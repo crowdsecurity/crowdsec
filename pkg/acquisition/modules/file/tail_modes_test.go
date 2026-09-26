@@ -266,7 +266,7 @@ stat_poll_interval: 100ms
 			// Cleanup - cancel context to stop Stream
 			cancel()
 
-			// Stat vs default wiring is covered in config_tail_test.go and tailwrapper tests.
+			// Stat vs default wiring is covered in config_tail_test.go and the tail package tests.
 			t.Logf("Successfully tailed file with mode: %s", tc.name)
 		})
 	}

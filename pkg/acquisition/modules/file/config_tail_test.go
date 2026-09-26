@@ -1,7 +1,6 @@
 package fileacquisition
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ tail_mode: invalid
 	require.ErrorContains(t, err, "unsupported tail_mode")
 }
 
-func TestUnmarshalConfigStatPollIntervalZeroDefaultsToOneSecond(t *testing.T) {
+func TestUnmarshalConfigStatPollIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
 	t.Parallel()
 
 	s := Source{}
@@ -46,7 +45,7 @@ filenames:
 tail_mode: stat
 `))
 	require.NoError(t, err)
-	require.Equal(t, time.Second, s.config.StatPollInterval)
+	require.Equal(t, 2*time.Second, s.config.StatPollInterval)
 }
 
 func TestKeepFileOpenForTailMode(t *testing.T) {
@@ -58,10 +57,6 @@ func TestKeepFileOpenForTailMode(t *testing.T) {
 
 func TestConfigureTailModeStored(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
-	tmpDir := t.TempDir()
-	testFile := filepath.Join(tmpDir, "test.log")
 
 	cases := []struct {
 		name           string
@@ -90,11 +85,14 @@ stat_poll_interval: 100ms`,
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			testFile := filepath.Join(t.TempDir(), "test.log")
 			require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 			s := Source{}
 			err := s.Configure(
-				ctx,
+				t.Context(),
 				[]byte(fmt.Sprintf(`
 mode: tail
 filenames:

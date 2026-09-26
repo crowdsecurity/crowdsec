@@ -4,7 +4,7 @@
 // Original copyright: (c) 2015 HPE Software Inc. All rights reserved.
 // Original copyright: (c) 2013 ActiveState Software Inc. All rights reserved.
 
-package tailwrapper
+package tail
 
 import (
 	"context"
@@ -21,143 +21,162 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func forceReadForTest(t *tailer) {
-	t.checkAndRead()
+// forceReadForTest reads once. The tailer must be in manual mode so the poll loop is not also reading.
+func forceReadForTest(fileTailer *tailer) {
+	fileTailer.readLinesSinceLastOffset()
+}
+
+// appendToFileInTest opens filename, appends contents, and closes it.
+func appendToFileInTest(filename string, contents string) error {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	_, writeErr := file.WriteString(contents)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
 }
 
 // =============================================================================
 // Test Helper Infrastructure (adapted from nxadm/tail)
 // =============================================================================
 
-// TailTest provides utilities for testing the tailer
+// TailTest is a temp directory the file helpers write into, plus a done channel the line check closes.
 type TailTest struct {
 	Name string
 	path string
 	done chan struct{}
-	t    *testing.T
+	test *testing.T
 }
 
-// NewTailTest creates a new test helper with a temporary directory
-func NewTailTest(name string, t *testing.T) (*TailTest, func()) {
-	testdir := t.TempDir()
+// NewTailTest makes the temp directory the file helpers write into. The test runtime removes that directory.
+func NewTailTest(name string, test *testing.T) *TailTest {
 	return &TailTest{
 		Name: name,
-		path: testdir,
+		path: test.TempDir(),
 		done: make(chan struct{}),
-		t:    t,
-	}, func() {
-		// TempDir cleanup is automatic
+		test: test,
 	}
 }
 
-func (tt *TailTest) CreateFile(name string, contents string) {
-	err := os.WriteFile(filepath.Join(tt.path, name), []byte(contents), 0o600)
-	if err != nil {
-		tt.t.Fatal(err)
+// CreateFile writes contents into name under the temp directory and fails the test on error.
+func (tailTest *TailTest) CreateFile(name string, contents string) {
+	filePath := filepath.Join(tailTest.path, name)
+	if err := os.WriteFile(filePath, []byte(contents), 0o600); err != nil {
+		tailTest.test.Fatal(err)
 	}
 }
 
-func (tt *TailTest) RemoveFile(name string) {
-	err := os.Remove(filepath.Join(tt.path, name))
-	if err != nil {
-		tt.t.Fatal(err)
+// RemoveFile deletes name from the temp directory and fails the test on error.
+func (tailTest *TailTest) RemoveFile(name string) {
+	filePath := filepath.Join(tailTest.path, name)
+	if err := os.Remove(filePath); err != nil {
+		tailTest.test.Fatal(err)
 	}
 }
 
-func (tt *TailTest) RenameFile(oldname, newname string) {
-	oldpath := filepath.Join(tt.path, oldname)
-	newpath := filepath.Join(tt.path, newname)
-	err := os.Rename(oldpath, newpath)
-	if err != nil {
-		tt.t.Fatal(err)
+// RenameFile renames a file inside the temp directory and fails the test on error.
+func (tailTest *TailTest) RenameFile(oldname, newname string) {
+	oldPath := filepath.Join(tailTest.path, oldname)
+	newPath := filepath.Join(tailTest.path, newname)
+	if err := os.Rename(oldPath, newPath); err != nil {
+		tailTest.test.Fatal(err)
 	}
 }
 
-func (tt *TailTest) AppendFile(name string, contents string) {
-	f, err := os.OpenFile(filepath.Join(tt.path, name), os.O_APPEND|os.O_WRONLY, 0o600)
+// AppendFile adds contents to name in the temp directory and fails the test on error.
+func (tailTest *TailTest) AppendFile(name string, contents string) {
+	tailTest.writeFile(name, contents, os.O_APPEND|os.O_WRONLY)
+}
+
+// TruncateFile replaces name in the temp directory with contents and fails the test on error.
+func (tailTest *TailTest) TruncateFile(name string, contents string) {
+	tailTest.writeFile(name, contents, os.O_TRUNC|os.O_WRONLY)
+}
+
+// writeFile opens name in the temp directory with flag, writes contents, and fails the test on error.
+func (tailTest *TailTest) writeFile(name string, contents string, flag int) {
+	filePath := filepath.Join(tailTest.path, name)
+	file, err := os.OpenFile(filePath, flag, 0o600)
 	if err != nil {
-		tt.t.Fatal(err)
+		tailTest.test.Fatal(err)
 	}
-	defer f.Close()
-	_, err = f.WriteString(contents)
-	if err != nil {
-		tt.t.Fatal(err)
+	_, writeErr := file.WriteString(contents)
+	closeErr := file.Close()
+	if writeErr != nil {
+		tailTest.test.Fatal(writeErr)
+	}
+	if closeErr != nil {
+		tailTest.test.Fatal(closeErr)
 	}
 }
 
-func (tt *TailTest) TruncateFile(name string, contents string) {
-	f, err := os.OpenFile(filepath.Join(tt.path, name), os.O_TRUNC|os.O_WRONLY, 0o600)
-	if err != nil {
-		tt.t.Fatal(err)
-	}
-	defer f.Close()
-	_, err = f.WriteString(contents)
-	if err != nil {
-		tt.t.Fatal(err)
-	}
+// StartTail follows name in the temp directory with the test context and fails the test if the file cannot be opened.
+func (tailTest *TailTest) StartTail(name string, config Config) Tailer {
+	return tailTest.StartTailWithContext(tailTest.test.Context(), name, config)
 }
 
-func (tt *TailTest) StartTail(name string, config Config) Tailer {
-	tail, err := TailFile(tt.t.Context(), filepath.Join(tt.path, name), config)
+// StartTailWithContext follows name in the temp directory until ctx ends and fails the test if the file cannot be opened.
+func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) Tailer {
+	filePath := filepath.Join(tailTest.path, name)
+	tail, err := TailFile(ctx, filePath, config)
 	if err != nil {
-		tt.t.Fatal(err)
+		tailTest.test.Fatal(err)
 	}
 	return tail
 }
 
-func (tt *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) Tailer {
-	tail, err := TailFile(ctx, filepath.Join(tt.path, name), config)
-	if err != nil {
-		tt.t.Fatal(err)
+// VerifyTailOutput checks lines in order, then closes the helper's done channel. It uses Errorf because callers run it in a goroutine.
+func (tailTest *TailTest) VerifyTailOutput(tail Tailer, lines []string, expectEOF bool) {
+	defer close(tailTest.done)
+	tailTest.ReadLines(tail, lines)
+	if !expectEOF {
+		return
 	}
-	return tail
+	line, ok := <-tail.Lines()
+	if !ok || line == nil {
+		return
+	}
+	tailTest.test.Errorf("more content from tail: %+v", line)
 }
 
-// VerifyTailOutput reads lines from tail and verifies they match expected.
-// Note: Uses Errorf instead of Fatalf because this may be called from a goroutine.
-func (tt *TailTest) VerifyTailOutput(tail Tailer, lines []string, expectEOF bool) {
-	defer close(tt.done)
-	tt.ReadLines(tail, lines)
-	if expectEOF {
-		line, ok := <-tail.Lines()
-		if ok && line != nil {
-			tt.t.Errorf("more content from tail: %+v", line)
-		}
-	}
-}
-
-// ReadLines reads expected lines from tail.
-// Note: Uses Errorf instead of Fatalf because this may be called from a goroutine.
-func (tt *TailTest) ReadLines(tail Tailer, lines []string) {
+// ReadLines fails the test with Errorf when a line is missing, unexpected, or late. Callers may run it in a goroutine.
+func (tailTest *TailTest) ReadLines(tail Tailer, lines []string) {
 	for _, expectedLine := range lines {
 		select {
 		case tailedLine, ok := <-tail.Lines():
 			if !ok {
-				err := tail.Err()
-				if err != nil {
-					tt.t.Errorf("tail ended with error: %v", err)
-					return
-				}
-				tt.t.Errorf("tail ended early; expecting more lines")
+				tailTest.reportTailEnded(tail)
 				return
 			}
 			if tailedLine == nil {
-				tt.t.Errorf("tail.Lines returned nil")
+				tailTest.test.Errorf("tail.Lines returned nil")
 				return
 			}
 			if tailedLine.Text != expectedLine {
-				tt.t.Errorf("unexpected line from tail: expecting <<%s>>, got <<%s>>",
-					expectedLine, tailedLine.Text)
+				tailTest.test.Errorf("unexpected line from tail: expecting <<%s>>, got <<%s>>", expectedLine, tailedLine.Text)
 				return
 			}
 		case <-time.After(5 * time.Second):
-			tt.t.Errorf("timeout waiting for line: %s", expectedLine)
+			tailTest.test.Errorf("timeout waiting for line: %s", expectedLine)
 			return
 		}
 	}
 }
 
-// CollectLines collects all lines until tail stops
+// reportTailEnded records whether the channel closed because of a tail error or because lines ran out.
+func (tailTest *TailTest) reportTailEnded(tail Tailer) {
+	if err := tail.Err(); err != nil {
+		tailTest.test.Errorf("tail ended with error: %v", err)
+		return
+	}
+	tailTest.test.Errorf("tail ended early; expecting more lines")
+}
+
+// CollectLines returns non-empty line texts until Lines closes or timeout elapses.
 func (*TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
 	var lines []string
 	timer := time.After(timeout)
@@ -167,23 +186,25 @@ func (*TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
 			if !ok {
 				return lines
 			}
-			if line != nil && line.Text != "" {
-				lines = append(lines, line.Text)
+			if line == nil || line.Text == "" {
+				continue
 			}
+			lines = append(lines, line.Text)
 		case <-timer:
 			return lines
 		}
 	}
 }
 
-func (tt *TailTest) Cleanup(tail Tailer, stop bool) {
+// waitForLineCheckThenStop waits until VerifyTailOutput closes done, then stops the tailer when stop is set.
+func (tailTest *TailTest) waitForLineCheckThenStop(tail Tailer, stop bool) {
 	select {
-	case <-tt.done:
+	case <-tailTest.done:
 	case <-time.After(5 * time.Second):
-		tt.t.Log("Warning: test verification did not complete")
+		tailTest.test.Log("Warning: test verification did not complete")
 	}
-	if stop {
-		_ = tail.Stop()
+	if err := tail.Stop(); err != nil {
+		tailTest.test.Fatal(err)
 	}
 }
 
@@ -283,8 +304,7 @@ func TestTailer_Stop(t *testing.T) {
 func TestTailer_StopNonEmptyFile(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("stop-nonempty", t)
-			defer cleanup()
+			tailTest := NewTailTest("stop-nonempty", t)
 
 			tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
 			tail := tailTest.StartTail("test.txt", Config{
@@ -345,8 +365,7 @@ func TestTailer_ContextCancellation(t *testing.T) {
 func TestTailer_LocationFull(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("location-full", t)
-			defer cleanup()
+			tailTest := NewTailTest("location-full", t)
 
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
@@ -361,7 +380,7 @@ func TestTailer_LocationFull(t *testing.T) {
 			go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -369,8 +388,7 @@ func TestTailer_LocationFull(t *testing.T) {
 func TestTailer_LocationEnd(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("location-end", t)
-			defer cleanup()
+			tailTest := NewTailTest("location-end", t)
 
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
@@ -388,7 +406,7 @@ func TestTailer_LocationEnd(t *testing.T) {
 			tailTest.AppendFile("test.txt", "more\ndata\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -396,9 +414,7 @@ func TestTailer_LocationEnd(t *testing.T) {
 func TestTailer_LocationMiddle(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("location-middle", t)
-			defer cleanup()
-
+			tailTest := NewTailTest("location-middle", t)
 			// "hello\nworld\n" is 12 bytes
 			// We want to start reading from "world\n" which is at byte 6
 			// Using SeekStart with offset 6 is clearer than SeekEnd with -6
@@ -418,7 +434,7 @@ func TestTailer_LocationMiddle(t *testing.T) {
 			tailTest.AppendFile("test.txt", "more\ndata\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -430,8 +446,7 @@ func TestTailer_LocationMiddle(t *testing.T) {
 func TestTailer_ReSeek(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("reseek", t)
-			defer cleanup()
+			tailTest := NewTailTest("reseek", t)
 
 			tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
 
@@ -456,7 +471,7 @@ func TestTailer_ReSeek(t *testing.T) {
 			tailTest.TruncateFile("test.txt", "h311o\nw0r1d\nendofworld\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -480,26 +495,22 @@ func TestTailer_TruncationDetection(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
-			tl := tail.(*tailer)
+			fileTailer := tail.(*tailer)
 
 			// Add more content
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("line6\n")
-			f.Close()
-			forceReadForTest(tl)
+			require.NoError(t, appendToFileInTest(testFile, "line6\n"))
+			forceReadForTest(fileTailer)
 
 			// TRUNCATE: Write less content
 			err = os.WriteFile(testFile, []byte("new1\nnew2\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(tl)
+			forceReadForTest(fileTailer)
 
 			// Add more to truncated file
-			f, _ = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("new3\n")
-			f.Close()
-			forceReadForTest(tl)
+			require.NoError(t, appendToFileInTest(testFile, "new3\n"))
+			forceReadForTest(fileTailer)
 
 			// Collect lines
 			var lines []string
@@ -542,10 +553,10 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
-			tl := tail.(*tailer)
-			forceReadForTest(tl)
+			fileTailer := tail.(*tailer)
+			forceReadForTest(fileTailer)
 
 			var lines []string
 			done := make(chan struct{})
@@ -563,23 +574,21 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 			// First truncation
 			err = os.WriteFile(testFile, []byte("batch2_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(tl)
+			forceReadForTest(fileTailer)
 
 			// Second truncation
 			err = os.WriteFile(testFile, []byte("batch3_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(tl)
+			forceReadForTest(fileTailer)
 
 			// Add to batch3
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("batch3_line2\n")
-			f.Close()
-			forceReadForTest(tl)
+			require.NoError(t, appendToFileInTest(testFile, "batch3_line2\n"))
+			forceReadForTest(fileTailer)
 
 			// Third truncation
 			err = os.WriteFile(testFile, []byte("batch4_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(tl)
+			forceReadForTest(fileTailer)
 
 			_ = tail.Stop()
 			<-done
@@ -598,9 +607,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 func TestTailer_Over4096ByteLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("over4096", t)
-			defer cleanup()
-
+			tailTest := NewTailTest("over4096", t)
 			testString := strings.Repeat("a", 4097)
 			tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
 
@@ -615,7 +622,7 @@ func TestTailer_Over4096ByteLine(t *testing.T) {
 			go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -645,9 +652,9 @@ func TestTailer_LargeLines(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
-	tl := tail.(*tailer)
+	fileTailer := tail.(*tailer)
 
 	var lines []string
 	done := make(chan struct{})
@@ -660,7 +667,7 @@ func TestTailer_LargeLines(t *testing.T) {
 		}
 	}()
 
-	forceReadForTest(tl)
+	forceReadForTest(fileTailer)
 	_ = tail.Stop()
 	<-done
 
@@ -677,8 +684,7 @@ func TestTailer_LargeLines(t *testing.T) {
 func TestTailer_BasicTailing(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			tailTest, cleanup := NewTailTest("basic", t)
-			defer cleanup()
+			tailTest := NewTailTest("basic", t)
 
 			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
 
@@ -697,7 +703,7 @@ func TestTailer_BasicTailing(t *testing.T) {
 			tailTest.AppendFile("test.txt", "line4\nline5\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.Cleanup(tail, true)
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
@@ -717,7 +723,7 @@ func TestTailer_Filename(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
 	assert.Equal(t, testFile, tail.Filename())
 }
@@ -744,17 +750,17 @@ func TestTailer_FileDeleted(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
-	tl := tail.(*tailer)
-	forceReadForTest(tl)
+	fileTailer := tail.(*tailer)
+	forceReadForTest(fileTailer)
 
 	// Delete the file
 	err = os.Remove(testFile)
 	require.NoError(t, err)
 
 	// Force read to detect file deletion
-	forceReadForTest(tl)
+	forceReadForTest(fileTailer)
 
 	// Check if error was set
 	err = tail.Err()
@@ -796,17 +802,17 @@ func TestTailer_ErrorHandling(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
-	tl := tail.(*tailer)
-	forceReadForTest(tl)
+	fileTailer := tail.(*tailer)
+	forceReadForTest(fileTailer)
 
 	// Remove read permission
 	err = os.Chmod(testFile, 0o000)
 	require.NoError(t, err)
 	defer func() { _ = os.Chmod(testFile, 0o644) }()
 
-	forceReadForTest(tl)
+	forceReadForTest(fileTailer)
 
 	// Should detect error
 	select {
@@ -840,12 +846,10 @@ func TestTailer_PollInterval(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
 	start := time.Now()
-	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	_, _ = f.WriteString("line2\n")
-	f.Close()
+	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
 
 	var lineReadTime time.Time
 	var wg sync.WaitGroup
@@ -894,12 +898,10 @@ func TestTailer_KeepOpenWithPolling(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
 	time.Sleep(50 * time.Millisecond)
-	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	_, _ = f.WriteString("line2\n")
-	f.Close()
+	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
 
 	var line *Line
 	select {
@@ -932,12 +934,10 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
 	time.Sleep(50 * time.Millisecond)
-	f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-	_, _ = f.WriteString("line2\n")
-	f.Close()
+	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
 
 	var line *Line
 	select {
@@ -971,15 +971,17 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
 			// Append lines one by one with larger delays for reliability
 			go func() {
-				for i := 1; i <= 5; i++ {
+				for repeatCount := 1; repeatCount <= 5; repeatCount++ {
 					time.Sleep(100 * time.Millisecond)
-					f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-					_, _ = f.WriteString(strings.Repeat("x", i) + "\n")
-					f.Close()
+					line := strings.Repeat("x", repeatCount) + "\n"
+					if err := appendToFileInTest(testFile, line); err != nil {
+						t.Errorf("append %s: %v", testFile, err)
+						return
+					}
 				}
 			}()
 
@@ -1032,15 +1034,13 @@ func TestTailer_SeekStart(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
-			tl := tail.(*tailer)
-			forceReadForTest(tl)
+			fileTailer := tail.(*tailer)
+			forceReadForTest(fileTailer)
 
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("line4\n")
-			f.Close()
-			forceReadForTest(tl)
+			require.NoError(t, appendToFileInTest(testFile, "line4\n"))
+			forceReadForTest(fileTailer)
 
 			var lines []string
 			done := make(chan struct{})
@@ -1096,14 +1096,12 @@ func TestTailer_FileRotation(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
 			time.Sleep(100 * time.Millisecond)
 
 			// Append before rotation
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("line3\n")
-			f.Close()
+			require.NoError(t, appendToFileInTest(testFile, "line3\n"))
 
 			time.Sleep(100 * time.Millisecond)
 
@@ -1152,13 +1150,11 @@ func TestTailer_EmptyFile(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
 			// Append to empty file
 			time.Sleep(50 * time.Millisecond)
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString("first\n")
-			f.Close()
+			require.NoError(t, appendToFileInTest(testFile, "first\n"))
 
 			var line *Line
 			select {
@@ -1193,7 +1189,7 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
 			// Should get "complete" immediately
 			var line *Line
@@ -1206,9 +1202,7 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 
 			// Complete the partial line
 			time.Sleep(50 * time.Millisecond)
-			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			_, _ = f.WriteString(" more\n")
-			f.Close()
+			require.NoError(t, appendToFileInTest(testFile, " more\n"))
 
 			// Should get the finished line, not the fragment that was waiting.
 			select {
@@ -1256,17 +1250,13 @@ func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
 					KeepFileOpen: mode.keepFileOpen,
 				})
 				require.NoError(t, err)
-				defer func() { _ = tail.Stop() }()
+				defer func() { require.NoError(t, tail.Stop()) }()
 
-				concrete := tail.(*tailer)
+				fileTailer := tail.(*tailer)
 
-				writer, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-				require.NoError(t, err)
-				_, err = writer.WriteString("second\n{\"a\":")
-				require.NoError(t, err)
-				require.NoError(t, writer.Close())
+				require.NoError(t, appendToFileInTest(testFile, "second\n{\"a\":"))
 
-				forceReadForTest(concrete)
+				forceReadForTest(fileTailer)
 
 				require.Equal(t, "second", readTailLineForTest(t, tail))
 				assertNoTailLineForTest(t, tail)
@@ -1275,13 +1265,9 @@ func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
 					require.NoError(t, os.Truncate(testFile, 0))
 				}
 
-				f, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-				require.NoError(t, err)
-				_, err = f.WriteString(tc.rest)
-				require.NoError(t, err)
-				require.NoError(t, f.Close())
+				require.NoError(t, appendToFileInTest(testFile, tc.rest))
 
-				forceReadForTest(concrete)
+				forceReadForTest(fileTailer)
 
 				var got []string
 				for range tc.expected {
@@ -1341,15 +1327,27 @@ func TestTailer_RapidWrites(t *testing.T) {
 
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
-			defer func() { _ = tail.Stop() }()
+			defer func() { require.NoError(t, tail.Stop()) }()
 
 			// Write many lines rapidly
 			const numLines = 100
 			go func() {
-				f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-				defer f.Close()
+				file, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
+				if err != nil {
+					t.Errorf("open %s: %v", testFile, err)
+					return
+				}
+				defer func() {
+					if err := file.Close(); err != nil {
+						t.Errorf("close %s: %v", testFile, err)
+					}
+				}()
+				line := strings.Repeat("x", 50) + "\n"
 				for range numLines {
-					_, _ = f.WriteString(strings.Repeat("x", 50) + "\n")
+					if _, err := file.WriteString(line); err != nil {
+						t.Errorf("write %s: %v", testFile, err)
+						return
+					}
 				}
 			}()
 
@@ -1377,10 +1375,10 @@ func TestTailer_RapidWrites(t *testing.T) {
 }
 
 // =============================================================================
-// ForceRead Tests (for manual polling mode)
+// Manual mode reads only when a test asks
 // =============================================================================
 
-func TestTailer_ForceRead(t *testing.T) {
+func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -1396,27 +1394,153 @@ func TestTailer_ForceRead(t *testing.T) {
 
 	tail, err := TailFile(t.Context(), testFile, config)
 	require.NoError(t, err)
-	defer func() { _ = tail.Stop() }()
+	defer func() { require.NoError(t, tail.Stop()) }()
 
-	tl := tail.(*tailer)
+	fileTailer := tail.(*tailer)
 
 	// Nothing should be in channel yet (manual mode, no auto-poll)
 	select {
 	case <-tail.Lines():
-		t.Fatal("Should not have lines without ForceRead")
+		t.Fatal("manual mode should not read before the test asks")
 	case <-time.After(50 * time.Millisecond):
 		// Expected
 	}
 
 	// Force read
-	forceReadForTest(tl)
+	forceReadForTest(fileTailer)
 
 	// Now should have the line
 	var line *Line
 	select {
 	case line = <-tail.Lines():
 	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Should have line after ForceRead")
+		t.Fatal("manual mode should read the line when the test asks")
 	}
 	assert.Equal(t, "initial", line.Text)
+}
+
+func TestOffsetAfterLastNewline(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+
+	prefix := strings.Repeat("x", 9000)
+	body := prefix + "\npartial"
+	require.NoError(t, os.WriteFile(testFile, []byte(body), 0o644))
+
+	offset, err := offsetAfterLastNewline(testFile, int64(len(body)))
+	require.NoError(t, err)
+	assert.Equal(t, int64(len(prefix)+1), offset)
+
+	complete := "done\n"
+	require.NoError(t, os.WriteFile(testFile, []byte(complete), 0o644))
+	offset, err = offsetAfterLastNewline(testFile, int64(len(complete)))
+	require.NoError(t, err)
+	assert.Equal(t, int64(len(complete)), offset)
+}
+
+func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
+	for _, mode := range tailerModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			testFile := filepath.Join(dir, "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte(`{"a":`), 0o644))
+
+			tail, err := TailFile(t.Context(), testFile, Config{
+				Poll:         true,
+				PollInterval: -1,
+				ReOpen:       true,
+				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+				KeepFileOpen: mode.keepFileOpen,
+			})
+			require.NoError(t, err)
+			defer func() { require.NoError(t, tail.Stop()) }()
+
+			fileTailer := tail.(*tailer)
+			forceReadForTest(fileTailer)
+			assertNoTailLineForTest(t, tail)
+
+			require.NoError(t, appendToFileInTest(testFile, "1}\n"))
+
+			forceReadForTest(fileTailer)
+			assert.Equal(t, `{"a":1}`, readTailLineForTest(t, tail))
+			assertNoTailLineForTest(t, tail)
+		})
+	}
+}
+
+func TestTailer_StartAtEndOfCompleteFile(t *testing.T) {
+	for _, mode := range tailerModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			testFile := filepath.Join(dir, "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte("done\n"), 0o644))
+
+			tail, err := TailFile(t.Context(), testFile, Config{
+				Poll:         true,
+				PollInterval: -1,
+				ReOpen:       true,
+				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+				KeepFileOpen: mode.keepFileOpen,
+			})
+			require.NoError(t, err)
+			defer func() { require.NoError(t, tail.Stop()) }()
+
+			fileTailer := tail.(*tailer)
+			forceReadForTest(fileTailer)
+			assertNoTailLineForTest(t, tail)
+
+			require.NoError(t, appendToFileInTest(testFile, "next\n"))
+
+			forceReadForTest(fileTailer)
+			assert.Equal(t, "next", readTailLineForTest(t, tail))
+			assertNoTailLineForTest(t, tail)
+		})
+	}
+}
+
+func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
+
+	originalOpen := openFileForReadInTest
+	t.Cleanup(func() { openFileForReadInTest = originalOpen })
+
+	appended := false
+	openFileForReadInTest = func(filename string) (*os.File, error) {
+		if !appended {
+			appended = true
+			writer, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o644)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := writer.WriteString("during\n"); err != nil {
+				writer.Close()
+				return nil, err
+			}
+			if err := writer.Close(); err != nil {
+				return nil, err
+			}
+		}
+		return os.Open(filename)
+	}
+
+	tail, err := TailFile(t.Context(), testFile, Config{
+		Poll:         true,
+		PollInterval: -1,
+		ReOpen:       true,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+		KeepFileOpen: false,
+	})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, tail.Stop()) }()
+
+	fileTailer := tail.(*tailer)
+	forceReadForTest(fileTailer)
+	assert.Equal(t, "old", readTailLineForTest(t, tail))
+	assert.Equal(t, "during", readTailLineForTest(t, tail))
+	assertNoTailLineForTest(t, tail)
+
+	forceReadForTest(fileTailer)
+	assertNoTailLineForTest(t, tail)
 }

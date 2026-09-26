@@ -30,7 +30,7 @@ type Configuration struct {
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
 	TailMode                          string        `yaml:"tail_mode"`          // "default" or "stat" (defaults to "default" if empty)
-	StatPollInterval                  time.Duration `yaml:"stat_poll_interval"` // stat poll interval used when tail_mode=stat (default 1s, 0=1s, -1=manual)
+	StatPollInterval                  time.Duration `yaml:"stat_poll_interval"` // stat poll interval used when tail_mode=stat (default 2s, 0=2s, -1=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -67,7 +67,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		s.config.TailMode = "default"
 	case "stat":
 		if s.config.StatPollInterval == 0 {
-			s.config.StatPollInterval = time.Second
+			s.config.StatPollInterval = 2 * time.Second
 		}
 	default:
 		return fmt.Errorf("unsupported tail_mode %q (supported: default, stat)", s.config.TailMode)

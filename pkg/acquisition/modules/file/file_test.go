@@ -231,17 +231,7 @@ func TestLiveAcquisition(t *testing.T) {
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
 	}
 
-	tests := []struct {
-		name           string
-		config         string
-		expectedErr    string
-		expectedOutput string
-		expectedLines  int
-		logLevel       log.Level
-		setup          func()
-		afterConfigure func()
-		teardown       func()
-	}{
+	tests := []liveAcquisitionTestCase{
 		{
 			config: fmt.Sprintf(`
 mode: tail
@@ -341,140 +331,168 @@ force_inotify: true`, testPattern),
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Skip tests that don't work on Windows due to chmod/file locking differences
-			if runtime.GOOS == "windows" && tc.name == "GlobInotifyChmod" {
-				t.Skip("Skipping on Windows: chmod 0o000 doesn't prevent file access")
-			}
-
-			if tc.name == "PermissionDenied" && runtime.GOOS == "windows" {
-				matches, err := filepath.Glob(permDeniedFile)
-				if err != nil || len(matches) == 0 {
-					t.Skip("system permission-denied test file not accessible via glob on this host")
-				}
-			}
-
-			ctx := t.Context()
-			logger, hook := test.NewNullLogger()
-			logger.SetLevel(tc.logLevel)
-
-			subLogger := logger.WithField("type", fileacquisition.ModuleName)
-
-			// Create cancellable context for Stream
-			streamCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-
-			out := make(chan pipeline.Event)
-
-			f := fileacquisition.Source{}
-
-			if tc.setup != nil {
-				tc.setup()
-			}
-
-			err := f.Configure(ctx, []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
-			require.NoError(t, err)
-
-			if tc.afterConfigure != nil {
-				tc.afterConfigure()
-			}
-
-			var actualLines atomic.Int32
-
-			if tc.expectedLines != 0 {
-				var stopReading atomic.Bool
-				defer func() { stopReading.Store(true) }()
-
-				go func() {
-					for {
-						select {
-						case <-out:
-							actualLines.Add(1)
-						default:
-							if stopReading.Load() {
-								return
-							}
-							// Small sleep to prevent tight loop
-							time.Sleep(100 * time.Millisecond)
-						}
-					}
-				}()
-			}
-
-			// Stream now blocks, so run it in a goroutine
-			streamDone := make(chan error, 1)
-			go func() {
-				streamDone <- f.Stream(streamCtx, out)
-			}()
-
-			// Give Stream time to start
-			time.Sleep(100 * time.Millisecond)
-
-			if tc.expectedLines != 0 {
-				// f.IsTailing is path delimiter sensitive
-				streamLogFile := filepath.Join(tmpDir, "stream.log")
-
-				fd, err := os.Create(streamLogFile)
-				require.NoError(t, err, "could not create test file")
-
-				// wait for the file to be tailed
-				waitingForTail := true
-				for waitingForTail {
-					select {
-					case <-time.After(2 * time.Second):
-						t.Fatal("Timeout waiting for file to be tailed")
-					default:
-						if !f.IsTailing(streamLogFile) {
-							time.Sleep(50 * time.Millisecond)
-							continue
-						}
-
-						waitingForTail = false
-					}
-				}
-
-				for i := range 5 {
-					_, err = fmt.Fprintf(fd, "%d\n", i)
-					if err != nil {
-						os.Remove(streamLogFile)
-						t.Fatalf("could not write test file : %s", err)
-					}
-				}
-
-				fd.Close()
-
-				// sleep to ensure the tail events are processed
-				time.Sleep(2 * time.Second)
-
-				os.Remove(streamLogFile)
-				assert.Equal(t, tc.expectedLines, int(actualLines.Load()))
-			}
-
-			if tc.expectedOutput != "" {
-				if hook.LastEntry() == nil {
-					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
-				}
-
-				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
-				hook.Reset()
-			}
-
-			// Cancel context to stop Stream BEFORE teardown
-			// This ensures file handles are released before cleanup
-			cancel()
-
-			// Wait for Stream to finish
-			select {
-			case err := <-streamDone:
-				cstest.RequireErrorContains(t, err, tc.expectedErr)
-			case <-time.After(5 * time.Second):
-				t.Fatal("Timeout waiting for Stream to finish")
-			}
-
-			// Run teardown AFTER Stream has stopped (files are closed)
-			if tc.teardown != nil {
-				tc.teardown()
-			}
+			runLiveAcquisitionTestCase(t, tc, tmpDir, permDeniedFile)
 		})
+	}
+}
+
+// liveAcquisitionTestCase is one Stream scenario: config, expected lines or log text, and optional setup.
+type liveAcquisitionTestCase struct {
+	name           string
+	config         string
+	expectedErr    string
+	expectedOutput string
+	expectedLines  int
+	logLevel       log.Level
+	setup          func()
+	afterConfigure func()
+	teardown       func()
+}
+
+// runLiveAcquisitionTestCase starts Stream for one scenario and checks the lines or the log text.
+func runLiveAcquisitionTestCase(t *testing.T, tc liveAcquisitionTestCase, tmpDir string, permDeniedFile string) {
+	t.Helper()
+
+	skipUnsupportedLiveAcquisition(t, tc.name, permDeniedFile)
+
+	logger, hook := test.NewNullLogger()
+	logger.SetLevel(tc.logLevel)
+	subLogger := logger.WithField("type", fileacquisition.ModuleName)
+
+	streamCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	out := make(chan pipeline.Event)
+	source := fileacquisition.Source{}
+
+	if tc.setup != nil {
+		tc.setup()
+	}
+
+	err := source.Configure(t.Context(), []byte(tc.config), subLogger, metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	if tc.afterConfigure != nil {
+		tc.afterConfigure()
+	}
+
+	var actualLines atomic.Int32
+	if tc.expectedLines != 0 {
+		var stopReading atomic.Bool
+		defer func() { stopReading.Store(true) }()
+		go countLiveStreamLines(out, &actualLines, &stopReading)
+	}
+
+	streamDone := make(chan error, 1)
+	go func() {
+		streamDone <- source.Stream(streamCtx, out)
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	if tc.expectedLines != 0 {
+		writeLiveLinesOnceTailed(t, &source, tmpDir, &actualLines, tc.expectedLines)
+	}
+
+	if tc.expectedOutput != "" {
+		requireLiveLogContains(t, hook, tc.expectedOutput)
+	}
+
+	cancel()
+	waitForLiveStream(t, streamDone, tc.expectedErr)
+
+	if tc.teardown != nil {
+		tc.teardown()
+	}
+}
+
+// skipUnsupportedLiveAcquisition skips cases this host cannot run.
+func skipUnsupportedLiveAcquisition(t *testing.T, name string, permDeniedFile string) {
+	t.Helper()
+
+	if runtime.GOOS == "windows" && name == "GlobInotifyChmod" {
+		t.Skip("Skipping on Windows: chmod 0o000 doesn't prevent file access")
+	}
+	if name != "PermissionDenied" || runtime.GOOS != "windows" {
+		return
+	}
+
+	matches, err := filepath.Glob(permDeniedFile)
+	if err != nil || len(matches) == 0 {
+		t.Skip("system permission-denied test file not accessible via glob on this host")
+	}
+}
+
+// countLiveStreamLines counts events until stopReading is set.
+func countLiveStreamLines(out chan pipeline.Event, actualLines *atomic.Int32, stopReading *atomic.Bool) {
+	for {
+		select {
+		case <-out:
+			actualLines.Add(1)
+		default:
+			if stopReading.Load() {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// writeLiveLinesOnceTailed writes five lines after the file is being tailed, then checks the count.
+func writeLiveLinesOnceTailed(t *testing.T, source *fileacquisition.Source, tmpDir string, actualLines *atomic.Int32, expectedLines int) {
+	t.Helper()
+
+	streamLogFile := filepath.Join(tmpDir, "stream.log")
+	file, err := os.Create(streamLogFile)
+	require.NoError(t, err, "could not create test file")
+
+	waitUntilLiveFileIsTailed(t, source, streamLogFile)
+
+	for lineNumber := range 5 {
+		_, err = fmt.Fprintf(file, "%d\n", lineNumber)
+		if err != nil {
+			os.Remove(streamLogFile)
+			t.Fatalf("could not write test file : %s", err)
+		}
+	}
+
+	file.Close()
+	time.Sleep(2 * time.Second)
+	os.Remove(streamLogFile)
+	assert.Equal(t, expectedLines, int(actualLines.Load()))
+}
+
+// waitUntilLiveFileIsTailed returns when source is tailing streamLogFile.
+func waitUntilLiveFileIsTailed(t *testing.T, source *fileacquisition.Source, streamLogFile string) {
+	t.Helper()
+
+	for {
+		if source.IsTailing(streamLogFile) {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// requireLiveLogContains fails the test when the last log line does not contain expectedOutput.
+func requireLiveLogContains(t *testing.T, hook *test.Hook, expectedOutput string) {
+	t.Helper()
+
+	if hook.LastEntry() == nil {
+		t.Fatalf("expected output %s, but got nothing", expectedOutput)
+	}
+	assert.Contains(t, hook.LastEntry().Message, expectedOutput)
+	hook.Reset()
+}
+
+// waitForLiveStream waits until Stream returns and checks its error text.
+func waitForLiveStream(t *testing.T, streamDone chan error, expectedErr string) {
+	t.Helper()
+
+	select {
+	case err := <-streamDone:
+		cstest.RequireErrorContains(t, err, expectedErr)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for Stream to finish")
 	}
 }
 

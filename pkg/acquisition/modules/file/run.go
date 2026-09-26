@@ -20,7 +20,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/tailwrapper"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/tail"
 	"github.com/crowdsecurity/crowdsec/pkg/fsutil"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -28,6 +28,7 @@ import (
 
 const defaultPollInterval = 30 * time.Second
 
+// keepFileOpenForTailMode reports whether this mode keeps the file handle open. Only "default" does.
 func keepFileOpenForTailMode(tailMode string) bool {
 	return tailMode == "default"
 }
@@ -65,7 +66,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 
 	// Start file monitoring goroutine
 	g.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/file/monitor")
+		defer trace.ReportPanic()
 		return s.monitorNewFiles(ctx, out, g)
 	})
 
@@ -270,7 +271,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 	}
 
 	// Create the tailer with appropriate configuration
-	seekInfo := &tailwrapper.SeekInfo{Offset: 0, Whence: io.SeekEnd}
+	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
 	if s.config.Mode == configuration.CAT_MODE {
 		seekInfo.Whence = io.SeekStart
 	}
@@ -291,7 +292,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 		pollInterval = s.config.StatPollInterval
 	}
 
-	tail, err := tailwrapper.TailFile(ctx, file, tailwrapper.Config{
+	tail, err := tail.TailFile(ctx, file, tail.Config{
 		ReOpen:       true,
 		Poll:         pollFile,
 		PollInterval: pollInterval,
@@ -314,7 +315,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 	return nil
 }
 
-func (s *Source) tailFile(ctx context.Context, out chan pipeline.Event, tail tailwrapper.Tailer) error {
+func (s *Source) tailFile(ctx context.Context, out chan pipeline.Event, tail tail.Tailer) error {
 	logger := s.logger.WithField("tail", tail.Filename())
 	logger.Debug("-> start tailing")
 
