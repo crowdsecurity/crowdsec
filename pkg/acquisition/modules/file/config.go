@@ -29,6 +29,8 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
+	TailMode                          string        `yaml:"tail_mode"`          // "default" or "stat" (defaults to "default" if empty)
+	StatPollInterval                  time.Duration `yaml:"stat_poll_interval"` // stat poll interval used when tail_mode=stat (default 2s, 0=2s, -1=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -58,6 +60,17 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	if s.config.Mode != configuration.CAT_MODE && s.config.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %s for file source", s.config.Mode)
+	}
+
+	switch s.config.TailMode {
+	case "", "default":
+		s.config.TailMode = "default"
+	case "stat":
+		if s.config.StatPollInterval == 0 {
+			s.config.StatPollInterval = 2 * time.Second
+		}
+	default:
+		return fmt.Errorf("unsupported tail_mode %q (supported: default, stat)", s.config.TailMode)
 	}
 
 	for _, exclude := range s.config.ExcludeRegexps {
