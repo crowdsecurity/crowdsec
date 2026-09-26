@@ -21,6 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func forceReadForTest(t *tailer) {
+	t.checkAndRead()
+}
+
 // =============================================================================
 // Test Helper Infrastructure (adapted from nxadm/tail)
 // =============================================================================
@@ -484,18 +488,18 @@ func TestTailer_TruncationDetection(t *testing.T) {
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 			_, _ = f.WriteString("line6\n")
 			f.Close()
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// TRUNCATE: Write less content
 			err = os.WriteFile(testFile, []byte("new1\nnew2\n"), 0o644)
 			require.NoError(t, err)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// Add more to truncated file
 			f, _ = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 			_, _ = f.WriteString("new3\n")
 			f.Close()
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// Collect lines
 			var lines []string
@@ -541,7 +545,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 			defer func() { _ = tail.Stop() }()
 
 			tl := tail.(*tailer)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			var lines []string
 			done := make(chan struct{})
@@ -559,23 +563,23 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 			// First truncation
 			err = os.WriteFile(testFile, []byte("batch2_line1\n"), 0o644)
 			require.NoError(t, err)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// Second truncation
 			err = os.WriteFile(testFile, []byte("batch3_line1\n"), 0o644)
 			require.NoError(t, err)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// Add to batch3
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 			_, _ = f.WriteString("batch3_line2\n")
 			f.Close()
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			// Third truncation
 			err = os.WriteFile(testFile, []byte("batch4_line1\n"), 0o644)
 			require.NoError(t, err)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			_ = tail.Stop()
 			<-done
@@ -656,7 +660,7 @@ func TestTailer_LargeLines(t *testing.T) {
 		}
 	}()
 
-	tl.ForceRead()
+	forceReadForTest(tl)
 	_ = tail.Stop()
 	<-done
 
@@ -743,14 +747,14 @@ func TestTailer_FileDeleted(t *testing.T) {
 	defer func() { _ = tail.Stop() }()
 
 	tl := tail.(*tailer)
-	tl.ForceRead()
+	forceReadForTest(tl)
 
 	// Delete the file
 	err = os.Remove(testFile)
 	require.NoError(t, err)
 
 	// Force read to detect file deletion
-	tl.ForceRead()
+	forceReadForTest(tl)
 
 	// Check if error was set
 	err = tail.Err()
@@ -795,14 +799,14 @@ func TestTailer_ErrorHandling(t *testing.T) {
 	defer func() { _ = tail.Stop() }()
 
 	tl := tail.(*tailer)
-	tl.ForceRead()
+	forceReadForTest(tl)
 
 	// Remove read permission
 	err = os.Chmod(testFile, 0o000)
 	require.NoError(t, err)
 	defer func() { _ = os.Chmod(testFile, 0o644) }()
 
-	tl.ForceRead()
+	forceReadForTest(tl)
 
 	// Should detect error
 	select {
@@ -1031,12 +1035,12 @@ func TestTailer_SeekStart(t *testing.T) {
 			defer func() { _ = tail.Stop() }()
 
 			tl := tail.(*tailer)
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			f, _ := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 			_, _ = f.WriteString("line4\n")
 			f.Close()
-			tl.ForceRead()
+			forceReadForTest(tl)
 
 			var lines []string
 			done := make(chan struct{})
@@ -1305,7 +1309,7 @@ func TestTailer_ForceRead(t *testing.T) {
 	}
 
 	// Force read
-	tl.ForceRead()
+	forceReadForTest(tl)
 
 	// Now should have the line
 	var line *Line

@@ -27,7 +27,7 @@ PR crowdsecurity/crowdsec#4280 is design evidence only; paths and upstream maste
 
 ### 1. Tail seam — `tailwrapper` package
 
-**Choice:** New `pkg/acquisition/modules/file/tailwrapper` with `TailFile(ctx, path, Config) (Tailer, error)` and a small `Tailer` interface (`Lines() <-chan *Line`, `Stop()`, `Filename()`).
+**Choice:** New `pkg/acquisition/modules/file/tailwrapper` with `TailFile(ctx, path, Config) (Tailer, error)` and a small `Tailer` interface (`Lines() <-chan *Line`, `Stop()`, `Filename()`, `Dying() <-chan struct{}`, `Err() error`) so `run.go` can detect tailer death and surface errors.
 
 **Rationale:** nxadm lacks context and cannot close handles between reads for stat mode. One package owns both strategies via `KeepFileOpen`.
 

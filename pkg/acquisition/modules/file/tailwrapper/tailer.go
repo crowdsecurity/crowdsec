@@ -342,12 +342,35 @@ func (t *tailer) readStatMode() {
 		return
 	}
 
-	// Read new lines
 	reader := bufio.NewReader(fd)
-	bytesRead := int64(0)
+	bytesRead, readErr := t.emitLinesFromReader(reader)
+	if readErr != nil {
+		t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, readErr))
+		return
+	}
 
+	t.lastOffset += bytesRead
+	if t.lastOffset > fi.Size() {
+		t.lastOffset = fi.Size()
+	}
+	t.lastSize = fi.Size()
+}
+
+// readLines reads all available lines from the current reader (KeepFileOpen mode)
+func (t *tailer) readLines() {
+	_, readErr := t.emitLinesFromReader(t.reader)
+	if readErr != nil {
+		t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, readErr))
+		return
+	}
+
+	pos, _ := t.file.Seek(0, io.SeekCurrent)
+	t.lastOffset = pos - int64(t.reader.Buffered())
+}
+
+func (t *tailer) emitLinesFromReader(reader *bufio.Reader) (bytesRead int64, err error) {
 	for {
-		line, err := reader.ReadString('\n')
+		line, readErr := reader.ReadString('\n')
 
 		if line != "" {
 			lineText := strings.TrimRight(line, "\n\r")
@@ -360,54 +383,15 @@ func (t *tailer) readStatMode() {
 				Err:  nil,
 			}:
 			case <-t.done:
-				return
+				return bytesRead, nil
 			}
 		}
 
-		if err != nil {
-			if err == io.EOF {
-				break
+		if readErr != nil {
+			if readErr == io.EOF {
+				return bytesRead, nil
 			}
-			t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, err))
-			return
-		}
-	}
-
-	t.lastOffset += bytesRead
-	if t.lastOffset > fi.Size() {
-		t.lastOffset = fi.Size()
-	}
-	t.lastSize = fi.Size()
-}
-
-// readLines reads all available lines from the current reader (KeepFileOpen mode)
-func (t *tailer) readLines() {
-	for {
-		line, err := t.reader.ReadString('\n')
-
-		if line != "" {
-			lineText := strings.TrimRight(line, "\n\r")
-
-		select {
-		case t.lines <- &Line{
-			Text: lineText,
-			Time: time.Now(),
-			Err:  nil,
-		}:
-		case <-t.done:
-			return
-		}
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				// Update our position
-				pos, _ := t.file.Seek(0, io.SeekCurrent)
-				t.lastOffset = pos - int64(t.reader.Buffered())
-				return
-			}
-			t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, err))
-			return
+			return bytesRead, readErr
 		}
 	}
 }
@@ -446,11 +430,14 @@ func (t *tailer) handleFileRemoved() {
 	t.mu.Unlock()
 
 	// Wait for file to reappear (without holding lock)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-t.done:
 			return
-		case <-time.After(100 * time.Millisecond):
+		case <-ticker.C:
 			fi, err := os.Stat(t.filename)
 			if err == nil {
 				// File exists again, reopen (with lock)
@@ -478,11 +465,6 @@ func (t *tailer) setErrorLocked(err error) {
 	t.mu.Unlock()
 	t.cancel()
 	t.mu.Lock()
-}
-
-// ForceRead is a test-only method that forces a read cycle
-func (t *tailer) ForceRead() {
-	t.checkAndRead()
 }
 
 // openFile opens a file for reading, handling OS-specific requirements

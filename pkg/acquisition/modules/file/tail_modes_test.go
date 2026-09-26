@@ -199,9 +199,8 @@ func TestTailModes_ConfigurationApplied(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		name           string
-		config         string
-		expectStatMode bool
+		name   string
+		config string
 	}{
 		{
 			name: "default_is_native",
@@ -210,7 +209,6 @@ mode: tail
 filenames:
  - %s
 `, testFile),
-			expectStatMode: false,
 		},
 		{
 			name: "explicit_default",
@@ -220,7 +218,6 @@ filenames:
  - %s
 tail_mode: default
 `, testFile),
-			expectStatMode: false,
 		},
 		{
 			name: "explicit_stat",
@@ -231,7 +228,6 @@ filenames:
 tail_mode: stat
 stat_poll_interval: 100ms
 `, testFile),
-			expectStatMode: true,
 		},
 	}
 
@@ -270,9 +266,8 @@ stat_poll_interval: 100ms
 			// Cleanup - cancel context to stop Stream
 			cancel()
 
-			// Both modes should successfully tail the file
-			// The actual implementation difference is tested in tailwrapper tests
-			t.Logf("Successfully tailed file with mode: %s (expectStatMode=%v)", tc.name, tc.expectStatMode)
+			// Stat vs default wiring is covered in config_tail_test.go and tailwrapper tests.
+			t.Logf("Successfully tailed file with mode: %s", tc.name)
 		})
 	}
 }

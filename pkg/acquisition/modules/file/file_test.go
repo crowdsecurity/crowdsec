@@ -449,31 +449,31 @@ force_inotify: true`, testPattern),
 				assert.Equal(t, tc.expectedLines, int(actualLines.Load()))
 			}
 
-		if tc.expectedOutput != "" {
-			if hook.LastEntry() == nil {
-				t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
+			if tc.expectedOutput != "" {
+				if hook.LastEntry() == nil {
+					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
+				}
+
+				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
+				hook.Reset()
 			}
 
-			assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
-			hook.Reset()
-		}
+			// Cancel context to stop Stream BEFORE teardown
+			// This ensures file handles are released before cleanup
+			cancel()
 
-		// Cancel context to stop Stream BEFORE teardown
-		// This ensures file handles are released before cleanup
-		cancel()
+			// Wait for Stream to finish
+			select {
+			case err := <-streamDone:
+				cstest.RequireErrorContains(t, err, tc.expectedErr)
+			case <-time.After(5 * time.Second):
+				t.Fatal("Timeout waiting for Stream to finish")
+			}
 
-		// Wait for Stream to finish
-		select {
-		case err := <-streamDone:
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-		case <-time.After(5 * time.Second):
-			t.Fatal("Timeout waiting for Stream to finish")
-		}
-
-		// Run teardown AFTER Stream has stopped (files are closed)
-		if tc.teardown != nil {
-			tc.teardown()
-		}
+			// Run teardown AFTER Stream has stopped (files are closed)
+			if tc.teardown != nil {
+				tc.teardown()
+			}
 		})
 	}
 }

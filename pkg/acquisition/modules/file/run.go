@@ -28,6 +28,10 @@ import (
 
 const defaultPollInterval = 30 * time.Second
 
+func keepFileOpenForTailMode(tailMode string) bool {
+	return tailMode == "default"
+}
+
 func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("In oneshot")
 
@@ -53,6 +57,7 @@ func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	return nil
 }
 
+// Stream tails configured files and emits line events until ctx is canceled.
 func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("Starting live acquisition")
 
@@ -279,7 +284,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 	// Determine file handle mode based on tail_mode config
 	// "stat" mode: close file after each read (works better on network shares like Azure SMB)
 	// "default" mode: keep file handle open (better performance on local files)
-	keepFileOpen := s.config.TailMode != "stat"
+	keepFileOpen := keepFileOpenForTailMode(s.config.TailMode)
 
 	pollInterval := time.Duration(0)
 	if s.config.TailMode == "stat" {
