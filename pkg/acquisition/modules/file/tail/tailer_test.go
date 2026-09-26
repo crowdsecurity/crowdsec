@@ -2145,17 +2145,17 @@ func TestTailer_KeepOpenReadErrorStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
-// A remove watch event from the follow loop ends the tail when ReOpen is off.
+// A Remove delivered on the follow loop's watch channel ends the tail when ReOpen is off.
 func TestTailer_WatchRemoveEventStopsFollowWithoutReopen(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fsnotify remove while the handle is open is unreliable on Windows")
-	}
-
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
+	events := make(chan fsnotify.Event, 1)
+	watchEventsInTest = events
+	t.Cleanup(func() { watchEventsInTest = nil })
+
 	fileTailer := startKeepOpenTailForTest(t, testFile, false, false, 20*time.Millisecond)
-	require.NoError(t, os.Remove(testFile))
+	events <- fsnotify.Event{Name: testFile, Op: fsnotify.Remove}
 
 	select {
 	case <-fileTailer.Dying():

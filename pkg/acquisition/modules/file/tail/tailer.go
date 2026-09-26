@@ -221,7 +221,9 @@ func (fileTailer *tailer) pollOrWatchUntilStopped() {
 
 	var watcherEvents <-chan fsnotify.Event
 	var watcherErrors <-chan error
-	if fileTailer.watcher != nil {
+	if watchEventsInTest != nil {
+		watcherEvents = watchEventsInTest
+	} else if fileTailer.watcher != nil {
 		watcherEvents = fileTailer.watcher.Events
 		watcherErrors = fileTailer.watcher.Errors
 	}
@@ -578,6 +580,9 @@ func offsetAfterLastNewline(filename string, size int64) (int64, error) {
 
 // openFileForReadInTest replaces openFileForRead when a test sets it. Production leaves it nil.
 var openFileForReadInTest func(filename string) (*os.File, error)
+
+// watchEventsInTest replaces the follow loop's fsnotify Events channel when a test sets it. Production leaves it nil.
+var watchEventsInTest <-chan fsnotify.Event
 
 // openFileForRead opens filename for a shared read so another process can still append.
 func openFileForRead(filename string) (*os.File, error) {
