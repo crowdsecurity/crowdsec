@@ -24,7 +24,7 @@ The acquisition seam moves from `Tailer.StreamingAcquisition` with `tomb.Tomb` t
 In progress. 0 items remain.
 
 Priority: P2 — real operator pain on network-share log paths, with limited blast radius and an unchanged default for existing configs.
-Reviewed head: 6ea42886
+Reviewed head: 360a5794
 Owner decision: Required. See Explore Decisions.
 
 ## Review scores
@@ -41,7 +41,7 @@ Owner decision: Required. See Explore Decisions.
 | Branch | 2026-09-26-migrate-file-acquisition pushed | `git` |
 | OpenSpec | migrate-file-acquisition | `openspec/` |
 | Pull request | https://github.com/david-garcia-garcia/crowdsec/pull/1 | pr-host |
-| CI | not seen | ci-host |
+| CI | not seen | caller omitted CI snapshot |
 | Local tests | passed | handoff.yaml localTests |
 | PR comments | no comments | devstate/comments.md |
 
@@ -85,7 +85,7 @@ None.
 | --- | --- | --- |
 | Specs in this PR | none | Same list as ## Specs |
 | Open reviewer comments walked | 0 FIX / 0 ANSWER / 0 open | Unanswered review is merge risk |
-| Reviewed head | 6ea42886d7f684936dde4d2cdbdde634774c375c | Card must match the branch you measured |
+| Reviewed head | 360a579459a0b54f7a47c0df4eebc2f376cd7411 | Card must match the branch you measured |
 
 ### Stored data model
 None.
