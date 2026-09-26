@@ -1,5 +1,0 @@
-host: github
-ref: "4280"
-title: "Migrate file acquisition + New tail_mode and stat_poll_interval settings to support not keeping file handles permanently open"
-url: https://github.com/crowdsecurity/crowdsec/pull/4280
-number: 4280

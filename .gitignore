@@ -71,4 +71,3 @@ __pycache__
 .agents/
 .claude/
 .worktrees/
-.pin_diff/
