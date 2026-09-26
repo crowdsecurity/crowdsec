@@ -17,7 +17,7 @@ Not yet.
 In progress. 0 items remain.
 
 Priority: unknown — motivation not written
-Reviewed head: 6263e379
+Reviewed head: df926a4a
 Owner decision: Required. See Explore Decisions.
 
 ## Review scores
@@ -34,8 +34,8 @@ Owner decision: Required. See Explore Decisions.
 | Branch | 2026-09-26-migrate-file-acquisition pushed | `git` |
 | OpenSpec | migrate-file-acquisition | `openspec/` |
 | Pull request | https://github.com/david-garcia-garcia/crowdsec/pull/1 | pr-host |
-| CI | not seen | caller omitted CI snapshot |
-| Local tests | none | handoff.yaml localTests |
+| CI | not seen | ci-host |
+| Local tests | passed | handoff.yaml localTests |
 | PR comments | no comments | devstate/comments.md |
 
 ## Specs
@@ -70,7 +70,7 @@ None.
 | --- | --- | --- |
 | Specs in this PR | none | Same list as ## Specs |
 | Open reviewer comments walked | 0 FIX / 0 ANSWER / 0 open | Unanswered review is merge risk |
-| Reviewed head | 6263e379ff92d86e3552703cba9c761bab5f86ef | Card must match the branch you measured |
+| Reviewed head | df926a4a5aaabc528aaf5ea910d12ace4a85d6e0 | Card must match the branch you measured |
 
 ### Stored data model
 None.

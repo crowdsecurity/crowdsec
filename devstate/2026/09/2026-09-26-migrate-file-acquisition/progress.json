@@ -20,8 +20,8 @@
     },
     "implement": {
       "work": true,
-      "card": false,
-      "at": null
+      "card": true,
+      "at": "2026-09-26T09:05:54.458Z"
     },
     "codereview": {
       "work": false,
