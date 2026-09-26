@@ -24,7 +24,7 @@ The acquisition seam moves from `Tailer.StreamingAcquisition` with `tomb.Tomb` t
 In progress. 0 items remain.
 
 Priority: P2 — real operator pain on network-share log paths, with limited blast radius and an unchanged default for existing configs.
-Reviewed head: 360a5794
+Reviewed head: 76e9ec02
 Owner decision: Required. See Explore Decisions.
 
 ## Review scores
@@ -85,7 +85,7 @@ None.
 | --- | --- | --- |
 | Specs in this PR | none | Same list as ## Specs |
 | Open reviewer comments walked | 0 FIX / 0 ANSWER / 0 open | Unanswered review is merge risk |
-| Reviewed head | 360a579459a0b54f7a47c0df4eebc2f376cd7411 | Card must match the branch you measured |
+| Reviewed head | 76e9ec028bb2e1bf3bc52be2e958fb03d26d128e | Card must match the branch you measured |
 
 ### Stored data model
 None.
