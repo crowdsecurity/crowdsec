@@ -2200,3 +2200,101 @@ func TestTailer_WatchRemoveWithReopenAddsWatcher(t *testing.T) {
 	require.NotNil(t, fileTailer.watcher)
 	fileTailer.mu.Unlock()
 }
+
+func TestFilePathGone(t *testing.T) {
+	require.False(t, filePathGone(nil))
+	require.True(t, filePathGone(os.ErrNotExist))
+	require.False(t, filePathGone(os.ErrClosed))
+
+	if runtime.GOOS == "windows" {
+		require.True(t, filePathGone(os.ErrPermission))
+		return
+	}
+	require.False(t, filePathGone(os.ErrPermission))
+}
+
+func TestWatchEventMeansContentChanged(t *testing.T) {
+	require.True(t, watchEventMeansContentChanged(fsnotify.Write))
+	require.True(t, watchEventMeansContentChanged(fsnotify.Create))
+	require.True(t, watchEventMeansContentChanged(fsnotify.Chmod))
+	require.False(t, watchEventMeansContentChanged(fsnotify.Remove))
+	require.False(t, watchEventMeansContentChanged(0))
+}
+
+// A chmod watch event reads the new complete line. Linux inotify reports chmod when an open file is unlinked; a real chmod is also a content check.
+func TestTailer_WatchChmodReadsLine(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
+	require.False(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Chmod}))
+
+	select {
+	case line := <-fileTailer.Lines():
+		require.Equal(t, "line2", line.Text)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for line after chmod event")
+	}
+}
+
+// A chmod watch event when the path is gone ends the follow the same way a remove does.
+func TestTailer_WatchChmodWhenPathGoneStopsWithoutReopen(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, false, true, -1)
+	require.NoError(t, os.Remove(testFile))
+	require.True(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Chmod}))
+	require.Error(t, fileTailer.Err())
+
+	select {
+	case <-fileTailer.Dying():
+	case <-time.After(time.Second):
+		t.Fatal("Dying stayed open after chmod on a missing path")
+	}
+}
+
+// Windows share-delete lets a rotator remove the file while the keep-open handle is still held.
+func TestTailer_WindowsCanRemoveFileWhileKeptOpen(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("FILE_SHARE_DELETE is a Windows CreateFile flag")
+	}
+
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	require.NotNil(t, fileTailer.file)
+	require.NoError(t, os.Remove(testFile))
+}
+
+// A Stat permission error is a gone path on Windows and a follow error elsewhere.
+func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer, err := TailFile(t.Context(), testFile, Config{
+		Poll:         true,
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+		KeepFileOpen: false,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = fileTailer.Stop() })
+
+	originalStat := statFileInTest
+	t.Cleanup(func() { statFileInTest = originalStat })
+	statFileInTest = func(string) (os.FileInfo, error) {
+		return nil, os.ErrPermission
+	}
+
+	forceReadForTest(fileTailer)
+	require.Error(t, fileTailer.Err())
+	if runtime.GOOS == "windows" {
+		require.ErrorContains(t, fileTailer.Err(), "no longer exists")
+		return
+	}
+	require.ErrorContains(t, fileTailer.Err(), "error statting file")
+}

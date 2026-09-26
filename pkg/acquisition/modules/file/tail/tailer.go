@@ -262,15 +262,36 @@ func pollIntervalOrDefault(pollInterval time.Duration) time.Duration {
 	return pollInterval
 }
 
-// readAfterWatchEvent reads after a write or create. A remove reopens from the start when ReOpen is set, and stops the follow otherwise.
+// readAfterWatchEvent reads after a write, create, or chmod. A remove (or chmod after unlink) reopens when ReOpen is set, and stops the follow otherwise.
 // stopFollow is true when the file was removed and must not be reopened.
 func (fileTailer *tailer) readAfterWatchEvent(event fsnotify.Event) (stopFollow bool) {
-	if event.Op&(fsnotify.Write|fsnotify.Create) != 0 {
+	if watchEventMeansContentChanged(event.Op) {
+		if fileTailer.watchedPathGone() {
+			return fileTailer.followRemovedFile()
+		}
 		fileTailer.readLinesSinceLastOffset()
 	}
 	if event.Op&fsnotify.Remove == 0 {
 		return false
 	}
+	return fileTailer.followRemovedFile()
+}
+
+// watchEventMeansContentChanged is true for writes, creates, and chmod.
+// Linux inotify reports chmod (IN_ATTRIB) when an open file is unlinked.
+func watchEventMeansContentChanged(op fsnotify.Op) bool {
+	return op&(fsnotify.Write|fsnotify.Create|fsnotify.Chmod) != 0
+}
+
+// watchedPathGone is true when Stat of the followed path failed because the path is gone.
+func (fileTailer *tailer) watchedPathGone() bool {
+	_, err := statFile(fileTailer.filename)
+	return filePathGone(err)
+}
+
+// followRemovedFile reopens from the start when ReOpen is set, and stops the follow otherwise.
+// stopFollow is true when the file must not be reopened.
+func (fileTailer *tailer) followRemovedFile() (stopFollow bool) {
 	if fileTailer.config.ReOpen {
 		fileTailer.waitUntilFileReturns()
 		return false
@@ -317,8 +338,8 @@ func (fileTailer *tailer) readLinesFromOpenFile() {
 // readLinesByReopening stats the path, then opens it to read lines past lastOffset.
 // The offset is not moved back to the size from before the read, so a line appended during the read is not sent twice.
 func (fileTailer *tailer) readLinesByReopening() {
-	fileInfo, err := os.Stat(fileTailer.filename)
-	if os.IsNotExist(err) {
+	fileInfo, err := statFile(fileTailer.filename)
+	if filePathGone(err) {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("file %s no longer exists", fileTailer.filename))
 		return
 	}
@@ -546,7 +567,7 @@ func offsetAfterLastNewline(filename string, size int64) (int64, error) {
 		return 0, nil
 	}
 
-	file, err := os.Open(filename)
+	file, err := openFileForRead(filename)
 	if err != nil {
 		return 0, fmt.Errorf("could not open file %s: %w", filename, err)
 	}
@@ -581,13 +602,24 @@ func offsetAfterLastNewline(filename string, size int64) (int64, error) {
 // openFileForReadInTest replaces openFileForRead when a test sets it. Production leaves it nil.
 var openFileForReadInTest func(filename string) (*os.File, error)
 
+// statFileInTest replaces statFile when a test sets it. Production leaves it nil.
+var statFileInTest func(name string) (os.FileInfo, error)
+
 // watchEventsInTest replaces the follow loop's fsnotify Events channel when a test sets it. Production leaves it nil.
 var watchEventsInTest <-chan fsnotify.Event
 
-// openFileForRead opens filename for a shared read so another process can still append.
+// openFileForRead opens filename for a shared read so another process can still append, rename, or delete it.
 func openFileForRead(filename string) (*os.File, error) {
 	if openFileForReadInTest == nil {
-		return os.Open(filename)
+		return openSharedRead(filename)
 	}
 	return openFileForReadInTest(filename)
+}
+
+// statFile returns FileInfo for name.
+func statFile(name string) (os.FileInfo, error) {
+	if statFileInTest == nil {
+		return os.Stat(name)
+	}
+	return statFileInTest(name)
 }
