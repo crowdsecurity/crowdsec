@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1603,5 +1604,160 @@ func TestTailer_FailedReopenClosesDying(t *testing.T) {
 	case <-followed.Dying():
 	case <-time.After(time.Second):
 		t.Fatal("Dying stayed open after reopen failed")
+	}
+}
+
+func startKeepOpenTailForTest(t *testing.T, testFile string, reopen bool, poll bool, pollInterval time.Duration) *tailer {
+	t.Helper()
+
+	followed, err := TailFile(t.Context(), testFile, Config{
+		ReOpen:       reopen,
+		Poll:         poll,
+		PollInterval: pollInterval,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		KeepFileOpen: true,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = followed.Stop() })
+	return followed.(*tailer)
+}
+
+// A keep-open tailer with polling off installs a watcher so writes can wake the follow loop.
+func TestTailer_KeepOpenWithoutPollingInstallsWatcher(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 0)
+	require.NotNil(t, fileTailer.watcher)
+}
+
+// A write watch event reads the new complete line.
+func TestTailer_WatchWriteReadsLine(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
+	require.False(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Write}))
+
+	select {
+	case line := <-fileTailer.Lines():
+		require.Equal(t, "line2", line.Text)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for line after write event")
+	}
+}
+
+// A remove watch event without ReOpen records the error and ends the follow.
+func TestTailer_WatchRemoveWithoutReopenClosesDying(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, false, true, -1)
+	require.True(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove}))
+	require.Error(t, fileTailer.Err())
+
+	select {
+	case <-fileTailer.Dying():
+	case <-time.After(time.Second):
+		t.Fatal("Dying stayed open after a remove without ReOpen")
+	}
+}
+
+// A remove watch event with ReOpen waits until the path exists again and reads from the start.
+func TestTailer_WatchRemoveWithReopenReadsNewFile(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	fileTailer.mu.Lock()
+	if fileTailer.file != nil {
+		_ = fileTailer.file.Close()
+		fileTailer.file = nil
+	}
+	fileTailer.mu.Unlock()
+	require.NoError(t, os.Remove(testFile))
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove})
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	require.NoError(t, os.WriteFile(testFile, []byte("new\n"), 0o644))
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("waitUntilFileReturns did not return")
+	}
+
+	fileTailer.readLinesSinceLastOffset()
+
+	select {
+	case line := <-fileTailer.Lines():
+		require.Equal(t, "new", line.Text)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for line after reopen")
+	}
+}
+
+// Closing the watcher ends the follow loop so Dying closes.
+func TestTailer_ClosedWatcherClosesDying(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 20*time.Millisecond)
+	require.NotNil(t, fileTailer.watcher)
+	require.NoError(t, fileTailer.watcher.Close())
+
+	select {
+	case <-fileTailer.Dying():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Dying stayed open after the watcher was closed")
+	}
+}
+
+// A keep-open open failure is returned from TailFile.
+func TestTailer_KeepOpenOpenFailure(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	originalOpen := openFileForReadInTest
+	t.Cleanup(func() { openFileForReadInTest = originalOpen })
+	openFileForReadInTest = func(string) (*os.File, error) {
+		return nil, os.ErrPermission
+	}
+
+	_, err := TailFile(t.Context(), testFile, Config{
+		KeepFileOpen: true,
+		Poll:         true,
+		PollInterval: -1,
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "could not open file")
+}
+
+// recordFirstErrorAndStop cancels the follow so Dying closes.
+func TestTailer_RecordFirstErrorAndStopClosesDying(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	fileTailer.recordFirstErrorAndStop(os.ErrPermission)
+	require.Error(t, fileTailer.Err())
+
+	select {
+	case <-fileTailer.Dying():
+	case <-time.After(time.Second):
+		t.Fatal("Dying stayed open after recordFirstErrorAndStop")
 	}
 }

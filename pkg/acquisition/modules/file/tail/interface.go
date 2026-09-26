@@ -8,13 +8,13 @@ import (
 type Tailer interface {
 	// Filename is the path this tailer was started on.
 	Filename() string
-	// Lines delivers each newline-terminated line. Stop closes the channel.
+	// Lines delivers each newline-terminated line. The channel closes when the follow ends.
 	Lines() <-chan *Line
-	// Dying closes when the tailer is stopping.
+	// Dying closes when the follow has ended, including a missing file or a failed reopen.
 	Dying() <-chan struct{}
 	// Err is the first failure that stopped the tailer, or nil.
 	Err() error
-	// Stop cancels the follow loop and closes Lines and Dying.
+	// Stop cancels the follow loop and closes Lines and Dying. It is safe after the follow has already ended.
 	Stop() error
 }
 

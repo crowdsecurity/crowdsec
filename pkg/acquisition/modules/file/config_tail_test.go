@@ -48,6 +48,40 @@ tail_mode: stat
 	require.Equal(t, 2*time.Second, s.config.StatPollInterval)
 }
 
+func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
+	t.Parallel()
+
+	s := Source{}
+	err := s.UnmarshalConfig([]byte(`mode: tail`))
+	require.ErrorContains(t, err, "no filename or filenames")
+}
+
+func TestUnmarshalConfigRejectsUnsupportedMode(t *testing.T) {
+	t.Parallel()
+
+	s := Source{}
+	err := s.UnmarshalConfig([]byte(`
+mode: no-such-mode
+filenames:
+ - /tmp/example.log
+`))
+	require.ErrorContains(t, err, "unsupported mode")
+}
+
+func TestUnmarshalConfigRejectsBadExcludeRegexp(t *testing.T) {
+	t.Parallel()
+
+	s := Source{}
+	err := s.UnmarshalConfig([]byte(`
+mode: tail
+filenames:
+ - /tmp/example.log
+exclude_regexps:
+ - "("
+`))
+	require.ErrorContains(t, err, "could not compile regexp")
+}
+
 func TestKeepFileOpenForTailMode(t *testing.T) {
 	t.Parallel()
 

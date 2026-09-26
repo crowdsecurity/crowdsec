@@ -33,6 +33,8 @@ type tailer struct {
 	wg      sync.WaitGroup
 	stopped bool
 	err     error
+	// followEnded closes Dying and Lines once, when Stop returns or the follow loop itself ends.
+	followEnded sync.Once
 
 	// Open only while KeepFileOpen is set.
 	file    *os.File
@@ -139,7 +141,7 @@ func (fileTailer *tailer) Lines() <-chan *Line {
 	return fileTailer.lines
 }
 
-// Dying closes when this tailer is stopping.
+// Dying closes when the follow has ended.
 func (fileTailer *tailer) Dying() <-chan struct{} {
 	return fileTailer.dying
 }
@@ -163,12 +165,20 @@ func (fileTailer *tailer) Stop() error {
 
 	fileTailer.cancel()
 	fileTailer.wg.Wait()
-
-	close(fileTailer.dying)
-	close(fileTailer.lines)
-	fileTailer.closeWatcherAndFile()
+	fileTailer.closeDyingAndReleaseHandle()
 
 	return fileTailer.Err()
+}
+
+// closeDyingAndReleaseHandle closes Dying and Lines once so the reader can drop the tail, then drops the open handle.
+func (fileTailer *tailer) closeDyingAndReleaseHandle() {
+	fileTailer.followEnded.Do(func() {
+		close(fileTailer.dying)
+		close(fileTailer.lines)
+		fileTailer.mu.Lock()
+		fileTailer.closeWatcherAndFile()
+		fileTailer.mu.Unlock()
+	})
 }
 
 // closeWatcherAndFile releases the watcher and the kept-open file.
@@ -196,6 +206,7 @@ func (fileTailer *tailer) recordFirstErrorAndStop(err error) {
 // pollOrWatchUntilStopped reads on each poll tick and, when a watcher is set, on write and remove events.
 func (fileTailer *tailer) pollOrWatchUntilStopped() {
 	defer fileTailer.wg.Done()
+	defer fileTailer.closeDyingAndReleaseHandle()
 
 	pollInterval := pollIntervalOrDefault(fileTailer.config.PollInterval)
 

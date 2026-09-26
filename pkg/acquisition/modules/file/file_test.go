@@ -221,8 +221,6 @@ filename: %s`, deletedFile),
 func TestLiveAcquisition(t *testing.T) {
 	permDeniedFile := "/etc/shadow"
 	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
-	tmpDir := t.TempDir()
-	testPattern := filepath.Join(tmpDir, "*.log")
 
 	if runtime.GOOS == "windows" {
 		// Technically, this is not a permission denied error, but we just want to test what happens
@@ -231,7 +229,24 @@ func TestLiveAcquisition(t *testing.T) {
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
 	}
 
-	tests := []liveAcquisitionTestCase{
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			for _, tc := range liveAcquisitionCases(t, tmpDir, permDeniedFile, permDeniedError) {
+				t.Run(tc.name, func(t *testing.T) {
+					cased := tc
+					cased.config = tc.config + mode.config
+					runLiveAcquisitionTestCase(t, cased, tmpDir, permDeniedFile)
+				})
+			}
+		})
+	}
+}
+
+func liveAcquisitionCases(t *testing.T, tmpDir string, permDeniedFile string, permDeniedError string) []liveAcquisitionTestCase {
+	testPattern := filepath.Join(tmpDir, "*.log")
+
+	return []liveAcquisitionTestCase{
 		{
 			config: fmt.Sprintf(`
 mode: tail
@@ -327,12 +342,6 @@ force_inotify: true`, testPattern),
 				os.Remove(filepath.Join(tmpDir, "pouet"))
 			},
 		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			runLiveAcquisitionTestCase(t, tc, tmpDir, permDeniedFile)
-		})
 	}
 }
 
@@ -456,21 +465,24 @@ func writeLiveLinesOnceTailed(t *testing.T, source *fileacquisition.Source, tmpD
 	}
 
 	file.Close()
-	time.Sleep(2 * time.Second)
+	require.Eventually(t, func() bool {
+		return int(actualLines.Load()) == expectedLines
+	}, 3*time.Second, 50*time.Millisecond)
 	os.Remove(streamLogFile)
-	assert.Equal(t, expectedLines, int(actualLines.Load()))
 }
 
 // waitUntilLiveFileIsTailed returns when source is tailing streamLogFile.
 func waitUntilLiveFileIsTailed(t *testing.T, source *fileacquisition.Source, streamLogFile string) {
 	t.Helper()
 
-	for {
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
 		if source.IsTailing(streamLogFile) {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	t.Fatalf("file %s was never tailed", streamLogFile)
 }
 
 // requireLiveLogContains fails the test when the last log line does not contain expectedOutput.
@@ -516,128 +528,182 @@ exclude_regexps: ["\\.gz$"]`
 }
 
 func TestDiscoveryPolling(t *testing.T) {
-	ctx := t.Context()
-	dir := t.TempDir()
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			dir := t.TempDir()
 
-	pattern := filepath.Join(dir, "*.log")
-	yamlConfig := fmt.Sprintf(`
+			pattern := filepath.Join(dir, "*.log")
+			yamlConfig := fmt.Sprintf(`
 filenames:
  - '%s'
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
 exclude_regexps: ["\\.ignore$"]
-mode: tail
-`, pattern)
+mode: tail%s
+`, pattern, mode.config)
 
-	fmt.Printf("Config: %s\n", yamlConfig)
-	config := []byte(yamlConfig)
+			f := &fileacquisition.Source{}
+			err := f.Configure(ctx, []byte(yamlConfig), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			eventChan := make(chan pipeline.Event)
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			streamDone := make(chan error, 1)
+			go func() {
+				streamDone <- f.Stream(streamCtx, eventChan)
+			}()
+
+			time.Sleep(100 * time.Millisecond)
+
+			testFile := filepath.Join(dir, "test.log")
+			err = os.WriteFile(testFile, []byte("test line\n"), 0o644)
+			require.NoError(t, err)
+
+			ignoredFile := filepath.Join(dir, ".ignored")
+			err = os.WriteFile(ignoredFile, []byte("test line\n"), 0o644)
+			require.NoError(t, err)
+
+			time.Sleep(4 * time.Second)
+
+			require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
+			require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
+
+			cancel()
+			select {
+			case <-streamDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("Timeout waiting for Stream to finish")
+			}
+		})
+	}
+}
+
+func TestFileResurrectionViaPolling(t *testing.T) {
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			ctx := t.Context()
+
+			testFile := filepath.Join(dir, "test.log")
+			err := os.WriteFile(testFile, []byte("test line\n"), 0o644)
+			require.NoError(t, err)
+
+			pattern := filepath.Join(dir, "*.log")
+			yamlConfig := fmt.Sprintf(`
+filenames:
+ - '%s'
+discovery_poll_enable: true
+discovery_poll_interval: "1s"
+mode: tail%s
+`, pattern, mode.config)
+
+			f := &fileacquisition.Source{}
+			err = f.Configure(ctx, []byte(yamlConfig), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			eventChan := make(chan pipeline.Event)
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			streamDone := make(chan error, 1)
+			go func() {
+				streamDone <- f.Stream(streamCtx, eventChan)
+			}()
+
+			time.Sleep(100 * time.Millisecond)
+
+			f.RemoveTail(testFile)
+			require.False(t, f.IsTailing(testFile), "File should be removed from the map")
+
+			time.Sleep(2 * time.Second)
+
+			require.True(t, f.IsTailing(testFile), "File should be resurrected via polling")
+
+			cancel()
+			select {
+			case <-streamDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("Timeout waiting for Stream to finish")
+			}
+		})
+	}
+}
+
+// TestStreamDropsDeadStatTail covers the Stream reader dropping a tail after the file is gone.
+func TestStreamDropsDeadStatTail(t *testing.T) {
+	ctx := t.Context()
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	f := &fileacquisition.Source{}
-	err := f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+	err := f.Configure(ctx, []byte(fmt.Sprintf(`
+mode: tail
+filename: %s
+tail_mode: stat
+stat_poll_interval: 50ms
+`, testFile)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelFull)
 	require.NoError(t, err)
 
-	// Create channel for events
-	eventChan := make(chan pipeline.Event)
-
-	// Create cancellable context for Stream
+	out := make(chan pipeline.Event, 8)
 	streamCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Start acquisition (Stream now blocks, so run in goroutine)
 	streamDone := make(chan error, 1)
 	go func() {
-		streamDone <- f.Stream(streamCtx, eventChan)
+		streamDone <- f.Stream(streamCtx, out)
 	}()
 
-	// Give Stream time to start
-	time.Sleep(100 * time.Millisecond)
+	require.Eventually(t, func() bool { return f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
-	// Create a test file
-	testFile := filepath.Join(dir, "test.log")
-	err = os.WriteFile(testFile, []byte("test line\n"), 0o644)
-	require.NoError(t, err)
+	require.NoError(t, os.Remove(testFile))
+	require.Eventually(t, func() bool { return !f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
-	ignoredFile := filepath.Join(dir, ".ignored")
-	err = os.WriteFile(ignoredFile, []byte("test line\n"), 0o644)
-	require.NoError(t, err)
-
-	// Wait for polling to detect the file
-	time.Sleep(4 * time.Second)
-
-	require.True(t, f.IsTailing(testFile), "File should be tailed after polling")
-	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
-
-	// Cleanup - cancel context to stop Stream
 	cancel()
-
-	// Wait for Stream to finish
 	select {
 	case <-streamDone:
-		// Stream finished
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timeout waiting for Stream to finish")
 	}
 }
 
-func TestFileResurrectionViaPolling(t *testing.T) {
-	dir := t.TempDir()
-	ctx := t.Context()
+// TestStreamPushesLinesWithAggregatedMetrics covers the aggregated source label on a live line.
+func TestStreamPushesLinesWithAggregatedMetrics(t *testing.T) {
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			testFile := filepath.Join(t.TempDir(), "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
 
-	testFile := filepath.Join(dir, "test.log")
-	err := os.WriteFile(testFile, []byte("test line\n"), 0o644)
-	require.NoError(t, err)
-
-	pattern := filepath.Join(dir, "*.log")
-	yamlConfig := fmt.Sprintf(`
-filenames:
- - '%s'
-discovery_poll_enable: true
-discovery_poll_interval: "1s"
+			f := &fileacquisition.Source{}
+			err := f.Configure(ctx, []byte(fmt.Sprintf(`
 mode: tail
-`, pattern)
+filename: %s
+labels:
+  type: syslog
+%s
+`, testFile, mode.config)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelAggregated)
+			require.NoError(t, err)
 
-	fmt.Printf("Config: %s\n", yamlConfig)
-	config := []byte(yamlConfig)
+			out := make(chan pipeline.Event, 8)
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
 
-	f := &fileacquisition.Source{}
-	err = f.Configure(ctx, config, log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
-	require.NoError(t, err)
+			go func() { _ = f.Stream(streamCtx, out) }()
+			require.Eventually(t, func() bool { return f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
-	eventChan := make(chan pipeline.Event)
+			require.NoError(t, os.WriteFile(testFile, []byte("hello\n"), 0o644))
 
-	// Create cancellable context for Stream
-	streamCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+			select {
+			case evt := <-out:
+				require.Equal(t, "hello", evt.Line.Raw)
+			case <-time.After(3 * time.Second):
+				t.Fatal("timeout waiting for tailed line")
+			}
 
-	// Start acquisition (Stream now blocks, so run in goroutine)
-	streamDone := make(chan error, 1)
-	go func() {
-		streamDone <- f.Stream(streamCtx, eventChan)
-	}()
-
-	// Wait for initial tail setup
-	time.Sleep(100 * time.Millisecond)
-
-	// Simulate tailer death by removing it from the map
-	f.RemoveTail(testFile)
-	isTailed := f.IsTailing(testFile)
-	require.False(t, isTailed, "File should be removed from the map")
-
-	// Wait for polling to resurrect the file
-	time.Sleep(2 * time.Second)
-
-	// Verify file is being tailed again
-	isTailed = f.IsTailing(testFile)
-	require.True(t, isTailed, "File should be resurrected via polling")
-
-	// Cleanup - cancel context to stop Stream
-	cancel()
-
-	// Wait for Stream to finish
-	select {
-	case <-streamDone:
-		// Stream finished
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timeout waiting for Stream to finish")
+			cancel()
+		})
 	}
 }
