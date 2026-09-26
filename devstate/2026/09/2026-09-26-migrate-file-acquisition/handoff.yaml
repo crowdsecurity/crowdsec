@@ -12,5 +12,5 @@ localTests: none
 requirement: requirement.md
 comments: none
 explore: explore.md
-change: none
+change: migrate-file-acquisition
 pr: { id: 1, url: https://github.com/david-garcia-garcia/crowdsec/pull/1 }

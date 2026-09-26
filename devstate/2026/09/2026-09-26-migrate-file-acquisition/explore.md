@@ -48,24 +48,24 @@ File acquisition live mode (`mode: tail`, default when empty) tails log files an
 - Q: What are the allowed `tail_mode` values and which is the default on master today?
   Rank: additive asked — new YAML field named in Desired ("Add tail_mode configuration"); empty/absent maps to current behaviour
   Decision: assumed — allow `default` and `stat` only; empty or `default` is default (matches master open-handle nxadm behaviour). Reject unknown values at configure time in propose/implement.
-  By: explore
+  By: propose
 
 - Q: What is the concrete tail implementation after the POC dropped nxadm context migration?
   Rank: bounded asked — "Migrate file acquisition tail handling" (Desired); 1 nxadm callsite in `run.go`; PR #4280 enumerates tailwrapper package
   Decision: assumed — in-house `tailwrapper.TailFile(ctx, …)` with unified tailer (`KeepFileOpen` bool), not nxadm adapter; migrate file module to `RestartableStreamer.Stream`.
-  By: explore
+  By: propose
 
 - Q: What are the default and bounds for `stat_poll_interval` (including manual/disabled polling)?
   Rank: additive asked — "Add stat_poll_interval configuration" (Desired)
   Decision: assumed — when `tail_mode: stat`: default 1s; `0` treated as 1s; `-1` manual/test (no automatic ticker, tests use explicit reads); only meaningful in stat mode; ignore when `tail_mode` is default.
-  By: explore
+  By: propose
 
 - Q: What backward compatibility and migration notes apply to existing file datasource YAML?
   Rank: additive asked — "Preserve existing file acquisition behaviour as the default path unless the new settings opt into alternate handle management" (Desired)
   Decision: assumed — no YAML change required; existing configs behave as today; document optional `tail_mode: stat` + `stat_poll_interval` for network-share / handle-pressure scenarios (PR #4280 motivation: Azure SMB).
-  By: explore
+  By: propose
 
 - Q: Should this run remove the `github.com/nxadm/tail` module dependency entirely?
   Rank: bounded incidental — no In-scope line names removal; Out of scope only forbids upstream context PR; 1 import in `run.go` (+ go.mod)
   Decision: assumed — remove nxadm from go.mod when tailwrapper lands; deviation recorded.
-  By: explore
+  By: propose
