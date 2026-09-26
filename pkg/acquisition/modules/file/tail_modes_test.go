@@ -271,3 +271,113 @@ stat_poll_interval: 100ms
 		})
 	}
 }
+
+// TestLiveAcquisitionPartialLine matches the file-tail cases where a write ends
+// mid-line: the fragment must not be sent, and the lines written after it must arrive whole.
+// Truncation while a fragment is pending drops that fragment.
+func TestLiveAcquisitionPartialLine(t *testing.T) {
+	const readTimeout = 10 * time.Second
+	const quietPeriod = 200 * time.Millisecond
+
+	cases := []struct {
+		name     string
+		truncate bool
+		rest     string
+		expected []string
+	}{
+		{
+			name:     "completed",
+			rest:     "1}\nthird\n",
+			expected: []string{`{"a":1}`, "third"},
+		},
+		{
+			name:     "truncated",
+			truncate: true,
+			rest:     "new\n",
+			expected: []string{"new"},
+		},
+	}
+
+	for _, mode := range tailModes {
+		for _, tc := range cases {
+			t.Run(mode.name+"/"+tc.name, func(t *testing.T) {
+				ctx := t.Context()
+				testFile := filepath.Join(t.TempDir(), "test.log")
+
+				fd, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = fd.Close() })
+
+				config := fmt.Sprintf("mode: tail\nfilename: '%s'%s", testFile, mode.config)
+
+				f := fileacquisition.Source{}
+				err = f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+				require.NoError(t, err)
+
+				out := make(chan pipeline.Event, 8)
+				streamCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+
+				go func() {
+					_ = f.Stream(streamCtx, out)
+				}()
+
+				require.Eventually(t, func() bool {
+					if _, err := fd.WriteString("ready\n"); err != nil {
+						return false
+					}
+					select {
+					case <-out:
+						return true
+					case <-time.After(quietPeriod):
+						return false
+					}
+				}, readTimeout, 10*time.Millisecond, "tailer never delivered a line")
+
+				_, err = fd.WriteString("second\n" + `{"a":`)
+				require.NoError(t, err)
+
+			waitSecond:
+				for {
+					select {
+					case evt := <-out:
+						if evt.Line.Raw == "second" {
+							break waitSecond
+						}
+						require.Equal(t, "ready", evt.Line.Raw)
+					case <-time.After(readTimeout):
+						t.Fatal("timeout waiting for the line before the partial one")
+					}
+				}
+
+				if tc.truncate {
+					require.NoError(t, fd.Close())
+					require.NoError(t, os.Truncate(testFile, 0))
+					fd, err = os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+					require.NoError(t, err)
+				}
+
+				_, err = fd.WriteString(tc.rest)
+				require.NoError(t, err)
+
+				var got []string
+				for range tc.expected {
+					select {
+					case evt := <-out:
+						got = append(got, evt.Line.Raw)
+					case <-time.After(readTimeout):
+						t.Fatalf("timeout waiting for lines, got %q", got)
+					}
+				}
+
+				select {
+				case evt := <-out:
+					got = append(got, evt.Line.Raw)
+				case <-time.After(quietPeriod):
+				}
+
+				require.Equal(t, tc.expected, got)
+			})
+		}
+	}
+}

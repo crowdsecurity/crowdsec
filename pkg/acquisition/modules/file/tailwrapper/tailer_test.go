@@ -1210,15 +1210,115 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 			_, _ = f.WriteString(" more\n")
 			f.Close()
 
-			// Should get "partial more" now
+			// Should get the finished line, not the fragment that was waiting.
 			select {
 			case line = <-tail.Lines():
 			case <-time.After(500 * time.Millisecond):
 				t.Fatal("Timeout waiting for partial line completion")
 			}
-			// Note: depending on timing, we might get "partial" or "partial more"
-			assert.Contains(t, line.Text, "partial")
+			assert.Equal(t, "partial more", line.Text)
 		})
+	}
+}
+
+func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
+	tests := []struct {
+		name     string
+		truncate bool
+		rest     string
+		expected []string
+	}{
+		{
+			name:     "completed",
+			rest:     "1}\nthird\n",
+			expected: []string{`{"a":1}`, "third"},
+		},
+		{
+			name:     "truncated",
+			truncate: true,
+			rest:     "new\n",
+			expected: []string{"new"},
+		},
+	}
+
+	for _, mode := range tailerModes {
+		for _, tc := range tests {
+			t.Run(mode.name+"/"+tc.name, func(t *testing.T) {
+				dir := t.TempDir()
+				testFile := filepath.Join(dir, "test.log")
+				require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
+
+				tail, err := TailFile(t.Context(), testFile, Config{
+					Poll:         true,
+					PollInterval: -1,
+					ReOpen:       true,
+					Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+					KeepFileOpen: mode.keepFileOpen,
+				})
+				require.NoError(t, err)
+				defer func() { _ = tail.Stop() }()
+
+				concrete := tail.(*tailer)
+
+				writer, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
+				require.NoError(t, err)
+				_, err = writer.WriteString("second\n{\"a\":")
+				require.NoError(t, err)
+				require.NoError(t, writer.Close())
+
+				forceReadForTest(concrete)
+
+				require.Equal(t, "second", readTailLineForTest(t, tail))
+				assertNoTailLineForTest(t, tail)
+
+				if tc.truncate {
+					require.NoError(t, os.Truncate(testFile, 0))
+				}
+
+				f, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
+				require.NoError(t, err)
+				_, err = f.WriteString(tc.rest)
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+
+				forceReadForTest(concrete)
+
+				var got []string
+				for range tc.expected {
+					got = append(got, readTailLineForTest(t, tail))
+				}
+				assertNoTailLineForTest(t, tail)
+				assert.Equal(t, tc.expected, got)
+			})
+		}
+	}
+}
+
+func readTailLineForTest(t *testing.T, tail Tailer) string {
+	t.Helper()
+
+	select {
+	case line := <-tail.Lines():
+		require.NotNil(t, line)
+		require.NoError(t, line.Err)
+		return line.Text
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for a line")
+		return ""
+	}
+}
+
+func assertNoTailLineForTest(t *testing.T, tail Tailer) {
+	t.Helper()
+
+	select {
+	case line := <-tail.Lines():
+		text := ""
+		if line != nil {
+			text = line.Text
+		}
+		t.Fatalf("unexpected line %q", text)
+	default:
 	}
 }
 

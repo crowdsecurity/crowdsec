@@ -62,3 +62,4 @@ for {
 - File must exist at `TailFile` start (validated via `os.Stat`).
 - `PollInterval` of `-1` is manual/test mode (no automatic ticker in the main loop).
 - `PollInterval` of `0` defaults to 1s inside the tailer.
+- Bytes that do not end in a newline are not sent. The read position stays in front of that fragment until a newline arrives. Truncation that shrinks the file drops the fragment.

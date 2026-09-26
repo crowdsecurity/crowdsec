@@ -295,7 +295,7 @@ func (t *tailer) readKeepOpenMode() {
 		t.lastSize = 0
 	}
 
-	// Read available lines
+	// Read available lines. A fragment with no newline stays in front of the offset.
 	t.readLines()
 
 	// Update last known size
@@ -343,24 +343,33 @@ func (t *tailer) readStatMode() {
 	}
 
 	reader := bufio.NewReader(fd)
-	bytesRead, readErr := t.emitLinesFromReader(reader)
+	completeBytes, _, readErr := t.emitLinesFromReader(reader)
 	if readErr != nil {
 		t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, readErr))
 		return
 	}
 
-	t.lastOffset += bytesRead
+	// Pending bytes are not counted, so the next open re-reads the fragment.
+	t.lastOffset += completeBytes
 	if t.lastOffset > fi.Size() {
 		t.lastOffset = fi.Size()
 	}
 	t.lastSize = fi.Size()
 }
 
-// readLines reads all available lines from the current reader (KeepFileOpen mode)
+// readLines reads all available lines from the current reader (KeepFileOpen mode).
+// A fragment that ends at EOF is not a line. The file position moves back in front of it.
 func (t *tailer) readLines() {
-	_, readErr := t.emitLinesFromReader(t.reader)
+	_, pendingBytes, readErr := t.emitLinesFromReader(t.reader)
 	if readErr != nil {
 		t.setErrorLocked(fmt.Errorf("error reading file %s: %w", t.filename, readErr))
+		return
+	}
+
+	if pendingBytes > 0 {
+		if err := t.rewindBeforePending(pendingBytes); err != nil {
+			t.setErrorLocked(fmt.Errorf("error rewinding partial line in %s: %w", t.filename, err))
+		}
 		return
 	}
 
@@ -368,13 +377,43 @@ func (t *tailer) readLines() {
 	t.lastOffset = pos - int64(t.reader.Buffered())
 }
 
-func (t *tailer) emitLinesFromReader(reader *bufio.Reader) (bytesRead int64, err error) {
-	for {
-		line, readErr := reader.ReadString('\n')
+// rewindBeforePending seeks to the start of a fragment ReadString already consumed.
+func (t *tailer) rewindBeforePending(pendingBytes int64) error {
+	pos, err := t.file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
 
-		if line != "" {
-			lineText := strings.TrimRight(line, "\n\r")
-			bytesRead += int64(len(line))
+	nextOffset := pos - int64(t.reader.Buffered()) - pendingBytes
+	if nextOffset < 0 {
+		nextOffset = 0
+	}
+
+	if _, err := t.file.Seek(nextOffset, io.SeekStart); err != nil {
+		return err
+	}
+
+	t.reader = bufio.NewReader(t.file)
+	t.lastOffset = nextOffset
+	return nil
+}
+
+// emitLinesFromReader sends only chunks that end with a newline.
+// completeBytes is the size of those chunks. pendingBytes is a trailing fragment at EOF, not sent.
+func (t *tailer) emitLinesFromReader(reader *bufio.Reader) (completeBytes int64, pendingBytes int64, err error) {
+	for {
+		chunk, readErr := reader.ReadString('\n')
+
+		if chunk != "" && !strings.HasSuffix(chunk, "\n") {
+			if readErr != nil && readErr != io.EOF {
+				return completeBytes, 0, readErr
+			}
+			return completeBytes, int64(len(chunk)), nil
+		}
+
+		if chunk != "" {
+			lineText := strings.TrimRight(chunk, "\n\r")
+			completeBytes += int64(len(chunk))
 
 			select {
 			case t.lines <- &Line{
@@ -383,15 +422,15 @@ func (t *tailer) emitLinesFromReader(reader *bufio.Reader) (bytesRead int64, err
 				Err:  nil,
 			}:
 			case <-t.done:
-				return bytesRead, nil
+				return completeBytes, 0, nil
 			}
 		}
 
 		if readErr != nil {
 			if readErr == io.EOF {
-				return bytesRead, nil
+				return completeBytes, 0, nil
 			}
-			return bytesRead, readErr
+			return completeBytes, 0, readErr
 		}
 	}
 }

@@ -1,0 +1,4 @@
+# Spec domains
+
+## core
+- acquisition
