@@ -17,7 +17,7 @@ Not yet.
 In progress. 0 items remain.
 
 Priority: unknown — motivation not written
-Reviewed head: f489a6be
+Reviewed head: 81c6f1e8
 Owner decision: Required. See Explore Decisions.
 
 ## Review scores
@@ -26,14 +26,14 @@ Owner decision: Required. See Explore Decisions.
 | Overall readiness | 1/6 | Not ready |
 | CI proof | 1/6 | not seen |
 | Local tests proof | N/A | remote PR — CI proof covers this |
-| Review resolution | N/A | no OPEN PR |
+| Review resolution | 6/6 | no open PR comments |
 
 ## Verification
 | Check | Result | Evidence |
 | --- | --- | --- |
 | Branch | 2026-09-26-migrate-file-acquisition pushed | `git` |
 | OpenSpec | none | `openspec/` |
-| Pull request | none | pr-host |
+| Pull request | https://github.com/david-garcia-garcia/crowdsec/pull/1 | pr-host |
 | CI | not seen | caller omitted CI snapshot |
 | Local tests | none | handoff.yaml localTests |
 | PR comments | no comments | devstate/comments.md |
@@ -49,7 +49,7 @@ None.
 None.
 
 ## How this fits together
-Ticket 4280 on branch 2026-09-26-migrate-file-acquisition targeting master; PR no PR yet; CI not seen.
+Ticket 4280 on branch 2026-09-26-migrate-file-acquisition targeting master; PR https://github.com/david-garcia-garcia/crowdsec/pull/1; CI not seen.
 
 ## Explore Decisions
 | Question | Rank | Decision | By |
@@ -70,7 +70,7 @@ None.
 | --- | --- | --- |
 | Specs in this PR | none | Same list as ## Specs |
 | Open reviewer comments walked | 0 FIX / 0 ANSWER / 0 open | Unanswered review is merge risk |
-| Reviewed head | f489a6be2538140b3caa23a2cdf9808e81bb52d5 | Card must match the branch you measured |
+| Reviewed head | 81c6f1e8be0f88db6261e7f6b1d0ed6cfeb5ead1 | Card must match the branch you measured |
 
 ### Stored data model
 None.

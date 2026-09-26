@@ -13,4 +13,4 @@ requirement: requirement.md
 comments: none
 explore: explore.md
 change: none
-pr: none
+pr: { id: 1, url: https://github.com/david-garcia-garcia/crowdsec/pull/1 }
