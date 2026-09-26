@@ -47,7 +47,7 @@ type tailer struct {
 }
 
 // TailFile starts following filename. A missing file is an error. SeekEnd starts after the last newline.
-func TailFile(ctx context.Context, filename string, config Config) (Tailer, error) {
+func TailFile(ctx context.Context, filename string, config Config) (*tailer, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat file %s: %w", filename, err)
@@ -367,10 +367,7 @@ func (fileTailer *tailer) readLinesByReopening() {
 		fileTailer.lastSize = fileTailer.lastOffset
 		return
 	}
-	fileTailer.lastSize = fileInfoAfterRead.Size()
-	if fileTailer.lastOffset > fileTailer.lastSize {
-		fileTailer.lastSize = fileTailer.lastOffset
-	}
+	fileTailer.lastSize = max(fileInfoAfterRead.Size(), fileTailer.lastOffset)
 }
 
 // fileNeedsAnotherRead is true when the file was truncated or grew past the last byte already sent.
@@ -457,7 +454,7 @@ func (fileTailer *tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64,
 	}
 }
 
-// enqueueLine sends one complete line. followStopped is true when the follow loop was cancelled before the send.
+// enqueueLine sends one complete line. followStopped is true when the follow loop was canceled before the send.
 func (fileTailer *tailer) enqueueLine(lineText string) (followStopped bool) {
 	select {
 	case fileTailer.lines <- &Line{
