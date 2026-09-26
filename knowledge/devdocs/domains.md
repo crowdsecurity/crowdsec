@@ -1,0 +1,5 @@
+# Devdocs domains
+
+## core
+
+- acquisition
