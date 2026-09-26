@@ -1544,3 +1544,64 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	forceReadForTest(fileTailer)
 	assertNoTailLineForTest(t, tail)
 }
+
+// A deleted file in stat mode closes Dying so the reader can drop the tail.
+func TestTailer_DeletedFileClosesDying(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	followed, err := TailFile(t.Context(), testFile, Config{
+		ReOpen:       true,
+		Poll:         true,
+		PollInterval: 20 * time.Millisecond,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		KeepFileOpen: false,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = followed.Stop() })
+
+	require.NoError(t, os.Remove(testFile))
+
+	select {
+	case <-followed.Dying():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Dying stayed open after the file was deleted")
+	}
+}
+
+// A failed reopen after the handle was cleared closes Dying so the reader can drop the tail.
+func TestTailer_FailedReopenClosesDying(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+
+	followed, err := TailFile(t.Context(), testFile, Config{
+		ReOpen:       true,
+		Poll:         true,
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+		KeepFileOpen: true,
+	})
+	require.NoError(t, err)
+
+	originalOpen := openFileForReadInTest
+	t.Cleanup(func() {
+		openFileForReadInTest = originalOpen
+		_ = followed.Stop()
+	})
+
+	openFileForReadInTest = func(string) (*os.File, error) {
+		return nil, os.ErrPermission
+	}
+
+	fileTailer := followed.(*tailer)
+	fileTailer.waitUntilFileReturns()
+	require.Error(t, followed.Err())
+
+	select {
+	case <-followed.Dying():
+	case <-time.After(time.Second):
+		t.Fatal("Dying stayed open after reopen failed")
+	}
+}
