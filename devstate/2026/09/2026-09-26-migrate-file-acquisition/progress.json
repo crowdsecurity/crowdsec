@@ -1,0 +1,47 @@
+{
+  "issueKey": "2026-09-26-migrate-file-acquisition",
+  "jobName": "2026-09-26-migrate-file-acquisition",
+  "startedAt": "2026-09-26T08:52:46.213Z",
+  "phases": {
+    "prepare": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "explore": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "propose": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "implement": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "codereview": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "devdocsimpact": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "archive": {
+      "work": false,
+      "card": false,
+      "at": null
+    },
+    "pullrequest": {
+      "work": false,
+      "card": false,
+      "at": null
+    }
+  }
+}

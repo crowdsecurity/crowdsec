@@ -1,0 +1,14 @@
+issueKey: 2026-09-26-migrate-file-acquisition
+jobName: 2026-09-26-migrate-file-acquisition
+issueHost: github
+issueRef: 4280
+prHost: github
+ciHost: github
+repoSlug: crowdsec
+destBranch: master
+localTests: none
+requirement: requirement.md
+comments: none
+explore: none
+change: none
+pr: none
