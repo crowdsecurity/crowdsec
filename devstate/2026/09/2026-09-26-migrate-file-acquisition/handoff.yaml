@@ -8,7 +8,7 @@ repoSlug: crowdsec
 destBranch: master
 qualify: qualified-with-gaps
 src: a37b95729e4d965aa6714cb7eb57d1839ca12b2e8d8713542d4ae7af97dc1632
-localTests: none
+localTests: passed
 requirement: requirement.md
 comments: none
 explore: explore.md
