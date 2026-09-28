@@ -334,7 +334,7 @@ func initializeEventMaps(evt *pipeline.Event) {
 	}
 }
 
-func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.AppsecDropInfo) {
+func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.HookOutcome) {
 	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
@@ -471,7 +471,7 @@ func getMethodWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) strin
 	return method
 }
 
-func processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
+func processDropInfo(dropInfo *appsec.HookOutcome, evt *pipeline.Event, req *appsec.ParsedRequest) {
 	kind := determineRuleKind(req.IsInBand, evt)
 
 	if evt.Appsec.MatchedRules == nil {
@@ -523,7 +523,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		return
 	}
 
-	var dropInfo *appsec.AppsecDropInfo
+	var dropInfo *appsec.HookOutcome
 	if state != nil {
 		dropInfo = state.DropInfo(req)
 	}

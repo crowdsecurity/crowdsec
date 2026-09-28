@@ -14,6 +14,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge/pb"
 )
 
 func TestHasLeadingZeroBits(t *testing.T) {
@@ -525,8 +527,29 @@ func TestValidateChallengeResponse_FingerprintRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cd)
 	assert.Equal(t, submitted.FSID, cd.Fingerprint.FSID)
-	assert.Equal(t, submitted.URL, cd.Fingerprint.URL)
+	// URL intentionally dropped to save space.
+	assert.Empty(t, cd.Fingerprint.URL)
 	assert.Equal(t, c.powDifficulty, cd.PowDifficulty)
+}
+
+// fpscanner reports window.location.href, so the URL is site-controlled and
+// unbounded. It used to be sealed into the cookie, and a long enough query
+// string pushed the envelope past the size browsers guarantee: the seal failed
+// and the visitor could never pass the challenge.
+func TestSealCookieWithOversizedFingerprintURL(t *testing.T) {
+	fp := FingerprintData{
+		FSID: "FS1_00001000000000_00010h02ba",
+		URL:  "https://example.com/landing?utm=" + strings.Repeat("x", 8000),
+	}
+
+	key := make([]byte, 32)
+
+	encoded, err := sealCookieV0(&pb.ChallengeCookie{
+		Fingerprint:   fp.ToProto(),
+		PowDifficulty: PowDifficultyMedium,
+	}, key, time.Now().Add(time.Hour).Unix(), 0, "", []byte("ua"), MaxCookieLen)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(encoded), MaxCookieLen)
 }
 
 func TestValidateChallengeResponse_MultipleConcurrentClients(t *testing.T) {

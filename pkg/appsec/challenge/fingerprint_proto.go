@@ -332,10 +332,11 @@ func (f *FingerprintData) ToProto() *pb.FingerprintData {
 			Locale:     f.Signals.Locale.toProto(),
 			Contexts:   f.Signals.Contexts.toProto(),
 		},
-		Fsid:                    f.FSID,
-		Nonce:                   f.Nonce,
-		Time:                    f.Time,
-		Url:                     f.URL,
+		Fsid:  f.FSID,
+		Nonce: f.Nonce,
+		Time:  f.Time,
+		// Url is deliberately not carried: fpscanner report window.location.href.
+		// It can be big and it ain't useful to us outside on_challenge_submit.
 		FastBotDetection:        bool(f.FastBotDetection),
 		FastBotDetectionDetails: f.FastBotDetectionDetails.toProto(),
 		Bot:                     f.Bot.toProto(),

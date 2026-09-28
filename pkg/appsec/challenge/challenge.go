@@ -304,33 +304,25 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 // secret + keyring, pre-warms the dynamic-module cache, and (if configured)
 // spawns the background obfuscation refresher. Safe for concurrent use across
 // all appsec runners. Pass WithXxx options to override defaults.
-// compileObfuscatorModule decompresses the baked-in obfuscator WASM (once,
-// process-wide) and compiles it for the given runtime. Pre-compiling lets each
-// ObfuscateJS call merely instantiate the module instead of re-parsing the WASM
-// bytes, which would otherwise cost ~4-5s per call.
+// compileObfuscatorModule decompresses the baked-in obfuscator WASM and
+// compiles it for the given runtime. Pre-compiling lets each ObfuscateJS call
+// merely instantiate the module instead of re-parsing the WASM bytes, which
+// would otherwise cost ~4-5s per call. The decompressed bytes (~17MB) are not
+// retained: the CompiledModule keeps what it needs, and decompressing again on
+// the rare second call (a reload) costs ~100ms.
 func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.CompiledModule, error) {
-	var obfuscatorWasmErr error
+	zr, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
+	}
+	defer zr.Close()
 
-	obfuscatorWasmOnce.Do(func() {
-		zr, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
-			return
-		}
-		defer zr.Close()
-
-		obfuscatorWasm, err = io.ReadAll(zr)
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
-			return
-		}
-	})
-
-	if obfuscatorWasmErr != nil {
-		return nil, obfuscatorWasmErr
+	wasm, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
 	}
 
-	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	compiledMod, err := r.CompileModule(ctx, wasm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
 	}
