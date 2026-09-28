@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -438,6 +439,59 @@ func TestTailModes_ContinuousAppend(t *testing.T) {
 	}
 }
 
+// Test log rotation by using mv.
+func TestTailModes_RenameCreate(t *testing.T) {
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			testFile := filepath.Join(t.TempDir(), "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
+
+			_, out, cancel := streamLiveTail(t, ctx, mode.mode, mode.extra, testFile)
+			defer cancel()
+
+			waitUntilFollowed(t, testFile, out)
+
+			require.NoError(t, os.Rename(testFile, testFile+".1"))
+			// Longer than the file that was rotated, so a size shrink is not what detects it.
+			fresh := strings.Repeat("x", 256)
+			require.NoError(t, os.WriteFile(testFile, []byte(fresh+"\n"), 0o644))
+
+			select {
+			case evt := <-out:
+				require.Equal(t, fresh, evt.Line.Raw)
+			case <-time.After(10 * time.Second):
+				t.Fatal("timeout waiting for the line after rename")
+			}
+		})
+	}
+}
+
+// A shrink of the same file reopens from the start and delivers the new line.
+func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			testFile := filepath.Join(t.TempDir(), "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte("old1\nold2\nold3\n"), 0o644))
+
+			_, out, cancel := streamLiveTail(t, ctx, mode.mode, mode.extra, testFile)
+			defer cancel()
+
+			waitUntilFollowed(t, testFile, out)
+
+			require.NoError(t, os.WriteFile(testFile, []byte("fresh\n"), 0o644))
+
+			select {
+			case evt := <-out:
+				require.Equal(t, "fresh", evt.Line.Raw)
+			case <-time.After(10 * time.Second):
+				t.Fatal("timeout waiting for the line after shrink")
+			}
+		})
+	}
+}
+
 // A file that already ends with a newline emits nothing until a new line is appended.
 func TestTailModes_StartAtEndOfCompleteFile(t *testing.T) {
 	for _, mode := range tailModes {
@@ -478,6 +532,32 @@ func TestTailModes_StartAtEndOfCompleteFile(t *testing.T) {
 			case <-time.After(200 * time.Millisecond):
 			}
 		})
+	}
+}
+
+// waitUntilFollowed appends probe lines until one is delivered, so the tailer is past startup.
+func waitUntilFollowed(t *testing.T, testFile string, out <-chan pipeline.Event) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		if err := appendClosedLine(testFile, "ready"); err != nil {
+			return false
+		}
+		select {
+		case evt := <-out:
+			return evt.Line.Raw == "ready"
+		case <-time.After(200 * time.Millisecond):
+			return false
+		}
+	}, 5*time.Second, 10*time.Millisecond, "tailer never delivered a line")
+
+	for {
+		select {
+		case evt := <-out:
+			require.Equal(t, "ready", evt.Line.Raw)
+		case <-time.After(200 * time.Millisecond):
+			return
+		}
 	}
 }
 

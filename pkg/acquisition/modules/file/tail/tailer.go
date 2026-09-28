@@ -71,8 +71,10 @@ type Tailer struct {
 	watcher *fsnotify.Watcher
 
 	// lastOffset is the next byte to read. lastSize is the size after the previous pass.
-	lastOffset int64
-	lastSize   int64
+	// lastPathInfo is the file at filename on the previous pass. A different file means the path was replaced.
+	lastOffset   int64
+	lastSize     int64
+	lastPathInfo os.FileInfo
 }
 
 // TailFile starts following filename. A missing file is an error. SeekEnd starts after the last newline.
@@ -95,8 +97,9 @@ func TailFile(ctx context.Context, filename string, config Config) (*Tailer, err
 		dying:      make(chan struct{}),
 		done:       tailerCtx.Done(),
 		cancel:     cancel,
-		lastOffset: initialOffset,
-		lastSize:   fileInfo.Size(),
+		lastOffset:   initialOffset,
+		lastSize:     fileInfo.Size(),
+		lastPathInfo: fileInfo,
 	}
 
 	if config.KeepFileOpen {
@@ -345,16 +348,24 @@ func (fileTailer *Tailer) readLinesSinceLastOffset() {
 	fileTailer.readLinesByReopening()
 }
 
-// readLinesFromOpenFile reads the kept-open handle. A shrink reopens the file from the start.
+// readLinesFromOpenFile reads the kept-open handle.
+// A different file at the same path is read from the first byte. A shrink of this file is too.
 func (fileTailer *Tailer) readLinesFromOpenFile() {
-	fileInfo, err := fileTailer.file.Stat()
+	openInfo, err := fileTailer.file.Stat()
 	if err != nil {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("error statting file %s: %w", fileTailer.filename, err))
 		return
 	}
 
+	// The open handle still names the renamed file. The path is the file logrotate created.
+	pathInfo, pathErr := statFile(fileTailer.filename)
+	if pathErr == nil && !os.SameFile(openInfo, pathInfo) {
+		fileTailer.readReplacementAtPath(pathInfo)
+		return
+	}
+
 	// A shrink is a truncation. Read the replacement file from the first byte.
-	currentSize := fileInfo.Size()
+	currentSize := openInfo.Size()
 	if currentSize < fileTailer.lastSize {
 		fileTailer.reopenAtOffset(0)
 		fileTailer.lastSize = 0
@@ -362,6 +373,28 @@ func (fileTailer *Tailer) readLinesFromOpenFile() {
 
 	fileTailer.emitCompleteLinesFromOpenReader()
 	fileTailer.lastSize = currentSize
+}
+
+// readReplacementAtPath finishes the open handle, then reads the file now at filename from the first byte.
+func (fileTailer *Tailer) readReplacementAtPath(pathInfo os.FileInfo) {
+	fileTailer.emitCompleteLinesFromOpenReader()
+	if fileTailer.err != nil {
+		return
+	}
+
+	fileTailer.reopenAtOffset(0)
+	if fileTailer.err != nil {
+		return
+	}
+
+	// A rename drops the watch. Watch the file that is at the path now.
+	if fileTailer.watcher != nil {
+		_ = fileTailer.watcher.Add(fileTailer.filename)
+	}
+
+	fileTailer.lastSize = 0
+	fileTailer.emitCompleteLinesFromOpenReader()
+	fileTailer.lastSize = pathInfo.Size()
 }
 
 // readLinesByReopening stats the path, then opens it to read lines past lastOffset.
@@ -376,6 +409,13 @@ func (fileTailer *Tailer) readLinesByReopening() {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("error statting file %s: %w", fileTailer.filename, err))
 		return
 	}
+
+	// The path names a different file than the one followed so far. Read it from the first byte.
+	if fileTailer.lastPathInfo != nil && !os.SameFile(fileTailer.lastPathInfo, fileInfo) {
+		fileTailer.lastOffset = 0
+		fileTailer.lastSize = 0
+	}
+	fileTailer.lastPathInfo = fileInfo
 
 	truncated := fileInfo.Size() < fileTailer.lastSize
 	if truncated {
