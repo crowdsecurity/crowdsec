@@ -378,3 +378,136 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 		}
 	}
 }
+
+// Five lines written one after another all arrive, in that order, on every live mode.
+// The file starts empty, so the end-of-file start still sees each appended line.
+func TestTailModes_ContinuousAppend(t *testing.T) {
+	expected := []string{"x", "xx", "xxx", "xxxx", "xxxxx"}
+
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			testFile := filepath.Join(t.TempDir(), "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
+
+			f, out, cancel := streamLiveTail(t, ctx, mode.mode, mode.extra, testFile)
+			defer cancel()
+
+			require.Eventually(t, func() bool {
+				return f.IsTailing(testFile)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// nxadm starts its watch after TailFile returns, so a burst written on IsTailing can be missed.
+			// A closed append is what that watch observes. Retry until one probe line arrives.
+			require.Eventually(t, func() bool {
+				if err := appendClosedLine(testFile, "ready"); err != nil {
+					return false
+				}
+				select {
+				case evt := <-out:
+					return evt.Line.Raw == "ready"
+				case <-time.After(200 * time.Millisecond):
+					return false
+				}
+			}, 5*time.Second, 10*time.Millisecond, "tailer never delivered a line")
+
+			for {
+				select {
+				case evt := <-out:
+					require.Equal(t, "ready", evt.Line.Raw)
+				case <-time.After(200 * time.Millisecond):
+					goto appended
+				}
+			}
+		appended:
+			for _, line := range expected {
+				require.NoError(t, appendClosedLine(testFile, line))
+			}
+
+			var got []string
+			for range expected {
+				select {
+				case evt := <-out:
+					got = append(got, evt.Line.Raw)
+				case <-time.After(10 * time.Second):
+					t.Fatalf("timeout waiting for lines, got %q", got)
+				}
+			}
+			require.Equal(t, expected, got)
+		})
+	}
+}
+
+// A file that already ends with a newline emits nothing until a new line is appended.
+func TestTailModes_StartAtEndOfCompleteFile(t *testing.T) {
+	for _, mode := range tailModes {
+		t.Run(mode.name, func(t *testing.T) {
+			ctx := t.Context()
+			testFile := filepath.Join(t.TempDir(), "test.log")
+			require.NoError(t, os.WriteFile(testFile, []byte("done\n"), 0o644))
+
+			f, out, cancel := streamLiveTail(t, ctx, mode.mode, mode.extra, testFile)
+			defer cancel()
+
+			require.Eventually(t, func() bool {
+				return f.IsTailing(testFile)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			select {
+			case evt := <-out:
+				t.Fatalf("emitted %q from the line already in the file", evt.Line.Raw)
+			case <-time.After(1500 * time.Millisecond):
+			}
+
+			fd, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
+			require.NoError(t, err)
+			_, err = fd.WriteString("next\n")
+			require.NoError(t, err)
+			require.NoError(t, fd.Close())
+
+			select {
+			case evt := <-out:
+				require.Equal(t, "next", evt.Line.Raw)
+			case <-time.After(10 * time.Second):
+				t.Fatal("timeout waiting for the appended line")
+			}
+
+			select {
+			case evt := <-out:
+				t.Fatalf("extra line %q", evt.Line.Raw)
+			case <-time.After(200 * time.Millisecond):
+			}
+		})
+	}
+}
+
+// streamLiveTail configures one live mode and streams it until cancel.
+func streamLiveTail(t *testing.T, ctx context.Context, mode string, extra string, testFile string) (*fileacquisition.Source, <-chan pipeline.Event, context.CancelFunc) {
+	t.Helper()
+
+	config := fmt.Sprintf("mode: %s\nfilename: '%s'%s", mode, testFile, extra)
+	f := &fileacquisition.Source{}
+	err := f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	out := make(chan pipeline.Event, 8)
+	streamCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		_ = f.Stream(streamCtx, out)
+	}()
+	return f, out, cancel
+}
+
+// appendClosedLine appends one line and closes the handle, so a watch that only sees a close still notices the write.
+func appendClosedLine(filename string, text string) error {
+	fd, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	_, writeErr := fd.WriteString(text + "\n")
+	closeErr := fd.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}

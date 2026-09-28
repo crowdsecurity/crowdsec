@@ -3,7 +3,7 @@
 // These tests provide little value for review. They pin a local result: a stored path, a predicate
 // table, or an assertion that still passes when the behavior under test does not happen.
 // They stay so that an AI agent changing this package has to look twice at unintended drift when one of them breaks.
-// Tests that fail when the behavior is wrong stay in tailer_test.go.
+// The file ends in _test.go so Go compiles it with the tests. Tests that fail when the behavior is wrong stay in tailer_test.go.
 
 package tail
 

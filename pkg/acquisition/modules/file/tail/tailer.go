@@ -300,10 +300,10 @@ func (fileTailer *Tailer) readAfterWatchEvent(event fsnotify.Event) (stopFollow 
 		}
 		fileTailer.readLinesSinceLastOffset()
 	}
-	if event.Op&fsnotify.Remove == 0 {
-		return false
+	if event.Op&fsnotify.Remove != 0 {
+		return fileTailer.followRemovedFile()
 	}
-	return fileTailer.followRemovedFile()
+	return false
 }
 
 // watchEventMeansContentChanged is true for writes, creates, and chmod.
@@ -645,7 +645,7 @@ func openFileForRead(filename string) (*os.File, error) {
 	return openFileForReadInTest(filename)
 }
 
-// statFile returns FileInfo for name.
+// statFile stats name. A test that set statFileInTest receives that result instead.
 func statFile(name string) (os.FileInfo, error) {
 	if statFileInTest == nil {
 		return os.Stat(name)

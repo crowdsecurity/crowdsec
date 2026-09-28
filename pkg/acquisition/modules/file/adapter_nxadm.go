@@ -49,46 +49,22 @@ func (s *Source) readAdxmTail(ctx context.Context, out chan pipeline.Event, adxm
 
 	for {
 		select {
+		// The acquisition is stopping. Stop the tailer, then leave.
 		case <-ctx.Done():
-			logger.Info("File datasource stopping")
-
-			if err := adxmTail.Stop(); err != nil {
-				s.logger.Errorf("error in stop : %s", err)
+			return s.stopTailOnShutdown(logger, adxmTail.Stop)
+		// The tailer ended on its own. Drop the path so a recreated file can be tailed again.
+		case <-adxmTail.Dying():
+			s.dropDeadTail(logger, adxmTail.Filename, adxmTail.Err())
+			return nil
+		// One line from the tailer. Skip an empty read. A read error stops this file.
+		case line := <-adxmTail.Lines:
+			var read *tailRead
+			if line != nil {
+				read = &tailRead{text: line.Text, err: line.Err, time: line.Time}
+			}
+			if err := s.deliverTailRead(logger, out, adxmTail.Filename, read); err != nil {
 				return err
 			}
-
-			return nil
-		case <-adxmTail.Dying():
-			errMsg := "file reader died"
-
-			err := adxmTail.Err()
-			if err != nil {
-				errMsg = fmt.Sprintf(errMsg+" : %s", err)
-			}
-
-			logger.Warning(errMsg)
-
-			s.tailMapMutex.Lock()
-			delete(s.tails, adxmTail.Filename)
-			s.tailMapMutex.Unlock()
-
-			return nil
-		case line := <-adxmTail.Lines:
-			if line == nil {
-				logger.Warning("tail is empty")
-				continue
-			}
-
-			if line.Err != nil {
-				logger.Warningf("fetch error : %v", line.Err)
-				return line.Err
-			}
-
-			if line.Text == "" {
-				continue
-			}
-
-			s.pushTailLine(out, adxmTail.Filename, line.Text, line.Time)
 		}
 	}
 }

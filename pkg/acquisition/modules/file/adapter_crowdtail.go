@@ -18,8 +18,11 @@ import (
 
 // startCrowdTail follows file with the in-house tailer. keepFileOpen selects crowdtail; closing after each read selects crowdtailstat.
 func (s *Source) startCrowdTail(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int, keepFileOpen bool) error {
-	pollInterval := time.Duration(0)
-	if !keepFileOpen {
+	// crowdtail keeps the handle open, so the tailer uses its own tick. crowdtailstat reads on the configured interval.
+	var pollInterval time.Duration
+	if keepFileOpen {
+		pollInterval = 0
+	} else {
 		pollInterval = s.config.CrowdTailStatModeReadInterval
 	}
 
@@ -40,61 +43,35 @@ func (s *Source) startCrowdTail(ctx context.Context, file string, out chan pipel
 
 	g.Go(func() error {
 		defer trace.ReportPanic()
-		return s.tailFile(ctx, out, crowdTail)
+		return s.readCrowdTail(ctx, out, crowdTail)
 	})
 
 	return nil
 }
 
-// tailFile forwards lines from the in-house tailer until ctx is canceled or the tailer dies.
-func (s *Source) tailFile(ctx context.Context, out chan pipeline.Event, tail *tail.Tailer) error {
-	logger := s.logger.WithField("tail", tail.Filename())
+// readCrowdTail forwards lines from the in-house tailer until ctx is canceled or the tailer dies.
+func (s *Source) readCrowdTail(ctx context.Context, out chan pipeline.Event, crowdTail *tail.Tailer) error {
+	logger := s.logger.WithField("tail", crowdTail.Filename())
 	logger.Debug("-> start tailing")
 
 	for {
 		select {
+		// The acquisition is stopping. Stop the tailer, then leave.
 		case <-ctx.Done():
-			logger.Info("File datasource stopping")
-
-			if err := tail.Stop(); err != nil {
-				s.logger.Errorf("error in stop : %s", err)
+			return s.stopTailOnShutdown(logger, crowdTail.Stop)
+		// The tailer ended on its own. Drop the path so a recreated file can be tailed again.
+		case <-crowdTail.Dying():
+			s.dropDeadTail(logger, crowdTail.Filename(), crowdTail.Err())
+			return nil
+		// One line from the tailer. Skip an empty read. A read error stops this file.
+		case line := <-crowdTail.Lines():
+			var read *tailRead
+			if line != nil {
+				read = &tailRead{text: line.Text, err: line.Err, time: line.Time}
+			}
+			if err := s.deliverTailRead(logger, out, crowdTail.Filename(), read); err != nil {
 				return err
 			}
-
-			return nil
-		case <-tail.Dying(): // our tailer is dying
-			errMsg := "file reader died"
-
-			err := tail.Err()
-			if err != nil {
-				errMsg = fmt.Sprintf(errMsg+" : %s", err)
-			}
-
-			logger.Warning(errMsg)
-
-			// Just remove the dead tailer from our map and return
-			// monitorNewFiles will pick up the file again if it's recreated
-			s.tailMapMutex.Lock()
-			delete(s.tails, tail.Filename())
-			s.tailMapMutex.Unlock()
-
-			return nil
-		case line := <-tail.Lines():
-			if line == nil {
-				logger.Warning("tail is empty")
-				continue
-			}
-
-			if line.Err != nil {
-				logger.Warningf("fetch error : %v", line.Err)
-				return line.Err
-			}
-
-			if line.Text == "" { // skip empty lines
-				continue
-			}
-
-			s.pushTailLine(out, tail.Filename(), line.Text, line.Time)
 		}
 	}
 }

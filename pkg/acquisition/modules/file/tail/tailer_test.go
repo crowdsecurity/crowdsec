@@ -2,7 +2,7 @@
 //
 // Tests in this file fail when the behavior is wrong.
 // The one-to-one upstream suite lives in tailer_admx_test.go.
-// Tests that still pass when the behavior is missing live in tailer_pin_tests.go.
+// Tests that still pass when the behavior is missing live in tailer_pin_test.go.
 
 package tail
 
@@ -169,65 +169,6 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 	}
 
 	assert.Equal(t, "line2", line.Text)
-}
-
-// Five lines written one after another all arrive, in that order, whether the handle stays open or not.
-func TestTailer_ContinuousAppend(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-
-			err := os.WriteFile(testFile, []byte(""), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				Poll:         true,
-				PollInterval: 50 * time.Millisecond,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				KeepFileOpen: mode.keepFileOpen,
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
-
-			// Append lines one by one with larger delays for reliability
-			go func() {
-				for repeatCount := 1; repeatCount <= 5; repeatCount++ {
-					time.Sleep(100 * time.Millisecond)
-					line := strings.Repeat("x", repeatCount) + "\n"
-					if err := appendToFileInTest(testFile, line); err != nil {
-						t.Errorf("append %s: %v", testFile, err)
-						return
-					}
-				}
-			}()
-
-			// Collect lines
-			var lines []string
-			timeout := time.After(3 * time.Second)
-		loop:
-			for {
-				select {
-				case line := <-tail.Lines():
-					if line != nil && line.Text != "" {
-						lines = append(lines, line.Text)
-						if len(lines) >= 5 {
-							break loop
-						}
-					}
-				case <-timeout:
-					break loop
-				}
-			}
-
-			require.Len(t, lines, 5, "Should have read all 5 lines")
-			// Verify we got all expected lines (order should match)
-			expected := []string{"x", "xx", "xxx", "xxxx", "xxxxx"}
-			assert.Equal(t, expected, lines, "Lines should match expected content and order")
-		})
-	}
 }
 
 // Starting at the beginning delivers the lines already in the file, then a line appended later.
@@ -678,37 +619,6 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 
 			forceReadForTest(fileTailer)
 			assert.Equal(t, `{"a":1}`, readTailLineForTest(t, tail))
-			assertNoTailLineForTest(t, tail)
-		})
-	}
-}
-
-// Starting at the end of a file that already ends with a newline emits nothing until a new line is appended.
-func TestTailer_StartAtEndOfCompleteFile(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-			require.NoError(t, os.WriteFile(testFile, []byte("done\n"), 0o644))
-
-			tail, err := TailFile(t.Context(), testFile, Config{
-				Poll:         true,
-				PollInterval: -1,
-				ReOpen:       true,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
-			})
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
-
-			fileTailer := tail
-			forceReadForTest(fileTailer)
-			assertNoTailLineForTest(t, tail)
-
-			require.NoError(t, appendToFileInTest(testFile, "next\n"))
-
-			forceReadForTest(fileTailer)
-			assert.Equal(t, "next", readTailLineForTest(t, tail))
 			assertNoTailLineForTest(t, tail)
 		})
 	}
