@@ -54,6 +54,14 @@ Look up the crowdSec-skill to deploy, configure and troubleshoot CrowdSec instan
 ## Tests
 
 - New behaviour needs a test.
+- A test must fail when the behaviour it covers breaks. No tautological tests: don't check that a
+  mock returns what you told it to, that a setter sets, or that the code does what it says. More
+  test lines is not better; a large suite that misses the obvious case is worse than a small one.
+- Test the cases the change exists for, not just the happy path. Don't skip the hard one with a
+  comment: a skipped test for the scenario that matters is a missing test.
+- Refactoring or replacing an existing component: first cover its current user-visible behaviour
+  with tests, and make them pass unchanged before and after. List every intended behaviour
+  change in the PR body.
 - `require` over `assert` — a failed `assert` keeps going and buries the real error.
 - Table-driven, with `t.Run` subtests.
 - Unit tests live next to the code. Functional tests are BATS under `test/bats/`; see
