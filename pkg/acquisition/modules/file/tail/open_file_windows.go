@@ -8,13 +8,19 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// openSharedRead opens filename so another process can still append, rename, or delete it.
+// openSharedRead opens filename for reading and still lets another process append, rename, or delete it.
 func openSharedRead(filename string) (*os.File, error) {
 	utf16Path, err := windows.UTF16PtrFromString(filename)
 	if err != nil {
 		return nil, &os.PathError{Op: "open", Path: filename, Err: err}
 	}
 
+	// Same CreateFile shape as github.com/nxadm/tail v1.4.11 winfile.Open for a read-only existing file.
+	// GENERIC_READ is read-only access.
+	// FILE_SHARE_READ lets other readers open the file. FILE_SHARE_WRITE lets the logger append.
+	// FILE_SHARE_DELETE lets a rotator rename or remove the file while this handle stays open.
+	// os.Open shares read and write only, so a keep-open tail that used it would block that rotation.
+	// nil security attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, and a zero template match that nxadm open.
 	handle, err := windows.CreateFile(
 		utf16Path,
 		windows.GENERIC_READ,

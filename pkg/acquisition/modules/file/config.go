@@ -29,7 +29,7 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
-	CrowdTailStatReadInterval         time.Duration `yaml:"crowdtailstat_read_interval"` // how often crowdtailstat stats and reads (default 2s, 0=2s, negative=manual)
+	CrowdTailStatModeReadInterval     time.Duration `yaml:"crowdtailstat_read_interval"` // how often crowdtailstat stats and reads (default 2s, 0=2s, negative=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -77,8 +77,8 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	switch s.config.Mode {
 	case configuration.TAIL_MODE, configuration.CAT_MODE, modeCrowdTail:
 	case modeCrowdTailStat:
-		if s.config.CrowdTailStatReadInterval == 0 {
-			s.config.CrowdTailStatReadInterval = 2 * time.Second
+		if s.config.CrowdTailStatModeReadInterval == 0 {
+			s.config.CrowdTailStatModeReadInterval = 2 * time.Second
 		}
 	default:
 		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, crowdtail, crowdtailstat)", s.config.Mode)

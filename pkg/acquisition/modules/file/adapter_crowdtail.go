@@ -20,7 +20,7 @@ import (
 func (s *Source) startCrowdTail(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int, keepFileOpen bool) error {
 	pollInterval := time.Duration(0)
 	if !keepFileOpen {
-		pollInterval = s.config.CrowdTailStatReadInterval
+		pollInterval = s.config.CrowdTailStatModeReadInterval
 	}
 
 	crowdTail, err := tail.TailFile(ctx, file, tail.Config{
