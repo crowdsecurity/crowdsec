@@ -23,7 +23,7 @@ import (
 )
 
 // forceReadForTest reads once. The tailer must be in manual mode so the poll loop is not also reading.
-func forceReadForTest(fileTailer *tailer) {
+func forceReadForTest(fileTailer *Tailer) {
 	fileTailer.readLinesSinceLastOffset()
 }
 
@@ -116,12 +116,12 @@ func (tailTest *TailTest) writeFile(name string, contents string, flag int) {
 }
 
 // StartTail follows name in the temp directory with the test context and fails the test if the file cannot be opened.
-func (tailTest *TailTest) StartTail(name string, config Config) Tailer {
+func (tailTest *TailTest) StartTail(name string, config Config) *Tailer {
 	return tailTest.StartTailWithContext(tailTest.test.Context(), name, config)
 }
 
 // StartTailWithContext follows name in the temp directory until ctx ends and fails the test if the file cannot be opened.
-func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) Tailer {
+func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) *Tailer {
 	filePath := filepath.Join(tailTest.path, name)
 	tail, err := TailFile(ctx, filePath, config)
 	if err != nil {
@@ -131,7 +131,7 @@ func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string,
 }
 
 // VerifyTailOutput checks lines in order, then closes the helper's done channel. It uses Errorf because callers run it in a goroutine.
-func (tailTest *TailTest) VerifyTailOutput(tail Tailer, lines []string, expectEOF bool) {
+func (tailTest *TailTest) VerifyTailOutput(tail *Tailer, lines []string, expectEOF bool) {
 	defer close(tailTest.done)
 	tailTest.ReadLines(tail, lines)
 	if !expectEOF {
@@ -145,7 +145,7 @@ func (tailTest *TailTest) VerifyTailOutput(tail Tailer, lines []string, expectEO
 }
 
 // ReadLines fails the test with Errorf when a line is missing, unexpected, or late. Callers may run it in a goroutine.
-func (tailTest *TailTest) ReadLines(tail Tailer, lines []string) {
+func (tailTest *TailTest) ReadLines(tail *Tailer, lines []string) {
 	for _, expectedLine := range lines {
 		select {
 		case tailedLine, ok := <-tail.Lines():
@@ -169,7 +169,7 @@ func (tailTest *TailTest) ReadLines(tail Tailer, lines []string) {
 }
 
 // reportTailEnded records whether the channel closed because of a tail error or because lines ran out.
-func (tailTest *TailTest) reportTailEnded(tail Tailer) {
+func (tailTest *TailTest) reportTailEnded(tail *Tailer) {
 	if err := tail.Err(); err != nil {
 		tailTest.test.Errorf("tail ended with error: %v", err)
 		return
@@ -178,7 +178,7 @@ func (tailTest *TailTest) reportTailEnded(tail Tailer) {
 }
 
 // CollectLines returns non-empty line texts until Lines closes or timeout elapses.
-func (*TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
+func (*TailTest) CollectLines(tail *Tailer, timeout time.Duration) []string {
 	var lines []string
 	timer := time.After(timeout)
 	for {
@@ -198,7 +198,7 @@ func (*TailTest) CollectLines(tail Tailer, timeout time.Duration) []string {
 }
 
 // waitForLineCheckThenStop waits until VerifyTailOutput closes done, then stops the tailer when stop is set.
-func (tailTest *TailTest) waitForLineCheckThenStop(tail Tailer, stop bool) {
+func (tailTest *TailTest) waitForLineCheckThenStop(tail *Tailer, stop bool) {
 	select {
 	case <-tailTest.done:
 	case <-time.After(5 * time.Second):

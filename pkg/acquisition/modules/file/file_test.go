@@ -641,9 +641,9 @@ func TestStreamDropsDeadStatTail(t *testing.T) {
 
 	f := &fileacquisition.Source{}
 	err := f.Configure(ctx, []byte(fmt.Sprintf(`
-mode: tail2stat
+mode: crowdtailstat
 filename: %s
-tail2stat_read_interval: 50ms
+crowdtailstat_read_interval: 50ms
 `, testFile)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelFull)
 	require.NoError(t, err)
 

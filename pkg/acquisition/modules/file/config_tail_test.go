@@ -33,17 +33,17 @@ filenames:
 	require.ErrorContains(t, err, "unsupported mode")
 }
 
-func TestUnmarshalConfigTail2StatReadIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
+func TestUnmarshalConfigCrowdTailStatReadIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
 	t.Parallel()
 
 	s := Source{}
 	err := s.UnmarshalConfig([]byte(`
-mode: tail2stat
+mode: crowdtailstat
 filenames:
  - /tmp/example.log
 `))
 	require.NoError(t, err)
-	require.Equal(t, 2*time.Second, s.config.Tail2StatReadInterval)
+	require.Equal(t, 2*time.Second, s.config.CrowdTailStatReadInterval)
 }
 
 func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
@@ -90,11 +90,11 @@ func TestConfigureModeStored(t *testing.T) {
 		wantReadPeriod time.Duration
 	}{
 		{name: "tail", mode: "tail"},
-		{name: "tail2", mode: "tail2"},
+		{name: "crowdtail", mode: "crowdtail"},
 		{
-			name:           "tail2stat",
-			mode:           "tail2stat",
-			extra:          "\ntail2stat_read_interval: 100ms",
+			name:           "crowdtailstat",
+			mode:           "crowdtailstat",
+			extra:          "\ncrowdtailstat_read_interval: 100ms",
 			wantReadPeriod: 100 * time.Millisecond,
 		},
 	}
@@ -120,7 +120,7 @@ filenames:
 			require.NoError(t, err)
 			require.Equal(t, tc.mode, s.config.Mode)
 			if tc.wantReadPeriod != 0 {
-				require.Equal(t, tc.wantReadPeriod, s.config.Tail2StatReadInterval)
+				require.Equal(t, tc.wantReadPeriod, s.config.CrowdTailStatReadInterval)
 			}
 		})
 	}

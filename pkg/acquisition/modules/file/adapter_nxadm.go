@@ -1,6 +1,6 @@
 // adapter_nxadm adapts github.com/nxadm/tail onto the acquisition context.
-// TailFile accepts no context, so readLibraryTail calls Stop when ctx is canceled.
-// tail2 and tail2stat use adapter_tail2.go because that tailer already takes ctx.
+// TailFile accepts no context, so readAdxmTail calls Stop when ctx is canceled.
+// crowdtail and crowdtailstat use adapter_crowdtail.go because that tailer already takes ctx.
 
 package fileacquisition
 
@@ -17,9 +17,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// startLibraryTail follows file with github.com/nxadm/tail. mode tail uses this path.
-func (s *Source) startLibraryTail(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int) error {
-	libraryTail, err := nxadmtail.TailFile(file, nxadmtail.Config{
+// startAdxmTail follows file with github.com/nxadm/tail. mode tail uses this path.
+func (s *Source) startAdxmTail(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int) error {
+	adxmTail, err := nxadmtail.TailFile(file, nxadmtail.Config{
 		ReOpen:   true,
 		Follow:   true,
 		Poll:     pollFile,
@@ -36,15 +36,15 @@ func (s *Source) startLibraryTail(ctx context.Context, file string, out chan pip
 
 	g.Go(func() error {
 		defer trace.ReportPanic()
-		return s.readLibraryTail(ctx, out, libraryTail)
+		return s.readAdxmTail(ctx, out, adxmTail)
 	})
 
 	return nil
 }
 
-// readLibraryTail forwards lines from the nxadm tailer until ctx is canceled or the tailer dies.
-func (s *Source) readLibraryTail(ctx context.Context, out chan pipeline.Event, libraryTail *nxadmtail.Tail) error {
-	logger := s.logger.WithField("tail", libraryTail.Filename)
+// readAdxmTail forwards lines from the nxadm tailer until ctx is canceled or the tailer dies.
+func (s *Source) readAdxmTail(ctx context.Context, out chan pipeline.Event, adxmTail *nxadmtail.Tail) error {
+	logger := s.logger.WithField("tail", adxmTail.Filename)
 	logger.Debug("-> start tailing")
 
 	for {
@@ -52,16 +52,16 @@ func (s *Source) readLibraryTail(ctx context.Context, out chan pipeline.Event, l
 		case <-ctx.Done():
 			logger.Info("File datasource stopping")
 
-			if err := libraryTail.Stop(); err != nil {
+			if err := adxmTail.Stop(); err != nil {
 				s.logger.Errorf("error in stop : %s", err)
 				return err
 			}
 
 			return nil
-		case <-libraryTail.Dying():
+		case <-adxmTail.Dying():
 			errMsg := "file reader died"
 
-			err := libraryTail.Err()
+			err := adxmTail.Err()
 			if err != nil {
 				errMsg = fmt.Sprintf(errMsg+" : %s", err)
 			}
@@ -69,11 +69,11 @@ func (s *Source) readLibraryTail(ctx context.Context, out chan pipeline.Event, l
 			logger.Warning(errMsg)
 
 			s.tailMapMutex.Lock()
-			delete(s.tails, libraryTail.Filename)
+			delete(s.tails, adxmTail.Filename)
 			s.tailMapMutex.Unlock()
 
 			return nil
-		case line := <-libraryTail.Lines:
+		case line := <-adxmTail.Lines:
 			if line == nil {
 				logger.Warning("tail is empty")
 				continue
@@ -88,7 +88,7 @@ func (s *Source) readLibraryTail(ctx context.Context, out chan pipeline.Event, l
 				continue
 			}
 
-			s.pushTailLine(out, libraryTail.Filename, line.Text, line.Time)
+			s.pushTailLine(out, adxmTail.Filename, line.Text, line.Time)
 		}
 	}
 }

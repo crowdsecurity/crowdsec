@@ -29,21 +29,21 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
-	Tail2StatReadInterval             time.Duration `yaml:"tail2stat_read_interval"` // how often tail2stat stats and reads (default 2s, 0=2s, negative=manual)
+	CrowdTailStatReadInterval         time.Duration `yaml:"crowdtailstat_read_interval"` // how often crowdtailstat stats and reads (default 2s, 0=2s, negative=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 const (
-	// modeTail2 follows a file with the in-house tailer and keeps the handle open.
-	modeTail2 = "tail2"
-	// modeTail2Stat follows a file with the in-house tailer and closes the handle after each read.
-	modeTail2Stat = "tail2stat"
+	// modeCrowdTail follows a file with the in-house tailer and keeps the handle open.
+	modeCrowdTail = "crowdtail"
+	// modeCrowdTailStat follows a file with the in-house tailer and closes the handle after each read.
+	modeCrowdTailStat = "crowdtailstat"
 )
 
 // liveFileMode reports whether mode follows a file instead of reading it once.
 func liveFileMode(mode string) bool {
 	switch mode {
-	case configuration.TAIL_MODE, modeTail2, modeTail2Stat:
+	case configuration.TAIL_MODE, modeCrowdTail, modeCrowdTailStat:
 		return true
 	default:
 		return false
@@ -75,13 +75,13 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	switch s.config.Mode {
-	case configuration.TAIL_MODE, configuration.CAT_MODE, modeTail2:
-	case modeTail2Stat:
-		if s.config.Tail2StatReadInterval == 0 {
-			s.config.Tail2StatReadInterval = 2 * time.Second
+	case configuration.TAIL_MODE, configuration.CAT_MODE, modeCrowdTail:
+	case modeCrowdTailStat:
+		if s.config.CrowdTailStatReadInterval == 0 {
+			s.config.CrowdTailStatReadInterval = 2 * time.Second
 		}
 	default:
-		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, tail2, tail2stat)", s.config.Mode)
+		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, crowdtail, crowdtailstat)", s.config.Mode)
 	}
 
 	for _, exclude := range s.config.ExcludeRegexps {

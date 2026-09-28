@@ -273,12 +273,12 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 	logger.Infof("Starting tail (offset: %d, whence: %d)", 0, whence)
 
 	switch s.config.Mode {
-	case modeTail2:
-		return s.startInHouseTail(ctx, file, out, g, pollFile, whence, true)
-	case modeTail2Stat:
-		return s.startInHouseTail(ctx, file, out, g, pollFile, whence, false)
+	case modeCrowdTail:
+		return s.startCrowdTail(ctx, file, out, g, pollFile, whence, true)
+	case modeCrowdTailStat:
+		return s.startCrowdTail(ctx, file, out, g, pollFile, whence, false)
 	default:
-		return s.startLibraryTail(ctx, file, out, g, pollFile, whence)
+		return s.startAdxmTail(ctx, file, out, g, pollFile, whence)
 	}
 }
 

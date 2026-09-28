@@ -17,9 +17,38 @@ const (
 	defaultPollInterval = 1 * time.Second
 )
 
-// tailer follows one file and sends each newline-terminated line.
+// Line is one newline-terminated read, or the error that ended the read.
+type Line struct {
+	Text string
+	Time time.Time
+	Err  error
+}
+
+// SeekInfo is the file position where following starts.
+type SeekInfo struct {
+	Offset int64
+	Whence int // io.SeekStart, io.SeekEnd, etc.
+}
+
+// Config selects where to start, how changes are noticed, and whether the handle stays open.
+type Config struct {
+	// File behavior
+	ReOpen   bool      // Reopen file if it's rotated/truncated (always recommended for log files)
+	Location *SeekInfo // Where to start reading from
+
+	// Change detection
+	Poll         bool          // Use polling instead of inotify for change detection
+	PollInterval time.Duration // Polling interval (default 1s, 0 = 1s, -1 = manual/test mode)
+
+	// File handle mode
+	// When true: keeps file handle open between reads (better performance, uses inotify/polling for changes)
+	// When false: opens file, reads new content, closes immediately (works better on network shares like Azure SMB)
+	KeepFileOpen bool
+}
+
+// Tailer follows one file and sends each newline-terminated line.
 // KeepFileOpen keeps the handle open and watches for writes. Otherwise each pass opens, reads, and closes.
-type tailer struct {
+type Tailer struct {
 	filename string
 	config   Config
 	lines    chan *Line
@@ -47,7 +76,7 @@ type tailer struct {
 }
 
 // TailFile starts following filename. A missing file is an error. SeekEnd starts after the last newline.
-func TailFile(ctx context.Context, filename string, config Config) (*tailer, error) {
+func TailFile(ctx context.Context, filename string, config Config) (*Tailer, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat file %s: %w", filename, err)
@@ -59,7 +88,7 @@ func TailFile(ctx context.Context, filename string, config Config) (*tailer, err
 	}
 
 	tailerCtx, cancel := context.WithCancel(ctx)
-	fileTailer := &tailer{
+	fileTailer := &Tailer{
 		filename:   filename,
 		config:     config,
 		lines:      make(chan *Line, 100),
@@ -96,7 +125,7 @@ func startingOffset(filename string, size int64, location *SeekInfo) (int64, err
 }
 
 // openFileAtOffsetAndWatch opens the file at lastOffset and, unless polling, watches it for writes.
-func (fileTailer *tailer) openFileAtOffsetAndWatch() error {
+func (fileTailer *Tailer) openFileAtOffsetAndWatch() error {
 	// Open and seek first so a bad path does not leave a watcher behind.
 	file, err := openFileForRead(fileTailer.filename)
 	if err != nil {
@@ -132,29 +161,29 @@ func (fileTailer *tailer) openFileAtOffsetAndWatch() error {
 }
 
 // Filename is the path this tailer was started on.
-func (fileTailer *tailer) Filename() string {
+func (fileTailer *Tailer) Filename() string {
 	return fileTailer.filename
 }
 
 // Lines delivers each newline-terminated line. Stop closes the channel.
-func (fileTailer *tailer) Lines() <-chan *Line {
+func (fileTailer *Tailer) Lines() <-chan *Line {
 	return fileTailer.lines
 }
 
 // Dying closes when the follow has ended.
-func (fileTailer *tailer) Dying() <-chan struct{} {
+func (fileTailer *Tailer) Dying() <-chan struct{} {
 	return fileTailer.dying
 }
 
 // Err is the first failure that stopped this tailer, or nil.
-func (fileTailer *tailer) Err() error {
+func (fileTailer *Tailer) Err() error {
 	fileTailer.mu.Lock()
 	defer fileTailer.mu.Unlock()
 	return fileTailer.err
 }
 
 // Stop cancels the follow loop, then closes Lines and Dying.
-func (fileTailer *tailer) Stop() error {
+func (fileTailer *Tailer) Stop() error {
 	fileTailer.mu.Lock()
 	if fileTailer.stopped {
 		fileTailer.mu.Unlock()
@@ -171,7 +200,7 @@ func (fileTailer *tailer) Stop() error {
 }
 
 // closeDyingAndReleaseHandle closes Dying and Lines once so the reader can drop the tail, then drops the open handle.
-func (fileTailer *tailer) closeDyingAndReleaseHandle() {
+func (fileTailer *Tailer) closeDyingAndReleaseHandle() {
 	fileTailer.followEnded.Do(func() {
 		close(fileTailer.dying)
 		close(fileTailer.lines)
@@ -182,7 +211,7 @@ func (fileTailer *tailer) closeDyingAndReleaseHandle() {
 }
 
 // closeWatcherAndFile releases the watcher and the kept-open file.
-func (fileTailer *tailer) closeWatcherAndFile() {
+func (fileTailer *Tailer) closeWatcherAndFile() {
 	if fileTailer.watcher != nil {
 		fileTailer.watcher.Close()
 		fileTailer.watcher = nil
@@ -194,7 +223,7 @@ func (fileTailer *tailer) closeWatcherAndFile() {
 }
 
 // recordFirstErrorAndStop keeps the first error and cancels the follow loop.
-func (fileTailer *tailer) recordFirstErrorAndStop(err error) {
+func (fileTailer *Tailer) recordFirstErrorAndStop(err error) {
 	fileTailer.mu.Lock()
 	if fileTailer.err == nil {
 		fileTailer.err = err
@@ -204,7 +233,7 @@ func (fileTailer *tailer) recordFirstErrorAndStop(err error) {
 }
 
 // pollOrWatchUntilStopped reads on each poll tick and, when a watcher is set, on write and remove events.
-func (fileTailer *tailer) pollOrWatchUntilStopped() {
+func (fileTailer *Tailer) pollOrWatchUntilStopped() {
 	defer fileTailer.wg.Done()
 	defer fileTailer.closeDyingAndReleaseHandle()
 
@@ -264,7 +293,7 @@ func pollIntervalOrDefault(pollInterval time.Duration) time.Duration {
 
 // readAfterWatchEvent reads after a write, create, or chmod. A remove (or chmod after unlink) reopens when ReOpen is set, and stops the follow otherwise.
 // stopFollow is true when the file was removed and must not be reopened.
-func (fileTailer *tailer) readAfterWatchEvent(event fsnotify.Event) (stopFollow bool) {
+func (fileTailer *Tailer) readAfterWatchEvent(event fsnotify.Event) (stopFollow bool) {
 	if watchEventMeansContentChanged(event.Op) {
 		if fileTailer.watchedPathGone() {
 			return fileTailer.followRemovedFile()
@@ -284,14 +313,14 @@ func watchEventMeansContentChanged(op fsnotify.Op) bool {
 }
 
 // watchedPathGone is true when Stat of the followed path failed because the path is gone.
-func (fileTailer *tailer) watchedPathGone() bool {
+func (fileTailer *Tailer) watchedPathGone() bool {
 	_, err := statFile(fileTailer.filename)
 	return filePathGone(err)
 }
 
 // followRemovedFile reopens from the start when ReOpen is set, and stops the follow otherwise.
 // stopFollow is true when the file must not be reopened.
-func (fileTailer *tailer) followRemovedFile() (stopFollow bool) {
+func (fileTailer *Tailer) followRemovedFile() (stopFollow bool) {
 	if fileTailer.config.ReOpen {
 		fileTailer.waitUntilFileReturns()
 		return false
@@ -301,7 +330,7 @@ func (fileTailer *tailer) followRemovedFile() (stopFollow bool) {
 }
 
 // readLinesSinceLastOffset reads lines written since lastOffset, using the open handle or a fresh open.
-func (fileTailer *tailer) readLinesSinceLastOffset() {
+func (fileTailer *Tailer) readLinesSinceLastOffset() {
 	fileTailer.mu.Lock()
 	defer fileTailer.mu.Unlock()
 
@@ -317,7 +346,7 @@ func (fileTailer *tailer) readLinesSinceLastOffset() {
 }
 
 // readLinesFromOpenFile reads the kept-open handle. A shrink reopens the file from the start.
-func (fileTailer *tailer) readLinesFromOpenFile() {
+func (fileTailer *Tailer) readLinesFromOpenFile() {
 	fileInfo, err := fileTailer.file.Stat()
 	if err != nil {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("error statting file %s: %w", fileTailer.filename, err))
@@ -337,7 +366,7 @@ func (fileTailer *tailer) readLinesFromOpenFile() {
 
 // readLinesByReopening stats the path, then opens it to read lines past lastOffset.
 // The offset is not moved back to the size from before the read, so a line appended during the read is not sent twice.
-func (fileTailer *tailer) readLinesByReopening() {
+func (fileTailer *Tailer) readLinesByReopening() {
 	fileInfo, err := statFile(fileTailer.filename)
 	if filePathGone(err) {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("file %s no longer exists", fileTailer.filename))
@@ -403,7 +432,7 @@ func fileNeedsAnotherRead(size int64, lastOffset int64, truncated bool) bool {
 
 // emitCompleteLinesFromOpenReader sends complete lines from the kept-open reader.
 // A fragment at EOF is not a line; the handle seeks back to the start of that fragment.
-func (fileTailer *tailer) emitCompleteLinesFromOpenReader() {
+func (fileTailer *Tailer) emitCompleteLinesFromOpenReader() {
 	_, pendingBytes, readErr := fileTailer.sendCompleteLines(fileTailer.reader)
 	if readErr != nil {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("error reading file %s: %w", fileTailer.filename, readErr))
@@ -428,7 +457,7 @@ func (fileTailer *tailer) emitCompleteLinesFromOpenReader() {
 }
 
 // seekBackBeforePendingFragment moves the kept-open handle to the start of a fragment ReadString already consumed.
-func (fileTailer *tailer) seekBackBeforePendingFragment(pendingBytes int64) error {
+func (fileTailer *Tailer) seekBackBeforePendingFragment(pendingBytes int64) error {
 	filePosition, err := fileTailer.file.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
@@ -447,7 +476,7 @@ func (fileTailer *tailer) seekBackBeforePendingFragment(pendingBytes int64) erro
 
 // sendCompleteLines sends chunks that end with a newline.
 // completeBytes counts those chunks. pendingBytes is a trailing fragment at EOF and is not sent.
-func (fileTailer *tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64, error) {
+func (fileTailer *Tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64, error) {
 	var completeBytes int64
 	for {
 		chunk, readErr := reader.ReadString('\n')
@@ -478,7 +507,7 @@ func (fileTailer *tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64,
 }
 
 // enqueueLine sends one complete line. followStopped is true when the follow loop was canceled before the send.
-func (fileTailer *tailer) enqueueLine(lineText string) (followStopped bool) {
+func (fileTailer *Tailer) enqueueLine(lineText string) (followStopped bool) {
 	select {
 	case fileTailer.lines <- &Line{
 		Text: lineText,
@@ -491,7 +520,7 @@ func (fileTailer *tailer) enqueueLine(lineText string) (followStopped bool) {
 }
 
 // reopenAtOffset replaces the kept-open handle and continues at offset.
-func (fileTailer *tailer) reopenAtOffset(offset int64) {
+func (fileTailer *Tailer) reopenAtOffset(offset int64) {
 	if fileTailer.file != nil {
 		fileTailer.file.Close()
 	}
@@ -514,7 +543,7 @@ func (fileTailer *tailer) reopenAtOffset(offset int64) {
 }
 
 // waitUntilFileReturns blocks until filename exists again, then reads it from the start.
-func (fileTailer *tailer) waitUntilFileReturns() {
+func (fileTailer *Tailer) waitUntilFileReturns() {
 	// Close the removed path before waiting, so the recreated file can be opened.
 	fileTailer.mu.Lock()
 	if fileTailer.file != nil {
@@ -550,7 +579,7 @@ func (fileTailer *tailer) waitUntilFileReturns() {
 
 // recordFirstErrorAndStopWhileLocked keeps the first error and cancels the loop.
 // The caller holds mu. The lock is released around cancel so the follow loop can take it.
-func (fileTailer *tailer) recordFirstErrorAndStopWhileLocked(err error) {
+func (fileTailer *Tailer) recordFirstErrorAndStopWhileLocked(err error) {
 	if fileTailer.err == nil {
 		fileTailer.err = err
 	}

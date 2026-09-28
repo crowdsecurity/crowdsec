@@ -662,7 +662,7 @@ func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
 	}
 }
 
-func readTailLineForTest(t *testing.T, tail Tailer) string {
+func readTailLineForTest(t *testing.T, tail *Tailer) string {
 	t.Helper()
 
 	select {
@@ -676,7 +676,7 @@ func readTailLineForTest(t *testing.T, tail Tailer) string {
 	}
 }
 
-func assertNoTailLineForTest(t *testing.T, tail Tailer) {
+func assertNoTailLineForTest(t *testing.T, tail *Tailer) {
 	t.Helper()
 
 	select {
@@ -988,7 +988,7 @@ func TestTailer_FailedReopenClosesDying(t *testing.T) {
 	}
 }
 
-func startKeepOpenTailForTest(t *testing.T, testFile string, reopen bool, poll bool, pollInterval time.Duration) *tailer {
+func startKeepOpenTailForTest(t *testing.T, testFile string, reopen bool, poll bool, pollInterval time.Duration) *Tailer {
 	t.Helper()
 
 	followed, err := TailFile(t.Context(), testFile, Config{
@@ -1351,7 +1351,7 @@ func TestTailer_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	fileTailer := &tailer{
+	fileTailer := &Tailer{
 		filename: testFile,
 		lines:    make(chan *Line),
 		dying:    make(chan struct{}),
@@ -1386,7 +1386,7 @@ func (reader *failAfterBytesReaderForTest) Read(p []byte) (int, error) {
 
 // sendCompleteLines returns a read error when a fragment is not at EOF.
 func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
-	fileTailer := &tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
+	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
 	_, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("partial"),
 		err:  os.ErrPermission,
@@ -1396,7 +1396,7 @@ func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
 
 // sendCompleteLines returns a read error after a complete line when the next read fails.
 func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
-	fileTailer := &tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
+	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
 	completeBytes, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("line\n"),
 		err:  os.ErrPermission,
