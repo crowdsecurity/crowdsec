@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -244,6 +247,90 @@ func TestFlushOrphans_DeletesOrphanMetas(t *testing.T) {
 			total, orphans = countMetas(t, ctx, c)
 			require.Equal(t, 1, total)
 			require.Zero(t, orphans)
+		})
+	}
+}
+
+func resetClientSeries() {
+	metrics.LapiMachineHits.Reset()
+	metrics.GlobalMachinesLastHeartbeatTimestamp.Reset()
+	metrics.LapiBouncerHits.Reset()
+	metrics.LapiNilDecisions.Reset()
+	metrics.LapiNonNilDecisions.Reset()
+}
+
+func TestFlushAgentsAndBouncers_PrunesClientSeries(t *testing.T) {
+	vecs := map[string]prometheus.Collector{
+		"machine requests": metrics.LapiMachineHits,
+		"heartbeat":        metrics.GlobalMachinesLastHeartbeatTimestamp,
+		"bouncer requests": metrics.LapiBouncerHits,
+		"decisions ko":     metrics.LapiNilDecisions,
+		"decisions ok":     metrics.LapiNonNilDecisions,
+	}
+
+	tests := []struct {
+		name         string
+		failLookup   bool
+		wantSeries   map[string]int
+		wantMachines []string
+		wantBouncers []string
+	}{
+		{
+			name:         "series of deleted clients are dropped",
+			wantSeries:   map[string]int{"machine requests": 2, "heartbeat": 1, "bouncer requests": 1, "decisions ko": 1, "decisions ok": 1},
+			wantMachines: []string{"Kept-Machine", "kept-machine"},
+			wantBouncers: []string{"kept-bouncer"},
+		},
+		{
+			name:         "a failed lookup keeps every series",
+			failLookup:   true,
+			wantSeries:   map[string]int{"machine requests": 3, "heartbeat": 2, "bouncer requests": 2, "decisions ko": 2, "decisions ok": 2},
+			wantMachines: []string{"Kept-Machine", "deleted-heartbeat", "deleted-machine", "kept-machine"},
+			wantBouncers: []string{"deleted-bouncer", "deleted-ko", "deleted-ok", "kept-bouncer"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			c := getDBClient(t, ctx)
+
+			registerFlushTestMachine(t, ctx, c, "kept-machine")
+
+			_, err := c.CreateBouncer(ctx, "kept-bouncer", "127.0.0.1", "apikey", types.ApiKeyAuthType, false)
+			require.NoError(t, err)
+
+			resetClientSeries()
+			t.Cleanup(resetClientSeries)
+
+			// each deleted client has a series in one vec only, so a vec the cleanup misses shows up
+			metrics.LapiMachineHits.WithLabelValues("kept-machine", "/v1/heartbeat", "GET").Inc()
+			metrics.LapiMachineHits.WithLabelValues("Kept-Machine", "/v1/heartbeat", "GET").Inc()
+			metrics.LapiMachineHits.WithLabelValues("deleted-machine", "/v1/heartbeat", "GET").Inc()
+			metrics.GlobalMachinesLastHeartbeatTimestamp.WithLabelValues("kept-machine").SetToCurrentTime()
+			metrics.GlobalMachinesLastHeartbeatTimestamp.WithLabelValues("deleted-heartbeat").SetToCurrentTime()
+			metrics.LapiBouncerHits.WithLabelValues("kept-bouncer", "/v1/decisions", "GET").Inc()
+			metrics.LapiBouncerHits.WithLabelValues("deleted-bouncer", "/v1/decisions", "GET").Inc()
+			metrics.LapiNilDecisions.WithLabelValues("kept-bouncer").Inc()
+			metrics.LapiNilDecisions.WithLabelValues("deleted-ko").Inc()
+			metrics.LapiNonNilDecisions.WithLabelValues("kept-bouncer").Inc()
+			metrics.LapiNonNilDecisions.WithLabelValues("deleted-ok").Inc()
+
+			flushCtx := ctx
+			if tc.failLookup {
+				canceled, cancel := context.WithCancel(ctx)
+				cancel()
+				flushCtx = canceled
+			}
+
+			require.NoError(t, c.FlushAgentsAndBouncers(flushCtx, nil, nil))
+
+			for name, vec := range vecs {
+				require.Equal(t, tc.wantSeries[name], testutil.CollectAndCount(vec), name)
+			}
+
+			require.Equal(t, tc.wantMachines, metrics.MachineIDsWithSeries())
+			require.Equal(t, tc.wantBouncers, metrics.BouncerNamesWithSeries())
 		})
 	}
 }
