@@ -22,6 +22,8 @@ import (
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 // writePair writes a self-signed certificate with the given serial and its
@@ -146,6 +148,40 @@ func TestCertReloaderMissingFilesAtStart(t *testing.T) {
 // TestCertReloaderServesRenewedCertificate runs a real TLS listener the way
 // the LAPI does (ServeTLS with empty file names and GetCertificate set) and
 // checks the handshake before and after the files are replaced.
+// A key that does not belong to the certificate fails at startup, as
+// ServeTLS did before: there is no previous certificate to fall back on.
+func TestCertReloaderMismatchedPairAtStart(t *testing.T) {
+	dir := t.TempDir()
+	writePair(t, dir, 1)
+	keyPEM, err := os.ReadFile(filepath.Join(dir, "tls.key"))
+	require.NoError(t, err)
+	writePair(t, dir, 2)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "tls.key"), keyPEM, 0o600))
+
+	_, err = newCertReloader(filepath.Join(dir, "tls.crt"), filepath.Join(dir, "tls.key"))
+	require.ErrorContains(t, err, "while loading TLS key pair")
+}
+
+// The LAPI itself refuses to start when its certificate cannot be loaded,
+// instead of listening without one.
+func TestListenAndServeLAPIFailsWithoutLoadableCertificate(t *testing.T) {
+	dir := t.TempDir()
+	s := &APIServer{
+		cfg: &csconfig.LocalApiServerCfg{
+			ListenURI: "127.0.0.1:0",
+			TLS: &csconfig.TLSCfg{
+				CertFilePath: filepath.Join(dir, "tls.crt"),
+				KeyFilePath:  filepath.Join(dir, "tls.key"),
+			},
+		},
+		httpServer: &http.Server{TLSConfig: &tls.Config{}, ReadHeaderTimeout: time.Second},
+	}
+
+	apiReady := make(chan bool, 1)
+	err := s.listenAndServeLAPI(t.Context(), apiReady)
+	require.ErrorContains(t, err, "while reading TLS cert file")
+}
+
 func TestCertReloaderServesRenewedCertificate(t *testing.T) {
 	dir := t.TempDir()
 	writePair(t, dir, 1)
