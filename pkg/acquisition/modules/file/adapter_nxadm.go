@@ -1,3 +1,7 @@
+// adapter_nxadm adapts github.com/nxadm/tail onto the acquisition context.
+// TailFile accepts no context, so readLibraryTail calls Stop when ctx is canceled.
+// tail2 and tail2stat use adapter_tail2.go because that tailer already takes ctx.
+
 package fileacquisition
 
 import (
