@@ -20,7 +20,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -289,15 +288,29 @@ func TestCertReloaderConcurrentHandshakes(t *testing.T) {
 
 	var wg sync.WaitGroup
 
+	// Collected and checked on the test goroutine: require must not be
+	// called from another one.
+	type result struct {
+		cert *tls.Certificate
+		err  error
+	}
+
+	results := make(chan result, 50)
+
 	for range 50 {
 		wg.Go(func() {
 			cert, err := r.GetCertificate(nil)
-			assert.NoError(t, err)
-			assert.NotNil(t, cert)
+			results <- result{cert, err}
 		})
 	}
 
 	wg.Wait()
+	close(results)
+
+	for res := range results {
+		require.NoError(t, res.err)
+		require.NotNil(t, res.cert)
+	}
 
 	require.Equal(t, int64(2), servedSerial(t, r))
 }
