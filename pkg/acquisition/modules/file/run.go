@@ -272,14 +272,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", 0, whence)
 
-	switch s.config.Mode {
-	case modeCrowdTail:
-		return s.startCrowdTail(ctx, file, out, g, pollFile, whence, true)
-	case modeCrowdTailStat:
-		return s.startCrowdTail(ctx, file, out, g, pollFile, whence, false)
-	default:
-		return s.startAdxmTail(ctx, file, out, g, pollFile, whence)
-	}
+	return s.startTailedFile(ctx, file, out, g, pollFile, whence)
 }
 
 // pushTailLine records one tailed line and sends it on the shared acquisition channel.
