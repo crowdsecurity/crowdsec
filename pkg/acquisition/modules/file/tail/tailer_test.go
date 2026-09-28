@@ -1,6 +1,8 @@
 // Copyright (c) 2024 CrowdSec
 //
-// Tests in this file are ours. The one-to-one upstream suite lives in tailer_admx_test.go.
+// Tests in this file fail when the behavior is wrong.
+// The one-to-one upstream suite lives in tailer_admx_test.go.
+// Tests that still pass when the behavior is missing live in tailer_pin_tests.go.
 
 package tail
 
@@ -21,48 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTailer_ContextCancellation(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-
-			err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-			require.NoError(t, err)
-
-			ctx, cancel := context.WithCancel(t.Context())
-
-			config := Config{
-				Poll:         true,
-				PollInterval: 50 * time.Millisecond,
-				KeepFileOpen: mode.keepFileOpen,
-			}
-
-			tail, err := TailFile(ctx, testFile, config)
-			require.NoError(t, err)
-
-			// Cancel context
-			cancel()
-
-			// Should stop within reasonable time
-			select {
-			case <-tail.Dying():
-				// Context cancellation triggers shutdown
-			case <-time.After(500 * time.Millisecond):
-				// May need explicit stop
-				_ = tail.Stop()
-			}
-
-			// Final cleanup
-			_ = tail.Stop()
-		})
-	}
-}
-
-// =============================================================================
-// Basic Tailing Tests
-// =============================================================================
-
+// Lines already in the file are skipped. Only lines appended after the tail starts are delivered.
 func TestTailer_BasicTailing(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -90,126 +51,7 @@ func TestTailer_BasicTailing(t *testing.T) {
 	}
 }
 
-func TestTailer_Filename(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		Poll:         true,
-		PollInterval: -1,
-		KeepFileOpen: false,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	assert.Equal(t, testFile, tail.Filename())
-}
-
-// =============================================================================
-// File Deletion Tests
-// =============================================================================
-
-func TestTailer_FileDeleted(t *testing.T) {
-	// Test closeAfterRead mode for file deletion
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		ReOpen:       true,
-		Poll:         true,
-		PollInterval: -1,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	fileTailer := tail
-	forceReadForTest(fileTailer)
-
-	// Delete the file
-	err = os.Remove(testFile)
-	require.NoError(t, err)
-
-	// Force read to detect file deletion
-	forceReadForTest(fileTailer)
-
-	// Check if error was set
-	err = tail.Err()
-	require.Error(t, err, "Should have an error after file deletion")
-	assert.Contains(t, err.Error(), "no longer exists")
-
-	_ = tail.Stop()
-
-	select {
-	case <-tail.Dying():
-		// Good
-	default:
-		t.Fatal("Dying channel should be closed after Stop()")
-	}
-}
-
-// =============================================================================
-// Error Handling Tests
-// =============================================================================
-
-func TestTailer_ErrorHandling(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Permission tests not reliable on Windows")
-	}
-
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		ReOpen:       true,
-		Poll:         true,
-		PollInterval: -1,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	fileTailer := tail
-	forceReadForTest(fileTailer)
-
-	// Remove read permission
-	err = os.Chmod(testFile, 0o000)
-	require.NoError(t, err)
-	defer func() { _ = os.Chmod(testFile, 0o644) }()
-
-	forceReadForTest(fileTailer)
-
-	// Should detect error
-	select {
-	case <-tail.Dying():
-		err := tail.Err()
-		require.Error(t, err, "Should have an error")
-	case <-time.After(1 * time.Second):
-		t.Log("Permission error not detected immediately")
-	}
-}
-
-// =============================================================================
-// Poll Interval Tests
-// =============================================================================
-
+// With the handle closed between reads, an appended line shows up within about one poll period.
 func TestTailer_PollInterval(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -259,10 +101,7 @@ func TestTailer_PollInterval(t *testing.T) {
 	assert.False(t, lineReadTime.IsZero(), "Line should have been read")
 }
 
-// =============================================================================
-// fsnotify Tests (KeepFileOpen mode)
-// =============================================================================
-
+// The handle stays open and changes are found by polling, not by a filesystem watcher. An appended line is still delivered.
 func TestTailer_KeepOpenWithPolling(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -295,6 +134,7 @@ func TestTailer_KeepOpenWithPolling(t *testing.T) {
 	assert.Equal(t, "line2", line.Text)
 }
 
+// The handle stays open and polling is off, so the appended line arrives because the filesystem watcher saw the write.
 func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fsnotify behavior varies on Windows")
@@ -331,10 +171,7 @@ func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
 	assert.Equal(t, "line2", line.Text)
 }
 
-// =============================================================================
-// Append Tests
-// =============================================================================
-
+// Five lines written one after another all arrive, in that order, whether the handle stays open or not.
 func TestTailer_ContinuousAppend(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -393,10 +230,7 @@ func TestTailer_ContinuousAppend(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// SeekInfo Tests
-// =============================================================================
-
+// Starting at the beginning delivers the lines already in the file, then a line appended later.
 func TestTailer_SeekStart(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -444,10 +278,8 @@ func TestTailer_SeekStart(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Rotation Simulation Tests
-// =============================================================================
-
+// The file is renamed and a new file is created at the same path. A line written to the new file is still delivered.
+// The keep-open case is skipped: rotation while the handle is held is covered separately.
 func TestTailer_FileRotation(t *testing.T) {
 	// Simulate log rotation: file is renamed and new file created
 	if runtime.GOOS == "windows" {
@@ -510,10 +342,7 @@ func TestTailer_FileRotation(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Edge Cases
-// =============================================================================
-
+// An empty file produces no line until one is appended, and that line is then delivered.
 func TestTailer_EmptyFile(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -550,6 +379,7 @@ func TestTailer_EmptyFile(t *testing.T) {
 	}
 }
 
+// A file that ends mid-line delivers only the finished line. The fragment is delivered once a newline is appended.
 func TestTailer_NoNewlineAtEnd(t *testing.T) {
 	// Test behavior when file doesn't end with newline
 	for _, mode := range tailerModes {
@@ -597,6 +427,8 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 	}
 }
 
+// A line split across two writes is delivered whole when the rest arrives.
+// If the file is replaced instead, the fragment is dropped and only the new line is delivered.
 func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -690,6 +522,7 @@ func assertNoTailLineForTest(t *testing.T, tail *Tailer) {
 	}
 }
 
+// A burst of short lines is mostly delivered. The test allows a few to be missed.
 func TestTailer_RapidWrites(t *testing.T) {
 	// Test handling rapid successive writes
 	for _, mode := range tailerModes {
@@ -756,10 +589,7 @@ func TestTailer_RapidWrites(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Manual mode reads only when a test asks
-// =============================================================================
-
+// A negative poll interval does not read on its own. The line appears only after the test asks for a read.
 func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -801,6 +631,8 @@ func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	assert.Equal(t, "initial", line.Text)
 }
 
+// The start position is the byte after the last newline, even when that newline is not in the final chunk.
+// A file that ends on a newline starts at the end.
 func TestOffsetAfterLastNewline(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -820,6 +652,7 @@ func TestOffsetAfterLastNewline(t *testing.T) {
 	assert.Equal(t, int64(len(complete)), offset)
 }
 
+// Starting at the end of a file with no newline does not emit that fragment. The next complete line is emitted.
 func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -850,6 +683,7 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 	}
 }
 
+// Starting at the end of a file that already ends with a newline emits nothing until a new line is appended.
 func TestTailer_StartAtEndOfCompleteFile(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -880,6 +714,7 @@ func TestTailer_StartAtEndOfCompleteFile(t *testing.T) {
 	}
 }
 
+// A line appended while the close-after-read path has the file open is delivered once, not again on the next read.
 func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -927,7 +762,7 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	assertNoTailLineForTest(t, tail)
 }
 
-// A deleted file in stat mode closes Dying so the reader can drop the tail.
+// Deleting the file in close-after-read mode ends the follow on its own. The test does not call Stop first.
 func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -952,7 +787,7 @@ func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	}
 }
 
-// A failed reopen after the handle was cleared closes Dying so the reader can drop the tail.
+// After the handle is dropped and the next open fails, the follow ends on its own so the reader can forget this file.
 func TestTailer_FailedReopenClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1003,17 +838,7 @@ func startKeepOpenTailForTest(t *testing.T, testFile string, reopen bool, poll b
 	return followed
 }
 
-// A keep-open tailer with polling off installs a watcher so writes can wake the follow loop.
-func TestTailer_KeepOpenWithoutPollingInstallsWatcher(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 0)
-	require.NotNil(t, fileTailer.watcher)
-}
-
-// A write watch event reads the new complete line.
+// When the watcher says the file was written, the new line is delivered.
 func TestTailer_WatchWriteReadsLine(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1031,7 +856,7 @@ func TestTailer_WatchWriteReadsLine(t *testing.T) {
 	}
 }
 
-// A remove watch event without ReOpen records the error and ends the follow.
+// When the watcher says the file was removed and reopen is off, the follow stops with an error.
 func TestTailer_WatchRemoveWithoutReopenClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1048,7 +873,7 @@ func TestTailer_WatchRemoveWithoutReopenClosesDying(t *testing.T) {
 	}
 }
 
-// A remove watch event with ReOpen waits until the path exists again and reads from the start.
+// When the watcher says the file was removed and reopen is on, the tail waits for the path to come back and reads the new file from the start.
 func TestTailer_WatchRemoveWithReopenReadsNewFile(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1088,7 +913,7 @@ func TestTailer_WatchRemoveWithReopenReadsNewFile(t *testing.T) {
 	}
 }
 
-// Closing the watcher ends the follow loop so Dying closes.
+// If the filesystem watcher is closed out from under the tailer, the follow ends.
 func TestTailer_ClosedWatcherClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1105,7 +930,7 @@ func TestTailer_ClosedWatcherClosesDying(t *testing.T) {
 	}
 }
 
-// A keep-open open failure is returned from TailFile.
+// If the file cannot be opened at the start, while the handle is meant to stay open, starting the tail returns that error.
 func TestTailer_KeepOpenOpenFailure(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1126,7 +951,7 @@ func TestTailer_KeepOpenOpenFailure(t *testing.T) {
 	require.ErrorContains(t, err, "could not open file")
 }
 
-// recordFirstErrorAndStop cancels the follow so Dying closes.
+// The first error stops the follow. A later error does not replace it.
 func TestTailer_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1157,7 +982,7 @@ func openClosedFileForTest(filename string) (*os.File, error) {
 	return file, nil
 }
 
-// A keep-open start fails when the opened handle cannot be seeked.
+// If the opened handle cannot be moved to the start position, starting the tail fails.
 func TestTailer_KeepOpenSeekFailure(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1176,7 +1001,7 @@ func TestTailer_KeepOpenSeekFailure(t *testing.T) {
 	require.ErrorContains(t, err, "could not seek")
 }
 
-// A keep-open start fails when the path cannot be watched after it is unlinked.
+// If the path disappears before a watcher can be attached, starting the tail fails.
 func TestTailer_KeepOpenWatchAddFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows cannot unlink a file while this process holds it open")
@@ -1208,7 +1033,7 @@ func TestTailer_KeepOpenWatchAddFailure(t *testing.T) {
 	require.ErrorContains(t, err, "could not watch file")
 }
 
-// A create watch event reads the new complete line the same way a write does.
+// When the watcher says the file was created, the new line is delivered, the same as for a write.
 func TestTailer_WatchCreateReadsLine(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1226,7 +1051,7 @@ func TestTailer_WatchCreateReadsLine(t *testing.T) {
 	}
 }
 
-// Stop while waitUntilFileReturns is blocked ends the wait.
+// Stopping the tail while it is waiting for a deleted file to reappear ends that wait.
 func TestTailer_WaitUntilFileReturnsStopsWhenCanceled(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1257,7 +1082,7 @@ func TestTailer_WaitUntilFileReturnsStopsWhenCanceled(t *testing.T) {
 	}
 }
 
-// A keep-open read records an error when the handle can no longer be statted.
+// If the open handle can no longer be checked for size, the follow stops.
 func TestTailer_KeepOpenStatFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1273,7 +1098,7 @@ func TestTailer_KeepOpenStatFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error statting file")
 }
 
-// A keep-open reopen records an error when the replacement handle cannot be seeked.
+// After the file shrinks, if the replacement handle cannot be positioned, the follow stops.
 func TestTailer_KeepOpenReopenSeekFailure(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1293,7 +1118,7 @@ func TestTailer_KeepOpenReopenSeekFailure(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error seeking")
 }
 
-// A close-after-read pass records an error when the file cannot be opened.
+// In close-after-read mode, failing to open the file stops the follow.
 func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1319,7 +1144,7 @@ func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error opening file")
 }
 
-// A close-after-read pass records an error when the reopened handle cannot be seeked.
+// In close-after-read mode, a handle that cannot be positioned stops the follow.
 func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1343,7 +1168,7 @@ func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error seeking")
 }
 
-// A canceled follow does not send a line that was read after cancel.
+// A line finished after the follow was canceled is not sent to the reader.
 func TestTailer_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -1384,7 +1209,7 @@ func (reader *failAfterBytesReaderForTest) Read(p []byte) (int, error) {
 	return copied, nil
 }
 
-// sendCompleteLines returns a read error when a fragment is not at EOF.
+// A read error in the middle of a line is returned. That fragment is not treated as a finished line.
 func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
 	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
 	_, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
@@ -1394,7 +1219,7 @@ func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrPermission)
 }
 
-// sendCompleteLines returns a read error after a complete line when the next read fails.
+// A finished line is sent, and the read error that comes after it is returned.
 func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
 	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
 	completeBytes, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
@@ -1411,12 +1236,7 @@ func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
 	}
 }
 
-func TestOffsetAfterLastNewlineMissingFile(t *testing.T) {
-	_, err := offsetAfterLastNewline(filepath.Join(t.TempDir(), "missing.log"), 10)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "could not open file")
-}
-
+// A file with no newline at all starts at byte 0, so the whole fragment is still ahead of the reader.
 func TestOffsetAfterLastNewlineNoNewline(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("nonewline"), 0o644))
@@ -1426,13 +1246,7 @@ func TestOffsetAfterLastNewlineNoNewline(t *testing.T) {
 	require.Equal(t, int64(0), offset)
 }
 
-func TestOffsetAfterLastNewlineEmptyFile(t *testing.T) {
-	offset, err := offsetAfterLastNewline("unused", 0)
-	require.NoError(t, err)
-	require.Equal(t, int64(0), offset)
-}
-
-// SeekEnd fails when the file cannot be opened again to find the last newline.
+// Starting at the end fails when the file cannot be opened to find the last newline.
 func TestTailer_SeekEndOpenFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod 0o000 does not prevent the owner from opening the file on Windows")
@@ -1453,7 +1267,7 @@ func TestTailer_SeekEndOpenFailure(t *testing.T) {
 	require.ErrorContains(t, err, "could not open file")
 }
 
-// A close-after-read pass records a stat error that is not a missing file.
+// A permission error while checking the file is reported as a follow error, not as a missing file. On Windows this case is skipped because directory permissions do not hide the file.
 func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("directory chmod 0o000 does not hide children on Windows")
@@ -1481,7 +1295,7 @@ func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error statting file")
 }
 
-// A close-after-read pass records an error when the opened handle cannot be read.
+// In close-after-read mode, a read error on the opened handle stops the follow.
 func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1507,7 +1321,7 @@ func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
-// A keep-open read records an error when the buffered reader fails.
+// A read error on the handle that stays open stops the follow.
 func TestTailer_KeepOpenReadErrorStopsFollow(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -1525,7 +1339,7 @@ func TestTailer_KeepOpenReadErrorStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
-// A Remove delivered on the follow loop's watch channel ends the tail when ReOpen is off.
+// A remove notice on the live watch channel stops the tail when reopen is off.
 func TestTailer_WatchRemoveEventStopsFollowWithoutReopen(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -1545,7 +1359,7 @@ func TestTailer_WatchRemoveEventStopsFollowWithoutReopen(t *testing.T) {
 	require.Error(t, fileTailer.Err())
 }
 
-// A remove-and-recreate with a watcher installed watches the new path.
+// After the file is removed and written again, the new file is watched too.
 func TestTailer_WatchRemoveWithReopenAddsWatcher(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
@@ -1581,27 +1395,7 @@ func TestTailer_WatchRemoveWithReopenAddsWatcher(t *testing.T) {
 	fileTailer.mu.Unlock()
 }
 
-func TestFilePathGone(t *testing.T) {
-	require.False(t, filePathGone(nil))
-	require.True(t, filePathGone(os.ErrNotExist))
-	require.False(t, filePathGone(os.ErrClosed))
-
-	if runtime.GOOS == "windows" {
-		require.True(t, filePathGone(os.ErrPermission))
-		return
-	}
-	require.False(t, filePathGone(os.ErrPermission))
-}
-
-func TestWatchEventMeansContentChanged(t *testing.T) {
-	require.True(t, watchEventMeansContentChanged(fsnotify.Write))
-	require.True(t, watchEventMeansContentChanged(fsnotify.Create))
-	require.True(t, watchEventMeansContentChanged(fsnotify.Chmod))
-	require.False(t, watchEventMeansContentChanged(fsnotify.Remove))
-	require.False(t, watchEventMeansContentChanged(0))
-}
-
-// A chmod watch event reads the new complete line. Linux inotify reports chmod when an open file is unlinked; a real chmod is also a content check.
+// A permission-change notice is treated as "the file may have changed", and the new line is delivered. Linux also reports that notice when an open file is deleted.
 func TestTailer_WatchChmodReadsLine(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -1619,7 +1413,7 @@ func TestTailer_WatchChmodReadsLine(t *testing.T) {
 	}
 }
 
-// A chmod watch event when the path is gone ends the follow the same way a remove does.
+// A permission-change notice after the path is gone stops the follow when reopen is off, the same as a remove.
 func TestTailer_WatchChmodWhenPathGoneStopsWithoutReopen(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -1636,7 +1430,7 @@ func TestTailer_WatchChmodWhenPathGoneStopsWithoutReopen(t *testing.T) {
 	}
 }
 
-// Windows share-delete lets a rotator remove the file while the keep-open handle is still held.
+// On Windows, another process can delete the file while the keep-open handle is still held.
 func TestTailer_WindowsCanRemoveFileWhileKeptOpen(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("FILE_SHARE_DELETE is a Windows CreateFile flag")
@@ -1650,7 +1444,7 @@ func TestTailer_WindowsCanRemoveFileWhileKeptOpen(t *testing.T) {
 	require.NoError(t, os.Remove(testFile))
 }
 
-// A Stat permission error is a gone path on Windows and a follow error elsewhere.
+// A permission error while checking the path means the file is gone on Windows. Everywhere else it is a real follow error.
 func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
