@@ -28,11 +28,6 @@ import (
 
 const defaultPollInterval = 30 * time.Second
 
-// keepFileOpenForTailMode reports whether this mode keeps the file handle open. Only "default" does.
-func keepFileOpenForTailMode(tailMode string) bool {
-	return tailMode == "default"
-}
-
 func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("In oneshot")
 
@@ -270,33 +265,36 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 		logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
 	}
 
-	// Create the tailer with appropriate configuration
-	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
-	if s.config.Mode == configuration.CAT_MODE {
-		seekInfo.Whence = io.SeekStart
+	// Where following starts. seekEnd wins over cat mode, matching the historical nxadm setup.
+	whence := io.SeekEnd
+	if s.config.Mode == configuration.CAT_MODE && !seekEnd {
+		whence = io.SeekStart
 	}
 
-	if seekEnd {
-		seekInfo.Whence = io.SeekEnd
+	logger.Infof("Starting tail (offset: %d, whence: %d)", 0, whence)
+
+	switch s.config.Mode {
+	case modeTail2:
+		return s.startInHouseTail(ctx, file, out, g, pollFile, whence, true)
+	case modeTail2Stat:
+		return s.startInHouseTail(ctx, file, out, g, pollFile, whence, false)
+	default:
+		return s.startLibraryTail(ctx, file, out, g, pollFile, whence)
 	}
+}
 
-	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
-
-	// Determine file handle mode based on tail_mode config
-	// "stat" mode: close file after each read (works better on network shares like Azure SMB)
-	// "default" mode: keep file handle open (better performance on local files)
-	keepFileOpen := keepFileOpenForTailMode(s.config.TailMode)
-
+// startInHouseTail follows file with the in-house tailer. keepFileOpen selects tail2; closing after each read selects tail2stat.
+func (s *Source) startInHouseTail(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int, keepFileOpen bool) error {
 	pollInterval := time.Duration(0)
-	if s.config.TailMode == "stat" {
-		pollInterval = s.config.StatPollInterval
+	if !keepFileOpen {
+		pollInterval = s.config.Tail2StatReadInterval
 	}
 
-	tail, err := tail.TailFile(ctx, file, tail.Config{
+	inHouseTail, err := tail.TailFile(ctx, file, tail.Config{
 		ReOpen:       true,
 		Poll:         pollFile,
 		PollInterval: pollInterval,
-		Location:     seekInfo,
+		Location:     &tail.SeekInfo{Offset: 0, Whence: whence},
 		KeepFileOpen: keepFileOpen,
 	})
 	if err != nil {
@@ -309,7 +307,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 
 	g.Go(func() error {
 		defer trace.ReportPanic()
-		return s.tailFile(ctx, out, tail)
+		return s.tailFile(ctx, out, inHouseTail)
 	})
 
 	return nil
@@ -362,32 +360,35 @@ func (s *Source) tailFile(ctx context.Context, out chan pipeline.Event, tail tai
 				continue
 			}
 
-			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename(), "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
-			}
-
-			src := tail.Filename()
-			if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
-				src = filepath.Base(tail.Filename())
-			}
-
-			l := pipeline.Line{
-				Raw:     trimLine(line.Text),
-				Labels:  s.config.Labels,
-				Time:    line.Time,
-				Src:     src,
-				Process: true,
-				Module:  s.GetName(),
-			}
-			// we're tailing, it must be real time logs
-			logger.Debugf("pushing %+v", l)
-
-			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
-			evt.Line = l
-
-			out <- evt
+			s.pushTailLine(out, tail.Filename(), line.Text, line.Time)
 		}
 	}
+}
+
+// pushTailLine records one tailed line and sends it on the shared acquisition channel.
+func (s *Source) pushTailLine(out chan pipeline.Event, filename string, text string, lineTime time.Time) {
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
+	}
+
+	src := filename
+	if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
+		src = filepath.Base(filename)
+	}
+
+	line := pipeline.Line{
+		Raw:     trimLine(text),
+		Labels:  s.config.Labels,
+		Time:    lineTime,
+		Src:     src,
+		Process: true,
+		Module:  s.GetName(),
+	}
+	s.logger.WithField("tail", filename).Debugf("pushing %+v", line)
+
+	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
+	evt.Line = line
+	out <- evt
 }
 
 func (s *Source) readFile(ctx context.Context, filename string, out chan pipeline.Event) error {

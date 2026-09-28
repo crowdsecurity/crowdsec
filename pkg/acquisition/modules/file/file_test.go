@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -235,7 +236,7 @@ func TestLiveAcquisition(t *testing.T) {
 			for _, tc := range liveAcquisitionCases(t, tmpDir, permDeniedFile, permDeniedError) {
 				t.Run(tc.name, func(t *testing.T) {
 					cased := tc
-					cased.config = tc.config + mode.config
+					cased.config = strings.Replace(tc.config, "mode: tail", "mode: "+mode.mode, 1) + mode.extra
 					runLiveAcquisitionTestCase(t, cased, tmpDir, permDeniedFile)
 				})
 			}
@@ -540,8 +541,8 @@ filenames:
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
 exclude_regexps: ["\\.ignore$"]
-mode: tail%s
-`, pattern, mode.config)
+mode: %s%s
+`, pattern, mode.mode, mode.extra)
 
 			f := &fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(yamlConfig), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
@@ -597,8 +598,8 @@ filenames:
  - '%s'
 discovery_poll_enable: true
 discovery_poll_interval: "1s"
-mode: tail%s
-`, pattern, mode.config)
+mode: %s%s
+`, pattern, mode.mode, mode.extra)
 
 			f := &fileacquisition.Source{}
 			err = f.Configure(ctx, []byte(yamlConfig), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
@@ -640,10 +641,9 @@ func TestStreamDropsDeadStatTail(t *testing.T) {
 
 	f := &fileacquisition.Source{}
 	err := f.Configure(ctx, []byte(fmt.Sprintf(`
-mode: tail
+mode: tail2stat
 filename: %s
-tail_mode: stat
-stat_poll_interval: 50ms
+tail2stat_read_interval: 50ms
 `, testFile)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelFull)
 	require.NoError(t, err)
 
@@ -679,12 +679,12 @@ func TestStreamPushesLinesWithAggregatedMetrics(t *testing.T) {
 
 			f := &fileacquisition.Source{}
 			err := f.Configure(ctx, []byte(fmt.Sprintf(`
-mode: tail
+mode: %s
 filename: %s
 labels:
   type: syslog
 %s
-`, testFile, mode.config)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelAggregated)
+`, mode.mode, testFile, mode.extra)), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelAggregated)
 			require.NoError(t, err)
 
 			out := make(chan pipeline.Event, 8)

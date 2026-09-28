@@ -17,19 +17,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// Test matrix for both tail implementations
+// tailModes covers each live file mode. tail uses nxadm. tail2 and tail2stat use the in-house tailer.
 var tailModes = []struct {
-	name   string
-	config string // tail mode configuration snippet to append
+	name  string
+	mode  string
+	extra string
 }{
-	{
-		name:   "default",
-		config: "", // Default, no extra config
-	},
-	{
-		name:   "stat",
-		config: "\ntail_mode: stat\nstat_poll_interval: 100ms",
-	},
+	{name: "tail", mode: "tail"},
+	{name: "tail2", mode: "tail2"},
+	{name: "tail2stat", mode: "tail2stat", extra: "\ntail2stat_read_interval: 100ms"},
 }
 
 func TestTailModes_BasicTailing(t *testing.T) {
@@ -44,10 +40,10 @@ func TestTailModes_BasicTailing(t *testing.T) {
 			require.NoError(t, err)
 
 			config := fmt.Sprintf(`
-mode: tail
+mode: %s
 filenames:
  - %s%s
-`, testFile, mode.config)
+`, mode.mode, testFile, mode.extra)
 
 			subLogger := log.WithField("type", "file")
 
@@ -121,10 +117,10 @@ func TestTailModes_Truncation(t *testing.T) {
 			require.NoError(t, err)
 
 			config := fmt.Sprintf(`
-mode: tail
+mode: %s
 filenames:
  - %s%s
-`, testFile, mode.config)
+`, mode.mode, testFile, mode.extra)
 
 			subLogger := log.WithField("type", "file")
 
@@ -189,8 +185,7 @@ filenames:
 }
 
 func TestTailModes_ConfigurationApplied(t *testing.T) {
-	// This test verifies that the tail_mode configuration actually selects
-	// the correct implementation (not just ignored)
+	// This test verifies that each live mode starts a tail.
 	ctx := t.Context()
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.log")
@@ -203,7 +198,7 @@ func TestTailModes_ConfigurationApplied(t *testing.T) {
 		config string
 	}{
 		{
-			name: "default_is_native",
+			name: "tail",
 			config: fmt.Sprintf(`
 mode: tail
 filenames:
@@ -211,22 +206,20 @@ filenames:
 `, testFile),
 		},
 		{
-			name: "explicit_default",
+			name: "tail2",
 			config: fmt.Sprintf(`
-mode: tail
+mode: tail2
 filenames:
  - %s
-tail_mode: default
 `, testFile),
 		},
 		{
-			name: "explicit_stat",
+			name: "tail2stat",
 			config: fmt.Sprintf(`
-mode: tail
+mode: tail2stat
 filenames:
  - %s
-tail_mode: stat
-stat_poll_interval: 100ms
+tail2stat_read_interval: 100ms
 `, testFile),
 		},
 	}
@@ -266,7 +259,7 @@ stat_poll_interval: 100ms
 			// Cleanup - cancel context to stop Stream
 			cancel()
 
-			// Stat vs default wiring is covered in config_tail_test.go and the tail package tests.
+			// Mode wiring is covered in config_tail_test.go and the tail package tests.
 			t.Logf("Successfully tailed file with mode: %s", tc.name)
 		})
 	}
@@ -299,6 +292,10 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 	}
 
 	for _, mode := range tailModes {
+		// nxadm owns line splitting for mode tail. Holding a fragment is the in-house tailer.
+		if mode.mode == "tail" {
+			continue
+		}
 		for _, tc := range cases {
 			t.Run(mode.name+"/"+tc.name, func(t *testing.T) {
 				ctx := t.Context()
@@ -308,7 +305,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 				require.NoError(t, err)
 				t.Cleanup(func() { _ = fd.Close() })
 
-				config := fmt.Sprintf("mode: tail\nfilename: '%s'%s", testFile, mode.config)
+				config := fmt.Sprintf("mode: %s\nfilename: '%s'%s", mode.mode, testFile, mode.extra)
 
 				f := fileacquisition.Source{}
 				err = f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)

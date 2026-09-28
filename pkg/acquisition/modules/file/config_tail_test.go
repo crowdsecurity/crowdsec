@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
-func TestConfigureInvalidTailMode(t *testing.T) {
+func TestConfigureInvalidMode(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
@@ -23,29 +23,27 @@ func TestConfigureInvalidTailMode(t *testing.T) {
 	err := s.Configure(
 		t.Context(),
 		[]byte(fmt.Sprintf(`
-mode: tail
+mode: sideways
 filenames:
  - %s
-tail_mode: invalid
 `, testFile)),
 		log.WithField("type", ModuleName),
 		metrics.AcquisitionMetricsLevelNone,
 	)
-	require.ErrorContains(t, err, "unsupported tail_mode")
+	require.ErrorContains(t, err, "unsupported mode")
 }
 
-func TestUnmarshalConfigStatPollIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
+func TestUnmarshalConfigTail2StatReadIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
 	t.Parallel()
 
 	s := Source{}
 	err := s.UnmarshalConfig([]byte(`
-mode: tail
+mode: tail2stat
 filenames:
  - /tmp/example.log
-tail_mode: stat
 `))
 	require.NoError(t, err)
-	require.Equal(t, 2*time.Second, s.config.StatPollInterval)
+	require.Equal(t, 2*time.Second, s.config.Tail2StatReadInterval)
 }
 
 func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
@@ -82,38 +80,22 @@ exclude_regexps:
 	require.ErrorContains(t, err, "could not compile regexp")
 }
 
-func TestKeepFileOpenForTailMode(t *testing.T) {
-	t.Parallel()
-
-	require.True(t, keepFileOpenForTailMode("default"))
-	require.False(t, keepFileOpenForTailMode("stat"))
-}
-
-func TestConfigureTailModeStored(t *testing.T) {
+func TestConfigureModeStored(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		name           string
-		configSnippet  string
-		wantTailMode   string
-		wantKeepOpen   bool
-		wantPollPeriod time.Duration
+		mode           string
+		extra          string
+		wantReadPeriod time.Duration
 	}{
+		{name: "tail", mode: "tail"},
+		{name: "tail2", mode: "tail2"},
 		{
-			name:           "default",
-			configSnippet:  "",
-			wantTailMode:   "default",
-			wantKeepOpen:   true,
-			wantPollPeriod: 0,
-		},
-		{
-			name: "stat",
-			configSnippet: `
-tail_mode: stat
-stat_poll_interval: 100ms`,
-			wantTailMode:   "stat",
-			wantKeepOpen:   false,
-			wantPollPeriod: 100 * time.Millisecond,
+			name:           "tail2stat",
+			mode:           "tail2stat",
+			extra:          "\ntail2stat_read_interval: 100ms",
+			wantReadPeriod: 100 * time.Millisecond,
 		},
 	}
 
@@ -128,18 +110,17 @@ stat_poll_interval: 100ms`,
 			err := s.Configure(
 				t.Context(),
 				[]byte(fmt.Sprintf(`
-mode: tail
+mode: %s
 filenames:
  - %s%s
-`, testFile, tc.configSnippet)),
+`, tc.mode, testFile, tc.extra)),
 				log.WithField("type", ModuleName),
 				metrics.AcquisitionMetricsLevelNone,
 			)
 			require.NoError(t, err)
-			require.Equal(t, tc.wantTailMode, s.config.TailMode)
-			require.Equal(t, tc.wantKeepOpen, keepFileOpenForTailMode(s.config.TailMode))
-			if tc.wantPollPeriod != 0 {
-				require.Equal(t, tc.wantPollPeriod, s.config.StatPollInterval)
+			require.Equal(t, tc.mode, s.config.Mode)
+			if tc.wantReadPeriod != 0 {
+				require.Equal(t, tc.wantReadPeriod, s.config.Tail2StatReadInterval)
 			}
 		})
 	}

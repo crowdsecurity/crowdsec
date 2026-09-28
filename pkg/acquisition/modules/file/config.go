@@ -29,9 +29,25 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
-	TailMode                          string        `yaml:"tail_mode"`          // "default" or "stat" (defaults to "default" if empty)
-	StatPollInterval                  time.Duration `yaml:"stat_poll_interval"` // stat poll interval used when tail_mode=stat (default 2s, 0=2s, -1=manual)
+	Tail2StatReadInterval             time.Duration `yaml:"tail2stat_read_interval"` // how often tail2stat stats and reads (default 2s, 0=2s, negative=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
+}
+
+const (
+	// modeTail2 follows a file with the in-house tailer and keeps the handle open.
+	modeTail2 = "tail2"
+	// modeTail2Stat follows a file with the in-house tailer and closes the handle after each read.
+	modeTail2Stat = "tail2stat"
+)
+
+// liveFileMode reports whether mode follows a file instead of reading it once.
+func liveFileMode(mode string) bool {
+	switch mode {
+	case configuration.TAIL_MODE, modeTail2, modeTail2Stat:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
@@ -58,19 +74,14 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		s.config.Mode = configuration.TAIL_MODE
 	}
 
-	if s.config.Mode != configuration.CAT_MODE && s.config.Mode != configuration.TAIL_MODE {
-		return fmt.Errorf("unsupported mode %s for file source", s.config.Mode)
-	}
-
-	switch s.config.TailMode {
-	case "", "default":
-		s.config.TailMode = "default"
-	case "stat":
-		if s.config.StatPollInterval == 0 {
-			s.config.StatPollInterval = 2 * time.Second
+	switch s.config.Mode {
+	case configuration.TAIL_MODE, configuration.CAT_MODE, modeTail2:
+	case modeTail2Stat:
+		if s.config.Tail2StatReadInterval == 0 {
+			s.config.Tail2StatReadInterval = 2 * time.Second
 		}
 	default:
-		return fmt.Errorf("unsupported tail_mode %q (supported: default, stat)", s.config.TailMode)
+		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, tail2, tail2stat)", s.config.Mode)
 	}
 
 	for _, exclude := range s.config.ExcludeRegexps {
@@ -136,7 +147,7 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 				continue
 			}
 
-			if files[0] != pattern && s.config.Mode == configuration.TAIL_MODE { // we have a glob pattern
+			if files[0] != pattern && liveFileMode(s.config.Mode) { // we have a glob pattern
 				directory := filepath.Dir(file)
 				s.logger.Debugf("Will add watch to directory: %s", directory)
 
