@@ -181,7 +181,7 @@ func (s *Source) deliverTailRead(logger *log.Entry, out chan pipeline.Event, fil
 		// nxadm attaches this error to the rate-limiter cooloff line, then keeps sending on the same channel.
 		// Returning it ends this reader and fails Stream.
 		logger.Warningf("fetch error : %v", read.err)
-		return nil
+		return nil //nolint:nilerr // the tailer keeps sending; returning this error ends the reader
 	}
 	if read.text == "" {
 		return nil
