@@ -31,7 +31,7 @@ Say which, in the PR body.
 - Lint while iterating: `golangci-lint run ./pkg/<what you changed>/...`
 - Before pushing: `make lint`. It lints linux, windows and freebsd, same as CI — so expect
   findings outside your change if it's platform-specific.
-- Use golangci-lint v2.10, the version CI pins. Other versions report different things.
+- Use golangci-lint v2.13, the version CI pins. Other versions report different things.
 - Don't restructure working code to satisfy a linter that's switched off. Check the `disable:`
   list in `.golangci.yml` before "fixing" something it never complained about.
 
@@ -54,6 +54,14 @@ Look up the crowdSec-skill to deploy, configure and troubleshoot CrowdSec instan
 ## Tests
 
 - New behaviour needs a test.
+- A test must fail when the behaviour it covers breaks. No tautological tests: don't check that a
+  mock returns what you told it to, that a setter sets, or that the code does what it says. More
+  test lines is not better; a large suite that misses the obvious case is worse than a small one.
+- Test the cases the change exists for, not just the happy path. Don't skip the hard one with a
+  comment: a skipped test for the scenario that matters is a missing test.
+- Refactoring or replacing an existing component: first cover its current user-visible behaviour
+  with tests, and make them pass unchanged before and after. List every intended behaviour
+  change in the PR body.
 - `require` over `assert` — a failed `assert` keeps going and buries the real error.
 - Table-driven, with `t.Run` subtests.
 - Unit tests live next to the code. Functional tests are BATS under `test/bats/`; see
@@ -88,7 +96,8 @@ Write:
 > source that goes silent — connection now drops after 30s instead of hanging.
 
 **Code comments** — explain why, not what. If the comment restates the line under it, delete
-it.
+it. Keep them short and to the point, not prose: a comment should rarely be longer than the code
+it describes. A 20-line comment over a 5-line function is noise.
 
 **Review replies** — answer the question that was asked. Don't re-explain the PR, and don't
 paste your agent's output into the thread. Read it, then reply in your own words, in a few
