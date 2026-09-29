@@ -79,11 +79,6 @@ func (tailTest *TailTest) AppendFile(name string, contents string) {
 	tailTest.writeFile(name, contents, os.O_APPEND|os.O_WRONLY)
 }
 
-// TruncateFile replaces name in the temp directory with contents and fails the test on error.
-func (tailTest *TailTest) TruncateFile(name string, contents string) {
-	tailTest.writeFile(name, contents, os.O_TRUNC|os.O_WRONLY)
-}
-
 // writeFile opens name in the temp directory with flag, writes contents, and fails the test on error.
 func (tailTest *TailTest) writeFile(name string, contents string, flag int) {
 	filePath := filepath.Join(tailTest.path, name)

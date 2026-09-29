@@ -229,7 +229,7 @@ func TestTailModes_RenameCreate(t *testing.T) {
 	})
 }
 
-// A shrink of the same file is read from the start.
+// A shrink of the same file is read from the start. Every new line arrives, in order. The lines from before the shrink do not.
 func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
 		// Start on a file that already has lines, and wait until the tail is past startup.
@@ -242,16 +242,20 @@ func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 
 		waitUntilFollowed(t, testFile, out)
 
-		// Replace it with a shorter file.
-		require.NoError(t, os.WriteFile(testFile, []byte("fresh\n"), 0o644))
+		// Replace it with a shorter file of several lines.
+		require.NoError(t, os.WriteFile(testFile, []byte("new1\nnew2\nnew3\n"), 0o644))
 
-		// The new line arrives.
-		select {
-		case evt := <-out:
-			require.Equal(t, "fresh", evt.Line.Raw)
-		case <-time.After(10 * time.Second):
-			t.Fatal("timeout waiting for the line after shrink")
+		// Those lines arrive, in order. Nothing from before the shrink does.
+		var got []string
+		for range 3 {
+			select {
+			case evt := <-out:
+				got = append(got, evt.Line.Raw)
+			case <-time.After(10 * time.Second):
+				t.Fatalf("timeout waiting for lines after shrink, got %q", got)
+			}
 		}
+		require.Equal(t, []string{"new1", "new2", "new3"}, got)
 	})
 }
 

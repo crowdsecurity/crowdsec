@@ -106,42 +106,6 @@ func TestPollTail_LocationMiddle(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Truncation/ReSeek Tests (adapted from TestReSeekInotify, TestReSeekPolling)
-// =============================================================================
-
-// The three lines already in the file arrive, then a shrink is read from the start, so h311o, w0r1d, and endofworld follow in that order.
-func TestPollTail_ReSeek(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			// Read the lines already in the file.
-			tailTest := NewTailTest("reseek", t)
-
-			tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     nil, // Start from beginning
-			}
-
-			tail := tailTest.StartTail("test.txt", config)
-
-			expected := []string{
-				"a really long string goes here", "hello", "world",
-				"h311o", "w0r1d", "endofworld",
-			}
-			go tailTest.VerifyTailOutput(tail, expected, false)
-
-			// Shrink the file. The new lines are read from the start.
-			<-time.After(200 * time.Millisecond)
-			tailTest.TruncateFile("test.txt", "h311o\nw0r1d\nendofworld\n")
-
-			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail)
-		})
-	}
-}
-
 // After three shrinks, the collected lines include batch2_line1 from the first shrink and batch4_line1 from the last. The middle shrink is not checked.
 func TestPollTail_MultipleTruncations(t *testing.T) {
 	for _, mode := range tailerModes {
