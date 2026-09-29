@@ -170,15 +170,18 @@ type tailRead struct {
 	time time.Time
 }
 
-// deliverTailRead skips an empty read. A read error stops this file. Otherwise the line is pushed.
+// deliverTailRead skips an empty read. A line error is logged and the reader stays. Otherwise the line is pushed.
 func (s *Source) deliverTailRead(logger *log.Entry, out chan pipeline.Event, filename string, read *tailRead) error {
 	if read == nil {
 		logger.Warning("tail is empty")
 		return nil
 	}
 	if read.err != nil {
+		// Never return an error here
+		// nxadm attaches this error to the rate-limiter cooloff line, then keeps sending on the same channel.
+		// Returning it ends this reader and fails Stream.
 		logger.Warningf("fetch error : %v", read.err)
-		return read.err
+		return nil
 	}
 	if read.text == "" {
 		return nil
