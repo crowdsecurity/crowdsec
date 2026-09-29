@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
+// Configure rejects an unknown mode.
 func TestConfigureInvalidMode(t *testing.T) {
 	t.Parallel()
 
@@ -33,6 +34,7 @@ filenames:
 	require.ErrorContains(t, err, "unsupported mode")
 }
 
+// An omitted polltail read interval is stored as two seconds (default value)
 func TestUnmarshalConfigPollTailReadIntervalZeroDefaultsToTwoSeconds(t *testing.T) {
 	t.Parallel()
 
@@ -46,6 +48,7 @@ filenames:
 	require.Equal(t, 2*time.Second, s.config.PollTailReadInterval)
 }
 
+// A config with no file path is rejected.
 func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
 	t.Parallel()
 
@@ -54,18 +57,7 @@ func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
 	require.ErrorContains(t, err, "no filename or filenames")
 }
 
-func TestUnmarshalConfigRejectsUnsupportedMode(t *testing.T) {
-	t.Parallel()
-
-	s := Source{}
-	err := s.UnmarshalConfig([]byte(`
-mode: no-such-mode
-filenames:
- - /tmp/example.log
-`))
-	require.ErrorContains(t, err, "unsupported mode")
-}
-
+// An exclude regexp that does not compile is rejected.
 func TestUnmarshalConfigRejectsBadExcludeRegexp(t *testing.T) {
 	t.Parallel()
 
@@ -80,47 +72,26 @@ exclude_regexps:
 	require.ErrorContains(t, err, "could not compile regexp")
 }
 
+// Configure stores polltail and the read interval that was set.
 func TestConfigureModeStored(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name           string
-		mode           string
-		extra          string
-		wantReadPeriod time.Duration
-	}{
-		{name: "tail", mode: "tail"},
-		{
-			name:           "polltail",
-			mode:           "polltail",
-			extra:          "\npolltail_read_interval: 100ms",
-			wantReadPeriod: 100 * time.Millisecond,
-		},
-	}
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			testFile := filepath.Join(t.TempDir(), "test.log")
-			require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-			s := Source{}
-			err := s.Configure(
-				t.Context(),
-				[]byte(fmt.Sprintf(`
-mode: %s
+	s := Source{}
+	err := s.Configure(
+		t.Context(),
+		[]byte(fmt.Sprintf(`
+mode: polltail
 filenames:
- - %s%s
-`, tc.mode, testFile, tc.extra)),
-				log.WithField("type", ModuleName),
-				metrics.AcquisitionMetricsLevelNone,
-			)
-			require.NoError(t, err)
-			require.Equal(t, tc.mode, s.config.Mode)
-			if tc.wantReadPeriod != 0 {
-				require.Equal(t, tc.wantReadPeriod, s.config.PollTailReadInterval)
-			}
-		})
-	}
+ - %s
+polltail_read_interval: 100ms
+`, testFile)),
+		log.WithField("type", ModuleName),
+		metrics.AcquisitionMetricsLevelNone,
+	)
+	require.NoError(t, err)
+	require.Equal(t, "polltail", s.config.Mode)
+	require.Equal(t, 100*time.Millisecond, s.config.PollTailReadInterval)
 }

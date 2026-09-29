@@ -75,6 +75,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
+				// Start the tail on an empty file.
 				ctx := t.Context()
 				testFile := filepath.Join(t.TempDir(), "test.log")
 
@@ -96,6 +97,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 					_ = f.Stream(streamCtx, out)
 				}()
 
+				// Wait until a complete line is delivered, so the tail is running.
 				require.Eventually(t, func() bool {
 					if _, err := fd.WriteString("ready\n"); err != nil {
 						return false
@@ -108,9 +110,11 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 					}
 				}, readTimeout, 10*time.Millisecond, "tailer never delivered a line")
 
+				// Write one complete line and a fragment with no newline.
 				_, err = fd.WriteString("second\n" + `{"a":`)
 				require.NoError(t, err)
 
+				// The complete line arrives. The fragment does not.
 			waitSecond:
 				for {
 					select {
@@ -124,6 +128,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 					}
 				}
 
+				// The truncated case replaces the file while that fragment is still held.
 				if tc.truncate {
 					require.NoError(t, fd.Close())
 					require.NoError(t, os.Truncate(testFile, 0))
@@ -131,9 +136,11 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 					require.NoError(t, err)
 				}
 
+				// Write the rest of the line, or the new file.
 				_, err = fd.WriteString(tc.rest)
 				require.NoError(t, err)
 
+				// Those lines arrive, and nothing else does.
 				var got []string
 				for range tc.expected {
 					select {
@@ -161,6 +168,7 @@ func TestTailModes_ContinuousAppend(t *testing.T) {
 	expected := []string{"x", "xx", "xxx", "xxxx", "xxxxx"}
 
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		// Start on an empty file and wait until it is being tailed.
 		ctx := t.Context()
 		testFile := filepath.Join(t.TempDir(), "test.log")
 		require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
@@ -186,6 +194,7 @@ func TestTailModes_ContinuousAppend(t *testing.T) {
 			}
 		}, 5*time.Second, 10*time.Millisecond, "tailer never delivered a line")
 
+		// Drop any extra probe lines.
 		for {
 			select {
 			case evt := <-out:
@@ -195,10 +204,12 @@ func TestTailModes_ContinuousAppend(t *testing.T) {
 			}
 		}
 	appended:
+		// Append the lines one after another.
 		for _, line := range expected {
 			require.NoError(t, appendClosedLine(testFile, line))
 		}
 
+		// They arrive in that order.
 		var got []string
 		for range expected {
 			select {
@@ -215,6 +226,7 @@ func TestTailModes_ContinuousAppend(t *testing.T) {
 // A renamed file is left behind. The new file at the same path is read from the start even when it is larger, so a shrink is not what detects the replacement.
 func TestTailModes_RenameCreate(t *testing.T) {
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		// Start on a file that already has a line, and wait until the tail is past startup.
 		ctx := t.Context()
 		testFile := filepath.Join(t.TempDir(), "test.log")
 		require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
@@ -224,11 +236,13 @@ func TestTailModes_RenameCreate(t *testing.T) {
 
 		waitUntilFollowed(t, testFile, out)
 
+		// Rename it away and put a longer file at the same path.
 		require.NoError(t, os.Rename(testFile, testFile+".1"))
 		// Longer than the file that was rotated, so a size shrink is not what detects it.
 		fresh := strings.Repeat("x", 256)
 		require.NoError(t, os.WriteFile(testFile, []byte(fresh+"\n"), 0o644))
 
+		// That new line arrives.
 		select {
 		case evt := <-out:
 			require.Equal(t, fresh, evt.Line.Raw)
@@ -241,6 +255,7 @@ func TestTailModes_RenameCreate(t *testing.T) {
 // A shrink of the same file is read from the start.
 func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		// Start on a file that already has lines, and wait until the tail is past startup.
 		ctx := t.Context()
 		testFile := filepath.Join(t.TempDir(), "test.log")
 		require.NoError(t, os.WriteFile(testFile, []byte("old1\nold2\nold3\n"), 0o644))
@@ -250,8 +265,10 @@ func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 
 		waitUntilFollowed(t, testFile, out)
 
+		// Replace it with a shorter file.
 		require.NoError(t, os.WriteFile(testFile, []byte("fresh\n"), 0o644))
 
+		// The new line arrives.
 		select {
 		case evt := <-out:
 			require.Equal(t, "fresh", evt.Line.Raw)
@@ -265,6 +282,7 @@ func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 // nxadm TailFile takes no context, so the file source calls Stop. polltail receives the context, so the same cancel ends its follow directly.
 func TestTailModes_ContextCancelStopsTailing(t *testing.T) {
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		// Start the tail and wait until the file is being followed.
 		ctx := t.Context()
 		testFile := filepath.Join(t.TempDir(), "test.log")
 		require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
@@ -288,8 +306,10 @@ func TestTailModes_ContextCancelStopsTailing(t *testing.T) {
 			return f.IsTailing(testFile)
 		}, 5*time.Second, 10*time.Millisecond)
 
+		// Cancel the stream.
 		cancel()
 
+		// Stream returns, and a line written after that is not delivered.
 		select {
 		case <-streamDone:
 		case <-time.After(5 * time.Second):
@@ -308,6 +328,7 @@ func TestTailModes_ContextCancelStopsTailing(t *testing.T) {
 // A file that already ends with a newline emits nothing until a new line is appended, and that line arrives once.
 func TestTailModes_StartAtEndOfCompleteFile(t *testing.T) {
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		// Start at the end of a file that already ends with a newline.
 		ctx := t.Context()
 		testFile := filepath.Join(t.TempDir(), "test.log")
 		require.NoError(t, os.WriteFile(testFile, []byte("done\n"), 0o644))
@@ -319,12 +340,14 @@ func TestTailModes_StartAtEndOfCompleteFile(t *testing.T) {
 			return f.IsTailing(testFile)
 		}, 5*time.Second, 10*time.Millisecond)
 
+		// Nothing already in the file is emitted.
 		select {
 		case evt := <-out:
 			t.Fatalf("emitted %q from the line already in the file", evt.Line.Raw)
 		case <-time.After(1500 * time.Millisecond):
 		}
 
+		// Append one line. It arrives once.
 		fd, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 		require.NoError(t, err)
 		_, err = fd.WriteString("next\n")

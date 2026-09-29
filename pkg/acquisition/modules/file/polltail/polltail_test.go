@@ -24,6 +24,7 @@ import (
 func TestPollTail_SeekStart(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start at the beginning of a file that already has lines.
 			tailTest := NewTailTest("seek-start", t)
 			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
 
@@ -36,6 +37,7 @@ func TestPollTail_SeekStart(t *testing.T) {
 
 			go tailTest.VerifyTailOutput(tail, []string{"line1", "line2", "line3", "line4"}, false)
 
+			// Read those lines, append one more, and read again.
 			forceReadForTest(tail)
 			tailTest.AppendFile("test.txt", "line4\n")
 			forceReadForTest(tail)
@@ -50,6 +52,7 @@ func TestPollTail_SeekStart(t *testing.T) {
 func TestPollTail_FileRotation(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start at the end.
 			tailTest := NewTailTest("rotation", t)
 			tailTest.CreateFile("test.txt", "kept\n")
 
@@ -60,11 +63,13 @@ func TestPollTail_FileRotation(t *testing.T) {
 			defer func() { require.NoError(t, tail.Stop()) }()
 
 			forceReadForTest(tail)
+			// Rename the file and write to both the old name and the new path.
 			tailTest.RenameFile("test.txt", "test.txt.1")
 			tailTest.AppendFile("test.txt.1", "lost\n")
 			tailTest.CreateFile("test.txt", "fresh\n")
 			forceReadForTest(tail)
 
+			// The line left on the renamed file is absent. The new file's line arrives.
 			var got []string
 		drain:
 			for {
@@ -87,6 +92,7 @@ func TestPollTail_FileRotation(t *testing.T) {
 func TestPollTail_RapidWrites(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Follow with a short poll.
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "rapid.log")
 			require.NoError(t, os.WriteFile(testFile, nil, 0o644))
@@ -99,6 +105,7 @@ func TestPollTail_RapidWrites(t *testing.T) {
 			require.NoError(t, err)
 			defer func() { require.NoError(t, tail.Stop()) }()
 
+			// Write bursts for one second, across several polls.
 			var written []string
 			lineNumber := 0
 			deadline := time.Now().Add(time.Second)
@@ -115,6 +122,7 @@ func TestPollTail_RapidWrites(t *testing.T) {
 				time.Sleep(pollInterval / 2)
 			}
 
+			// Every written line arrives, in order.
 			got := make([]string, 0, len(written))
 			timeout := time.After(5 * time.Second)
 			for len(got) < len(written) {
@@ -135,6 +143,7 @@ func TestPollTail_RapidWrites(t *testing.T) {
 
 // A negative poll interval does not read on its own. The line appears only after the test asks for a read.
 func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
+	// Start in manual mode on a file that already has a line.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -152,7 +161,7 @@ func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 
 	fileTailer := tail
 
-	// Nothing should be in channel yet (manual mode, no auto-poll)
+	// Nothing is read until the test asks.
 	select {
 	case <-tail.Lines():
 		t.Fatal("manual mode should not read before the test asks")
@@ -160,10 +169,9 @@ func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 		// Expected
 	}
 
-	// Force read
+	// One read delivers that line.
 	forceReadForTest(fileTailer)
 
-	// Now should have the line
 	var line *Line
 	select {
 	case line = <-tail.Lines():
@@ -177,6 +185,7 @@ func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 func TestPollTail_StartAtEndOfPartialLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start at the end of a file that has no newline.
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "test.log")
 			require.NoError(t, os.WriteFile(testFile, []byte(`{"a":`), 0o644))
@@ -192,6 +201,7 @@ func TestPollTail_StartAtEndOfPartialLine(t *testing.T) {
 			forceReadForTest(fileTailer)
 			assertNoTailLineForTest(t, tail)
 
+			// Append the rest of the line. Only that remainder arrives.
 			require.NoError(t, appendToFileInTest(testFile, "1}\n"))
 
 			forceReadForTest(fileTailer)
@@ -203,6 +213,7 @@ func TestPollTail_StartAtEndOfPartialLine(t *testing.T) {
 
 // A line appended during a read is delivered once, not again on the next read.
 func TestPollTail_StatReadDoesNotRepeatAppend(t *testing.T) {
+	// The first open appends a line before the read sees the file.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
@@ -236,12 +247,14 @@ func TestPollTail_StatReadDoesNotRepeatAppend(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, tail.Stop()) }()
 
+	// That appended line arrives once.
 	fileTailer := tail
 	forceReadForTest(fileTailer)
 	assert.Equal(t, "old", readTailLineForTest(t, tail))
 	assert.Equal(t, "during", readTailLineForTest(t, tail))
 	assertNoTailLineForTest(t, tail)
 
+	// The next read delivers nothing.
 	forceReadForTest(fileTailer)
 	assertNoTailLineForTest(t, tail)
 }
@@ -250,6 +263,7 @@ func TestPollTail_StatReadDoesNotRepeatAppend(t *testing.T) {
 // The line already sent stays sent. A line written after that is not delivered.
 // Starting again is the file source's job, the same as any other transient failure.
 func TestPollTail_StatAfterReadFailureClosesDying(t *testing.T) {
+	// The stat of the open handle fails after the line is read.
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
 
@@ -269,6 +283,7 @@ func TestPollTail_StatAfterReadFailureClosesDying(t *testing.T) {
 
 	forceReadForTest(fileTailer)
 
+	// The follow ends. The line stays sent, and a later line is not delivered.
 	select {
 	case <-fileTailer.Dying():
 	case <-time.After(2 * time.Second):
@@ -293,6 +308,7 @@ func TestPollTail_StatAfterReadFailureClosesDying(t *testing.T) {
 // The file is still readable after the error, and a line written then is not delivered.
 // Starting again is the file source's job, when discovery polling notices the path is not being followed.
 func TestPollTail_TransientStatFailureClosesDying(t *testing.T) {
+	// The first stat fails. Later stats would succeed.
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
 
@@ -315,6 +331,7 @@ func TestPollTail_TransientStatFailureClosesDying(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = followed.Stop() })
 
+	// The follow ends and does not deliver a line written after that.
 	select {
 	case <-followed.Dying():
 	case <-time.After(2 * time.Second):
@@ -337,6 +354,7 @@ func TestPollTail_TransientStatFailureClosesDying(t *testing.T) {
 }
 
 func TestPollTail_RecordFirstErrorAndStopClosesDying(t *testing.T) {
+	// The first recorded error ends the follow.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -356,6 +374,7 @@ func TestPollTail_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 		t.Fatal("Dying stayed open after recordFirstErrorAndStop")
 	}
 
+	// A second error does not replace it.
 	fileTailer.recordFirstErrorAndStop(os.ErrClosed)
 	require.ErrorIs(t, fileTailer.Err(), os.ErrPermission)
 }
@@ -372,6 +391,7 @@ func openClosedFileForTest(filename string) (*os.File, error) {
 }
 
 func TestPollTail_StatOpenFailureStopsFollow(t *testing.T) {
+	// Opening the file fails. The follow records that error.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -396,6 +416,7 @@ func TestPollTail_StatOpenFailureStopsFollow(t *testing.T) {
 
 // A handle that cannot be positioned stops the follow.
 func TestPollTail_StatSeekFailureStopsFollow(t *testing.T) {
+	// The opened handle cannot be seeked. The follow records that error.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -418,6 +439,7 @@ func TestPollTail_StatSeekFailureStopsFollow(t *testing.T) {
 
 // A line finished after the follow was canceled is not sent to the reader.
 func TestPollTail_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
+	// The follow is already canceled. A read does not send the line.
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
@@ -459,6 +481,7 @@ func (reader *failAfterBytesReaderForTest) Read(p []byte) (int, error) {
 
 // A read error in the middle of a line is returned. That fragment is not treated as a finished line.
 func TestPollTail_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
+	// The read fails before a newline. That error is returned.
 	fileTailer := &PollTail{lines: make(chan *Line, 1), done: make(chan struct{})}
 	_, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("partial"),
@@ -469,6 +492,7 @@ func TestPollTail_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) 
 
 // A finished line is sent, and the read error that comes after it is returned.
 func TestPollTail_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
+	// A complete line is followed by a read error. The line is sent, and the error is returned.
 	fileTailer := &PollTail{lines: make(chan *Line, 1), done: make(chan struct{})}
 	completeBytes, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("line\n"),
@@ -490,6 +514,7 @@ func TestPollTail_StatPermissionFailureStopsFollow(t *testing.T) {
 		t.Skip("directory chmod 0o000 does not hide children on Windows")
 	}
 
+	// The directory hides the file. The follow records a stat error.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -512,6 +537,7 @@ func TestPollTail_StatPermissionFailureStopsFollow(t *testing.T) {
 
 // A read error on the opened handle stops the follow.
 func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
+	// The opened handle is a directory, so the read fails. The follow records that error.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -535,6 +561,7 @@ func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
 }
 
 func TestPollTail_PermissionStatTreatedAsGone(t *testing.T) {
+	// Stat returns a permission error. Windows treats that as the file being gone.
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
@@ -562,6 +589,7 @@ func TestPollTail_PermissionStatTreatedAsGone(t *testing.T) {
 
 // The tailer reports the path it was started on.
 func TestPollTail_Filename(t *testing.T) {
+	// The reported path is the path TailFile was given.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -581,6 +609,7 @@ func TestPollTail_Filename(t *testing.T) {
 
 // Removing the file makes the next read report an error and close Dying.
 func TestPollTail_FileDeleted(t *testing.T) {
+	// Read once, then remove the file and read again.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -603,6 +632,7 @@ func TestPollTail_FileDeleted(t *testing.T) {
 
 	forceReadForTest(tail)
 
+	// The follow reports that the file is gone, and Dying closes.
 	err = tail.Err()
 	require.Error(t, err, "Should have an error after file deletion")
 	assert.Contains(t, err.Error(), "no longer exists")
@@ -620,6 +650,7 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 		t.Skip("Permission tests not reliable on Windows")
 	}
 
+	// Remove read permission and read again.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -641,6 +672,7 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 
 	forceReadForTest(tail)
 
+	// The follow reports an open error, and Dying closes.
 	err = tail.Err()
 	require.Error(t, err, "Should have an error after read permission was removed")
 	assert.Contains(t, err.Error(), "error opening file")
@@ -654,6 +686,7 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 
 // A missing path counts as gone. On Windows a permission error does too, because deleting a locked file is reported that way. Elsewhere a permission error is a real error.
 func TestFilePathGone(t *testing.T) {
+	// A missing path is gone. A permission error is gone only on Windows.
 	require.False(t, filePathGone(nil))
 	require.True(t, filePathGone(os.ErrNotExist))
 	require.False(t, filePathGone(os.ErrClosed))

@@ -222,6 +222,7 @@ var tailerModes = []struct {
 
 // TailFile on a path that is not there returns an error that says the file could not be stat'd.
 func TestPollTail_FileMustExist(t *testing.T) {
+	// TailFile on a missing path fails.
 	dir := t.TempDir()
 	nonExistentFile := filepath.Join(dir, "no_such_file.txt")
 
@@ -243,6 +244,7 @@ func TestPollTail_FileMustExist(t *testing.T) {
 func TestPollTail_Stop(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start a tail, then stop it twice.
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "test.log")
 
@@ -257,11 +259,10 @@ func TestPollTail_Stop(t *testing.T) {
 			tail, err := TailFile(t.Context(), testFile, config)
 			require.NoError(t, err)
 
-			// Stop should not error
+			// Stop closes Dying. A second Stop also returns no error.
 			err = tail.Stop()
 			require.NoError(t, err)
 
-			// Should be dying
 			select {
 			case <-tail.Dying():
 				// Good
@@ -269,7 +270,6 @@ func TestPollTail_Stop(t *testing.T) {
 				t.Fatal("Should be dying after stop")
 			}
 
-			// Calling stop again should be safe (idempotent)
 			err = tail.Stop()
 			assert.NoError(t, err)
 		})
@@ -284,6 +284,7 @@ func TestPollTail_Stop(t *testing.T) {
 func TestPollTail_LocationMiddle(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start in the middle of the file, past the first line.
 			tailTest := NewTailTest("location-middle", t)
 			// "hello\nworld\n" is 12 bytes
 			// We want to start reading from "world\n" which is at byte 6
@@ -298,6 +299,7 @@ func TestPollTail_LocationMiddle(t *testing.T) {
 			tail := tailTest.StartTail("test.txt", config)
 			go tailTest.VerifyTailOutput(tail, []string{"world", "more", "data"}, false)
 
+			// Append two lines. They follow the line the offset landed on.
 			<-time.After(100 * time.Millisecond)
 			tailTest.AppendFile("test.txt", "more\ndata\n")
 
@@ -315,6 +317,7 @@ func TestPollTail_LocationMiddle(t *testing.T) {
 func TestPollTail_ReSeek(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Read the lines already in the file.
 			tailTest := NewTailTest("reseek", t)
 
 			tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
@@ -332,7 +335,7 @@ func TestPollTail_ReSeek(t *testing.T) {
 			}
 			go tailTest.VerifyTailOutput(tail, expected, false)
 
-			// Truncate and write new content
+			// Shrink the file. The new lines are read from the start.
 			<-time.After(200 * time.Millisecond)
 			tailTest.TruncateFile("test.txt", "h311o\nw0r1d\nendofworld\n")
 
@@ -346,6 +349,7 @@ func TestPollTail_ReSeek(t *testing.T) {
 func TestPollTail_MultipleTruncations(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start at the end, then shrink the file three times.
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "test.log")
 
@@ -399,6 +403,7 @@ func TestPollTail_MultipleTruncations(t *testing.T) {
 			_ = tail.Stop()
 			<-done
 
+			// The first and last shrink show up.
 			t.Logf("Lines read: %v", lines)
 			assert.Contains(t, lines, "batch2_line1", "Should handle first truncation")
 			assert.Contains(t, lines, "batch4_line1", "Should handle third truncation")
@@ -414,6 +419,7 @@ func TestPollTail_MultipleTruncations(t *testing.T) {
 func TestPollTail_Over4096ByteLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// A line longer than the default read buffer is already in the file.
 			tailTest := NewTailTest("over4096", t)
 			testString := strings.Repeat("a", 4097)
 			tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
@@ -424,6 +430,7 @@ func TestPollTail_Over4096ByteLine(t *testing.T) {
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
+			// It arrives whole, with the lines around it.
 			go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 			<-time.After(200 * time.Millisecond)
@@ -434,7 +441,7 @@ func TestPollTail_Over4096ByteLine(t *testing.T) {
 
 // A 128KB line arrives whole, then line2. The follow records no error.
 func TestPollTail_LargeLines(t *testing.T) {
-	// Test with lines larger than bufio.Scanner limit (64KB)
+	// A 128KB line is already in the file.
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "large.log")
 
@@ -470,6 +477,7 @@ func TestPollTail_LargeLines(t *testing.T) {
 		}
 	}()
 
+	// It arrives whole, then the next line, and the follow records no error.
 	forceReadForTest(fileTailer)
 	_ = tail.Stop()
 	<-done

@@ -635,6 +635,7 @@ mode: %s%s
 
 // TestStreamDropsDeadStatTail covers the Stream reader dropping a tail after the file is gone.
 func TestStreamDropsDeadStatTail(t *testing.T) {
+	// Start polltail, then delete the file.
 	ctx := t.Context()
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -658,6 +659,7 @@ polltail_read_interval: 50ms
 
 	require.Eventually(t, func() bool { return f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
+	// The source drops the path once the follow dies.
 	require.NoError(t, os.Remove(testFile))
 	require.Eventually(t, func() bool { return !f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
@@ -673,6 +675,7 @@ polltail_read_interval: 50ms
 func TestStreamPushesLinesWithAggregatedMetrics(t *testing.T) {
 	for _, mode := range tailModes {
 		t.Run(mode.name, func(t *testing.T) {
+			// Start on an empty file with aggregated metrics.
 			ctx := t.Context()
 			testFile := filepath.Join(t.TempDir(), "test.log")
 			require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
@@ -694,6 +697,7 @@ labels:
 			go func() { _ = f.Stream(streamCtx, out) }()
 			require.Eventually(t, func() bool { return f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
+			// The appended line arrives.
 			require.NoError(t, os.WriteFile(testFile, []byte("hello\n"), 0o644))
 
 			select {

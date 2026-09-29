@@ -1,7 +1,8 @@
-// Package polltail polls a file. Each pass opens the path, reads new lines, and closes it.
+// Package polltail tails a file without keeping a handle open. Each pass opens the path, reads new lines, and closes it.
 // It does not overlap or try to replace what nxadm does.
 // If the file is rotated with mv, lines can be lost. This tailer does not stay with the original file,
-// so anything written there after the last check is never read.
+// so anything written there after the last check is never read. The purpose of this tailer is to support
+// deployments where keeping an open handle permanently has drawbacks (i.e. not being able to rotate the files).
 package polltail
 
 import (
