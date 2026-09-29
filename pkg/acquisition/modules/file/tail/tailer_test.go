@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,32 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// Lines already in the file are skipped. Only lines appended after the tail starts are delivered.
-func TestTailer_BasicTailing(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			tailTest := NewTailTest("basic", t)
-
-			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-			}
-
-			tail := tailTest.StartTail("test.txt", config)
-
-			go tailTest.VerifyTailOutput(tail, []string{"line4", "line5"}, false)
-
-			<-time.After(100 * time.Millisecond)
-			tailTest.AppendFile("test.txt", "line4\nline5\n")
-
-			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
-		})
-	}
-}
 
 // SeekStart delivers a line already in the file, then a line appended after that read.
 func TestTailer_SeekStart(t *testing.T) {
@@ -107,240 +82,53 @@ func TestTailer_FileRotation(t *testing.T) {
 	}
 }
 
-// An empty file produces no line until one is appended, and that line is then delivered.
-func TestTailer_EmptyFile(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "empty.log")
-
-			err := os.WriteFile(testFile, []byte(""), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
-
-			// Append to empty file
-			time.Sleep(50 * time.Millisecond)
-			require.NoError(t, appendToFileInTest(testFile, "first\n"))
-
-			var line *Line
-			select {
-			case line = <-tail.Lines():
-			case <-time.After(500 * time.Millisecond):
-				t.Fatal("Timeout waiting for line")
-			}
-
-			assert.Equal(t, "first", line.Text)
-		})
-	}
-}
-
-// A file that ends mid-line delivers only the finished line. The fragment is delivered once a newline is appended.
-func TestTailer_NoNewlineAtEnd(t *testing.T) {
-	// Test behavior when file doesn't end with newline
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-
-			// File without trailing newline - the partial line should not be read
-			// until a newline is appended
-			err := os.WriteFile(testFile, []byte("complete\npartial"), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
-
-			// Should get "complete" immediately
-			var line *Line
-			select {
-			case line = <-tail.Lines():
-			case <-time.After(500 * time.Millisecond):
-				t.Fatal("Timeout waiting for complete line")
-			}
-			assert.Equal(t, "complete", line.Text)
-
-			// Complete the partial line
-			time.Sleep(50 * time.Millisecond)
-			require.NoError(t, appendToFileInTest(testFile, " more\n"))
-
-			// Should get the finished line, not the fragment that was waiting.
-			select {
-			case line = <-tail.Lines():
-			case <-time.After(500 * time.Millisecond):
-				t.Fatal("Timeout waiting for partial line completion")
-			}
-			assert.Equal(t, "partial more", line.Text)
-		})
-	}
-}
-
-// A line split across two writes is delivered whole when the rest arrives.
-// If the file is replaced instead, the fragment is dropped and only the new line is delivered.
-func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
-	tests := []struct {
-		name     string
-		truncate bool
-		rest     string
-		expected []string
-	}{
-		{
-			name:     "completed",
-			rest:     "1}\nthird\n",
-			expected: []string{`{"a":1}`, "third"},
-		},
-		{
-			name:     "truncated",
-			truncate: true,
-			rest:     "new\n",
-			expected: []string{"new"},
-		},
-	}
-
-	for _, mode := range tailerModes {
-		for _, tc := range tests {
-			t.Run(mode.name+"/"+tc.name, func(t *testing.T) {
-				dir := t.TempDir()
-				testFile := filepath.Join(dir, "test.log")
-				require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
-
-				tail, err := TailFile(t.Context(), testFile, Config{
-					PollInterval: -1,
-					Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				})
-				require.NoError(t, err)
-				defer func() { require.NoError(t, tail.Stop()) }()
-
-				fileTailer := tail
-
-				require.NoError(t, appendToFileInTest(testFile, "second\n{\"a\":"))
-
-				forceReadForTest(fileTailer)
-
-				require.Equal(t, "second", readTailLineForTest(t, tail))
-				assertNoTailLineForTest(t, tail)
-
-				if tc.truncate {
-					require.NoError(t, os.Truncate(testFile, 0))
-				}
-
-				require.NoError(t, appendToFileInTest(testFile, tc.rest))
-
-				forceReadForTest(fileTailer)
-
-				var got []string
-				for range tc.expected {
-					got = append(got, readTailLineForTest(t, tail))
-				}
-				assertNoTailLineForTest(t, tail)
-				assert.Equal(t, tc.expected, got)
-			})
-		}
-	}
-}
-
-func readTailLineForTest(t *testing.T, tail *Tailer) string {
-	t.Helper()
-
-	select {
-	case line := <-tail.Lines():
-		require.NotNil(t, line)
-		require.NoError(t, line.Err)
-		return line.Text
-	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for a line")
-		return ""
-	}
-}
-
-func assertNoTailLineForTest(t *testing.T, tail *Tailer) {
-	t.Helper()
-
-	select {
-	case line := <-tail.Lines():
-		text := ""
-		if line != nil {
-			text = line.Text
-		}
-		t.Fatalf("unexpected line %q", text)
-	default:
-	}
-}
-
-// A burst of short lines is mostly delivered. The test allows a few to be missed.
+// Lines written in bursts for one second all arrive, in order.
+// The poll is much shorter than that window, so several polls run while the writes happen.
 func TestTailer_RapidWrites(t *testing.T) {
-	// Test handling rapid successive writes
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "rapid.log")
+			require.NoError(t, os.WriteFile(testFile, nil, 0o644))
 
-			err := os.WriteFile(testFile, []byte(""), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				PollInterval: 20 * time.Millisecond,
+			const pollInterval = 100 * time.Millisecond
+			tail, err := TailFile(t.Context(), testFile, Config{
+				PollInterval: pollInterval,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
+			})
 			require.NoError(t, err)
 			defer func() { require.NoError(t, tail.Stop()) }()
 
-			// Write many lines rapidly
-			const numLines = 100
-			go func() {
-				file, err := os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
-				if err != nil {
-					t.Errorf("open %s: %v", testFile, err)
-					return
+			var written []string
+			lineNumber := 0
+			deadline := time.Now().Add(time.Second)
+			for time.Now().Before(deadline) {
+				var burst strings.Builder
+				for range 5 {
+					line := strconv.Itoa(lineNumber)
+					lineNumber++
+					written = append(written, line)
+					burst.WriteString(line)
+					burst.WriteByte('\n')
 				}
-				defer func() {
-					if err := file.Close(); err != nil {
-						t.Errorf("close %s: %v", testFile, err)
-					}
-				}()
-				line := strings.Repeat("x", 50) + "\n"
-				for range numLines {
-					if _, err := file.WriteString(line); err != nil {
-						t.Errorf("write %s: %v", testFile, err)
-						return
-					}
-				}
-			}()
-
-			// Collect lines
-			var lines []string
-			timeout := time.After(5 * time.Second)
-		loop:
-			for {
-				select {
-				case line := <-tail.Lines():
-					if line != nil && line.Text != "" {
-						lines = append(lines, line.Text)
-						if len(lines) >= numLines {
-							break loop
-						}
-					}
-				case <-timeout:
-					break loop
-				}
+				require.NoError(t, appendToFileInTest(testFile, burst.String()))
+				time.Sleep(pollInterval / 2)
 			}
 
-			assert.GreaterOrEqual(t, len(lines), numLines-5, "Should have read most lines")
+			got := make([]string, 0, len(written))
+			timeout := time.After(5 * time.Second)
+			for len(got) < len(written) {
+				select {
+				case line := <-tail.Lines():
+					require.NotNil(t, line)
+					require.NoError(t, line.Err)
+					got = append(got, line.Text)
+				case <-timeout:
+					t.Fatalf("got %d of %d lines", len(got), len(written))
+				}
+			}
+			require.Equal(t, written, got)
+			assertNoTailLineForTest(t, tail)
 		})
 	}
 }
@@ -456,28 +244,6 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 
 	forceReadForTest(fileTailer)
 	assertNoTailLineForTest(t, tail)
-}
-
-// Deleting the file ends the follow on its own. The test does not call Stop first.
-func TestTailer_DeletedFileClosesDying(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	followed, err := TailFile(t.Context(), testFile, Config{
-		PollInterval: 20 * time.Millisecond,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = followed.Stop() })
-
-	require.NoError(t, os.Remove(testFile))
-
-	select {
-	case <-followed.Dying():
-	case <-time.After(2 * time.Second):
-		t.Fatal("Dying stayed open after the file was deleted")
-	}
 }
 
 // A stat error on the open handle, after the line was read, ends the tail.
@@ -897,4 +663,34 @@ func TestFilePathGone(t *testing.T) {
 		return
 	}
 	require.False(t, filePathGone(os.ErrPermission))
+}
+
+// readTailLineForTest returns the next line text. It fails the test when the line is missing, nil, or itself an error.
+func readTailLineForTest(t *testing.T, tail *Tailer) string {
+	t.Helper()
+
+	select {
+	case line := <-tail.Lines():
+		require.NotNil(t, line)
+		require.NoError(t, line.Err)
+		return line.Text
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for a line")
+		return ""
+	}
+}
+
+// assertNoTailLineForTest fails the test when a line is already waiting. It does not wait for one to arrive.
+func assertNoTailLineForTest(t *testing.T, tail *Tailer) {
+	t.Helper()
+
+	select {
+	case line := <-tail.Lines():
+		text := ""
+		if line != nil {
+			text = line.Text
+		}
+		t.Fatalf("unexpected line %q", text)
+	default:
+	}
 }

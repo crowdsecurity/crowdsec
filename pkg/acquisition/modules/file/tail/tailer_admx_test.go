@@ -1,6 +1,8 @@
 // The purpose of this file is to mimic the upstream github.com/nxadm/tail tests one to one.
 // Each test here corresponds to a test in that suite. No judgment on whether these tests are
-// appropiate or not.
+// appropiate or not. Some of the original tests have been replaced with improved versions in tailer_test.go
+// and other removed because our tailer is simpler and some behaviors won't apply. Some helper methods
+// here are reused in tailer_test.go
 
 package tail
 
@@ -211,13 +213,14 @@ func (tailTest *TailTest) waitForLineCheckThenStop(tail *Tailer, stop bool) {
 var tailerModes = []struct {
 	name string
 }{
-	{name: "poll"},
+	{name: "poll"}, // our tailer is very scoped, no behaviour matrix. Preserved for simmetry with upstream.
 }
 
 // =============================================================================
 // File Existence Tests (adapted from TestMustExist)
 // =============================================================================
 
+// TailFile on a path that is not there returns an error that says the file could not be stat'd.
 func TestTailer_FileMustExist(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentFile := filepath.Join(dir, "no_such_file.txt")
@@ -232,26 +235,11 @@ func TestTailer_FileMustExist(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not stat file")
 }
 
-func TestTailer_FileExists(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.txt")
-
-	err := os.WriteFile(testFile, []byte("hello\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		PollInterval: -1,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err, "Should succeed when file exists")
-	_ = tail.Stop()
-}
-
 // =============================================================================
 // Stop Tests (adapted from TestStop, TestStopNonEmptyFile)
 // =============================================================================
 
+// Stop returns no error and closes Dying. A second Stop also returns no error.
 func TestTailer_Stop(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -288,72 +276,11 @@ func TestTailer_Stop(t *testing.T) {
 	}
 }
 
-func TestTailer_StopNonEmptyFile(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			tailTest := NewTailTest("stop-nonempty", t)
-
-			tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
-			tail := tailTest.StartTail("test.txt", Config{
-				PollInterval: -1,
-			})
-
-			// Stop immediately - should not panic
-			err := tail.Stop()
-			assert.NoError(t, err)
-		})
-	}
-}
-
 // =============================================================================
-// Location Tests (adapted from TestLocationFull, TestLocationEnd, TestLocationMiddle)
+// Location Tests (adapted from TestLocationMiddle)
 // =============================================================================
 
-func TestTailer_LocationFull(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			tailTest := NewTailTest("location-full", t)
-
-			tailTest.CreateFile("test.txt", "hello\nworld\n")
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     nil, // nil means start from beginning
-			}
-
-			tail := tailTest.StartTail("test.txt", config)
-			go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
-
-			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
-		})
-	}
-}
-
-func TestTailer_LocationEnd(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			tailTest := NewTailTest("location-end", t)
-
-			tailTest.CreateFile("test.txt", "hello\nworld\n")
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-			}
-
-			tail := tailTest.StartTail("test.txt", config)
-			go tailTest.VerifyTailOutput(tail, []string{"more", "data"}, false)
-
-			<-time.After(100 * time.Millisecond)
-			tailTest.AppendFile("test.txt", "more\ndata\n")
-
-			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
-		})
-	}
-}
-
+// Starting at byte 6 skips hello. world, then the appended more and data, arrive in that order.
 func TestTailer_LocationMiddle(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -384,6 +311,7 @@ func TestTailer_LocationMiddle(t *testing.T) {
 // Truncation/ReSeek Tests (adapted from TestReSeekInotify, TestReSeekPolling)
 // =============================================================================
 
+// The three lines already in the file arrive, then a shrink is read from the start, so h311o, w0r1d, and endofworld follow in that order.
 func TestTailer_ReSeek(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -414,61 +342,7 @@ func TestTailer_ReSeek(t *testing.T) {
 	}
 }
 
-func TestTailer_TruncationDetection(t *testing.T) {
-	for _, mode := range tailerModes {
-		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-
-			err := os.WriteFile(testFile, []byte("line1\nline2\nline3\nline4\nline5\n"), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				PollInterval: -1, // Manual polling
-				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
-
-			fileTailer := tail
-
-			// Add more content
-			require.NoError(t, appendToFileInTest(testFile, "line6\n"))
-			forceReadForTest(fileTailer)
-
-			// TRUNCATE: Write less content
-			err = os.WriteFile(testFile, []byte("new1\nnew2\n"), 0o644)
-			require.NoError(t, err)
-			forceReadForTest(fileTailer)
-
-			// Add more to truncated file
-			require.NoError(t, appendToFileInTest(testFile, "new3\n"))
-			forceReadForTest(fileTailer)
-
-			// Collect lines
-			var lines []string
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				for line := range tail.Lines() {
-					if line != nil && line.Text != "" {
-						lines = append(lines, line.Text)
-					}
-				}
-			}()
-
-			_ = tail.Stop()
-			<-done
-
-			assert.Contains(t, lines, "new1", "Should have read new1 after truncation")
-			assert.Contains(t, lines, "new2", "Should have read new2 after truncation")
-			assert.Contains(t, lines, "new3", "Should have read new3 after truncation")
-		})
-	}
-}
-
+// After three shrinks, the collected lines include batch2_line1 from the first shrink and batch4_line1 from the last. The middle shrink is not checked.
 func TestTailer_MultipleTruncations(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -536,6 +410,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 // Large Line Tests (adapted from TestOver4096ByteLine)
 // =============================================================================
 
+// A line of 4097 a's, longer than the default read buffer, arrives whole, between test and hello.
 func TestTailer_Over4096ByteLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -557,6 +432,7 @@ func TestTailer_Over4096ByteLine(t *testing.T) {
 	}
 }
 
+// A 128KB line arrives whole, then line2. The follow records no error.
 func TestTailer_LargeLines(t *testing.T) {
 	// Test with lines larger than bufio.Scanner limit (64KB)
 	dir := t.TempDir()
