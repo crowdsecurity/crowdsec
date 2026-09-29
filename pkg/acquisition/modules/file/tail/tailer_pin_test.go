@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +33,7 @@ func TestTailer_ContextCancellation(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(ctx, testFile, config)
@@ -69,9 +66,7 @@ func TestTailer_Filename(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Poll:         true,
 		PollInterval: -1,
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -91,11 +86,8 @@ func TestTailer_FileDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -140,11 +132,8 @@ func TestTailer_ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -171,17 +160,6 @@ func TestTailer_ErrorHandling(t *testing.T) {
 	}
 }
 
-// With polling off and the handle kept open, a filesystem watcher is installed. The test only checks that the watcher exists.
-func TestTailer_KeepOpenWithoutPollingInstallsWatcher(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 0)
-	require.NotNil(t, fileTailer.watcher)
-}
-
-// Asking where to start in a file that is not there returns an open error.
 func TestOffsetAfterLastNewlineMissingFile(t *testing.T) {
 	_, err := offsetAfterLastNewline(filepath.Join(t.TempDir(), "missing.log"), 10)
 	require.Error(t, err)
@@ -208,11 +186,3 @@ func TestFilePathGone(t *testing.T) {
 	require.False(t, filePathGone(os.ErrPermission))
 }
 
-// Write, create, and permission-change mean "look at the file". Remove, and an empty notice, do not.
-func TestWatchEventMeansContentChanged(t *testing.T) {
-	require.True(t, watchEventMeansContentChanged(fsnotify.Write))
-	require.True(t, watchEventMeansContentChanged(fsnotify.Create))
-	require.True(t, watchEventMeansContentChanged(fsnotify.Chmod))
-	require.False(t, watchEventMeansContentChanged(fsnotify.Remove))
-	require.False(t, watchEventMeansContentChanged(0))
-}

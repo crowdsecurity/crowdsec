@@ -27,17 +27,15 @@ type tailedFile struct {
 	stop       func() error
 	tailErr    func() error
 	nxadmLines <-chan *nxadmtail.Line
-	crowdLines <-chan *tail.Line
+	pollLines <-chan *tail.Line
 }
 
-// newTailedFile starts nxadm for mode tail, and the in-house tailer for crowdtail and crowdtailstat.
+// newTailedFile starts nxadm for mode tail, and the in-house tailer for polltail.
 // Any other mode that reaches here uses nxadm, matching the historical default.
 func newTailedFile(ctx context.Context, filename string, pollFile bool, whence int, mode string, statReadInterval time.Duration) (*tailedFile, error) {
 	switch mode {
-	case modeCrowdTail:
-		return openCrowdTail(ctx, filename, pollFile, whence, true, 0)
-	case modeCrowdTailStat:
-		return openCrowdTail(ctx, filename, pollFile, whence, false, statReadInterval)
+	case modePollTail:
+		return openPollTail(ctx, filename, whence, statReadInterval)
 	default:
 		return openNxadmTail(filename, pollFile, whence)
 	}
@@ -65,39 +63,28 @@ func openNxadmTail(filename string, pollFile bool, whence int) (*tailedFile, err
 	}, nil
 }
 
-// openCrowdTail follows filename with the in-house tailer. keepFileOpen selects crowdtail; closing after each read selects crowdtailstat.
-func openCrowdTail(ctx context.Context, filename string, pollFile bool, whence int, keepFileOpen bool, statReadInterval time.Duration) (*tailedFile, error) {
-	// crowdtail keeps the handle open, so the tailer uses its own tick. crowdtailstat reads on the configured interval.
-	var pollInterval time.Duration
-	if keepFileOpen {
-		pollInterval = 0
-	} else {
-		pollInterval = statReadInterval
-	}
-
-	crowdTail, err := tail.TailFile(ctx, filename, tail.Config{
-		ReOpen:       true,
-		Poll:         pollFile,
-		PollInterval: pollInterval,
+// openPollTail follows filename with the in-house tailer. Each pass opens the path, reads, and closes it.
+func openPollTail(ctx context.Context, filename string, whence int, statReadInterval time.Duration) (*tailedFile, error) {
+	pollTail, err := tail.TailFile(ctx, filename, tail.Config{
+		PollInterval: statReadInterval,
 		Location:     &tail.SeekInfo{Offset: 0, Whence: whence},
-		KeepFileOpen: keepFileOpen,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &tailedFile{
-		name:       crowdTail.Filename(),
-		dying:      crowdTail.Dying(),
-		stop:       crowdTail.Stop,
-		tailErr:    crowdTail.Err,
-		crowdLines: crowdTail.Lines(),
+		name:      pollTail.Filename(),
+		dying:     pollTail.Dying(),
+		stop:      pollTail.Stop,
+		tailErr:   pollTail.Err,
+		pollLines: pollTail.Lines(),
 	}, nil
 }
 
 // startTailedFile follows file with the tailer selected by the configured mode.
 func (s *Source) startTailedFile(ctx context.Context, file string, out chan pipeline.Event, g *errgroup.Group, pollFile bool, whence int) error {
-	followed, err := newTailedFile(ctx, file, pollFile, whence, s.config.Mode, s.config.CrowdTailStatModeReadInterval)
+	followed, err := newTailedFile(ctx, file, pollFile, whence, s.config.Mode, s.config.PollTailReadInterval)
 	if err != nil {
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
 	}
@@ -156,7 +143,7 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 				return err
 			}
 		// One line from the in-house tailer. The channel is nil when nxadm is running.
-		case line := <-followed.crowdLines:
+		case line := <-followed.pollLines:
 			var read *tailRead
 			if line != nil {
 				read = &tailRead{text: line.Text, err: line.Err, time: line.Time}

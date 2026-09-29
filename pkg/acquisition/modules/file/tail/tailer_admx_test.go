@@ -210,15 +210,13 @@ func (tailTest *TailTest) waitForLineCheckThenStop(tail *Tailer, stop bool) {
 }
 
 // =============================================================================
-// Test matrix for both tailer modes
+// Test matrix for the poll tailer.
 // =============================================================================
 
 var tailerModes = []struct {
-	name         string
-	keepFileOpen bool
+	name string
 }{
-	{name: "keepOpen", keepFileOpen: true},
-	{name: "closeAfterRead", keepFileOpen: false},
+	{name: "closeAfterRead"},
 }
 
 // =============================================================================
@@ -231,9 +229,7 @@ func TestTailer_FileMustExist(t *testing.T) {
 
 	// Should fail when file doesn't exist
 	config := Config{
-		Poll:         true,
 		PollInterval: 100 * time.Millisecond,
-		KeepFileOpen: false,
 	}
 
 	_, err := TailFile(t.Context(), nonExistentFile, config)
@@ -249,9 +245,7 @@ func TestTailer_FileExists(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Poll:         true,
 		PollInterval: -1,
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -273,11 +267,8 @@ func TestTailer_Stop(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				ReOpen:       true,
-				Poll:         true,
 				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -309,9 +300,7 @@ func TestTailer_StopNonEmptyFile(t *testing.T) {
 
 			tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
 			tail := tailTest.StartTail("test.txt", Config{
-				Poll:         true,
 				PollInterval: -1,
-				KeepFileOpen: mode.keepFileOpen,
 			})
 
 			// Stop immediately - should not panic
@@ -333,10 +322,8 @@ func TestTailer_LocationFull(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     nil, // nil means start from beginning
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -356,10 +343,8 @@ func TestTailer_LocationEnd(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -384,10 +369,8 @@ func TestTailer_LocationMiddle(t *testing.T) {
 			tailTest.CreateFile("test.txt", "hello\nworld\n")
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 6, Whence: io.SeekStart}, // Start at "world\n"
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -414,11 +397,8 @@ func TestTailer_ReSeek(t *testing.T) {
 			tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
 
 			config := Config{
-				ReOpen:       false,
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     nil, // Start from beginning
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -449,11 +429,8 @@ func TestTailer_TruncationDetection(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				ReOpen:       true,
-				Poll:         true,
 				PollInterval: -1, // Manual polling
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -507,11 +484,8 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				ReOpen:       true,
-				Poll:         true,
 				PollInterval: -1, // Manual polling
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -575,10 +549,8 @@ func TestTailer_Over4096ByteLine(t *testing.T) {
 			tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     nil,
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -606,11 +578,8 @@ func TestTailer_LargeLines(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		ReOpen:       true,
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)

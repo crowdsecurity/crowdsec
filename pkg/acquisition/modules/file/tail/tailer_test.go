@@ -9,6 +9,7 @@ package tail
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,10 +32,8 @@ func TestTailer_BasicTailing(t *testing.T) {
 			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail := tailTest.StartTail("test.txt", config)
@@ -61,11 +59,8 @@ func TestTailer_PollInterval(t *testing.T) {
 
 	pollInterval := 200 * time.Millisecond
 	config := Config{
-		ReOpen:       true,
-		Poll:         true,
 		PollInterval: pollInterval,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -101,77 +96,6 @@ func TestTailer_PollInterval(t *testing.T) {
 	assert.False(t, lineReadTime.IsZero(), "Line should have been read")
 }
 
-// The handle stays open and changes are found by polling, not by a filesystem watcher. An appended line is still delivered.
-func TestTailer_KeepOpenWithPolling(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		ReOpen:       true,
-		Poll:         true, // Use polling, not fsnotify
-		PollInterval: 100 * time.Millisecond,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: true,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	time.Sleep(50 * time.Millisecond)
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-
-	var line *Line
-	select {
-	case line = <-tail.Lines():
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timeout waiting for line")
-	}
-
-	assert.Equal(t, "line2", line.Text)
-}
-
-// The handle stays open and polling is off, so the appended line arrives because the filesystem watcher saw the write.
-func TestTailer_KeepOpenWithFsnotify(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("fsnotify behavior varies on Windows")
-	}
-
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	config := Config{
-		ReOpen:       true,
-		Poll:         false, // Use fsnotify
-		PollInterval: 1 * time.Second,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: true,
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	time.Sleep(50 * time.Millisecond)
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-
-	var line *Line
-	select {
-	case line = <-tail.Lines():
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timeout waiting for line via fsnotify")
-	}
-
-	assert.Equal(t, "line2", line.Text)
-}
-
-// Starting at the beginning delivers the lines already in the file, then a line appended later.
 func TestTailer_SeekStart(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -182,11 +106,8 @@ func TestTailer_SeekStart(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				ReOpen:       true,
-				Poll:         true,
 				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -228,12 +149,6 @@ func TestTailer_FileRotation(t *testing.T) {
 	}
 
 	for _, mode := range tailerModes {
-		if mode.keepFileOpen {
-			// File rotation with keepOpen mode is complex due to inode tracking
-			// Skip for now as it requires more sophisticated handling
-			continue
-		}
-
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
 			testFile := filepath.Join(dir, "test.log")
@@ -242,11 +157,8 @@ func TestTailer_FileRotation(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				ReOpen:       true,
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -294,10 +206,8 @@ func TestTailer_EmptyFile(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -334,10 +244,8 @@ func TestTailer_NoNewlineAtEnd(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 50 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -398,11 +306,8 @@ func TestTailer_PartialLineIsHeldUntilNewline(t *testing.T) {
 				require.NoError(t, os.WriteFile(testFile, []byte(""), 0o644))
 
 				tail, err := TailFile(t.Context(), testFile, Config{
-					Poll:         true,
 					PollInterval: -1,
-					ReOpen:       true,
 					Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-					KeepFileOpen: mode.keepFileOpen,
 				})
 				require.NoError(t, err)
 				defer func() { require.NoError(t, tail.Stop()) }()
@@ -475,10 +380,8 @@ func TestTailer_RapidWrites(t *testing.T) {
 			require.NoError(t, err)
 
 			config := Config{
-				Poll:         true,
 				PollInterval: 20 * time.Millisecond,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-				KeepFileOpen: mode.keepFileOpen,
 			}
 
 			tail, err := TailFile(t.Context(), testFile, config)
@@ -539,10 +442,8 @@ func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	require.NoError(t, err)
 
 	config := Config{
-		Poll:         true,
 		PollInterval: -1, // Manual mode
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	}
 
 	tail, err := TailFile(t.Context(), testFile, config)
@@ -602,11 +503,8 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 			require.NoError(t, os.WriteFile(testFile, []byte(`{"a":`), 0o644))
 
 			tail, err := TailFile(t.Context(), testFile, Config{
-				Poll:         true,
 				PollInterval: -1,
-				ReOpen:       true,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-				KeepFileOpen: mode.keepFileOpen,
 			})
 			require.NoError(t, err)
 			defer func() { require.NoError(t, tail.Stop()) }()
@@ -653,11 +551,8 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	}
 
 	tail, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
-		ReOpen:       true,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	defer func() { require.NoError(t, tail.Stop()) }()
@@ -679,11 +574,8 @@ func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	followed, err := TailFile(t.Context(), testFile, Config{
-		ReOpen:       true,
-		Poll:         true,
 		PollInterval: 20 * time.Millisecond,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = followed.Stop() })
@@ -697,177 +589,64 @@ func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	}
 }
 
-// After the handle is dropped and the next open fails, the follow ends on its own so the reader can forget this file.
-func TestTailer_FailedReopenClosesDying(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
+// A transient stat error ends the tail on purpose. This tailer does not retry.
+// The file is still readable after the error, and a line written then is not delivered.
+// Starting again is the file source's job, when discovery polling notices the path is not being followed.
+func TestTailer_TransientStatFailureClosesDying(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
 
-	followed, err := TailFile(t.Context(), testFile, Config{
-		ReOpen:       true,
-		Poll:         true,
-		PollInterval: -1,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: true,
-	})
-	require.NoError(t, err)
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() {
-		openFileForReadInTest = originalOpen
-		_ = followed.Stop()
-	})
-
-	openFileForReadInTest = func(string) (*os.File, error) {
-		return nil, os.ErrPermission
+	transientStatError := errors.New("transient network error")
+	statFailedOnce := false
+	originalStat := statFileInTest
+	t.Cleanup(func() { statFileInTest = originalStat })
+	statFileInTest = func(name string) (os.FileInfo, error) {
+		if !statFailedOnce {
+			statFailedOnce = true
+			return nil, transientStatError
+		}
+		return os.Stat(name)
 	}
 
-	fileTailer := followed
-	fileTailer.waitUntilFileReturns()
-	require.Error(t, followed.Err())
-
-	select {
-	case <-followed.Dying():
-	case <-time.After(time.Second):
-		t.Fatal("Dying stayed open after reopen failed")
-	}
-}
-
-func startKeepOpenTailForTest(t *testing.T, testFile string, reopen bool, poll bool, pollInterval time.Duration) *Tailer {
-	t.Helper()
-
 	followed, err := TailFile(t.Context(), testFile, Config{
-		ReOpen:       reopen,
-		Poll:         poll,
-		PollInterval: pollInterval,
+		PollInterval: 20 * time.Millisecond,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: true,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = followed.Stop() })
-	return followed
-}
-
-// When the watcher says the file was written, the new line is delivered.
-func TestTailer_WatchWriteReadsLine(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-	require.False(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Write}))
 
 	select {
-	case line := <-fileTailer.Lines():
-		require.Equal(t, "line2", line.Text)
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for line after write event")
-	}
-}
-
-// When the watcher says the file was removed and reopen is off, the follow stops with an error.
-func TestTailer_WatchRemoveWithoutReopenClosesDying(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, false, true, -1)
-	require.True(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove}))
-	require.Error(t, fileTailer.Err())
-
-	select {
-	case <-fileTailer.Dying():
-	case <-time.After(time.Second):
-		t.Fatal("Dying stayed open after a remove without ReOpen")
-	}
-}
-
-// When the watcher says the file was removed and reopen is on, the tail waits for the path to come back and reads the new file from the start.
-func TestTailer_WatchRemoveWithReopenReadsNewFile(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	fileTailer.mu.Lock()
-	if fileTailer.file != nil {
-		_ = fileTailer.file.Close()
-		fileTailer.file = nil
-	}
-	fileTailer.mu.Unlock()
-	require.NoError(t, os.Remove(testFile))
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove})
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	require.NoError(t, os.WriteFile(testFile, []byte("new\n"), 0o644))
-
-	select {
-	case <-done:
+	case <-followed.Dying():
 	case <-time.After(2 * time.Second):
-		t.Fatal("waitUntilFileReturns did not return")
+		t.Fatal("Dying stayed open after a transient stat error")
 	}
 
-	fileTailer.readLinesSinceLastOffset()
+	require.ErrorIs(t, followed.Err(), transientStatError)
+	_, err = os.Stat(testFile)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(testFile, []byte("old\nafter\n"), 0o644))
 
 	select {
-	case line := <-fileTailer.Lines():
-		require.Equal(t, "new", line.Text)
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for line after reopen")
+	case line, ok := <-followed.Lines():
+		if ok {
+			t.Fatalf("tail delivered %q after a transient stat error", line.Text)
+		}
+	default:
+		t.Fatal("Lines stayed open after the tail died")
 	}
 }
 
-// If the filesystem watcher is closed out from under the tailer, the follow ends.
-func TestTailer_ClosedWatcherClosesDying(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 20*time.Millisecond)
-	require.NotNil(t, fileTailer.watcher)
-	require.NoError(t, fileTailer.watcher.Close())
-
-	select {
-	case <-fileTailer.Dying():
-	case <-time.After(2 * time.Second):
-		t.Fatal("Dying stayed open after the watcher was closed")
-	}
-}
-
-// If the file cannot be opened at the start, while the handle is meant to stay open, starting the tail returns that error.
-func TestTailer_KeepOpenOpenFailure(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() { openFileForReadInTest = originalOpen })
-	openFileForReadInTest = func(string) (*os.File, error) {
-		return nil, os.ErrPermission
-	}
-
-	_, err := TailFile(t.Context(), testFile, Config{
-		KeepFileOpen: true,
-		Poll:         true,
-		PollInterval: -1,
-	})
-	require.Error(t, err)
-	require.ErrorContains(t, err, "could not open file")
-}
-
-// The first error stops the follow. A later error does not replace it.
 func TestTailer_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
+	fileTailer, err := TailFile(t.Context(), testFile, Config{
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = fileTailer.Stop() })
 	fileTailer.recordFirstErrorAndStop(os.ErrPermission)
 	require.Error(t, fileTailer.Err())
 
@@ -892,153 +671,14 @@ func openClosedFileForTest(filename string) (*os.File, error) {
 	return file, nil
 }
 
-// If the opened handle cannot be moved to the start position, starting the tail fails.
-func TestTailer_KeepOpenSeekFailure(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() { openFileForReadInTest = originalOpen })
-	openFileForReadInTest = openClosedFileForTest
-
-	_, err := TailFile(t.Context(), testFile, Config{
-		KeepFileOpen: true,
-		Poll:         true,
-		PollInterval: -1,
-	})
-	require.Error(t, err)
-	require.ErrorContains(t, err, "could not seek")
-}
-
-// If the path disappears before a watcher can be attached, starting the tail fails.
-func TestTailer_KeepOpenWatchAddFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows cannot unlink a file while this process holds it open")
-	}
-
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() { openFileForReadInTest = originalOpen })
-	openFileForReadInTest = func(filename string) (*os.File, error) {
-		file, err := os.Open(filename)
-		if err != nil {
-			return nil, err
-		}
-		if err := os.Remove(filename); err != nil {
-			file.Close()
-			return nil, err
-		}
-		return file, nil
-	}
-
-	_, err := TailFile(t.Context(), testFile, Config{
-		KeepFileOpen: true,
-		Poll:         false,
-	})
-	require.Error(t, err)
-	require.ErrorContains(t, err, "could not watch file")
-}
-
-// When the watcher says the file was created, the new line is delivered, the same as for a write.
-func TestTailer_WatchCreateReadsLine(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-	require.False(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Create}))
-
-	select {
-	case line := <-fileTailer.Lines():
-		require.Equal(t, "line2", line.Text)
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for line after create event")
-	}
-}
-
-// Stopping the tail while it is waiting for a deleted file to reappear ends that wait.
-func TestTailer_WaitUntilFileReturnsStopsWhenCanceled(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	fileTailer.mu.Lock()
-	if fileTailer.file != nil {
-		_ = fileTailer.file.Close()
-		fileTailer.file = nil
-	}
-	fileTailer.mu.Unlock()
-	require.NoError(t, os.Remove(testFile))
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove})
-	}()
-
-	time.Sleep(150 * time.Millisecond)
-	require.NoError(t, fileTailer.Stop())
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("waitUntilFileReturns did not return after Stop")
-	}
-}
-
-// If the open handle can no longer be checked for size, the follow stops.
-func TestTailer_KeepOpenStatFailureStopsFollow(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	fileTailer.mu.Lock()
-	require.NoError(t, fileTailer.file.Close())
-	fileTailer.mu.Unlock()
-
-	forceReadForTest(fileTailer)
-	require.Error(t, fileTailer.Err())
-	require.ErrorContains(t, fileTailer.Err(), "error statting file")
-}
-
-// After the file shrinks, if the replacement handle cannot be positioned, the follow stops.
-func TestTailer_KeepOpenReopenSeekFailure(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() { openFileForReadInTest = originalOpen })
-	openFileForReadInTest = openClosedFileForTest
-
-	fileTailer.mu.Lock()
-	fileTailer.reopenAtOffset(0)
-	fileTailer.mu.Unlock()
-
-	require.Error(t, fileTailer.Err())
-	require.ErrorContains(t, fileTailer.Err(), "error seeking")
-}
-
-// In close-after-read mode, failing to open the file stops the follow.
 func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = fileTailer.Stop() })
@@ -1061,10 +701,8 @@ func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = fileTailer.Stop() })
@@ -1169,8 +807,6 @@ func TestTailer_SeekEndOpenFailure(t *testing.T) {
 
 	_, err := TailFile(t.Context(), testFile, Config{
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		KeepFileOpen: false,
-		Poll:         true,
 		PollInterval: -1,
 	})
 	require.Error(t, err)
@@ -1188,10 +824,8 @@ func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -1212,10 +846,8 @@ func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = fileTailer.Stop() })
@@ -1231,139 +863,13 @@ func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
-// A read error on the handle that stays open stops the follow.
-func TestTailer_KeepOpenReadErrorStopsFollow(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	fileTailer.mu.Lock()
-	fileTailer.reader = bufio.NewReader(&failAfterBytesReaderForTest{
-		data: []byte("x"),
-		err:  os.ErrPermission,
-	})
-	fileTailer.mu.Unlock()
-
-	forceReadForTest(fileTailer)
-	require.Error(t, fileTailer.Err())
-	require.ErrorContains(t, fileTailer.Err(), "error reading file")
-}
-
-// A remove notice on the live watch channel stops the tail when reopen is off.
-func TestTailer_WatchRemoveEventStopsFollowWithoutReopen(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	events := make(chan fsnotify.Event, 1)
-	watchEventsInTest = events
-	t.Cleanup(func() { watchEventsInTest = nil })
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, false, false, 20*time.Millisecond)
-	events <- fsnotify.Event{Name: testFile, Op: fsnotify.Remove}
-
-	select {
-	case <-fileTailer.Dying():
-	case <-time.After(2 * time.Second):
-		t.Fatal("Dying stayed open after a watched remove")
-	}
-	require.Error(t, fileTailer.Err())
-}
-
-// After the file is removed and written again, the new file is watched too.
-func TestTailer_WatchRemoveWithReopenAddsWatcher(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, false, 20*time.Millisecond)
-	require.NotNil(t, fileTailer.watcher)
-
-	fileTailer.mu.Lock()
-	if fileTailer.file != nil {
-		_ = fileTailer.file.Close()
-		fileTailer.file = nil
-	}
-	fileTailer.mu.Unlock()
-	require.NoError(t, os.Remove(testFile))
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Remove})
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	require.NoError(t, os.WriteFile(testFile, []byte("new\n"), 0o644))
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("waitUntilFileReturns did not return")
-	}
-
-	fileTailer.mu.Lock()
-	require.NotNil(t, fileTailer.watcher)
-	fileTailer.mu.Unlock()
-}
-
-// A permission-change notice is treated as "the file may have changed", and the new line is delivered. Linux also reports that notice when an open file is deleted.
-func TestTailer_WatchChmodReadsLine(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-	require.False(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Chmod}))
-
-	select {
-	case line := <-fileTailer.Lines():
-		require.Equal(t, "line2", line.Text)
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for line after chmod event")
-	}
-}
-
-// A permission-change notice after the path is gone stops the follow when reopen is off, the same as a remove.
-func TestTailer_WatchChmodWhenPathGoneStopsWithoutReopen(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, false, true, -1)
-	require.NoError(t, os.Remove(testFile))
-	require.True(t, fileTailer.readAfterWatchEvent(fsnotify.Event{Name: testFile, Op: fsnotify.Chmod}))
-	require.Error(t, fileTailer.Err())
-
-	select {
-	case <-fileTailer.Dying():
-	case <-time.After(time.Second):
-		t.Fatal("Dying stayed open after chmod on a missing path")
-	}
-}
-
-// On Windows, another process can delete the file while the keep-open handle is still held.
-func TestTailer_WindowsCanRemoveFileWhileKeptOpen(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("FILE_SHARE_DELETE is a Windows CreateFile flag")
-	}
-
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer := startKeepOpenTailForTest(t, testFile, true, true, -1)
-	require.NotNil(t, fileTailer.file)
-	require.NoError(t, os.Remove(testFile))
-}
-
-// A permission error while checking the path means the file is gone on Windows. Everywhere else it is a real follow error.
 func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		Poll:         true,
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-		KeepFileOpen: false,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = fileTailer.Stop() })

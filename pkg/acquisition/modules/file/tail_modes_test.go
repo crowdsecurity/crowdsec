@@ -18,15 +18,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// tailModes covers each live file mode. tail uses nxadm. crowdtail and crowdtailstat use the in-house tailer.
+// tailModes covers each live file mode. tail uses nxadm. polltail uses the in-house tailer.
 var tailModes = []struct {
 	name  string
 	mode  string
 	extra string
 }{
 	{name: "tail", mode: "tail"},
-	{name: "crowdtail", mode: "crowdtail"},
-	{name: "crowdtailstat", mode: "crowdtailstat", extra: "\ncrowdtailstat_read_interval: 100ms"},
+	{name: "polltail", mode: "polltail", extra: "\npolltail_read_interval: 100ms"},
 }
 
 func TestTailModes_BasicTailing(t *testing.T) {
@@ -207,20 +206,12 @@ filenames:
 `, testFile),
 		},
 		{
-			name: "crowdtail",
+			name: "polltail",
 			config: fmt.Sprintf(`
-mode: crowdtail
+mode: polltail
 filenames:
  - %s
-`, testFile),
-		},
-		{
-			name: "crowdtailstat",
-			config: fmt.Sprintf(`
-mode: crowdtailstat
-filenames:
- - %s
-crowdtailstat_read_interval: 100ms
+polltail_read_interval: 100ms
 `, testFile),
 		},
 	}

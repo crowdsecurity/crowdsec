@@ -29,21 +29,19 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
-	CrowdTailStatModeReadInterval     time.Duration `yaml:"crowdtailstat_read_interval"` // how often crowdtailstat stats and reads (default 2s, 0=2s, negative=manual)
+	PollTailReadInterval              time.Duration `yaml:"polltail_read_interval"` // how often polltail stats and reads (default 2s, 0=2s, negative=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 const (
-	// modeCrowdTail follows a file with the in-house tailer and keeps the handle open.
-	modeCrowdTail = "crowdtail"
-	// modeCrowdTailStat follows a file with the in-house tailer and closes the handle after each read.
-	modeCrowdTailStat = "crowdtailstat"
+	// modePollTail follows a file with the in-house tailer. Each pass opens the path, reads, and closes it.
+	modePollTail = "polltail"
 )
 
 // liveFileMode reports whether mode follows a file instead of reading it once.
 func liveFileMode(mode string) bool {
 	switch mode {
-	case configuration.TAIL_MODE, modeCrowdTail, modeCrowdTailStat:
+	case configuration.TAIL_MODE, modePollTail:
 		return true
 	default:
 		return false
@@ -75,13 +73,13 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	switch s.config.Mode {
-	case configuration.TAIL_MODE, configuration.CAT_MODE, modeCrowdTail:
-	case modeCrowdTailStat:
-		if s.config.CrowdTailStatModeReadInterval == 0 {
-			s.config.CrowdTailStatModeReadInterval = 2 * time.Second
+	case configuration.TAIL_MODE, configuration.CAT_MODE:
+	case modePollTail:
+		if s.config.PollTailReadInterval == 0 {
+			s.config.PollTailReadInterval = 2 * time.Second
 		}
 	default:
-		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, crowdtail, crowdtailstat)", s.config.Mode)
+		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, polltail)", s.config.Mode)
 	}
 
 	for _, exclude := range s.config.ExcludeRegexps {
