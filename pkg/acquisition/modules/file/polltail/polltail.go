@@ -73,8 +73,15 @@ func TailFile(ctx context.Context, filename string, config Config) (*PollTail, e
 		return nil, fmt.Errorf("could not stat file %s: %w", filename, err)
 	}
 
-	// Start tailing from the configured position. SeekEnd is the current end of the file.
-	initialOffset := startingOffset(fileInfo.Size(), config.Location)
+	// SeekEnd starts at the current end, as nxadm does. A fragment already in the file is LEFT BEHIND.
+	// Every other whence uses Offset as that byte. No location starts at the first byte.
+	initialOffset := int64(0)
+	if config.Location != nil {
+		initialOffset = config.Location.Offset
+		if config.Location.Whence == io.SeekEnd {
+			initialOffset = fileInfo.Size()
+		}
+	}
 
 	tailerCtx, cancel := context.WithCancel(ctx)
 	fileTailer := &PollTail{
@@ -93,19 +100,6 @@ func TailFile(ctx context.Context, filename string, config Config) (*PollTail, e
 	go fileTailer.pollUntilStopped()
 
 	return fileTailer, nil
-}
-
-// startingOffset is the first byte to read.
-// SeekEnd starts at the current end, as nxadm does. A fragment already in the file is LEFT BEHIND.
-// Every other whence uses Offset as that byte.
-func startingOffset(size int64, location *SeekInfo) int64 {
-	if location == nil {
-		return 0
-	}
-	if location.Whence == io.SeekEnd {
-		return size
-	}
-	return location.Offset
 }
 
 // Filename is the path this tailer was started on.
@@ -222,7 +216,8 @@ func (fileTailer *PollTail) readLines() {
 		fileTailer.lastOffset = 0
 	}
 
-	if !fileNeedsAnotherRead(fileInfo.Size(), fileTailer.lastOffset, rotated) {
+	// An empty shrink still needs a read: lastOffset was just set to 0, so size alone would not.
+	if !rotated && fileInfo.Size() <= fileTailer.lastOffset {
 		fileTailer.lastSize = fileInfo.Size()
 		return
 	}
@@ -260,14 +255,6 @@ func (fileTailer *PollTail) readLines() {
 		return
 	}
 	fileTailer.lastSize = fileInfoAfterRead.Size()
-}
-
-// fileNeedsAnotherRead is true when the file was rotated or grew past the last byte already sent.
-func fileNeedsAnotherRead(size int64, lastOffset int64, rotated bool) bool {
-	if rotated {
-		return true
-	}
-	return size > lastOffset
 }
 
 // sendCompleteLines sends chunks that end with a newline.
