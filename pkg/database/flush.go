@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -309,15 +308,20 @@ func (c *Client) pruneMachineSeries(ctx context.Context) {
 		return
 	}
 
-	kept, err := c.Ent.Machine.Query().Where(machine.MachineIdIn(ids...)).Select(machine.FieldMachineId).Strings(ctx)
+	machines, err := c.Ent.Machine.Query().Select(machine.FieldMachineId).Strings(ctx)
 	if err != nil {
 		c.Log.Errorf("while looking up machines for metrics cleanup: %s", err)
 		return
 	}
 
+	// password login keeps the ID as the client sent it, and MySQL matches it case-insensitively
+	kept := make(map[string]struct{}, len(machines))
+	for _, id := range machines {
+		kept[strings.ToLower(id)] = struct{}{}
+	}
+
 	for _, id := range ids {
-		// password login keeps the ID as the client sent it, and MySQL matches it case-insensitively
-		if !slices.ContainsFunc(kept, func(k string) bool { return strings.EqualFold(k, id) }) {
+		if _, ok := kept[strings.ToLower(id)]; !ok {
 			metrics.DeleteMachineSeries(id)
 		}
 	}
@@ -329,14 +333,19 @@ func (c *Client) pruneBouncerSeries(ctx context.Context) {
 		return
 	}
 
-	kept, err := c.Ent.Bouncer.Query().Where(bouncer.NameIn(names...)).Select(bouncer.FieldName).Strings(ctx)
+	bouncers, err := c.Ent.Bouncer.Query().Select(bouncer.FieldName).Strings(ctx)
 	if err != nil {
 		c.Log.Errorf("while looking up bouncers for metrics cleanup: %s", err)
 		return
 	}
 
+	kept := make(map[string]struct{}, len(bouncers))
+	for _, name := range bouncers {
+		kept[name] = struct{}{}
+	}
+
 	for _, name := range names {
-		if !slices.Contains(kept, name) {
+		if _, ok := kept[name]; !ok {
 			metrics.DeleteBouncerSeries(name)
 		}
 	}

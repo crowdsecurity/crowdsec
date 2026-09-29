@@ -271,12 +271,21 @@ func TestFlushAgentsAndBouncers_PrunesClientSeries(t *testing.T) {
 	tests := []struct {
 		name         string
 		failLookup   bool
+		bulk         int
 		wantSeries   map[string]int
 		wantMachines []string
 		wantBouncers []string
 	}{
 		{
 			name:         "series of deleted clients are dropped",
+			wantSeries:   map[string]int{"machine requests": 2, "heartbeat": 1, "bouncer requests": 1, "decisions ko": 1, "decisions ok": 1},
+			wantMachines: []string{"Kept-Machine", "kept-machine"},
+			wantBouncers: []string{"kept-bouncer"},
+		},
+		{
+			// sqlite rejects a statement with more than 32766 parameters
+			name:         "more deleted clients than sqlite takes as query parameters",
+			bulk:         32767,
 			wantSeries:   map[string]int{"machine requests": 2, "heartbeat": 1, "bouncer requests": 1, "decisions ko": 1, "decisions ok": 1},
 			wantMachines: []string{"Kept-Machine", "kept-machine"},
 			wantBouncers: []string{"kept-bouncer"},
@@ -295,7 +304,7 @@ func TestFlushAgentsAndBouncers_PrunesClientSeries(t *testing.T) {
 			ctx := t.Context()
 			c := getDBClient(t, ctx)
 
-			registerFlushTestMachine(t, ctx, c, "kept-machine")
+			registerFlushTestMachine(t, ctx, c, "Kept-Machine")
 
 			_, err := c.CreateBouncer(ctx, "kept-bouncer", "127.0.0.1", "apikey", types.ApiKeyAuthType, false)
 			require.NoError(t, err)
@@ -315,6 +324,11 @@ func TestFlushAgentsAndBouncers_PrunesClientSeries(t *testing.T) {
 			metrics.LapiNilDecisions.WithLabelValues("deleted-ko").Inc()
 			metrics.LapiNonNilDecisions.WithLabelValues("kept-bouncer").Inc()
 			metrics.LapiNonNilDecisions.WithLabelValues("deleted-ok").Inc()
+
+			for i := range tc.bulk {
+				metrics.GlobalMachinesLastHeartbeatTimestamp.WithLabelValues(fmt.Sprintf("bulk-machine-%d", i)).SetToCurrentTime()
+				metrics.LapiNilDecisions.WithLabelValues(fmt.Sprintf("bulk-bouncer-%d", i)).Inc()
+			}
 
 			flushCtx := ctx
 			if tc.failLookup {
