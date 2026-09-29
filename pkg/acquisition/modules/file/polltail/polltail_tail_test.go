@@ -41,7 +41,7 @@ func TestPollTail_SeekStart(t *testing.T) {
 			tailTest.AppendFile("test.txt", "line4\n")
 			forceReadForTest(tail)
 
-			tailTest.waitForLineCheckThenStop(tail, true)
+			tailTest.waitForLineCheckThenStop(tail)
 		})
 	}
 }

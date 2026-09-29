@@ -101,7 +101,7 @@ func TestPollTail_LocationMiddle(t *testing.T) {
 			tailTest.AppendFile("test.txt", "more\ndata\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
+			tailTest.waitForLineCheckThenStop(tail)
 		})
 	}
 }
@@ -137,7 +137,7 @@ func TestPollTail_ReSeek(t *testing.T) {
 			tailTest.TruncateFile("test.txt", "h311o\nw0r1d\nendofworld\n")
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
+			tailTest.waitForLineCheckThenStop(tail)
 		})
 	}
 }
@@ -231,7 +231,7 @@ func TestPollTail_Over4096ByteLine(t *testing.T) {
 			go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 			<-time.After(200 * time.Millisecond)
-			tailTest.waitForLineCheckThenStop(tail, true)
+			tailTest.waitForLineCheckThenStop(tail)
 		})
 	}
 }

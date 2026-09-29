@@ -183,8 +183,8 @@ func (*TailTest) CollectLines(tail *PollTail, timeout time.Duration) []string {
 	}
 }
 
-// waitForLineCheckThenStop waits until VerifyTailOutput closes done, then stops the tailer when stop is set.
-func (tailTest *TailTest) waitForLineCheckThenStop(tail *PollTail, stop bool) {
+// waitForLineCheckThenStop waits until VerifyTailOutput closes done, then stops the tailer.
+func (tailTest *TailTest) waitForLineCheckThenStop(tail *PollTail) {
 	select {
 	case <-tailTest.done:
 	case <-time.After(5 * time.Second):
