@@ -298,6 +298,12 @@ func (m *MetricsProvider) getAppsecBlockedMetrics() []*models.MetricsDetailItem 
 	}, nil, "appsec_blocked", "request")
 }
 
+func (m *MetricsProvider) getPostOverflowDroppedMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.GlobalPostOverflowDroppedMetricName}, labelsMapping{
+		"routine": "routine",
+	}, nil, "postoverflow_dropped", "overflow")
+}
+
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	os := &models.OSversion{
 		Name:    new(m.static.osName),
@@ -371,6 +377,11 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	appsecBlockedMetrics := m.getAppsecBlockedMetrics()
 	if len(appsecBlockedMetrics) > 0 {
 		met.Metrics[0].Items = append(met.Metrics[0].Items, appsecBlockedMetrics...)
+	}
+
+	postOverflowDroppedMetrics := m.getPostOverflowDroppedMetrics()
+	if len(postOverflowDroppedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, postOverflowDroppedMetrics...)
 	}
 
 	return &models.AllMetrics{
