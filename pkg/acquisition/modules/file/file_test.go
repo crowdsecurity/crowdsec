@@ -633,7 +633,11 @@ mode: %s%s
 	}
 }
 
-// TestStreamDropsDeadStatTail covers the Stream reader dropping a tail after the file is gone.
+// Only polltail. A missing path ends that follow, and the source drops it from s.tails.
+// nxadm is opened with ReOpen, so a missing path waits for the file to come back and the entry stays.
+// A gone file should drop the nxadm tail too. Otherwise each gone path stays in s.tails.
+// That change can break callers who rely on the tail waiting for the path to return. This is an assymetry
+// in how both tailer react to a gone file.
 func TestStreamDropsDeadStatTail(t *testing.T) {
 	// Start polltail, then delete the file.
 	ctx := t.Context()
