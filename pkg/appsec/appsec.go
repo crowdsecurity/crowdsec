@@ -146,14 +146,18 @@ func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPa
 	case hookPostEval:
 		env = GetPostEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
+		env = GetOnMatchEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	case hookOnChallenge:
 		env = GetOnChallengeEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnChallengeSubmit:
-		env = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetOnChallengeSubmitEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	}
 
 	opts := exprhelpers.GetExprOptions(env)
+	if stage != hookOnLoad {
+		opts = append(opts, scoreExprOptions...)
+	}
+
 	if patcher != nil {
 		opts = append(opts, expr.Patch(patcher))
 	}
@@ -1242,8 +1246,8 @@ func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]inte
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
+	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(ctx, w, state, request, evt), request)
 }
 
 // ProcessOnChallengeRules is the in-band-only challenge entry point. It
@@ -1306,7 +1310,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		state.Fingerprint = &fpData
 		state.CookiePowDifficulty = provenDifficulty
 
-		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
+		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(ctx, w, state, request), "on_challenge_submit", state); err != nil {
 			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
 		}
 
@@ -1667,22 +1671,57 @@ const (
 	// Weighted form ("cdp=100,utc_timezone=15") so this hookvar and the
 	// event/alert key of the same name never disagree on format.
 	hookVarRequestScoreReasons = "request_score_reasons"
+	// Same form on the category axis ("bot=100,fingerprint=15").
+	hookVarRequestScoreCategories = "request_score_categories"
 )
 
-func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string) error {
-	total := state.RequestScore.Add(points, reason)
-
-	if state.HookVars != nil {
-		state.HookVars[hookVarRequestScore] = strconv.Itoa(total)
-		state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
+// syncScoreHookVars republishes the score hookvars after every mutation, so a
+// rule reading hook_vars sees the same numbers as RequestScore().
+func syncScoreHookVars(state *AppsecRequestState) {
+	if state.HookVars == nil {
+		return
 	}
+
+	state.HookVars[hookVarRequestScore] = strconv.Itoa(state.RequestScore.Total())
+	state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
+
+	// Absent rather than empty for rules that never set a category, so the
+	// key showing up means something.
+	if state.RequestScore.HasCategories() {
+		state.HookVars[hookVarRequestScoreCategories] = state.RequestScore.CategoryDetail()
+	}
+}
+
+// The expr prototypes cap category at one value; it is variadic here only so
+// the pre-category Go callers keep compiling.
+func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
+	total := state.RequestScore.Add(points, reason, category...)
+
+	syncScoreHookVars(state)
 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
-			"reason": reason,
-			"points": points,
-			"total":  total,
+			"reason":   reason,
+			"category": scoreCategoryArg(category),
+			"points":   points,
+			"total":    total,
 		}).Debug("request score updated")
+	}
+
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points int, categories ...string) error {
+	total := state.RequestScore.Set(points, categories...)
+
+	syncScoreHookVars(state)
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"categories": categories,
+			"points":     points,
+			"total":      total,
+		}).Debug("request score set")
 	}
 
 	return nil

@@ -135,13 +135,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		},
 		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
 		"ExemptFromChallenge":   func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
-		"AddRequestScore": func(points int, reason string) error {
-			return w.AddRequestScore(state, points, reason)
-		},
-		"RequestScore":        func() int { return state.RequestScore.Total() },
-		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
-		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
-		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		scoreCtxVar:             withScoreBinding(ctx, w, state),
 	}
 }
 
@@ -171,13 +165,7 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"hook_vars":               state.HookVars,
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
-		"AddRequestScore": func(points int, reason string) error {
-			return w.AddRequestScore(state, points, reason)
-		},
-		"RequestScore":        func() int { return state.RequestScore.Total() },
-		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
-		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
-		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		scoreCtxVar:               withScoreBinding(ctx, w, state),
 	}
 }
 
@@ -216,13 +204,7 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)
 		},
-		"AddRequestScore": func(points int, reason string) error {
-			return w.AddRequestScore(state, points, reason)
-		},
-		"RequestScore":        func() int { return state.RequestScore.Total() },
-		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
-		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
-		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		scoreCtxVar: withScoreBinding(ctx, w, state),
 	}
 }
 
@@ -233,7 +215,7 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 // DropRequest) is intentionally omitted to avoid breaking the client-side
 // JS handler. Operators wanting to escalate or block at the next request
 // should do so via pre_eval.
-func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
+func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"req":         request.HTTPRequest,
 		"IsInBand":    request.IsInBand,
@@ -299,19 +281,13 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		"AddRequestScore": func(points int, reason string) error {
-			return w.AddRequestScore(state, points, reason)
-		},
-		"RequestScore":        func() int { return state.RequestScore.Total() },
-		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
-		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
-		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
-		"CancelAlert":         func() error { return w.CancelAlert(state) },
-		"SendAlert":           func() error { return w.SendAlert(state) },
+		scoreCtxVar:   withScoreBinding(ctx, w, state),
+		"CancelAlert": func() error { return w.CancelAlert(state) },
+		"SendAlert":   func() error { return w.SendAlert(state) },
 	}
 }
 
-func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
+func GetOnMatchEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":                     evt,
 		"req":                     request.HTTPRequest,
@@ -330,12 +306,6 @@ func GetOnMatchEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, request *P
 		"AppsecCookie":            cookie.NewAppsecCookie,
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
-		"AddRequestScore": func(points int, reason string) error {
-			return w.AddRequestScore(state, points, reason)
-		},
-		"RequestScore":        func() int { return state.RequestScore.Total() },
-		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
-		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
-		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		scoreCtxVar:               withScoreBinding(ctx, w, state),
 	}
 }
