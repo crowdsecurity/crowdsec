@@ -697,12 +697,13 @@ labels:
 			go func() { _ = f.Stream(streamCtx, out) }()
 			require.Eventually(t, func() bool { return f.IsTailing(testFile) }, 2*time.Second, 20*time.Millisecond)
 
-			// The appended line arrives.
+			// Aggregated metrics label the line with the file name, not the full path.
 			require.NoError(t, os.WriteFile(testFile, []byte("hello\n"), 0o644))
 
 			select {
 			case evt := <-out:
 				require.Equal(t, "hello", evt.Line.Raw)
+				require.Equal(t, filepath.Base(testFile), evt.Line.Src)
 			case <-time.After(3 * time.Second):
 				t.Fatal("timeout waiting for tailed line")
 			}
