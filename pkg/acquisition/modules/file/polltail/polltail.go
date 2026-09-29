@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultPollInterval = 1 * time.Second
+	defaultPollInterval = 2 * time.Second
 )
 
 // Line is one newline-terminated read, or the error that ended the read.
@@ -37,7 +37,7 @@ type SeekInfo struct {
 // Each pass stats the path, opens it, reads, and closes it.
 type Config struct {
 	Location     *SeekInfo     // Where to start reading from
-	PollInterval time.Duration // How often to read (default 1s, 0 = 1s, negative = manual/test mode)
+	PollInterval time.Duration // How often to read (default 2s, 0 = 2s, negative = manual/test mode)
 }
 
 // PollTail follows one file and sends each newline-terminated line.
