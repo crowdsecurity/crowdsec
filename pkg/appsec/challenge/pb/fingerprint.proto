@@ -12,7 +12,27 @@ message FingerprintData {
   bool fastBotDetection = 6;
   fingerprintFastBotDetectionDetails fastBotDetectionDetails = 7;
   fingerprintBotAlias bot = 8;
+  // What the hub-distributed detection script reported. Bounded at decode and
+  // again before sealing (fingerprint_custom.go), since it is browser-supplied
+  // and would otherwise push the cookie past the size browsers guarantee.
+  map<string, customValue> custom = 9;
 }
+
+// customValue is a tagged union over the shapes a detection script can produce.
+// A oneof, so "present and false" round-trips distinctly from "absent".
+message customValue {
+  oneof value {
+    bool b = 1;
+    string s = 2;
+    double n = 3;
+    customStringList ss = 4;
+    customFloatList ff = 5;
+  }
+}
+
+message customStringList { repeated string values = 1; }
+
+message customFloatList { repeated double values = 1; }
 
 // ChallengeCookie is the sealed cookie payload. It wraps the validated
 // fingerprint together with metadata that influences re-challenge decisions

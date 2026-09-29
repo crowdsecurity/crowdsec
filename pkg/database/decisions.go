@@ -34,7 +34,7 @@ func (c *Client) QueryAllDecisionsWithFilters(ctx context.Context, now time.Time
 		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
-		query = query.Where(longestDecisionForScopeTypeValue)
+		query = query.Where(longestDecisionForScopeTypeValue(filter))
 	}
 
 	query, err := applyDecisionFilter(query, filter)
@@ -80,7 +80,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(ctx context.Context, now time.
 		)
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
-		query = query.Where(longestDecisionForScopeTypeValue)
+		query = query.Where(longestDecisionForScopeTypeValue(filter))
 	}
 
 	query, err := applyDecisionFilter(query, filter)
@@ -155,32 +155,38 @@ func (c *Client) QueryDecisionWithFilter(ctx context.Context, filter map[string]
 	return data, nil
 }
 
-// ent translation of https://stackoverflow.com/a/28090544
-func longestDecisionForScopeTypeValue(s *sql.Selector) {
-	t := sql.Table(decision.Table)
-	s.LeftJoin(t).OnP(sql.And(
-		sql.ColumnsEQ(
-			t.C(decision.FieldValue),
-			s.C(decision.FieldValue),
-		),
-		sql.ColumnsEQ(
-			t.C(decision.FieldType),
-			s.C(decision.FieldType),
-		),
-		sql.ColumnsEQ(
-			t.C(decision.FieldScope),
-			s.C(decision.FieldScope),
-		),
-		sql.ColumnsGT(
-			t.C(decision.FieldUntil),
-			s.C(decision.FieldUntil),
-		),
-	))
-	s.Where(
-		sql.IsNull(
-			t.C(decision.FieldUntil),
-		),
-	)
+func longestDecisionForScopeTypeValue(filter map[string][]string) func(*sql.Selector) {
+	simulated, ok := filter["simulated"]
+	excludeSimulated := !ok || simulated[0] == "false"
+
+	return func(s *sql.Selector) {
+		t := sql.Table(decision.Table).As("t1")
+
+		predicates := []*sql.Predicate{
+			sql.ColumnsEQ(
+				t.C(decision.FieldValue),
+				s.C(decision.FieldValue),
+			),
+			sql.ColumnsEQ(
+				t.C(decision.FieldType),
+				s.C(decision.FieldType),
+			),
+			sql.ColumnsEQ(
+				t.C(decision.FieldScope),
+				s.C(decision.FieldScope),
+			),
+			sql.ColumnsGT(
+				t.C(decision.FieldUntil),
+				s.C(decision.FieldUntil),
+			),
+		}
+		if excludeSimulated {
+			predicates = append(predicates, sql.EQ(t.C(decision.FieldSimulated), false))
+		}
+
+		query := sql.SelectExpr(sql.Expr("1")).From(t).Where(sql.And(predicates...))
+		s.Where(sql.NotExists(query))
+	}
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, now time.Time, since *time.Time, filter map[string][]string) ([]*ent.Decision, error) {
@@ -196,7 +202,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(ctx context.Context, now 
 
 	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filter["dedup"]; !ok || v[0] != "false" {
-		query = query.Where(longestDecisionForScopeTypeValue)
+		query = query.Where(longestDecisionForScopeTypeValue(filter))
 	}
 
 	query, err := applyDecisionFilter(query, filter)

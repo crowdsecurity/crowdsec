@@ -178,8 +178,8 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 		return nil
 	}
 
-	if state.DropInfo(request) != nil {
-		r.logger.Debug("drop helper triggered during pre_eval, skipping WAF evaluation")
+	if outcome := state.Outcome(request); outcome != nil {
+		r.logger.Debugf("pre_eval returned %s (%s), skipping WAF evaluation", outcome.Action, outcome.Reason)
 		return nil
 	}
 
@@ -290,8 +290,8 @@ func (r *AppsecRunner) ProcessInBandRules(ctx context.Context, state *appsec.App
 		return nil
 	}
 
-	if state.DropInfo(request) != nil {
-		r.logger.Debug("drop helper triggered during on_challenge, skipping WAF evaluation")
+	if outcome := state.Outcome(request); outcome != nil {
+		r.logger.Debugf("on_challenge returned %s (%s), skipping WAF evaluation", outcome.Action, outcome.Reason)
 		return nil
 	}
 
@@ -323,7 +323,7 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	r.AccumulateTxToEvent(&evt, state, request)
 
 	interrupt := state.Tx.Interruption()
-	dropInfo := state.InBandDrop
+	dropInfo := state.DropInfo(request)
 
 	if interrupt == nil && dropInfo == nil {
 		return
@@ -397,7 +397,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec
 	}
 	r.AccumulateTxToEvent(&evt, state, request)
 	interrupt := state.Tx.Interruption()
-	dropInfo := state.OutOfBandDrop
+	dropInfo := state.DropInfo(request)
 	if interrupt == nil && dropInfo == nil {
 		return
 	}
@@ -475,7 +475,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	inBandParsingElapsed := time.Since(startInBandParsing)
 	metrics.AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(inBandParsingElapsed.Seconds())
 
-	if state.Tx.IsInterrupted() || state.InBandDrop != nil {
+	if state.Tx.IsInterrupted() || state.DropInfo(request) != nil {
 		r.handleInBandInterrupt(ctx, &state, request)
 	}
 
@@ -521,7 +521,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 
 	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
 	metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
-	if state.Tx.IsInterrupted() || state.OutOfBandDrop != nil {
+	if state.Tx.IsInterrupted() || state.DropInfo(request) != nil {
 		r.handleOutBandInterrupt(ctx, &state, request)
 	}
 	err = state.Tx.Close()

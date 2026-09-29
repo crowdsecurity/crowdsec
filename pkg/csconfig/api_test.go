@@ -118,7 +118,22 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 			expected:    &ApiCredentialsCfg{},
 			expectedErr: "open ./testdata/nonexist_online-api-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
+		{
+			name: "configuration with env vars",
+			input: &OnlineApiClientCfg{
+				CredentialsFilePath: "./testdata/online-api-secrets-envvar.yaml",
+			},
+			expected: &ApiCredentialsCfg{
+				URL:      "http://crowdsec.api",
+				Login:    "test",
+				Password: "testpassword",
+				PapiURL:  PAPIBaseURL,
+			},
+		},
 	}
+
+	t.Setenv("TEST_ONLINE_API_LOGIN", "test")
+	t.Setenv("TEST_ONLINE_API_PASSWORD", "testpassword")
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
