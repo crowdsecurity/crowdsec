@@ -1,4 +1,4 @@
-// This test suite exercises the live tail modes and checks that they behave the same (simmetry)
+// This test suite exercises the live tail modes and checks that they behave the same (symmetry)
 // tail uses nxadm. The other live mode is polltail.
 package fileacquisition_test
 

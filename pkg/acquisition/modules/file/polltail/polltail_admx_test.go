@@ -1,6 +1,6 @@
 // The purpose of this file is to mimic the upstream github.com/nxadm/tail tests one to one.
-// Each test here corresponds to a test in that suite. No judgment on whether these tests are
-// appropiate or not. Some of the original tests have been replaced with improved versions in tailer_test.go
+// No judgment on whether these tests are
+// appropriate or not. Some of the original tests have been replaced with improved versions in tailer_test.go
 // and other removed because our tailer is simpler and some behaviors won't apply. Some helper methods
 // here are reused in tailer_test.go
 
@@ -213,7 +213,7 @@ func (tailTest *TailTest) waitForLineCheckThenStop(tail *PollTail, stop bool) {
 var tailerModes = []struct {
 	name string
 }{
-	{name: "poll"}, // our tailer is very scoped, no behaviour matrix. Preserved for simmetry with upstream.
+	{name: "poll"}, // our tailer is very scoped, no behavior matrix. Preserved for symmetry with upstream.
 }
 
 // =============================================================================
