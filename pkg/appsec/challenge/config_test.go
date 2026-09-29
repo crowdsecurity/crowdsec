@@ -3,6 +3,9 @@ package challenge
 import (
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,11 +71,11 @@ func TestConfigMergeFromOverlaysOnlyNonNilFields(t *testing.T) {
 // only the always-present component-logger option; the runtime is otherwise
 // constructed with its built-in defaults.
 func TestBuildOptionsNilOrEmptyConfig(t *testing.T) {
-	opts, err := BuildOptions(nil, nil)
+	opts, err := BuildOptions(nil, nil, "")
 	require.NoError(t, err)
 	assert.Len(t, opts, 1, "nil config still emits the component-logger option")
 
-	opts, err = BuildOptions(&Config{}, nil)
+	opts, err = BuildOptions(&Config{}, nil, "")
 	require.NoError(t, err)
 	assert.Len(t, opts, 1, "empty config still emits the component-logger option")
 }
@@ -92,7 +95,7 @@ func TestBuildOptionsTranslatesFieldsToRuntimeBehavior(t *testing.T) {
 		MaxCookieSize:             new(8192),
 	}
 
-	opts, err := BuildOptions(cfg, nil)
+	opts, err := BuildOptions(cfg, nil, "")
 	require.NoError(t, err)
 	require.Len(t, opts, 8, "every populated field + the component logger must emit an option")
 
@@ -114,7 +117,7 @@ func TestBuildOptionsInvalidMasterSecret(t *testing.T) {
 	cfg := &Config{
 		MasterSecret: new("too-short"),
 	}
-	_, err := BuildOptions(cfg, nil)
+	_, err := BuildOptions(cfg, nil, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "master_secret")
 }
@@ -169,4 +172,196 @@ func mustURL(s string) *url.URL {
 		panic(err)
 	}
 	return u
+}
+
+// TestConfigMergeFromCarriesTemplatePath: template_path must merge like every
+// other field, so an appsec-config that only sets the custom page doesn't wipe
+// the tuning contributed by another one.
+func TestConfigMergeFromCarriesTemplatePath(t *testing.T) {
+	dst := &Config{CookieTTL: new(12 * time.Hour)}
+	dst.MergeFrom(&Config{TemplatePath: new("pages/challenge.html")})
+
+	require.NotNil(t, dst.TemplatePath)
+	assert.Equal(t, "pages/challenge.html", *dst.TemplatePath)
+	assert.Equal(t, 12*time.Hour, *dst.CookieTTL, "template_path must not wipe other fields")
+}
+
+// TestBuildOptionsCustomTemplate: a page carrying {{.CrowdsecChallenge}} is
+// served instead of the built-in one, and the challenge machinery (PoW
+// parameters, fingerprint scanner, challenge module) lands inside it.
+func TestBuildOptionsCustomTemplate(t *testing.T) {
+	dataDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "page.html"), []byte("<body><h1>my own page</h1>{{.CrowdsecChallenge}}</body>"), 0o600))
+
+	opts, err := BuildOptions(&Config{TemplatePath: new("page.html")}, nil, dataDir)
+	require.NoError(t, err)
+
+	rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), withoutPreWarm())...)
+	require.NoError(t, err)
+
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	require.NoError(t, err)
+
+	assert.Contains(t, html, "<h1>my own page</h1>")
+	assert.NotContains(t, html, "Why am I seeing this?", "the built-in page must not be served")
+
+	for _, want := range []string{
+		`<script src="` + ChallengeFPScannerPath + `">`,
+		"var _powD=",
+		"crowdsecSetChallengeStatus",
+		"navigator.cookieEnabled",
+	} {
+		assert.Contains(t, html, want, "CrowdsecChallenge must carry the whole challenge engine")
+	}
+}
+
+// TestBuildOptionsUnusableTemplate: an unusable custom page is a warning, not
+// a startup failure — the built-in page keeps the instance protected. The
+// missing-action case matters most: it parses and renders fine, but produces a
+// page no visitor could ever solve.
+func TestBuildOptionsUnusableTemplate(t *testing.T) {
+	dataDir := t.TempDir()
+
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "no-action.html"), []byte("<body>forgot the challenge</body>"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "unparsable.html"), []byte("<body>{{.CrowdsecChallenge</body>"), 0o600))
+
+	outside := filepath.Join(t.TempDir(), "outside.html")
+	require.NoError(t, os.WriteFile(outside, []byte("<body>{{.CrowdsecChallenge}}</body>"), 0o600))
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{name: "missing CrowdsecChallenge", path: "no-action.html"},
+		{name: "unparsable template", path: "unparsable.html"},
+		{name: "no such file", path: "absent.html"},
+		{name: "absolute path", path: outside},
+		{name: "escapes the data dir", path: "../" + filepath.Base(filepath.Dir(outside)) + "/outside.html"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, err := BuildOptions(&Config{TemplatePath: &tc.path}, nil, dataDir)
+			require.NoError(t, err, "an unusable page must not fail the configuration")
+
+			rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), withoutPreWarm())...)
+			require.NoError(t, err)
+
+			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+			require.NoError(t, err)
+			assert.Contains(t, html, "Why am I seeing this?", "the built-in page must be served instead")
+		})
+	}
+}
+
+// TestChallengePageAlwaysAttributesCrowdSec: the attribution ships inside
+// {{.CrowdsecChallenge}}, which every page is required to carry, so a custom
+// page gets it whether or not its author thought about it — and the built-in
+// page must not end up showing it twice.
+func TestChallengePageAlwaysAttributesCrowdSec(t *testing.T) {
+	dataDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "page.html"), []byte("<body>{{.CrowdsecChallenge}}</body>"), 0o600))
+
+	opts, err := BuildOptions(&Config{TemplatePath: new("page.html")}, nil, dataDir)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		opts []Option
+	}{
+		{name: "built-in page", opts: nil},
+		{name: "custom page", opts: opts},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rt, err := NewChallengeRuntime(t.Context(), append(tc.opts, WithMasterSecret(testSecret), withoutPreWarm())...)
+			require.NoError(t, err)
+
+			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+			require.NoError(t, err)
+
+			assert.Contains(t, html, "Security check powered by")
+			assert.Equal(t, 1, strings.Count(html, `id="crowdsec-attribution"`), "attribution must appear exactly once")
+			assert.Contains(t, html, `href="https://crowdsec.net/"`)
+		})
+	}
+}
+
+// TestResolveTemplatePath pins the rules BuildOptions only reports as a
+// warning: the page lives under the data dir, and nothing gets to point
+// outside it.
+func TestResolveTemplatePath(t *testing.T) {
+	dataDir := filepath.Join(string(filepath.Separator), "var", "lib", "crowdsec", "data")
+
+	tests := []struct {
+		name    string
+		dataDir string
+		path    string
+		want    string
+		wantErr string
+	}{
+		{
+			name:    "plain name",
+			dataDir: dataDir,
+			path:    "challenge.html",
+			want:    filepath.Join(dataDir, "challenge.html"),
+		},
+		{
+			name:    "subdirectory",
+			dataDir: dataDir,
+			path:    filepath.Join("pages", "challenge.html"),
+			want:    filepath.Join(dataDir, "pages", "challenge.html"),
+		},
+		{
+			name:    "trailing separator on the data dir",
+			dataDir: dataDir + string(filepath.Separator),
+			path:    "challenge.html",
+			want:    filepath.Join(dataDir, "challenge.html"),
+		},
+		{
+			name:    "inner traversal staying inside",
+			dataDir: dataDir,
+			path:    filepath.Join("pages", "..", "challenge.html"),
+			want:    filepath.Join(dataDir, "challenge.html"),
+		},
+		{
+			name:    "absolute",
+			dataDir: dataDir,
+			path:    filepath.Join(string(filepath.Separator), "etc", "passwd"),
+			wantErr: "must be relative to the data dir",
+		},
+		{
+			name:    "traversal",
+			dataDir: dataDir,
+			path:    filepath.Join("..", "..", "secret.html"),
+			wantErr: "escapes the data dir",
+		},
+		{
+			name:    "sibling directory sharing the prefix",
+			dataDir: dataDir,
+			path:    filepath.Join("..", "data-backup", "challenge.html"),
+			wantErr: "escapes the data dir",
+		},
+		{
+			name:    "no data dir",
+			path:    "challenge.html",
+			wantErr: "no data dir configured",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveTemplatePath(tc.dataDir, tc.path)
+
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
