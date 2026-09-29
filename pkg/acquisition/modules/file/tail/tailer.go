@@ -224,19 +224,15 @@ func (fileTailer *Tailer) readLinesByReopening() {
 		return
 	}
 
-	// The path names a different file than the one followed so far. Read it from the first byte.
-	if fileTailer.lastPathInfo != nil && !os.SameFile(fileTailer.lastPathInfo, fileInfo) {
-		fileTailer.lastOffset = 0
-		fileTailer.lastSize = 0
-	}
+	// A shrink of this file, or a different file at this path, is read from the first byte.
+	replaced := fileTailer.lastPathInfo != nil && !os.SameFile(fileTailer.lastPathInfo, fileInfo)
+	rotated := fileInfo.Size() < fileTailer.lastSize
 	fileTailer.lastPathInfo = fileInfo
-
-	truncated := fileInfo.Size() < fileTailer.lastSize
-	if truncated {
+	if rotated || replaced {
 		fileTailer.lastOffset = 0
 	}
 
-	if !fileNeedsAnotherRead(fileInfo.Size(), fileTailer.lastOffset, truncated) {
+	if !fileNeedsAnotherRead(fileInfo.Size(), fileTailer.lastOffset, rotated) {
 		fileTailer.lastSize = fileInfo.Size()
 		return
 	}
@@ -276,9 +272,9 @@ func (fileTailer *Tailer) readLinesByReopening() {
 	fileTailer.lastSize = max(fileInfoAfterRead.Size(), fileTailer.lastOffset)
 }
 
-// fileNeedsAnotherRead is true when the file was truncated or grew past the last byte already sent.
-func fileNeedsAnotherRead(size int64, lastOffset int64, truncated bool) bool {
-	if truncated {
+// fileNeedsAnotherRead is true when the file was rotated or grew past the last byte already sent.
+func fileNeedsAnotherRead(size int64, lastOffset int64, rotated bool) bool {
+	if rotated {
 		return true
 	}
 	return size > lastOffset
@@ -329,15 +325,13 @@ func (fileTailer *Tailer) enqueueLine(lineText string) (followStopped bool) {
 	}
 }
 
-// recordFirstErrorAndStopWhileLocked keeps the first error and cancels the loop.
-// The caller holds mu. The lock is released around cancel so the follow loop can take it.
+// recordFirstErrorAndStopWhileLocked keeps the first error and cancels the follow loop.
+// The caller holds mu. cancel does not take it, so the lock stays with the caller.
 func (fileTailer *Tailer) recordFirstErrorAndStopWhileLocked(err error) {
 	if fileTailer.err == nil {
 		fileTailer.err = err
 	}
-	fileTailer.mu.Unlock()
 	fileTailer.cancel()
-	fileTailer.mu.Lock()
 }
 
 // offsetAfterLastNewline is the byte after the last newline.
