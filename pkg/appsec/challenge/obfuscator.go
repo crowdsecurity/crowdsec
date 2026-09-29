@@ -12,18 +12,12 @@ import (
 	crand "crypto/rand"
 	_ "embed"
 	"fmt"
-	"sync"
 
 	"github.com/tetratelabs/wazero"
 )
 
 //go:embed js/obfuscate/index.wasm.gz
 var obfuscatorWasmGz []byte
-
-var (
-	obfuscatorWasm     []byte
-	obfuscatorWasmOnce sync.Once
-)
 
 // ObfuscateJS runs the input source through the embedded `javascript-obfuscator`
 // wasm module and returns the obfuscated output. Thread-safe: wazero allows
@@ -33,6 +27,10 @@ func (c *ChallengeRuntime) ObfuscateJS(ctx context.Context, inputJS string) (str
 	stdin := bytes.NewReader([]byte(inputJS))
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	// The guest grows its linear memory page by page; back it with a mapping
+	// instead of the Go heap. See wasm_memory.go.
+	ctx = withWasmMemoryAllocator(ctx)
 
 	config := wazero.NewModuleConfig().
 		WithStdin(stdin).
