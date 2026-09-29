@@ -235,22 +235,26 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 		return nil
 	}
 
-	// Determine polling mode
+	// nxadm watches with inotify. poll_without_inotify, or a network share, switches that watch to os.Stat.
+	// polltail stats the path itself, so those warnings are useless in that mode.
+	usesInotifyWatch := s.config.Mode == configuration.TAIL_MODE || s.config.Mode == configuration.CAT_MODE
 	pollFile := false
-	if s.config.PollWithoutInotify != nil {
-		pollFile = *s.config.PollWithoutInotify
-	} else {
-		networkFS, fsType, err := fsutil.IsNetworkFS(file)
-		if err != nil {
-			logger.Warningf("Could not get fs type for %s : %s", file, err)
-		}
+	if usesInotifyWatch {
+		if s.config.PollWithoutInotify != nil {
+			pollFile = *s.config.PollWithoutInotify
+		} else {
+			networkFS, fsType, err := fsutil.IsNetworkFS(file)
+			if err != nil {
+				logger.Warningf("Could not get fs type for %s : %s", file, err)
+			}
 
-		logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
+			logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 
-		if networkFS {
-			logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+			if networkFS {
+				logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
 
-			pollFile = true
+				pollFile = true
+			}
 		}
 	}
 
@@ -260,7 +264,7 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 		return fmt.Errorf("could not lstat() file %s: %w", file, err)
 	}
 
-	if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
+	if usesInotifyWatch && filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
 		logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
 	}
 
