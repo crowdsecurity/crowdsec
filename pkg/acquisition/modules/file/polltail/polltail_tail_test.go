@@ -1,4 +1,4 @@
-// The one-to-one upstream suite lives in tailer_admx_test.go.
+// The one-to-one upstream suite lives in polltail_admx_test.go.
 
 package polltail
 
