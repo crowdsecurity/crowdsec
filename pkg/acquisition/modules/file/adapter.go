@@ -51,6 +51,12 @@ func openNxadmTail(filename string, pollFile bool, whence int) (*tailedFile, err
 		Poll:     pollFile,
 		Location: &nxadmtail.SeekInfo{Offset: 0, Whence: whence},
 		Logger:   log.NewEntry(log.StandardLogger()),
+		// Without this, a line read while it is being written is sent incomplete,
+		// and the lines written after it can be skipped. Polltail already waits
+		// for the newline. https://github.com/crowdsecurity/crowdsec/pull/4678
+		// https://github.com/crowdsecurity/crowdsec/issues/2124
+		// This also ensures symmetry with polltail.
+		CompleteLines: true,
 	})
 	if err != nil {
 		return nil, err

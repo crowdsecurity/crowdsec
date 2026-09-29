@@ -42,9 +42,9 @@ func forEachLiveTailMode(t *testing.T, test func(t *testing.T, mode liveTailMode
 	}
 }
 
-// TestLiveAcquisitionPartialLine matches the file-tail cases where a write ends
-// mid-line: the fragment must not be sent, and the lines written after it must arrive whole.
+// A write that ends mid-line is not sent. The lines written after it arrive whole.
 // Truncation while a fragment is pending drops that fragment.
+// mode tail holds the fragment because nxadm CompleteLines is set. mode polltail leaves it in the file.
 func TestLiveAcquisitionPartialLine(t *testing.T) {
 	const readTimeout = 10 * time.Second
 	const quietPeriod = 200 * time.Millisecond
@@ -69,37 +69,19 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 	}
 
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
-		// nxadm owns line splitting for mode tail. Holding a fragment is polltail.
-		if mode.mode == "tail" {
-			t.Skip("nxadm owns line splitting")
-		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				// Start the tail on an empty file.
+				// Start the tail on an empty file. Each write is closed, so the nxadm watch sees it.
 				ctx := t.Context()
 				testFile := filepath.Join(t.TempDir(), "test.log")
+				require.NoError(t, os.WriteFile(testFile, nil, 0o644))
 
-				fd, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-				require.NoError(t, err)
-				t.Cleanup(func() { _ = fd.Close() })
-
-				config := fmt.Sprintf("mode: %s\nfilename: '%s'%s", mode.mode, testFile, mode.extra)
-
-				f := fileacquisition.Source{}
-				err = f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
-				require.NoError(t, err)
-
-				out := make(chan pipeline.Event, 8)
-				streamCtx, cancel := context.WithCancel(ctx)
+				_, out, cancel := streamLiveTail(t, ctx, mode, testFile)
 				defer cancel()
-
-				go func() {
-					_ = f.Stream(streamCtx, out)
-				}()
 
 				// Wait until a complete line is delivered, so the tail is running.
 				require.Eventually(t, func() bool {
-					if _, err := fd.WriteString("ready\n"); err != nil {
+					if err := appendClosedLine(testFile, "ready"); err != nil {
 						return false
 					}
 					select {
@@ -111,8 +93,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 				}, readTimeout, 10*time.Millisecond, "tailer never delivered a line")
 
 				// Write one complete line and a fragment with no newline.
-				_, err = fd.WriteString("second\n" + `{"a":`)
-				require.NoError(t, err)
+				require.NoError(t, appendClosedBytes(testFile, "second\n"+`{"a":`))
 
 				// The complete line arrives. The fragment does not.
 			waitSecond:
@@ -130,15 +111,11 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 
 				// The truncated case replaces the file while that fragment is still held.
 				if tc.truncate {
-					require.NoError(t, fd.Close())
 					require.NoError(t, os.Truncate(testFile, 0))
-					fd, err = os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-					require.NoError(t, err)
 				}
 
 				// Write the rest of the line, or the new file.
-				_, err = fd.WriteString(tc.rest)
-				require.NoError(t, err)
+				require.NoError(t, appendClosedBytes(testFile, tc.rest))
 
 				// Those lines arrive, and nothing else does.
 				var got []string
@@ -414,11 +391,16 @@ func streamLiveTail(t *testing.T, ctx context.Context, mode liveTailMode, testFi
 
 // appendClosedLine appends one line and closes the handle, so a watch that only sees a close still notices the write.
 func appendClosedLine(filename string, text string) error {
+	return appendClosedBytes(filename, text+"\n")
+}
+
+// appendClosedBytes appends text and closes the handle, so a watch that only sees a close still notices the write.
+func appendClosedBytes(filename string, text string) error {
 	fd, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-	_, writeErr := fd.WriteString(text + "\n")
+	_, writeErr := fd.WriteString(text)
 	closeErr := fd.Close()
 	if writeErr != nil {
 		return writeErr

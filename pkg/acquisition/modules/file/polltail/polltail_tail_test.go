@@ -1,4 +1,3 @@
-// Tests in this file fail when the behavior is wrong.
 // The one-to-one upstream suite lives in tailer_admx_test.go.
 
 package polltail
