@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"maps"
 	"net/netip"
 	"time"
 
@@ -43,6 +44,17 @@ type Event struct {
 	Appsec        AppsecEvent  `json:"Appsec,omitempty"        yaml:"Appsec,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `json:"Meta,omitempty" yaml:"Meta,omitempty"`
+}
+
+// CopyForBucket gives the event private copies of the maps a scenario can write
+// to: SetMeta and SetParsed are the only mutators reachable from an expression,
+// and everything else is read-only once the event leaves the parsers.
+func (e *Event) CopyForBucket() Event {
+	out := *e
+	out.Parsed = maps.Clone(e.Parsed)
+	out.Meta = maps.Clone(e.Meta)
+
+	return out
 }
 
 func MakeEvent(timeMachine bool, evtType int, process bool) Event {
