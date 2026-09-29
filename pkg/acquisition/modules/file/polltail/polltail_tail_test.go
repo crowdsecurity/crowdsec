@@ -353,6 +353,7 @@ func TestPollTail_TransientStatFailureClosesDying(t *testing.T) {
 	}
 }
 
+// The first recorded error ends the follow and closes Dying. A later error does not replace it.
 func TestPollTail_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 	// The first recorded error ends the follow.
 	dir := t.TempDir()
@@ -377,17 +378,6 @@ func TestPollTail_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 	// A second error does not replace it.
 	fileTailer.recordFirstErrorAndStop(os.ErrClosed)
 	require.ErrorIs(t, fileTailer.Err(), os.ErrPermission)
-}
-
-func openClosedFileForTest(filename string) (*os.File, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	if err := file.Close(); err != nil {
-		return nil, err
-	}
-	return file, nil
 }
 
 // A handle that cannot be positioned stops the follow.
@@ -436,23 +426,6 @@ func TestPollTail_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
 		t.Fatal("canceled follow sent a line")
 	default:
 	}
-}
-
-type failAfterBytesReaderForTest struct {
-	data []byte
-	err  error
-}
-
-func (reader *failAfterBytesReaderForTest) Read(p []byte) (int, error) {
-	if len(reader.data) == 0 {
-		return 0, reader.err
-	}
-	copied := copy(p, reader.data)
-	reader.data = reader.data[copied:]
-	if len(reader.data) == 0 {
-		return copied, reader.err
-	}
-	return copied, nil
 }
 
 // A read error in the middle of a line is returned. That fragment is not treated as a finished line.
@@ -630,35 +603,5 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 	case <-tail.Dying():
 	case <-time.After(1 * time.Second):
 		t.Fatal("Dying stayed open after read permission was removed")
-	}
-}
-
-// readTailLineForTest returns the next line text. It fails the test when the line is missing, nil, or itself an error.
-func readTailLineForTest(t *testing.T, tail *PollTail) string {
-	t.Helper()
-
-	select {
-	case line := <-tail.Lines():
-		require.NotNil(t, line)
-		require.NoError(t, line.Err)
-		return line.Text
-	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for a line")
-		return ""
-	}
-}
-
-// assertNoTailLineForTest fails the test when a line is already waiting. It does not wait for one to arrive.
-func assertNoTailLineForTest(t *testing.T, tail *PollTail) {
-	t.Helper()
-
-	select {
-	case line := <-tail.Lines():
-		text := ""
-		if line != nil {
-			text = line.Text
-		}
-		t.Fatalf("unexpected line %q", text)
-	default:
 	}
 }
