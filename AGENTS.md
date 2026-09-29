@@ -96,7 +96,8 @@ Write:
 > source that goes silent — connection now drops after 30s instead of hanging.
 
 **Code comments** — explain why, not what. If the comment restates the line under it, delete
-it.
+it. Keep them short and to the point, not prose: a comment should rarely be longer than the code
+it describes. A 20-line comment over a 5-line function is noise.
 
 **Review replies** — answer the question that was asked. Don't re-explain the PR, and don't
 paste your agent's output into the thread. Read it, then reply in your own words, in a few
