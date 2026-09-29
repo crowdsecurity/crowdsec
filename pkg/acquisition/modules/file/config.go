@@ -34,7 +34,7 @@ type Configuration struct {
 }
 
 const (
-	// modePollTail follows a file with the in-house tailer. Each pass opens the path, reads, and closes it.
+	// modePollTail follows a file with polltail. Each pass opens the path, reads, and closes it.
 	modePollTail = "polltail"
 )
 

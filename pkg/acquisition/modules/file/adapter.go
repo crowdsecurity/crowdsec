@@ -1,5 +1,5 @@
-// adapter follows one file with either github.com/nxadm/tail or the in-house tailer.
-// nxadm TailFile accepts no context. The in-house TailFile does. The read loop is the same:
+// adapter follows one file with either github.com/nxadm/tail or polltail.
+// nxadm TailFile accepts no context. polltail TailFile does. The read loop is the same:
 // the line channel for the library that was not started stays nil, so that select case never fires.
 
 package fileacquisition
@@ -15,11 +15,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	nxadmtail "github.com/nxadm/tail"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/tail"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/polltail"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// tailedFile is one file followed by nxadm or by the in-house tailer.
+// tailedFile is one file followed by nxadm or by polltail.
 // The line channel for the library that was not started stays nil, so that select case never fires.
 type tailedFile struct {
 	name       string
@@ -27,10 +27,10 @@ type tailedFile struct {
 	stop       func() error
 	tailErr    func() error
 	nxadmLines <-chan *nxadmtail.Line
-	pollLines <-chan *tail.Line
+	pollLines <-chan *polltail.Line
 }
 
-// newTailedFile starts nxadm for mode tail, and the in-house tailer for polltail.
+// newTailedFile starts nxadm for mode tail, and polltail for mode polltail.
 // Any other mode that reaches here uses nxadm, matching the historical default.
 func newTailedFile(ctx context.Context, filename string, pollFile bool, whence int, mode string, statReadInterval time.Duration) (*tailedFile, error) {
 	switch mode {
@@ -63,11 +63,11 @@ func openNxadmTail(filename string, pollFile bool, whence int) (*tailedFile, err
 	}, nil
 }
 
-// openPollTail follows filename with the in-house tailer. Each pass opens the path, reads, and closes it.
+// openPollTail follows filename with polltail. Each pass opens the path, reads, and closes it.
 func openPollTail(ctx context.Context, filename string, whence int, statReadInterval time.Duration) (*tailedFile, error) {
-	pollTail, err := tail.TailFile(ctx, filename, tail.Config{
+	pollTail, err := polltail.TailFile(ctx, filename, polltail.Config{
 		PollInterval: statReadInterval,
-		Location:     &tail.SeekInfo{Offset: 0, Whence: whence},
+		Location:     &polltail.SeekInfo{Offset: 0, Whence: whence},
 	})
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 			s.tailMapMutex.Unlock()
 
 			return nil
-		// One line from nxadm. The channel is nil when the in-house tailer is running.
+		// One line from nxadm. The channel is nil when polltail is running.
 		case line := <-followed.nxadmLines:
 			var read *tailRead
 			if line != nil {
@@ -142,7 +142,7 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 			if err := s.deliverTailRead(logger, out, followed.name, read); err != nil {
 				return err
 			}
-		// One line from the in-house tailer. The channel is nil when nxadm is running.
+		// One line from polltail. The channel is nil when nxadm is running.
 		case line := <-followed.pollLines:
 			var read *tailRead
 			if line != nil {

@@ -4,7 +4,7 @@
 // and other removed because our tailer is simpler and some behaviors won't apply. Some helper methods
 // here are reused in tailer_test.go
 
-package tail
+package polltail
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 )
 
 // forceReadForTest reads once. The tailer must be in manual mode so the poll loop is not also reading.
-func forceReadForTest(fileTailer *Tailer) {
+func forceReadForTest(fileTailer *PollTail) {
 	fileTailer.readLines()
 }
 
@@ -113,12 +113,12 @@ func (tailTest *TailTest) writeFile(name string, contents string, flag int) {
 }
 
 // StartTail follows name in the temp directory with the test context and fails the test if the file cannot be opened.
-func (tailTest *TailTest) StartTail(name string, config Config) *Tailer {
+func (tailTest *TailTest) StartTail(name string, config Config) *PollTail {
 	return tailTest.StartTailWithContext(tailTest.test.Context(), name, config)
 }
 
 // StartTailWithContext follows name in the temp directory until ctx ends and fails the test if the file cannot be opened.
-func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) *Tailer {
+func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string, config Config) *PollTail {
 	filePath := filepath.Join(tailTest.path, name)
 	tail, err := TailFile(ctx, filePath, config)
 	if err != nil {
@@ -128,7 +128,7 @@ func (tailTest *TailTest) StartTailWithContext(ctx context.Context, name string,
 }
 
 // VerifyTailOutput checks lines in order, then closes the helper's done channel. It uses Errorf because callers run it in a goroutine.
-func (tailTest *TailTest) VerifyTailOutput(tail *Tailer, lines []string, expectEOF bool) {
+func (tailTest *TailTest) VerifyTailOutput(tail *PollTail, lines []string, expectEOF bool) {
 	defer close(tailTest.done)
 	tailTest.ReadLines(tail, lines)
 	if !expectEOF {
@@ -142,7 +142,7 @@ func (tailTest *TailTest) VerifyTailOutput(tail *Tailer, lines []string, expectE
 }
 
 // ReadLines fails the test with Errorf when a line is missing, unexpected, or late. Callers may run it in a goroutine.
-func (tailTest *TailTest) ReadLines(tail *Tailer, lines []string) {
+func (tailTest *TailTest) ReadLines(tail *PollTail, lines []string) {
 	for _, expectedLine := range lines {
 		select {
 		case tailedLine, ok := <-tail.Lines():
@@ -166,7 +166,7 @@ func (tailTest *TailTest) ReadLines(tail *Tailer, lines []string) {
 }
 
 // reportTailEnded records whether the channel closed because of a tail error or because lines ran out.
-func (tailTest *TailTest) reportTailEnded(tail *Tailer) {
+func (tailTest *TailTest) reportTailEnded(tail *PollTail) {
 	if err := tail.Err(); err != nil {
 		tailTest.test.Errorf("tail ended with error: %v", err)
 		return
@@ -175,7 +175,7 @@ func (tailTest *TailTest) reportTailEnded(tail *Tailer) {
 }
 
 // CollectLines returns non-empty line texts until Lines closes or timeout elapses.
-func (*TailTest) CollectLines(tail *Tailer, timeout time.Duration) []string {
+func (*TailTest) CollectLines(tail *PollTail, timeout time.Duration) []string {
 	var lines []string
 	timer := time.After(timeout)
 	for {
@@ -195,7 +195,7 @@ func (*TailTest) CollectLines(tail *Tailer, timeout time.Duration) []string {
 }
 
 // waitForLineCheckThenStop waits until VerifyTailOutput closes done, then stops the tailer when stop is set.
-func (tailTest *TailTest) waitForLineCheckThenStop(tail *Tailer, stop bool) {
+func (tailTest *TailTest) waitForLineCheckThenStop(tail *PollTail, stop bool) {
 	select {
 	case <-tailTest.done:
 	case <-time.After(5 * time.Second):
@@ -221,7 +221,7 @@ var tailerModes = []struct {
 // =============================================================================
 
 // TailFile on a path that is not there returns an error that says the file could not be stat'd.
-func TestTailer_FileMustExist(t *testing.T) {
+func TestPollTail_FileMustExist(t *testing.T) {
 	dir := t.TempDir()
 	nonExistentFile := filepath.Join(dir, "no_such_file.txt")
 
@@ -240,7 +240,7 @@ func TestTailer_FileMustExist(t *testing.T) {
 // =============================================================================
 
 // Stop returns no error and closes Dying. A second Stop also returns no error.
-func TestTailer_Stop(t *testing.T) {
+func TestPollTail_Stop(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -281,7 +281,7 @@ func TestTailer_Stop(t *testing.T) {
 // =============================================================================
 
 // Starting at byte 6 skips hello. world, then the appended more and data, arrive in that order.
-func TestTailer_LocationMiddle(t *testing.T) {
+func TestPollTail_LocationMiddle(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			tailTest := NewTailTest("location-middle", t)
@@ -312,7 +312,7 @@ func TestTailer_LocationMiddle(t *testing.T) {
 // =============================================================================
 
 // The three lines already in the file arrive, then a shrink is read from the start, so h311o, w0r1d, and endofworld follow in that order.
-func TestTailer_ReSeek(t *testing.T) {
+func TestPollTail_ReSeek(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			tailTest := NewTailTest("reseek", t)
@@ -343,7 +343,7 @@ func TestTailer_ReSeek(t *testing.T) {
 }
 
 // After three shrinks, the collected lines include batch2_line1 from the first shrink and batch4_line1 from the last. The middle shrink is not checked.
-func TestTailer_MultipleTruncations(t *testing.T) {
+func TestPollTail_MultipleTruncations(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -411,7 +411,7 @@ func TestTailer_MultipleTruncations(t *testing.T) {
 // =============================================================================
 
 // A line of 4097 a's, longer than the default read buffer, arrives whole, between test and hello.
-func TestTailer_Over4096ByteLine(t *testing.T) {
+func TestPollTail_Over4096ByteLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			tailTest := NewTailTest("over4096", t)
@@ -433,7 +433,7 @@ func TestTailer_Over4096ByteLine(t *testing.T) {
 }
 
 // A 128KB line arrives whole, then line2. The follow records no error.
-func TestTailer_LargeLines(t *testing.T) {
+func TestPollTail_LargeLines(t *testing.T) {
 	// Test with lines larger than bufio.Scanner limit (64KB)
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "large.log")

@@ -1,5 +1,5 @@
 // This test suite exercises the live tail modes and checks that they behave the same (simmetry)
-// tail uses nxadm. polltail uses the in-house tailer.
+// tail uses nxadm. The other live mode is polltail.
 package fileacquisition_test
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// liveTailMode is one live file mode. tail uses nxadm. polltail uses the in-house tailer.
+// liveTailMode is one live file mode. tail uses nxadm. The other live mode is polltail.
 type liveTailMode struct {
 	name  string
 	mode  string
@@ -69,7 +69,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 	}
 
 	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
-		// nxadm owns line splitting for mode tail. Holding a fragment is the in-house tailer.
+		// nxadm owns line splitting for mode tail. Holding a fragment is polltail.
 		if mode.mode == "tail" {
 			t.Skip("nxadm owns line splitting")
 		}

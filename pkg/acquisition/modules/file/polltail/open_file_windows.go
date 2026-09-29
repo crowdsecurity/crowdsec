@@ -1,6 +1,6 @@
 //go:build windows
 
-package tail
+package polltail
 
 import (
 	"os"

@@ -1,7 +1,7 @@
 // Tests in this file fail when the behavior is wrong.
 // The one-to-one upstream suite lives in tailer_admx_test.go.
 
-package tail
+package polltail
 
 import (
 	"bufio"
@@ -21,7 +21,7 @@ import (
 )
 
 // SeekStart delivers a line already in the file, then a line appended after that read.
-func TestTailer_SeekStart(t *testing.T) {
+func TestPollTail_SeekStart(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			tailTest := NewTailTest("seek-start", t)
@@ -47,7 +47,7 @@ func TestTailer_SeekStart(t *testing.T) {
 
 // Renaming the file leaves it behind. A line written there after the last check is not delivered.
 // The new file at the same path is read from the start.
-func TestTailer_FileRotation(t *testing.T) {
+func TestPollTail_FileRotation(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			tailTest := NewTailTest("rotation", t)
@@ -84,7 +84,7 @@ func TestTailer_FileRotation(t *testing.T) {
 
 // Lines written in bursts for one second all arrive, in order.
 // The poll is much shorter than that window, so several polls run while the writes happen.
-func TestTailer_RapidWrites(t *testing.T) {
+func TestPollTail_RapidWrites(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -134,7 +134,7 @@ func TestTailer_RapidWrites(t *testing.T) {
 }
 
 // A negative poll interval does not read on its own. The line appears only after the test asks for a read.
-func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
+func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -174,7 +174,7 @@ func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 }
 
 // A fragment already in the file is left behind. The next line is only what is appended after the end.
-func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
+func TestPollTail_StartAtEndOfPartialLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -202,7 +202,7 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 }
 
 // A line appended during a read is delivered once, not again on the next read.
-func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
+func TestPollTail_StatReadDoesNotRepeatAppend(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
@@ -249,7 +249,7 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 // A stat error on the open handle, after the line was read, ends the tail.
 // The line already sent stays sent. A line written after that is not delivered.
 // Starting again is the file source's job, the same as any other transient failure.
-func TestTailer_StatAfterReadFailureClosesDying(t *testing.T) {
+func TestPollTail_StatAfterReadFailureClosesDying(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
 
@@ -292,7 +292,7 @@ func TestTailer_StatAfterReadFailureClosesDying(t *testing.T) {
 // A transient stat error ends the tail on purpose. This tailer does not retry.
 // The file is still readable after the error, and a line written then is not delivered.
 // Starting again is the file source's job, when discovery polling notices the path is not being followed.
-func TestTailer_TransientStatFailureClosesDying(t *testing.T) {
+func TestPollTail_TransientStatFailureClosesDying(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
 
@@ -336,7 +336,7 @@ func TestTailer_TransientStatFailureClosesDying(t *testing.T) {
 	}
 }
 
-func TestTailer_RecordFirstErrorAndStopClosesDying(t *testing.T) {
+func TestPollTail_RecordFirstErrorAndStopClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -371,7 +371,7 @@ func openClosedFileForTest(filename string) (*os.File, error) {
 	return file, nil
 }
 
-func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
+func TestPollTail_StatOpenFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -395,7 +395,7 @@ func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
 }
 
 // A handle that cannot be positioned stops the follow.
-func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
+func TestPollTail_StatSeekFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -417,14 +417,14 @@ func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
 }
 
 // A line finished after the follow was canceled is not sent to the reader.
-func TestTailer_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
+func TestPollTail_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	fileTailer := &Tailer{
+	fileTailer := &PollTail{
 		filename: testFile,
 		lines:    make(chan *Line),
 		dying:    make(chan struct{}),
@@ -458,8 +458,8 @@ func (reader *failAfterBytesReaderForTest) Read(p []byte) (int, error) {
 }
 
 // A read error in the middle of a line is returned. That fragment is not treated as a finished line.
-func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
-	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
+func TestPollTail_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
+	fileTailer := &PollTail{lines: make(chan *Line, 1), done: make(chan struct{})}
 	_, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("partial"),
 		err:  os.ErrPermission,
@@ -468,8 +468,8 @@ func TestTailer_SendCompleteLinesReturnsReadErrorOnPartialChunk(t *testing.T) {
 }
 
 // A finished line is sent, and the read error that comes after it is returned.
-func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
-	fileTailer := &Tailer{lines: make(chan *Line, 1), done: make(chan struct{})}
+func TestPollTail_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
+	fileTailer := &PollTail{lines: make(chan *Line, 1), done: make(chan struct{})}
 	completeBytes, _, err := fileTailer.sendCompleteLines(bufio.NewReader(&failAfterBytesReaderForTest{
 		data: []byte("line\n"),
 		err:  os.ErrPermission,
@@ -485,7 +485,7 @@ func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
 }
 
 // A permission error while checking the file is reported as a follow error, not as a missing file. On Windows this case is skipped because directory permissions do not hide the file.
-func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
+func TestPollTail_StatPermissionFailureStopsFollow(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("directory chmod 0o000 does not hide children on Windows")
 	}
@@ -511,7 +511,7 @@ func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 }
 
 // A read error on the opened handle stops the follow.
-func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
+func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
@@ -534,7 +534,7 @@ func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
-func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
+func TestPollTail_PermissionStatTreatedAsGone(t *testing.T) {
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
@@ -561,7 +561,7 @@ func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
 }
 
 // The tailer reports the path it was started on.
-func TestTailer_Filename(t *testing.T) {
+func TestPollTail_Filename(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -580,7 +580,7 @@ func TestTailer_Filename(t *testing.T) {
 }
 
 // Removing the file makes the next read report an error and close Dying.
-func TestTailer_FileDeleted(t *testing.T) {
+func TestPollTail_FileDeleted(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
 
@@ -615,7 +615,7 @@ func TestTailer_FileDeleted(t *testing.T) {
 }
 
 // Dropping read permission makes the next read report an error and close Dying.
-func TestTailer_ErrorHandling(t *testing.T) {
+func TestPollTail_ErrorHandling(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Permission tests not reliable on Windows")
 	}
@@ -666,7 +666,7 @@ func TestFilePathGone(t *testing.T) {
 }
 
 // readTailLineForTest returns the next line text. It fails the test when the line is missing, nil, or itself an error.
-func readTailLineForTest(t *testing.T, tail *Tailer) string {
+func readTailLineForTest(t *testing.T, tail *PollTail) string {
 	t.Helper()
 
 	select {
@@ -681,7 +681,7 @@ func readTailLineForTest(t *testing.T, tail *Tailer) string {
 }
 
 // assertNoTailLineForTest fails the test when a line is already waiting. It does not wait for one to arrive.
-func assertNoTailLineForTest(t *testing.T, tail *Tailer) {
+func assertNoTailLineForTest(t *testing.T, tail *PollTail) {
 	t.Helper()
 
 	select {

@@ -1,8 +1,8 @@
-// Package tail polls a file. Each pass opens the path, reads new lines, and closes it.
+// Package polltail polls a file. Each pass opens the path, reads new lines, and closes it.
 // It does not overlap or try to replace what nxadm does.
 // If the file is rotated with mv, lines can be lost. This tailer does not stay with the original file,
 // so anything written there after the last check is never read.
-package tail
+package polltail
 
 import (
 	"bufio"
@@ -39,9 +39,9 @@ type Config struct {
 	PollInterval time.Duration // How often to read (default 1s, 0 = 1s, negative = manual/test mode)
 }
 
-// Tailer follows one file and sends each newline-terminated line.
+// PollTail follows one file and sends each newline-terminated line.
 // Each pass opens the path, reads new lines, and closes it.
-type Tailer struct {
+type PollTail struct {
 	filename string
 	config   Config
 	lines    chan *Line
@@ -66,7 +66,7 @@ type Tailer struct {
 }
 
 // TailFile starts following filename. A missing file is an error. SeekEnd starts at the current end of the file.
-func TailFile(ctx context.Context, filename string, config Config) (*Tailer, error) {
+func TailFile(ctx context.Context, filename string, config Config) (*PollTail, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat file %s: %w", filename, err)
@@ -76,7 +76,7 @@ func TailFile(ctx context.Context, filename string, config Config) (*Tailer, err
 	initialOffset := startingOffset(fileInfo.Size(), config.Location)
 
 	tailerCtx, cancel := context.WithCancel(ctx)
-	fileTailer := &Tailer{
+	fileTailer := &PollTail{
 		filename:     filename,
 		config:       config,
 		lines:        make(chan *Line, 100),
@@ -108,29 +108,29 @@ func startingOffset(size int64, location *SeekInfo) int64 {
 }
 
 // Filename is the path this tailer was started on.
-func (fileTailer *Tailer) Filename() string {
+func (fileTailer *PollTail) Filename() string {
 	return fileTailer.filename
 }
 
 // Lines delivers each newline-terminated line. Stop closes the channel.
-func (fileTailer *Tailer) Lines() <-chan *Line {
+func (fileTailer *PollTail) Lines() <-chan *Line {
 	return fileTailer.lines
 }
 
 // Dying closes when the follow has ended.
-func (fileTailer *Tailer) Dying() <-chan struct{} {
+func (fileTailer *PollTail) Dying() <-chan struct{} {
 	return fileTailer.dying
 }
 
 // Err is the first failure that stopped this tailer, or nil.
-func (fileTailer *Tailer) Err() error {
+func (fileTailer *PollTail) Err() error {
 	fileTailer.mu.Lock()
 	defer fileTailer.mu.Unlock()
 	return fileTailer.err
 }
 
 // Stop cancels the follow loop, then closes Lines and Dying.
-func (fileTailer *Tailer) Stop() error {
+func (fileTailer *PollTail) Stop() error {
 	fileTailer.mu.Lock()
 	if fileTailer.stopped {
 		fileTailer.mu.Unlock()
@@ -147,7 +147,7 @@ func (fileTailer *Tailer) Stop() error {
 }
 
 // closeDyingAndReleaseHandle closes Dying and Lines once so the reader can drop the tail.
-func (fileTailer *Tailer) closeDyingAndReleaseHandle() {
+func (fileTailer *PollTail) closeDyingAndReleaseHandle() {
 	fileTailer.followEnded.Do(func() {
 		close(fileTailer.dying)
 		close(fileTailer.lines)
@@ -155,7 +155,7 @@ func (fileTailer *Tailer) closeDyingAndReleaseHandle() {
 }
 
 // recordFirstErrorAndStop keeps the first error and cancels the follow loop.
-func (fileTailer *Tailer) recordFirstErrorAndStop(err error) {
+func (fileTailer *PollTail) recordFirstErrorAndStop(err error) {
 	fileTailer.mu.Lock()
 	if fileTailer.err == nil {
 		fileTailer.err = err
@@ -165,7 +165,7 @@ func (fileTailer *Tailer) recordFirstErrorAndStop(err error) {
 }
 
 // pollUntilStopped reads on each poll tick until Stop or the first recorded error.
-func (fileTailer *Tailer) pollUntilStopped() {
+func (fileTailer *PollTail) pollUntilStopped() {
 	defer fileTailer.wg.Done()
 	defer fileTailer.closeDyingAndReleaseHandle()
 
@@ -195,7 +195,7 @@ func (fileTailer *Tailer) pollUntilStopped() {
 
 // readLines stats the path, then opens it to read lines past lastOffset.
 // The offset is not moved back to the size from before the read, so a line appended during the read is not sent twice.
-func (fileTailer *Tailer) readLines() {
+func (fileTailer *PollTail) readLines() {
 	fileTailer.mu.Lock()
 	defer fileTailer.mu.Unlock()
 
@@ -271,7 +271,7 @@ func fileNeedsAnotherRead(size int64, lastOffset int64, rotated bool) bool {
 
 // sendCompleteLines sends chunks that end with a newline.
 // completeBytes counts those chunks. pendingBytes is a trailing fragment at EOF and is not sent.
-func (fileTailer *Tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64, error) {
+func (fileTailer *PollTail) sendCompleteLines(reader *bufio.Reader) (int64, int64, error) {
 	var completeBytes int64
 	for {
 		// A file with no line breaks is read until EOF. ReadString grows until '\n', so one pass can hold the whole file. That is assumed, and matches nxadm.
@@ -305,7 +305,7 @@ func (fileTailer *Tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64,
 }
 
 // enqueueLine sends one complete line. followStopped is true when the follow loop was canceled before the send.
-func (fileTailer *Tailer) enqueueLine(lineText string) (followStopped bool) {
+func (fileTailer *PollTail) enqueueLine(lineText string) (followStopped bool) {
 	select {
 	case fileTailer.lines <- &Line{
 		Text: lineText,
@@ -319,7 +319,7 @@ func (fileTailer *Tailer) enqueueLine(lineText string) (followStopped bool) {
 
 // recordFirstErrorAndStopWhileLocked keeps the first error and cancels the follow loop.
 // The caller holds mu. cancel does not take it, so the lock stays with the caller.
-func (fileTailer *Tailer) recordFirstErrorAndStopWhileLocked(err error) {
+func (fileTailer *PollTail) recordFirstErrorAndStopWhileLocked(err error) {
 	if fileTailer.err == nil {
 		fileTailer.err = err
 	}
