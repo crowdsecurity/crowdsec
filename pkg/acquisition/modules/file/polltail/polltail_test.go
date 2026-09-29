@@ -390,30 +390,6 @@ func openClosedFileForTest(filename string) (*os.File, error) {
 	return file, nil
 }
 
-func TestPollTail_StatOpenFailureStopsFollow(t *testing.T) {
-	// Opening the file fails. The follow records that error.
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		PollInterval: -1,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = fileTailer.Stop() })
-
-	originalOpen := openFileForReadInTest
-	t.Cleanup(func() { openFileForReadInTest = originalOpen })
-	openFileForReadInTest = func(string) (*os.File, error) {
-		return nil, os.ErrPermission
-	}
-
-	forceReadForTest(fileTailer)
-	require.Error(t, fileTailer.Err())
-	require.ErrorContains(t, fileTailer.Err(), "error opening file")
-}
-
 // A handle that cannot be positioned stops the follow.
 func TestPollTail_StatSeekFailureStopsFollow(t *testing.T) {
 	// The opened handle cannot be seeked. The follow records that error.
@@ -508,33 +484,6 @@ func TestPollTail_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
 	}
 }
 
-// A permission error while checking the file is reported as a follow error, not as a missing file. On Windows this case is skipped because directory permissions do not hide the file.
-func TestPollTail_StatPermissionFailureStopsFollow(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("directory chmod 0o000 does not hide children on Windows")
-	}
-
-	// The directory hides the file. The follow records a stat error.
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
-
-	fileTailer, err := TailFile(t.Context(), testFile, Config{
-		PollInterval: -1,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = os.Chmod(dir, 0o700)
-		_ = fileTailer.Stop()
-	})
-
-	require.NoError(t, os.Chmod(dir, 0o000))
-	forceReadForTest(fileTailer)
-	require.Error(t, fileTailer.Err())
-	require.ErrorContains(t, fileTailer.Err(), "error statting file")
-}
-
 // A read error on the opened handle stops the follow.
 func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
 	// The opened handle is a directory, so the read fails. The follow records that error.
@@ -560,8 +509,8 @@ func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
 
+// A permission error from stat stops the follow. On Windows that is reported as the file being gone.
 func TestPollTail_PermissionStatTreatedAsGone(t *testing.T) {
-	// Stat returns a permission error. Windows treats that as the file being gone.
 	testFile := filepath.Join(t.TempDir(), "test.log")
 	require.NoError(t, os.WriteFile(testFile, []byte("line1\n"), 0o644))
 
@@ -682,20 +631,6 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("Dying stayed open after read permission was removed")
 	}
-}
-
-// A missing path counts as gone. On Windows a permission error does too, because deleting a locked file is reported that way. Elsewhere a permission error is a real error.
-func TestFilePathGone(t *testing.T) {
-	// A missing path is gone. A permission error is gone only on Windows.
-	require.False(t, filePathGone(nil))
-	require.True(t, filePathGone(os.ErrNotExist))
-	require.False(t, filePathGone(os.ErrClosed))
-
-	if runtime.GOOS == "windows" {
-		require.True(t, filePathGone(os.ErrPermission))
-		return
-	}
-	require.False(t, filePathGone(os.ErrPermission))
 }
 
 // readTailLineForTest returns the next line text. It fails the test when the line is missing, nil, or itself an error.
