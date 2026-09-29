@@ -1,11 +1,6 @@
-// Copyright (c) 2024 CrowdSec
-// Adapted from https://github.com/nxadm/tail tests
-// Original copyright: (c) 2019 FOSS contributors of https://github.com/nxadm/tail
-// Original copyright: (c) 2015 HPE Software Inc. All rights reserved.
-// Original copyright: (c) 2013 ActiveState Software Inc. All rights reserved.
-//
 // The purpose of this file is to mimic the upstream github.com/nxadm/tail tests one to one.
-// Each test here corresponds to a test in that suite. Tests that are not in that suite live in tailer_test.go.
+// Each test here corresponds to a test in that suite. No judgment on whether these tests are
+// appropiate or not.
 
 package tail
 
@@ -24,7 +19,7 @@ import (
 
 // forceReadForTest reads once. The tailer must be in manual mode so the poll loop is not also reading.
 func forceReadForTest(fileTailer *Tailer) {
-	fileTailer.readLinesSinceLastOffset()
+	fileTailer.readLines()
 }
 
 // appendToFileInTest opens filename, appends contents, and closes it.

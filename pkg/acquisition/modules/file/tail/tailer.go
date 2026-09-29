@@ -1,5 +1,5 @@
-// Package tail checks a log file every so often and reads the new lines.
-// It does not keep the file open between checks. It does not overlap or try
+// Package tail uses a polling strategy to tail a file contents.
+// It does not keep the file cursor open between checks. It does not overlap or try
 // to replace what admx does so to keep it as focused as possible.
 // If the file is rotated with mv, lines can be lost. This tailer does not stay with the original file,
 // so anything written there after the last check is never read.
@@ -59,24 +59,22 @@ type Tailer struct {
 	// followEnded closes Dying and Lines once, when Stop returns or the follow loop itself ends.
 	followEnded sync.Once
 
-	// lastOffset is the next byte to read. lastSize is the size after the previous pass.
+	// lastOffset is the next byte to read. lastSize is the previous stat size, and only that size decides a shrink.
 	// lastPathInfo is the file at filename on the previous pass. A different file means the path was replaced.
 	lastOffset   int64
 	lastSize     int64
 	lastPathInfo os.FileInfo
 }
 
-// TailFile starts following filename. A missing file is an error. SeekEnd starts after the last newline.
+// TailFile starts following filename. A missing file is an error. SeekEnd starts at the current end of the file.
 func TailFile(ctx context.Context, filename string, config Config) (*Tailer, error) {
 	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat file %s: %w", filename, err)
 	}
 
-	initialOffset, err := startingOffset(filename, fileInfo.Size(), config.Location)
-	if err != nil {
-		return nil, err
-	}
+	// Start tailing from the configured position. SeekEnd is the current end of the file.
+	initialOffset := startingOffset(fileInfo.Size(), config.Location)
 
 	tailerCtx, cancel := context.WithCancel(ctx)
 	fileTailer := &Tailer{
@@ -97,15 +95,17 @@ func TailFile(ctx context.Context, filename string, config Config) (*Tailer, err
 	return fileTailer, nil
 }
 
-// startingOffset is the first byte to read. SeekEnd starts after the last newline. Every other whence uses Offset as that byte.
-func startingOffset(filename string, size int64, location *SeekInfo) (int64, error) {
+// startingOffset is the first byte to read.
+// SeekEnd starts at the current end, as nxadm does. A fragment already in the file is LEFT BEHIND.
+// Every other whence uses Offset as that byte.
+func startingOffset(size int64, location *SeekInfo) int64 {
 	if location == nil {
-		return 0, nil
+		return 0
 	}
 	if location.Whence == io.SeekEnd {
-		return offsetAfterLastNewline(filename, size)
+		return size
 	}
-	return location.Offset, nil
+	return location.Offset
 }
 
 // Filename is the path this tailer was started on.
@@ -170,7 +170,10 @@ func (fileTailer *Tailer) pollUntilStopped() {
 	defer fileTailer.wg.Done()
 	defer fileTailer.closeDyingAndReleaseHandle()
 
-	pollInterval := pollIntervalOrDefault(fileTailer.config.PollInterval)
+	pollInterval := fileTailer.config.PollInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
+	}
 
 	// A negative interval is the manual test mode: read only when a test asks.
 	if pollInterval < 0 {
@@ -186,21 +189,14 @@ func (fileTailer *Tailer) pollUntilStopped() {
 		case <-fileTailer.done:
 			return
 		case <-ticker.C:
-			fileTailer.readLinesSinceLastOffset()
+			fileTailer.readLines()
 		}
 	}
 }
 
-// pollIntervalOrDefault turns an omitted interval into one second. A negative interval stays negative so the loop can wait for a manual read.
-func pollIntervalOrDefault(pollInterval time.Duration) time.Duration {
-	if pollInterval == 0 {
-		return defaultPollInterval
-	}
-	return pollInterval
-}
-
-// readLinesSinceLastOffset opens the path and reads lines written since lastOffset.
-func (fileTailer *Tailer) readLinesSinceLastOffset() {
+// readLines stats the path, then opens it to read lines past lastOffset.
+// The offset is not moved back to the size from before the read, so a line appended during the read is not sent twice.
+func (fileTailer *Tailer) readLines() {
 	fileTailer.mu.Lock()
 	defer fileTailer.mu.Unlock()
 
@@ -208,12 +204,6 @@ func (fileTailer *Tailer) readLinesSinceLastOffset() {
 		return
 	}
 
-	fileTailer.readLinesByReopening()
-}
-
-// readLinesByReopening stats the path, then opens it to read lines past lastOffset.
-// The offset is not moved back to the size from before the read, so a line appended during the read is not sent twice.
-func (fileTailer *Tailer) readLinesByReopening() {
 	fileInfo, err := statFile(fileTailer.filename)
 	if filePathGone(err) {
 		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("file %s no longer exists", fileTailer.filename))
@@ -263,13 +253,13 @@ func (fileTailer *Tailer) readLinesByReopening() {
 	}
 
 	fileTailer.lastOffset += completeBytes
-	// Size is taken after the read. Using the size from before the read would send an appended line twice.
-	fileInfoAfterRead, statErr := openedFile.Stat()
+	// A filesystem with a metadata cache can make Stat smaller than the bytes just read. Keep that size a stat, or the next poll looks like a shrink.
+	fileInfoAfterRead, statErr := statOpenedFile(openedFile)
 	if statErr != nil {
-		fileTailer.lastSize = fileTailer.lastOffset
+		fileTailer.recordFirstErrorAndStopWhileLocked(fmt.Errorf("error statting file %s: %w", fileTailer.filename, statErr))
 		return
 	}
-	fileTailer.lastSize = max(fileInfoAfterRead.Size(), fileTailer.lastOffset)
+	fileTailer.lastSize = fileInfoAfterRead.Size()
 }
 
 // fileNeedsAnotherRead is true when the file was rotated or grew past the last byte already sent.
@@ -285,19 +275,22 @@ func fileNeedsAnotherRead(size int64, lastOffset int64, rotated bool) bool {
 func (fileTailer *Tailer) sendCompleteLines(reader *bufio.Reader) (int64, int64, error) {
 	var completeBytes int64
 	for {
+		// A file with no line breaks is read until EOF. ReadString grows until '\n', so one pass can hold the whole file. That is assumed, and matches nxadm.
 		chunk, readErr := reader.ReadString('\n')
+		endedWithNewline := strings.HasSuffix(chunk, "\n")
 
 		// A chunk with no newline is not a line. A real read error drops it; EOF holds it.
-		if chunk != "" && !strings.HasSuffix(chunk, "\n") {
+		if chunk != "" && !endedWithNewline {
 			if readErr != nil && readErr != io.EOF {
 				return completeBytes, 0, readErr
 			}
 			return completeBytes, int64(len(chunk)), nil
 		}
 
-		if strings.HasSuffix(chunk, "\n") {
+		if endedWithNewline {
 			completeBytes += int64(len(chunk))
-			if fileTailer.enqueueLine(strings.TrimRight(chunk, "\n\r")) {
+			lineText := strings.TrimRight(chunk, "\n\r")
+			if fileTailer.enqueueLine(lineText) {
 				return completeBytes, 0, nil
 			}
 		}
@@ -334,51 +327,17 @@ func (fileTailer *Tailer) recordFirstErrorAndStopWhileLocked(err error) {
 	fileTailer.cancel()
 }
 
-// offsetAfterLastNewline is the byte after the last newline.
-// A file that does not end in a newline returns the start of that trailing fragment.
-// A file with no newline returns 0.
-func offsetAfterLastNewline(filename string, size int64) (int64, error) {
-	if size == 0 {
-		return 0, nil
-	}
-
-	file, err := openFileForRead(filename)
-	if err != nil {
-		return 0, fmt.Errorf("could not open file %s: %w", filename, err)
-	}
-	defer file.Close()
-
-	const chunkSize = 8192
-	buf := make([]byte, chunkSize)
-	position := size
-
-	for position > 0 {
-		chunkLength := chunkSize
-		if int64(chunkLength) > position {
-			chunkLength = int(position)
-		}
-		position -= int64(chunkLength)
-
-		_, err := file.ReadAt(buf[:chunkLength], position)
-		if err != nil && err != io.EOF {
-			return 0, fmt.Errorf("could not read file %s: %w", filename, err)
-		}
-
-		for byteIndex := chunkLength - 1; byteIndex >= 0; byteIndex-- {
-			if buf[byteIndex] == '\n' {
-				return position + int64(byteIndex) + 1, nil
-			}
-		}
-	}
-
-	return 0, nil
-}
-
-// openFileForReadInTest replaces openFileForRead when a test sets it. Production leaves it nil.
-var openFileForReadInTest func(filename string) (*os.File, error)
-
-// statFileInTest replaces statFile when a test sets it. Production leaves it nil.
-var statFileInTest func(name string) (os.FileInfo, error)
+// Extension points for tests that pin behavior.
+//
+// Production leaves each variable nil. The function under it then calls the real OS operation.
+// A test sets the variable to force a result the OS will not produce on demand: a transient stat
+// error, a stat error on the handle just read, or an open that is not the log file. The test
+// restores the previous value when it finishes, so later tests see the real OS calls again.
+var (
+	openFileForReadInTest func(filename string) (*os.File, error)
+	statFileInTest        func(name string) (os.FileInfo, error)
+	statOpenedFileInTest  func(file *os.File) (os.FileInfo, error)
+)
 
 // openFileForRead opens filename for a shared read so another process can still append, rename, or delete it.
 func openFileForRead(filename string) (*os.File, error) {
@@ -388,10 +347,18 @@ func openFileForRead(filename string) (*os.File, error) {
 	return openFileForReadInTest(filename)
 }
 
-// statFile stats name. A test that set statFileInTest receives that result instead.
+// statFile stats the path before the read.
 func statFile(name string) (os.FileInfo, error) {
 	if statFileInTest == nil {
 		return os.Stat(name)
 	}
 	return statFileInTest(name)
+}
+
+// statOpenedFile stats the handle that was just read.
+func statOpenedFile(file *os.File) (os.FileInfo, error) {
+	if statOpenedFileInTest == nil {
+		return file.Stat()
+	}
+	return statOpenedFileInTest(file)
 }

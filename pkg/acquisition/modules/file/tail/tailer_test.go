@@ -1,8 +1,5 @@
-// Copyright (c) 2024 CrowdSec
-//
 // Tests in this file fail when the behavior is wrong.
 // The one-to-one upstream suite lives in tailer_admx_test.go.
-// Tests that still pass when the behavior is missing live in tailer_pin_test.go.
 
 package tail
 
@@ -473,28 +470,7 @@ func TestTailer_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	assert.Equal(t, "initial", line.Text)
 }
 
-// The start position is the byte after the last newline, even when that newline is not in the final chunk.
-// A file that ends on a newline starts at the end.
-func TestOffsetAfterLastNewline(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	prefix := strings.Repeat("x", 9000)
-	body := prefix + "\npartial"
-	require.NoError(t, os.WriteFile(testFile, []byte(body), 0o644))
-
-	offset, err := offsetAfterLastNewline(testFile, int64(len(body)))
-	require.NoError(t, err)
-	assert.Equal(t, int64(len(prefix)+1), offset)
-
-	complete := "done\n"
-	require.NoError(t, os.WriteFile(testFile, []byte(complete), 0o644))
-	offset, err = offsetAfterLastNewline(testFile, int64(len(complete)))
-	require.NoError(t, err)
-	assert.Equal(t, int64(len(complete)), offset)
-}
-
-// Starting at the end of a file with no newline does not emit that fragment. The next complete line is emitted.
+// A fragment already in the file is left behind. The next line is only what is appended after the end.
 func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -516,7 +492,7 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 			require.NoError(t, appendToFileInTest(testFile, "1}\n"))
 
 			forceReadForTest(fileTailer)
-			assert.Equal(t, `{"a":1}`, readTailLineForTest(t, tail))
+			assert.Equal(t, `1}`, readTailLineForTest(t, tail))
 			assertNoTailLineForTest(t, tail)
 		})
 	}
@@ -586,6 +562,49 @@ func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	case <-followed.Dying():
 	case <-time.After(2 * time.Second):
 		t.Fatal("Dying stayed open after the file was deleted")
+	}
+}
+
+// A stat error on the open handle, after the line was read, ends the tail.
+// The line already sent stays sent. A line written after that is not delivered.
+// Starting again is the file source's job, the same as any other transient failure.
+func TestTailer_StatAfterReadFailureClosesDying(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("old\n"), 0o644))
+
+	statAfterReadError := errors.New("stat after read failed")
+	originalStat := statOpenedFileInTest
+	t.Cleanup(func() { statOpenedFileInTest = originalStat })
+	statOpenedFileInTest = func(*os.File) (os.FileInfo, error) {
+		return nil, statAfterReadError
+	}
+
+	fileTailer, err := TailFile(t.Context(), testFile, Config{
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = fileTailer.Stop() })
+
+	forceReadForTest(fileTailer)
+
+	select {
+	case <-fileTailer.Dying():
+	case <-time.After(2 * time.Second):
+		t.Fatal("Dying stayed open after a stat error on the open handle")
+	}
+
+	require.Equal(t, "old", readTailLineForTest(t, fileTailer))
+	require.ErrorIs(t, fileTailer.Err(), statAfterReadError)
+	require.NoError(t, appendToFileInTest(testFile, "after\n"))
+
+	select {
+	case line, ok := <-fileTailer.Lines():
+		if ok {
+			t.Fatalf("tail delivered %q after a stat error on the open handle", line.Text)
+		}
+	default:
+		t.Fatal("Lines stayed open after the tail died")
 	}
 }
 
@@ -784,35 +803,6 @@ func TestTailer_SendCompleteLinesReturnsReadErrorAfterLine(t *testing.T) {
 	}
 }
 
-// A file with no newline at all starts at byte 0, so the whole fragment is still ahead of the reader.
-func TestOffsetAfterLastNewlineNoNewline(t *testing.T) {
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("nonewline"), 0o644))
-
-	offset, err := offsetAfterLastNewline(testFile, 9)
-	require.NoError(t, err)
-	require.Equal(t, int64(0), offset)
-}
-
-// Starting at the end fails when the file cannot be opened to find the last newline.
-func TestTailer_SeekEndOpenFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod 0o000 does not prevent the owner from opening the file on Windows")
-	}
-
-	testFile := filepath.Join(t.TempDir(), "test.log")
-	require.NoError(t, os.WriteFile(testFile, []byte("hello\n"), 0o644))
-	require.NoError(t, os.Chmod(testFile, 0o000))
-	t.Cleanup(func() { _ = os.Chmod(testFile, 0o644) })
-
-	_, err := TailFile(t.Context(), testFile, Config{
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-		PollInterval: -1,
-	})
-	require.Error(t, err)
-	require.ErrorContains(t, err, "could not open file")
-}
-
 // A permission error while checking the file is reported as a follow error, not as a missing file. On Windows this case is skipped because directory permissions do not hide the file.
 func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -887,4 +877,109 @@ func TestTailer_PermissionStatTreatedAsGone(t *testing.T) {
 		return
 	}
 	require.ErrorContains(t, fileTailer.Err(), "error statting file")
+}
+
+// The tailer reports the path it was started on.
+func TestTailer_Filename(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+
+	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
+	require.NoError(t, err)
+
+	config := Config{
+		PollInterval: -1,
+	}
+
+	tail, err := TailFile(t.Context(), testFile, config)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, tail.Stop()) }()
+
+	assert.Equal(t, testFile, tail.Filename())
+}
+
+// Removing the file makes the next read report an error and close Dying.
+func TestTailer_FileDeleted(t *testing.T) {
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+
+	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
+	require.NoError(t, err)
+
+	config := Config{
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
+	}
+
+	tail, err := TailFile(t.Context(), testFile, config)
+	require.NoError(t, err)
+	defer func() { _ = tail.Stop() }()
+
+	forceReadForTest(tail)
+
+	err = os.Remove(testFile)
+	require.NoError(t, err)
+
+	forceReadForTest(tail)
+
+	err = tail.Err()
+	require.Error(t, err, "Should have an error after file deletion")
+	assert.Contains(t, err.Error(), "no longer exists")
+
+	select {
+	case <-tail.Dying():
+	case <-time.After(time.Second):
+		t.Fatal("Dying stayed open after the file was deleted")
+	}
+}
+
+// Dropping read permission makes the next read report an error and close Dying.
+func TestTailer_ErrorHandling(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Permission tests not reliable on Windows")
+	}
+
+	dir := t.TempDir()
+	testFile := filepath.Join(dir, "test.log")
+
+	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
+	require.NoError(t, err)
+
+	config := Config{
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+	}
+
+	tail, err := TailFile(t.Context(), testFile, config)
+	require.NoError(t, err)
+	defer func() { _ = tail.Stop() }()
+
+	err = os.Chmod(testFile, 0o000)
+	require.NoError(t, err)
+	defer func() { _ = os.Chmod(testFile, 0o644) }()
+
+	forceReadForTest(tail)
+
+	err = tail.Err()
+	require.Error(t, err, "Should have an error after read permission was removed")
+	assert.Contains(t, err.Error(), "error opening file")
+
+	select {
+	case <-tail.Dying():
+	case <-time.After(1 * time.Second):
+		t.Fatal("Dying stayed open after read permission was removed")
+	}
+}
+
+// A missing path counts as gone. On Windows a permission error does too, because deleting a locked file is reported that way. Elsewhere a permission error is a real error.
+func TestFilePathGone(t *testing.T) {
+	require.False(t, filePathGone(nil))
+	require.True(t, filePathGone(os.ErrNotExist))
+	require.False(t, filePathGone(os.ErrClosed))
+
+	if runtime.GOOS == "windows" {
+		require.True(t, filePathGone(os.ErrPermission))
+		return
+	}
+	require.False(t, filePathGone(os.ErrPermission))
 }
