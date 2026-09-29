@@ -18,8 +18,8 @@ func openSharedRead(filename string) (*os.File, error) {
 	// Same CreateFile shape as github.com/nxadm/tail v1.4.11 winfile.Open for a read-only existing file.
 	// GENERIC_READ is read-only access.
 	// FILE_SHARE_READ lets other readers open the file. FILE_SHARE_WRITE lets the logger append.
-	// FILE_SHARE_DELETE lets a rotator rename or remove the file while this handle stays open.
-	// os.Open shares read and write only, so a keep-open tail that used it would block that rotation.
+	// FILE_SHARE_DELETE lets a rotator rename or remove the file during this read.
+	// os.Open shares read and write only, so a rotator could not rename the file during that read.
 	// nil security attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, and a zero template match that nxadm open.
 	handle, err := windows.CreateFile(
 		utf16Path,

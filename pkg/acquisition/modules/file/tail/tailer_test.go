@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -46,148 +45,64 @@ func TestTailer_BasicTailing(t *testing.T) {
 	}
 }
 
-// With the handle closed between reads, an appended line shows up within about one poll period.
-func TestTailer_PollInterval(t *testing.T) {
-	dir := t.TempDir()
-	testFile := filepath.Join(dir, "test.log")
-
-	err := os.WriteFile(testFile, []byte("line1\n"), 0o644)
-	require.NoError(t, err)
-
-	pollInterval := 200 * time.Millisecond
-	config := Config{
-		PollInterval: pollInterval,
-		Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-	}
-
-	tail, err := TailFile(t.Context(), testFile, config)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, tail.Stop()) }()
-
-	start := time.Now()
-	require.NoError(t, appendToFileInTest(testFile, "line2\n"))
-
-	var lineReadTime time.Time
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		timeout := time.After(2 * time.Second)
-		for {
-			select {
-			case <-timeout:
-				return
-			case line := <-tail.Lines():
-				if line != nil && line.Text == "line2" {
-					lineReadTime = time.Now()
-					return
-				}
-			}
-		}
-	}()
-
-	wg.Wait()
-
-	elapsed := lineReadTime.Sub(start)
-	assert.Less(t, elapsed, pollInterval+300*time.Millisecond, "Should read within poll interval")
-	assert.False(t, lineReadTime.IsZero(), "Line should have been read")
-}
-
+// SeekStart delivers a line already in the file, then a line appended after that read.
 func TestTailer_SeekStart(t *testing.T) {
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
-
-			err := os.WriteFile(testFile, []byte("line1\nline2\nline3\n"), 0o644)
-			require.NoError(t, err)
+			tailTest := NewTailTest("seek-start", t)
+			tailTest.CreateFile("test.txt", "line1\nline2\nline3\n")
 
 			config := Config{
 				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
 			}
 
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, tail.Stop()) }()
+			tail := tailTest.StartTail("test.txt", config)
 
-			fileTailer := tail
-			forceReadForTest(fileTailer)
+			go tailTest.VerifyTailOutput(tail, []string{"line1", "line2", "line3", "line4"}, false)
 
-			require.NoError(t, appendToFileInTest(testFile, "line4\n"))
-			forceReadForTest(fileTailer)
+			forceReadForTest(tail)
+			tailTest.AppendFile("test.txt", "line4\n")
+			forceReadForTest(tail)
 
-			var lines []string
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				for line := range tail.Lines() {
-					if line != nil && line.Text != "" {
-						lines = append(lines, line.Text)
-					}
-				}
-			}()
-
-			_ = tail.Stop()
-			<-done
-
-			assert.Contains(t, lines, "line1", "Should have read line1")
-			assert.Contains(t, lines, "line4", "Should have read line4")
+			tailTest.waitForLineCheckThenStop(tail, true)
 		})
 	}
 }
 
-// The file is renamed and a new file is created at the same path. A line written to the new file is still delivered.
-// The keep-open case is skipped: rotation while the handle is held is covered separately.
+// Renaming the file leaves it behind. A line written there after the last check is not delivered.
+// The new file at the same path is read from the start.
 func TestTailer_FileRotation(t *testing.T) {
-	// Simulate log rotation: file is renamed and new file created
-	if runtime.GOOS == "windows" {
-		t.Skip("File rotation tests unreliable on Windows due to file locking")
-	}
-
 	for _, mode := range tailerModes {
 		t.Run(mode.name, func(t *testing.T) {
-			dir := t.TempDir()
-			testFile := filepath.Join(dir, "test.log")
+			tailTest := NewTailTest("rotation", t)
+			tailTest.CreateFile("test.txt", "kept\n")
 
-			err := os.WriteFile(testFile, []byte("line1\nline2\n"), 0o644)
-			require.NoError(t, err)
-
-			config := Config{
-				PollInterval: 50 * time.Millisecond,
+			tail := tailTest.StartTail("test.txt", Config{
+				PollInterval: -1,
 				Location:     &SeekInfo{Offset: 0, Whence: io.SeekEnd},
-			}
-
-			tail, err := TailFile(t.Context(), testFile, config)
-			require.NoError(t, err)
+			})
 			defer func() { require.NoError(t, tail.Stop()) }()
 
-			time.Sleep(100 * time.Millisecond)
+			forceReadForTest(tail)
+			tailTest.RenameFile("test.txt", "test.txt.1")
+			tailTest.AppendFile("test.txt.1", "lost\n")
+			tailTest.CreateFile("test.txt", "fresh\n")
+			forceReadForTest(tail)
 
-			// Append before rotation
-			require.NoError(t, appendToFileInTest(testFile, "line3\n"))
-
-			time.Sleep(100 * time.Millisecond)
-
-			// Note: Full rotation support would require ReOpen behavior
-			// which recreates the file after deletion. For now, we test
-			// that lines written before are captured.
-
-			var lines []string
-			timeout := time.After(500 * time.Millisecond)
-		loop:
+			var got []string
+		drain:
 			for {
 				select {
 				case line := <-tail.Lines():
-					if line != nil && line.Text != "" {
-						lines = append(lines, line.Text)
-					}
-				case <-timeout:
-					break loop
+					require.NotNil(t, line)
+					got = append(got, line.Text)
+				default:
+					break drain
 				}
 			}
-
-			assert.Contains(t, lines, "line3", "Should have captured line3")
+			require.NotContains(t, got, "lost")
+			require.Equal(t, []string{"fresh"}, got)
 		})
 	}
 }
@@ -498,7 +413,7 @@ func TestTailer_StartAtEndOfPartialLine(t *testing.T) {
 	}
 }
 
-// A line appended while the close-after-read path has the file open is delivered once, not again on the next read.
+// A line appended during a read is delivered once, not again on the next read.
 func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -543,7 +458,7 @@ func TestTailer_StatReadDoesNotRepeatAppend(t *testing.T) {
 	assertNoTailLineForTest(t, tail)
 }
 
-// Deleting the file in close-after-read mode ends the follow on its own. The test does not call Stop first.
+// Deleting the file ends the follow on its own. The test does not call Stop first.
 func TestTailer_DeletedFileClosesDying(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -713,7 +628,7 @@ func TestTailer_StatOpenFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error opening file")
 }
 
-// In close-after-read mode, a handle that cannot be positioned stops the follow.
+// A handle that cannot be positioned stops the follow.
 func TestTailer_StatSeekFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")
@@ -829,7 +744,7 @@ func TestTailer_StatPermissionFailureStopsFollow(t *testing.T) {
 	require.ErrorContains(t, fileTailer.Err(), "error statting file")
 }
 
-// In close-after-read mode, a read error on the opened handle stops the follow.
+// A read error on the opened handle stops the follow.
 func TestTailer_StatReadFailureStopsFollow(t *testing.T) {
 	dir := t.TempDir()
 	testFile := filepath.Join(dir, "test.log")

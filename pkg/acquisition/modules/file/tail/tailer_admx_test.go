@@ -211,7 +211,7 @@ func (tailTest *TailTest) waitForLineCheckThenStop(tail *Tailer, stop bool) {
 var tailerModes = []struct {
 	name string
 }{
-	{name: "closeAfterRead"},
+	{name: "poll"},
 }
 
 // =============================================================================

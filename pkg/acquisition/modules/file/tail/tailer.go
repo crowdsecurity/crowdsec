@@ -1,6 +1,5 @@
-// Package tail uses a polling strategy to tail a file contents.
-// It does not keep the file cursor open between checks. It does not overlap or try
-// to replace what admx does so to keep it as focused as possible.
+// Package tail polls a file. Each pass opens the path, reads new lines, and closes it.
+// It does not overlap or try to replace what nxadm does.
 // If the file is rotated with mv, lines can be lost. This tailer does not stay with the original file,
 // so anything written there after the last check is never read.
 package tail
