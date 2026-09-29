@@ -31,6 +31,10 @@ const testContainerName = "docker_test"
 const testServiceName = "test_service"
 
 func TestConfigureDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestConfigureDSN'")
 
 	ctx := t.Context()
@@ -162,6 +166,10 @@ func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options client.
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
@@ -273,6 +281,10 @@ service_name_regexp:
 }
 
 func TestServiceEvaluation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestServiceEvaluation'")
 
 	ctx := t.Context()
@@ -408,6 +420,10 @@ use_service_labels: true`,
 }
 
 func TestSwarmManagerDetection(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestSwarmManagerDetection'")
 
 	ctx := t.Context()
@@ -555,6 +571,10 @@ func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) clie
 }
 
 func TestOneShot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.Info("Test 'TestOneShot'")
@@ -610,6 +630,10 @@ func TestOneShot(t *testing.T) {
 }
 
 func TestParseLabels(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	tests := []struct {
 		name     string
 		labels   map[string]string
@@ -661,6 +685,10 @@ func TestParseLabels(t *testing.T) {
 }
 
 func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	// A leaf label and a branch label under the same key (set by whoever
 	// launches the container) must not panic the type assertion in
 	// parseKeyToMap. Only one of the two can win, but the result must be the
