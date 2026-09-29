@@ -33,15 +33,10 @@ type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-const (
-	// modePollTail follows a file with polltail. Each pass opens the path, reads, and closes it.
-	modePollTail = "polltail"
-)
-
 // liveFileMode reports whether mode follows a file instead of reading it once.
 func liveFileMode(mode string) bool {
 	switch mode {
-	case configuration.TAIL_MODE, modePollTail:
+	case configuration.TAIL_MODE, configuration.POLLTAIL_MODE:
 		return true
 	default:
 		return false
@@ -74,7 +69,7 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	switch s.config.Mode {
 	case configuration.TAIL_MODE, configuration.CAT_MODE:
-	case modePollTail:
+	case configuration.POLLTAIL_MODE:
 		if s.config.PollTailReadInterval == 0 {
 			s.config.PollTailReadInterval = 2 * time.Second
 		}

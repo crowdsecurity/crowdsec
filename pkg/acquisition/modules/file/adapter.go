@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	nxadmtail "github.com/nxadm/tail"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file/polltail"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -27,17 +28,18 @@ type tailedFile struct {
 	stop       func() error
 	tailErr    func() error
 	nxadmLines <-chan *nxadmtail.Line
-	pollLines <-chan *polltail.Line
+	pollLines  <-chan *polltail.Line
 }
 
-// newTailedFile starts nxadm for mode tail, and polltail for mode polltail.
-// Any other mode that reaches here uses nxadm, matching the historical default.
+// newTailedFile starts nxadm for tail and cat, and polltail for polltail.
 func newTailedFile(ctx context.Context, filename string, pollFile bool, whence int, mode string, statReadInterval time.Duration) (*tailedFile, error) {
 	switch mode {
-	case modePollTail:
+	case configuration.TAIL_MODE, configuration.CAT_MODE:
+		return openNxadmTail(filename, pollFile, whence)
+	case configuration.POLLTAIL_MODE:
 		return openPollTail(ctx, filename, whence, statReadInterval)
 	default:
-		return openNxadmTail(filename, pollFile, whence)
+		return nil, fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, polltail)", mode)
 	}
 }
 

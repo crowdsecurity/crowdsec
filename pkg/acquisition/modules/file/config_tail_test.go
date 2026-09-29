@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -92,6 +93,6 @@ polltail_read_interval: 100ms
 		metrics.AcquisitionMetricsLevelNone,
 	)
 	require.NoError(t, err)
-	require.Equal(t, "polltail", s.config.Mode)
+	require.Equal(t, configuration.POLLTAIL_MODE, s.config.Mode)
 	require.Equal(t, 100*time.Millisecond, s.config.PollTailReadInterval)
 }
