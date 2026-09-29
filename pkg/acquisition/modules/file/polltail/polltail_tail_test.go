@@ -37,9 +37,9 @@ func TestPollTail_SeekStart(t *testing.T) {
 			go tailTest.VerifyTailOutput(tail, []string{"line1", "line2", "line3", "line4"}, false)
 
 			// Read those lines, append one more, and read again.
-			forceReadForTest(tail)
+			tail.readLines()
 			tailTest.AppendFile("test.txt", "line4\n")
-			forceReadForTest(tail)
+			tail.readLines()
 
 			tailTest.waitForLineCheckThenStop(tail)
 		})
@@ -61,12 +61,12 @@ func TestPollTail_FileRotation(t *testing.T) {
 			})
 			defer func() { require.NoError(t, tail.Stop()) }()
 
-			forceReadForTest(tail)
+			tail.readLines()
 			// Rename the file and write to both the old name and the new path.
 			tailTest.RenameFile("test.txt", "test.txt.1")
 			tailTest.AppendFile("test.txt.1", "lost\n")
 			tailTest.CreateFile("test.txt", "fresh\n")
-			forceReadForTest(tail)
+			tail.readLines()
 
 			// The line left on the renamed file is absent. The new file's line arrives.
 			var got []string
@@ -169,7 +169,7 @@ func TestPollTail_ManualModeReadsOnlyWhenAsked(t *testing.T) {
 	}
 
 	// One read delivers that line.
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 
 	var line *Line
 	select {
@@ -197,13 +197,13 @@ func TestPollTail_StartAtEndOfPartialLine(t *testing.T) {
 			defer func() { require.NoError(t, tail.Stop()) }()
 
 			fileTailer := tail
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 			assertNoTailLineForTest(t, tail)
 
 			// Append the rest of the line. Only that remainder arrives.
 			require.NoError(t, appendToFileInTest(testFile, "1}\n"))
 
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 			assert.Equal(t, `1}`, readTailLineForTest(t, tail))
 			assertNoTailLineForTest(t, tail)
 		})
@@ -248,13 +248,13 @@ func TestPollTail_StatReadDoesNotRepeatAppend(t *testing.T) {
 
 	// That appended line arrives once.
 	fileTailer := tail
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	assert.Equal(t, "old", readTailLineForTest(t, tail))
 	assert.Equal(t, "during", readTailLineForTest(t, tail))
 	assertNoTailLineForTest(t, tail)
 
 	// The next read delivers nothing.
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	assertNoTailLineForTest(t, tail)
 }
 
@@ -280,7 +280,7 @@ func TestPollTail_StatAfterReadFailureClosesDying(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = fileTailer.Stop() })
 
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 
 	// The follow ends. The line stays sent, and a later line is not delivered.
 	select {
@@ -397,7 +397,7 @@ func TestPollTail_StatSeekFailureStopsFollow(t *testing.T) {
 	t.Cleanup(func() { openFileForReadInTest = originalOpen })
 	openFileForReadInTest = openClosedFileForTest
 
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	require.Error(t, fileTailer.Err())
 	require.ErrorContains(t, fileTailer.Err(), "error seeking")
 }
@@ -418,7 +418,7 @@ func TestPollTail_EnqueueLineDropsWhenFollowCanceled(t *testing.T) {
 		done:     ctx.Done(),
 		cancel:   cancel,
 	}
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 
 	select {
 	case <-fileTailer.lines:
@@ -476,7 +476,7 @@ func TestPollTail_StatReadFailureStopsFollow(t *testing.T) {
 		return os.Open(filepath.Dir(filename))
 	}
 
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	require.Error(t, fileTailer.Err())
 	require.ErrorContains(t, fileTailer.Err(), "error reading file")
 }
@@ -499,7 +499,7 @@ func TestPollTail_PermissionStatTreatedAsGone(t *testing.T) {
 		return nil, os.ErrPermission
 	}
 
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	require.Error(t, fileTailer.Err())
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, fileTailer.Err(), "no longer exists")
@@ -546,12 +546,12 @@ func TestPollTail_FileDeleted(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tail.Stop() }()
 
-	forceReadForTest(tail)
+	tail.readLines()
 
 	err = os.Remove(testFile)
 	require.NoError(t, err)
 
-	forceReadForTest(tail)
+	tail.readLines()
 
 	// The follow reports that the file is gone, and Dying closes.
 	err = tail.Err()
@@ -591,7 +591,7 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = os.Chmod(testFile, 0o644) }()
 
-	forceReadForTest(tail)
+	tail.readLines()
 
 	// The follow reports an open error, and Dying closes.
 	err = tail.Err()

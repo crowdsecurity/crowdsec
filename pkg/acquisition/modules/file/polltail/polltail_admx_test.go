@@ -127,7 +127,7 @@ func TestPollTail_MultipleTruncations(t *testing.T) {
 			defer func() { require.NoError(t, tail.Stop()) }()
 
 			fileTailer := tail
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 
 			var lines []string
 			done := make(chan struct{})
@@ -145,21 +145,21 @@ func TestPollTail_MultipleTruncations(t *testing.T) {
 			// First truncation
 			err = os.WriteFile(testFile, []byte("batch2_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 
 			// Second truncation
 			err = os.WriteFile(testFile, []byte("batch3_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 
 			// Add to batch3
 			require.NoError(t, appendToFileInTest(testFile, "batch3_line2\n"))
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 
 			// Third truncation
 			err = os.WriteFile(testFile, []byte("batch4_line1\n"), 0o644)
 			require.NoError(t, err)
-			forceReadForTest(fileTailer)
+			fileTailer.readLines()
 
 			_ = tail.Stop()
 			<-done
@@ -239,7 +239,7 @@ func TestPollTail_LargeLines(t *testing.T) {
 	}()
 
 	// It arrives whole, then the next line, and the follow records no error.
-	forceReadForTest(fileTailer)
+	fileTailer.readLines()
 	_ = tail.Stop()
 	<-done
 

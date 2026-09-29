@@ -12,11 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// forceReadForTest reads once. The tailer must be in manual mode so the poll loop is not also reading.
-func forceReadForTest(fileTailer *PollTail) {
-	fileTailer.readLines()
-}
-
 // appendToFileInTest opens filename, appends contents, and closes it.
 func appendToFileInTest(filename string, contents string) error {
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o644)
