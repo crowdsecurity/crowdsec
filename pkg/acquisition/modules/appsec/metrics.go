@@ -23,6 +23,8 @@ func (*Source) GetMetrics() []prometheus.Collector {
 		metrics.AppsecChallengeDynamicModuleEvicted,
 		metrics.AppsecValidationOKCounter,
 		metrics.AppsecValidationFailedCounter,
+		metrics.AppsecRateLimited,
+		metrics.AppsecRateLimiters,
 		metrics.AppsecOutbandParsingHistogram,
 		metrics.AppsecInbandParsingHistogram,
 		metrics.AppsecGlobalParsingHistogram,
@@ -47,6 +49,8 @@ func (*Source) GetAggregMetrics() []prometheus.Collector {
 		metrics.AppsecOutbandParsingHistogram,
 		metrics.AppsecValidationOKCounter,
 		metrics.AppsecValidationFailedCounter,
+		metrics.AppsecRateLimited,
+		metrics.AppsecRateLimiters,
 		metrics.AppsecInbandParsingHistogram,
 		metrics.AppsecGlobalParsingHistogram,
 	}

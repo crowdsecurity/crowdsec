@@ -142,6 +142,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"RequestScoreReasons": func() []string { return state.RequestScore.Reasons() },
 		"RequestScoreDetail":  func() string { return state.RequestScore.String() },
 		"RequestScoreFor":     func(reason string) int { return state.RequestScore.For(reason) },
+		requestCtxVar:         withRequestBinding(ctx, w, state, request),
 	}
 }
 

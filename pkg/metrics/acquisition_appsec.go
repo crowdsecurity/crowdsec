@@ -164,6 +164,26 @@ var AppsecValidationFailedCounter = prometheus.NewCounterVec(
 	[]string{"source", "appsec_engine", "schema_ref", "reason"},
 )
 
+const AppsecRateLimitedMetricName = "cs_appsec_rate_limited_total"
+
+var AppsecRateLimited = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecRateLimitedMetricName,
+		Help: "Total requests rejected by RateLimit(), by key.",
+	},
+	[]string{"source", "appsec_engine", "key"},
+)
+
+const AppsecRateLimitersMetricName = "cs_appsec_rate_limiters"
+
+var AppsecRateLimiters = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: AppsecRateLimitersMetricName,
+		Help: "Number of sources currently tracked by RateLimit(), by key.",
+	},
+	[]string{"appsec_engine", "key"},
+)
+
 // Bot detection / WAF challenge infrastructure counters. These track the
 // internal upkeep of the challenge runtime rather than visitor behavior.
 
