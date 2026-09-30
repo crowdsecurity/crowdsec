@@ -281,11 +281,8 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 }
 
 // pushTailLine records one tailed line and sends it on the shared acquisition channel.
-func (s *Source) pushTailLine(out chan pipeline.Event, filename string, text string, lineTime time.Time) {
-	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
-	}
-
+// It returns false when ctx is canceled and the line was not sent.
+func (s *Source) pushTailLine(ctx context.Context, out chan pipeline.Event, filename string, text string, lineTime time.Time) bool {
 	src := filename
 	if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
 		src = filepath.Base(filename)
@@ -299,11 +296,30 @@ func (s *Source) pushTailLine(out chan pipeline.Event, filename string, text str
 		Process: true,
 		Module:  s.GetName(),
 	}
-	s.logger.WithField("tail", filename).Debugf("pushing %+v", line)
-
 	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
 	evt.Line = line
-	out <- evt
+
+	if !sendEvent(ctx, out, evt) {
+		return false
+	}
+
+	s.logger.WithField("tail", filename).Debugf("pushing %+v", line)
+
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
+	}
+
+	return true
+}
+
+// sendEvent sends evt on out. It returns false when ctx is done and the send was not taken, so shutdown is not stuck on a full channel.
+func sendEvent(ctx context.Context, out chan pipeline.Event, evt pipeline.Event) bool {
+	select {
+	case out <- evt:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 func (s *Source) readFile(ctx context.Context, filename string, out chan pipeline.Event) error {
@@ -345,24 +361,30 @@ func (s *Source) readFile(ctx context.Context, filename string, out chan pipelin
 			logger.Info("File datasource stopping")
 			return nil
 		default:
-			if scanner.Text() == "" {
-				continue
-			}
-
-			l := pipeline.Line{
-				Raw:     scanner.Text(),
-				Time:    time.Now().UTC(),
-				Src:     filename,
-				Labels:  s.config.Labels,
-				Process: true,
-				Module:  s.GetName(),
-			}
-			logger.Debugf("line %s", l.Raw)
-			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
-
-			// we're reading logs at once, it must be time-machine buckets
-			out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)}
 		}
+
+		if scanner.Text() == "" {
+			continue
+		}
+
+		l := pipeline.Line{
+			Raw:     scanner.Text(),
+			Time:    time.Now().UTC(),
+			Src:     filename,
+			Labels:  s.config.Labels,
+			Process: true,
+			Module:  s.GetName(),
+		}
+		logger.Debugf("line %s", l.Raw)
+
+		// we're reading logs at once, it must be time-machine buckets
+		sent := sendEvent(ctx, out, pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)})
+		if !sent {
+			logger.Info("File datasource stopping")
+			return nil
+		}
+
+		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
 	}
 
 	if err := scanner.Err(); err != nil {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -259,6 +260,49 @@ func TestTailModes_ShrinkReopensFromStart(t *testing.T) {
 	})
 }
 
+// Canceling while the shared output channel is not being read must still let Stream return.
+// The send is blocked on purpose: shutdown used to wait on that send forever.
+func TestTailModes_CancelDuringBlockedSend(t *testing.T) {
+	forEachLiveTailMode(t, func(t *testing.T, mode liveTailMode) {
+		ctx := t.Context()
+		testFile := filepath.Join(t.TempDir(), "test.log")
+		require.NoError(t, os.WriteFile(testFile, nil, 0o644))
+
+		config := fmt.Sprintf("mode: %s\nfilename: '%s'%s", mode.mode, testFile, mode.extra)
+		f := &fileacquisition.Source{}
+		err := f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+		require.NoError(t, err)
+
+		out := make(chan pipeline.Event)
+		streamCtx, cancel := context.WithCancel(ctx)
+		t.Cleanup(cancel)
+
+		streamDone := make(chan error, 1)
+		go func() {
+			streamDone <- f.Stream(streamCtx, out)
+		}()
+
+		require.Eventually(t, func() bool {
+			return f.IsTailing(testFile)
+		}, 5*time.Second, 10*time.Millisecond)
+
+		require.NoError(t, appendClosedLine(testFile, "blocked"))
+
+		require.Eventually(t, func() bool {
+			return goroutineBlockedIn(".pushTailLine(")
+		}, 5*time.Second, 10*time.Millisecond, "tailer did not block on send")
+
+		cancel()
+
+		select {
+		case err := <-streamDone:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("cancel left Stream blocked on send")
+		}
+	})
+}
+
 // Canceling the stream context makes Stream return on both live modes, and a line written after that is not delivered.
 // nxadm TailFile takes no context, so the file source calls Stop. polltail receives the context, so the same cancel ends its follow directly.
 func TestTailModes_ContextCancelStopsTailing(t *testing.T) {
@@ -391,6 +435,22 @@ func streamLiveTail(t *testing.T, ctx context.Context, mode liveTailMode, testFi
 		_ = f.Stream(streamCtx, out)
 	}()
 	return f, out, cancel
+}
+
+// goroutineBlockedIn reports whether a goroutine is parked in fn on a channel send or a select.
+func goroutineBlockedIn(fn string) bool {
+	buf := make([]byte, 2<<20)
+	n := runtime.Stack(buf, true)
+
+	for _, stack := range strings.Split(string(buf[:n]), "\n\n") {
+		header, _, _ := strings.Cut(stack, "\n")
+		parked := strings.Contains(header, "[select]") || strings.Contains(header, "[chan send]")
+		if parked && strings.Contains(stack, fn) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // appendClosedLine appends one line and closes the handle, so a watch that only sees a close still notices the write.

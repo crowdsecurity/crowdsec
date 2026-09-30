@@ -64,6 +64,48 @@ func TestConfigureDSN(t *testing.T) {
 	}
 }
 
+// Canceling while OneShot is blocked on the output channel must let it return, and the line is not delivered.
+func TestOneShotCancelDuringBlockedSend(t *testing.T) {
+	ctx := t.Context()
+	testFile := filepath.Join(t.TempDir(), "blocked.log")
+	require.NoError(t, os.WriteFile(testFile, []byte("line\n"), 0o644))
+
+	logger := log.New()
+	logger.SetLevel(log.WarnLevel)
+
+	f := fileacquisition.Source{}
+	err := f.Configure(ctx, []byte(fmt.Sprintf("mode: cat\nfilename: '%s'\n", testFile)), log.NewEntry(logger), metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	out := make(chan pipeline.Event)
+	readCtx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- f.OneShot(readCtx, out)
+	}()
+
+	require.Eventually(t, func() bool {
+		return goroutineBlockedIn(".readFile(")
+	}, 5*time.Second, 10*time.Millisecond, "OneShot did not block on send")
+
+	cancel()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("OneShot stayed blocked on send after cancel")
+	}
+
+	select {
+	case evt := <-out:
+		t.Fatalf("dropped line was sent: %q", evt.Line.Raw)
+	default:
+	}
+}
+
 func TestOneShot(t *testing.T) {
 	ctx := t.Context()
 	tmpDir := t.TempDir()

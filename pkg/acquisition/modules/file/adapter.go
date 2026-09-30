@@ -118,14 +118,7 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 		select {
 		// The acquisition is stopping. Stop the tailer, then leave.
 		case <-ctx.Done():
-			logger.Info("File datasource stopping")
-
-			if err := followed.stop(); err != nil {
-				s.logger.Errorf("error in stop : %s", err)
-				return err
-			}
-
-			return nil
+			return s.stopTailedFile(logger, followed)
 		// A tailer that stops, including on a transient I/O error, does not fail Stream and is not restarted here.
 		// The path is removed so it can be tailed again only by discovery polling (discovery_poll_enable) or an fsnotify Create.
 		// A file that still exists is recovered only when discovery polling is enabled. That is intentional.
@@ -149,8 +142,8 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 			if line != nil {
 				read = &tailRead{text: line.Text, err: line.Err, time: line.Time}
 			}
-			if err := s.deliverTailRead(logger, out, followed.name, read); err != nil {
-				return err
+			if !s.deliverTailRead(ctx, logger, out, followed.name, read) {
+				return s.stopTailedFile(logger, followed)
 			}
 		// One line from polltail. The channel is nil when nxadm is running.
 		case line := <-followed.pollLines:
@@ -158,8 +151,8 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 			if line != nil {
 				read = &tailRead{text: line.Text, err: line.Err, time: line.Time}
 			}
-			if err := s.deliverTailRead(logger, out, followed.name, read); err != nil {
-				return err
+			if !s.deliverTailRead(ctx, logger, out, followed.name, read) {
+				return s.stopTailedFile(logger, followed)
 			}
 		}
 	}
@@ -172,23 +165,36 @@ type tailRead struct {
 	time time.Time
 }
 
+// stopTailedFile ends the follow because acquisition is stopping.
+// A stop error fails the reader. Otherwise the reader exits cleanly.
+func (s *Source) stopTailedFile(logger *log.Entry, followed *tailedFile) error {
+	logger.Info("File datasource stopping")
+
+	if err := followed.stop(); err != nil {
+		s.logger.Errorf("error in stop : %s", err)
+		return err
+	}
+
+	return nil
+}
+
 // deliverTailRead skips an empty read. A line error is logged and the reader stays. Otherwise the line is pushed.
-func (s *Source) deliverTailRead(logger *log.Entry, out chan pipeline.Event, filename string, read *tailRead) error {
+// It returns false when ctx is canceled during the send. The caller then stops the tailer.
+func (s *Source) deliverTailRead(ctx context.Context, logger *log.Entry, out chan pipeline.Event, filename string, read *tailRead) bool {
 	if read == nil {
 		logger.Warning("tail is empty")
-		return nil
+		return true
 	}
 	if read.err != nil {
 		// Never return an error here
 		// nxadm attaches this error to the rate-limiter cooloff line, then keeps sending on the same channel.
 		// Returning it ends this reader and fails Stream.
 		logger.Warningf("fetch error : %v", read.err)
-		return nil //nolint:nilerr // the tailer keeps sending; returning this error ends the reader
+		return true // the tailer keeps sending; ending this reader fails Stream
 	}
 	if read.text == "" {
-		return nil
+		return true
 	}
 
-	s.pushTailLine(out, filename, read.text, read.time)
-	return nil
+	return s.pushTailLine(ctx, out, filename, read.text, read.time)
 }
