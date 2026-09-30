@@ -154,6 +154,10 @@ func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPa
 	}
 
 	opts := exprhelpers.GetExprOptions(env)
+	if stage == hookPreEval {
+		opts = append(opts, rateLimitExprOptions...)
+	}
+
 	if patcher != nil {
 		opts = append(opts, expr.Patch(patcher))
 	}
@@ -173,6 +177,10 @@ func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPa
 		}
 
 		h.ApplyExpr = append(h.ApplyExpr, program)
+	}
+
+	if patcher != nil && patcher.err != nil {
+		return patcher.err
 	}
 
 	return nil
@@ -208,7 +216,8 @@ func (r AppsecTempResponse) Clone() AppsecTempResponse {
 // HookOutcome records a terminal decision taken by an expr hook: the current
 // band stops before (or instead of) WAF evaluation, and the request gets
 // Action. Interruption is set only for disruptive outcomes (DropRequest) —
-// an allow outcome carries none, so it produces neither event nor alert.
+// an allow outcome carries none, so it produces neither event nor alert, and
+// neither does RateLimit's ban, which emits its own.
 type HookOutcome struct {
 	Action       string
 	Reason       string
@@ -445,6 +454,9 @@ type AppsecRuntimeConfig struct {
 	DataDir          string
 	// BodySettings controls how oversized request bodies are handled. Settable via on_load hooks.
 	BodySettings BodySettings
+
+	// A pointer, so runners working on a copy of the runtime share budgets.
+	RateLimits *RateLimits
 }
 
 // recordChallengeMetric is kept out of emission so counters still move when no
@@ -1156,6 +1168,7 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 	}
 
 	ret.NeedWASMVM = patcher.NeedWASMVM
+	ret.RateLimits = newRateLimits(wc.Name, patcher.RateLimits)
 
 	return ret, nil
 }
