@@ -97,10 +97,6 @@ func (s *Source) startTailedFile(ctx context.Context, file string, out chan pipe
 		return fmt.Errorf("could not start tailing file %s : %w", file, err)
 	}
 
-	s.tailMapMutex.Lock()
-	s.tails[file] = true
-	s.tailMapMutex.Unlock()
-
 	g.Go(func() error {
 		defer trace.ReportPanic()
 		return s.readTailedFile(ctx, out, followed)
@@ -131,9 +127,7 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 
 			logger.Warning(readerDied)
 
-			s.tailMapMutex.Lock()
-			delete(s.tails, followed.name)
-			s.tailMapMutex.Unlock()
+			s.releaseTail(followed.name)
 
 			return nil
 		// One line from nxadm. The channel is nil when polltail is running.

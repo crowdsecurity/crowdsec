@@ -197,6 +197,29 @@ func (s *Source) monitorNewFiles(ctx context.Context, out chan pipeline.Event, g
 	}
 }
 
+// claimTail records file as tailed. It returns false when another caller already claimed it.
+func (s *Source) claimTail(file string) bool {
+	s.tailMapMutex.Lock()
+	defer s.tailMapMutex.Unlock()
+
+	if s.tails[file] {
+		return false
+	}
+
+	s.tails[file] = true
+
+	return true
+}
+
+// releaseTail drops a claim that did not start a live reader, or the claim of a reader that has stopped.
+func (s *Source) releaseTail(file string) {
+	s.tailMapMutex.Lock()
+	defer s.tailMapMutex.Unlock()
+
+	delete(s.tails, file)
+}
+
+// setupTailForFile claims file, then starts one tailer. A setup that does not leave a live reader drops the claim.
 func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pipeline.Event, seekEnd bool, g *errgroup.Group) error {
 	logger := s.logger.WithField("file", file)
 
@@ -204,17 +227,18 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 		return nil
 	}
 
-	// Check if we're already tailing
-	s.tailMapMutex.RLock()
-
-	if s.tails[file] {
-		s.tailMapMutex.RUnlock()
+	if !s.claimTail(file) {
 		logger.Debugf("Already tailing file %s, not creating a new tail", file)
-
 		return nil
 	}
 
-	s.tailMapMutex.RUnlock()
+	// Make sure the tail claim is RELEASED in case startup fails.
+	keepClaim := false
+	defer func() {
+		if !keepClaim {
+			s.releaseTail(file)
+		}
+	}()
 
 	// Validate file
 	fd, err := os.Open(file)
@@ -277,7 +301,13 @@ func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pip
 
 	logger.Infof("Starting tail (offset: %d, whence: %d)", 0, whence)
 
-	return s.startTailedFile(ctx, file, out, g, pollFile, whence)
+	if err := s.startTailedFile(ctx, file, out, g, pollFile, whence); err != nil {
+		return err
+	}
+
+	keepClaim = true
+
+	return nil
 }
 
 // pushTailLine records one tailed line and sends it on the shared acquisition channel.
@@ -407,10 +437,7 @@ func (s *Source) IsTailing(filename string) bool {
 // RemoveTail is used for testing to simulate a dead tailer. For testing purposes.
 // It is case sensitive and path delimiter sensitive (filename must match exactly what the filename would look being OS specific)
 func (s *Source) RemoveTail(filename string) {
-	s.tailMapMutex.Lock()
-	defer s.tailMapMutex.Unlock()
-
-	delete(s.tails, filename)
+	s.releaseTail(filename)
 }
 
 // isExcluded returns the first matching regexp from the list of excluding patterns,
