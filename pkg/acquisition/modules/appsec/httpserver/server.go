@@ -1,8 +1,6 @@
-// This server is NOT a general-purpose HTTP server. It speaks only HTTP/1.x,
-// trusts its peers (deployments are expected to put it behind a bouncer), and
-// makes minimal effort to defend against pathological clients beyond enforcing
-// configurable size limits.
-// Its goal is to be able to accept almost any request that looks like HTTP, even if it's technically malformed
+// Package httpserver is a lenient HTTP/1.x server for the appsec component. It
+// accepts requests net/http rejects, so the WAF still inspects them. Not a
+// general-purpose server: it expects to sit behind a bouncer.
 package httpserver
 
 import (
@@ -24,8 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/ja4h"
 )
 
-// Server is a minimal lenient HTTP/1.x server. The zero value is usable; set
-// Handler before calling Serve / ServeTLS.
+// Server is usable once Handler is set.
 type Server struct {
 	Handler http.Handler
 
@@ -132,9 +129,6 @@ func (s *Server) serveConn(conn net.Conn, isTLS bool) {
 			return
 		}
 
-		// Bound the wait for the next request byte: ReadHeaderTimeout on the
-		// first request, IdleTimeout (falling back to ReadHeaderTimeout) for
-		// subsequent ones on the same keep-alive connection.
 		wait := s.ReadHeaderTimeout
 		if !first && s.IdleTimeout > 0 {
 			wait = s.IdleTimeout
@@ -147,7 +141,6 @@ func (s *Server) serveConn(conn net.Conn, isTLS bool) {
 		}
 		first = false
 
-		// Now bound the time to actually parse the headers.
 		if s.ReadHeaderTimeout > 0 {
 			_ = conn.SetReadDeadline(time.Now().Add(s.ReadHeaderTimeout))
 		}
@@ -178,9 +171,7 @@ func (s *Server) serveConn(conn net.Conn, isTLS bool) {
 			_ = req.Body.Close()
 		}
 
-		// For chunked requests we still need to consume the trailer section
-		// (optional trailer headers + final CRLF) that http.NewChunkedReader
-		// leaves on the wire.
+		// The chunked reader stops before the trailer section.
 		if info.Chunked {
 			if err := drainChunkedTrailer(br, limits); err != nil {
 				s.logf("drain chunked trailer: %v", err)
@@ -242,9 +233,7 @@ func readRequest(br *bufio.Reader, conn net.Conn, isTLS bool, limits Limits) (*h
 		}
 	}
 
-	// (*http.Request).Context() returns context.Background() when the unexported
-	// ctx field is nil, so WithContext is the only way to attach the header
-	// order, and it costs a clone of the request struct.
+	// WithContext clones the request, but it's the only way to set a context.
 	req = req.WithContext(ja4h.WithHeaderOrder(req.Context(), order))
 
 	return req, info, shouldClose(rl.ProtoMajor, rl.ProtoMinor, headers), nil

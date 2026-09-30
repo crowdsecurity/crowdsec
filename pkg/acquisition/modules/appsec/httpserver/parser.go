@@ -45,15 +45,9 @@ func (l Limits) withDefaults() Limits {
 	return l
 }
 
-// readLine reads bytes through the next \n. The terminating \r\n or bare \n is
-// stripped from the returned slice. Returns io.EOF only when no bytes were read.
-//
-// The returned slice aliases the bufio.Reader's internal buffer and is only
-// valid until the next read from r. Callers that need to retain bytes across
-// further reads must copy them (e.g. via string(line) when storing in a map).
-//
-// The bufio.Reader's buffer must be sized to hold the longest acceptable line;
-// callers configure this via bufio.NewReaderSize.
+// readLine returns the next line without its \r\n or \n; io.EOF means nothing
+// was read. The slice aliases r's buffer (copy it to keep it past the next read),
+// and that buffer must be sized for the longest acceptable line.
 func readLine(r *bufio.Reader, maxSize int) ([]byte, error) {
 	line, err := r.ReadSlice('\n')
 	if err != nil {
@@ -77,7 +71,6 @@ func readLine(r *bufio.Reader, maxSize int) ([]byte, error) {
 	return line, nil
 }
 
-// requestLine holds the parsed components of an HTTP request line.
 type requestLine struct {
 	Method     string
 	Target     string
@@ -86,9 +79,8 @@ type requestLine struct {
 	ProtoMinor int
 }
 
-// readRequestLine reads and parses "METHOD SP URI SP HTTP/X.Y" from r.
-// Lenient: skips leading blank lines, accepts any non-SP/CR/LF bytes in URI,
-// records the proto string even when its format is unrecognized.
+// readRequestLine is lenient: it skips leading blank lines, accepts any byte in
+// the target, and keeps an unrecognized proto (with a zero version).
 func readRequestLine(r *bufio.Reader, maxLine int) (requestLine, error) {
 	var (
 		line []byte
@@ -144,35 +136,25 @@ func parseHTTPVersion(proto string) (major, minor int, ok bool) {
 	return m, n, true
 }
 
-// readHeaders reads header lines until an empty line. Lenient: any byte except
-// CR/LF is allowed in values (including control chars). Invalid names (non-token
-// bytes) are skipped silently.
-//
-// Obsolete line folding is joined into the preceding value with a single space,
-// the way net/http does it: dropping the continuation would hide bytes from the
-// appsec engine that the protected application still sees.
-// readHeaders returns the header map plus the header names in the order their
-// lines appeared, which the map cannot preserve. JA4H fingerprints that order.
+// readHeaders keeps control bytes in values and skips invalid names rather than
+// failing, so the WAF sees what the origin might. Folded lines are joined with a
+// space, as net/http does. It also returns the names in wire order, for JA4H.
 func readHeaders(r *bufio.Reader, limits Limits) (http.Header, []string, error) {
 	limits = limits.withDefaults()
-	// Pre-size to a typical header count to avoid map growth allocations.
 	h := make(http.Header, 16)
 	order := make([]string, 0, 16)
 	totalBytes := 0
 	count := 0
 
-	// A continuation line rewrites the value already stored for lastName. The
-	// buffer is only touched when a fold actually shows up, and accumulating
-	// into it keeps a run of continuations linear rather than quadratic.
+	// Folds accumulate in a buffer so a long run of them stays linear.
 	var (
 		lastName string
 		folded   []byte
 		folding  bool
 	)
 
-	// Leading whitespace is stripped once the folded value is complete, not
-	// per line: that is what net/http does, and the difference shows when a
-	// continuation line is empty.
+	// Trim once the fold is complete, not per line, like net/http: it differs
+	// when a continuation line is empty.
 	endFold := func() {
 		if !folding {
 			return
@@ -232,11 +214,8 @@ func trimOWS(b []byte) []byte {
 	return bytes.TrimRight(bytes.TrimLeft(b, " \t"), " \t")
 }
 
-// canonicalHeaderName mirrors net/textproto, including its deliberate tolerance
-// for a space before the colon (go.dev/issue/34540); such a name is kept
-// verbatim rather than canonicalized. Rejecting "X-Evil : payload" outright
-// would hide the value from the appsec engine while origins that tolerate it
-// still act on the header.
+// canonicalHeaderName mirrors net/textproto, which keeps a name with a space
+// before the colon verbatim (go.dev/issue/34540): origins may act on it.
 func canonicalHeaderName(name []byte) (string, bool) {
 	if len(name) == 0 {
 		return "", false
@@ -275,7 +254,7 @@ func isValidHeaderName(name []byte) bool {
 	return true
 }
 
-// isTokenByte reports whether b is a valid RFC 7230 token byte.
+// isTokenByte reports whether b is an RFC 7230 token byte.
 func isTokenByte(b byte) bool {
 	switch {
 	case b >= 'a' && b <= 'z',

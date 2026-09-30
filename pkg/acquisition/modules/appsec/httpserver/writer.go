@@ -10,13 +10,9 @@ import (
 	"time"
 )
 
-// responseWriter is a minimal http.ResponseWriter that buffers the response
-// body in memory and emits a single HTTP/1.x message on flush. Body buffering
-// is fine for the appsec handler — responses are small JSON blobs.
-//
-// It implements SetReadDeadline / SetWriteDeadline so the existing handler can
-// keep using http.NewResponseController(rw).SetReadDeadline(...) to bound the
-// body read.
+// responseWriter buffers the whole body, which is fine for the appsec handler's
+// small JSON responses. The deadline setters are what http.ResponseController
+// needs to bound the body read.
 type responseWriter struct {
 	conn       net.Conn
 	bw         *bufio.Writer
@@ -68,19 +64,16 @@ func (w *responseWriter) Write(p []byte) (int, error) {
 	return w.body.Write(p)
 }
 
-// SetReadDeadline lets http.NewResponseController set a body-read deadline.
 func (w *responseWriter) SetReadDeadline(t time.Time) error {
 	return w.conn.SetReadDeadline(t)
 }
 
-// SetWriteDeadline mirrors SetReadDeadline for completeness.
 func (w *responseWriter) SetWriteDeadline(t time.Time) error {
 	return w.conn.SetWriteDeadline(t)
 }
 
-// flush writes the status line, headers, and buffered body to the connection.
-// Server-controlled headers (Content-Length, Connection) are written directly
-// to avoid map operations; handler-set duplicates are skipped.
+// flush writes Content-Length and Connection itself and drops the handler's
+// copies of them.
 //
 //nolint:errcheck // bufio.Writer retains the first write error and returns it from Flush.
 func (w *responseWriter) flush() error {
@@ -139,8 +132,7 @@ func (w *responseWriter) flush() error {
 	return bw.Flush()
 }
 
-// bodyAllowedForStatus mirrors net/http: these statuses are defined to have no
-// message body.
+// bodyAllowedForStatus mirrors net/http.
 func bodyAllowedForStatus(status int) bool {
 	switch {
 	case status >= 100 && status <= 199:

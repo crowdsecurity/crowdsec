@@ -26,23 +26,19 @@ type bodyInfo struct {
 	Chunked          bool
 }
 
-// newBodyReader builds an io.ReadCloser bounded by Transfer-Encoding /
-// Content-Length so the server never relies on the connection EOF for framing.
-//
-// Framing follows net/http exactly, because a WAF that disagrees with the
-// origin about where the body ends is a smuggling oracle: Transfer-Encoding is
-// ignored below HTTP/1.1 (golang/go#12785), chunked beats Content-Length (RFC
-// 7230 §3.3.3), and Content-Length headers that disagree are refused. When
-// chunked is used, the returned reader does NOT consume the trailer section —
-// the caller must drain it before reading the next request.
+// newBodyReader frames the body exactly like net/http: a WAF that disagrees
+// with the origin on where the body ends enables smuggling. The caller must
+// drain a chunked body's trailer section.
 func newBodyReader(src *bufio.Reader, headers http.Header, major, minor int) (bodyInfo, error) {
 	var te []string
+	// Ignored below HTTP/1.1, golang/go#12785.
 	if major > 1 || (major == 1 && minor >= 1) {
 		te = parseTransferEncoding(headers.Get("Transfer-Encoding"))
 	}
 
 	chunked := len(te) > 0 && te[len(te)-1] == "chunked"
 	if chunked {
+		// RFC 7230 §3.3.3: chunked wins over Content-Length.
 		headers.Del("Content-Length")
 		return bodyInfo{
 			Body:             &chunkedBody{r: newChunkedReader(src)},
@@ -90,8 +86,7 @@ func newBodyReader(src *bufio.Reader, headers http.Header, major, minor int) (bo
 	}, nil
 }
 
-// fixedBody is a Content-Length bounded ReadCloser. It replaces the
-// io.NopCloser(io.LimitReader(...)) chain with a single allocation.
+// fixedBody saves the allocations of io.NopCloser(io.LimitReader(...)).
 type fixedBody struct {
 	r         *bufio.Reader
 	remaining int64
@@ -114,8 +109,7 @@ func (b *fixedBody) Read(p []byte) (int, error) {
 
 func (*fixedBody) Close() error { return nil }
 
-// chunkedBody wraps a chunkedReader in an io.ReadCloser without allocating an
-// io.NopCloser indirection.
+// chunkedBody saves the allocation of io.NopCloser.
 type chunkedBody struct{ r *chunkedReader }
 
 func (b *chunkedBody) Read(p []byte) (int, error) { return b.r.Read(p) }
@@ -136,9 +130,8 @@ func parseTransferEncoding(raw string) []string {
 	return out
 }
 
-// chunkedReader decodes RFC 7230 chunked transfer-encoding. It returns io.EOF
-// when the zero-length terminator chunk is seen. The trailer section (optional
-// trailer headers + final CRLF) is NOT consumed.
+// chunkedReader decodes a chunked body up to the terminating zero-size chunk,
+// leaving the trailer section unread.
 type chunkedReader struct {
 	r         *bufio.Reader
 	remaining int64

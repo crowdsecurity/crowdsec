@@ -8,9 +8,8 @@ import (
 
 type headerOrderKey struct{}
 
-// WithHeaderOrder carries the header names in the order their lines appeared on
-// the wire. JA4H_b hashes them in that order and an http.Header map cannot keep
-// it, so the HTTP server has to record it while parsing.
+// WithHeaderOrder records the header names in wire order, which http.Header
+// loses and JA4H_b needs. Only the parsing server knows it.
 func WithHeaderOrder(ctx context.Context, order []string) context.Context {
 	return context.WithValue(ctx, headerOrderKey{}, order)
 }
@@ -21,11 +20,9 @@ func HeaderOrder(ctx context.Context) []string {
 	return order
 }
 
-// orderedHeaderNames lists the names of req.Header as they appeared on the wire,
-// one entry per header line, so a name sent twice is listed twice. Names the
-// recorded order does not account for (added or rewritten after parsing, or no
-// order recorded at all) are appended sorted, so a caller with no order
-// information still gets a stable fingerprint.
+// orderedHeaderNames lists req.Header names in wire order, once per line. Names
+// missing from the recorded order (or all of them, with net/http) are appended
+// sorted so the fingerprint stays stable.
 func orderedHeaderNames(req *http.Request) []string {
 	names := make([]string, 0, len(req.Header))
 	seen := make(map[string]bool, len(req.Header))

@@ -15,12 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// This server sits in front of the WAF engine, so two classes of bug matter:
-// a panic (it takes down the acquisition goroutine) and a parsing divergence
-// that hides part of a request from the engine while the protected application
-// still sees it. The differential targets below pin our parser to net/http,
-// which is both what this server replaces and what bouncers were written
-// against: anything net/http accepts, we must read identically.
+// Two classes of bug matter here: a panic, which takes down the acquisition,
+// and a parsing divergence from net/http, which hides part of a request from
+// the WAF. Anything net/http accepts, we must read identically.
 
 const (
 	fuzzMaxBody     = 1 << 20
@@ -37,10 +34,8 @@ var fuzzLimits = Limits{
 
 var errResponseTooLarge = errors.New("response too large")
 
-// replayConn feeds a fixed byte slice to the server and captures what it writes
-// back. Reads hit io.EOF at the end of the input so the connection loop always
-// terminates, and deadlines are no-ops. Writes past fuzzMaxResponse fail, so a
-// response amplification bug surfaces as an error instead of eating memory.
+// replayConn replays input and records output. EOF at the end of the input ends
+// the connection loop; the write cap turns response amplification into an error.
 type replayConn struct {
 	in  *bytes.Reader
 	out bytes.Buffer
@@ -126,9 +121,7 @@ func FuzzServeConn(f *testing.F) {
 
 		srv.serveConn(conn, false)
 
-		// Anything we put on the wire must frame as HTTP/1.x responses: a
-		// bouncer that resynchronises on our reply differently than we intend
-		// is a bypass.
+		// A bouncer that frames our reply differently than we intend is a bypass.
 		br := bufio.NewReader(bytes.NewReader(conn.out.Bytes()))
 
 		for {

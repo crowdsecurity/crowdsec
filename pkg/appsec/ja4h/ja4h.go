@@ -55,10 +55,9 @@ func hasReferer(referer string) string {
 	return "n"
 }
 
-// ja4hHeaders lists the header names in wire order, minus the ones the spec
-// excludes: cookies (by prefix, so Cookie2 goes too) and referer. The reference
-// implementation derives both the header count and the JA4H_b hash from this
-// same list, so a header sent twice counts twice.
+// ja4hHeaders lists the header names in wire order, minus cookies (by prefix,
+// like the reference implementation) and referer. Both the count and JA4H_b
+// come from this list, so a header sent twice counts twice.
 func ja4hHeaders(req *http.Request) []string {
 	names := orderedHeaderNames(req)
 	out := names[:0]
@@ -72,7 +71,6 @@ func ja4hHeaders(req *http.Request) []string {
 	return out
 }
 
-// countHeaders counts the header lines the spec keeps.
 func countHeaders(headerNames []string) string {
 	//header len needs to be on 2 chars: 3 -> 03 // 100 -> 99
 	return fmt.Sprintf("%02d", min(len(headerNames), 99))
@@ -107,11 +105,8 @@ func jA4H_a(req *http.Request, headerNames []string) string {
 	return builder.String()
 }
 
-// jA4H_b computes a truncated SHA256 hash of the header names, in wire order.
-//
-// With no headers the reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
-// hashes the empty string instead of returning 0s like it does for cookies.
-// Not sure if it's intended or an oversight in the spec.
+// jA4H_b hashes the empty string when there are no headers, unlike cookies, to
+// match the reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27).
 func jA4H_b(headerNames []string) string {
 	return hashTruncated(strings.Join(headerNames, ","))
 }
