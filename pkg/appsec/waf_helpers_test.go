@@ -111,10 +111,10 @@ func TestRequestScoreHelpersBindStateInEveryStage(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			// 100 in "fingerprint" replaced by 5, plus the uncategorized 15
+			// 100 in "fingerprint" replaced by 5, plus utc_timezone's own 15
 			assert.Equal(t, 20, state.RequestScore.Total())
 			assert.Equal(t, 5, state.RequestScore.ForCategories("fingerprint"))
-			assert.Equal(t, 15, state.RequestScore.Uncategorized())
+			assert.Equal(t, 15, state.RequestScore.ForCategories("utc_timezone"))
 			assert.Equal(t, "20", state.HookVars[hookVarRequestScore])
 		})
 	}
@@ -144,7 +144,6 @@ func TestRequestScorePrototypes(t *testing.T) {
 		{name: "set with one category", expr: `SetRequestScore(50, "bot")`},
 		{name: "set with many categories", expr: `SetRequestScore(50, "bot", "fingerprint")`},
 		{name: "set requires a value", expr: `SetRequestScore("bot")`, wantErr: "cannot use string"},
-		{name: "uncategorized takes no argument", expr: `RequestScoreUncategorized() > 0`},
 		{name: "categories takes no argument", expr: `"bot" in RequestScoreCategories()`},
 		{name: "categories rejects an argument", expr: `RequestScoreCategories("bot")`, wantErr: "too many arguments"},
 		// An empty label normalizes to "unspecified"; an empty category is a

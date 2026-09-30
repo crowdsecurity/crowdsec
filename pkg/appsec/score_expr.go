@@ -85,10 +85,13 @@ func scoreStrings(params []any) ([]string, error) {
 	return out, nil
 }
 
-// An empty category matches nothing, and no rule means that — omitting the
-// argument is how you say "no category". Warn rather than return an error:
-// an error from a helper aborts the rest of the hook chain, which is a far
-// worse outcome than a rule that scores zero.
+// An empty category is never a name: SetRequestScore skips it and
+// RequestScore matches nothing with it, both of which look like the helper
+// did nothing. Warn rather than return an error: an error from a helper
+// aborts the rest of the hook chain, a far worse outcome.
+//
+// AddRequestScore does not need this — an empty category there falls back to
+// the label, which is what omitting it already means.
 func warnEmptyCategory(binding *scoreBinding, helper string, categories []string) {
 	if binding.w.Logger == nil {
 		return
@@ -96,7 +99,7 @@ func warnEmptyCategory(binding *scoreBinding, helper string, categories []string
 
 	for _, c := range categories {
 		if strings.TrimSpace(c) == "" {
-			binding.w.Logger.Warnf("%s: empty category argument, omit it to mean no category", helper)
+			binding.w.Logger.Warnf("%s: empty category argument, ignored", helper)
 			return
 		}
 	}
@@ -122,8 +125,6 @@ func exprAddRequestScore(params ...any) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("AddRequestScore category: %w", err)
 	}
-
-	warnEmptyCategory(binding, "AddRequestScore", category)
 
 	return nil, binding.w.AddRequestScore(binding.state, points, label, category...)
 }
@@ -163,15 +164,6 @@ func exprRequestScore(params ...any) (any, error) {
 	warnEmptyCategory(binding, "RequestScore", categories)
 
 	return binding.state.RequestScore.ForCategories(categories...), nil
-}
-
-func exprRequestScoreUncategorized(params ...any) (any, error) {
-	binding, err := scoreBindingFrom(params)
-	if err != nil {
-		return nil, err
-	}
-
-	return binding.state.RequestScore.Uncategorized(), nil
 }
 
 func exprRequestScoreCategories(params ...any) (any, error) {
@@ -235,9 +227,6 @@ var scoreExprOptions = []expr.Option{
 	),
 	expr.Function("RequestScore", exprRequestScore,
 		new(func(context.Context, ...string) int),
-	),
-	expr.Function("RequestScoreUncategorized", exprRequestScoreUncategorized,
-		new(func(context.Context) int),
 	),
 	// The handle for a signal scored at 0 to record itself without moving the
 	// decision: every score read returns 0, so the category list is the only

@@ -125,8 +125,9 @@ func TestRequestScoreIsPerRequest(t *testing.T) {
 	assert.Empty(t, fresh.RequestScore.Reasons())
 }
 
-// A category left out, blank, or whitespace is the same thing: no category.
-// The axis then has to read as empty rather than grow a bucket.
+// A category left out, blank, or whitespace is the same thing: the signal is
+// its own category. So a config that never heard of categories can still be
+// read back by name, and the breakdown it emits is unchanged.
 func TestRequestScoreWithoutCategories(t *testing.T) {
 	var s RequestScore
 
@@ -134,11 +135,12 @@ func TestRequestScoreWithoutCategories(t *testing.T) {
 	s.Add(3, "a", "")
 	s.Add(4, "b", "   ")
 
-	assert.Empty(t, s.Categories())
-	assert.False(t, s.HasCategories())
-	assert.Empty(t, s.CategoryDetail())
-	assert.Equal(t, 107, s.Uncategorized())
+	assert.Equal(t, []string{"cdp", "a", "b"}, s.Categories())
+	assert.Equal(t, 100, s.ForCategories("cdp"), "readable as a category without opting in")
 	assert.Equal(t, 107, s.ForCategories(), "no argument means the whole score")
+
+	assert.False(t, s.HasExplicitCategories(), "nothing was grouped under another name")
+	assert.Equal(t, "cdp=100,a=3,b=4", s.String())
 }
 
 func TestRequestScoreCategories(t *testing.T) {
@@ -149,8 +151,8 @@ func TestRequestScoreCategories(t *testing.T) {
 	s.Add(30, "no_user_agent", "headers")
 	s.Add(5, "slow_pow")
 
-	assert.True(t, s.HasCategories())
-	assert.Equal(t, []string{"fingerprint", "headers"}, s.Categories())
+	assert.True(t, s.HasExplicitCategories())
+	assert.Equal(t, []string{"fingerprint", "headers", "slow_pow"}, s.Categories())
 
 	assert.Equal(t, 150, s.ForCategories())
 	assert.Equal(t, 115, s.ForCategories("fingerprint"))
@@ -158,13 +160,27 @@ func TestRequestScoreCategories(t *testing.T) {
 	assert.Equal(t, 0, s.ForCategories("never_used"))
 	assert.Equal(t, 115, s.ForCategories("fingerprint", "fingerprint"), "a repeated category must not count twice")
 
-	assert.Equal(t, 5, s.Uncategorized(), "reachable, but not as a category")
-	assert.Equal(t, "fingerprint=115,headers=30", s.CategoryDetail())
-	// categorized labels are namespaced; uncategorized ones keep the shape
-	// every pre-category config already emits
+	assert.Equal(t, 5, s.ForCategories("slow_pow"), "an ungrouped signal is its own category")
+	assert.Equal(t, "fingerprint=115,headers=30,slow_pow=5", s.CategoryDetail())
+	// a label is namespaced only where the category says something the label
+	// does not, so pre-category configs emit exactly what they always did
 	assert.Equal(t,
 		"fingerprint:cdp=100,fingerprint:utc_timezone=15,headers:no_user_agent=30,slow_pow=5",
 		s.String())
+}
+
+// The property the whole category axis rests on: every live entry is in
+// exactly one category, so the parts add up to the whole. Before categories
+// defaulted to the label, ungrouped points were reachable by no filter at all.
+func TestRequestScoreCategoriesPartitionTheTotal(t *testing.T) {
+	var s RequestScore
+
+	s.Add(100, "cdp", "fingerprint")
+	s.Add(30, "no_user_agent", "headers")
+	s.Add(5, "slow_pow")
+	s.Set(11, "headers")
+
+	assert.Equal(t, s.Total(), s.ForCategories(s.Categories()...))
 }
 
 // The same label under two categories is two contributions, reported apart,
@@ -205,7 +221,7 @@ func TestRequestScoreSet(t *testing.T) {
 		assert.Equal(t, 80, s.Set(50, "fingerprint"))
 		assert.Equal(t, 50, s.ForCategories("fingerprint"))
 		assert.Equal(t, 30, s.ForCategories("headers"), "other categories are untouched")
-		assert.Equal(t, 50, s.For(scoreSetLabelPrefix+"fingerprint"))
+		assert.Equal(t, 50, s.For(scoreSetLabel))
 	})
 
 	// The reason the override supersedes instead of deleting: an alert has to
@@ -221,8 +237,19 @@ func TestRequestScoreSet(t *testing.T) {
 		assert.Equal(t, 100, s.For("cdp"), "the signal still reports what it claimed")
 		assert.Equal(t, 20, s.ForCategories("fingerprint"), "but it no longer counts toward the score")
 		assert.Equal(t,
-			"fingerprint:cdp=100,fingerprint:utc_timezone=15,set:fingerprint=20",
+			"fingerprint:cdp=100,fingerprint:utc_timezone=15,fingerprint:set=20",
 			s.String())
+	})
+
+	// An empty category is not a name, and naming none is how you reset the
+	// whole score — so the two must not collapse into each other.
+	t.Run("an empty category is skipped, not treated as no category", func(t *testing.T) {
+		var s RequestScore
+
+		s.Add(100, "cdp", "fingerprint")
+
+		assert.Equal(t, 100, s.Set(3, ""), "the score is untouched")
+		assert.Equal(t, 100, s.ForCategories("fingerprint"))
 	})
 
 	t.Run("each named category is set to the value", func(t *testing.T) {
@@ -265,12 +292,12 @@ func TestSetRequestScoreMirrorsHookVars(t *testing.T) {
 	require.NoError(t, w.SetRequestScore(state, 20, "fingerprint"))
 
 	assert.Equal(t, "20", state.HookVars[hookVarRequestScore])
-	assert.Equal(t, "fingerprint:cdp=100,set:fingerprint=20", state.HookVars[hookVarRequestScoreReasons])
+	assert.Equal(t, "fingerprint:cdp=100,fingerprint:set=20", state.HookVars[hookVarRequestScoreReasons])
 	assert.Equal(t, "fingerprint=20", state.HookVars[hookVarRequestScoreCategories])
 }
 
-// The key must be absent, not empty: an operator keying off it should be able
-// to tell "no categories in play" from "categories, all at zero".
+// Every signal has a category now, so the key would otherwise appear on every
+// alert repeating request_score_reasons verbatim.
 func TestCategoryHookVarAbsentWithoutCategories(t *testing.T) {
 	w := makeRuntime()
 	state := &AppsecRequestState{HookVars: map[string]string{}}
@@ -281,9 +308,23 @@ func TestCategoryHookVarAbsentWithoutCategories(t *testing.T) {
 	assert.NotContains(t, state.HookVars, hookVarRequestScoreCategories)
 }
 
+// The key is rewritten on every mutation, so one that supersedes the last
+// grouped signal has to clear it rather than leave the old value in the alert.
+func TestCategoryHookVarClearedWhenGroupingGoesAway(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
+	require.Equal(t, "fingerprint=100", state.HookVars[hookVarRequestScoreCategories])
+
+	require.NoError(t, w.SetRequestScore(state, 9))
+
+	assert.Equal(t, "9", state.HookVars[hookVarRequestScore])
+	assert.NotContains(t, state.HookVars, hookVarRequestScoreCategories)
+}
+
 // The one trap worth a dedicated test: no argument is "no filter", while an
-// empty name is just a category nobody used. They only agree when nothing is
-// categorized, which is exactly when the difference is invisible.
+// empty name is just a category nobody used.
 func TestRequestScoreEmptyCategoryIsNotNoCategory(t *testing.T) {
 	var s RequestScore
 
@@ -292,7 +333,7 @@ func TestRequestScoreEmptyCategoryIsNotNoCategory(t *testing.T) {
 
 	assert.Equal(t, 120, s.ForCategories(), "no argument does not filter")
 	assert.Equal(t, 0, s.ForCategories(""), "an empty name matches nothing, like any unused name")
-	assert.Equal(t, 20, s.Uncategorized(), "this is how the uncategorized points are reached")
+	assert.Equal(t, 20, s.ForCategories("slow_pow"), "an ungrouped signal is reached by its own name")
 
 	assert.Equal(t, 100, s.ForCategories("fingerprint", ""), "a real name alongside an empty one still counts")
 }

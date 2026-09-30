@@ -44,8 +44,8 @@ func contextMap(metas []*models.MetaItems0) map[string]string {
 	return out
 }
 
-// One categorized and one uncategorized signal, so neither breakdown is
-// trivially empty.
+// One grouped and one ungrouped signal: the category breakdown lists both,
+// the second under its own label, so the parts still add up to the total.
 func scoredState(t *testing.T) *AppsecRequestState {
 	t.Helper()
 
@@ -81,7 +81,7 @@ request_score_categories:
 		got := contextMap(metas)
 		assert.Equal(t, `["115"]`, got["request_score"])
 		assert.Equal(t, `["fingerprint:cdp=100,utc_timezone=15"]`, got["request_score_reasons"])
-		assert.Equal(t, `["fingerprint=100"]`, got["request_score_categories"])
+		assert.Equal(t, `["fingerprint=100,utc_timezone=15"]`, got["request_score_categories"])
 	})
 
 	t.Run("waf alerts, via match", func(t *testing.T) {
@@ -104,6 +104,6 @@ request_score_categories:
 		got := contextMap(metas)
 		assert.Equal(t, `["115"]`, got["request_score"])
 		assert.Equal(t, `["fingerprint:cdp=100,utc_timezone=15"]`, got["request_score_reasons"])
-		assert.Equal(t, `["fingerprint=100"]`, got["request_score_categories"])
+		assert.Equal(t, `["fingerprint=100,utc_timezone=15"]`, got["request_score_categories"])
 	})
 }

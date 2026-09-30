@@ -1697,14 +1697,18 @@ func syncScoreHookVars(state *AppsecRequestState) {
 	state.HookVars[hookVarRequestScore] = strconv.Itoa(state.RequestScore.Total())
 	state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
 
-	// Absent rather than empty for rules that never set a category, so the
-	// key showing up means something.
-	if state.RequestScore.HasCategories() {
+	// Every signal has a category, but when nobody grouped anything this would
+	// just repeat request_score_reasons. Absent rather than redundant, and
+	// cleared rather than left stale: an override can drop the last grouping.
+	if state.RequestScore.HasExplicitCategories() {
 		state.HookVars[hookVarRequestScoreCategories] = state.RequestScore.CategoryDetail()
+	} else {
+		delete(state.HookVars, hookVarRequestScoreCategories)
 	}
 }
 
 func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
+	label := normalizeScoreName(reason, unspecifiedScoreReason)
 	total := state.RequestScore.Add(points, reason, category...)
 
 	syncScoreHookVars(state)
@@ -1712,7 +1716,7 @@ func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
 			"reason":   reason,
-			"category": scoreCategoryArg(category),
+			"category": scoreCategoryArg(category, label),
 			"points":   points,
 			"total":    total,
 		}).Debug("request score updated")

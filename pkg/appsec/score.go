@@ -8,15 +8,10 @@ import (
 
 const (
 	unspecifiedScoreReason = "unspecified"
-	// An entry with no category is filed under the empty string rather than a
-	// placeholder name: the category axis then reads as genuinely empty for
-	// the rules that never use it, instead of inventing a bucket.
-	noScoreCategory = ""
 	// Label of the entry Set() appends to record what it forced a score to.
 	// Distinct from any plausible operator-chosen label so the breakdown
 	// stays unambiguous about which points came from a signal.
-	scoreSetLabel       = "set"
-	scoreSetLabelPrefix = scoreSetLabel + ":"
+	scoreSetLabel = "set"
 )
 
 // Entries are keyed by (label, category): re-adding a pair accumulates in
@@ -25,8 +20,8 @@ type scoreEntry struct {
 	label    string
 	category string
 	points   int
-	// An override entry records the value Set() forced, and already names
-	// its category in the label, so it is not prefixed again.
+	// An override entry records the value Set() forced. Add() must not
+	// accumulate into one, so it is flagged rather than matched by label.
 	override bool
 	// Superseded entries no longer count toward any total, but stay in the
 	// breakdown: an override changes what the signals are worth, not the
@@ -35,10 +30,11 @@ type scoreEntry struct {
 	superseded bool
 }
 
-// key is how the entry appears in the breakdown. Uncategorized entries are
-// unprefixed, which is what every pre-category config already emits.
+// key is how the entry appears in the breakdown. A signal that never named a
+// category is its own category, so the prefix would just repeat the label:
+// dropping it is also what every pre-category config already emits.
 func (e scoreEntry) key() string {
-	if e.override || e.category == noScoreCategory {
+	if e.category == e.label {
 		return e.label
 	}
 
@@ -53,6 +49,10 @@ func (e scoreEntry) counts() bool {
 // (the signal that fired) and a category (the family it belongs to). The
 // entry list is the only source of truth — every accessor derives from it, so
 // there is no second index that can drift out of sync.
+//
+// Every entry has a category: a signal that names none is filed under its own
+// label. Categories therefore partition the live entries, so the per-category
+// scores always add up to the total.
 //
 // The label axis is a record of what fired and keeps entries an override has
 // superseded; the category axis and the total are what the request is
@@ -71,15 +71,18 @@ func normalizeScoreName(v, fallback string) string {
 	return v
 }
 
+// Defaults to the label, so a rule that never heard of categories can still be
+// read back with RequestScore("cdp").
+//
 // The expr prototypes already cap the category at one value, so extras are
 // ignored rather than rejected: a Go-side caller must not be able to trip a
 // runtime error no rule author wrote.
-func scoreCategoryArg(category []string) string {
+func scoreCategoryArg(category []string, label string) string {
 	if len(category) == 0 {
-		return noScoreCategory
+		return label
 	}
 
-	return normalizeScoreName(category[0], noScoreCategory)
+	return normalizeScoreName(category[0], label)
 }
 
 func (s *RequestScore) indexOf(label, category string) int {
@@ -90,7 +93,7 @@ func (s *RequestScore) indexOf(label, category string) int {
 
 func (s *RequestScore) Add(points int, reason string, category ...string) int {
 	label := normalizeScoreName(reason, unspecifiedScoreReason)
-	cat := scoreCategoryArg(category)
+	cat := scoreCategoryArg(category, label)
 
 	if i := s.indexOf(label, cat); i >= 0 {
 		s.entries[i].points += points
@@ -110,34 +113,33 @@ func (s *RequestScore) Add(points int, reason string, category ...string) int {
 func (s *RequestScore) Set(points int, categories ...string) int {
 	if len(categories) == 0 {
 		s.supersede(func(scoreEntry) bool { return true })
-		s.entries = append(s.entries, scoreEntry{
-			label:    scoreSetLabel,
-			category: noScoreCategory,
-			points:   points,
-			override: true,
-		})
+		s.override(scoreSetLabel, points)
 
 		return s.retotal()
 	}
 
 	for _, raw := range categories {
-		cat := normalizeScoreName(raw, noScoreCategory)
-
-		label := scoreSetLabel
-		if cat != noScoreCategory {
-			label = scoreSetLabelPrefix + cat
+		// Naming no category at all is how you reset the whole score, so an
+		// empty one must not silently do that: skip it. The caller warns.
+		cat := strings.TrimSpace(raw)
+		if cat == "" {
+			continue
 		}
 
 		s.supersede(func(e scoreEntry) bool { return e.category == cat })
-		s.entries = append(s.entries, scoreEntry{
-			label:    label,
-			category: cat,
-			points:   points,
-			override: true,
-		})
+		s.override(cat, points)
 	}
 
 	return s.retotal()
+}
+
+func (s *RequestScore) override(category string, points int) {
+	s.entries = append(s.entries, scoreEntry{
+		label:    scoreSetLabel,
+		category: category,
+		points:   points,
+		override: true,
+	})
 }
 
 func (s *RequestScore) supersede(match func(scoreEntry) bool) {
@@ -199,8 +201,7 @@ func (s *RequestScore) ForCategories(categories ...string) int {
 	}
 
 	// An empty name is not a category, so it matches nothing, exactly like
-	// any name never used. Entries without a category are reached through
-	// Uncategorized() instead — one meaning per spelling.
+	// any name never used — one meaning per spelling.
 	wanted := make([]string, 0, len(categories))
 
 	for _, c := range categories {
@@ -220,30 +221,10 @@ func (s *RequestScore) ForCategories(categories ...string) int {
 	return sum
 }
 
-// These points count toward Total() but belong to no category, so
-// ForCategories() can never reach them.
-func (s *RequestScore) Uncategorized() int {
-	if s == nil {
-		return 0
-	}
-
-	sum := 0
-
-	for _, e := range s.entries {
-		if e.counts() && e.category == noScoreCategory {
-			sum += e.points
-		}
-	}
-
-	return sum
-}
-
 func (s *RequestScore) Reasons() []string {
 	return s.distinct(scoreEntry.key)
 }
 
-// Uncategorized entries are not a category, so they are left out here while
-// still counting toward Total().
 // Ordered by where the category first appeared, superseded entries included,
 // so an override does not shuffle a category to the back of the list. A
 // category with nothing live left is dropped rather than shown at zero.
@@ -255,7 +236,7 @@ func (s *RequestScore) Categories() []string {
 	out := make([]string, 0, len(s.entries))
 
 	for _, e := range s.entries {
-		if e.category == noScoreCategory || slices.Contains(out, e.category) {
+		if slices.Contains(out, e.category) {
 			continue
 		}
 
@@ -277,8 +258,7 @@ func (s *RequestScore) distinct(key func(scoreEntry) string) []string {
 	out := make([]string, 0, len(s.entries))
 
 	for _, e := range s.entries {
-		// An empty key is "not set", never a bucket of its own.
-		if k := key(e); k != "" && !slices.Contains(out, k) {
+		if k := key(e); !slices.Contains(out, k) {
 			out = append(out, k)
 		}
 	}
@@ -286,14 +266,15 @@ func (s *RequestScore) distinct(key func(scoreEntry) string) []string {
 	return out
 }
 
-// Lets the category outputs stay absent for rules that never set one.
-func (s *RequestScore) HasCategories() bool {
+// Whether any rule actually grouped a signal under a different name. Lets the
+// category alert context stay absent when it would only repeat the reasons.
+func (s *RequestScore) HasExplicitCategories() bool {
 	if s == nil {
 		return false
 	}
 
 	return slices.ContainsFunc(s.entries, func(e scoreEntry) bool {
-		return e.counts() && e.category != noScoreCategory
+		return e.counts() && e.category != e.label
 	})
 }
 
