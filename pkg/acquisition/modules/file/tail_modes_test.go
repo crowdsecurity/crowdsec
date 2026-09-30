@@ -442,7 +442,7 @@ func goroutineBlockedIn(fn string) bool {
 	buf := make([]byte, 2<<20)
 	n := runtime.Stack(buf, true)
 
-	for _, stack := range strings.Split(string(buf[:n]), "\n\n") {
+	for stack := range strings.SplitSeq(string(buf[:n]), "\n\n") {
 		header, _, _ := strings.Cut(stack, "\n")
 		parked := strings.Contains(header, "[select]") || strings.Contains(header, "[chan send]")
 		if parked && strings.Contains(stack, fn) {

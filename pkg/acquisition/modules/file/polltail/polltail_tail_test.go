@@ -612,7 +612,8 @@ func TestPollTail_StopWhileLineBufferIsFull(t *testing.T) {
 	tailTest.CreateFile("test.txt", "seed\n")
 
 	// Background is not canceled when the test ends, so only Stop can close done.
-	tail := tailTest.StartTailWithContext(context.Background(), "test.txt", Config{
+	// t.Context() would close done on test cleanup and hide the deadlock.
+	tail := tailTest.StartTailWithContext(context.Background(), "test.txt", Config{ //nolint:usetesting
 		PollInterval: -1,
 		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
 	})
