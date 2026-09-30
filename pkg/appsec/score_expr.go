@@ -174,6 +174,21 @@ func exprRequestScoreUncategorized(params ...any) (any, error) {
 	return binding.state.RequestScore.Uncategorized(), nil
 }
 
+func exprRequestScoreCategories(params ...any) (any, error) {
+	binding, err := scoreBindingFrom(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Never nil: a rule doing `"x" in RequestScoreCategories()` runs on
+	// requests that have not been scored yet.
+	if categories := binding.state.RequestScore.Categories(); categories != nil {
+		return categories, nil
+	}
+
+	return []string{}, nil
+}
+
 func exprRequestScoreFor(params ...any) (any, error) {
 	binding, err := scoreBindingFrom(params)
 	if err != nil {
@@ -223,6 +238,12 @@ var scoreExprOptions = []expr.Option{
 	),
 	expr.Function("RequestScoreUncategorized", exprRequestScoreUncategorized,
 		new(func(context.Context) int),
+	),
+	// The handle for a signal scored at 0 to record itself without moving the
+	// decision: every score read returns 0, so the category list is the only
+	// way a rule can tell it fired.
+	expr.Function("RequestScoreCategories", exprRequestScoreCategories,
+		new(func(context.Context) []string),
 	),
 	expr.Function("RequestScoreFor", exprRequestScoreFor,
 		new(func(context.Context, string) int),

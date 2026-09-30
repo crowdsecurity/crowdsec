@@ -145,6 +145,8 @@ func TestRequestScorePrototypes(t *testing.T) {
 		{name: "set with many categories", expr: `SetRequestScore(50, "bot", "fingerprint")`},
 		{name: "set requires a value", expr: `SetRequestScore("bot")`, wantErr: "cannot use string"},
 		{name: "uncategorized takes no argument", expr: `RequestScoreUncategorized() > 0`},
+		{name: "categories takes no argument", expr: `"bot" in RequestScoreCategories()`},
+		{name: "categories rejects an argument", expr: `RequestScoreCategories("bot")`, wantErr: "too many arguments"},
 		// An empty label normalizes to "unspecified"; an empty category is a
 		// mistake, but it is reported at runtime, not here. See
 		// TestEmptyCategoryWarnsAndScoresZero.
@@ -258,4 +260,33 @@ func TestEmptyCategoryWarnsAndScoresZero(t *testing.T) {
 			assert.Contains(t, hook.LastEntry().Message, "empty category argument")
 		})
 	}
+}
+
+// A detection shipped at 0 points records itself without moving the decision,
+// which leaves the category list as the only way a rule can tell it fired:
+// every score read for it returns 0 by construction.
+func TestRequestScoreCategoriesSeesZeroScoredSignals(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	h := &Hook{Filter: `"experimental" in RequestScoreCategories()`}
+	require.NoError(t, h.Build(t.Context(), hookOnChallengeSubmit, &appsecExprPatcher{}))
+
+	env := scoreEnvForStage(hookOnChallengeSubmit, w, state, &ParsedRequest{})
+
+	// nothing scored yet: the list has to be usable, not nil
+	fired, err := expr.Run(h.FilterExpr, env)
+	require.NoError(t, err)
+	require.False(t, fired.(bool))
+
+	require.NoError(t, w.AddRequestScore(state, 45, "headless_screen_resolution", "fingerprint"))
+	require.NoError(t, w.AddRequestScore(state, 0, "canvas_noise", "experimental"))
+
+	fired, err = expr.Run(h.FilterExpr, env)
+	require.NoError(t, err)
+	require.True(t, fired.(bool), "a zero-scored category is still in the list")
+
+	assert.Equal(t, 45, state.RequestScore.Total(), "and it must not move the decision")
+	assert.Equal(t, 0, state.RequestScore.ForCategories("experimental"))
+	assert.Equal(t, "fingerprint=45,experimental=0", state.HookVars[hookVarRequestScoreCategories])
 }
