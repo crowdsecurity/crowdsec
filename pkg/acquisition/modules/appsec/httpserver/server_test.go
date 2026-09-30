@@ -16,297 +16,226 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/ja4h"
 )
 
-// startServer launches a Server on a loopback listener and returns the address
-// plus a teardown function.
-func startServer(t *testing.T, h http.Handler) (string, func()) {
+// startServer serves h on a loopback listener until the test ends.
+func startServer(t *testing.T, h http.Handler) string {
 	t.Helper()
+
 	var listenConfig net.ListenConfig
+
 	l, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
+	require.NoError(t, err)
+
 	srv := &Server{
 		Handler:           h,
 		ReadHeaderTimeout: 2 * time.Second,
 		IdleTimeout:       2 * time.Second,
 	}
+
 	serveErr := make(chan error, 1)
-	go func() {
-		serveErr <- srv.Serve(l)
-	}()
-	addr := l.Addr().String()
-	return addr, func() {
-		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	go func() { serveErr <- srv.Serve(l) }()
+
+	t.Cleanup(func() {
+		// t.Context() is already canceled when cleanups run.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 2*time.Second)
 		defer cancel()
+
 		_ = srv.Shutdown(ctx)
+
 		select {
 		case <-serveErr:
 		case <-time.After(2 * time.Second):
 			t.Error("server did not return from Serve in time")
 		}
-	}
+	})
+
+	return l.Addr().String()
 }
 
-// dial returns a connected client with a bufio.Reader for reading the response.
+// dial connects to addr and returns the connection with a reader for responses.
 func dial(t *testing.T, addr string) (net.Conn, *bufio.Reader) {
 	t.Helper()
+
 	c, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = c.Close() })
+
 	_ = c.SetDeadline(time.Now().Add(3 * time.Second))
+
 	return c, bufio.NewReader(c)
 }
 
-func TestServer_BasicGET(t *testing.T) {
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/foo" {
-			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer stop()
+// connClosed reports whether the server closed c once the response was read.
+// A read timeout means the connection is still open.
+func connClosed(t *testing.T, c net.Conn) bool {
+	t.Helper()
 
-	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GET /foo HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	_, err := c.Read(make([]byte, 1))
 
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return false
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status %d", resp.StatusCode)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if string(body) != "ok" {
-		t.Errorf("body %q", body)
-	}
+
+	require.Error(t, err, "unexpected bytes after the response")
+
+	return true
 }
 
-// TestServer_AcceptsControlCharsInHeader is the key acceptance test: a header
-// value containing a control character (0x01) — which net/http rejects with a
-// 400 — must be delivered to the handler unchanged.
-func TestServer_AcceptsControlCharsInHeader(t *testing.T) {
-	var seen atomic.Value
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seen.Store(r.Header.Get("X-Evil"))
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer stop()
+type seenRequest struct {
+	Method, Path, Header, Body string
+}
 
-	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nHost: x\r\nX-Evil: ab\x01cd\r\nConnection: close\r\n\r\n")
+func TestServer(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    string
+		wantStatus int
+		wantSeen   *seenRequest // nil: the handler must not be called
+		wantClosed bool
+	}{
+		{
+			name:       "GET",
+			request:    "GET /foo HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodGet, Path: "/foo"},
+			wantClosed: true,
+		},
+		{
+			// net/http answers 400 here, which would hide the request from the WAF.
+			name:       "control char in header value reaches the handler",
+			request:    "GET / HTTP/1.1\r\nHost: x\r\nX-Test: ab\x01cd\r\nConnection: close\r\n\r\n",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodGet, Path: "/", Header: "ab\x01cd"},
+			wantClosed: true,
+		},
+		{
+			name:       "POST with content-length",
+			request:    "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\nConnection: close\r\n\r\nhello body",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodPost, Path: "/", Body: "hello body"},
+			wantClosed: true,
+		},
+		{
+			name:       "POST chunked",
+			request:    "POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodPost, Path: "/", Body: "hello world"},
+			wantClosed: true,
+		},
+		{
+			name:       "HTTP/1.0 closes by default",
+			request:    "GET / HTTP/1.0\r\nHost: x\r\n\r\n",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodGet, Path: "/"},
+			wantClosed: true,
+		},
+		{
+			name:       "HTTP/1.1 stays open by default",
+			request:    "GET / HTTP/1.1\r\nHost: x\r\n\r\n",
+			wantStatus: http.StatusOK,
+			wantSeen:   &seenRequest{Method: http.MethodGet, Path: "/"},
+			wantClosed: false,
+		},
+		{
+			name:       "malformed request line",
+			request:    "GARBAGE\r\n\r\n",
+			wantStatus: http.StatusBadRequest,
+			wantClosed: true,
+		},
+	}
 
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status %d", resp.StatusCode)
-	}
-	got, _ := seen.Load().(string)
-	if got != "ab\x01cd" {
-		t.Errorf("handler received %q, want %q", got, "ab\x01cd")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var seen atomic.Pointer[seenRequest]
+
+			addr := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, _ := io.ReadAll(r.Body)
+				seen.Store(&seenRequest{
+					Method: r.Method,
+					Path:   r.URL.Path,
+					Header: r.Header.Get("X-Test"),
+					Body:   string(body),
+				})
+				_, _ = w.Write([]byte("ok"))
+			}))
+
+			c, br := dial(t, addr)
+			_, err := io.WriteString(c, tc.request)
+			require.NoError(t, err)
+
+			resp, err := http.ReadResponse(br, nil)
+			require.NoError(t, err)
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+
+			require.Equal(t, tc.wantStatus, resp.StatusCode)
+			require.Equal(t, tc.wantSeen, seen.Load())
+			require.Equal(t, tc.wantClosed, connClosed(t, c))
+		})
 	}
 }
 
 func TestServer_KeepAlive(t *testing.T) {
 	var count atomic.Int32
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	addr := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count.Add(1)
 		_, _ = w.Write([]byte("ok"))
 	}))
-	defer stop()
 
 	c, br := dial(t, addr)
-	defer c.Close()
 
-	// Send two requests on the same connection.
-	for i := range 2 {
-		_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+	for range 2 {
+		_, err := io.WriteString(c, "GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+		require.NoError(t, err)
+
 		resp, err := http.ReadResponse(br, nil)
-		if err != nil {
-			t.Fatalf("request %d: %v", i, err)
-		}
+		require.NoError(t, err)
 		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
 	}
-	if got := count.Load(); got != 2 {
-		t.Errorf("handler called %d times, want 2", got)
-	}
-}
 
-func TestServer_ConnectionClose(t *testing.T) {
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("bye"))
-	}))
-	defer stop()
-
-	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	defer resp.Body.Close()
-	// http.ReadResponse strips Connection into resp.Close — check there.
-	if !resp.Close {
-		t.Error("resp.Close = false, want true")
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	one := make([]byte, 1)
-	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-	if _, err := c.Read(one); err == nil {
-		t.Error("expected error reading from closed connection")
-	}
-}
-
-func TestServer_HTTP10DefaultsClose(t *testing.T) {
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer stop()
-
-	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GET / HTTP/1.0\r\nHost: x\r\n\r\n")
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status %d", resp.StatusCode)
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	// HTTP/1.0 without keep-alive: server should close.
-	one := make([]byte, 1)
-	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-	if _, err := c.Read(one); err == nil {
-		t.Error("expected close after HTTP/1.0 response")
-	}
-}
-
-func TestServer_PostWithBody(t *testing.T) {
-	var got []byte
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
-		}
-		got = b
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer stop()
-
-	c, br := dial(t, addr)
-	defer c.Close()
-	body := "hello body"
-	_, _ = io.WriteString(c, "POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\nConnection: close\r\n\r\n"+body)
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-	if string(got) != body {
-		t.Errorf("handler got body %q, want %q", got, body)
-	}
-}
-
-func TestServer_PostChunkedBody(t *testing.T) {
-	var got []byte
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
-		}
-		got = b
-		_, _ = w.Write([]byte("ok"))
-	}))
-	defer stop()
-
-	c, br := dial(t, addr)
-	defer c.Close()
-	chunked := "5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
-	_, _ = io.WriteString(c, "POST / HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"+chunked)
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-	if string(got) != "hello world" {
-		t.Errorf("handler got %q", got)
-	}
-}
-
-func TestServer_BadRequestLine(t *testing.T) {
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		t.Error("handler should not be called for malformed request")
-	}))
-	defer stop()
-
-	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GARBAGE\r\n\r\n")
-	resp, err := http.ReadResponse(br, nil)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("status %d, want 400", resp.StatusCode)
-	}
+	require.Equal(t, int32(2), count.Load())
 }
 
 func TestServer_Shutdown(t *testing.T) {
 	var listenConfig net.ListenConfig
+
 	l, err := listenConfig.Listen(t.Context(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen: %v", err)
-	}
-	srv := &Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = w.Write([]byte("ok"))
-		}),
-	}
+	require.NoError(t, err)
+
+	srv := &Server{Handler: http.NotFoundHandler()}
+
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(l) }()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		t.Fatalf("Shutdown: %v", err)
-	}
+
+	require.NoError(t, srv.Shutdown(ctx))
+
 	select {
 	case err := <-done:
-		if !errors.Is(err, http.ErrServerClosed) {
-			t.Errorf("Serve returned %v, want http.ErrServerClosed", err)
-		}
+		// run.go relies on this to tell a clean stop from a failure.
+		require.ErrorIs(t, err, http.ErrServerClosed)
 	case <-time.After(2 * time.Second):
-		t.Error("Serve did not return after Shutdown")
+		t.Fatal("Serve did not return after Shutdown")
 	}
 }
 
-// The header order is only reachable through the request context, so check it
-// actually survives all the way to the handler.
+// The header order only reaches ja4h through the request context.
 func TestServer_HeaderOrderInContext(t *testing.T) {
 	var seen atomic.Value
-	addr, stop := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	addr := startServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen.Store(ja4h.HeaderOrder(r.Context()))
 		_, _ = w.Write([]byte("ok"))
 	}))
-	defer stop()
 
 	c, br := dial(t, addr)
-	defer c.Close()
-	_, _ = io.WriteString(c, "GET / HTTP/1.1\r\nZeta: 1\r\nHost: x\r\nAlpha: 2\r\nConnection: close\r\n\r\n")
+	_, err := io.WriteString(c, "GET / HTTP/1.1\r\nZeta: 1\r\nHost: x\r\nAlpha: 2\r\nConnection: close\r\n\r\n")
+	require.NoError(t, err)
 
 	resp, err := http.ReadResponse(br, nil)
 	require.NoError(t, err)

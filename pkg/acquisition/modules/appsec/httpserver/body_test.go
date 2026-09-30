@@ -2,103 +2,127 @@ package httpserver
 
 import (
 	"bufio"
-	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewBodyReader_ContentLength(t *testing.T) {
-	r := bufio.NewReader(strings.NewReader("hello, world"))
-	h := http.Header{"Content-Length": {"12"}}
-	info, err := newBodyReader(r, h, 1, 1)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
+func TestNewBodyReader(t *testing.T) {
+	tests := []struct {
+		name        string
+		headers     http.Header
+		minor       int // HTTP/1.x
+		input       string
+		wantErr     error
+		wantLength  int64
+		wantChunked bool
+		wantBody    string
+		wantHeaders http.Header // headers after the call, when checked
+	}{
+		{
+			name:       "content-length",
+			headers:    http.Header{"Content-Length": {"12"}},
+			minor:      1,
+			input:      "hello, world",
+			wantLength: 12,
+			wantBody:   "hello, world",
+		},
+		{
+			name:    "no body",
+			headers: http.Header{},
+			minor:   1,
+		},
+		{
+			name:        "chunked",
+			headers:     http.Header{"Transfer-Encoding": {"chunked"}},
+			minor:       1,
+			input:       "4\r\nWiki\r\n6\r\npedia \r\nE\r\nin \r\n\r\nchunks.\r\n0\r\n\r\n",
+			wantLength:  -1,
+			wantChunked: true,
+			wantBody:    "Wikipedia in \r\n\r\nchunks.",
+		},
+		{
+			// RFC 7230 §3.3.3: chunked wins and Content-Length is removed.
+			name:        "chunked drops content-length",
+			headers:     http.Header{"Transfer-Encoding": {"chunked"}, "Content-Length": {"42"}},
+			minor:       1,
+			input:       "0\r\n\r\n",
+			wantLength:  -1,
+			wantChunked: true,
+			wantHeaders: http.Header{"Transfer-Encoding": {"chunked"}},
+		},
+		{
+			// net/http ignores Transfer-Encoding below HTTP/1.1 (golang/go#12785);
+			// framing the body differently from the origin enables smuggling.
+			name:    "chunked ignored on HTTP/1.0",
+			headers: http.Header{"Transfer-Encoding": {"chunked"}},
+			minor:   0,
+			input:   "4\r\nbody\r\n0\r\n\r\n",
+		},
+		{
+			name:       "duplicate content-length that agrees",
+			headers:    http.Header{"Content-Length": {"4", " 4 "}},
+			minor:      1,
+			input:      "body",
+			wantLength: 4,
+			wantBody:   "body",
+		},
+		{
+			name:    "conflicting content-length",
+			headers: http.Header{"Content-Length": {"4", "40"}},
+			minor:   1,
+			input:   "bodyGET /smuggled HTTP/1.1\r\n\r\n",
+			wantErr: errConflictingContentLength,
+		},
+		{
+			name:    "non-numeric content-length",
+			headers: http.Header{"Content-Length": {"abc"}},
+			minor:   1,
+			wantErr: errInvalidContentLength,
+		},
+		{
+			name:    "negative content-length",
+			headers: http.Header{"Content-Length": {"-1"}},
+			minor:   1,
+			wantErr: errInvalidContentLength,
+		},
+		{
+			name:    "signed content-length",
+			headers: http.Header{"Content-Length": {"+4"}},
+			minor:   1,
+			input:   "body",
+			wantErr: errInvalidContentLength,
+		},
 	}
-	if info.ContentLength != 12 || info.Chunked {
-		t.Errorf("info=%+v", info)
-	}
-	got, err := io.ReadAll(info.Body)
-	if err != nil {
-		t.Fatalf("read body: %v", err)
-	}
-	if string(got) != "hello, world" {
-		t.Errorf("got %q", got)
-	}
-}
 
-func TestNewBodyReader_NoBody(t *testing.T) {
-	r := bufio.NewReader(strings.NewReader(""))
-	info, err := newBodyReader(r, http.Header{}, 1, 1)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
-	}
-	if info.ContentLength != 0 || info.Chunked {
-		t.Errorf("info=%+v", info)
-	}
-	if got, _ := io.ReadAll(info.Body); len(got) != 0 {
-		t.Errorf("expected empty body, got %q", got)
-	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			info, err := newBodyReader(bufReader(tc.input), tc.headers, 1, tc.minor)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
 
-func TestNewBodyReader_Chunked(t *testing.T) {
-	body := "4\r\nWiki\r\n6\r\npedia \r\nE\r\nin \r\n\r\nchunks.\r\n0\r\n\r\n"
-	r := bufio.NewReader(strings.NewReader(body))
-	h := http.Header{"Transfer-Encoding": {"chunked"}}
-	info, err := newBodyReader(r, h, 1, 1)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
-	}
-	if !info.Chunked {
-		t.Error("expected chunked=true")
-	}
-	got, err := io.ReadAll(info.Body)
-	if err != nil {
-		t.Fatalf("read body: %v", err)
-	}
-	if string(got) != "Wikipedia in \r\n\r\nchunks." {
-		t.Errorf("got %q", got)
-	}
-}
+			require.NoError(t, err)
+			require.Equal(t, tc.wantLength, info.ContentLength)
+			require.Equal(t, tc.wantChunked, info.Chunked)
 
-func TestNewBodyReader_ChunkedDropsContentLength(t *testing.T) {
-	// Per RFC 7230 §3.3.3: if both are present, chunked wins and CL is removed.
-	r := bufio.NewReader(strings.NewReader("0\r\n\r\n"))
-	h := http.Header{
-		"Transfer-Encoding": {"chunked"},
-		"Content-Length":    {"42"},
-	}
-	info, err := newBodyReader(r, h, 1, 1)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
-	}
-	if !info.Chunked {
-		t.Error("expected chunked=true")
-	}
-	if h.Get("Content-Length") != "" {
-		t.Errorf("Content-Length should have been removed: %v", h)
-	}
-}
+			body, err := io.ReadAll(info.Body)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantBody, string(body))
 
-func TestNewBodyReader_InvalidContentLength(t *testing.T) {
-	r := bufio.NewReader(strings.NewReader(""))
-	h := http.Header{"Content-Length": {"abc"}}
-	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
-		t.Errorf("got err=%v, want errInvalidContentLength", err)
-	}
-}
-
-func TestNewBodyReader_NegativeContentLength(t *testing.T) {
-	r := bufio.NewReader(strings.NewReader(""))
-	h := http.Header{"Content-Length": {"-1"}}
-	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
-		t.Errorf("got err=%v, want errInvalidContentLength", err)
+			if tc.wantHeaders != nil {
+				require.Equal(t, tc.wantHeaders, tc.headers)
+			}
+		})
 	}
 }
 
 func TestParseTransferEncoding(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		in   string
 		want []string
 	}{
@@ -107,105 +131,61 @@ func TestParseTransferEncoding(t *testing.T) {
 		{"gzip, chunked", []string{"gzip", "chunked"}},
 		{" CHUNKED ", []string{"chunked"}},
 	}
-	for _, c := range cases {
-		got := parseTransferEncoding(c.in)
-		if len(got) != len(c.want) {
-			t.Errorf("parseTransferEncoding(%q) len mismatch: got %v, want %v", c.in, got, c.want)
-			continue
-		}
-		for i := range got {
-			if got[i] != c.want[i] {
-				t.Errorf("parseTransferEncoding(%q)[%d] = %q, want %q", c.in, i, got[i], c.want[i])
+
+	for _, tc := range tests {
+		t.Run(tc.in, func(t *testing.T) {
+			require.Equal(t, tc.want, parseTransferEncoding(tc.in))
+		})
+	}
+}
+
+func TestChunkedReader(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		bufSize  int
+		wantN    int
+		wantBody string
+		wantErr  error
+	}{
+		{
+			name:     "chunk extension is ignored",
+			input:    "5;name=value\r\nhello\r\n0\r\n\r\n",
+			bufSize:  16,
+			wantN:    5,
+			wantBody: "hello",
+		},
+		{
+			name:    "malformed size",
+			input:   "ZZ\r\nhi\r\n0\r\n\r\n",
+			bufSize: 16,
+			wantErr: errMalformedChunkSize,
+		},
+		{
+			// The chunk data is returned along with the error.
+			name:     "missing CRLF after chunk",
+			input:    "4\r\ndataNOTCRLF",
+			bufSize:  4,
+			wantN:    4,
+			wantBody: "data",
+			wantErr:  errMalformedChunk,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := newChunkedReader(bufio.NewReader(strings.NewReader(tc.input)))
+			buf := make([]byte, tc.bufSize)
+
+			n, err := cr.Read(buf)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
 			}
-		}
-	}
-}
 
-func TestChunkedReader_MalformedSize(t *testing.T) {
-	r := bufio.NewReader(strings.NewReader("ZZ\r\nhi\r\n0\r\n\r\n"))
-	cr := newChunkedReader(r)
-	buf := make([]byte, 16)
-	if _, err := cr.Read(buf); !errors.Is(err, errMalformedChunkSize) {
-		t.Errorf("got err=%v, want errMalformedChunkSize", err)
-	}
-}
-
-func TestChunkedReader_MissingCRLFAfterChunk(t *testing.T) {
-	// Chunk says 4 bytes but no CRLF after — should error out at the boundary
-	// check, returning the consumed bytes along with the error.
-	r := bufio.NewReader(strings.NewReader("4\r\ndataNOTCRLF"))
-	cr := newChunkedReader(r)
-	buf := make([]byte, 4)
-	n, err := cr.Read(buf)
-	if n != 4 {
-		t.Errorf("got n=%d, want 4", n)
-	}
-	if !errors.Is(err, errMalformedChunk) {
-		t.Errorf("got err=%v, want errMalformedChunk", err)
-	}
-}
-
-func TestChunkedReader_ChunkExt(t *testing.T) {
-	// chunk-size with chunk-ext: "5;name=value\r\nhello\r\n0\r\n\r\n"
-	r := bufio.NewReader(strings.NewReader("5;name=value\r\nhello\r\n0\r\n\r\n"))
-	cr := newChunkedReader(r)
-	got, err := io.ReadAll(cr)
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-	if string(got) != "hello" {
-		t.Errorf("got %q", got)
-	}
-}
-
-func TestNewBodyReader_ConflictingContentLength(t *testing.T) {
-	h := http.Header{"Content-Length": []string{"4", "40"}}
-	r := bufio.NewReader(strings.NewReader("bodyGET /smuggled HTTP/1.1\r\n\r\n"))
-
-	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errConflictingContentLength) {
-		t.Errorf("got err=%v, want errConflictingContentLength", err)
-	}
-}
-
-func TestNewBodyReader_DuplicateContentLengthAgrees(t *testing.T) {
-	h := http.Header{"Content-Length": []string{"4", " 4 "}}
-	r := bufio.NewReader(strings.NewReader("body"))
-
-	info, err := newBodyReader(r, h, 1, 1)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
-	}
-
-	if info.ContentLength != 4 {
-		t.Errorf("ContentLength = %d, want 4", info.ContentLength)
-	}
-}
-
-func TestNewBodyReader_SignedContentLength(t *testing.T) {
-	h := http.Header{"Content-Length": []string{"+4"}}
-	r := bufio.NewReader(strings.NewReader("body"))
-
-	if _, err := newBodyReader(r, h, 1, 1); !errors.Is(err, errInvalidContentLength) {
-		t.Errorf("got err=%v, want errInvalidContentLength", err)
-	}
-}
-
-// net/http ignores Transfer-Encoding below HTTP/1.1 (golang/go#12785). Framing
-// the body differently from the origin is what makes smuggling possible.
-func TestNewBodyReader_ChunkedIgnoredBelowHTTP11(t *testing.T) {
-	h := http.Header{"Transfer-Encoding": []string{"chunked"}}
-	r := bufio.NewReader(strings.NewReader("4\r\nbody\r\n0\r\n\r\n"))
-
-	info, err := newBodyReader(r, h, 1, 0)
-	if err != nil {
-		t.Fatalf("newBodyReader: %v", err)
-	}
-
-	if info.Chunked {
-		t.Error("Transfer-Encoding should be ignored on HTTP/1.0")
-	}
-
-	if info.ContentLength != 0 {
-		t.Errorf("ContentLength = %d, want 0", info.ContentLength)
+			require.Equal(t, tc.wantN, n)
+			require.Equal(t, tc.wantBody, string(buf[:n]))
+		})
 	}
 }
