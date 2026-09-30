@@ -63,6 +63,10 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("no filename or filenames configuration provided")
 	}
 
+	if s.config.DiscoveryPollInterval < 0 {
+		return errors.New("discovery_poll_interval must be >= 0")
+	}
+
 	if s.config.Mode == "" {
 		s.config.Mode = configuration.TAIL_MODE
 	}

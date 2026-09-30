@@ -58,6 +58,21 @@ func TestUnmarshalConfigRejectsEmptyFilenames(t *testing.T) {
 	require.ErrorContains(t, err, "no filename or filenames")
 }
 
+// A negative discovery interval would panic in time.NewTicker.
+func TestUnmarshalConfigRejectsNegativeDiscoveryPollInterval(t *testing.T) {
+	t.Parallel()
+
+	s := Source{}
+	err := s.UnmarshalConfig([]byte(`
+mode: tail
+filenames:
+ - /tmp/example.log
+discovery_poll_enable: true
+discovery_poll_interval: -1s
+`))
+	require.ErrorContains(t, err, "discovery_poll_interval must be >= 0")
+}
+
 // An exclude regexp that does not compile is rejected.
 func TestUnmarshalConfigRejectsBadExcludeRegexp(t *testing.T) {
 	t.Parallel()
