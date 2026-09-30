@@ -247,6 +247,7 @@ func (fileTailer *PollTail) readLines() {
 		return
 	}
 
+	// The trailing fragment is left out of lastOffset. An unchanged fragment is reread on the next poll until it ends with a newline. That is intentional.
 	fileTailer.lastOffset += completeBytes
 	// A filesystem with a metadata cache can make Stat smaller than the bytes just read. Keep that size a stat, or the next poll looks like a shrink.
 	fileInfoAfterRead, statErr := statOpenedFile(openedFile)
