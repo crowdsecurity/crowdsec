@@ -180,11 +180,10 @@ func (s *Source) deliverTailRead(ctx context.Context, logger *log.Entry, out cha
 		return true
 	}
 	if read.err != nil {
-		// Never return an error here
-		// nxadm attaches this error to the rate-limiter cooloff line, then keeps sending on the same channel.
-		// Returning it ends this reader and fails Stream.
+		// read.err is a transient error from the tailer, such as the nxadm rate-limiter cooloff.
+		// The tailer keeps sending on the same channel, so this reader does not act on it.
 		logger.Warningf("fetch error : %v", read.err)
-		return true // the tailer keeps sending; ending this reader fails Stream
+		return true
 	}
 	if read.text == "" {
 		return true
