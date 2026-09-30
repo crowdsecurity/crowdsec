@@ -785,3 +785,28 @@ func TestChallengePageChecksCookiesEnabled(t *testing.T) {
 		require.Contains(t, htmlTemplate, want)
 	}
 }
+
+// The default CSP has to permit WebAssembly, because hub-shipped detection
+// modules compile a module to read CPU-level behavior. It must NOT permit
+// JavaScript eval: some automation frameworks inject their spoofing that way
+// and this policy is what refuses them, so the two tokens are not
+// interchangeable even though one contains the other as a substring.
+func TestDefaultChallengeCSP(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  bool
+	}{
+		{"allows wasm compilation", "'wasm-unsafe-eval'", true},
+		{"still forbids js eval", " 'unsafe-eval'", false},
+		{"keeps inline script", "'unsafe-inline'", true},
+		{"keeps blob workers", "worker-src 'self' blob:", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, strings.Contains(DefaultChallengeCSP, tc.token),
+				"token %q in %q", tc.token, DefaultChallengeCSP)
+		})
+	}
+}

@@ -31,8 +31,12 @@ type FingerprintData struct {
 	FastBotDetection        bool                                `protobuf:"varint,6,opt,name=fastBotDetection,proto3" json:"fastBotDetection,omitempty"`
 	FastBotDetectionDetails *FingerprintFastBotDetectionDetails `protobuf:"bytes,7,opt,name=fastBotDetectionDetails,proto3" json:"fastBotDetectionDetails,omitempty"`
 	Bot                     *FingerprintBotAlias                `protobuf:"bytes,8,opt,name=bot,proto3" json:"bot,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// What the hub-distributed detection script reported. Bounded at decode and
+	// again before sealing (fingerprint_custom.go), since it is browser-supplied
+	// and would otherwise push the cookie past the size browsers guarantee.
+	Custom        map[string]*CustomValue `protobuf:"bytes,9,rep,name=custom,proto3" json:"custom,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FingerprintData) Reset() {
@@ -121,6 +125,233 @@ func (x *FingerprintData) GetBot() *FingerprintBotAlias {
 	return nil
 }
 
+func (x *FingerprintData) GetCustom() map[string]*CustomValue {
+	if x != nil {
+		return x.Custom
+	}
+	return nil
+}
+
+// customValue is a tagged union over the shapes a detection script can produce.
+// A oneof, so "present and false" round-trips distinctly from "absent".
+type CustomValue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Value:
+	//
+	//	*CustomValue_B
+	//	*CustomValue_S
+	//	*CustomValue_N
+	//	*CustomValue_Ss
+	//	*CustomValue_Ff
+	Value         isCustomValue_Value `protobuf_oneof:"value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomValue) Reset() {
+	*x = CustomValue{}
+	mi := &file_fingerprint_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomValue) ProtoMessage() {}
+
+func (x *CustomValue) ProtoReflect() protoreflect.Message {
+	mi := &file_fingerprint_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomValue.ProtoReflect.Descriptor instead.
+func (*CustomValue) Descriptor() ([]byte, []int) {
+	return file_fingerprint_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CustomValue) GetValue() isCustomValue_Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *CustomValue) GetB() bool {
+	if x != nil {
+		if x, ok := x.Value.(*CustomValue_B); ok {
+			return x.B
+		}
+	}
+	return false
+}
+
+func (x *CustomValue) GetS() string {
+	if x != nil {
+		if x, ok := x.Value.(*CustomValue_S); ok {
+			return x.S
+		}
+	}
+	return ""
+}
+
+func (x *CustomValue) GetN() float64 {
+	if x != nil {
+		if x, ok := x.Value.(*CustomValue_N); ok {
+			return x.N
+		}
+	}
+	return 0
+}
+
+func (x *CustomValue) GetSs() *CustomStringList {
+	if x != nil {
+		if x, ok := x.Value.(*CustomValue_Ss); ok {
+			return x.Ss
+		}
+	}
+	return nil
+}
+
+func (x *CustomValue) GetFf() *CustomFloatList {
+	if x != nil {
+		if x, ok := x.Value.(*CustomValue_Ff); ok {
+			return x.Ff
+		}
+	}
+	return nil
+}
+
+type isCustomValue_Value interface {
+	isCustomValue_Value()
+}
+
+type CustomValue_B struct {
+	B bool `protobuf:"varint,1,opt,name=b,proto3,oneof"`
+}
+
+type CustomValue_S struct {
+	S string `protobuf:"bytes,2,opt,name=s,proto3,oneof"`
+}
+
+type CustomValue_N struct {
+	N float64 `protobuf:"fixed64,3,opt,name=n,proto3,oneof"`
+}
+
+type CustomValue_Ss struct {
+	Ss *CustomStringList `protobuf:"bytes,4,opt,name=ss,proto3,oneof"`
+}
+
+type CustomValue_Ff struct {
+	Ff *CustomFloatList `protobuf:"bytes,5,opt,name=ff,proto3,oneof"`
+}
+
+func (*CustomValue_B) isCustomValue_Value() {}
+
+func (*CustomValue_S) isCustomValue_Value() {}
+
+func (*CustomValue_N) isCustomValue_Value() {}
+
+func (*CustomValue_Ss) isCustomValue_Value() {}
+
+func (*CustomValue_Ff) isCustomValue_Value() {}
+
+type CustomStringList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Values        []string               `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomStringList) Reset() {
+	*x = CustomStringList{}
+	mi := &file_fingerprint_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomStringList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomStringList) ProtoMessage() {}
+
+func (x *CustomStringList) ProtoReflect() protoreflect.Message {
+	mi := &file_fingerprint_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomStringList.ProtoReflect.Descriptor instead.
+func (*CustomStringList) Descriptor() ([]byte, []int) {
+	return file_fingerprint_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CustomStringList) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+type CustomFloatList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Values        []float64              `protobuf:"fixed64,1,rep,packed,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomFloatList) Reset() {
+	*x = CustomFloatList{}
+	mi := &file_fingerprint_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomFloatList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomFloatList) ProtoMessage() {}
+
+func (x *CustomFloatList) ProtoReflect() protoreflect.Message {
+	mi := &file_fingerprint_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomFloatList.ProtoReflect.Descriptor instead.
+func (*CustomFloatList) Descriptor() ([]byte, []int) {
+	return file_fingerprint_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CustomFloatList) GetValues() []float64 {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 // ChallengeCookie is the sealed cookie payload. It wraps the validated
 // fingerprint together with metadata that influences re-challenge decisions
 // (e.g. the PoW difficulty the client proved). Keeping this separate from
@@ -138,7 +369,7 @@ type ChallengeCookie struct {
 
 func (x *ChallengeCookie) Reset() {
 	*x = ChallengeCookie{}
-	mi := &file_fingerprint_proto_msgTypes[1]
+	mi := &file_fingerprint_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -150,7 +381,7 @@ func (x *ChallengeCookie) String() string {
 func (*ChallengeCookie) ProtoMessage() {}
 
 func (x *ChallengeCookie) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[1]
+	mi := &file_fingerprint_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -163,7 +394,7 @@ func (x *ChallengeCookie) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChallengeCookie.ProtoReflect.Descriptor instead.
 func (*ChallengeCookie) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{1}
+	return file_fingerprint_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ChallengeCookie) GetFingerprint() *FingerprintData {
@@ -195,7 +426,7 @@ type FingerprintSignals struct {
 
 func (x *FingerprintSignals) Reset() {
 	*x = FingerprintSignals{}
-	mi := &file_fingerprint_proto_msgTypes[2]
+	mi := &file_fingerprint_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +438,7 @@ func (x *FingerprintSignals) String() string {
 func (*FingerprintSignals) ProtoMessage() {}
 
 func (x *FingerprintSignals) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[2]
+	mi := &file_fingerprint_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,7 +451,7 @@ func (x *FingerprintSignals) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintSignals.ProtoReflect.Descriptor instead.
 func (*FingerprintSignals) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{2}
+	return file_fingerprint_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FingerprintSignals) GetAutomation() *FingerprintAutomation {
@@ -286,7 +517,7 @@ type FingerprintAutomation struct {
 
 func (x *FingerprintAutomation) Reset() {
 	*x = FingerprintAutomation{}
-	mi := &file_fingerprint_proto_msgTypes[3]
+	mi := &file_fingerprint_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -298,7 +529,7 @@ func (x *FingerprintAutomation) String() string {
 func (*FingerprintAutomation) ProtoMessage() {}
 
 func (x *FingerprintAutomation) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[3]
+	mi := &file_fingerprint_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -311,7 +542,7 @@ func (x *FingerprintAutomation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintAutomation.ProtoReflect.Descriptor instead.
 func (*FingerprintAutomation) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{3}
+	return file_fingerprint_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FingerprintAutomation) GetWebdriver() bool {
@@ -371,7 +602,7 @@ type FingerprintDevice struct {
 
 func (x *FingerprintDevice) Reset() {
 	*x = FingerprintDevice{}
-	mi := &file_fingerprint_proto_msgTypes[4]
+	mi := &file_fingerprint_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +614,7 @@ func (x *FingerprintDevice) String() string {
 func (*FingerprintDevice) ProtoMessage() {}
 
 func (x *FingerprintDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[4]
+	mi := &file_fingerprint_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +627,7 @@ func (x *FingerprintDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintDevice.ProtoReflect.Descriptor instead.
 func (*FingerprintDevice) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{4}
+	return file_fingerprint_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FingerprintDevice) GetCpuCount() int32 {
@@ -465,7 +696,7 @@ type FingerprintScreenResolution struct {
 
 func (x *FingerprintScreenResolution) Reset() {
 	*x = FingerprintScreenResolution{}
-	mi := &file_fingerprint_proto_msgTypes[5]
+	mi := &file_fingerprint_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +708,7 @@ func (x *FingerprintScreenResolution) String() string {
 func (*FingerprintScreenResolution) ProtoMessage() {}
 
 func (x *FingerprintScreenResolution) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[5]
+	mi := &file_fingerprint_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +721,7 @@ func (x *FingerprintScreenResolution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintScreenResolution.ProtoReflect.Descriptor instead.
 func (*FingerprintScreenResolution) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{5}
+	return file_fingerprint_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *FingerprintScreenResolution) GetWidth() int32 {
@@ -567,7 +798,7 @@ type FingerprintMultimediaDevices struct {
 
 func (x *FingerprintMultimediaDevices) Reset() {
 	*x = FingerprintMultimediaDevices{}
-	mi := &file_fingerprint_proto_msgTypes[6]
+	mi := &file_fingerprint_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -579,7 +810,7 @@ func (x *FingerprintMultimediaDevices) String() string {
 func (*FingerprintMultimediaDevices) ProtoMessage() {}
 
 func (x *FingerprintMultimediaDevices) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[6]
+	mi := &file_fingerprint_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +823,7 @@ func (x *FingerprintMultimediaDevices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintMultimediaDevices.ProtoReflect.Descriptor instead.
 func (*FingerprintMultimediaDevices) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{6}
+	return file_fingerprint_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *FingerprintMultimediaDevices) GetSpeakers() int32 {
@@ -633,7 +864,7 @@ type FingerprintDeviceMediaQueries struct {
 
 func (x *FingerprintDeviceMediaQueries) Reset() {
 	*x = FingerprintDeviceMediaQueries{}
-	mi := &file_fingerprint_proto_msgTypes[7]
+	mi := &file_fingerprint_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +876,7 @@ func (x *FingerprintDeviceMediaQueries) String() string {
 func (*FingerprintDeviceMediaQueries) ProtoMessage() {}
 
 func (x *FingerprintDeviceMediaQueries) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[7]
+	mi := &file_fingerprint_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +889,7 @@ func (x *FingerprintDeviceMediaQueries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintDeviceMediaQueries.ProtoReflect.Descriptor instead.
 func (*FingerprintDeviceMediaQueries) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{7}
+	return file_fingerprint_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *FingerprintDeviceMediaQueries) GetPrefersColorScheme() string {
@@ -734,7 +965,7 @@ type FingerprintDeviceKeyboard struct {
 
 func (x *FingerprintDeviceKeyboard) Reset() {
 	*x = FingerprintDeviceKeyboard{}
-	mi := &file_fingerprint_proto_msgTypes[8]
+	mi := &file_fingerprint_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +977,7 @@ func (x *FingerprintDeviceKeyboard) String() string {
 func (*FingerprintDeviceKeyboard) ProtoMessage() {}
 
 func (x *FingerprintDeviceKeyboard) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[8]
+	mi := &file_fingerprint_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +990,7 @@ func (x *FingerprintDeviceKeyboard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintDeviceKeyboard.ProtoReflect.Descriptor instead.
 func (*FingerprintDeviceKeyboard) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{8}
+	return file_fingerprint_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *FingerprintDeviceKeyboard) GetLayout() string {
@@ -793,7 +1024,7 @@ type FingerprintBrowser struct {
 
 func (x *FingerprintBrowser) Reset() {
 	*x = FingerprintBrowser{}
-	mi := &file_fingerprint_proto_msgTypes[9]
+	mi := &file_fingerprint_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +1036,7 @@ func (x *FingerprintBrowser) String() string {
 func (*FingerprintBrowser) ProtoMessage() {}
 
 func (x *FingerprintBrowser) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[9]
+	mi := &file_fingerprint_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +1049,7 @@ func (x *FingerprintBrowser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowser.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowser) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{9}
+	return file_fingerprint_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *FingerprintBrowser) GetUserAgent() string {
@@ -894,7 +1125,7 @@ type FingerprintBrowserAI struct {
 
 func (x *FingerprintBrowserAI) Reset() {
 	*x = FingerprintBrowserAI{}
-	mi := &file_fingerprint_proto_msgTypes[10]
+	mi := &file_fingerprint_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -906,7 +1137,7 @@ func (x *FingerprintBrowserAI) String() string {
 func (*FingerprintBrowserAI) ProtoMessage() {}
 
 func (x *FingerprintBrowserAI) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[10]
+	mi := &file_fingerprint_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -919,7 +1150,7 @@ func (x *FingerprintBrowserAI) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowserAI.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserAI) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{10}
+	return file_fingerprint_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *FingerprintBrowserAI) GetSummarizerAvailability() string {
@@ -974,7 +1205,7 @@ type FingerprintBrowserFeatures struct {
 
 func (x *FingerprintBrowserFeatures) Reset() {
 	*x = FingerprintBrowserFeatures{}
-	mi := &file_fingerprint_proto_msgTypes[11]
+	mi := &file_fingerprint_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1217,7 @@ func (x *FingerprintBrowserFeatures) String() string {
 func (*FingerprintBrowserFeatures) ProtoMessage() {}
 
 func (x *FingerprintBrowserFeatures) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[11]
+	mi := &file_fingerprint_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1230,7 @@ func (x *FingerprintBrowserFeatures) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowserFeatures.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserFeatures) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{11}
+	return file_fingerprint_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *FingerprintBrowserFeatures) GetBitmask() string {
@@ -1225,7 +1456,7 @@ type FingerprintBrowserPlugins struct {
 
 func (x *FingerprintBrowserPlugins) Reset() {
 	*x = FingerprintBrowserPlugins{}
-	mi := &file_fingerprint_proto_msgTypes[12]
+	mi := &file_fingerprint_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1237,7 +1468,7 @@ func (x *FingerprintBrowserPlugins) String() string {
 func (*FingerprintBrowserPlugins) ProtoMessage() {}
 
 func (x *FingerprintBrowserPlugins) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[12]
+	mi := &file_fingerprint_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1250,7 +1481,7 @@ func (x *FingerprintBrowserPlugins) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowserPlugins.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserPlugins) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{12}
+	return file_fingerprint_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *FingerprintBrowserPlugins) GetIsValidPluginArray() bool {
@@ -1298,7 +1529,7 @@ type FingerprintBrowserExtensions struct {
 
 func (x *FingerprintBrowserExtensions) Reset() {
 	*x = FingerprintBrowserExtensions{}
-	mi := &file_fingerprint_proto_msgTypes[13]
+	mi := &file_fingerprint_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1310,7 +1541,7 @@ func (x *FingerprintBrowserExtensions) String() string {
 func (*FingerprintBrowserExtensions) ProtoMessage() {}
 
 func (x *FingerprintBrowserExtensions) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[13]
+	mi := &file_fingerprint_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1323,7 +1554,7 @@ func (x *FingerprintBrowserExtensions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowserExtensions.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserExtensions) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{13}
+	return file_fingerprint_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *FingerprintBrowserExtensions) GetBitmask() string {
@@ -1356,7 +1587,7 @@ type FingerprintBrowserHighEntropyValues struct {
 
 func (x *FingerprintBrowserHighEntropyValues) Reset() {
 	*x = FingerprintBrowserHighEntropyValues{}
-	mi := &file_fingerprint_proto_msgTypes[14]
+	mi := &file_fingerprint_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1368,7 +1599,7 @@ func (x *FingerprintBrowserHighEntropyValues) String() string {
 func (*FingerprintBrowserHighEntropyValues) ProtoMessage() {}
 
 func (x *FingerprintBrowserHighEntropyValues) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[14]
+	mi := &file_fingerprint_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1381,7 +1612,7 @@ func (x *FingerprintBrowserHighEntropyValues) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use FingerprintBrowserHighEntropyValues.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserHighEntropyValues) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{14}
+	return file_fingerprint_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *FingerprintBrowserHighEntropyValues) GetArchitecture() string {
@@ -1450,7 +1681,7 @@ type FingerprintBrandVersion struct {
 
 func (x *FingerprintBrandVersion) Reset() {
 	*x = FingerprintBrandVersion{}
-	mi := &file_fingerprint_proto_msgTypes[15]
+	mi := &file_fingerprint_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1462,7 +1693,7 @@ func (x *FingerprintBrandVersion) String() string {
 func (*FingerprintBrandVersion) ProtoMessage() {}
 
 func (x *FingerprintBrandVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[15]
+	mi := &file_fingerprint_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1475,7 +1706,7 @@ func (x *FingerprintBrandVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrandVersion.ProtoReflect.Descriptor instead.
 func (*FingerprintBrandVersion) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{15}
+	return file_fingerprint_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *FingerprintBrandVersion) GetBrand() string {
@@ -1502,7 +1733,7 @@ type FingerprintBrowserToSourceError struct {
 
 func (x *FingerprintBrowserToSourceError) Reset() {
 	*x = FingerprintBrowserToSourceError{}
-	mi := &file_fingerprint_proto_msgTypes[16]
+	mi := &file_fingerprint_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1514,7 +1745,7 @@ func (x *FingerprintBrowserToSourceError) String() string {
 func (*FingerprintBrowserToSourceError) ProtoMessage() {}
 
 func (x *FingerprintBrowserToSourceError) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[16]
+	mi := &file_fingerprint_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1527,7 +1758,7 @@ func (x *FingerprintBrowserToSourceError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBrowserToSourceError.ProtoReflect.Descriptor instead.
 func (*FingerprintBrowserToSourceError) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{16}
+	return file_fingerprint_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *FingerprintBrowserToSourceError) GetToSourceError() string {
@@ -1555,7 +1786,7 @@ type FingerprintGraphics struct {
 
 func (x *FingerprintGraphics) Reset() {
 	*x = FingerprintGraphics{}
-	mi := &file_fingerprint_proto_msgTypes[17]
+	mi := &file_fingerprint_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1567,7 +1798,7 @@ func (x *FingerprintGraphics) String() string {
 func (*FingerprintGraphics) ProtoMessage() {}
 
 func (x *FingerprintGraphics) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[17]
+	mi := &file_fingerprint_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1580,7 +1811,7 @@ func (x *FingerprintGraphics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintGraphics.ProtoReflect.Descriptor instead.
 func (*FingerprintGraphics) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{17}
+	return file_fingerprint_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *FingerprintGraphics) GetWebGL() *FingerprintGraphicsWebGL {
@@ -1614,7 +1845,7 @@ type FingerprintGraphicsWebGL struct {
 
 func (x *FingerprintGraphicsWebGL) Reset() {
 	*x = FingerprintGraphicsWebGL{}
-	mi := &file_fingerprint_proto_msgTypes[18]
+	mi := &file_fingerprint_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1626,7 +1857,7 @@ func (x *FingerprintGraphicsWebGL) String() string {
 func (*FingerprintGraphicsWebGL) ProtoMessage() {}
 
 func (x *FingerprintGraphicsWebGL) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[18]
+	mi := &file_fingerprint_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1639,7 +1870,7 @@ func (x *FingerprintGraphicsWebGL) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintGraphicsWebGL.ProtoReflect.Descriptor instead.
 func (*FingerprintGraphicsWebGL) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{18}
+	return file_fingerprint_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *FingerprintGraphicsWebGL) GetVendor() string {
@@ -1668,7 +1899,7 @@ type FingerprintGraphicsWebGPU struct {
 
 func (x *FingerprintGraphicsWebGPU) Reset() {
 	*x = FingerprintGraphicsWebGPU{}
-	mi := &file_fingerprint_proto_msgTypes[19]
+	mi := &file_fingerprint_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1680,7 +1911,7 @@ func (x *FingerprintGraphicsWebGPU) String() string {
 func (*FingerprintGraphicsWebGPU) ProtoMessage() {}
 
 func (x *FingerprintGraphicsWebGPU) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[19]
+	mi := &file_fingerprint_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1693,7 +1924,7 @@ func (x *FingerprintGraphicsWebGPU) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintGraphicsWebGPU.ProtoReflect.Descriptor instead.
 func (*FingerprintGraphicsWebGPU) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{19}
+	return file_fingerprint_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *FingerprintGraphicsWebGPU) GetVendor() string {
@@ -1734,7 +1965,7 @@ type FingerprintGraphicsCanvas struct {
 
 func (x *FingerprintGraphicsCanvas) Reset() {
 	*x = FingerprintGraphicsCanvas{}
-	mi := &file_fingerprint_proto_msgTypes[20]
+	mi := &file_fingerprint_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1746,7 +1977,7 @@ func (x *FingerprintGraphicsCanvas) String() string {
 func (*FingerprintGraphicsCanvas) ProtoMessage() {}
 
 func (x *FingerprintGraphicsCanvas) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[20]
+	mi := &file_fingerprint_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1759,7 +1990,7 @@ func (x *FingerprintGraphicsCanvas) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintGraphicsCanvas.ProtoReflect.Descriptor instead.
 func (*FingerprintGraphicsCanvas) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{20}
+	return file_fingerprint_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *FingerprintGraphicsCanvas) GetHasModifiedCanvas() bool {
@@ -1791,7 +2022,7 @@ type FingerprintCodecs struct {
 
 func (x *FingerprintCodecs) Reset() {
 	*x = FingerprintCodecs{}
-	mi := &file_fingerprint_proto_msgTypes[21]
+	mi := &file_fingerprint_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1803,7 +2034,7 @@ func (x *FingerprintCodecs) String() string {
 func (*FingerprintCodecs) ProtoMessage() {}
 
 func (x *FingerprintCodecs) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[21]
+	mi := &file_fingerprint_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1816,7 +2047,7 @@ func (x *FingerprintCodecs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintCodecs.ProtoReflect.Descriptor instead.
 func (*FingerprintCodecs) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{21}
+	return file_fingerprint_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *FingerprintCodecs) GetAudioCanPlayTypeHash() string {
@@ -1878,7 +2109,7 @@ type FingerprintLocale struct {
 
 func (x *FingerprintLocale) Reset() {
 	*x = FingerprintLocale{}
-	mi := &file_fingerprint_proto_msgTypes[22]
+	mi := &file_fingerprint_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +2121,7 @@ func (x *FingerprintLocale) String() string {
 func (*FingerprintLocale) ProtoMessage() {}
 
 func (x *FingerprintLocale) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[22]
+	mi := &file_fingerprint_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +2134,7 @@ func (x *FingerprintLocale) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintLocale.ProtoReflect.Descriptor instead.
 func (*FingerprintLocale) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{22}
+	return file_fingerprint_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *FingerprintLocale) GetInternationalization() *FingerprintLocaleInternationalization {
@@ -1930,7 +2161,7 @@ type FingerprintLocaleInternationalization struct {
 
 func (x *FingerprintLocaleInternationalization) Reset() {
 	*x = FingerprintLocaleInternationalization{}
-	mi := &file_fingerprint_proto_msgTypes[23]
+	mi := &file_fingerprint_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1942,7 +2173,7 @@ func (x *FingerprintLocaleInternationalization) String() string {
 func (*FingerprintLocaleInternationalization) ProtoMessage() {}
 
 func (x *FingerprintLocaleInternationalization) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[23]
+	mi := &file_fingerprint_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1955,7 +2186,7 @@ func (x *FingerprintLocaleInternationalization) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use FingerprintLocaleInternationalization.ProtoReflect.Descriptor instead.
 func (*FingerprintLocaleInternationalization) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{23}
+	return file_fingerprint_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *FingerprintLocaleInternationalization) GetTimezone() string {
@@ -1982,7 +2213,7 @@ type FingerprintLocaleLanguages struct {
 
 func (x *FingerprintLocaleLanguages) Reset() {
 	*x = FingerprintLocaleLanguages{}
-	mi := &file_fingerprint_proto_msgTypes[24]
+	mi := &file_fingerprint_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1994,7 +2225,7 @@ func (x *FingerprintLocaleLanguages) String() string {
 func (*FingerprintLocaleLanguages) ProtoMessage() {}
 
 func (x *FingerprintLocaleLanguages) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[24]
+	mi := &file_fingerprint_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2007,7 +2238,7 @@ func (x *FingerprintLocaleLanguages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintLocaleLanguages.ProtoReflect.Descriptor instead.
 func (*FingerprintLocaleLanguages) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{24}
+	return file_fingerprint_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *FingerprintLocaleLanguages) GetLanguages() []string {
@@ -2034,7 +2265,7 @@ type FingerprintContexts struct {
 
 func (x *FingerprintContexts) Reset() {
 	*x = FingerprintContexts{}
-	mi := &file_fingerprint_proto_msgTypes[25]
+	mi := &file_fingerprint_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2046,7 +2277,7 @@ func (x *FingerprintContexts) String() string {
 func (*FingerprintContexts) ProtoMessage() {}
 
 func (x *FingerprintContexts) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[25]
+	mi := &file_fingerprint_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2059,7 +2290,7 @@ func (x *FingerprintContexts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintContexts.ProtoReflect.Descriptor instead.
 func (*FingerprintContexts) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{25}
+	return file_fingerprint_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *FingerprintContexts) GetIframe() *FingerprintIframeContext {
@@ -2090,7 +2321,7 @@ type FingerprintIframeContext struct {
 
 func (x *FingerprintIframeContext) Reset() {
 	*x = FingerprintIframeContext{}
-	mi := &file_fingerprint_proto_msgTypes[26]
+	mi := &file_fingerprint_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2102,7 +2333,7 @@ func (x *FingerprintIframeContext) String() string {
 func (*FingerprintIframeContext) ProtoMessage() {}
 
 func (x *FingerprintIframeContext) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[26]
+	mi := &file_fingerprint_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2115,7 +2346,7 @@ func (x *FingerprintIframeContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintIframeContext.ProtoReflect.Descriptor instead.
 func (*FingerprintIframeContext) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{26}
+	return file_fingerprint_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *FingerprintIframeContext) GetWebdriver() bool {
@@ -2175,7 +2406,7 @@ type FingerprintWebWorkerContext struct {
 
 func (x *FingerprintWebWorkerContext) Reset() {
 	*x = FingerprintWebWorkerContext{}
-	mi := &file_fingerprint_proto_msgTypes[27]
+	mi := &file_fingerprint_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2187,7 +2418,7 @@ func (x *FingerprintWebWorkerContext) String() string {
 func (*FingerprintWebWorkerContext) ProtoMessage() {}
 
 func (x *FingerprintWebWorkerContext) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[27]
+	mi := &file_fingerprint_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2200,7 +2431,7 @@ func (x *FingerprintWebWorkerContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintWebWorkerContext.ProtoReflect.Descriptor instead.
 func (*FingerprintWebWorkerContext) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{27}
+	return file_fingerprint_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *FingerprintWebWorkerContext) GetVendor() string {
@@ -2281,7 +2512,7 @@ type FingerprintFastBotDetectionDetails struct {
 
 func (x *FingerprintFastBotDetectionDetails) Reset() {
 	*x = FingerprintFastBotDetectionDetails{}
-	mi := &file_fingerprint_proto_msgTypes[28]
+	mi := &file_fingerprint_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2293,7 +2524,7 @@ func (x *FingerprintFastBotDetectionDetails) String() string {
 func (*FingerprintFastBotDetectionDetails) ProtoMessage() {}
 
 func (x *FingerprintFastBotDetectionDetails) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[28]
+	mi := &file_fingerprint_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2306,7 +2537,7 @@ func (x *FingerprintFastBotDetectionDetails) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use FingerprintFastBotDetectionDetails.ProtoReflect.Descriptor instead.
 func (*FingerprintFastBotDetectionDetails) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{28}
+	return file_fingerprint_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *FingerprintFastBotDetectionDetails) GetHeadlessChromeScreenResolution() *FingerprintDetectionResult {
@@ -2465,7 +2696,7 @@ type FingerprintDetectionResult struct {
 
 func (x *FingerprintDetectionResult) Reset() {
 	*x = FingerprintDetectionResult{}
-	mi := &file_fingerprint_proto_msgTypes[29]
+	mi := &file_fingerprint_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2477,7 +2708,7 @@ func (x *FingerprintDetectionResult) String() string {
 func (*FingerprintDetectionResult) ProtoMessage() {}
 
 func (x *FingerprintDetectionResult) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[29]
+	mi := &file_fingerprint_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2490,7 +2721,7 @@ func (x *FingerprintDetectionResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintDetectionResult.ProtoReflect.Descriptor instead.
 func (*FingerprintDetectionResult) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{29}
+	return file_fingerprint_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *FingerprintDetectionResult) GetDetected() bool {
@@ -2531,7 +2762,7 @@ type FingerprintBotAlias struct {
 
 func (x *FingerprintBotAlias) Reset() {
 	*x = FingerprintBotAlias{}
-	mi := &file_fingerprint_proto_msgTypes[30]
+	mi := &file_fingerprint_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2543,7 +2774,7 @@ func (x *FingerprintBotAlias) String() string {
 func (*FingerprintBotAlias) ProtoMessage() {}
 
 func (x *FingerprintBotAlias) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprint_proto_msgTypes[30]
+	mi := &file_fingerprint_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2556,7 +2787,7 @@ func (x *FingerprintBotAlias) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FingerprintBotAlias.ProtoReflect.Descriptor instead.
 func (*FingerprintBotAlias) Descriptor() ([]byte, []int) {
-	return file_fingerprint_proto_rawDescGZIP(), []int{30}
+	return file_fingerprint_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *FingerprintBotAlias) GetHeadlessChromeScreenResolution() bool {
@@ -2724,7 +2955,7 @@ var File_fingerprint_proto protoreflect.FileDescriptor
 
 const file_fingerprint_proto_rawDesc = "" +
 	"\n" +
-	"\x11fingerprint.proto\x12\vfingerprint\"\xe7\x02\n" +
+	"\x11fingerprint.proto\x12\vfingerprint\"\xfe\x03\n" +
 	"\x0fFingerprintData\x129\n" +
 	"\asignals\x18\x01 \x01(\v2\x1f.fingerprint.fingerprintSignalsR\asignals\x12\x12\n" +
 	"\x04fsid\x18\x02 \x01(\tR\x04fsid\x12\x14\n" +
@@ -2733,7 +2964,22 @@ const file_fingerprint_proto_rawDesc = "" +
 	"\x03url\x18\x05 \x01(\tR\x03url\x12*\n" +
 	"\x10fastBotDetection\x18\x06 \x01(\bR\x10fastBotDetection\x12i\n" +
 	"\x17fastBotDetectionDetails\x18\a \x01(\v2/.fingerprint.fingerprintFastBotDetectionDetailsR\x17fastBotDetectionDetails\x122\n" +
-	"\x03bot\x18\b \x01(\v2 .fingerprint.fingerprintBotAliasR\x03bot\"x\n" +
+	"\x03bot\x18\b \x01(\v2 .fingerprint.fingerprintBotAliasR\x03bot\x12@\n" +
+	"\x06custom\x18\t \x03(\v2(.fingerprint.FingerprintData.CustomEntryR\x06custom\x1aS\n" +
+	"\vCustomEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
+	"\x05value\x18\x02 \x01(\v2\x18.fingerprint.customValueR\x05value:\x028\x01\"\xa7\x01\n" +
+	"\vcustomValue\x12\x0e\n" +
+	"\x01b\x18\x01 \x01(\bH\x00R\x01b\x12\x0e\n" +
+	"\x01s\x18\x02 \x01(\tH\x00R\x01s\x12\x0e\n" +
+	"\x01n\x18\x03 \x01(\x01H\x00R\x01n\x12/\n" +
+	"\x02ss\x18\x04 \x01(\v2\x1d.fingerprint.customStringListH\x00R\x02ss\x12.\n" +
+	"\x02ff\x18\x05 \x01(\v2\x1c.fingerprint.customFloatListH\x00R\x02ffB\a\n" +
+	"\x05value\"*\n" +
+	"\x10customStringList\x12\x16\n" +
+	"\x06values\x18\x01 \x03(\tR\x06values\")\n" +
+	"\x0fcustomFloatList\x12\x16\n" +
+	"\x06values\x18\x01 \x03(\x01R\x06values\"x\n" +
 	"\x0fChallengeCookie\x12>\n" +
 	"\vfingerprint\x18\x01 \x01(\v2\x1c.fingerprint.FingerprintDataR\vfingerprint\x12%\n" +
 	"\x0epow_difficulty\x18\x02 \x01(\x05R\rpowDifficulty\"\xb7\x03\n" +
@@ -2997,96 +3243,104 @@ func file_fingerprint_proto_rawDescGZIP() []byte {
 	return file_fingerprint_proto_rawDescData
 }
 
-var file_fingerprint_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_fingerprint_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_fingerprint_proto_goTypes = []any{
 	(*FingerprintData)(nil),                       // 0: fingerprint.FingerprintData
-	(*ChallengeCookie)(nil),                       // 1: fingerprint.ChallengeCookie
-	(*FingerprintSignals)(nil),                    // 2: fingerprint.fingerprintSignals
-	(*FingerprintAutomation)(nil),                 // 3: fingerprint.fingerprintAutomation
-	(*FingerprintDevice)(nil),                     // 4: fingerprint.fingerprintDevice
-	(*FingerprintScreenResolution)(nil),           // 5: fingerprint.fingerprintScreenResolution
-	(*FingerprintMultimediaDevices)(nil),          // 6: fingerprint.fingerprintMultimediaDevices
-	(*FingerprintDeviceMediaQueries)(nil),         // 7: fingerprint.fingerprintDeviceMediaQueries
-	(*FingerprintDeviceKeyboard)(nil),             // 8: fingerprint.fingerprintDeviceKeyboard
-	(*FingerprintBrowser)(nil),                    // 9: fingerprint.fingerprintBrowser
-	(*FingerprintBrowserAI)(nil),                  // 10: fingerprint.fingerprintBrowserAI
-	(*FingerprintBrowserFeatures)(nil),            // 11: fingerprint.fingerprintBrowserFeatures
-	(*FingerprintBrowserPlugins)(nil),             // 12: fingerprint.fingerprintBrowserPlugins
-	(*FingerprintBrowserExtensions)(nil),          // 13: fingerprint.fingerprintBrowserExtensions
-	(*FingerprintBrowserHighEntropyValues)(nil),   // 14: fingerprint.fingerprintBrowserHighEntropyValues
-	(*FingerprintBrandVersion)(nil),               // 15: fingerprint.fingerprintBrandVersion
-	(*FingerprintBrowserToSourceError)(nil),       // 16: fingerprint.fingerprintBrowserToSourceError
-	(*FingerprintGraphics)(nil),                   // 17: fingerprint.fingerprintGraphics
-	(*FingerprintGraphicsWebGL)(nil),              // 18: fingerprint.fingerprintGraphicsWebGL
-	(*FingerprintGraphicsWebGPU)(nil),             // 19: fingerprint.fingerprintGraphicsWebGPU
-	(*FingerprintGraphicsCanvas)(nil),             // 20: fingerprint.fingerprintGraphicsCanvas
-	(*FingerprintCodecs)(nil),                     // 21: fingerprint.fingerprintCodecs
-	(*FingerprintLocale)(nil),                     // 22: fingerprint.fingerprintLocale
-	(*FingerprintLocaleInternationalization)(nil), // 23: fingerprint.fingerprintLocaleInternationalization
-	(*FingerprintLocaleLanguages)(nil),            // 24: fingerprint.fingerprintLocaleLanguages
-	(*FingerprintContexts)(nil),                   // 25: fingerprint.fingerprintContexts
-	(*FingerprintIframeContext)(nil),              // 26: fingerprint.fingerprintIframeContext
-	(*FingerprintWebWorkerContext)(nil),           // 27: fingerprint.fingerprintWebWorkerContext
-	(*FingerprintFastBotDetectionDetails)(nil),    // 28: fingerprint.fingerprintFastBotDetectionDetails
-	(*FingerprintDetectionResult)(nil),            // 29: fingerprint.fingerprintDetectionResult
-	(*FingerprintBotAlias)(nil),                   // 30: fingerprint.fingerprintBotAlias
+	(*CustomValue)(nil),                           // 1: fingerprint.customValue
+	(*CustomStringList)(nil),                      // 2: fingerprint.customStringList
+	(*CustomFloatList)(nil),                       // 3: fingerprint.customFloatList
+	(*ChallengeCookie)(nil),                       // 4: fingerprint.ChallengeCookie
+	(*FingerprintSignals)(nil),                    // 5: fingerprint.fingerprintSignals
+	(*FingerprintAutomation)(nil),                 // 6: fingerprint.fingerprintAutomation
+	(*FingerprintDevice)(nil),                     // 7: fingerprint.fingerprintDevice
+	(*FingerprintScreenResolution)(nil),           // 8: fingerprint.fingerprintScreenResolution
+	(*FingerprintMultimediaDevices)(nil),          // 9: fingerprint.fingerprintMultimediaDevices
+	(*FingerprintDeviceMediaQueries)(nil),         // 10: fingerprint.fingerprintDeviceMediaQueries
+	(*FingerprintDeviceKeyboard)(nil),             // 11: fingerprint.fingerprintDeviceKeyboard
+	(*FingerprintBrowser)(nil),                    // 12: fingerprint.fingerprintBrowser
+	(*FingerprintBrowserAI)(nil),                  // 13: fingerprint.fingerprintBrowserAI
+	(*FingerprintBrowserFeatures)(nil),            // 14: fingerprint.fingerprintBrowserFeatures
+	(*FingerprintBrowserPlugins)(nil),             // 15: fingerprint.fingerprintBrowserPlugins
+	(*FingerprintBrowserExtensions)(nil),          // 16: fingerprint.fingerprintBrowserExtensions
+	(*FingerprintBrowserHighEntropyValues)(nil),   // 17: fingerprint.fingerprintBrowserHighEntropyValues
+	(*FingerprintBrandVersion)(nil),               // 18: fingerprint.fingerprintBrandVersion
+	(*FingerprintBrowserToSourceError)(nil),       // 19: fingerprint.fingerprintBrowserToSourceError
+	(*FingerprintGraphics)(nil),                   // 20: fingerprint.fingerprintGraphics
+	(*FingerprintGraphicsWebGL)(nil),              // 21: fingerprint.fingerprintGraphicsWebGL
+	(*FingerprintGraphicsWebGPU)(nil),             // 22: fingerprint.fingerprintGraphicsWebGPU
+	(*FingerprintGraphicsCanvas)(nil),             // 23: fingerprint.fingerprintGraphicsCanvas
+	(*FingerprintCodecs)(nil),                     // 24: fingerprint.fingerprintCodecs
+	(*FingerprintLocale)(nil),                     // 25: fingerprint.fingerprintLocale
+	(*FingerprintLocaleInternationalization)(nil), // 26: fingerprint.fingerprintLocaleInternationalization
+	(*FingerprintLocaleLanguages)(nil),            // 27: fingerprint.fingerprintLocaleLanguages
+	(*FingerprintContexts)(nil),                   // 28: fingerprint.fingerprintContexts
+	(*FingerprintIframeContext)(nil),              // 29: fingerprint.fingerprintIframeContext
+	(*FingerprintWebWorkerContext)(nil),           // 30: fingerprint.fingerprintWebWorkerContext
+	(*FingerprintFastBotDetectionDetails)(nil),    // 31: fingerprint.fingerprintFastBotDetectionDetails
+	(*FingerprintDetectionResult)(nil),            // 32: fingerprint.fingerprintDetectionResult
+	(*FingerprintBotAlias)(nil),                   // 33: fingerprint.fingerprintBotAlias
+	nil,                                           // 34: fingerprint.FingerprintData.CustomEntry
 }
 var file_fingerprint_proto_depIdxs = []int32{
-	2,  // 0: fingerprint.FingerprintData.signals:type_name -> fingerprint.fingerprintSignals
-	28, // 1: fingerprint.FingerprintData.fastBotDetectionDetails:type_name -> fingerprint.fingerprintFastBotDetectionDetails
-	30, // 2: fingerprint.FingerprintData.bot:type_name -> fingerprint.fingerprintBotAlias
-	0,  // 3: fingerprint.ChallengeCookie.fingerprint:type_name -> fingerprint.FingerprintData
-	3,  // 4: fingerprint.fingerprintSignals.automation:type_name -> fingerprint.fingerprintAutomation
-	4,  // 5: fingerprint.fingerprintSignals.device:type_name -> fingerprint.fingerprintDevice
-	9,  // 6: fingerprint.fingerprintSignals.browser:type_name -> fingerprint.fingerprintBrowser
-	17, // 7: fingerprint.fingerprintSignals.graphics:type_name -> fingerprint.fingerprintGraphics
-	21, // 8: fingerprint.fingerprintSignals.codecs:type_name -> fingerprint.fingerprintCodecs
-	22, // 9: fingerprint.fingerprintSignals.locale:type_name -> fingerprint.fingerprintLocale
-	25, // 10: fingerprint.fingerprintSignals.contexts:type_name -> fingerprint.fingerprintContexts
-	5,  // 11: fingerprint.fingerprintDevice.screenResolution:type_name -> fingerprint.fingerprintScreenResolution
-	6,  // 12: fingerprint.fingerprintDevice.multimediaDevices:type_name -> fingerprint.fingerprintMultimediaDevices
-	7,  // 13: fingerprint.fingerprintDevice.mediaQueries:type_name -> fingerprint.fingerprintDeviceMediaQueries
-	8,  // 14: fingerprint.fingerprintDevice.keyboard:type_name -> fingerprint.fingerprintDeviceKeyboard
-	11, // 15: fingerprint.fingerprintBrowser.features:type_name -> fingerprint.fingerprintBrowserFeatures
-	12, // 16: fingerprint.fingerprintBrowser.plugins:type_name -> fingerprint.fingerprintBrowserPlugins
-	13, // 17: fingerprint.fingerprintBrowser.extensions:type_name -> fingerprint.fingerprintBrowserExtensions
-	14, // 18: fingerprint.fingerprintBrowser.highEntropyValues:type_name -> fingerprint.fingerprintBrowserHighEntropyValues
-	16, // 19: fingerprint.fingerprintBrowser.toSourceError:type_name -> fingerprint.fingerprintBrowserToSourceError
-	10, // 20: fingerprint.fingerprintBrowser.ai:type_name -> fingerprint.fingerprintBrowserAI
-	15, // 21: fingerprint.fingerprintBrowserHighEntropyValues.brands:type_name -> fingerprint.fingerprintBrandVersion
-	18, // 22: fingerprint.fingerprintGraphics.webGL:type_name -> fingerprint.fingerprintGraphicsWebGL
-	19, // 23: fingerprint.fingerprintGraphics.webgpu:type_name -> fingerprint.fingerprintGraphicsWebGPU
-	20, // 24: fingerprint.fingerprintGraphics.canvas:type_name -> fingerprint.fingerprintGraphicsCanvas
-	23, // 25: fingerprint.fingerprintLocale.internationalization:type_name -> fingerprint.fingerprintLocaleInternationalization
-	24, // 26: fingerprint.fingerprintLocale.languages:type_name -> fingerprint.fingerprintLocaleLanguages
-	26, // 27: fingerprint.fingerprintContexts.iframe:type_name -> fingerprint.fingerprintIframeContext
-	27, // 28: fingerprint.fingerprintContexts.webWorker:type_name -> fingerprint.fingerprintWebWorkerContext
-	29, // 29: fingerprint.fingerprintFastBotDetectionDetails.headlessChromeScreenResolution:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 30: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriver:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 31: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverWritable:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 32: fingerprint.fingerprintFastBotDetectionDetails.hasSeleniumProperty:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 33: fingerprint.fingerprintFastBotDetectionDetails.hasCDP:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 34: fingerprint.fingerprintFastBotDetectionDetails.hasPlaywright:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 35: fingerprint.fingerprintFastBotDetectionDetails.hasImpossibleDeviceMemory:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 36: fingerprint.fingerprintFastBotDetectionDetails.hasHighCPUCount:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 37: fingerprint.fingerprintFastBotDetectionDetails.hasMissingChromeObject:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 38: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverIframe:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 39: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverWorker:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 40: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchWebGLInWorker:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 41: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchPlatformIframe:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 42: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchPlatformWorker:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 43: fingerprint.fingerprintFastBotDetectionDetails.hasSwiftshaderRenderer:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 44: fingerprint.fingerprintFastBotDetectionDetails.hasUTCTimezone:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 45: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchLanguages:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 46: fingerprint.fingerprintFastBotDetectionDetails.hasInconsistentEtsl:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 47: fingerprint.fingerprintFastBotDetectionDetails.hasBotUserAgent:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 48: fingerprint.fingerprintFastBotDetectionDetails.hasGPUMismatch:type_name -> fingerprint.fingerprintDetectionResult
-	29, // 49: fingerprint.fingerprintFastBotDetectionDetails.hasPlatformMismatch:type_name -> fingerprint.fingerprintDetectionResult
-	50, // [50:50] is the sub-list for method output_type
-	50, // [50:50] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	5,  // 0: fingerprint.FingerprintData.signals:type_name -> fingerprint.fingerprintSignals
+	31, // 1: fingerprint.FingerprintData.fastBotDetectionDetails:type_name -> fingerprint.fingerprintFastBotDetectionDetails
+	33, // 2: fingerprint.FingerprintData.bot:type_name -> fingerprint.fingerprintBotAlias
+	34, // 3: fingerprint.FingerprintData.custom:type_name -> fingerprint.FingerprintData.CustomEntry
+	2,  // 4: fingerprint.customValue.ss:type_name -> fingerprint.customStringList
+	3,  // 5: fingerprint.customValue.ff:type_name -> fingerprint.customFloatList
+	0,  // 6: fingerprint.ChallengeCookie.fingerprint:type_name -> fingerprint.FingerprintData
+	6,  // 7: fingerprint.fingerprintSignals.automation:type_name -> fingerprint.fingerprintAutomation
+	7,  // 8: fingerprint.fingerprintSignals.device:type_name -> fingerprint.fingerprintDevice
+	12, // 9: fingerprint.fingerprintSignals.browser:type_name -> fingerprint.fingerprintBrowser
+	20, // 10: fingerprint.fingerprintSignals.graphics:type_name -> fingerprint.fingerprintGraphics
+	24, // 11: fingerprint.fingerprintSignals.codecs:type_name -> fingerprint.fingerprintCodecs
+	25, // 12: fingerprint.fingerprintSignals.locale:type_name -> fingerprint.fingerprintLocale
+	28, // 13: fingerprint.fingerprintSignals.contexts:type_name -> fingerprint.fingerprintContexts
+	8,  // 14: fingerprint.fingerprintDevice.screenResolution:type_name -> fingerprint.fingerprintScreenResolution
+	9,  // 15: fingerprint.fingerprintDevice.multimediaDevices:type_name -> fingerprint.fingerprintMultimediaDevices
+	10, // 16: fingerprint.fingerprintDevice.mediaQueries:type_name -> fingerprint.fingerprintDeviceMediaQueries
+	11, // 17: fingerprint.fingerprintDevice.keyboard:type_name -> fingerprint.fingerprintDeviceKeyboard
+	14, // 18: fingerprint.fingerprintBrowser.features:type_name -> fingerprint.fingerprintBrowserFeatures
+	15, // 19: fingerprint.fingerprintBrowser.plugins:type_name -> fingerprint.fingerprintBrowserPlugins
+	16, // 20: fingerprint.fingerprintBrowser.extensions:type_name -> fingerprint.fingerprintBrowserExtensions
+	17, // 21: fingerprint.fingerprintBrowser.highEntropyValues:type_name -> fingerprint.fingerprintBrowserHighEntropyValues
+	19, // 22: fingerprint.fingerprintBrowser.toSourceError:type_name -> fingerprint.fingerprintBrowserToSourceError
+	13, // 23: fingerprint.fingerprintBrowser.ai:type_name -> fingerprint.fingerprintBrowserAI
+	18, // 24: fingerprint.fingerprintBrowserHighEntropyValues.brands:type_name -> fingerprint.fingerprintBrandVersion
+	21, // 25: fingerprint.fingerprintGraphics.webGL:type_name -> fingerprint.fingerprintGraphicsWebGL
+	22, // 26: fingerprint.fingerprintGraphics.webgpu:type_name -> fingerprint.fingerprintGraphicsWebGPU
+	23, // 27: fingerprint.fingerprintGraphics.canvas:type_name -> fingerprint.fingerprintGraphicsCanvas
+	26, // 28: fingerprint.fingerprintLocale.internationalization:type_name -> fingerprint.fingerprintLocaleInternationalization
+	27, // 29: fingerprint.fingerprintLocale.languages:type_name -> fingerprint.fingerprintLocaleLanguages
+	29, // 30: fingerprint.fingerprintContexts.iframe:type_name -> fingerprint.fingerprintIframeContext
+	30, // 31: fingerprint.fingerprintContexts.webWorker:type_name -> fingerprint.fingerprintWebWorkerContext
+	32, // 32: fingerprint.fingerprintFastBotDetectionDetails.headlessChromeScreenResolution:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 33: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriver:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 34: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverWritable:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 35: fingerprint.fingerprintFastBotDetectionDetails.hasSeleniumProperty:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 36: fingerprint.fingerprintFastBotDetectionDetails.hasCDP:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 37: fingerprint.fingerprintFastBotDetectionDetails.hasPlaywright:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 38: fingerprint.fingerprintFastBotDetectionDetails.hasImpossibleDeviceMemory:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 39: fingerprint.fingerprintFastBotDetectionDetails.hasHighCPUCount:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 40: fingerprint.fingerprintFastBotDetectionDetails.hasMissingChromeObject:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 41: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverIframe:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 42: fingerprint.fingerprintFastBotDetectionDetails.hasWebdriverWorker:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 43: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchWebGLInWorker:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 44: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchPlatformIframe:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 45: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchPlatformWorker:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 46: fingerprint.fingerprintFastBotDetectionDetails.hasSwiftshaderRenderer:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 47: fingerprint.fingerprintFastBotDetectionDetails.hasUTCTimezone:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 48: fingerprint.fingerprintFastBotDetectionDetails.hasMismatchLanguages:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 49: fingerprint.fingerprintFastBotDetectionDetails.hasInconsistentEtsl:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 50: fingerprint.fingerprintFastBotDetectionDetails.hasBotUserAgent:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 51: fingerprint.fingerprintFastBotDetectionDetails.hasGPUMismatch:type_name -> fingerprint.fingerprintDetectionResult
+	32, // 52: fingerprint.fingerprintFastBotDetectionDetails.hasPlatformMismatch:type_name -> fingerprint.fingerprintDetectionResult
+	1,  // 53: fingerprint.FingerprintData.CustomEntry.value:type_name -> fingerprint.customValue
+	54, // [54:54] is the sub-list for method output_type
+	54, // [54:54] is the sub-list for method input_type
+	54, // [54:54] is the sub-list for extension type_name
+	54, // [54:54] is the sub-list for extension extendee
+	0,  // [0:54] is the sub-list for field type_name
 }
 
 func init() { file_fingerprint_proto_init() }
@@ -3094,13 +3348,20 @@ func file_fingerprint_proto_init() {
 	if File_fingerprint_proto != nil {
 		return
 	}
+	file_fingerprint_proto_msgTypes[1].OneofWrappers = []any{
+		(*CustomValue_B)(nil),
+		(*CustomValue_S)(nil),
+		(*CustomValue_N)(nil),
+		(*CustomValue_Ss)(nil),
+		(*CustomValue_Ff)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_fingerprint_proto_rawDesc), len(file_fingerprint_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

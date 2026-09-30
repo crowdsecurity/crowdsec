@@ -100,6 +100,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"RemoveOutBandRuleByTag":  func(tag string) error { return w.RemoveOutbandRuleByTag(state, tag) },
 		"RemoveOutBandRuleByName": func(name string) error { return w.RemoveOutbandRuleByName(state, name) },
 		"DropRequest":             func(reason string) error { return w.DropRequest(state, request, reason) },
+		"SkipProcessing":          func(reason string) error { return w.SkipProcessing(state, request, reason) },
 		"SetChallengeBody":        func(body string) error { return w.SetChallengeBody(state, body) },
 		"SetChallengeCookie":      func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
 		"SetRemediationByTag":     w.SetActionByTag,
@@ -196,7 +197,8 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 			state.PendingHTTPCode = &code
 			return nil
 		},
-		"DropRequest": func(reason string) error { return w.DropRequest(state, request, reason) },
+		"DropRequest":    func(reason string) error { return w.DropRequest(state, request, reason) },
+		"SkipProcessing": func(reason string) error { return w.SkipProcessing(state, request, reason) },
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
@@ -224,6 +226,18 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 	}
 }
 
+// withRequestScore decorates a logger with the score that has accumulated.
+func withRequestScore(logger *log.Entry, state *AppsecRequestState) *log.Entry {
+	if state.RequestScore.Empty() {
+		return logger
+	}
+
+	return logger.WithFields(log.Fields{
+		"score":        state.RequestScore.Total(),
+		"score_detail": state.RequestScore.String(),
+	})
+}
+
 // GetOnChallengeSubmitEnv is the env exposed to on_challenge_submit hooks.
 // Deliberately narrow: the hook fires once during the challenge submission
 // JSON response, so anything that would change the response shape
@@ -246,7 +260,7 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 			// nil-safe so an unexpected nil here is a no-op rather than
 			// a panic.
 			state.Fingerprint.LogRejected(
-				w.Logger,
+				withRequestScore(w.Logger, state),
 				log.InfoLevel,
 				request.ClientIP,
 				request.RemoteAddrNormalized,
@@ -265,7 +279,7 @@ func GetOnChallengeSubmitEnv(w *AppsecRuntimeConfig, state *AppsecRequestState, 
 		// authored accept point is on a real challenge submission.
 		"LogAccepted": func(msg string, verbosity ...string) error {
 			state.Fingerprint.LogAccepted(
-				w.Logger,
+				withRequestScore(w.Logger, state),
 				log.InfoLevel,
 				request.ClientIP,
 				request.RemoteAddrNormalized,

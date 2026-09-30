@@ -114,3 +114,23 @@ var GlobalPourHistogram = prometheus.NewHistogramVec(
 	},
 	[]string{"type", "source"},
 )
+
+const GlobalPostOverflowQueueDepthMetricName = "cs_postoverflow_queue_depth"
+
+var GlobalPostOverflowQueueDepth = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: GlobalPostOverflowQueueDepthMetricName,
+		Help: "Overflows waiting for postoverflow parsing.",
+	},
+	[]string{"routine"},
+)
+
+const GlobalPostOverflowDroppedMetricName = "cs_postoverflow_dropped_total"
+
+var GlobalPostOverflowDropped = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: GlobalPostOverflowDroppedMetricName,
+		Help: "Total overflows dropped because the postoverflow queue was full.",
+	},
+	[]string{"routine"},
+)
