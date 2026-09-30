@@ -604,3 +604,37 @@ func TestPollTail_ErrorHandling(t *testing.T) {
 		t.Fatal("Dying stayed open after read permission was removed")
 	}
 }
+
+// Test for deadlock when Stop is called while a read is blocked
+// on a full line buffer and the parent context is still active.
+func TestPollTail_StopWhileLineBufferIsFull(t *testing.T) {
+	tailTest := NewTailTest("stop-full-buffer", t)
+	tailTest.CreateFile("test.txt", "seed\n")
+
+	// Background is not canceled when the test ends, so only Stop can close done.
+	tail := tailTest.StartTailWithContext(context.Background(), "test.txt", Config{
+		PollInterval: -1,
+		Location:     &SeekInfo{Offset: 0, Whence: io.SeekStart},
+	})
+
+	// One more line than the buffer can hold, so the last send blocks inside readLines.
+	tailTest.CreateFile("test.txt", strings.Repeat("line\n", cap(tail.Lines())+1))
+
+	go tail.readLines()
+
+	require.Eventually(t, func() bool {
+		return len(tail.Lines()) == cap(tail.Lines())
+	}, 5*time.Second, 5*time.Millisecond, "line buffer did not fill")
+
+	stopped := make(chan error, 1)
+	go func() {
+		stopped <- tail.Stop()
+	}()
+
+	select {
+	case err := <-stopped:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop deadlocked while the line buffer was full")
+	}
+}

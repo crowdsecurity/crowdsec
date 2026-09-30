@@ -85,9 +85,13 @@ func TailFile(ctx context.Context, filename string, config Config) (*PollTail, e
 
 	tailerCtx, cancel := context.WithCancel(ctx)
 	fileTailer := &PollTail{
-		filename:     filename,
-		config:       config,
-		lines:        make(chan *Line, 100),
+		filename: filename,
+		config:   config,
+		// This buffer is intentional. It prevents the sender from blocking
+		// when the reader is slow or not reading, which would cause the tailer
+		// to hold the file handle open for too longer than required,
+		// being the purpose of this tailer to keep open handlers for as short as possible.
+		lines:        make(chan *Line, 300),
 		dying:        make(chan struct{}),
 		done:         tailerCtx.Done(),
 		cancel:       cancel,
@@ -125,7 +129,12 @@ func (fileTailer *PollTail) Err() error {
 }
 
 // Stop cancels the follow loop, then closes Lines and Dying.
+// cancel runs before mu is taken.
+// readLines holds mu while a full line buffer blocks the send,
+// and that send ends when done closes.
 func (fileTailer *PollTail) Stop() error {
+	fileTailer.cancel()
+
 	fileTailer.mu.Lock()
 	if fileTailer.stopped {
 		fileTailer.mu.Unlock()
@@ -134,7 +143,6 @@ func (fileTailer *PollTail) Stop() error {
 	fileTailer.stopped = true
 	fileTailer.mu.Unlock()
 
-	fileTailer.cancel()
 	fileTailer.wg.Wait()
 	fileTailer.closeDyingAndReleaseHandle()
 
