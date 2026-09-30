@@ -1688,8 +1688,7 @@ const (
 	hookVarRequestScoreCategories = "request_score_categories"
 )
 
-// syncScoreHookVars republishes the score hookvars after every mutation, so a
-// rule reading hook_vars sees the same numbers as RequestScore().
+// syncScoreHookVars updates the sum of scores.
 func syncScoreHookVars(state *AppsecRequestState) {
 	if state.HookVars == nil {
 		return
@@ -1705,8 +1704,6 @@ func syncScoreHookVars(state *AppsecRequestState) {
 	}
 }
 
-// The expr prototypes cap category at one value; it is variadic here only so
-// the pre-category Go callers keep compiling.
 func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
 	total := state.RequestScore.Add(points, reason, category...)
 
