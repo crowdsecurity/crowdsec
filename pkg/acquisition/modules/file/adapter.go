@@ -126,7 +126,9 @@ func (s *Source) readTailedFile(ctx context.Context, out chan pipeline.Event, fo
 			}
 
 			return nil
-		// The tailer ended on its own. Drop the path so a recreated file can be tailed again.
+		// A tailer that stops, including on a transient I/O error, does not fail Stream and is not restarted here.
+		// The path is removed so it can be tailed again only by discovery polling (discovery_poll_enable) or an fsnotify Create.
+		// A file that still exists is recovered only when discovery polling is enabled. That is intentional.
 		case <-followed.dying:
 			readerDied := "file reader died"
 			tailErr := followed.tailErr()
