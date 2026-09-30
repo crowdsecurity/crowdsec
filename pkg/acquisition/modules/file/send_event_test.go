@@ -10,7 +10,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// A canceled context unblocks a send onto a channel nobody is reading, and the event is not delivered.
+// Shutdown cancels the acquisition context while the pipeline may already have stopped reading out.
+// A plain send would block forever there, so Stream would not return. sendEvent must give up and drop the event.
 func TestSendEventUnblocksWhenContextCanceled(t *testing.T) {
 	out := make(chan pipeline.Event)
 	ctx, cancel := context.WithCancel(t.Context())
