@@ -39,6 +39,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			LapiRouteHits,
 			BucketsCurrentCount,
 			CacheMetrics, RegexpCacheMetrics, NodesWlHitsOk, NodesWlHits,
+			GlobalPostOverflowQueueDepth, GlobalPostOverflowDropped,
 			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
 	case MetricsLevelFull:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
@@ -47,6 +48,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 			LapiRouteHits, LapiMachineHits, LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions, LapiResponseTime,
 			BucketsPour, BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow, BucketsCurrentCount,
 			GlobalActiveDecisions, GlobalAlerts, GlobalMachinesLastHeartbeatTimestamp, NodesWlHitsOk, NodesWlHits,
+			GlobalPostOverflowQueueDepth, GlobalPostOverflowDropped,
 			CacheMetrics, RegexpCacheMetrics,
 			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
 	default:
