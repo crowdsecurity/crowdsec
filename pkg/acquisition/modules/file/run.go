@@ -67,6 +67,7 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	// Start tailing existing files
 	for _, file := range s.files {
 		if err := s.setupTailForFile(ctx, file, out, true, g); err != nil {
+			// One file failing setup must not fail Stream. It is tried again only by discovery polling or an fsnotify Create.
 			s.logger.Errorf("Error setting up tail for %s: %s", file, err)
 		}
 	}
