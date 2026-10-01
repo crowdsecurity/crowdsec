@@ -10,7 +10,7 @@ import (
 type categoryScore struct {
 	category string
 	score    int
-	// Only used by Set() to mark the score that was overriden.
+	// Only used by Set() to mark the score that was overridden.
 	override bool
 }
 
@@ -74,7 +74,7 @@ func (s *RequestScore) Add(points int, name string, category ...string) int {
 	return s.Total()
 }
 
-// Set overrides a category's score with a fixed value (and mark it explicitely)
+// Set overrides a category's score with a fixed value (and mark it explicitly)
 func (s *RequestScore) Set(points int, category string) int {
 	if i := s.categoryIndex(category); i >= 0 {
 		s.categories[i].score = points
