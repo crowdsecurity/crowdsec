@@ -12,14 +12,7 @@ import (
 // rules never write it.
 const scoreCtxVar = "_score_ctx"
 
-// AddRequestScore is the one score helper with two prototypes (the category is
-// optional), and only expr.Function accepts more than one per name. That
-// registration happens once at compile time, so it cannot close over the
-// per-request state the way the other helpers do — a bound call travels through
-// the context that expr.WithContext threads in instead.
-//
-// Every other score helper has a single prototype and is a plain closure in the
-// stage env maps, where it closes over the state directly.
+// AddRequestScore has two prototypes, only expr.Function accepts more than one per name.
 type scoreBindingKey struct{}
 
 type scoreAdder func(points int, label string, category ...string) error
@@ -32,11 +25,6 @@ func withScoreBinding(ctx context.Context, w *AppsecRuntimeConfig, state *Appsec
 	return context.WithValue(ctx, scoreBindingKey{}, add)
 }
 
-// The registered prototypes already rejected wrong types and wrong arity at
-// config load, so the assertions below cannot fail unless a prototype and this
-// function disagree. They are left unchecked on purpose: expr's VM recovers a
-// panic into an error carrying the rule's source location, which beats any
-// message written here.
 func exprAddRequestScore(params ...any) (any, error) {
 	var add scoreAdder
 
