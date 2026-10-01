@@ -257,3 +257,16 @@ func TestCategoryHookVarAbsentWithoutCategories(t *testing.T) {
 	assert.Equal(t, "cdp=100", state.HookVars[hookVarRequestScoreReasons])
 	assert.NotContains(t, state.HookVars, hookVarRequestScoreCategories)
 }
+
+// A Set with no detection behind it has nothing in request_score_reasons to
+// explain the number, so the category key has to carry it.
+func TestSetOnlyScoreIsStillExplained(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	require.NoError(t, w.SetRequestScore(state, 40, "policy"))
+
+	assert.Equal(t, "40", state.HookVars[hookVarRequestScore])
+	assert.Equal(t, "policy=40(set)", state.HookVars[hookVarRequestScoreCategories])
+	assert.Empty(t, state.RequestScore.String(), "nothing fired, policy just assigned a number")
+}

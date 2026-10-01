@@ -232,10 +232,13 @@ func withRequestScore(logger *log.Entry, state *AppsecRequestState) *log.Entry {
 		return logger
 	}
 
-	return logger.WithFields(log.Fields{
-		"score":        state.RequestScore.Total(),
-		"score_detail": state.RequestScore.String(),
-	})
+	logger = logger.WithField("score", state.RequestScore.Total())
+
+	if detail := state.RequestScore.String(); detail != "" {
+		logger = logger.WithField("score_detail", detail)
+	}
+
+	return logger
 }
 
 // GetOnChallengeSubmitEnv is the env exposed to on_challenge_submit hooks.

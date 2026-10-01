@@ -129,14 +129,11 @@ func (s *RequestScore) Categories() []string {
 
 // never nil to allow "x" in Reasons()
 func (s *RequestScore) Reasons() []string {
-	out := []string{}
-
 	if s == nil {
-		return out
+		return []string{}
 	}
 
-	// reuse the previously declared out slice
-	out = make([]string, 0, len(s.detections))
+	out := make([]string, 0, len(s.detections))
 
 	for _, d := range s.detections {
 		out = append(out, d.key())
@@ -145,7 +142,7 @@ func (s *RequestScore) Reasons() []string {
 	return out
 }
 
-// Lets the category hookvar stay absent when it would only repeat the reasons.
+// categories can be set via individual detection or via `Set()` override
 func (s *RequestScore) HasExplicitCategories() bool {
 	if s == nil {
 		return false
@@ -153,16 +150,19 @@ func (s *RequestScore) HasExplicitCategories() bool {
 
 	return slices.ContainsFunc(s.detections, func(d detection) bool {
 		return d.category != d.name
+	}) || slices.ContainsFunc(s.categories, func(c categoryScore) bool {
+		return c.override
 	})
 }
 
 func (s *RequestScore) Empty() bool {
-	return s == nil || len(s.detections) == 0
+	return s == nil || (len(s.detections) == 0 && len(s.categories) == 0)
 }
 
-// What fired: "foobar:utc=12,foobar:cdp=50,slow_pow=5".
+// What fired: "foobar:utc=12,foobar:cdp=50,slow_pow=5". Empty when only Set()
+// was used.
 func (s *RequestScore) String() string {
-	if s.Empty() {
+	if s == nil {
 		return ""
 	}
 
@@ -175,9 +175,7 @@ func (s *RequestScore) String() string {
 	return strings.Join(out, ",")
 }
 
-// What the request is worth, per category: "foobar=0(set),slow_pow=5". The
-// marker is why a category can sit below the detections listed for it in
-// String().
+// What the request is worth, per category: "foobar=0(set),slow_pow=5".
 func (s *RequestScore) CategoryDetail() string {
 	if s == nil {
 		return ""
