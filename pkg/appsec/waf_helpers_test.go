@@ -231,40 +231,6 @@ func TestParseChallengeCookieTTLArg(t *testing.T) {
 	})
 }
 
-// A reset has to name what it resets. The realistic way to get an empty
-// category is a hook_vars lookup that was never set, so it is caught in the
-// helper where a literal and a variable look the same — and in an apply block
-// the error costs only the offending expression.
-func TestSetRequestScoreRejectsAnEmptyCategoryFromARule(t *testing.T) {
-	for _, tc := range []struct{ name, expr string }{
-		{name: "literal", expr: `SetRequestScore(3, "")`},
-		{name: "variable", expr: `SetRequestScore(3, hook_vars["never_set"])`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			logger, hook := test.NewNullLogger()
-			logger.SetLevel(log.ErrorLevel)
-
-			w := &AppsecRuntimeConfig{Logger: log.NewEntry(logger)}
-			state := &AppsecRequestState{HookVars: map[string]string{}}
-			require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
-
-			h := Hook{Apply: []string{tc.expr, `AddRequestScore(5, "slow_pow")`}}
-			require.NoError(t, h.Build(t.Context(), hookPostEval, &appsecExprPatcher{}))
-
-			env := scoreEnvForStage(hookPostEval, w, state, &ParsedRequest{})
-			require.NoError(t, w.processHooks([]Hook{h}, env, "post_eval", state),
-				"a rejected category must not abort the stage")
-
-			assert.Equal(t, 105, state.RequestScore.Total(), "the reset did not happen")
-			assert.Equal(t, 100, state.RequestScore.For("fingerprint"))
-
-			require.Len(t, hook.Entries, 1)
-			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-			assert.Contains(t, hook.LastEntry().Message, "category cannot be empty")
-		})
-	}
-}
-
 // A detection shipped at 0 points records itself without moving the decision,
 // which leaves the category list as the only way a rule can tell it fired:
 // every score read for it returns 0 by construction.
@@ -294,13 +260,16 @@ func TestRequestScoreCategoriesSeesZeroScoredSignals(t *testing.T) {
 	assert.Equal(t, "fingerprint=45,experimental=0", state.HookVars[hookVarRequestScoreCategories])
 }
 
-// An empty label names neither axis, since the category defaults to it. The
-// helper rejects it, and this pins the part that makes rejecting affordable:
-// in an apply block the error costs only the offending expression.
-func TestAddRequestScoreRejectsAnEmptyLabel(t *testing.T) {
-	for _, tc := range []struct{ name, expr string }{
-		{name: "literal", expr: `AddRequestScore(10, "")`},
-		{name: "variable", expr: `AddRequestScore(10, hook_vars["never_set"])`},
+// A blank label or category is always a rule bug, and the realistic source is a
+// hook_vars lookup that was never set — so it is caught in the helper, where a
+// literal and a variable look the same. Rejecting is affordable because in an
+// apply block the error costs only the offending expression.
+func TestScoreHelpersRejectBlankArguments(t *testing.T) {
+	for _, tc := range []struct{ name, expr, wantErr string }{
+		{name: "add, literal label", expr: `AddRequestScore(3, "")`, wantErr: "reason cannot be empty"},
+		{name: "add, unset variable", expr: `AddRequestScore(3, hook_vars["never_set"])`, wantErr: "reason cannot be empty"},
+		{name: "set, literal category", expr: `SetRequestScore(3, "")`, wantErr: "category cannot be empty"},
+		{name: "set, unset variable", expr: `SetRequestScore(3, hook_vars["never_set"])`, wantErr: "category cannot be empty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
@@ -308,20 +277,22 @@ func TestAddRequestScoreRejectsAnEmptyLabel(t *testing.T) {
 
 			w := &AppsecRuntimeConfig{Logger: log.NewEntry(logger)}
 			state := &AppsecRequestState{HookVars: map[string]string{}}
+			require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
 
-			h := Hook{Apply: []string{tc.expr, `AddRequestScore(5, "cdp")`}}
-			require.NoError(t, h.Build(t.Context(), hookPreEval, &appsecExprPatcher{}))
+			h := Hook{Apply: []string{tc.expr, `AddRequestScore(5, "slow_pow")`}}
+			require.NoError(t, h.Build(t.Context(), hookPostEval, &appsecExprPatcher{}))
 
-			env := scoreEnvForStage(hookPreEval, w, state, &ParsedRequest{})
-			require.NoError(t, w.processHooks([]Hook{h}, env, "pre_eval", state),
-				"a rejected label must not abort the stage")
+			env := scoreEnvForStage(hookPostEval, w, state, &ParsedRequest{})
+			require.NoError(t, w.processHooks([]Hook{h}, env, "post_eval", state),
+				"a rejected argument must not abort the stage")
 
-			assert.Equal(t, 5, state.RequestScore.Total(), "only the well-formed call scored")
-			assert.Equal(t, []string{"cdp"}, state.RequestScore.Reasons())
+			// the bad call did nothing, the one after it still ran
+			assert.Equal(t, 105, state.RequestScore.Total())
+			assert.Equal(t, 100, state.RequestScore.For("fingerprint"))
 
 			require.Len(t, hook.Entries, 1)
 			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-			assert.Contains(t, hook.LastEntry().Message, "reason cannot be empty")
+			assert.Contains(t, hook.LastEntry().Message, tc.wantErr)
 		})
 	}
 }

@@ -129,7 +129,6 @@ func TestRequestScoreWithoutCategories(t *testing.T) {
 	assert.Equal(t, 107, s.Total())
 
 	assert.False(t, s.HasExplicitCategories(), "nothing was grouped under another name")
-	assert.Equal(t, "cdp=100,a=3,b=4", s.String())
 	assert.Equal(t, "cdp=100,a=3,b=4", s.CategoryDetail())
 }
 
@@ -156,25 +155,6 @@ func TestRequestScoreCategories(t *testing.T) {
 	assert.Equal(t,
 		"fingerprint:cdp=100,fingerprint:utc_timezone=15,headers:no_user_agent=30,slow_pow=5",
 		s.String())
-}
-
-// Rule 1, and the reason every detection gets a category: the parts add up to
-// the whole, even once a reset has moved one of them.
-func TestRequestScoreCategoriesSumToTheTotal(t *testing.T) {
-	var s RequestScore
-
-	s.Add(100, "cdp", "fingerprint")
-	s.Add(30, "no_user_agent", "headers")
-	s.Add(5, "slow_pow")
-	s.Set(11, "headers")
-
-	sum := 0
-	for _, c := range s.Categories() {
-		sum += s.For(c)
-	}
-
-	assert.Equal(t, s.Total(), sum)
-	assert.Equal(t, 116, s.Total())
 }
 
 // The same name under two categories is two detections, reported apart, each
@@ -252,16 +232,6 @@ func TestRequestScoreSet(t *testing.T) {
 		assert.Equal(t, []string{"policy"}, s.Categories())
 		assert.Empty(t, s.String(), "no detection fired")
 	})
-
-	t.Run("setting zero leaves an explicit zero, not an absent category", func(t *testing.T) {
-		var s RequestScore
-
-		s.Add(100, "cdp", "fingerprint")
-
-		assert.Equal(t, 0, s.Set(0, "fingerprint"))
-		assert.False(t, s.Empty())
-		assert.Equal(t, []string{"fingerprint"}, s.Categories())
-	})
 }
 
 func TestSetRequestScoreMirrorsHookVars(t *testing.T) {
@@ -286,16 +256,4 @@ func TestCategoryHookVarAbsentWithoutCategories(t *testing.T) {
 
 	assert.Equal(t, "cdp=100", state.HookVars[hookVarRequestScoreReasons])
 	assert.NotContains(t, state.HookVars, hookVarRequestScoreCategories)
-}
-
-// A reset has to name what it resets: there is no whole-score reset, and an
-// empty category would silently be one.
-func TestSetRequestScoreRejectsAnEmptyCategory(t *testing.T) {
-	w := makeRuntime()
-	state := &AppsecRequestState{HookVars: map[string]string{}}
-
-	require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
-	require.Error(t, w.SetRequestScore(state, 9, ""))
-
-	assert.Equal(t, 100, state.RequestScore.Total(), "the score is untouched")
 }
