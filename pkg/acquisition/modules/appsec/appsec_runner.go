@@ -356,7 +356,7 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
 	}
 
-	err = r.AppsecRuntime.ProcessOnMatchRules(state, request, evt)
+	err = r.AppsecRuntime.ProcessOnMatchRules(ctx, state, request, evt)
 	if err != nil {
 		r.logger.Errorf("unable to process OnMatch rules: %s", err)
 		return
@@ -421,7 +421,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec
 		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
 	}
 
-	err = r.AppsecRuntime.ProcessOnMatchRules(state, request, evt)
+	err = r.AppsecRuntime.ProcessOnMatchRules(ctx, state, request, evt)
 	if err != nil {
 		r.logger.Errorf("unable to process OnMatch rules: %s", err)
 		return

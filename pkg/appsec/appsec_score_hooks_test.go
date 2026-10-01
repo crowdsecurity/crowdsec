@@ -102,7 +102,7 @@ func runSubmitHooks(t *testing.T, rt *AppsecRuntimeConfig, hooks []Hook, fp *cha
 
 	require.NoError(t, rt.processHooks(
 		compiled,
-		GetOnChallengeSubmitEnv(rt, state, req),
+		GetOnChallengeSubmitEnv(t.Context(), rt, state, req),
 		"on_challenge_submit",
 		state,
 	))
