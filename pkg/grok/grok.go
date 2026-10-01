@@ -43,7 +43,7 @@ import (
 	"github.com/wasilibs/go-re2"
 )
 
-var patternRegexp = regexp.MustCompile(`\%\{(\w+)(\:(\w+))?}`)
+var patternRegexp = regexp.MustCompile(`%\{(\w+)(:(\w+))?}`)
 
 var (
 	// ErrEmptyName arises when pattern name is an empty string
@@ -96,18 +96,6 @@ func (h Host) Add(name, expr string) error {
 	return nil
 }
 
-func (h Host) compile(name string) (Pattern, error) {
-	expr, ok := h.Patterns[name]
-	if !ok {
-		return nil, ErrNotExist
-	}
-	if h.UseRe2 {
-		return h.compileExternalRe2(expr)
-	} else {
-		return h.compileExternal(expr)
-	}
-}
-
 func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
 
 	// find subpatterns
@@ -136,14 +124,14 @@ func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
 	msi := make(map[string]int)
 	order := 1 // semantic order
 	var res string
-	for i := 0; i < len(spl)-1; i++ {
+	for i := range len(spl) - 1 {
 		// split part
 		splPart := spl[i]
 		order += capCount(splPart)
 		// subs part
 		sub := subs[i]
 		subName, subSem := split(sub)
-		p, err := h.compile(subName)
+		p, err := h.Get(subName)
 		if err != nil {
 			return nil, err
 		}
@@ -203,14 +191,14 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 	msi := make(map[string]int)
 	order := 1 // semantic order
 	var res string
-	for i := 0; i < len(spl)-1; i++ {
+	for i := range len(spl) - 1 {
 		// split part
 		splPart := spl[i]
 		order += capCount(splPart)
 		// subs part
 		sub := subs[i]
 		subName, subSem := split(sub)
-		p, err := h.compile(subName)
+		p, err := h.Get(subName)
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +232,14 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 
 // Get pattern by name from the Host
 func (h Host) Get(name string) (Pattern, error) {
-	return h.compile(name)
+	expr, ok := h.Patterns[name]
+	if !ok {
+		return nil, ErrNotExist
+	}
+	if h.UseRe2 {
+		return h.compileExternalRe2(expr)
+	}
+	return h.compileExternal(expr)
 }
 
 // Compile and get pattern without name (and without adding it to this Host)
@@ -254,9 +249,8 @@ func (h Host) Compile(expr string) (Pattern, error) {
 	}
 	if h.UseRe2 {
 		return h.compileExternalRe2(expr)
-	} else {
-		return h.compileExternal(expr)
 	}
+	return h.compileExternal(expr)
 }
 
 var lineRegexp = regexp.MustCompile(`^(\w+)\s+(.+)$`)
@@ -282,8 +276,5 @@ func (h Host) AddFromFile(path string) error {
 			return err
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
+	return scanner.Err()
 }

@@ -136,7 +136,7 @@ func TestPattern_Names(t *testing.T) {
 		t.Error("Names returns wrong values count")
 	}
 	for _, v := range ss {
-		if !(v == "one" || v == "two" || v == "zero" || v == "three") {
+		if v != "one" && v != "two" && v != "zero" && v != "three" {
 			t.Error("Names returns wrong values:", v)
 		}
 	}

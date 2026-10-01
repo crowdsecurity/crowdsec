@@ -29,7 +29,7 @@ package grok
 
 import (
 	"bufio"
-	"io/ioutil"
+	"errors"
 	"os"
 	"testing"
 )
@@ -50,7 +50,7 @@ func testEmptyName(t *testing.T, h Host) {
 	l := len(h.Patterns)
 	if err := h.Add("", "expr"); err == nil {
 		t.Error("(Host).Add is missing ErrEmptyName")
-	} else if err != ErrEmptyName {
+	} else if !errors.Is(err, ErrEmptyName) {
 		t.Error("(Host).Add returns non-ErrEmptyName error")
 	}
 	if len(h.Patterns) > l {
@@ -62,7 +62,7 @@ func testEmptyExpression(t *testing.T, h Host) {
 	l := len(h.Patterns)
 	if err := h.Add("zorro", ""); err == nil {
 		t.Error("(Host).Add is missing ErrEmptyExpression")
-	} else if err != ErrEmptyExpression {
+	} else if !errors.Is(err, ErrEmptyExpression) {
 		t.Error("(Host).Add returns non-ErrEmptyExpression error")
 	}
 	if len(h.Patterns) > l {
@@ -85,7 +85,7 @@ func testAlreadyExists(t *testing.T, h Host) {
 	l := len(h.Patterns)
 	if err := h.Add("DIGIT", `[+-](0x)?\d`); err == nil {
 		t.Error("(Host).Add is missing ErrAlreadyExist")
-	} else if err != ErrAlreadyExist {
+	} else if !errors.Is(err, ErrAlreadyExist) {
 		t.Error("(Host).Add returns non-ErrAlreadyExist error")
 	}
 	if len(h.Patterns) != l {
@@ -112,7 +112,7 @@ func TestHost_Add(t *testing.T) {
 		t.Error("wrong patterns count")
 	}
 	if err := h.Add("THREE", `%{NOT}-%{EXIST}`); err == nil {
-		t.Errorf("(Host).Add is missing the-pattern-not-exist error")
+		t.Error("(Host).Add is missing the-pattern-not-exist error")
 	}
 	if len(h.Patterns) != 2 {
 		t.Error("wrong patterns count")
@@ -124,13 +124,13 @@ func TestHost_Add(t *testing.T) {
 		t.Error("wrong patterns count")
 	}
 	if err := h.Add("FIVE", `(?!\d)%{DIGIT}(?!\d)`); err == nil {
-		t.Errorf("(Host).Add is missing an error of regexp")
+		t.Error("(Host).Add is missing an error of regexp")
 	}
 	if len(h.Patterns) != 3 {
 		t.Error("wrong patterns count")
 	}
 	if err := h.Add("SIX", `%{FOUR:four}-%{DIGIT:six}`); err != nil {
-		t.Errorf("(Host).Add returns non-nil error")
+		t.Errorf("(Host).Add returns non-nil error: %v", err)
 	}
 	if len(h.Patterns) != 4 {
 		t.Error("wrong patterns count")
@@ -141,7 +141,7 @@ func TestHost_Compile(t *testing.T) {
 	h := New()
 	if _, err := h.Compile(""); err == nil {
 		t.Error("(Host).Compile missing ErrEmptyExpression")
-	} else if err != ErrEmptyExpression {
+	} else if !errors.Is(err, ErrEmptyExpression) {
 		t.Error("(Host).Compile returns non-ErrEmptyExpression error")
 	}
 	if len(h.Patterns) != 0 {
@@ -175,15 +175,15 @@ func TestHost_Get(t *testing.T) {
 }
 
 func tempFile(t *testing.T) (name string) {
-	f, err := ioutil.TempFile("", "")
+	f, err := os.CreateTemp(t.TempDir(), "")
 	if err != nil {
 		t.Skip("unable to create temporary file")
-		return
+		return ""
 	}
 	defer f.Close()
 	if _, err = f.Write(make([]byte, bufio.MaxScanTokenSize+1)); err != nil {
 		t.Skip("unable to write to temporary file")
-		return
+		return ""
 	}
 	return f.Name()
 }

@@ -26,7 +26,7 @@
 package grok
 
 import (
-	"io/ioutil"
+	"os"
 	fp "path/filepath"
 	"testing"
 )
@@ -38,7 +38,7 @@ func repoPath(pth string) string {
 }
 
 func Test_repository(t *testing.T) {
-	fis, err := ioutil.ReadDir(repository)
+	fis, err := os.ReadDir(repository)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

@@ -32,8 +32,12 @@ import (
 
 func ExamplePattern_Parse() {
 	h := New()
-	h.Add("WORD", `\w+`)
-	h.Add("NUMBER", `\d+`)
+	if err := h.Add("WORD", `\w+`); err != nil {
+		log.Fatal(err)
+	}
+	if err := h.Add("NUMBER", `\d+`); err != nil {
+		log.Fatal(err)
+	}
 	p, err := h.Compile("%{WORD:name}/%{NUMBER:age}")
 	if err != nil {
 		log.Fatal(err)

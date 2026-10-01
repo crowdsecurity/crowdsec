@@ -30,5 +30,5 @@ func (p *PatternRe2) Names() (ss []string) {
 	for k := range p.s {
 		ss = append(ss, k)
 	}
-	return
+	return ss
 }

@@ -15,7 +15,7 @@ func split(s string) (name, sem string) {
 	if len(ss) >= 4 {
 		sem = ss[3]
 	}
-	return
+	return name, sem
 }
 
 func wrap(s string) string { return "(" + s + ")" }
@@ -23,7 +23,7 @@ func wrap(s string) string { return "(" + s + ")" }
 // http://play.golang.org/p/1rPuziYhRL
 
 var (
-	nonCapLeftRxp  = regexp.MustCompile(`\(\?[imsU\-]*\:`)
+	nonCapLeftRxp  = regexp.MustCompile(`\(\?[imsU\-]*:`)
 	nonCapFlagsRxp = regexp.MustCompile(`\(?[imsU\-]+\)`)
 )
 
