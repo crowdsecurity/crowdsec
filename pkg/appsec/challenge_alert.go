@@ -133,7 +133,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 		Scope: new(types.Ip),
 	}
 	if err := GeoIPEnrichSource(&source); err != nil {
-		w.Logger.Debugf("unable to enrich challenge alert source with GeoIP data: %s", err)
+		w.requestLogger(state).Debugf("unable to enrich challenge alert source with GeoIP data: %s", err)
 	}
 
 	scenario := challengeScenario
@@ -146,7 +146,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 
 	contextMeta, errs := alertcontext.EventToContext([]pipeline.Event{cevt})
 	for _, err := range errs {
-		w.Logger.Debugf("while generating bot-detection alert context: %s", err)
+		w.requestLogger(state).Debugf("while generating bot-detection alert context: %s", err)
 	}
 
 	event := &models.Event{

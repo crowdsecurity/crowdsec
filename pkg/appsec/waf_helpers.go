@@ -263,13 +263,13 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 			// nil-safe so an unexpected nil here is a no-op rather than
 			// a panic.
 			state.Fingerprint.LogRejected(
-				withRequestScore(w.Logger, state),
+				withRequestScore(w.requestLogger(state), state),
 				log.InfoLevel,
 				request.ClientIP,
 				request.RemoteAddrNormalized,
 				state.SubmissionRejection.Reason,
 				"on_challenge_submit rejected",
-				parseLogVerbosity(w.Logger, verbosity),
+				parseLogVerbosity(w.requestLogger(state), verbosity),
 			)
 			// Terminal: halt later on_challenge_submit rules so a `filter: "true"`
 			// `LogAccepted` can't fire for an already-rejected submission.
@@ -282,12 +282,12 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 		// authored accept point is on a real challenge submission.
 		"LogAccepted": func(msg string, verbosity ...string) error {
 			state.Fingerprint.LogAccepted(
-				withRequestScore(w.Logger, state),
+				withRequestScore(w.requestLogger(state), state),
 				log.InfoLevel,
 				request.ClientIP,
 				request.RemoteAddrNormalized,
 				msg,
-				parseLogVerbosity(w.Logger, verbosity),
+				parseLogVerbosity(w.requestLogger(state), verbosity),
 			)
 			return nil
 		},

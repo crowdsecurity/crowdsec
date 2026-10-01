@@ -446,8 +446,7 @@ func (r *AppsecRunner) hasOutOfBandWork() bool {
 // out-of-band work left for this request, or nil if there is none.
 func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) *outOfBandJob {
 	state := r.AppsecRuntime.NewRequestState()
-	stateLogger := r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
-	r.AppsecRuntime.Logger = stateLogger
+	state.Logger = r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
 	logger := r.logger.WithField("request_uuid", request.UUID)
 	logger.Debug("Request received in runner")
 	r.AppsecRuntime.ClearResponse(&state)

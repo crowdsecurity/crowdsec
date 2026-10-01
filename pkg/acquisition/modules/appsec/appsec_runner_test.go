@@ -1,9 +1,11 @@
 package appsecacquisition
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
@@ -227,6 +230,83 @@ func TestEngineImplementsCloser(t *testing.T) {
 	require.NoError(t, closer.Close(), "Close must be idempotent")
 }
 
+// asyncHarness wires an in-band and an out-of-band runner the way
+// buildRunners does, without starting them.
+type asyncHarness struct {
+	inBand, outOfBand AppsecRunner
+	inChan            chan appsec.ParsedRequest
+	oobChan           chan *outOfBandJob
+	outChan           chan pipeline.Event
+	engine            string
+}
+
+func newAsyncHarness(t *testing.T, cfg appsec.AppsecConfig, oobRules []appsec_rule.CustomRule, queueSize int) *asyncHarness {
+	t.Helper()
+
+	rt, err := cfg.Build(t.Context(), &cwhub.Hub{})
+	require.NoError(t, err)
+
+	if len(oobRules) > 0 {
+		var rules []string
+		for i, rule := range oobRules {
+			strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "test-rule", i)
+			require.NoError(t, err)
+			rules = append(rules, strRule)
+		}
+
+		rt.OutOfBandRules = []appsec.AppsecCollection{{Rules: rules}}
+	}
+
+	h := &asyncHarness{
+		inChan:  make(chan appsec.ParsedRequest),
+		oobChan: make(chan *outOfBandJob, queueSize),
+		outChan: make(chan pipeline.Event, 16),
+		engine:  t.Name(),
+	}
+	rt.OutChan = h.outChan
+
+	newRunner := func() AppsecRunner {
+		return AppsecRunner{inChan: h.inChan, outOfBandChan: h.oobChan, logger: cfg.Logger, AppsecRuntime: rt}
+	}
+
+	h.inBand = newRunner()
+	require.NoError(t, h.inBand.InitInBand(t.TempDir()))
+
+	h.outOfBand = newRunner()
+	require.NoError(t, h.outOfBand.InitOutOfBand(t.TempDir()))
+
+	return h
+}
+
+// send pushes a request through the in-band runner and waits for the bouncer response.
+func (h *asyncHarness) send(t *testing.T, requestUUID string) {
+	t.Helper()
+
+	req := appsec.ParsedRequest{
+		UUID:                 requestUUID,
+		RemoteAddr:           "1.2.3.4",
+		RemoteAddrNormalized: "1.2.3.4",
+		Method:               "GET",
+		URI:                  "/",
+		Args:                 url.Values{"foo": []string{"toto"}},
+		HTTPRequest:          &http.Request{Host: "example.com"},
+		AppsecEngine:         h.engine,
+		ResponseChannel:      make(chan appsec.AppsecTempResponse, 1),
+	}
+
+	select {
+	case h.inChan <- req:
+	case <-time.After(5 * time.Second):
+		t.Fatal("in-band runner didn't accept the request")
+	}
+
+	select {
+	case <-req.ResponseChannel:
+	case <-time.After(5 * time.Second):
+		t.Fatal("no in-band response")
+	}
+}
+
 // In-band runners must answer the bouncer without waiting for out-of-band
 // evaluation, and drop it rather than block once the queue is full.
 func TestOutOfBandIsAsync(t *testing.T) {
@@ -252,84 +332,72 @@ func TestOutOfBandIsAsync(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			logger := log.WithField("test", tc.name)
-
-			rt, err := (&appsec.AppsecConfig{Logger: logger}).Build(t.Context(), &cwhub.Hub{})
-			require.NoError(t, err)
-
-			var rules []string
-			for i, rule := range tc.oobRules {
-				strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "test-rule", i)
-				require.NoError(t, err)
-				rules = append(rules, strRule)
-			}
-
-			rt.OutOfBandRules = []appsec.AppsecCollection{{Rules: rules}}
-			if len(rules) == 0 {
-				rt.OutOfBandRules = nil
-			}
-
-			outChan := make(chan pipeline.Event, 16)
-			rt.OutChan = outChan
-
-			inChan := make(chan appsec.ParsedRequest)
-			oobChan := make(chan *outOfBandJob, tc.queueSize)
-			newRunner := func() AppsecRunner {
-				return AppsecRunner{inChan: inChan, outOfBandChan: oobChan, logger: logger, AppsecRuntime: rt}
-			}
-
-			inBand := newRunner()
-			require.NoError(t, inBand.InitInBand(t.TempDir()))
-
-			outOfBand := newRunner()
-			require.NoError(t, outOfBand.InitOutOfBand(t.TempDir()))
-
-			engine := t.Name()
-			dropped := metrics.AppsecOutOfBandDropped.With(prometheus.Labels{"source": "1.2.3.4", "appsec_engine": engine})
+			h := newAsyncHarness(t, appsec.AppsecConfig{Logger: log.WithField("test", tc.name)}, tc.oobRules, tc.queueSize)
+			dropped := metrics.AppsecOutOfBandDropped.With(prometheus.Labels{"source": "1.2.3.4", "appsec_engine": h.engine})
 
 			tb := tomb.Tomb{}
-			tb.Go(func() error { return inBand.Run(t.Context(), &tb) })
+			tb.Go(func() error { return h.inBand.Run(t.Context(), &tb) })
 
 			// The out-of-band runner isn't started yet: every response must
 			// still come back.
-			for range tc.requests {
-				req := appsec.ParsedRequest{
-					RemoteAddr:           "1.2.3.4",
-					RemoteAddrNormalized: "1.2.3.4",
-					Method:               "GET",
-					URI:                  "/",
-					Args:                 url.Values{"foo": []string{"toto"}},
-					HTTPRequest:          &http.Request{Host: "example.com"},
-					AppsecEngine:         engine,
-					ResponseChannel:      make(chan appsec.AppsecTempResponse, 1),
-				}
-
-				select {
-				case inChan <- req:
-				case <-time.After(5 * time.Second):
-					t.Fatal("in-band runner didn't accept the request")
-				}
-
-				select {
-				case <-req.ResponseChannel:
-				case <-time.After(5 * time.Second):
-					t.Fatal("no in-band response")
-				}
+			for i := range tc.requests {
+				h.send(t, fmt.Sprintf("req-%d", i))
 			}
 
 			require.Eventually(t, func() bool {
-				return testutil.ToFloat64(dropped) == tc.dropped && len(oobChan) == tc.evaluated
+				return testutil.ToFloat64(dropped) == tc.dropped && len(h.oobChan) == tc.evaluated
 			}, 5*time.Second, 10*time.Millisecond)
-			require.Empty(t, outChan)
+			require.Empty(t, h.outChan)
 
-			tb.Go(func() error { return outOfBand.RunOutOfBand(t.Context(), &tb) })
+			tb.Go(func() error { return h.outOfBand.RunOutOfBand(t.Context(), &tb) })
 
 			require.Eventually(t, func() bool {
-				return len(oobChan) == 0 && len(outChan) == tc.evaluated
+				return len(h.oobChan) == 0 && len(h.outChan) == tc.evaluated
 			}, 5*time.Second, 10*time.Millisecond)
 
 			tb.Kill(nil)
 			require.NoError(t, tb.Wait())
 		})
 	}
+}
+
+// Hooks log with the request they run for, even when the in-band runner has
+// moved on to the next request by the time the out-of-band phase runs.
+func TestOutOfBandHookLogsOwnRequest(t *testing.T) {
+	logger, logHook := logtest.NewNullLogger()
+	logger.SetLevel(log.DebugLevel)
+
+	cfg := appsec.AppsecConfig{
+		Logger: logger.WithField("test", t.Name()),
+		OutOfBand: &appsec.AppsecPhaseConfig{
+			PreEval: []appsec.Hook{{Apply: []string{"RemoveOutBandRuleByID(1)"}}},
+		},
+	}
+	h := newAsyncHarness(t, cfg, nil, 4)
+
+	tb := tomb.Tomb{}
+	tb.Go(func() error { return h.inBand.Run(t.Context(), &tb) })
+
+	h.send(t, "req-a")
+	h.send(t, "req-b")
+
+	require.Eventually(t, func() bool { return len(h.oobChan) == 2 }, 5*time.Second, 10*time.Millisecond)
+
+	tb.Go(func() error { return h.outOfBand.RunOutOfBand(t.Context(), &tb) })
+
+	removed := func() []any {
+		var uuids []any
+		for _, e := range logHook.AllEntries() {
+			if strings.HasPrefix(e.Message, "removing outband rule") {
+				uuids = append(uuids, e.Data["request_uuid"])
+			}
+		}
+		return uuids
+	}
+
+	require.Eventually(t, func() bool { return len(removed()) == 2 }, 5*time.Second, 10*time.Millisecond)
+	require.Equal(t, []any{"req-a", "req-b"}, removed())
+
+	tb.Kill(nil)
+	require.NoError(t, tb.Wait())
 }
