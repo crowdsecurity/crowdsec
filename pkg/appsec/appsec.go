@@ -1707,16 +1707,24 @@ func syncScoreHookVars(state *AppsecRequestState) {
 	}
 }
 
+// A blank label is rejected rather than filed under a placeholder: it is
+// always a rule bug, and the category defaults to the label, so letting it
+// through would name neither axis. In an apply block the error is logged and
+// the next expression runs, so one bad rule does not cost the others.
 func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
-	label := normalizeScoreName(reason, unspecifiedScoreReason)
-	total := state.RequestScore.Add(points, reason, category...)
+	label := strings.TrimSpace(reason)
+	if label == "" {
+		return errors.New("AddRequestScore: the label is empty, it must name the signal that fired")
+	}
+
+	total := state.RequestScore.Add(points, label, category...)
 
 	syncScoreHookVars(state)
 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
-			"reason":   reason,
-			"category": scoreCategoryArg(category, label),
+			"reason":   label,
+			"category": scoreCategoryOf(label, category),
 			"points":   points,
 			"total":    total,
 		}).Debug("request score updated")
@@ -1725,16 +1733,22 @@ func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points 
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points int, categories ...string) error {
-	total := state.RequestScore.Set(points, categories...)
+// Rejected for the same reason as a blank label: a reset has to name what it is
+// resetting. There is no whole-score reset.
+func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points int, category string) error {
+	if strings.TrimSpace(category) == "" {
+		return errors.New("SetRequestScore: the category is empty, it must name the category to reset")
+	}
+
+	total := state.RequestScore.Set(points, category)
 
 	syncScoreHookVars(state)
 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
-			"categories": categories,
-			"points":     points,
-			"total":      total,
+			"category": category,
+			"points":   points,
+			"total":    total,
 		}).Debug("request score set")
 	}
 

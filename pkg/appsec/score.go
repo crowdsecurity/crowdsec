@@ -6,160 +6,120 @@ import (
 	"strings"
 )
 
-const (
-	unspecifiedScoreReason = "unspecified"
-	// Label of the entry Set() appends to record what it forced a score to.
-	// Distinct from any plausible operator-chosen label so the breakdown
-	// stays unambiguous about which points came from a signal.
-	scoreSetLabel = "set"
-)
+// Floor for a blank name reaching Add() from Go. The expr helper rejects one
+// outright; this only has to keep a detection from being nameless on either
+// axis, since the category defaults to the name.
+const unspecifiedScoreReason = "unspecified"
 
-// Entries are keyed by (label, category): re-adding a pair accumulates in
-// place, so the reported order stays stable across a request.
-type scoreEntry struct {
-	label    string
+// Authoritative for scoring. Insertion-ordered.
+type categoryScore struct {
 	category string
-	points   int
-	// An override entry records the value Set() forced. Add() must not
-	// accumulate into one, so it is flagged rather than matched by label.
+	score    int
+	// Set by Set(). Without it, a category scoring 10 next to detections
+	// totalling 62 reads as a bug instead of a deliberate override.
 	override bool
-	// Superseded entries no longer count toward any total, but stay in the
-	// breakdown: an override changes what the signals are worth, not the
-	// fact that they fired. Erasing them would leave an alert unable to say
-	// why the request was scored.
-	superseded bool
 }
 
-// key is how the entry appears in the breakdown. A signal that never named a
-// category is its own category, so the prefix would just repeat the label:
-// dropping it is also what every pre-category config already emits.
-func (e scoreEntry) key() string {
-	if e.category == e.label {
-		return e.label
+// Append-only record of what fired. A reset rewrites the category score, never
+// this, so an alert can always say which signals triggered.
+type detection struct {
+	name     string
+	category string
+	score    int
+}
+
+// How a detection appears in the breakdown. A signal that named no category is
+// its own category, so the prefix would just repeat the name: dropping it is
+// also what every pre-category config already emits.
+func (d detection) key() string {
+	if d.category == d.name {
+		return d.name
 	}
 
-	return e.category + ":" + e.label
+	return d.category + ":" + d.name
 }
 
-func (e scoreEntry) counts() bool {
-	return !e.superseded
-}
-
-// RequestScore accumulates per-request suspicion points on two axes: a label
-// (the signal that fired) and a category (the family it belongs to). The
-// entry list is the only source of truth — every accessor derives from it, so
-// there is no second index that can drift out of sync.
+// RequestScore accumulates per-request suspicion points. The category scores are
+// what the request is worth; the detections are the record of what fired. They
+// are deliberately separate, because a reset changes the former and not the
+// latter — so the two deliberately disagree once Set() has been used.
 //
-// Every entry has a category: a signal that names none is filed under its own
-// label. Categories therefore partition the live entries, so the per-category
-// scores always add up to the total.
-//
-// The label axis is a record of what fired and keeps entries an override has
-// superseded; the category axis and the total are what the request is
-// currently worth. So the breakdown deliberately does not sum to the total
-// once Set() has been used.
+// Every detection has a category: one that names none is filed under its own
+// name. The request score is therefore the sum of the category scores.
 type RequestScore struct {
-	total   int
-	entries []scoreEntry
+	categories []categoryScore
+	detections []detection
 }
 
-func normalizeScoreName(v, fallback string) string {
-	if v = strings.TrimSpace(v); v == "" {
-		return fallback
-	}
-
-	return v
-}
-
-// Defaults to the label, so a rule that never heard of categories can still be
-// read back with RequestScore("cdp").
-//
-// The expr prototypes already cap the category at one value, so extras are
-// ignored rather than rejected: a Go-side caller must not be able to trip a
-// runtime error no rule author wrote.
-func scoreCategoryArg(category []string, label string) string {
-	if len(category) == 0 {
-		return label
-	}
-
-	return normalizeScoreName(category[0], label)
-}
-
-func (s *RequestScore) indexOf(label, category string) int {
-	return slices.IndexFunc(s.entries, func(e scoreEntry) bool {
-		return e.counts() && !e.override && e.label == label && e.category == category
+func (s *RequestScore) categoryIndex(category string) int {
+	return slices.IndexFunc(s.categories, func(c categoryScore) bool {
+		return c.category == category
 	})
 }
 
-func (s *RequestScore) Add(points int, reason string, category ...string) int {
-	label := normalizeScoreName(reason, unspecifiedScoreReason)
-	cat := scoreCategoryArg(category, label)
+func (s *RequestScore) addToCategory(category string, points int) {
+	if i := s.categoryIndex(category); i >= 0 {
+		s.categories[i].score += points
+		return
+	}
 
-	if i := s.indexOf(label, cat); i >= 0 {
-		s.entries[i].points += points
+	s.categories = append(s.categories, categoryScore{category: category, score: points})
+}
+
+// An absent or blank category means the name is the category. Shared with
+// AddRequestScore so the rule lives in one place.
+func scoreCategoryOf(name string, category []string) string {
+	if len(category) > 0 {
+		if c := strings.TrimSpace(category[0]); c != "" {
+			return c
+		}
+	}
+
+	return name
+}
+
+func scoreName(name string) string {
+	if name = strings.TrimSpace(name); name == "" {
+		return unspecifiedScoreReason
+	}
+
+	return name
+}
+
+func (s *RequestScore) Add(points int, name string, category ...string) int {
+	name = scoreName(name)
+	cat := scoreCategoryOf(name, category)
+
+	if i := slices.IndexFunc(s.detections, func(d detection) bool {
+		return d.name == name && d.category == cat
+	}); i >= 0 {
+		s.detections[i].score += points
 	} else {
-		s.entries = append(s.entries, scoreEntry{label: label, category: cat, points: points})
+		s.detections = append(s.detections, detection{name: name, category: cat, score: points})
 	}
 
-	s.total += points
+	s.addToCategory(cat, points)
 
-	return s.total
+	return s.Total()
 }
 
-// Set forces a score to a value instead of accumulating toward one. The
-// entries it overrides stop counting but stay in the breakdown, so an alert
-// can still show which signals fired. Each named category is set to points,
-// so Set(50, "a", "b") leaves a total of 100, not 50.
-func (s *RequestScore) Set(points int, categories ...string) int {
-	if len(categories) == 0 {
-		s.supersede(func(scoreEntry) bool { return true })
-		s.override(scoreSetLabel, points)
+// Set forces a category to a value instead of accumulating toward one. The
+// detections it overrides stay in the breakdown, so an alert can still show
+// which signals fired and the operator can see why the two disagree.
+//
+// A later Add() accumulates on top of the forced value and keeps the override
+// marker, because the score still is not the sum of its detections.
+func (s *RequestScore) Set(points int, category string) int {
+	category = strings.TrimSpace(category)
 
-		return s.retotal()
+	if i := s.categoryIndex(category); i >= 0 {
+		s.categories[i].score = points
+		s.categories[i].override = true
+	} else {
+		s.categories = append(s.categories, categoryScore{category: category, score: points, override: true})
 	}
 
-	for _, raw := range categories {
-		// Naming no category at all is how you reset the whole score, so an
-		// empty one must not silently do that: skip it. The caller warns.
-		cat := strings.TrimSpace(raw)
-		if cat == "" {
-			continue
-		}
-
-		s.supersede(func(e scoreEntry) bool { return e.category == cat })
-		s.override(cat, points)
-	}
-
-	return s.retotal()
-}
-
-func (s *RequestScore) override(category string, points int) {
-	s.entries = append(s.entries, scoreEntry{
-		label:    scoreSetLabel,
-		category: category,
-		points:   points,
-		override: true,
-	})
-}
-
-func (s *RequestScore) supersede(match func(scoreEntry) bool) {
-	for i := range s.entries {
-		if match(s.entries[i]) {
-			s.entries[i].superseded = true
-		}
-	}
-}
-
-func (s *RequestScore) retotal() int {
-	s.total = 0
-
-	for _, e := range s.entries {
-		if e.counts() {
-			s.total += e.points
-		}
-	}
-
-	return s.total
+	return s.Total()
 }
 
 func (s *RequestScore) Total() int {
@@ -167,157 +127,105 @@ func (s *RequestScore) Total() int {
 		return 0
 	}
 
-	return s.total
-}
-
-// Reports what the signal claimed, even where an override has since stopped
-// those points counting — the label axis is the record of what fired.
-func (s *RequestScore) For(reason string) int {
-	if s == nil {
-		return 0
-	}
-
-	label := strings.TrimSpace(reason)
 	sum := 0
 
-	for _, e := range s.entries {
-		if e.label == label {
-			sum += e.points
-		}
+	for _, c := range s.categories {
+		sum += c.score
 	}
 
 	return sum
 }
 
-// No argument means no filter, so RequestScore() keeps the meaning it
-// shipped with. Superseded entries are excluded: this is the live value.
-func (s *RequestScore) ForCategories(categories ...string) int {
+func (s *RequestScore) For(category string) int {
 	if s == nil {
 		return 0
 	}
 
-	if len(categories) == 0 {
-		return s.total
+	if i := s.categoryIndex(strings.TrimSpace(category)); i >= 0 {
+		return s.categories[i].score
 	}
 
-	// An empty name is not a category, so it matches nothing, exactly like
-	// any name never used — one meaning per spelling.
-	wanted := make([]string, 0, len(categories))
+	return 0
+}
 
-	for _, c := range categories {
-		if c = strings.TrimSpace(c); c != "" {
-			wanted = append(wanted, c)
-		}
+// Never nil: a rule doing `"x" in RequestScoreCategories()` runs on requests
+// that have not been scored yet.
+func (s *RequestScore) Categories() []string {
+	out := []string{}
+
+	if s == nil {
+		return out
 	}
 
-	sum := 0
-
-	for _, e := range s.entries {
-		if e.counts() && slices.Contains(wanted, e.category) {
-			sum += e.points
-		}
+	for _, c := range s.categories {
+		out = append(out, c.category)
 	}
 
-	return sum
+	return out
 }
 
 func (s *RequestScore) Reasons() []string {
-	return s.distinct(scoreEntry.key)
-}
-
-// Ordered by where the category first appeared, superseded entries included,
-// so an override does not shuffle a category to the back of the list. A
-// category with nothing live left is dropped rather than shown at zero.
-func (s *RequestScore) Categories() []string {
 	if s == nil {
 		return nil
 	}
 
-	out := make([]string, 0, len(s.entries))
+	out := make([]string, 0, len(s.detections))
 
-	for _, e := range s.entries {
-		if slices.Contains(out, e.category) {
-			continue
-		}
-
-		if slices.ContainsFunc(s.entries, func(o scoreEntry) bool {
-			return o.counts() && o.category == e.category
-		}) {
-			out = append(out, e.category)
-		}
+	for _, d := range s.detections {
+		out = append(out, d.key())
 	}
 
 	return out
 }
 
-func (s *RequestScore) distinct(key func(scoreEntry) string) []string {
-	if s == nil || len(s.entries) == 0 {
-		return nil
-	}
-
-	out := make([]string, 0, len(s.entries))
-
-	for _, e := range s.entries {
-		if k := key(e); !slices.Contains(out, k) {
-			out = append(out, k)
-		}
-	}
-
-	return out
-}
-
-// Whether any rule actually grouped a signal under a different name. Lets the
-// category alert context stay absent when it would only repeat the reasons.
+// Lets the category hookvar stay absent when it would only repeat the reasons.
 func (s *RequestScore) HasExplicitCategories() bool {
 	if s == nil {
 		return false
 	}
 
-	return slices.ContainsFunc(s.entries, func(e scoreEntry) bool {
-		return e.counts() && e.category != e.label
+	return slices.ContainsFunc(s.detections, func(d detection) bool {
+		return d.category != d.name
 	})
 }
 
 func (s *RequestScore) Empty() bool {
-	return s == nil || len(s.entries) == 0
+	return s == nil || len(s.detections) == 0
 }
 
+// What fired: "foobar:utc=12,foobar:cdp=50,slow_pow=5".
 func (s *RequestScore) String() string {
-	return s.detail(s.Reasons(), s.forKey)
-}
-
-func (s *RequestScore) forKey(key string) int {
-	sum := 0
-
-	for _, e := range s.entries {
-		if e.key() == key {
-			sum += e.points
-		}
-	}
-
-	return sum
-}
-
-func (s *RequestScore) CategoryDetail() string {
-	return s.detail(s.Categories(), func(c string) int { return s.ForCategories(c) })
-}
-
-func (s *RequestScore) detail(keys []string, sum func(string) int) string {
 	if s.Empty() {
 		return ""
 	}
 
-	var b strings.Builder
+	out := make([]string, 0, len(s.detections))
 
-	for i, k := range keys {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(strconv.Itoa(sum(k)))
+	for _, d := range s.detections {
+		out = append(out, d.key()+"="+strconv.Itoa(d.score))
 	}
 
-	return b.String()
+	return strings.Join(out, ",")
+}
+
+// What the request is worth, per category: "foobar=0(set),slow_pow=5". The
+// marker is why a category can sit below the detections listed for it in
+// String().
+func (s *RequestScore) CategoryDetail() string {
+	if s == nil {
+		return ""
+	}
+
+	out := make([]string, 0, len(s.categories))
+
+	for _, c := range s.categories {
+		entry := c.category + "=" + strconv.Itoa(c.score)
+		if c.override {
+			entry += "(set)"
+		}
+
+		out = append(out, entry)
+	}
+
+	return strings.Join(out, ",")
 }

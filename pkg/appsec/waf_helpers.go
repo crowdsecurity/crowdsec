@@ -133,9 +133,15 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"ValidateRequestWithSchema": func(ref string) bool {
 			return w.ValidateRequestWithSchema(ctx, state, request, ref)
 		},
-		"DisableBodyInspection": func() error { return w.DisableBodyInspection(state) },
-		"ExemptFromChallenge":   func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
-		scoreCtxVar:             withScoreBinding(ctx, w, state),
+		"DisableBodyInspection":  func() error { return w.DisableBodyInspection(state) },
+		"ExemptFromChallenge":    func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
+		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
+		"RequestScore":           func() int { return state.RequestScore.Total() },
+		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
+		"RequestScoreCategories": func() []string { return state.RequestScore.Categories() },
+		"RequestScoreReasons":    func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":     func() string { return state.RequestScore.String() },
 	}
 }
 
@@ -166,6 +172,12 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
 		scoreCtxVar:               withScoreBinding(ctx, w, state),
+		"SetRequestScore":         func(points int, category string) error { return w.SetRequestScore(state, points, category) },
+		"RequestScore":            func() int { return state.RequestScore.Total() },
+		"RequestScoreFor":         func(category string) int { return state.RequestScore.For(category) },
+		"RequestScoreCategories":  func() []string { return state.RequestScore.Categories() },
+		"RequestScoreReasons":     func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":      func() string { return state.RequestScore.String() },
 	}
 }
 
@@ -204,7 +216,13 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)
 		},
-		scoreCtxVar: withScoreBinding(ctx, w, state),
+		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
+		"RequestScore":           func() int { return state.RequestScore.Total() },
+		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
+		"RequestScoreCategories": func() []string { return state.RequestScore.Categories() },
+		"RequestScoreReasons":    func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":     func() string { return state.RequestScore.String() },
 	}
 }
 
@@ -293,9 +311,15 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		scoreCtxVar:   withScoreBinding(ctx, w, state),
-		"CancelAlert": func() error { return w.CancelAlert(state) },
-		"SendAlert":   func() error { return w.SendAlert(state) },
+		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
+		"RequestScore":           func() int { return state.RequestScore.Total() },
+		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
+		"RequestScoreCategories": func() []string { return state.RequestScore.Categories() },
+		"RequestScoreReasons":    func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":     func() string { return state.RequestScore.String() },
+		"CancelAlert":            func() error { return w.CancelAlert(state) },
+		"SendAlert":              func() error { return w.SendAlert(state) },
 	}
 }
 
@@ -319,5 +343,11 @@ func GetOnMatchEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		scoreCtxVar:               withScoreBinding(ctx, w, state),
+		"SetRequestScore":         func(points int, category string) error { return w.SetRequestScore(state, points, category) },
+		"RequestScore":            func() int { return state.RequestScore.Total() },
+		"RequestScoreFor":         func(category string) int { return state.RequestScore.For(category) },
+		"RequestScoreCategories":  func() []string { return state.RequestScore.Categories() },
+		"RequestScoreReasons":     func() []string { return state.RequestScore.Reasons() },
+		"RequestScoreDetail":      func() string { return state.RequestScore.String() },
 	}
 }

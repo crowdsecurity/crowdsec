@@ -113,8 +113,8 @@ func TestRequestScoreHelpersBindStateInEveryStage(t *testing.T) {
 
 			// 100 in "fingerprint" replaced by 5, plus utc_timezone's own 15
 			assert.Equal(t, 20, state.RequestScore.Total())
-			assert.Equal(t, 5, state.RequestScore.ForCategories("fingerprint"))
-			assert.Equal(t, 15, state.RequestScore.ForCategories("utc_timezone"))
+			assert.Equal(t, 5, state.RequestScore.For("fingerprint"))
+			assert.Equal(t, 15, state.RequestScore.For("utc_timezone"))
 			assert.Equal(t, "20", state.HookVars[hookVarRequestScore])
 		})
 	}
@@ -136,21 +136,22 @@ func TestRequestScorePrototypes(t *testing.T) {
 		// arity error rather than naming the offending type. Still a config
 		// load failure, just a blunter message.
 		{name: "add rejects a non-string label", expr: `AddRequestScore(10, 5)`, wantErr: "arguments to call AddRequestScore"},
-		{name: "score with no category", expr: `RequestScore() > 0`},
-		{name: "score with one category", expr: `RequestScore("bot") > 0`},
-		{name: "score with many categories", expr: `RequestScore("bot", "fingerprint") > 0`},
-		{name: "score rejects a non-string category", expr: `RequestScore(1) > 0`, wantErr: "cannot use int"},
-		{name: "set with no category", expr: `SetRequestScore(50)`},
-		{name: "set with one category", expr: `SetRequestScore(50, "bot")`},
-		{name: "set with many categories", expr: `SetRequestScore(50, "bot", "fingerprint")`},
-		{name: "set requires a value", expr: `SetRequestScore("bot")`, wantErr: "cannot use string"},
+		{name: "score takes no argument", expr: `RequestScore() > 0`},
+		{name: "score rejects an argument", expr: `RequestScore("bot") > 0`, wantErr: "too many arguments"},
+		{name: "score for a category", expr: `RequestScoreFor("bot") > 0`},
+		{name: "score for rejects a non-string", expr: `RequestScoreFor(1) > 0`, wantErr: "cannot use int"},
+		{name: "set with a category", expr: `SetRequestScore(50, "bot")`},
+		{name: "set requires a category", expr: `SetRequestScore(50)`, wantErr: "not enough arguments"},
+		{name: "set rejects a second category", expr: `SetRequestScore(50, "bot", "fingerprint")`, wantErr: "too many arguments"},
+		{name: "set requires a value", expr: `SetRequestScore("bot", "x")`, wantErr: "cannot use string"},
 		{name: "categories takes no argument", expr: `"bot" in RequestScoreCategories()`},
 		{name: "categories rejects an argument", expr: `RequestScoreCategories("bot")`, wantErr: "too many arguments"},
-		// An empty label normalizes to "unspecified"; an empty category is a
-		// mistake, but it is reported at runtime, not here. See
-		// TestEmptyCategoryWarnsAndScoresZero.
-		{name: "add accepts an empty label", expr: `AddRequestScore(10, "")`},
-		{name: "score accepts an empty category", expr: `RequestScore("") > 0`},
+		// An empty label or category is a rule bug, but a string is a string:
+		// it can only be caught at runtime. See
+		// TestAddRequestScoreRejectsAnEmptyLabel and
+		// TestSetRequestScoreRejectsAnEmptyCategory.
+		{name: "add compiles with an empty label", expr: `AddRequestScore(10, "")`},
+		{name: "set compiles with an empty category", expr: `SetRequestScore(10, "")`},
 	}
 
 	for _, tc := range tests {
@@ -230,33 +231,37 @@ func TestParseChallengeCookieTTLArg(t *testing.T) {
 	})
 }
 
-// An empty category is a mistake whichever way it is written, so it is
-// reported from the helper, where a literal and a variable look the same. It
-// warns rather than erroring: an error would abort the rest of the hook chain,
-// which is worse than a rule that scores zero.
-func TestEmptyCategoryWarnsAndScoresZero(t *testing.T) {
-	for _, tc := range []struct{ name, filter string }{
-		{name: "literal", filter: `RequestScore("")`},
-		{name: "variable", filter: `RequestScore(hook_vars["never_set"])`},
+// A reset has to name what it resets. The realistic way to get an empty
+// category is a hook_vars lookup that was never set, so it is caught in the
+// helper where a literal and a variable look the same — and in an apply block
+// the error costs only the offending expression.
+func TestSetRequestScoreRejectsAnEmptyCategoryFromARule(t *testing.T) {
+	for _, tc := range []struct{ name, expr string }{
+		{name: "literal", expr: `SetRequestScore(3, "")`},
+		{name: "whitespace", expr: `SetRequestScore(3, "  ")`},
+		{name: "variable", expr: `SetRequestScore(3, hook_vars["never_set"])`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
-			logger.SetLevel(log.WarnLevel)
+			logger.SetLevel(log.ErrorLevel)
 
 			w := &AppsecRuntimeConfig{Logger: log.NewEntry(logger)}
 			state := &AppsecRequestState{HookVars: map[string]string{}}
 			require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
 
-			h := &Hook{Filter: tc.filter}
+			h := Hook{Apply: []string{tc.expr, `AddRequestScore(5, "slow_pow")`}}
 			require.NoError(t, h.Build(t.Context(), hookPostEval, &appsecExprPatcher{}))
 
-			got, err := expr.Run(h.FilterExpr, scoreEnvForStage(hookPostEval, w, state, &ParsedRequest{}))
-			require.NoError(t, err, "an empty category must not abort the hook chain")
-			assert.Equal(t, 0, got)
+			env := scoreEnvForStage(hookPostEval, w, state, &ParsedRequest{})
+			require.NoError(t, w.processHooks([]Hook{h}, env, "post_eval", state),
+				"a rejected category must not abort the stage")
+
+			assert.Equal(t, 105, state.RequestScore.Total(), "the reset did not happen")
+			assert.Equal(t, 100, state.RequestScore.For("fingerprint"))
 
 			require.Len(t, hook.Entries, 1)
-			assert.Equal(t, log.WarnLevel, hook.LastEntry().Level)
-			assert.Contains(t, hook.LastEntry().Message, "empty category argument")
+			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
+			assert.Contains(t, hook.LastEntry().Message, "the category is empty")
 		})
 	}
 }
@@ -286,6 +291,39 @@ func TestRequestScoreCategoriesSeesZeroScoredSignals(t *testing.T) {
 	require.True(t, fired.(bool), "a zero-scored category is still in the list")
 
 	assert.Equal(t, 45, state.RequestScore.Total(), "and it must not move the decision")
-	assert.Equal(t, 0, state.RequestScore.ForCategories("experimental"))
+	assert.Equal(t, 0, state.RequestScore.For("experimental"))
 	assert.Equal(t, "fingerprint=45,experimental=0", state.HookVars[hookVarRequestScoreCategories])
+}
+
+// An empty label names neither axis, since the category defaults to it. The
+// helper rejects it, and this pins the part that makes rejecting affordable:
+// in an apply block the error costs only the offending expression.
+func TestAddRequestScoreRejectsAnEmptyLabel(t *testing.T) {
+	for _, tc := range []struct{ name, expr string }{
+		{name: "literal", expr: `AddRequestScore(10, "")`},
+		{name: "whitespace", expr: `AddRequestScore(10, "  ")`},
+		{name: "variable", expr: `AddRequestScore(10, hook_vars["never_set"])`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logger, hook := test.NewNullLogger()
+			logger.SetLevel(log.ErrorLevel)
+
+			w := &AppsecRuntimeConfig{Logger: log.NewEntry(logger)}
+			state := &AppsecRequestState{HookVars: map[string]string{}}
+
+			h := Hook{Apply: []string{tc.expr, `AddRequestScore(5, "cdp")`}}
+			require.NoError(t, h.Build(t.Context(), hookPreEval, &appsecExprPatcher{}))
+
+			env := scoreEnvForStage(hookPreEval, w, state, &ParsedRequest{})
+			require.NoError(t, w.processHooks([]Hook{h}, env, "pre_eval", state),
+				"a rejected label must not abort the stage")
+
+			assert.Equal(t, 5, state.RequestScore.Total(), "only the well-formed call scored")
+			assert.Equal(t, []string{"cdp"}, state.RequestScore.Reasons())
+
+			require.Len(t, hook.Entries, 1)
+			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
+			assert.Contains(t, hook.LastEntry().Message, "the label is empty")
+		})
+	}
 }
