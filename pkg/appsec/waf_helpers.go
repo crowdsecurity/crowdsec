@@ -103,9 +103,9 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"SkipProcessing":          func(reason string) error { return w.SkipProcessing(state, request, reason) },
 		"SetChallengeBody":        func(body string) error { return w.SetChallengeBody(state, body) },
 		"SetChallengeCookie":      func(cookie cookie.AppsecCookie) error { return w.SetChallengeCookie(state, cookie) },
-		"SetRemediationByTag":     w.SetActionByTag,
-		"SetRemediationByID":      w.SetActionByID,
-		"SetRemediationByName":    w.SetActionByName,
+		"SetRemediationByTag":     func(tag string, action string) error { return w.SetRequestActionByTag(state, tag, action) },
+		"SetRemediationByID":      func(id int, action string) error { return w.SetRequestActionByID(state, id, action) },
+		"SetRemediationByName":    func(name string, action string) error { return w.SetRequestActionByName(state, name, action) },
 		"SetRemediation": func(action string) error {
 			state.PendingAction = &action
 			return nil

@@ -240,22 +240,29 @@ type asyncHarness struct {
 	engine            string
 }
 
-func newAsyncHarness(t *testing.T, cfg appsec.AppsecConfig, oobRules []appsec_rule.CustomRule, queueSize int) *asyncHarness {
+func newAsyncHarness(t *testing.T, cfg appsec.AppsecConfig, inBandRules, oobRules []appsec_rule.CustomRule, queueSize int) *asyncHarness {
 	t.Helper()
 
 	rt, err := cfg.Build(t.Context(), &cwhub.Hub{})
 	require.NoError(t, err)
 
-	if len(oobRules) > 0 {
+	convert := func(custom []appsec_rule.CustomRule) []appsec.AppsecCollection {
+		if len(custom) == 0 {
+			return nil
+		}
+
 		var rules []string
-		for i, rule := range oobRules {
+		for i, rule := range custom {
 			strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "test-rule", i)
 			require.NoError(t, err)
 			rules = append(rules, strRule)
 		}
 
-		rt.OutOfBandRules = []appsec.AppsecCollection{{Rules: rules}}
+		return []appsec.AppsecCollection{{Rules: rules}}
 	}
+
+	rt.InBandRules = convert(inBandRules)
+	rt.OutOfBandRules = convert(oobRules)
 
 	h := &asyncHarness{
 		inChan:  make(chan appsec.ParsedRequest),
@@ -278,8 +285,8 @@ func newAsyncHarness(t *testing.T, cfg appsec.AppsecConfig, oobRules []appsec_ru
 	return h
 }
 
-// send pushes a request through the in-band runner and waits for the bouncer response.
-func (h *asyncHarness) send(t *testing.T, requestUUID string) {
+// send pushes a request through the in-band runner and returns the bouncer response.
+func (h *asyncHarness) send(t *testing.T, requestUUID string, host string) appsec.AppsecTempResponse {
 	t.Helper()
 
 	req := appsec.ParsedRequest{
@@ -289,7 +296,7 @@ func (h *asyncHarness) send(t *testing.T, requestUUID string) {
 		Method:               "GET",
 		URI:                  "/",
 		Args:                 url.Values{"foo": []string{"toto"}},
-		HTTPRequest:          &http.Request{Host: "example.com"},
+		HTTPRequest:          &http.Request{Host: host},
 		AppsecEngine:         h.engine,
 		ResponseChannel:      make(chan appsec.AppsecTempResponse, 1),
 	}
@@ -301,10 +308,13 @@ func (h *asyncHarness) send(t *testing.T, requestUUID string) {
 	}
 
 	select {
-	case <-req.ResponseChannel:
+	case resp := <-req.ResponseChannel:
+		return resp
 	case <-time.After(5 * time.Second):
 		t.Fatal("no in-band response")
 	}
+
+	return appsec.AppsecTempResponse{}
 }
 
 // In-band runners must answer the bouncer without waiting for out-of-band
@@ -332,7 +342,7 @@ func TestOutOfBandIsAsync(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			h := newAsyncHarness(t, appsec.AppsecConfig{Logger: log.WithField("test", tc.name)}, tc.oobRules, tc.queueSize)
+			h := newAsyncHarness(t, appsec.AppsecConfig{Logger: log.WithField("test", tc.name)}, nil, tc.oobRules, tc.queueSize)
 			dropped := metrics.AppsecOutOfBandDropped.With(prometheus.Labels{"source": "1.2.3.4", "appsec_engine": h.engine})
 
 			tb := tomb.Tomb{}
@@ -341,7 +351,7 @@ func TestOutOfBandIsAsync(t *testing.T) {
 			// The out-of-band runner isn't started yet: every response must
 			// still come back.
 			for i := range tc.requests {
-				h.send(t, fmt.Sprintf("req-%d", i))
+				h.send(t, fmt.Sprintf("req-%d", i), "example.com")
 			}
 
 			require.Eventually(t, func() bool {
@@ -373,13 +383,13 @@ func TestOutOfBandHookLogsOwnRequest(t *testing.T) {
 			PreEval: []appsec.Hook{{Apply: []string{"RemoveOutBandRuleByID(1)"}}},
 		},
 	}
-	h := newAsyncHarness(t, cfg, nil, 4)
+	h := newAsyncHarness(t, cfg, nil, nil, 4)
 
 	tb := tomb.Tomb{}
 	tb.Go(func() error { return h.inBand.Run(t.Context(), &tb) })
 
-	h.send(t, "req-a")
-	h.send(t, "req-b")
+	h.send(t, "req-a", "example.com")
+	h.send(t, "req-b", "example.com")
 
 	require.Eventually(t, func() bool { return len(h.oobChan) == 2 }, 5*time.Second, 10*time.Millisecond)
 
@@ -400,4 +410,42 @@ func TestOutOfBandHookLogsOwnRequest(t *testing.T) {
 
 	tb.Kill(nil)
 	require.NoError(t, tb.Wait())
+}
+
+// SetRemediationBy* in pre_eval only affects the request it ran for.
+func TestPreEvalRemediationIsPerRequest(t *testing.T) {
+	rule := appsec_rule.CustomRule{
+		Name:      "rule42",
+		Zones:     []string{"ARGS"},
+		Variables: []string{"foo"},
+		Match:     appsec_rule.Match{Type: "equals", Value: "toto"},
+	}
+
+	tests := []struct {
+		name  string
+		apply string
+	}{
+		{name: "by name", apply: "SetRemediationByName('rule42', 'captcha')"},
+		{name: "by tag", apply: "SetRemediationByTag('crowdsec-rule42', 'captcha')"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := appsec.AppsecConfig{
+				Logger:             log.WithField("test", t.Name()),
+				DefaultRemediation: appsec.BanRemediation,
+				PreEval:            []appsec.Hook{{Filter: "req.Host == 'captcha.example.com'", Apply: []string{tc.apply}}},
+			}
+			h := newAsyncHarness(t, cfg, []appsec_rule.CustomRule{rule}, nil, 1)
+
+			tb := tomb.Tomb{}
+			tb.Go(func() error { return h.inBand.Run(t.Context(), &tb) })
+
+			require.Equal(t, appsec.CaptchaRemediation, h.send(t, "req-a", "captcha.example.com").Action)
+			require.Equal(t, appsec.BanRemediation, h.send(t, "req-b", "example.com").Action)
+
+			tb.Kill(nil)
+			require.NoError(t, tb.Wait())
+		})
+	}
 }

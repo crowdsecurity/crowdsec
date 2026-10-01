@@ -296,6 +296,11 @@ type AppsecRequestState struct {
 	// Tracks the request score + reasons
 	RequestScore RequestScore
 
+	// Set by pre_eval SetRemediationBy*: they apply to this request only and
+	// take precedence over the ones set in on_load.
+	RemediationByTag map[string]string
+	RemediationByID  map[int]string
+
 	// HookVars is a per-request scratch space exposed to expr hooks as
 	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
 	// values here so that later hook expressions — including the `apply`
@@ -1568,6 +1573,28 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 	w.Logger.Debugf("setting action of %s to %s", tag, action)
 	w.RemediationByTag[tag] = action
 	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestActionByTag(state *AppsecRequestState, tag string, action string) error {
+	if state.RemediationByTag == nil {
+		state.RemediationByTag = make(map[string]string)
+	}
+	w.requestLogger(state).Debugf("setting action of %s to %s for this request", tag, action)
+	state.RemediationByTag[tag] = action
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestActionByID(state *AppsecRequestState, id int, action string) error {
+	if state.RemediationByID == nil {
+		state.RemediationByID = make(map[int]string)
+	}
+	w.requestLogger(state).Debugf("setting action of %d to %s for this request", id, action)
+	state.RemediationByID[id] = action
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestActionByName(state *AppsecRequestState, name string, action string) error {
+	return w.SetRequestActionByTag(state, fmt.Sprintf("crowdsec-%s", name), action)
 }
 
 func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string) error {

@@ -337,15 +337,8 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	state.Response.Action = r.AppsecRuntime.DefaultRemediation
 	state.ApplyPendingResponse()
 
-	if _, ok := r.AppsecRuntime.RemediationById[interrupt.RuleID]; ok {
-		state.Response.Action = r.AppsecRuntime.RemediationById[interrupt.RuleID]
-	}
-
-	for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-		if slices.Contains(interrupt.Tags, tag) {
-			state.Response.Action = remediation
-		}
-	}
+	state.Response.Action = remediationFor(state.Response.Action, interrupt, r.AppsecRuntime.RemediationById, r.AppsecRuntime.RemediationByTag)
+	state.Response.Action = remediationFor(state.Response.Action, interrupt, state.RemediationByID, state.RemediationByTag)
 
 	if dropInfo != nil && dropInfo.Reason != "" {
 		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
@@ -358,6 +351,21 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	}
 
 	r.emitMatch(&evt, state, request)
+}
+
+// remediationFor returns the action set for the interrupting rule's ID or tags, or action if none is.
+func remediationFor(action string, interrupt *corazatypes.Interruption, byID map[int]string, byTag map[string]string) string {
+	if remediation, ok := byID[interrupt.RuleID]; ok {
+		action = remediation
+	}
+
+	for tag, remediation := range byTag {
+		if slices.Contains(interrupt.Tags, tag) {
+			action = remediation
+		}
+	}
+
+	return action
 }
 
 // emitMatch runs after on_match so hook-published values make it onto the event.
