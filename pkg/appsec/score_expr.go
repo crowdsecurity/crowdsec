@@ -3,7 +3,6 @@ package appsec
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/expr-lang/expr"
 )
@@ -16,71 +15,45 @@ const scoreCtxVar = "_score_ctx"
 // AddRequestScore is the one score helper with two prototypes (the category is
 // optional), and only expr.Function accepts more than one per name. That
 // registration happens once at compile time, so it cannot close over the
-// per-request state the way the other helpers do — the state travels through
-// the context that expr.WithContext threads in.
+// per-request state the way the other helpers do — a bound call travels through
+// the context that expr.WithContext threads in instead.
 //
 // Every other score helper has a single prototype and is a plain closure in the
 // stage env maps, where it closes over the state directly.
 type scoreBindingKey struct{}
 
-type scoreBinding struct {
-	w     *AppsecRuntimeConfig
-	state *AppsecRequestState
-}
+type scoreAdder func(points int, label string, category ...string) error
 
 func withScoreBinding(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState) context.Context {
-	return context.WithValue(ctx, scoreBindingKey{}, &scoreBinding{w: w, state: state})
+	add := scoreAdder(func(points int, label string, category ...string) error {
+		return w.AddRequestScore(state, points, label, category...)
+	})
+
+	return context.WithValue(ctx, scoreBindingKey{}, add)
 }
 
-func scoreBindingFrom(params []any) (*scoreBinding, error) {
-	if len(params) == 0 {
-		return nil, errors.New("AddRequestScore called without a context")
+// The registered prototypes already rejected wrong types and wrong arity at
+// config load, so the assertions below cannot fail unless a prototype and this
+// function disagree. They are left unchecked on purpose: expr's VM recovers a
+// panic into an error carrying the rule's source location, which beats any
+// message written here.
+func exprAddRequestScore(params ...any) (any, error) {
+	var add scoreAdder
+
+	if ctx, ok := params[0].(context.Context); ok {
+		add, _ = ctx.Value(scoreBindingKey{}).(scoreAdder)
 	}
 
-	ctx, ok := params[0].(context.Context)
-	if !ok {
-		return nil, fmt.Errorf("AddRequestScore got %T where a context was expected", params[0])
-	}
-
-	binding, _ := ctx.Value(scoreBindingKey{}).(*scoreBinding)
-	if binding == nil || binding.state == nil || binding.w == nil {
+	if add == nil {
 		return nil, errors.New("request score is not available in this hook")
 	}
 
-	return binding, nil
-}
-
-// The registered prototypes make expr reject wrong types and wrong arity at
-// config load, so these casts only fail if a prototype and the implementation
-// disagree. They are still checked: a panic here would take down the request.
-func exprAddRequestScore(params ...any) (any, error) {
-	binding, err := scoreBindingFrom(params)
-	if err != nil {
-		return nil, err
-	}
-
-	points, ok := params[1].(int)
-	if !ok {
-		return nil, fmt.Errorf("AddRequestScore points: expected an integer, got %T", params[1])
-	}
-
-	label, ok := params[2].(string)
-	if !ok {
-		return nil, fmt.Errorf("AddRequestScore label: expected a string, got %T", params[2])
-	}
-
-	category := make([]string, 0, 1)
-
+	var category []string
 	if len(params) > 3 {
-		c, ok := params[3].(string)
-		if !ok {
-			return nil, fmt.Errorf("AddRequestScore category: expected a string, got %T", params[3])
-		}
-
-		category = append(category, c)
+		category = append(category, params[3].(string))
 	}
 
-	return nil, binding.w.AddRequestScore(binding.state, points, label, category...)
+	return nil, add(params[1].(int), params[2].(string), category...)
 }
 
 // scoreExprOptions is appended per stage rather than registered globally so the
