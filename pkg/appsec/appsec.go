@@ -1680,11 +1680,11 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 }
 
 const (
+	// The total request score.
 	hookVarRequestScore = "request_score"
-	// Weighted form ("cdp=100,utc_timezone=15") so this hookvar and the
-	// event/alert key of the same name never disagree on format.
+	// Individual reasons contributing to score.
 	hookVarRequestScoreReasons = "request_score_reasons"
-	// Same form on the category axis ("bot=100,fingerprint=15").
+	// Score categories
 	hookVarRequestScoreCategories = "request_score_categories"
 )
 
@@ -1697,34 +1697,25 @@ func syncScoreHookVars(state *AppsecRequestState) {
 	state.HookVars[hookVarRequestScore] = strconv.Itoa(state.RequestScore.Total())
 	state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
 
-	// Every signal has a category, but when nobody grouped anything this would
-	// just repeat request_score_reasons. Absent rather than redundant, and
-	// cleared rather than left stale: an override can drop the last grouping.
+	// update category hook vars if set.
 	if state.RequestScore.HasExplicitCategories() {
 		state.HookVars[hookVarRequestScoreCategories] = state.RequestScore.CategoryDetail()
-	} else {
-		delete(state.HookVars, hookVarRequestScoreCategories)
 	}
 }
 
-// A blank label is rejected rather than filed under a placeholder: it is
-// always a rule bug, and the category defaults to the label, so letting it
-// through would name neither axis. In an apply block the error is logged and
-// the next expression runs, so one bad rule does not cost the others.
 func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
-	label := strings.TrimSpace(reason)
-	if label == "" {
-		return errors.New("AddRequestScore: the label is empty, it must name the signal that fired")
+	if reason == "" {
+		return errors.New("AddRequestScore: reason cannot be empty")
 	}
 
-	total := state.RequestScore.Add(points, label, category...)
+	total := state.RequestScore.Add(points, reason, category...)
 
 	syncScoreHookVars(state)
 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
-			"reason":   label,
-			"category": scoreCategoryOf(label, category),
+			"reason":   reason,
+			"category": category,
 			"points":   points,
 			"total":    total,
 		}).Debug("request score updated")
@@ -1733,11 +1724,10 @@ func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points 
 	return nil
 }
 
-// Rejected for the same reason as a blank label: a reset has to name what it is
-// resetting. There is no whole-score reset.
+// A reset has to name what it resets: there is no whole-score reset.
 func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points int, category string) error {
-	if strings.TrimSpace(category) == "" {
-		return errors.New("SetRequestScore: the category is empty, it must name the category to reset")
+	if category == "" {
+		return errors.New("SetRequestScore: category cannot be empty")
 	}
 
 	total := state.RequestScore.Set(points, category)

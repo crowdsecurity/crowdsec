@@ -238,7 +238,6 @@ func TestParseChallengeCookieTTLArg(t *testing.T) {
 func TestSetRequestScoreRejectsAnEmptyCategoryFromARule(t *testing.T) {
 	for _, tc := range []struct{ name, expr string }{
 		{name: "literal", expr: `SetRequestScore(3, "")`},
-		{name: "whitespace", expr: `SetRequestScore(3, "  ")`},
 		{name: "variable", expr: `SetRequestScore(3, hook_vars["never_set"])`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -261,7 +260,7 @@ func TestSetRequestScoreRejectsAnEmptyCategoryFromARule(t *testing.T) {
 
 			require.Len(t, hook.Entries, 1)
 			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-			assert.Contains(t, hook.LastEntry().Message, "the category is empty")
+			assert.Contains(t, hook.LastEntry().Message, "category cannot be empty")
 		})
 	}
 }
@@ -301,7 +300,6 @@ func TestRequestScoreCategoriesSeesZeroScoredSignals(t *testing.T) {
 func TestAddRequestScoreRejectsAnEmptyLabel(t *testing.T) {
 	for _, tc := range []struct{ name, expr string }{
 		{name: "literal", expr: `AddRequestScore(10, "")`},
-		{name: "whitespace", expr: `AddRequestScore(10, "  ")`},
 		{name: "variable", expr: `AddRequestScore(10, hook_vars["never_set"])`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -323,7 +321,7 @@ func TestAddRequestScoreRejectsAnEmptyLabel(t *testing.T) {
 
 			require.Len(t, hook.Entries, 1)
 			assert.Equal(t, log.ErrorLevel, hook.LastEntry().Level)
-			assert.Contains(t, hook.LastEntry().Message, "the label is empty")
+			assert.Contains(t, hook.LastEntry().Message, "reason cannot be empty")
 		})
 	}
 }

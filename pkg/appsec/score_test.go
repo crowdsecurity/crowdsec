@@ -64,21 +64,6 @@ func TestRequestScoreNegativeAndZeroPoints(t *testing.T) {
 	assert.False(t, s.Empty())
 }
 
-// Rules cannot get here — AddRequestScore rejects a blank label. This pins the
-// floor that keeps a Go caller from creating an entry with no name on either
-// axis, which would leave an unaddressable category holding points.
-func TestRequestScoreBlankReasonNormalized(t *testing.T) {
-	var s RequestScore
-
-	s.Add(3, "")
-	s.Add(4, "   ")
-
-	assert.Equal(t, 7, s.Total())
-	assert.Equal(t, []string{unspecifiedScoreReason}, s.Reasons())
-	assert.Equal(t, 7, s.For(unspecifiedScoreReason))
-	assert.Equal(t, 7, s.For(unspecifiedScoreReason), "and one addressable category")
-}
-
 func TestRequestScoreReasonsIsACopy(t *testing.T) {
 	var s RequestScore
 
@@ -129,15 +114,15 @@ func TestRequestScoreIsPerRequest(t *testing.T) {
 	assert.Empty(t, fresh.RequestScore.Reasons())
 }
 
-// A category left out, blank, or whitespace is the same thing: the signal is
-// its own category. So a config that never heard of categories can still be
-// read back by name, and the breakdown it emits is unchanged.
+// A category left out or blank is the same thing: the signal is its own
+// category. So a config that never heard of categories can still be read back
+// by name, and the breakdown it emits is unchanged.
 func TestRequestScoreWithoutCategories(t *testing.T) {
 	var s RequestScore
 
 	s.Add(100, "cdp")
 	s.Add(3, "a", "")
-	s.Add(4, "b", "   ")
+	s.Add(4, "b")
 
 	assert.Equal(t, []string{"cdp", "a", "b"}, s.Categories())
 	assert.Equal(t, 100, s.For("cdp"), "readable as a category without opting in")
@@ -310,7 +295,7 @@ func TestSetRequestScoreRejectsAnEmptyCategory(t *testing.T) {
 	state := &AppsecRequestState{HookVars: map[string]string{}}
 
 	require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
-	require.Error(t, w.SetRequestScore(state, 9, "  "))
+	require.Error(t, w.SetRequestScore(state, 9, ""))
 
 	assert.Equal(t, 100, state.RequestScore.Total(), "the score is untouched")
 }

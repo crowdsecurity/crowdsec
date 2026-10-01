@@ -6,31 +6,22 @@ import (
 	"strings"
 )
 
-// Floor for a blank name reaching Add() from Go. The expr helper rejects one
-// outright; this only has to keep a detection from being nameless on either
-// axis, since the category defaults to the name.
-const unspecifiedScoreReason = "unspecified"
-
 // Authoritative for scoring. Insertion-ordered.
 type categoryScore struct {
 	category string
 	score    int
-	// Set by Set(). Without it, a category scoring 10 next to detections
-	// totalling 62 reads as a bug instead of a deliberate override.
+	// Only used by Set() to mark the score that was overriden.
 	override bool
 }
 
-// Append-only record of what fired. A reset rewrites the category score, never
-// this, so an alert can always say which signals triggered.
+// One single detection with its category and score.
 type detection struct {
 	name     string
 	category string
 	score    int
 }
 
-// How a detection appears in the breakdown. A signal that named no category is
-// its own category, so the prefix would just repeat the name: dropping it is
-// also what every pre-category config already emits.
+// Render a detection, use the name if not category is set.
 func (d detection) key() string {
 	if d.category == d.name {
 		return d.name
@@ -39,13 +30,7 @@ func (d detection) key() string {
 	return d.category + ":" + d.name
 }
 
-// RequestScore accumulates per-request suspicion points. The category scores are
-// what the request is worth; the detections are the record of what fired. They
-// are deliberately separate, because a reset changes the former and not the
-// latter — so the two deliberately disagree once Set() has been used.
-//
-// Every detection has a category: one that names none is filed under its own
-// name. The request score is therefore the sum of the category scores.
+// This is the full representation of a request's score.
 type RequestScore struct {
 	categories []categoryScore
 	detections []detection
@@ -66,30 +51,15 @@ func (s *RequestScore) addToCategory(category string, points int) {
 	s.categories = append(s.categories, categoryScore{category: category, score: points})
 }
 
-// An absent or blank category means the name is the category. Shared with
-// AddRequestScore so the rule lives in one place.
-func scoreCategoryOf(name string, category []string) string {
-	if len(category) > 0 {
-		if c := strings.TrimSpace(category[0]); c != "" {
-			return c
-		}
-	}
-
-	return name
-}
-
-func scoreName(name string) string {
-	if name = strings.TrimSpace(name); name == "" {
-		return unspecifiedScoreReason
-	}
-
-	return name
-}
-
+// An absent or blank category means the name is the category.
 func (s *RequestScore) Add(points int, name string, category ...string) int {
-	name = scoreName(name)
-	cat := scoreCategoryOf(name, category)
+	cat := name
 
+	if len(category) > 0 && category[0] != "" {
+		cat = category[0]
+	}
+
+	// if the detection already exists, increment its score
 	if i := slices.IndexFunc(s.detections, func(d detection) bool {
 		return d.name == name && d.category == cat
 	}); i >= 0 {
@@ -98,20 +68,14 @@ func (s *RequestScore) Add(points int, name string, category ...string) int {
 		s.detections = append(s.detections, detection{name: name, category: cat, score: points})
 	}
 
+	// update the category score
 	s.addToCategory(cat, points)
 
 	return s.Total()
 }
 
-// Set forces a category to a value instead of accumulating toward one. The
-// detections it overrides stay in the breakdown, so an alert can still show
-// which signals fired and the operator can see why the two disagree.
-//
-// A later Add() accumulates on top of the forced value and keeps the override
-// marker, because the score still is not the sum of its detections.
+// Set overrides a category's score with a fixed value (and mark it explicitely)
 func (s *RequestScore) Set(points int, category string) int {
-	category = strings.TrimSpace(category)
-
 	if i := s.categoryIndex(category); i >= 0 {
 		s.categories[i].score = points
 		s.categories[i].override = true
@@ -141,15 +105,14 @@ func (s *RequestScore) For(category string) int {
 		return 0
 	}
 
-	if i := s.categoryIndex(strings.TrimSpace(category)); i >= 0 {
+	if i := s.categoryIndex(category); i >= 0 {
 		return s.categories[i].score
 	}
 
 	return 0
 }
 
-// Never nil: a rule doing `"x" in RequestScoreCategories()` runs on requests
-// that have not been scored yet.
+// never nil to allow "x" in Categories()
 func (s *RequestScore) Categories() []string {
 	out := []string{}
 
@@ -164,12 +127,16 @@ func (s *RequestScore) Categories() []string {
 	return out
 }
 
+// never nil to allow "x" in Reasons()
 func (s *RequestScore) Reasons() []string {
+	out := []string{}
+
 	if s == nil {
-		return nil
+		return out
 	}
 
-	out := make([]string, 0, len(s.detections))
+	// reuse the previously declared out slice
+	out = make([]string, 0, len(s.detections))
 
 	for _, d := range s.detections {
 		out = append(out, d.key())
