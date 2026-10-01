@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/grokky"
+	"github.com/crowdsecurity/crowdsec/pkg/grok"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -442,7 +442,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Logger.Tracef("Adding subpattern '%s': '%s'", pattern.Key, pattern.Value)
 
 		if err = pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
-			if errors.Is(err, grokky.ErrAlreadyExist) {
+			if errors.Is(err, grok.ErrAlreadyExist) {
 				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
 			}
