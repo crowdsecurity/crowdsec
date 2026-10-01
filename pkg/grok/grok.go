@@ -96,74 +96,33 @@ func (h Host) Add(name, expr string) error {
 	return nil
 }
 
-func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
+// compiledRegexp is what both regexp engines have in common.
+type compiledRegexp interface {
+	String() string
+	NumSubexp() int
+}
 
-	// find subpatterns
-	subs := patternRegexp.FindAllString(expr, -1)
-	// this semantics set
-	ts := make(map[string]struct{})
-	// chek: does subpatterns exist into this Host?
-	for _, s := range subs {
-		name, sem := split(s)
-		if _, ok := h.Patterns[name]; !ok {
-			return nil, fmt.Errorf("the '%s' pattern doesn't exist", name)
-		}
-		ts[sem] = struct{}{}
-	}
-	// if there are not subpatterns
-	if len(subs) == 0 {
-		r, err := regexp.Compile(expr)
-		if err != nil {
-			return nil, err
-		}
-		return &PatternLegacy{Regexp: r}, nil
-	}
-	// split
-	spl := patternRegexp.Split(expr, -1)
-	// concat it back
-	msi := make(map[string]int)
-	order := 1 // semantic order
-	var res string
-	for i := range len(spl) - 1 {
-		// split part
-		splPart := spl[i]
-		order += capCount(splPart)
-		// subs part
-		sub := subs[i]
-		subName, subSem := split(sub)
-		p, err := h.Get(subName)
-		if err != nil {
-			return nil, err
-		}
-		pattern := p.(*PatternLegacy)
-		sub = pattern.String()
-		subNumSubexp := pattern.NumSubexp()
-		subNumSubexp++
-		sub = wrap(sub)
-		if subSem != "" {
-			msi[subSem] = order
-		}
-		res += splPart + sub
-		// add sub semantics to this semantics
-		for k, v := range pattern.s {
-			if _, ok := ts[k]; !ok {
-				msi[k] = order + v
-			}
-		}
-		// increse the order
-		order += subNumSubexp
-	} // last spl
-	res += spl[len(spl)-1]
-	r, err := regexp.Compile(res)
+func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
+	r, s, err := expand(h, expr, regexp.Compile)
 	if err != nil {
 		return nil, err
 	}
-	p := &PatternLegacy{Regexp: r}
-	p.s = msi
-	return p, nil
+	return &PatternLegacy{Regexp: r, s: s}, nil
 }
 
 func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
+	r, s, err := expand(h, expr, re2.Compile)
+	if err != nil {
+		return nil, err
+	}
+	return &PatternRe2{Regexp: r, s: s}, nil
+}
+
+// expand replaces the %{NAME:sem} references in expr with their (recursively
+// expanded) patterns, and returns the compiled result with the capture index of
+// each semantic.
+func expand[R compiledRegexp](h Host, expr string, compile func(string) (R, error)) (R, map[string]int, error) {
+	var zero R
 
 	// find subpatterns
 	subs := patternRegexp.FindAllString(expr, -1)
@@ -173,17 +132,17 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 	for _, s := range subs {
 		name, sem := split(s)
 		if _, ok := h.Patterns[name]; !ok {
-			return nil, fmt.Errorf("the '%s' pattern doesn't exist", name)
+			return zero, nil, fmt.Errorf("the '%s' pattern doesn't exist", name)
 		}
 		ts[sem] = struct{}{}
 	}
 	// if there are not subpatterns
 	if len(subs) == 0 {
-		r, err := re2.Compile(expr)
+		r, err := compile(expr)
 		if err != nil {
-			return nil, err
+			return zero, nil, err
 		}
-		return &PatternRe2{Regexp: r}, nil
+		return r, nil, nil
 	}
 	// split
 	spl := patternRegexp.Split(expr, -1)
@@ -198,13 +157,12 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 		// subs part
 		sub := subs[i]
 		subName, subSem := split(sub)
-		p, err := h.Get(subName)
+		subRe, subMsi, err := expand(h, h.Patterns[subName], compile)
 		if err != nil {
-			return nil, err
+			return zero, nil, err
 		}
-		pattern := p.(*PatternRe2)
-		sub = pattern.String()
-		subNumSubexp := pattern.NumSubexp()
+		sub = subRe.String()
+		subNumSubexp := subRe.NumSubexp()
 		subNumSubexp++
 		sub = wrap(sub)
 		if subSem != "" {
@@ -212,7 +170,7 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 		}
 		res += splPart + sub
 		// add sub semantics to this semantics
-		for k, v := range pattern.s {
+		for k, v := range subMsi {
 			if _, ok := ts[k]; !ok {
 				msi[k] = order + v
 			}
@@ -221,13 +179,11 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 		order += subNumSubexp
 	} // last spl
 	res += spl[len(spl)-1]
-	r, err := re2.Compile(res)
+	r, err := compile(res)
 	if err != nil {
-		return nil, err
+		return zero, nil, err
 	}
-	p := &PatternRe2{Regexp: r}
-	p.s = msi
-	return p, nil
+	return r, msi, nil
 }
 
 // Get pattern by name from the Host
