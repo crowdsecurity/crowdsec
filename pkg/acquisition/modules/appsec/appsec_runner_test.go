@@ -2,13 +2,23 @@ package appsecacquisition
 
 import (
 	"io"
+	"net/http"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/corazawaf/coraza/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 func TestAppsecConflictRuleLoad(t *testing.T) {
@@ -215,4 +225,111 @@ func TestEngineImplementsCloser(t *testing.T) {
 	require.True(t, ok, "coraza.NewWAF result must implement io.Closer")
 	require.NoError(t, closer.Close())
 	require.NoError(t, closer.Close(), "Close must be idempotent")
+}
+
+// In-band runners must answer the bouncer without waiting for out-of-band
+// evaluation, and drop it rather than block once the queue is full.
+func TestOutOfBandIsAsync(t *testing.T) {
+	oobRule := appsec_rule.CustomRule{
+		Name:      "rule42",
+		Zones:     []string{"ARGS"},
+		Variables: []string{"foo"},
+		Match:     appsec_rule.Match{Type: "equals", Value: "toto"},
+	}
+
+	tests := []struct {
+		name      string
+		oobRules  []appsec_rule.CustomRule
+		queueSize int
+		requests  int
+		dropped   float64
+		evaluated int
+	}{
+		{name: "queue full drops", oobRules: []appsec_rule.CustomRule{oobRule}, queueSize: 1, requests: 3, dropped: 2, evaluated: 1},
+		{name: "queue large enough", oobRules: []appsec_rule.CustomRule{oobRule}, queueSize: 4, requests: 3, dropped: 0, evaluated: 3},
+		{name: "nothing queued without out-of-band rules", queueSize: 1, requests: 3, dropped: 0, evaluated: 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := log.WithField("test", tc.name)
+
+			rt, err := (&appsec.AppsecConfig{Logger: logger}).Build(t.Context(), &cwhub.Hub{})
+			require.NoError(t, err)
+
+			var rules []string
+			for i, rule := range tc.oobRules {
+				strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name, "test-rule", i)
+				require.NoError(t, err)
+				rules = append(rules, strRule)
+			}
+
+			rt.OutOfBandRules = []appsec.AppsecCollection{{Rules: rules}}
+			if len(rules) == 0 {
+				rt.OutOfBandRules = nil
+			}
+
+			outChan := make(chan pipeline.Event, 16)
+			rt.OutChan = outChan
+
+			inChan := make(chan appsec.ParsedRequest)
+			oobChan := make(chan *outOfBandJob, tc.queueSize)
+			newRunner := func() AppsecRunner {
+				return AppsecRunner{inChan: inChan, outOfBandChan: oobChan, logger: logger, AppsecRuntime: rt}
+			}
+
+			inBand := newRunner()
+			require.NoError(t, inBand.InitInBand(t.TempDir()))
+
+			outOfBand := newRunner()
+			require.NoError(t, outOfBand.InitOutOfBand(t.TempDir()))
+
+			engine := t.Name()
+			dropped := metrics.AppsecOutOfBandDropped.With(prometheus.Labels{"source": "1.2.3.4", "appsec_engine": engine})
+
+			tb := tomb.Tomb{}
+			tb.Go(func() error { return inBand.Run(t.Context(), &tb) })
+
+			// The out-of-band runner isn't started yet: every response must
+			// still come back.
+			for range tc.requests {
+				req := appsec.ParsedRequest{
+					RemoteAddr:           "1.2.3.4",
+					RemoteAddrNormalized: "1.2.3.4",
+					Method:               "GET",
+					URI:                  "/",
+					Args:                 url.Values{"foo": []string{"toto"}},
+					HTTPRequest:          &http.Request{Host: "example.com"},
+					AppsecEngine:         engine,
+					ResponseChannel:      make(chan appsec.AppsecTempResponse, 1),
+				}
+
+				select {
+				case inChan <- req:
+				case <-time.After(5 * time.Second):
+					t.Fatal("in-band runner didn't accept the request")
+				}
+
+				select {
+				case <-req.ResponseChannel:
+				case <-time.After(5 * time.Second):
+					t.Fatal("no in-band response")
+				}
+			}
+
+			require.Eventually(t, func() bool {
+				return testutil.ToFloat64(dropped) == tc.dropped && len(oobChan) == tc.evaluated
+			}, 5*time.Second, 10*time.Millisecond)
+			require.Empty(t, outChan)
+
+			tb.Go(func() error { return outOfBand.RunOutOfBand(t.Context(), &tb) })
+
+			require.Eventually(t, func() bool {
+				return len(oobChan) == 0 && len(outChan) == tc.evaluated
+			}, 5*time.Second, 10*time.Millisecond)
+
+			tb.Kill(nil)
+			require.NoError(t, tb.Wait())
+		})
+	}
 }
