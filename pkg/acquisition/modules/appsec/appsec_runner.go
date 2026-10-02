@@ -34,7 +34,17 @@ type AppsecRunner struct {
 	Labels                 map[string]string
 	logger                 *log.Entry
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
+	outOfBandChan          chan *outOfBandJob
+	droppedSinceWarn       int
+	lastDropWarn           time.Time
 }
+
+const (
+	// Each queued request holds its body (up to max_body_size), so keep the
+	// backlog small: it absorbs bursts, sustained overload drops.
+	outOfBandQueuePerRoutine  = 64
+	outOfBandDropWarnInterval = time.Minute
+)
 
 // ruleIDDirective matches the generated id so dedup can ignore it: rules that
 // differ only by id (same content, different position) are duplicates.
@@ -67,73 +77,51 @@ func (*AppsecRunner) MergeDedupRules(collections []appsec.AppsecCollection, logg
 	return strings.Join(rulesArr, "\n")
 }
 
-func (r *AppsecRunner) Init(datadir string) error {
-	var err error
-	fs := os.DirFS(datadir)
-
-	inBandLogger := r.logger.Dup().WithField("band", "inband")
-	outBandLogger := r.logger.Dup().WithField("band", "outband")
+// newEngine builds the coraza engine for one band, honoring the rules
+// disabled by on_load hooks.
+func (r *AppsecRunner) newEngine(datadir string, band string, collections []appsec.AppsecCollection, opts appsec.AppsecSubEngineOpts, disabledTags []string, disabledIDs []int) (coraza.WAF, error) {
+	logger := r.logger.Dup().WithField("band", band)
 
 	//While loading rules, we dedup rules based on their content, while keeping the order
-	inBandRules := r.MergeDedupRules(r.AppsecRuntime.InBandRules, inBandLogger)
-	outOfBandRules := r.MergeDedupRules(r.AppsecRuntime.OutOfBandRules, outBandLogger)
+	rules := r.MergeDedupRules(collections, logger)
 
-	//setting up inband engine
-	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))
-	if !r.AppsecRuntime.Config.InbandOptions.DisableBodyInspection {
-		inbandCfg = inbandCfg.WithRequestBodyAccess()
+	cfg := coraza.NewWAFConfig().WithDirectives(rules).WithRootFS(os.DirFS(datadir)).WithDebugLogger(appsec.NewCrzLogger(logger))
+	if !opts.DisableBodyInspection {
+		cfg = cfg.WithRequestBodyAccess()
 	} else {
-		log.Warningf("Disabling body inspection, Inband rules will not be able to match on body's content.")
+		log.Warningf("Disabling body inspection, %s rules will not be able to match on body's content.", band)
 	}
-	if r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit != nil {
-		inbandCfg = inbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit)
+	if opts.RequestBodyInMemoryLimit != nil {
+		cfg = cfg.WithRequestBodyInMemoryLimit(*opts.RequestBodyInMemoryLimit)
 	}
-	r.AppsecInbandEngine, err = coraza.NewWAF(inbandCfg)
+	engine, err := coraza.NewWAF(cfg)
 	if err != nil {
-		return fmt.Errorf("unable to initialize inband engine : %w", err)
+		return nil, fmt.Errorf("unable to initialize %s engine : %w", band, err)
 	}
 
-	//setting up outband engine
-	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(outBandLogger))
-	if !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection {
-		outbandCfg = outbandCfg.WithRequestBodyAccess()
-	} else {
-		log.Warningf("Disabling body inspection, Out of band rules will not be able to match on body's content.")
+	for _, tag := range disabledTags {
+		engine.GetRuleGroup().DeleteByTag(tag)
 	}
-	if r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
-		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
+
+	for _, id := range disabledIDs {
+		engine.GetRuleGroup().DeleteByID(id)
 	}
-	r.AppsecOutbandEngine, err = coraza.NewWAF(outbandCfg)
+
+	r.logger.Tracef("Loaded %s rules: %+v", band, engine.GetRuleGroup().GetRules())
+
+	return engine, nil
+}
+
+// InitInBand prepares the runner to serve bouncer requests.
+func (r *AppsecRunner) InitInBand(datadir string) error {
+	var err error
+
+	rt := r.AppsecRuntime
+
+	r.AppsecInbandEngine, err = r.newEngine(datadir, "inband", rt.InBandRules, rt.Config.InbandOptions, rt.DisabledInBandRulesTags, rt.DisabledInBandRuleIds)
 	if err != nil {
-		return fmt.Errorf("unable to initialize outband engine : %w", err)
+		return err
 	}
-
-	if r.AppsecRuntime.DisabledInBandRulesTags != nil {
-		for _, tag := range r.AppsecRuntime.DisabledInBandRulesTags {
-			r.AppsecInbandEngine.GetRuleGroup().DeleteByTag(tag)
-		}
-	}
-
-	if r.AppsecRuntime.DisabledOutOfBandRulesTags != nil {
-		for _, tag := range r.AppsecRuntime.DisabledOutOfBandRulesTags {
-			r.AppsecOutbandEngine.GetRuleGroup().DeleteByTag(tag)
-		}
-	}
-
-	if r.AppsecRuntime.DisabledInBandRuleIds != nil {
-		for _, id := range r.AppsecRuntime.DisabledInBandRuleIds {
-			r.AppsecInbandEngine.GetRuleGroup().DeleteByID(id)
-		}
-	}
-
-	if r.AppsecRuntime.DisabledOutOfBandRuleIds != nil {
-		for _, id := range r.AppsecRuntime.DisabledOutOfBandRuleIds {
-			r.AppsecOutbandEngine.GetRuleGroup().DeleteByID(id)
-		}
-	}
-
-	r.logger.Tracef("Loaded inband rules: %+v", r.AppsecInbandEngine.GetRuleGroup().GetRules())
-	r.logger.Tracef("Loaded outband rules: %+v", r.AppsecOutbandEngine.GetRuleGroup().GetRules())
 
 	// Materialize the fingerprint-dump dir under data_dir. Failure doesn't prevent startup.
 	r.AppsecRuntime.FingerprintDumpDir = filepath.Join(datadir, "fingerprint_dumps")
@@ -145,6 +133,17 @@ func (r *AppsecRunner) Init(datadir string) error {
 	}
 
 	return nil
+}
+
+// InitOutOfBand prepares the runner to evaluate the requests queued by the in-band runners.
+func (r *AppsecRunner) InitOutOfBand(datadir string) error {
+	var err error
+
+	rt := r.AppsecRuntime
+
+	r.AppsecOutbandEngine, err = r.newEngine(datadir, "outband", rt.OutOfBandRules, rt.Config.OutOfBandOptions, rt.DisabledOutOfBandRulesTags, rt.DisabledOutOfBandRuleIds)
+
+	return err
 }
 
 func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
@@ -302,11 +301,7 @@ func (r *AppsecRunner) ProcessInBandRules(ctx context.Context, state *appsec.App
 func (r *AppsecRunner) ProcessOutOfBandRules(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	state.Tx = tx
-	if len(r.AppsecRuntime.OutOfBandRules) == 0 &&
-		len(r.AppsecRuntime.CommonHooks.PreEval) == 0 &&
-		len(r.AppsecRuntime.OutOfBandHooks.PreEval) == 0 &&
-		len(r.AppsecRuntime.CommonHooks.PostEval) == 0 &&
-		len(r.AppsecRuntime.OutOfBandHooks.PostEval) == 0 {
+	if !r.hasOutOfBandWork() {
 		return nil
 	}
 	err := r.processRequest(ctx, state, request)
@@ -342,15 +337,8 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	state.Response.Action = r.AppsecRuntime.DefaultRemediation
 	state.ApplyPendingResponse()
 
-	if _, ok := r.AppsecRuntime.RemediationById[interrupt.RuleID]; ok {
-		state.Response.Action = r.AppsecRuntime.RemediationById[interrupt.RuleID]
-	}
-
-	for tag, remediation := range r.AppsecRuntime.RemediationByTag {
-		if slices.Contains(interrupt.Tags, tag) {
-			state.Response.Action = remediation
-		}
-	}
+	state.Response.Action = remediationFor(state.Response.Action, interrupt, r.AppsecRuntime.RemediationById, r.AppsecRuntime.RemediationByTag)
+	state.Response.Action = remediationFor(state.Response.Action, interrupt, state.RemediationByID, state.RemediationByTag)
 
 	if dropInfo != nil && dropInfo.Reason != "" {
 		evt.Meta["appsec_drop_reason"] = dropInfo.Reason
@@ -363,6 +351,21 @@ func (r *AppsecRunner) handleInBandInterrupt(ctx context.Context, state *appsec.
 	}
 
 	r.emitMatch(&evt, state, request)
+}
+
+// remediationFor returns the action set for the interrupting rule's ID or tags, or action if none is.
+func remediationFor(action string, interrupt *corazatypes.Interruption, byID map[int]string, byTag map[string]string) string {
+	if remediation, ok := byID[interrupt.RuleID]; ok {
+		action = remediation
+	}
+
+	for tag, remediation := range byTag {
+		if slices.Contains(interrupt.Tags, tag) {
+			action = remediation
+		}
+	}
+
+	return action
 }
 
 // emitMatch runs after on_match so hook-published values make it onto the event.
@@ -430,10 +433,28 @@ func (r *AppsecRunner) handleOutBandInterrupt(ctx context.Context, state *appsec
 	r.emitMatch(&evt, state, request)
 }
 
-func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) {
+// outOfBandJob is handed from an in-band runner to an out-of-band runner once
+// the bouncer has its response; the in-band runner doesn't touch it afterwards.
+type outOfBandJob struct {
+	state   *appsec.AppsecRequestState
+	request *appsec.ParsedRequest
+	// inBandElapsed feeds the global histogram, which excludes time spent queued.
+	inBandElapsed time.Duration
+}
+
+func (r *AppsecRunner) hasOutOfBandWork() bool {
+	return len(r.AppsecRuntime.OutOfBandRules) > 0 ||
+		len(r.AppsecRuntime.CommonHooks.PreEval) > 0 ||
+		len(r.AppsecRuntime.OutOfBandHooks.PreEval) > 0 ||
+		len(r.AppsecRuntime.CommonHooks.PostEval) > 0 ||
+		len(r.AppsecRuntime.OutOfBandHooks.PostEval) > 0
+}
+
+// handleRequest runs the in-band phase and answers the bouncer. It returns the
+// out-of-band work left for this request, or nil if there is none.
+func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.ParsedRequest) *outOfBandJob {
 	state := r.AppsecRuntime.NewRequestState()
-	stateLogger := r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
-	r.AppsecRuntime.Logger = stateLogger
+	state.Logger = r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
 	logger := r.logger.WithField("request_uuid", request.UUID)
 	logger.Debug("Request received in runner")
 	r.AppsecRuntime.ClearResponse(&state)
@@ -447,7 +468,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 			// No Clone() needed (unlike the in-band send below): we return
 			// immediately, so no out-of-band phase races this response.
 			request.ResponseChannel <- state.Response
-			return
+			return nil
 		}
 	}
 
@@ -456,7 +477,6 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 
 	//to measure the time spent in the Application Security Engine for InBand rules
 	startInBandParsing := time.Now()
-	startGlobalParsing := time.Now()
 
 	state.CurrentPhase = appsec.PhaseInBand
 
@@ -468,7 +488,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 		if err != nil {
 			logger.Errorf("unable to close inband transaction: %s", err)
 		}
-		return
+		return nil
 	}
 
 	// time spent to process in band rules
@@ -487,19 +507,45 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	// Clone as the out-of-band phase might mutate the response
 	request.ResponseChannel <- state.Response.Clone()
 
-	// A challenge was served, so the request never reaches the backend;
-	if state.RequireChallenge {
-		globalParsingElapsed := time.Since(startGlobalParsing)
+	// A served challenge means the request never reaches the backend: nothing to evaluate out-of-band.
+	if state.RequireChallenge || !r.hasOutOfBandWork() {
+		globalParsingElapsed := time.Since(startInBandParsing)
 		metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
+		return nil
+	}
+
+	return &outOfBandJob{state: &state, request: request, inBandElapsed: inBandParsingElapsed}
+}
+
+// queueOutOfBand never blocks: under load, out-of-band evaluation is dropped
+// rather than delaying the next in-band request.
+func (r *AppsecRunner) queueOutOfBand(job *outOfBandJob) {
+	select {
+	case r.outOfBandChan <- job:
+		return
+	default:
+	}
+
+	metrics.AppsecOutOfBandDropped.With(prometheus.Labels{"source": job.request.RemoteAddrNormalized, "appsec_engine": job.request.AppsecEngine}).Inc()
+
+	r.droppedSinceWarn++
+	if time.Since(r.lastDropWarn) < outOfBandDropWarnInterval {
 		return
 	}
+
+	r.logger.Warnf("out-of-band queue is full, skipped out-of-band evaluation of %d requests", r.droppedSinceWarn)
+	r.droppedSinceWarn = 0
+	r.lastDropWarn = time.Now()
+}
+
+func (r *AppsecRunner) handleOutOfBand(ctx context.Context, job *outOfBandJob) {
+	state, request := job.state, job.request
+	logger := r.logger.WithField("request_uuid", request.UUID)
 
 	// Challenge remediation is intentionally a no-op for OOB matches: the inband
 	// response has already been sent to the visitor at this point, so there is
 	// nothing left to challenge. OOB matches still feed alerts/events.
 	// (captcha gets the same treatment for the same reason.)
-
-	//Now let's process the out of band rules
 
 	request.IsInBand = false
 	request.IsOutBand = true
@@ -509,7 +555,7 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 
 	startOutOfBandParsing := time.Now()
 
-	err = r.ProcessOutOfBandRules(ctx, &state, request)
+	err := r.ProcessOutOfBandRules(ctx, state, request)
 	if err != nil {
 		logger.Errorf("unable to process OutOfBand rules: %s", err)
 		err = state.Tx.Close()
@@ -522,14 +568,14 @@ func (r *AppsecRunner) handleRequest(ctx context.Context, request *appsec.Parsed
 	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
 	metrics.AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 	if state.Tx.IsInterrupted() || state.DropInfo(request) != nil {
-		r.handleOutBandInterrupt(ctx, &state, request)
+		r.handleOutBandInterrupt(ctx, state, request)
 	}
 	err = state.Tx.Close()
 	if err != nil {
 		r.logger.Errorf("unable to close outband transaction: %s", err)
 	}
 	// time spent to process inband AND out of band rules
-	globalParsingElapsed := time.Since(startGlobalParsing)
+	globalParsingElapsed := job.inBandElapsed + outOfBandParsingElapsed
 	metrics.AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 }
 
@@ -548,8 +594,8 @@ func (r *AppsecRunner) closeEngine(band string, engine coraza.WAF) {
 	}
 }
 
-// Close releases both engines. Safe to call once the Run loop has stopped: the
-// engines are only ever used from that goroutine.
+// Close releases the runner's engines. Safe to call once its run loop has
+// stopped: the engines are only ever used from that goroutine.
 func (r *AppsecRunner) Close() {
 	r.closeEngine("inband", r.AppsecInbandEngine)
 	r.closeEngine("outband", r.AppsecOutbandEngine)
@@ -565,7 +611,24 @@ func (r *AppsecRunner) Run(ctx context.Context, t *tomb.Tomb) error {
 			r.logger.Infof("Appsec Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			r.handleRequest(ctx, &request)
+			if job := r.handleRequest(ctx, &request); job != nil {
+				r.queueOutOfBand(job)
+			}
+		}
+	}
+}
+
+func (r *AppsecRunner) RunOutOfBand(ctx context.Context, t *tomb.Tomb) error {
+	defer r.Close()
+
+	r.logger.Infof("Appsec out-of-band runner ready to process event")
+	for {
+		select {
+		case <-t.Dying():
+			r.logger.Infof("Appsec out-of-band runner is dying")
+			return nil
+		case job := <-r.outOfBandChan:
+			r.handleOutOfBand(ctx, job)
 		}
 	}
 }
