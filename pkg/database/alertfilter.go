@@ -68,68 +68,68 @@ func handleTimeFilters(param, value string, predicates *[]predicate.Alert) error
 
 func handleAlertIPv4Predicates(rng csnet.Range, contains bool, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
-		*predicates = append(*predicates, alert.And(
-			alert.HasDecisionsWith(decision.StartIPLTE(rng.Start.Addr)),
-			alert.HasDecisionsWith(decision.EndIPGTE(rng.End.Addr)),
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
+		*predicates = append(*predicates, alert.HasDecisionsWith(
+			decision.StartIPLTE(rng.Start.Addr),
+			decision.EndIPGTE(rng.End.Addr),
+			decision.IPSizeEQ(int64(rng.Size())),
 		))
 	} else { // decision is contained within {start_ip,end_ip}
-		*predicates = append(*predicates, alert.And(
-			alert.HasDecisionsWith(decision.StartIPGTE(rng.Start.Addr)),
-			alert.HasDecisionsWith(decision.EndIPLTE(rng.End.Addr)),
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
+		*predicates = append(*predicates, alert.HasDecisionsWith(
+			decision.StartIPGTE(rng.Start.Addr),
+			decision.EndIPLTE(rng.End.Addr),
+			decision.IPSizeEQ(int64(rng.Size())),
 		))
 	}
 }
 
 func handleAlertIPv6Predicates(rng csnet.Range, contains bool, predicates *[]predicate.Alert) {
 	if contains { // decision contains {start_ip,end_ip}
-		*predicates = append(*predicates, alert.And(
+		*predicates = append(*predicates, alert.HasDecisionsWith(
 			// matching addr size
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
-			alert.Or(
+			decision.IPSizeEQ(int64(rng.Size())),
+			decision.Or(
 				// decision.start_ip < query.start_ip
-				alert.HasDecisionsWith(decision.StartIPLT(rng.Start.Addr)),
-				alert.And(
+				decision.StartIPLT(rng.Start.Addr),
+				decision.And(
 					// decision.start_ip == query.start_ip
-					alert.HasDecisionsWith(decision.StartIPEQ(rng.Start.Addr)),
+					decision.StartIPEQ(rng.Start.Addr),
 					// decision.start_suffix <= query.start_suffix
-					alert.HasDecisionsWith(decision.StartSuffixLTE(rng.Start.Sfx)),
+					decision.StartSuffixLTE(rng.Start.Sfx),
 				),
 			),
-			alert.Or(
+			decision.Or(
 				// decision.end_ip > query.end_ip
-				alert.HasDecisionsWith(decision.EndIPGT(rng.End.Addr)),
-				alert.And(
+				decision.EndIPGT(rng.End.Addr),
+				decision.And(
 					// decision.end_ip == query.end_ip
-					alert.HasDecisionsWith(decision.EndIPEQ(rng.End.Addr)),
+					decision.EndIPEQ(rng.End.Addr),
 					// decision.end_suffix >= query.end_suffix
-					alert.HasDecisionsWith(decision.EndSuffixGTE(rng.End.Sfx)),
+					decision.EndSuffixGTE(rng.End.Sfx),
 				),
 			),
 		))
 	} else { // decision is contained within {start_ip,end_ip}
-		*predicates = append(*predicates, alert.And(
+		*predicates = append(*predicates, alert.HasDecisionsWith(
 			// matching addr size
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(rng.Size()))),
-			alert.Or(
+			decision.IPSizeEQ(int64(rng.Size())),
+			decision.Or(
 				// decision.start_ip > query.start_ip
-				alert.HasDecisionsWith(decision.StartIPGT(rng.Start.Addr)),
-				alert.And(
+				decision.StartIPGT(rng.Start.Addr),
+				decision.And(
 					// decision.start_ip == query.start_ip
-					alert.HasDecisionsWith(decision.StartIPEQ(rng.Start.Addr)),
+					decision.StartIPEQ(rng.Start.Addr),
 					// decision.start_suffix >= query.start_suffix
-					alert.HasDecisionsWith(decision.StartSuffixGTE(rng.Start.Sfx)),
+					decision.StartSuffixGTE(rng.Start.Sfx),
 				),
 			),
-			alert.Or(
+			decision.Or(
 				// decision.end_ip < query.end_ip
-				alert.HasDecisionsWith(decision.EndIPLT(rng.End.Addr)),
-				alert.And(
+				decision.EndIPLT(rng.End.Addr),
+				decision.And(
 					// decision.end_ip == query.end_ip
-					alert.HasDecisionsWith(decision.EndIPEQ(rng.End.Addr)),
+					decision.EndIPEQ(rng.End.Addr),
 					// decision.end_suffix <= query.end_suffix
-					alert.HasDecisionsWith(decision.EndSuffixLTE(rng.End.Sfx)),
+					decision.EndSuffixLTE(rng.End.Sfx),
 				),
 			),
 		))
