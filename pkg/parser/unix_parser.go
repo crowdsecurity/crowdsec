@@ -44,6 +44,8 @@ func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error)
 		r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 	}
 
+	r.Grok.NoLiteralPrefilter = fflag.GrokDisableLiteralPrefilter.IsEnabled()
+
 	files, err := os.ReadDir(patternDir)
 	if err != nil {
 		return nil, err
