@@ -95,7 +95,7 @@ func TestCompile(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, tc.want, p.Parse(tc.input))
+				require.Equal(t, tc.want, parseMap(p, tc.input))
 			})
 		}
 	}
@@ -195,27 +195,5 @@ func TestParseInto(t *testing.T) {
 				require.Equal(t, tc.after, tc.dest)
 			})
 		}
-	}
-}
-
-// Parse is a thin wrapper over ParseInto and must keep returning an empty (not nil) map
-// on failure: callers test the length of the result.
-func TestParseMatchesParseInto(t *testing.T) {
-	for _, engine := range []struct {
-		name   string
-		useRe2 bool
-	}{{"legacy", false}, {"re2", true}} {
-		t.Run(engine.name, func(t *testing.T) {
-			h := testHost(t, engine.useRe2)
-
-			p, err := h.Compile(`%{PAIR:pair}`)
-			require.NoError(t, err)
-
-			into := map[string]string{}
-			require.True(t, p.ParseInto("1-2", into))
-			require.Equal(t, into, p.Parse("1-2"))
-
-			require.Equal(t, map[string]string{}, p.Parse("nope"))
-		})
 	}
 }

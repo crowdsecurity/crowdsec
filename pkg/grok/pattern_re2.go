@@ -27,13 +27,6 @@ func (p *PatternRe2) ParseInto(input string, dest map[string]string) bool {
 	return true
 }
 
-// Parse returns map (name->match) on input. The map can be empty.
-func (p *PatternRe2) Parse(input string) map[string]string {
-	r := make(map[string]string, len(p.s))
-	p.ParseInto(input, r)
-	return r
-}
-
 // Names returns all names that this pattern has
 func (p *PatternRe2) Names() (ss []string) {
 	ss = make([]string, 0, len(p.s))

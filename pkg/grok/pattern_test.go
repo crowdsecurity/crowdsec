@@ -35,6 +35,14 @@ func terr(t *testing.T, err error) {
 	}
 }
 
+// parseMap collects the captures into a fresh map. These tests compare whole maps, which is
+// the shape Parse used to return before ParseInto replaced it.
+func parseMap(p Pattern, input string) map[string]string {
+	m := make(map[string]string)
+	p.ParseInto(input, m)
+	return m
+}
+
 func mssTest(expect, got map[string]string) bool {
 	if len(expect) != len(got) {
 		return false
@@ -56,14 +64,14 @@ func TestPattern_Parse(t *testing.T) {
 	//
 	if p, err := h.Get("ONE"); err != nil {
 		t.Error(err)
-	} else if !mssTest(nil, p.Parse("1")) {
+	} else if !mssTest(nil, parseMap(p, "1")) {
 		t.Error("unnamed result")
 	}
 	p, err := h.Get("TWO")
 	if err != nil {
 		t.Error(err)
 	}
-	if !mssTest(map[string]string{"one": "1", "two": "2"}, p.Parse("1-2")) {
+	if !mssTest(map[string]string{"one": "1", "two": "2"}, parseMap(p, "1-2")) {
 		t.Error("bad result")
 	}
 	p, err = h.Get("THREE")
@@ -75,7 +83,7 @@ func TestPattern_Parse(t *testing.T) {
 		"two":   "2",
 		"zero":  "0",
 		"three": "1-2",
-	}, p.Parse("0-1-2")) {
+	}, parseMap(p, "0-1-2")) {
 		t.Error("bad result")
 	}
 	if err := h.Add("FOUR", `%{TWO:two}`); err != nil {
@@ -85,7 +93,7 @@ func TestPattern_Parse(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if !mssTest(map[string]string{"one": "1", "two": "1-2"}, p.Parse("1-2")) {
+	if !mssTest(map[string]string{"one": "1", "two": "1-2"}, parseMap(p, "1-2")) {
 		t.Error("bad result")
 	}
 }
@@ -102,13 +110,13 @@ func TestPattern_nestedGroups(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	mss := p.Parse("1-2")
+	mss := parseMap(p, "1-2")
 	if len(mss) != 2 ||
 		mss["one"] != "1" ||
 		mss["two"] != "2" {
 		t.Error("bad result")
 	}
-	mss = p.Parse("1-")
+	mss = parseMap(p, "1-")
 	if len(mss) != 2 ||
 		mss["one"] != "1" ||
 		mss["two"] != "" {

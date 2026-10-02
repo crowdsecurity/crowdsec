@@ -25,13 +25,6 @@ func (p *PatternLegacy) ParseInto(input string, dest map[string]string) bool {
 	return true
 }
 
-// Parse returns map (name->match) on input. The map can be empty.
-func (p *PatternLegacy) Parse(input string) map[string]string {
-	r := make(map[string]string, len(p.s))
-	p.ParseInto(input, r)
-	return r
-}
-
 // Names returns all names that this pattern has
 func (p *PatternLegacy) Names() (ss []string) {
 	ss = make([]string, 0, len(p.s))

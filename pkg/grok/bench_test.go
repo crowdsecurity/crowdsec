@@ -64,26 +64,6 @@ func benchCompile(b *testing.B, useRe2 bool, exprs ...string) []Pattern {
 	return out
 }
 
-// BenchmarkParse is the call path ParseInto replaces: Parse allocates a map, the caller
-// copies it into the event and drops it. Compare against BenchmarkParseInto.
-func BenchmarkParse(b *testing.B) {
-	for _, engine := range benchEngines {
-		for _, bc := range benchCases {
-			b.Run(engine.name+"/"+bc.name, func(b *testing.B) {
-				p := benchCompile(b, engine.useRe2, bc.pattern)[0]
-				dst := make(map[string]string)
-				b.ReportAllocs()
-				b.ResetTimer()
-				for range b.N {
-					for k, v := range p.Parse(bc.line) {
-						dst[k] = v
-					}
-				}
-			})
-		}
-	}
-}
-
 func BenchmarkParseInto(b *testing.B) {
 	for _, engine := range benchEngines {
 		for _, bc := range benchCases {
@@ -105,26 +85,7 @@ func BenchmarkParseInto(b *testing.B) {
 func BenchmarkStageWalk(b *testing.B) {
 	for _, engine := range benchEngines {
 		for _, bc := range benchCases[:3] {
-			b.Run("parse/"+engine.name+"/"+bc.name, func(b *testing.B) {
-				pats := benchCompile(b, engine.useRe2, benchSSHPatterns...)
-				dst := make(map[string]string)
-				b.ReportAllocs()
-				b.ResetTimer()
-				for range b.N {
-					for _, p := range pats {
-						m := p.Parse(bc.line)
-						if len(m) == 0 {
-							continue
-						}
-						for k, v := range m {
-							dst[k] = v
-						}
-						break
-					}
-				}
-			})
-
-			b.Run("parse_into/"+engine.name+"/"+bc.name, func(b *testing.B) {
+			b.Run(engine.name+"/"+bc.name, func(b *testing.B) {
 				pats := benchCompile(b, engine.useRe2, benchSSHPatterns...)
 				dst := make(map[string]string)
 				b.ReportAllocs()
