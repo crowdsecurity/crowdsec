@@ -62,6 +62,9 @@ var (
 type Host struct {
 	Patterns map[string]string
 	UseRe2   bool
+	// NoLiteralPrefilter turns off the strings.Contains pre-check in front of the regexp
+	// engine. Escape hatch, see the grok_disable_literal_prefilter feature flag.
+	NoLiteralPrefilter bool
 }
 
 // New returns new empty host
@@ -96,6 +99,16 @@ func (h Host) Add(name, expr string) error {
 	return nil
 }
 
+// literals extracts the pre-check for a compiled pattern. A pattern with no semantics can
+// never report a match, so computing them would be wasted: most of the pattern directory is
+// building blocks like %{WORD}, and the whole directory is compiled at startup.
+func (h Host) literals(expanded string, s map[string]int) []string {
+	if h.NoLiteralPrefilter || len(s) == 0 {
+		return nil
+	}
+	return extractRequiredLiterals(expanded)
+}
+
 // compiledRegexp is what both regexp engines have in common.
 type compiledRegexp interface {
 	String() string
@@ -107,7 +120,7 @@ func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PatternLegacy{Regexp: r, s: s}, nil
+	return &PatternLegacy{Regexp: r, s: s, requiredLiterals: h.literals(r.String(), s)}, nil
 }
 
 func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
@@ -115,7 +128,7 @@ func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PatternRe2{Regexp: r, s: s}, nil
+	return &PatternRe2{Regexp: r, s: s, requiredLiterals: h.literals(r.String(), s)}, nil
 }
 
 // expand replaces the %{NAME:sem} references in expr with their (recursively
