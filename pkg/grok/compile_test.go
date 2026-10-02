@@ -95,7 +95,7 @@ func TestCompile(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, tc.want, p.Parse(tc.input))
+				require.Equal(t, tc.want, parseMap(p, tc.input))
 			})
 		}
 	}
@@ -115,5 +115,85 @@ func TestCompileEnginesAgreeOnBase(t *testing.T) {
 
 		require.Equal(t, lp.String(), rp.String(), name)
 		require.Equal(t, lp.(*PatternLegacy).s, rp.(*PatternRe2).s, name)
+	}
+}
+
+func TestParseInto(t *testing.T) {
+	tests := []struct {
+		name  string
+		expr  string
+		input string
+		dest  map[string]string
+		want  bool
+		after map[string]string
+	}{
+		{
+			name:  "match writes captures",
+			expr:  `%{PAIR:pair}`,
+			input: "1-2",
+			dest:  map[string]string{},
+			want:  true,
+			after: map[string]string{"pair": "1-2", "one": "1", "two": "2"},
+		},
+		{
+			name:  "existing keys are kept",
+			expr:  `%{DIGIT:d}`,
+			input: "7",
+			dest:  map[string]string{"program": "sshd", "d": "stale"},
+			want:  true,
+			after: map[string]string{"program": "sshd", "d": "7"},
+		},
+		{
+			name:  "no match leaves dest untouched",
+			expr:  `%{DIGIT:d}`,
+			input: "nope",
+			dest:  map[string]string{"program": "sshd"},
+			want:  false,
+			after: map[string]string{"program": "sshd"},
+		},
+		{
+			// an unmatched optional group yields an empty capture, which still counts as a match
+			name:  "empty capture still matches",
+			expr:  `(?:%{DIGIT:one})-(?:%{DIGIT:two})?`,
+			input: "1-",
+			dest:  map[string]string{},
+			want:  true,
+			after: map[string]string{"one": "1", "two": ""},
+		},
+		{
+			// node.go reads "no captures" as a node failure, so a pattern that cannot
+			// produce any must report false even when the regexp itself matches
+			name:  "capture group without semantic does not match",
+			expr:  `(\d)-(\d)`,
+			input: "1-2",
+			dest:  map[string]string{},
+			want:  false,
+			after: map[string]string{},
+		},
+		{
+			name:  "subpattern without semantic does not match",
+			expr:  `%{DIGIT}-%{DIGIT}`,
+			input: "1-2",
+			dest:  map[string]string{},
+			want:  false,
+			after: map[string]string{},
+		},
+	}
+
+	for _, engine := range []struct {
+		name   string
+		useRe2 bool
+	}{{"legacy", false}, {"re2", true}} {
+		for _, tc := range tests {
+			t.Run(engine.name+"/"+tc.name, func(t *testing.T) {
+				h := testHost(t, engine.useRe2)
+
+				p, err := h.Compile(tc.expr)
+				require.NoError(t, err)
+
+				require.Equal(t, tc.want, p.ParseInto(tc.input, tc.dest))
+				require.Equal(t, tc.after, tc.dest)
+			})
+		}
 	}
 }

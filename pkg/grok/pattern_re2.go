@@ -11,17 +11,20 @@ type PatternRe2 struct {
 	s map[string]int
 }
 
-// Parse returns map (name->match) on input. The map can be empty.
-func (p *PatternRe2) Parse(input string) map[string]string {
+// ParseInto writes the captures into dest and reports whether anything was written.
+func (p *PatternRe2) ParseInto(input string, dest map[string]string) bool {
+	// without semantics there is nothing to write, and callers read "no captures" as a failure
+	if len(p.s) == 0 {
+		return false
+	}
 	ss := p.FindStringSubmatch(input)
-	r := make(map[string]string)
 	if len(ss) <= 1 {
-		return r
+		return false
 	}
 	for sem, order := range p.s {
-		r[sem] = ss[order]
+		dest[sem] = ss[order]
 	}
-	return r
+	return true
 }
 
 // Names returns all names that this pattern has
