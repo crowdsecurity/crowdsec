@@ -71,6 +71,7 @@ type ChallengeEventInfo struct {
 	Reason      ChallengeReason            // requested | submitted | failed | rejected | solved
 	FailReason  string                     // set on failed (raw error message) or rejected (operator-supplied reason)
 	FailErr     error                      // set on failed; carries the sentinel-wrapped error so metrics can classify via errors.Is.
+	FlagReason  string                     // set on solved when an on_challenge_submit hook called FlagSubmission
 	Difficulty  int                        // target PoW difficulty for this moment
 	Fingerprint *challenge.FingerprintData // nil when none available (e.g. requested w/o cookie)
 
@@ -92,6 +93,9 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 	evt.Parsed["challenge_difficulty"] = strconv.Itoa(info.Difficulty)
 	if info.FailReason != "" {
 		evt.Parsed["challenge_fail_reason"] = info.FailReason
+	}
+	if info.FlagReason != "" {
+		evt.Parsed["challenge_flag_reason"] = info.FlagReason
 	}
 
 	// Score can net to zero even with contributions, so gate on the detail.

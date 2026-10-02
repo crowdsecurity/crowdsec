@@ -276,6 +276,23 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 			state.HooksHalted = true
 			return nil
 		},
+		// Not terminal, unlike RejectSubmission: a later rule may still
+		// reject, in which case the rejection alert replaces the flag one.
+		"FlagSubmission": func(reason string, verbosity ...string) error {
+			if err := w.FlagSubmission(state, reason); err != nil {
+				return err
+			}
+			state.Fingerprint.LogRejected(
+				withRequestScore(w.Logger, state),
+				log.InfoLevel,
+				request.ClientIP,
+				request.RemoteAddrNormalized,
+				state.SubmissionFlagReason,
+				"on_challenge_submit flagged",
+				parseLogVerbosity(w.Logger, verbosity),
+			)
+			return nil
+		},
 		// LogAccepted is intentionally exposed only here: per-request
 		// cookie-validation acceptance is logged at Debug from the
 		// internal ProcessOnChallengeRules path, so the only operator-
