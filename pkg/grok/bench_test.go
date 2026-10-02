@@ -49,11 +49,19 @@ var benchEngines = []struct {
 	useRe2 bool
 }{{"legacy", false}, {"re2", true}}
 
-func benchCompile(b *testing.B, useRe2 bool, exprs ...string) []Pattern {
+// benchPrefilter is the on/off dimension: the "off" arm is what the engine did before the
+// literal pre-check, measured in the same binary to keep the comparison free of build drift.
+var benchPrefilter = []struct {
+	name string
+	on   bool
+}{{"prefilter_off", false}, {"prefilter_on", true}}
+
+func benchCompile(b *testing.B, useRe2, prefilter bool, exprs ...string) []Pattern {
 	b.Helper()
 
 	h := NewBase()
 	h.UseRe2 = useRe2
+	h.NoLiteralPrefilter = !prefilter
 
 	out := make([]Pattern, 0, len(exprs))
 	for _, expr := range exprs {
@@ -65,17 +73,19 @@ func benchCompile(b *testing.B, useRe2 bool, exprs ...string) []Pattern {
 }
 
 func BenchmarkParseInto(b *testing.B) {
-	for _, engine := range benchEngines {
-		for _, bc := range benchCases {
-			b.Run(engine.name+"/"+bc.name, func(b *testing.B) {
-				p := benchCompile(b, engine.useRe2, bc.pattern)[0]
-				dst := make(map[string]string)
-				b.ReportAllocs()
-				b.ResetTimer()
-				for range b.N {
-					p.ParseInto(bc.line, dst)
-				}
-			})
+	for _, pf := range benchPrefilter {
+		for _, engine := range benchEngines {
+			for _, bc := range benchCases {
+				b.Run(pf.name+"/"+engine.name+"/"+bc.name, func(b *testing.B) {
+					p := benchCompile(b, engine.useRe2, pf.on, bc.pattern)[0]
+					dst := make(map[string]string)
+					b.ReportAllocs()
+					b.ResetTimer()
+					for range b.N {
+						p.ParseInto(bc.line, dst)
+					}
+				})
+			}
 		}
 	}
 }
@@ -83,21 +93,23 @@ func BenchmarkParseInto(b *testing.B) {
 // BenchmarkStageWalk tries every node of a stage until one matches, which is where the cost
 // of a miss gets multiplied.
 func BenchmarkStageWalk(b *testing.B) {
-	for _, engine := range benchEngines {
-		for _, bc := range benchCases[:3] {
-			b.Run(engine.name+"/"+bc.name, func(b *testing.B) {
-				pats := benchCompile(b, engine.useRe2, benchSSHPatterns...)
-				dst := make(map[string]string)
-				b.ReportAllocs()
-				b.ResetTimer()
-				for range b.N {
-					for _, p := range pats {
-						if p.ParseInto(bc.line, dst) {
-							break
+	for _, pf := range benchPrefilter {
+		for _, engine := range benchEngines {
+			for _, bc := range benchCases[:3] {
+				b.Run(pf.name+"/"+engine.name+"/"+bc.name, func(b *testing.B) {
+					pats := benchCompile(b, engine.useRe2, pf.on, benchSSHPatterns...)
+					dst := make(map[string]string)
+					b.ReportAllocs()
+					b.ResetTimer()
+					for range b.N {
+						for _, p := range pats {
+							if p.ParseInto(bc.line, dst) {
+								break
+							}
 						}
 					}
-				}
-			})
+				})
+			}
 		}
 	}
 }
@@ -105,25 +117,28 @@ func BenchmarkStageWalk(b *testing.B) {
 // BenchmarkCompileBase guards the compile path: the whole pattern directory is compiled at
 // startup, so anything added there shows up as engine startup time.
 func BenchmarkCompileBase(b *testing.B) {
-	for _, engine := range benchEngines {
-		b.Run(engine.name, func(b *testing.B) {
-			h := NewBase()
-			h.UseRe2 = engine.useRe2
+	for _, pf := range benchPrefilter {
+		for _, engine := range benchEngines {
+			b.Run(pf.name+"/"+engine.name, func(b *testing.B) {
+				h := NewBase()
+				h.UseRe2 = engine.useRe2
+				h.NoLiteralPrefilter = !pf.on
 
-			names := make([]string, 0, len(h.Patterns))
-			for name := range h.Patterns {
-				names = append(names, name)
-			}
+				names := make([]string, 0, len(h.Patterns))
+				for name := range h.Patterns {
+					names = append(names, name)
+				}
 
-			b.ReportAllocs()
-			b.ResetTimer()
-			for range b.N {
-				for _, name := range names {
-					if _, err := h.Get(name); err != nil {
-						b.Fatal(err)
+				b.ReportAllocs()
+				b.ResetTimer()
+				for range b.N {
+					for _, name := range names {
+						if _, err := h.Get(name); err != nil {
+							b.Fatal(err)
+						}
 					}
 				}
-			}
-		})
+			})
+		}
 	}
 }
