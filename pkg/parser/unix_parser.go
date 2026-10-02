@@ -10,7 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/grokky"
+	"github.com/crowdsecurity/crowdsec/pkg/grok"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -18,7 +18,7 @@ import (
 )
 
 type UnixParserCtx struct {
-	Grok       grokky.Host
+	Grok       grok.Host
 	Stages     []string
 	Profiling  bool
 	DataFolder string
@@ -36,7 +36,7 @@ type Parsers struct {
 
 func NewUnixParserCtx(patternDir string, dataDir string) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
-	r.Grok = grokky.NewBase()
+	r.Grok = grok.NewBase()
 	// RE2 is enabled by default on linux, but can be disabled with re2_disable_grok_support
 	if runtime.GOOS == "linux" {
 		r.Grok.UseRe2 = !fflag.Re2DisableGrokSupport.IsEnabled()
@@ -165,8 +165,8 @@ func LoadParsers(cConfig *csconfig.Config, hub *cwhub.Hub) (*Parsers, error) {
 	/*
 		Reset CTX grok to reduce memory footprint after we compile all the patterns
 	*/
-	parsers.Ctx.Grok = grokky.Host{}
-	parsers.PovfwCtx.Grok = grokky.Host{}
+	parsers.Ctx.Grok = grok.Host{}
+	parsers.PovfwCtx.Grok = grok.Host{}
 	parsers.StageFiles = []Stagefile{}
 	parsers.PovfwStageFiles = []Stagefile{}
 
