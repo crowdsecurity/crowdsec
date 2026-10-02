@@ -30,7 +30,7 @@ import (
 	"log"
 )
 
-func ExamplePattern_Parse() {
+func ExamplePattern_ParseInto() {
 	h := New()
 	if err := h.Add("WORD", `\w+`); err != nil {
 		log.Fatal(err)
@@ -42,7 +42,10 @@ func ExamplePattern_Parse() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	result := p.Parse("Alice/15")
+	result := make(map[string]string)
+	if !p.ParseInto("Alice/15", result) {
+		log.Fatal("no match")
+	}
 	fmt.Println("Name:", result["name"])
 	fmt.Println("Age:", result["age"])
 	// Output:
