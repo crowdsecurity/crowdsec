@@ -16,7 +16,8 @@ type DataSourceCommonCfg struct {
 }
 
 const (
-	TAIL_MODE   = "tail"
-	CAT_MODE    = "cat"
-	SERVER_MODE = "server" // No difference with tail, just a bit more verbose
+	TAIL_MODE     = "tail"     // file source: follow with nxadm and keep the handle open
+	CAT_MODE      = "cat"      // read the source once, then stop
+	POLLTAIL_MODE = "polltail" // file source: open, read, and close the file on each pass
+	SERVER_MODE   = "server"   // No difference with tail, just a bit more verbose
 )
