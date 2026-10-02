@@ -257,6 +257,10 @@ type AppsecRequestState struct {
 	// challenge submission. nil for any other phase / outcome.
 	SubmissionRejection *SubmissionRejectInfo
 
+	// SubmissionFlagReason is set by FlagSubmission: the cookie is still
+	// issued, but an alert is raised. A rejection takes precedence.
+	SubmissionFlagReason string
+
 	// ChallengeBypassed is set by GrantChallengeCookie to suppress later
 	// SendChallenge calls in the same request. Per-request only; cleared
 	// on ResetResponse. The bypass for subsequent requests is carried by
@@ -321,6 +325,7 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.PendingHTTPCode = nil
 	s.RequireChallenge = false
 	s.SubmissionRejection = nil
+	s.SubmissionFlagReason = ""
 	s.ChallengeBypassed = false
 	s.HooksHalted = false
 }
@@ -506,11 +511,12 @@ func (w *AppsecRuntimeConfig) emitChallenge(state *AppsecRequestState, request *
 	evt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 	StampHookVars(&evt, state)
 
-	// A submission we refused is the only moment worth an alert of its own.
+	// Only refused or explicitly flagged submissions are worth an alert of their own.
 	var overflow *pipeline.Event
 
-	switch info.Reason {
-	case ChallengeReasonRejected, ChallengeReasonFailed:
+	switch {
+	case info.Reason == ChallengeReasonRejected, info.Reason == ChallengeReasonFailed,
+		info.Reason == ChallengeReasonSolved && info.FlagReason != "":
 		overflow = w.buildChallengeOverflow(state, request, info, evt.Appsec.HookVars)
 	}
 
@@ -1343,11 +1349,17 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 
-		w.emitChallenge(state, request, ChallengeEventInfo{
+		info := ChallengeEventInfo{
 			Reason:      ChallengeReasonSolved,
 			Difficulty:  state.CookiePowDifficulty,
 			Fingerprint: &fpData,
-		})
+		}
+		if state.SubmissionFlagReason != "" {
+			info.FlagReason = state.SubmissionFlagReason
+			info.Score = state.RequestScore.Total()
+			info.ScoreDetail = state.RequestScore.String()
+		}
+		w.emitChallenge(state, request, info)
 
 		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
@@ -1859,6 +1871,17 @@ func (*AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason s
 		reason = "submission rejected by on_challenge_submit"
 	}
 	state.SubmissionRejection = &SubmissionRejectInfo{Reason: reason}
+	return nil
+}
+
+// FlagSubmission raises an alert for the in-flight challenge submission
+// without refusing the cookie. Only inspected at submit time.
+func (*AppsecRuntimeConfig) FlagSubmission(state *AppsecRequestState, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "submission flagged by on_challenge_submit"
+	}
+	state.SubmissionFlagReason = reason
 	return nil
 }
 
