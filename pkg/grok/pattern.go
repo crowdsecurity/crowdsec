@@ -5,5 +5,6 @@ type Pattern interface {
 	String() string
 	Names() []string
 	Parse(input string) map[string]string
+	ParseInto(input string, dest map[string]string) bool
 	NumSubexp() int
 }
