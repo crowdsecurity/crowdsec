@@ -1,7 +1,9 @@
 package appsecacquisition
 
 import (
+	"context"
 	"crypto/x509"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -21,7 +23,7 @@ type Source struct {
 	lapiClientConfig      *csconfig.LocalApiClientCfg
 	logger                *log.Entry
 	mux                   *http.ServeMux
-	server                *http.Server
+	server                server
 	InChan                chan appsec.ParsedRequest
 	AppsecRuntime         *appsec.AppsecRuntimeConfig
 	AppsecConfigs         map[string]appsec.AppsecConfig
@@ -32,6 +34,14 @@ type Source struct {
 	lapiCACertPool        *x509.CertPool
 	authGroup             singleflight.Group
 	httpClient            *http.Client
+}
+
+// server is implemented by both net/http and the custom httpserver, selected by
+// the appsec_custom_http_server feature flag.
+type server interface {
+	Serve(l net.Listener) error
+	ServeTLS(l net.Listener, certFile, keyFile string) error
+	Shutdown(ctx context.Context) error
 }
 
 type AuthCache struct {

@@ -17,8 +17,10 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/httpserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 // hubWithConfigs builds an in-memory hub holding the given appsec-configs and
@@ -407,6 +409,27 @@ func TestResolveAppsecConfigEntries(t *testing.T) {
 			got, err := resolveAppsecConfigEntries(tc.entries, hub)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestNewServerFeatureFlag(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+		want    server
+	}{
+		{name: "default is net/http", enabled: false, want: &http.Server{}},
+		{name: "flag enables custom server", enabled: true, want: &httpserver.Server{}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, fflag.AppsecCustomHTTPServer.Set(tc.enabled))
+			t.Cleanup(func() { _ = fflag.AppsecCustomHTTPServer.Set(false) })
+
+			got := newServer("127.0.0.1:0", http.NewServeMux(), log.NewEntry(log.StandardLogger()))
+			require.IsType(t, tc.want, got)
 		})
 	}
 }

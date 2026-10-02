@@ -18,12 +18,14 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/httpserver"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/challenge"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -184,6 +186,29 @@ func resolveAppsecConfigEntries(entries []string, hub *cwhub.Hub) ([]string, err
 	return toLoad, nil
 }
 
+func newServer(addr string, handler http.Handler, logger *log.Entry) server {
+	if fflag.AppsecCustomHTTPServer.IsEnabled() {
+		logger.Info("using custom HTTP server")
+
+		return &httpserver.Server{
+			Handler: handler,
+			Logger:  logger,
+		}
+	}
+
+	srv := &http.Server{
+		Addr:      addr,
+		Handler:   handler,
+		Protocols: &http.Protocols{},
+	}
+
+	srv.Protocols.SetHTTP1(true)
+	srv.Protocols.SetUnencryptedHTTP2(true)
+	srv.Protocols.SetHTTP2(true)
+
+	return srv
+}
+
 func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.Entry, _ metrics.AcquisitionMetricsLevel) error {
 	if w.hub == nil {
 		return errors.New("appsec datasource requires a hub. this is a bug, please report")
@@ -224,15 +249,7 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 
 	w.mux = http.NewServeMux()
 
-	w.server = &http.Server{
-		Addr:      w.config.ListenAddr,
-		Handler:   w.mux,
-		Protocols: &http.Protocols{},
-	}
-
-	w.server.Protocols.SetHTTP1(true)
-	w.server.Protocols.SetUnencryptedHTTP2(true)
-	w.server.Protocols.SetHTTP2(true)
+	w.server = newServer(w.config.ListenAddr, w.mux, w.logger)
 
 	w.InChan = make(chan appsec.ParsedRequest)
 	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
