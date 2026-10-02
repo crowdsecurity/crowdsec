@@ -217,6 +217,58 @@ func TestParseQuery(t *testing.T) {
 	}
 }
 
+func TestParseURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		rawURL         string
+		expectedPath   string
+		expectedHost   string
+		expectedOpaque string
+	}{
+		{
+			name:         "Normal path",
+			rawURL:       "/path/to/resource",
+			expectedPath: "/path/to/resource",
+		},
+		{
+			name:         "Path with query",
+			rawURL:       "/path/to/resource?query=value",
+			expectedPath: "/path/to/resource",
+		},
+		{
+			name:         "Full URL with scheme",
+			rawURL:       "http://example.com/path",
+			expectedPath: "/path",
+			expectedHost: "example.com",
+		},
+		{
+			name:           "Authority-form (CONNECT request)",
+			rawURL:         "116.202.157.104:80",
+			expectedOpaque: "116.202.157.104:80",
+		},
+		{
+			name:           "Authority-form with hostname (parsed as scheme:opaque)",
+			rawURL:         "example.com:443",
+			expectedOpaque: "443", // Go parses this as scheme=example.com, opaque=443
+		},
+		{
+			name:         "Empty string",
+			rawURL:       "",
+			expectedPath: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res := ParseURL(test.rawURL)
+			require.NotNil(t, res)
+			require.Equal(t, test.expectedPath, res.Path)
+			require.Equal(t, test.expectedHost, res.Host)
+			require.Equal(t, test.expectedOpaque, res.Opaque)
+		})
+	}
+}
+
 func TestExtractQueryParam(t *testing.T) {
 	tests := []struct {
 		name     string
