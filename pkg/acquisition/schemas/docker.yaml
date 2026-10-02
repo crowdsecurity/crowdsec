@@ -70,6 +70,8 @@ properties:
     format: date-time
     description: >
       RFC3339 lower-bound timestamp; defaults to the current UTC time if omitted.
+      Only used in cat mode: in tail mode, containers and services are read from
+      the moment they are discovered.
   until:
     type: string
     format: date-time
