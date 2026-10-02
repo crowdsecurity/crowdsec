@@ -24,7 +24,37 @@ var (
 	Cert               *tls.Certificate
 	CaCertPool         *x509.CertPool
 	lapiClient         *ApiClient
+
+	// CertPath and KeyPath store the paths to the client certificate and key files.
+	// These are used to reload the certificate when it expires and is renewed on disk.
+	CertPath string
+	KeyPath  string
 )
+
+// ReloadCertIfNeeded checks if mTLS is configured and reloads the client certificate
+// from disk, updating the provided transport's TLS config.
+// This is called when a 401 is received, as the cert may have been renewed on disk
+// while the old one expired in memory.
+func ReloadCertIfNeeded(transport http.RoundTripper) error {
+	// Only attempt reload if mTLS is configured with cert paths
+	if Cert == nil || CertPath == "" || KeyPath == "" {
+		return nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(CertPath, KeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to reload certificate: %w", err)
+	}
+
+	Cert = &cert
+
+	// Update the transport's TLS config if possible
+	if httpTransport, ok := transport.(*http.Transport); ok && httpTransport.TLSClientConfig != nil {
+		httpTransport.TLSClientConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	return nil
+}
 
 type TokenSave func(ctx context.Context, token string) error
 
