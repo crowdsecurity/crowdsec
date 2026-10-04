@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"cmp"
 	"fmt"
 	"net"
 
@@ -24,6 +25,8 @@ type Controller struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	DecisionsStreamPageSize int
 }
 
 type ControllerV1Config struct {
@@ -37,6 +40,8 @@ type ControllerV1Config struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	DecisionsStreamPageSize int
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -57,6 +62,8 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
+		// 0 must never reach the query: it becomes LIMIT 0 and the stream would be silently empty.
+		DecisionsStreamPageSize: cmp.Or(cfg.DecisionsStreamPageSize, defaultDecisionsStreamPageSize),
 	}
 
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)

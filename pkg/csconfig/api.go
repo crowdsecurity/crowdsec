@@ -247,6 +247,7 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+	DecisionsStreamPageSize       int                      `yaml:"decisions_stream_page_size,omitempty"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -368,6 +369,10 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 
 	if c.API.Server.ListenURI == "" && c.API.Server.ListenSocket == "" {
 		return errors.New("no listen_uri or listen_socket specified")
+	}
+
+	if c.API.Server.DecisionsStreamPageSize < 0 {
+		return fmt.Errorf("decisions_stream_page_size cannot be negative, got %d", c.API.Server.DecisionsStreamPageSize)
 	}
 
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {

@@ -268,6 +268,20 @@ func TestLoadAPIServer(t *testing.T) {
 			},
 			expectedErr: "no database configuration provided",
 		},
+		{
+			name: "negative decisions_stream_page_size",
+			input: &Config{
+				Self: []byte(configData),
+				API: &APICfg{
+					Server: &LocalApiServerCfg{
+						ListenURI:               "http://crowdsec.api",
+						DecisionsStreamPageSize: -1,
+					},
+				},
+				DisableAPI: false,
+			},
+			expectedErr: "decisions_stream_page_size cannot be negative, got -1",
+		},
 	}
 
 	for _, tc := range tests {

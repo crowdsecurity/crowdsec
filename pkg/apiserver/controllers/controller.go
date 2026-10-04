@@ -30,6 +30,7 @@ type Controller struct {
 	HandlerV1                     *v1.Controller
 	AutoRegisterCfg               *csconfig.LocalAPIAutoRegisterCfg
 	DisableRemoteLapiRegistration bool
+	DecisionsStreamPageSize       int
 }
 
 func (c *Controller) Init() error {
@@ -89,6 +90,8 @@ func (c *Controller) NewV1() error {
 		ConsoleConfig:      *c.ConsoleConfig,
 		TrustedIPs:         c.TrustedIPs,
 		AutoRegisterCfg:    c.AutoRegisterCfg,
+
+		DecisionsStreamPageSize: c.DecisionsStreamPageSize,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)

@@ -187,6 +187,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
+		DecisionsStreamPageSize:       config.DecisionsStreamPageSize,
 	}
 
 	var (
