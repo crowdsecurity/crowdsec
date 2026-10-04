@@ -1,9 +1,10 @@
 package v1
 
 import (
-	"cmp"
 	"fmt"
 	"net"
+
+	log "github.com/sirupsen/logrus"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -52,6 +53,17 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		return &Controller{}, fmt.Errorf("failed to compile profiles: %w", err)
 	}
 
+	pageSize := cfg.DecisionsStreamPageSize
+	if pageSize < 0 {
+		log.Warningf("decisions_stream_page_size cannot be negative (%d), using the default value of %d", pageSize, defaultDecisionsStreamPageSize)
+	}
+
+	// ent drops LIMIT for 0 and SQLite ignores a negative one: a page would be the whole table,
+	// and the paging loop would never end.
+	if pageSize <= 0 {
+		pageSize = defaultDecisionsStreamPageSize
+	}
+
 	v1 := &Controller{
 		DBClient:           cfg.DbClient,
 		APIKeyHeader:       middlewares.APIKeyHeader,
@@ -62,8 +74,8 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
-		// 0 must never reach the query: it becomes LIMIT 0 and the stream would be silently empty.
-		DecisionsStreamPageSize: cmp.Or(cfg.DecisionsStreamPageSize, defaultDecisionsStreamPageSize),
+
+		DecisionsStreamPageSize: pageSize,
 	}
 
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)

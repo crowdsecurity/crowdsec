@@ -371,10 +371,6 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return errors.New("no listen_uri or listen_socket specified")
 	}
 
-	if c.API.Server.DecisionsStreamPageSize < 0 {
-		return fmt.Errorf("decisions_stream_page_size cannot be negative, got %d", c.API.Server.DecisionsStreamPageSize)
-	}
-
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" && !skipOnlineCreds {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return fmt.Errorf("loading online client credentials: %w", err)

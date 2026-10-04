@@ -504,6 +504,7 @@ func TestStreamDecisionPageSize(t *testing.T) {
 		want     int
 	}{
 		{"default", 0, 30000},
+		{"negative falls back to default", -1, 30000},
 		{"one per page", 1, 1},
 		{"partial last page", 2, 2},
 		{"exact multiple", 5, 5},
