@@ -62,8 +62,7 @@ var (
 type Host struct {
 	Patterns map[string]string
 	UseRe2   bool
-	// NoLiteralPrefilter turns off the strings.Contains pre-check in front of the regexp
-	// engine. Escape hatch, see the grok_disable_literal_prefilter feature flag.
+	// NoLiteralPrefilter turns off the strings.Contains pre-check.
 	NoLiteralPrefilter bool
 }
 
