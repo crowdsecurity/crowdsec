@@ -7,12 +7,17 @@ import "regexp"
 type PatternLegacy struct {
 	*regexp.Regexp
 	s map[string]int
+	// literals every matching input must contain, checked before the engine runs
+	requiredLiterals []string
 }
 
 // ParseInto writes the captures into dest and reports whether anything was written.
 func (p *PatternLegacy) ParseInto(input string, dest map[string]string) bool {
 	// without semantics there is nothing to write, and callers read "no captures" as a failure
 	if len(p.s) == 0 {
+		return false
+	}
+	if !canMatch(p.requiredLiterals, input) {
 		return false
 	}
 	ss := p.FindStringSubmatch(input)
