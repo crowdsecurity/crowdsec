@@ -62,6 +62,8 @@ var (
 type Host struct {
 	Patterns map[string]string
 	UseRe2   bool
+	// NoLiteralPrefilter turns off the strings.Contains pre-check.
+	NoLiteralPrefilter bool
 }
 
 // New returns new empty host
@@ -83,17 +85,28 @@ func (h Host) Add(name, expr string) error {
 	if _, ok := h.Patterns[name]; ok {
 		return ErrAlreadyExist
 	}
+	// only validate: the pattern itself is built by Get or Compile
+	var err error
 	if h.UseRe2 {
-		if _, err := h.compileExternalRe2(expr); err != nil {
-			return err
-		}
+		_, _, err = expand(h, expr, re2.Compile)
 	} else {
-		if _, err := h.compileExternal(expr); err != nil {
-			return err
-		}
+		_, _, err = expand(h, expr, regexp.Compile)
+	}
+	if err != nil {
+		return err
 	}
 	h.Patterns[name] = expr
 	return nil
+}
+
+// literals extracts the pre-check for a compiled pattern. A pattern with no semantics can
+// never report a match, so computing them would be wasted: most of the pattern directory is
+// building blocks like %{WORD}, and the whole directory is compiled at startup.
+func (h Host) literals(expanded string, s map[string]int) []string {
+	if h.NoLiteralPrefilter || len(s) == 0 {
+		return nil
+	}
+	return extractRequiredLiterals(expanded)
 }
 
 // compiledRegexp is what both regexp engines have in common.
@@ -103,27 +116,48 @@ type compiledRegexp interface {
 }
 
 func (h Host) compileExternal(expr string) (*PatternLegacy, error) {
-	r, s, err := expand(h, expr, regexp.Compile)
+	expanded, s, err := expandExpr(h, expr, regexp.Compile)
 	if err != nil {
 		return nil, err
 	}
-	return &PatternLegacy{Regexp: r, s: s}, nil
+	r, rs, err := compileFewerCaptures(expanded, s, regexp.Compile)
+	if err != nil {
+		return nil, err
+	}
+	return &PatternLegacy{Regexp: r, s: rs, requiredLiterals: h.literals(expanded, s)}, nil
 }
 
 func (h Host) compileExternalRe2(expr string) (*PatternRe2, error) {
-	r, s, err := expand(h, expr, re2.Compile)
+	expanded, s, err := expandExpr(h, expr, re2.Compile)
 	if err != nil {
 		return nil, err
 	}
-	return &PatternRe2{Regexp: r, s: s}, nil
+	r, rs, err := compileFewerCaptures(expanded, s, re2.Compile)
+	if err != nil {
+		return nil, err
+	}
+	return &PatternRe2{Regexp: r, s: rs, requiredLiterals: h.literals(expanded, s)}, nil
 }
 
-// expand replaces the %{NAME:sem} references in expr with their (recursively
-// expanded) patterns, and returns the compiled result with the capture index of
-// each semantic.
+// expand compiles the expansion of expr, see expandExpr.
 func expand[R compiledRegexp](h Host, expr string, compile func(string) (R, error)) (R, map[string]int, error) {
 	var zero R
 
+	res, msi, err := expandExpr(h, expr, compile)
+	if err != nil {
+		return zero, nil, err
+	}
+	r, err := compile(res)
+	if err != nil {
+		return zero, nil, err
+	}
+	return r, msi, nil
+}
+
+// expandExpr replaces the %{NAME:sem} references in expr with their (recursively
+// expanded) patterns, and returns the result with the capture index of each
+// semantic. Only the sub-patterns are compiled, to count their groups.
+func expandExpr[R compiledRegexp](h Host, expr string, compile func(string) (R, error)) (string, map[string]int, error) {
 	// find subpatterns
 	subs := patternRegexp.FindAllString(expr, -1)
 	// this semantics set
@@ -132,17 +166,13 @@ func expand[R compiledRegexp](h Host, expr string, compile func(string) (R, erro
 	for _, s := range subs {
 		name, sem := split(s)
 		if _, ok := h.Patterns[name]; !ok {
-			return zero, nil, fmt.Errorf("the '%s' pattern doesn't exist", name)
+			return "", nil, fmt.Errorf("the '%s' pattern doesn't exist", name)
 		}
 		ts[sem] = struct{}{}
 	}
 	// if there are not subpatterns
 	if len(subs) == 0 {
-		r, err := compile(expr)
-		if err != nil {
-			return zero, nil, err
-		}
-		return r, nil, nil
+		return expr, nil, nil
 	}
 	// split
 	spl := patternRegexp.Split(expr, -1)
@@ -159,7 +189,7 @@ func expand[R compiledRegexp](h Host, expr string, compile func(string) (R, erro
 		subName, subSem := split(sub)
 		subRe, subMsi, err := expand(h, h.Patterns[subName], compile)
 		if err != nil {
-			return zero, nil, err
+			return "", nil, err
 		}
 		sub = subRe.String()
 		subNumSubexp := subRe.NumSubexp()
@@ -179,11 +209,7 @@ func expand[R compiledRegexp](h Host, expr string, compile func(string) (R, erro
 		order += subNumSubexp
 	} // last spl
 	res += spl[len(spl)-1]
-	r, err := compile(res)
-	if err != nil {
-		return zero, nil, err
-	}
-	return r, msi, nil
+	return res, msi, nil
 }
 
 // Get pattern by name from the Host
