@@ -111,12 +111,9 @@ func sharesBacking(body string, off int, s string) bool {
 	return unsafe.StringData(body[off:]) == unsafe.StringData(s)
 }
 
-// TestSpentSet_DoesNotPinSubmissionBody guards against retaining the whole
-// challenge submission per burned ticket. ValidateChallengeResponse parses
-// string(body), and url.ParseQuery hands back values that alias that string
-// whenever they need no unescaping — which is always the case for the 32-char
-// hex `r`. Storing that view keeps the entire body (several KB of fingerprint)
-// alive for ticketAgeBackstop, so the set must own its keys.
+// TestSpentSet_DoesNotPinSubmissionBody test is only relevant for PR 4737
+// Before that, the whole submission body from bot detection was escaping to heap 
+// because of url.ParseQuery fast track mechanisms.
 func TestSpentSet_DoesNotPinSubmissionBody(t *testing.T) {
 	const rValue = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
 
