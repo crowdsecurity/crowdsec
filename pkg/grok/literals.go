@@ -32,7 +32,7 @@ func filterLiterals(literals []string) []string {
 	seen := make(map[string]struct{})
 	kept := make([]string, 0, maxLiterals)
 	for _, lit := range literals {
-		if len(lit) < minLiteralLength {
+		if len(lit) < minLiteralLength || strings.ContainsRune(lit, '\uFFFD') {
 			continue
 		}
 		if _, ok := seen[lit]; ok {
