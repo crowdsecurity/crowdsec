@@ -4,6 +4,7 @@ package challenge
 
 import (
 	"container/list"
+	"strings"
 	"sync"
 	"time"
 )
@@ -65,7 +66,14 @@ func (s *spentSet) checkAndInsert(r string, ttl time.Duration) bool {
 		s.remove(s.order.Front())
 	}
 
-	s.items[r] = s.order.PushBack(&spentEntry{r: r, expiresAt: now.Add(ttl)})
+	// Copy before retaining: callers hand us a value sliced out of the parsed
+	// submission body (url.ParseQuery doesn't copy values that need no
+	// unescaping), so keeping that view would pin the whole body — several KB of
+	// fingerprint payload — for the entry's full TTL. Only the insert path pays
+	// for this; the lookup above doesn't retain its key.
+	key := strings.Clone(r)
+
+	s.items[key] = s.order.PushBack(&spentEntry{r: key, expiresAt: now.Add(ttl)})
 
 	return true
 }
