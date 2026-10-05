@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -499,15 +500,16 @@ func TestStreamDecisionDeltaFilters(t *testing.T) {
 // decisions, on startup and on a delta.
 func TestStreamDecisionPageSize(t *testing.T) {
 	tests := []struct {
-		name     string
-		pageSize int
-		want     int
+		name   string
+		stream *csconfig.DecisionsStreamCfg
+		want   int
 	}{
-		{"default", 0, 30000},
-		{"negative falls back to default", -1, 30000},
-		{"one per page", 1, 1},
-		{"partial last page", 2, 2},
-		{"exact multiple", 5, 5},
+		{"section unset", nil, 30000},
+		{"zero falls back to default", &csconfig.DecisionsStreamCfg{PageSize: 0}, 30000},
+		{"negative falls back to default", &csconfig.DecisionsStreamCfg{PageSize: -1}, 30000},
+		{"one per page", &csconfig.DecisionsStreamCfg{PageSize: 1}, 1},
+		{"partial last page", &csconfig.DecisionsStreamCfg{PageSize: 2}, 2},
+		{"exact multiple", &csconfig.DecisionsStreamCfg{PageSize: 5}, 5},
 	}
 
 	values := func(ds []*models.Decision) []string {
@@ -524,7 +526,7 @@ func TestStreamDecisionPageSize(t *testing.T) {
 			ctx := t.Context()
 
 			config := LoadTestConfig(t)
-			config.API.Server.DecisionsStreamPageSize = tc.pageSize
+			config.API.Server.DecisionsStream = tc.stream
 
 			logger, _ := logtest.NewNullLogger()
 			apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))

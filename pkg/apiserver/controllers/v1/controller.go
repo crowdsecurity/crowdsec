@@ -42,7 +42,7 @@ type ControllerV1Config struct {
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 
-	DecisionsStreamPageSize int
+	DecisionsStream *csconfig.DecisionsStreamCfg
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -53,15 +53,17 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		return &Controller{}, fmt.Errorf("failed to compile profiles: %w", err)
 	}
 
-	pageSize := cfg.DecisionsStreamPageSize
-	if pageSize < 0 {
-		log.Warningf("decisions_stream_page_size cannot be negative (%d), using the default value of %d", pageSize, defaultDecisionsStreamPageSize)
+	pageSize := csconfig.DefaultDecisionsStreamPageSize
+	if cfg.DecisionsStream != nil {
+		pageSize = cfg.DecisionsStream.PageSize
 	}
 
 	// ent drops LIMIT for 0 and SQLite ignores a negative one: a page would be the whole table,
 	// and the paging loop would never end.
 	if pageSize <= 0 {
-		pageSize = defaultDecisionsStreamPageSize
+		log.Warningf("decisions_stream.page_size must be greater than 0 (got %d), using the default value of %d", pageSize, csconfig.DefaultDecisionsStreamPageSize)
+
+		pageSize = csconfig.DefaultDecisionsStreamPageSize
 	}
 
 	v1 := &Controller{

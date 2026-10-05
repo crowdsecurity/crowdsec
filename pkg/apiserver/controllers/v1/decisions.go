@@ -15,9 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// Each page is held in memory while it is written out, once per in-flight stream request.
-const defaultDecisionsStreamPageSize = 30000
-
 // Format decisions for the bouncers
 func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 	var results []*models.Decision

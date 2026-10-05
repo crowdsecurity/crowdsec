@@ -247,7 +247,14 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
-	DecisionsStreamPageSize       int                      `yaml:"decisions_stream_page_size,omitempty"`
+	DecisionsStream               *DecisionsStreamCfg      `yaml:"decisions_stream,omitempty"`
+}
+
+// Each page is held in memory while it is written out, once per in-flight stream request.
+const DefaultDecisionsStreamPageSize = 30000
+
+type DecisionsStreamCfg struct {
+	PageSize int `yaml:"page_size"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -412,6 +419,8 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return err
 	}
 
+	c.API.Server.LoadDecisionsStream()
+
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
@@ -517,6 +526,16 @@ func (c *Config) LoadAPIClient() error {
 	}
 
 	return c.API.Client.Load()
+}
+
+func (c *LocalApiServerCfg) LoadDecisionsStream() {
+	if c.DecisionsStream == nil {
+		c.DecisionsStream = &DecisionsStreamCfg{}
+	}
+
+	if c.DecisionsStream.PageSize == 0 {
+		c.DecisionsStream.PageSize = DefaultDecisionsStreamPageSize
+	}
 }
 
 func (c *LocalApiServerCfg) LoadAutoRegister() error {
