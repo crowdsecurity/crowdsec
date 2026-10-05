@@ -1,10 +1,13 @@
 package challenge
 
 import (
+	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,4 +102,51 @@ func TestSpentSet_ReclaimsExpired(t *testing.T) {
 // freshly built set must not preallocate for maxEntries.
 func TestSpentSet_StartsEmpty(t *testing.T) {
 	require.Equal(t, 0, newSpentSet(spentSetDefaultMaxEntries).len())
+}
+
+// sharesBacking reports whether s is a view into body starting at off, rather
+// than a copy. Taking StringData of the body subslice keeps this pointer
+// comparison free of any uintptr arithmetic.
+func sharesBacking(body string, off int, s string) bool {
+	return unsafe.StringData(body[off:]) == unsafe.StringData(s)
+}
+
+// TestSpentSet_DoesNotPinSubmissionBody guards against retaining the whole
+// challenge submission per burned ticket. ValidateChallengeResponse parses
+// string(body), and url.ParseQuery hands back values that alias that string
+// whenever they need no unescaping — which is always the case for the 32-char
+// hex `r`. Storing that view keeps the entire body (several KB of fingerprint)
+// alive for ticketAgeBackstop, so the set must own its keys.
+func TestSpentSet_DoesNotPinSubmissionBody(t *testing.T) {
+	const rValue = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+
+	// A submission shaped like the real thing: a large %-escaped fingerprint
+	// (base64-std, so it does get copied) and `r` last.
+	body := []byte("f=" + strings.Repeat("aB%2Fc%2Bd", 400) + "&ts=1759660000&r=" + rValue)
+
+	parsed := string(body)
+
+	vars, err := url.ParseQuery(parsed)
+	require.NoError(t, err)
+
+	r := vars.Get("r")
+	require.Equal(t, rValue, r)
+
+	off := strings.Index(parsed, rValue)
+	require.Positive(t, off)
+	require.True(t, sharesBacking(parsed, off, r),
+		"precondition: url.ParseQuery returns `r` as a view into the body it parsed")
+
+	s := newSpentSet(spentSetDefaultMaxEntries)
+	require.True(t, s.checkAndInsert(r, time.Minute))
+
+	entry := s.order.Front().Value.(*spentEntry)
+	require.Equal(t, rValue, entry.r)
+	require.False(t, sharesBacking(parsed, off, entry.r),
+		"spentEntry.r must be a copy, not a view pinning the %d-byte submission body", len(parsed))
+
+	for key := range s.items {
+		require.False(t, sharesBacking(parsed, off, key),
+			"the map key must be a copy, not a view pinning the %d-byte submission body", len(parsed))
+	}
 }
