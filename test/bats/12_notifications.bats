@@ -42,3 +42,25 @@ teardown() {
     rune -1 cscli notifications list
     assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }
+
+@test "cscli notifications: profiles can use macros" {
+    rune -0 config_get '.api.server.profiles_path'
+    profiles="$output"
+    cat <<-EOT >"$profiles"
+	name: macro_profile
+	filters:
+	 - IsIp()
+	decisions:
+	 - type: ban
+	   duration: 4h
+	on_success: break
+	EOT
+
+    rune -1 cscli notifications list
+    assert_stderr --partial "unknown name IsIp"
+
+    macro_dir="$(config_get '.config_paths.config_dir')/macros"
+    mkdir -p "$macro_dir"
+    echo 'IsIp: Alert.GetScope() == "Ip"' > "$macro_dir/test.yaml"
+    rune -0 cscli notifications list
+}
