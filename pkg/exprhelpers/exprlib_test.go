@@ -9,6 +9,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -2404,59 +2405,72 @@ func TestParseKvLax(t *testing.T) {
 }
 
 func TestLookupHost(t *testing.T) {
-	resolver := &fakeResolver{
-		fwd: map[string][]net.IPAddr{
-			"home.example.com": {
-				{IP: net.ParseIP("192.0.2.10")},
-				{IP: net.ParseIP("2001:db8::10")},
-			},
-		},
-	}
-	setupBotTest(t, resolver)
-
 	tests := []struct {
-		name      string
-		host      string
-		want      []string
-		wantCalls int32
+		name    string
+		host    string
+		want    []string
+		wantLog string
 	}{
 		{
-			name:      "known host",
-			host:      "home.example.com",
-			want:      []string{"192.0.2.10", "2001:db8::10"},
-			wantCalls: 1,
+			name: "known host",
+			host: "home.example.com",
+			want: []string{"192.0.2.10", "2001:db8::10"},
 		},
 		{
-			name:      "known host again is served from the cache",
-			host:      "home.example.com",
-			want:      []string{"192.0.2.10", "2001:db8::10"},
-			wantCalls: 1,
-		},
-		{
-			name:      "unknown host",
-			host:      "nope.example.com",
-			want:      []string{},
-			wantCalls: 2,
-		},
-		{
-			name:      "unknown host again is served from the cache",
-			host:      "nope.example.com",
-			want:      []string{},
-			wantCalls: 2,
+			name:    "unknown host",
+			host:    "nope.example.com",
+			want:    []string{},
+			wantLog: "Failed to lookup host 'nope.example.com' : lookup nope.example.com: no such host",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			resolver := &fakeResolver{
+				fwd: map[string][]net.IPAddr{
+					"home.example.com": {
+						{IP: net.ParseIP("192.0.2.10")},
+						{IP: net.ParseIP("2001:db8::10")},
+					},
+				},
+			}
+			setupBotTest(t, resolver)
+
+			logger := log.StandardLogger()
+			hooks := logger.ReplaceHooks(make(log.LevelHooks))
+			hook := logtest.NewLocal(logger)
+
+			t.Cleanup(func() { logger.ReplaceHooks(hooks) })
+
 			env := map[string]any{"host": tc.host}
 
 			vm, err := expr.Compile("LookupHost(host)", GetExprOptions(env)...)
 			require.NoError(t, err)
 
-			got, err := expr.Run(vm, env)
-			require.NoError(t, err)
-			require.Equal(t, tc.want, got)
-			require.Equal(t, tc.wantCalls, resolver.fwdCalls.Load())
+			// the second call is served from the cache, a failure with its error
+			for range 2 {
+				hook.Reset()
+
+				got, err := expr.Run(vm, env)
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+
+				logged := []string{}
+
+				for _, entry := range hook.AllEntries() {
+					if entry.Level == log.ErrorLevel {
+						logged = append(logged, entry.Message)
+					}
+				}
+
+				if tc.wantLog == "" {
+					require.Empty(t, logged)
+				} else {
+					require.Equal(t, []string{tc.wantLog}, logged)
+				}
+			}
+
+			require.Equal(t, int32(1), resolver.fwdCalls.Load())
 		})
 	}
 }

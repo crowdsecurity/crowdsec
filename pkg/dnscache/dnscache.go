@@ -5,7 +5,7 @@
 // singleflight, so a given DNS fact costs at most one query per TTL.
 //
 // Consumers: the parser's reverse_dns enricher (PTR only) and the
-// MatchKnownBot expr helper (FCrDNS).
+// MatchKnownBot (FCrDNS) and LookupHost (forward) expr helpers.
 package dnscache
 
 import (
@@ -113,12 +113,29 @@ func PTRRecords(addr netip.Addr) []string {
 	}, func(names []string) bool { return len(names) == 0 })
 }
 
+// forwardResult is what the cache keeps for a name: a failed lookup with
+// its error, so that a caller that reports it can do so from the cache too.
+type forwardResult struct {
+	ips []netip.Addr
+	err error
+}
+
 func ForwardIPs(host string) []netip.Addr {
+	ips, _ := ForwardLookup(host)
+
+	return ips
+}
+
+// ForwardLookup is ForwardIPs with the error of a failed lookup, which is
+// cached with the empty result for the negative TTL.
+func ForwardLookup(host string) ([]netip.Addr, error) {
 	host = strings.TrimSuffix(strings.ToLower(host), ".")
 
-	return cachedLookup("fwd:"+host, func() []netip.Addr {
+	res := cachedLookup("fwd:"+host, func() forwardResult {
 		return lookupForward(host)
-	}, func(ips []netip.Addr) bool { return len(ips) == 0 })
+	}, func(res forwardResult) bool { return len(res.ips) == 0 })
+
+	return res.ips, res.err
 }
 
 func ForwardConfirmedNames(addr netip.Addr) []string {
@@ -150,14 +167,14 @@ func lookupPTR(addr netip.Addr) []string {
 	return names
 }
 
-func lookupForward(host string) []netip.Addr {
+func lookupForward(host string) forwardResult {
 	ctx, cancel := context.WithTimeout(context.Background(), lookupTimeout)
 	defer cancel()
 
 	ips, err := resolver.LookupIPAddr(ctx, host)
 	if err != nil {
 		log.Debugf("dnscache: forward lookup failed for %s: %s", host, err)
-		return []netip.Addr{}
+		return forwardResult{ips: []netip.Addr{}, err: err}
 	}
 
 	addrs := []netip.Addr{}
@@ -168,5 +185,5 @@ func lookupForward(host string) []netip.Addr {
 		}
 	}
 
-	return addrs
+	return forwardResult{ips: addrs}
 }
