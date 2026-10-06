@@ -14,7 +14,6 @@ import (
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/parser"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,25 +77,21 @@ func macroOption() (expr.Option, bool) {
 	return expr.Patch(macroExpander{macros: macros}), true
 }
 
-// LoadMacros reads every .yaml/.yml file in dir. Each file is a mapping of
-// macro name to expression. A missing directory means no macros.
-func LoadMacros(dir string) error {
+// LoadMacros reads every .yaml/.yml file in dir and returns how many macros were loaded.
+// Each file is a mapping of macro name to expression. A missing directory means no macros.
+func LoadMacros(dir string) (int, error) {
 	loaded, err := readMacroDir(dir)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if err := validateMacros(loaded); err != nil {
-		return err
+		return 0, err
 	}
 
 	macros = loaded
 
-	if len(loaded) > 0 {
-		log.Infof("loaded %d expression macros from %s", len(loaded), dir)
-	}
-
-	return nil
+	return len(loaded), nil
 }
 
 func readMacroDir(dir string) (map[string]string, error) {

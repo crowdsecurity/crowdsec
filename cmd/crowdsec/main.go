@@ -125,8 +125,13 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	// before anything compiles an expression: profiles, acquisition, parsers, scenarios...
-	if err := exprhelpers.LoadMacros(cConfig.ConfigPaths.MacroDir); err != nil {
+	nbMacros, err := exprhelpers.LoadMacros(cConfig.ConfigPaths.MacroDir)
+	if err != nil {
 		return nil, fmt.Errorf("while loading expression macros: %w", err)
+	}
+
+	if nbMacros > 0 {
+		log.Infof("loaded %d expression macros from %s", nbMacros, cConfig.ConfigPaths.MacroDir)
 	}
 
 	if !cConfig.DisableAgent {

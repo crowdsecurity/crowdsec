@@ -269,7 +269,7 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 				return errors.New("agent is disabled and lapi context can only be used on the agent")
 			}
 
-			return nil
+			return require.ExprMacros(cfg)
 		},
 	}
 

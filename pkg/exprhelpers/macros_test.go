@@ -26,7 +26,9 @@ func loadTestMacros(t *testing.T, files map[string]string) error {
 	t.Helper()
 	t.Cleanup(func() { macros = nil })
 
-	return LoadMacros(writeMacroFiles(t, files))
+	_, err := LoadMacros(writeMacroFiles(t, files))
+
+	return err
 }
 
 func TestMacroExpansion(t *testing.T) {
@@ -201,13 +203,16 @@ func TestLoadMacrosReplacesPrevious(t *testing.T) {
 	require.NoError(t, err)
 
 	// a failed load keeps the previous macros
-	require.Error(t, LoadMacros(writeMacroFiles(t, map[string]string{"a.yaml": "Foo: Foo()"})))
+	_, err = LoadMacros(writeMacroFiles(t, map[string]string{"a.yaml": "Foo: Foo()"}))
+	require.Error(t, err)
 
 	_, err = expr.Compile("Foo()", GetExprOptions(map[string]any{})...)
 	require.NoError(t, err)
 
 	// a reload without the file drops the macro
-	require.NoError(t, LoadMacros(filepath.Join(t.TempDir(), "missing")))
+	n, err := LoadMacros(filepath.Join(t.TempDir(), "missing"))
+	require.NoError(t, err)
+	require.Zero(t, n)
 
 	_, err = expr.Compile("Foo()", GetExprOptions(map[string]any{})...)
 	cstest.RequireErrorContains(t, err, "unknown name Foo")

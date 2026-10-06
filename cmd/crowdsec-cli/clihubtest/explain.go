@@ -18,10 +18,11 @@ func (cli *cliHubTest) explain(ctx context.Context, testName string, details boo
 
 	cfg := cli.cfg()
 	patternDir := cfg.ConfigPaths.PatternDir
+	macroDir := cfg.ConfigPaths.MacroDir
 
 	err = test.ParserAssert.LoadTest(test.ParserResultFile)
 	if err != nil {
-		if err = test.Run(ctx, patternDir); err != nil {
+		if err = test.Run(ctx, patternDir, macroDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %w", test.Name, err)
 		}
 
@@ -32,7 +33,7 @@ func (cli *cliHubTest) explain(ctx context.Context, testName string, details boo
 
 	err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 	if err != nil {
-		if err = test.Run(ctx, patternDir); err != nil {
+		if err = test.Run(ctx, patternDir, macroDir); err != nil {
 			return fmt.Errorf("running test '%s' failed: %w", test.Name, err)
 		}
 

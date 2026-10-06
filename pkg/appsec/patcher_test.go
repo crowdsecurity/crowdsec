@@ -76,8 +76,12 @@ func TestAppsecConfigBuildDetectsChallengeInsideMacro(t *testing.T) {
 
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "m.yaml"), []byte("Challenge: SendChallenge()"), 0o600))
-	require.NoError(t, exprhelpers.LoadMacros(dir))
-	t.Cleanup(func() { require.NoError(t, exprhelpers.LoadMacros("")) })
+	_, err := exprhelpers.LoadMacros(dir)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, err := exprhelpers.LoadMacros("")
+		require.NoError(t, err)
+	})
 
 	cfg := AppsecConfig{
 		Logger: log.NewEntry(logger),
