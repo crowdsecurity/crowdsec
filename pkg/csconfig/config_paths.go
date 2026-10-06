@@ -14,6 +14,7 @@ type ConfigurationPaths struct {
 	PluginDir          string `yaml:"plugin_dir,omitempty"`
 	NotificationDir    string `yaml:"notification_dir,omitempty"`
 	PatternDir         string `yaml:"pattern_dir,omitempty"`
+	MacroDir           string `yaml:"macro_dir,omitempty"`
 }
 
 func (c *Config) loadConfigurationPaths() error {
@@ -45,6 +46,10 @@ func (c *Config) loadConfigurationPaths() error {
 		c.ConfigPaths.PatternDir = filepath.Join(c.ConfigPaths.ConfigDir, "patterns")
 	}
 
+	if c.ConfigPaths.MacroDir == "" {
+		c.ConfigPaths.MacroDir = filepath.Join(c.ConfigPaths.ConfigDir, "macros")
+	}
+
 	cleanup := []*string{
 		&c.ConfigPaths.HubDir,
 		&c.ConfigPaths.HubIndexFile,
@@ -54,6 +59,7 @@ func (c *Config) loadConfigurationPaths() error {
 		&c.ConfigPaths.PluginDir,
 		&c.ConfigPaths.NotificationDir,
 		&c.ConfigPaths.PatternDir,
+		&c.ConfigPaths.MacroDir,
 	}
 
 	for _, k := range cleanup {

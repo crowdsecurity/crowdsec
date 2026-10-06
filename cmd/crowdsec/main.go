@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -121,6 +122,11 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
+	}
+
+	// before anything compiles an expression: profiles, acquisition, parsers, scenarios...
+	if err := exprhelpers.LoadMacros(cConfig.ConfigPaths.MacroDir); err != nil {
+		return nil, fmt.Errorf("while loading expression macros: %w", err)
 	}
 
 	if !cConfig.DisableAgent {
