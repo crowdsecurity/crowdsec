@@ -15,13 +15,15 @@ import (
 )
 
 // fakeResolver implements dnscache.Resolver from in-memory maps so no test
-// ever hits real DNS. ptrCalls lets tests assert how many lookups ran.
+// ever hits real DNS. ptrCalls and fwdCalls let tests assert how many
+// lookups ran.
 // (The cache/singleflight internals are tested in pkg/dnscache; here the
-// fake only backs the end-to-end MatchKnownBot checks.)
+// fake only backs the end-to-end MatchKnownBot and LookupHost checks.)
 type fakeResolver struct {
 	ptr      map[string][]string     // ip → PTR names
 	fwd      map[string][]net.IPAddr // hostname → addresses
 	ptrCalls atomic.Int32
+	fwdCalls atomic.Int32
 }
 
 func (f *fakeResolver) LookupAddr(_ context.Context, addr string) ([]string, error) {
@@ -36,6 +38,8 @@ func (f *fakeResolver) LookupAddr(_ context.Context, addr string) ([]string, err
 }
 
 func (f *fakeResolver) LookupIPAddr(_ context.Context, host string) ([]net.IPAddr, error) {
+	f.fwdCalls.Add(1)
+
 	ips, ok := f.fwd[host]
 	if !ok {
 		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}

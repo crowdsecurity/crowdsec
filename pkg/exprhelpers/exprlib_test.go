@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"errors"
+	"net"
 	"net/url"
 	"testing"
 	"time"
@@ -2398,6 +2399,64 @@ func TestParseKvLax(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
+
+func TestLookupHost(t *testing.T) {
+	resolver := &fakeResolver{
+		fwd: map[string][]net.IPAddr{
+			"home.example.com": {
+				{IP: net.ParseIP("192.0.2.10")},
+				{IP: net.ParseIP("2001:db8::10")},
+			},
+		},
+	}
+	setupBotTest(t, resolver)
+
+	tests := []struct {
+		name      string
+		host      string
+		want      []string
+		wantCalls int32
+	}{
+		{
+			name:      "known host",
+			host:      "home.example.com",
+			want:      []string{"192.0.2.10", "2001:db8::10"},
+			wantCalls: 1,
+		},
+		{
+			name:      "known host again is served from the cache",
+			host:      "home.example.com",
+			want:      []string{"192.0.2.10", "2001:db8::10"},
+			wantCalls: 1,
+		},
+		{
+			name:      "unknown host",
+			host:      "nope.example.com",
+			want:      []string{},
+			wantCalls: 2,
+		},
+		{
+			name:      "unknown host again is served from the cache",
+			host:      "nope.example.com",
+			want:      []string{},
+			wantCalls: 2,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := map[string]any{"host": tc.host}
+
+			vm, err := expr.Compile("LookupHost(host)", GetExprOptions(env)...)
+			require.NoError(t, err)
+
+			got, err := expr.Run(vm, env)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+			require.Equal(t, tc.wantCalls, resolver.fwdCalls.Load())
 		})
 	}
 }
