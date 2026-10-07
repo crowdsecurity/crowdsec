@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -48,8 +49,9 @@ func buildHub(t *testing.T, files []hubFile) *cwhub.Hub {
 			continue
 		}
 
-		remotePath := filepath.Join(f.itemType, f.name+".yaml")
-		hubPath := filepath.Join(local.HubDir, remotePath)
+		// index paths use forward slashes on every platform
+		remotePath := path.Join(f.itemType, f.name+".yaml")
+		hubPath := filepath.Join(local.HubDir, filepath.FromSlash(remotePath))
 		require.NoError(t, os.MkdirAll(filepath.Dir(hubPath), 0o755))
 
 		sum := sha256.Sum256([]byte(f.content))
