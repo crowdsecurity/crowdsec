@@ -28,6 +28,9 @@ type Controller struct {
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
 
 	DecisionsStreamPageSize int
+
+	// nil when the stream is not limited
+	streamSlots chan struct{}
 }
 
 type ControllerV1Config struct {
@@ -66,6 +69,17 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		pageSize = csconfig.DefaultDecisionsStreamPageSize
 	}
 
+	maxStreams := 0
+	if cfg.DecisionsStream != nil {
+		maxStreams = cfg.DecisionsStream.MaxConcurrentRequests
+	}
+
+	if maxStreams < 0 {
+		log.Warningf("decisions_stream.max_concurrent_requests cannot be negative (got %d), not limiting the decisions stream", maxStreams)
+
+		maxStreams = 0
+	}
+
 	v1 := &Controller{
 		DBClient:           cfg.DbClient,
 		APIKeyHeader:       middlewares.APIKeyHeader,
@@ -78,6 +92,10 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
 
 		DecisionsStreamPageSize: pageSize,
+	}
+
+	if maxStreams > 0 {
+		v1.streamSlots = make(chan struct{}, maxStreams)
 	}
 
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)

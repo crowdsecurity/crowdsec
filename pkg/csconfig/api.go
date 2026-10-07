@@ -255,6 +255,9 @@ const DefaultDecisionsStreamPageSize = 30000
 
 type DecisionsStreamCfg struct {
 	PageSize int `yaml:"page_size"`
+
+	// 0 means no limit.
+	MaxConcurrentRequests int `yaml:"max_concurrent_requests"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
