@@ -43,7 +43,6 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 	}
 
 	patternDir := cfg.ConfigPaths.PatternDir
-	macroDir := cfg.ConfigPaths.MacroDir
 
 	eg, gctx := errgroup.WithContext(ctx)
 
@@ -68,7 +67,7 @@ func (cli *cliHubTest) run(ctx context.Context, all bool, nucleiTargetHost strin
 			default:
 			}
 
-			return test.Run(gctx, patternDir, macroDir)
+			return test.Run(gctx, patternDir)
 		})
 	}
 

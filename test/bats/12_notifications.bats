@@ -61,6 +61,6 @@ teardown() {
 
     macro_dir="$(config_get '.config_paths.config_dir')/macros"
     mkdir -p "$macro_dir"
-    echo 'IsIp: Alert.GetScope() == "Ip"' > "$macro_dir/test.yaml"
+    echo 'macros: {IsIp: Alert.GetScope() == "Ip"}' > "$macro_dir/test.yaml"
     rune -0 cscli notifications list
 }

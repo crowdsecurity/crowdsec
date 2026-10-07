@@ -116,12 +116,12 @@ teardown() {
     assert_stderr --partial "unknown name SourceIP"
 
     mkdir -p "$CONFIG_DIR/macros"
-    echo "SourceIP: evt.Meta.source_ip" > "$CONFIG_DIR/macros/test.yaml"
+    echo "macros: {SourceIP: evt.Meta.source_ip}" > "$CONFIG_DIR/macros/test.yaml"
     rune -0 cscli lapi context add --key ip --value 'SourceIP()'
     rune -0 cscli lapi context status
     assert_output --partial 'SourceIP()'
 
-    echo "Loop: Loop()" > "$CONFIG_DIR/macros/test.yaml"
+    echo "macros: {Loop: Loop()}" > "$CONFIG_DIR/macros/test.yaml"
     rune -1 cscli lapi context status
     assert_stderr --partial 'while loading expression macros: macro "Loop": recursive definition (Loop -> Loop)'
 }

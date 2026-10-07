@@ -220,7 +220,7 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 	validArgs := []string{
 		"alerts", "appsec-configs", "waf-configs", "appsec-rules", "waf-rules", "bouncers", "capi", "collections",
 		"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
-		"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+		"hub", "hubtest", "lapi", "machines", "macros", "metrics", "notifications", "parsers",
 		"postoverflows", "scenarios", "simulation", "support", "version",
 	}
 
@@ -303,6 +303,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewContext(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
+	cmd.AddCommand(cliitem.NewMacro(cli.cfg).NewCommand())
 	cmd.AddCommand(cliallowlists.New(cli.cfg).NewCommand())
 
 	cli.addSetup(cmd)

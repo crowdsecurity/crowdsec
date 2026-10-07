@@ -1,8 +1,10 @@
 package exprhelpers
 
 import (
+	"cmp"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/expr-lang/expr"
@@ -11,37 +13,48 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
-func writeMacroFiles(t *testing.T, files map[string]string) string {
+// writeMacroItems writes one file per item, the map key being the item name.
+func writeMacroItems(t *testing.T, items map[string]string) []macroFile {
 	t.Helper()
 
 	dir := t.TempDir()
-	for name, content := range files {
-		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+	files := []macroFile{}
+
+	for name, content := range items {
+		path := filepath.Join(dir, name+".yaml")
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+		files = append(files, macroFile{item: name, path: path})
 	}
 
-	return dir
+	slices.SortFunc(files, func(a, b macroFile) int { return cmp.Compare(a.item, b.item) })
+
+	return files
 }
 
-func loadTestMacros(t *testing.T, files map[string]string) error {
+func loadTestMacros(t *testing.T, items map[string]string) error {
 	t.Helper()
 	t.Cleanup(func() { macros = nil })
 
-	_, err := LoadMacros(writeMacroFiles(t, files))
+	_, err := loadMacroFiles(writeMacroItems(t, items))
 
 	return err
 }
 
 func TestMacroExpansion(t *testing.T) {
 	err := loadTestMacros(t, map[string]string{
-		"a.yaml": `
-IsFoo: foo == 'true' && bar == 'true'
-FooOrBar: foo == 'true' || bar == 'true'
+		"test/a": `
+name: test/a
+description: other keys are ignored
+macros:
+  IsFoo: foo == 'true' && bar == 'true'
+  FooOrBar: foo == 'true' || bar == 'true'
 `,
-		"b.yml": `
-IsFooAndBaz: IsFoo() && baz
-Plus1: n + 1
+		"test/b": `
+macros:
+  IsFooAndBaz: IsFoo() && baz
+  Plus1: n + 1
 `,
-		"ignored.txt": `NotLoaded: true`,
 	})
 	require.NoError(t, err)
 
@@ -107,12 +120,6 @@ Plus1: n + 1
 			env:         map[string]any{"foo": "true", "bar": "true"},
 			expectedErr: "unknown name IsFoo",
 		},
-		{
-			name:        "non-yaml files are ignored",
-			expr:        "NotLoaded()",
-			env:         map[string]any{},
-			expectedErr: "unknown name NotLoaded",
-		},
 	}
 
 	for _, tc := range tests {
@@ -134,83 +141,89 @@ Plus1: n + 1
 func TestLoadMacrosErrors(t *testing.T) {
 	tests := []struct {
 		name        string
-		files       map[string]string
+		items       map[string]string
 		expectedErr string
 	}{
 		{
-			name:  "no files",
-			files: map[string]string{},
+			name:  "no items",
+			items: map[string]string{},
 		},
 		{
 			name:        "invalid yaml",
-			files:       map[string]string{"a.yaml": "- not a map"},
+			items:       map[string]string{"a": "- not a map"},
 			expectedErr: "a.yaml: yaml: unmarshal errors",
 		},
 		{
-			name:        "duplicate across files",
-			files:       map[string]string{"a.yaml": "Foo: true", "b.yaml": "Foo: false"},
-			expectedErr: `b.yaml: macro "Foo" is already defined`,
+			name:        "missing macros key",
+			items:       map[string]string{"a": "Foo: true"},
+			expectedErr: "a.yaml: no macros defined under the 'macros' key",
+		},
+		{
+			name:        "duplicate across items",
+			items:       map[string]string{"a": "macros: {Foo: true}", "b": "macros: {Foo: false}"},
+			expectedErr: `macro "Foo" is defined by both a and b`,
 		},
 		{
 			name:        "invalid name",
-			files:       map[string]string{"a.yaml": "'Foo-Bar': true"},
-			expectedErr: `macro "Foo-Bar": invalid name`,
+			items:       map[string]string{"a": "macros: {'Foo-Bar': true}"},
+			expectedErr: `macro "Foo-Bar" (a): invalid name`,
 		},
 		{
 			name:        "builtin conflict",
-			files:       map[string]string{"a.yaml": "len: true"},
-			expectedErr: `macro "len": conflicts with a builtin function`,
+			items:       map[string]string{"a": "macros: {len: true}"},
+			expectedErr: `macro "len" (a): conflicts with a builtin function`,
 		},
 		{
 			name:        "crowdsec function conflict",
-			files:       map[string]string{"a.yaml": "Upper: true"},
-			expectedErr: `macro "Upper": conflicts with a crowdsec function`,
+			items:       map[string]string{"a": "macros: {Upper: true}"},
+			expectedErr: `macro "Upper" (a): conflicts with a crowdsec function`,
 		},
 		{
 			name:        "empty expression",
-			files:       map[string]string{"a.yaml": "Foo: ''"},
-			expectedErr: `macro "Foo": empty expression`,
+			items:       map[string]string{"a": "macros: {Foo: ''}"},
+			expectedErr: `macro "Foo" (a): empty expression`,
 		},
 		{
 			name:        "syntax error",
-			files:       map[string]string{"a.yaml": "Foo: a &&"},
-			expectedErr: `macro "Foo": unexpected token EOF`,
+			items:       map[string]string{"a": "macros: {Foo: a &&}"},
+			expectedErr: `macro "Foo" (a): unexpected token EOF`,
 		},
 		{
 			name:        "self recursion",
-			files:       map[string]string{"a.yaml": "Foo: Foo() && true"},
+			items:       map[string]string{"a": "macros: {Foo: Foo() && true}"},
 			expectedErr: `macro "Foo": recursive definition (Foo -> Foo)`,
 		},
 		{
+			// cycles across items too
 			name:        "mutual recursion",
-			files:       map[string]string{"a.yaml": "A: B()\nB: C()\nC: A()"},
+			items:       map[string]string{"a": "macros: {A: B(), B: C()}", "b": "macros: {C: A()}"},
 			expectedErr: `macro "A": recursive definition (A -> B -> C -> A)`,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := loadTestMacros(t, tc.files)
+			err := loadTestMacros(t, tc.items)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
 func TestLoadMacrosReplacesPrevious(t *testing.T) {
-	require.NoError(t, loadTestMacros(t, map[string]string{"a.yaml": "Foo: true"}))
+	require.NoError(t, loadTestMacros(t, map[string]string{"a": "macros: {Foo: true}"}))
 
 	_, err := expr.Compile("Foo()", GetExprOptions(map[string]any{})...)
 	require.NoError(t, err)
 
 	// a failed load keeps the previous macros
-	_, err = LoadMacros(writeMacroFiles(t, map[string]string{"a.yaml": "Foo: Foo()"}))
+	_, err = loadMacroFiles(writeMacroItems(t, map[string]string{"a": "macros: {Foo: Foo()}"}))
 	require.Error(t, err)
 
 	_, err = expr.Compile("Foo()", GetExprOptions(map[string]any{})...)
 	require.NoError(t, err)
 
-	// a reload without the file drops the macro
-	n, err := LoadMacros(filepath.Join(t.TempDir(), "missing"))
+	// no hub, no macros
+	n, err := LoadMacros(nil)
 	require.NoError(t, err)
 	require.Zero(t, n)
 
@@ -219,7 +232,7 @@ func TestLoadMacrosReplacesPrevious(t *testing.T) {
 }
 
 func TestMacroConcurrentCompile(t *testing.T) { //nolint:tparallel // mutates the package-level macros
-	require.NoError(t, loadTestMacros(t, map[string]string{"a.yaml": "IsFoo: foo == 'true' && n > 0"}))
+	require.NoError(t, loadTestMacros(t, map[string]string{"a": "macros: {IsFoo: foo == 'true' && n > 0}"}))
 
 	for i := range 8 {
 		t.Run("", func(t *testing.T) {
@@ -232,6 +245,67 @@ func TestMacroConcurrentCompile(t *testing.T) { //nolint:tparallel // mutates th
 			got, err := expr.Run(program, env)
 			require.NoError(t, err)
 			require.Equal(t, i > 0, got)
+		})
+	}
+}
+
+func TestMacroItems(t *testing.T) {
+	require.NoError(t, loadTestMacros(t, map[string]string{
+		"test/a": "macros: {A: B() || C()}",
+		"test/b": "macros: {B: D()}",
+		"test/c": "macros: {C: true, Unused: true}",
+		"test/d": "macros: {D: true}",
+		"test/e": "macros: {E: true}",
+	}))
+
+	tests := []struct {
+		name        string
+		expr        string
+		want        []string
+		expectedErr string
+	}{
+		{
+			name: "no macros",
+			expr: "evt.Line.Raw != ''",
+			want: []string{},
+		},
+		{
+			name: "direct",
+			expr: "E() && true",
+			want: []string{"test/e"},
+		},
+		{
+			name: "through other macros",
+			expr: "A()",
+			want: []string{"test/a", "test/b", "test/c", "test/d"},
+		},
+		{
+			name: "same item twice",
+			expr: "C() || Unused()",
+			want: []string{"test/c"},
+		},
+		{
+			name: "call with arguments is not a macro",
+			expr: "E(1)",
+			want: []string{},
+		},
+		{
+			name:        "syntax error",
+			expr:        "A() &&",
+			expectedErr: "unexpected token EOF",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := MacroItems(tc.expr)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			if tc.expectedErr != "" {
+				return
+			}
+
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

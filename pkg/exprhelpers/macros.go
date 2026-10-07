@@ -1,11 +1,8 @@
 package exprhelpers
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -15,19 +12,26 @@ import (
 	"github.com/expr-lang/expr/builtin"
 	"github.com/expr-lang/expr/parser"
 	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 var macroNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-// macros maps a macro name to its expression. It is replaced as a whole by
+type macro struct {
+	body string
+	item string // name of the hub item defining the macro
+}
+
+// macros maps a macro name to its definition. It is replaced as a whole by
 // LoadMacros, never mutated, so patchers can hold on to the map they got.
-var macros map[string]string
+var macros map[string]macro
 
 // macroExpander replaces each zero-argument call to a macro with the macro's
 // expression. Working on the AST rather than the source text keeps
 // precedence intact: !IsFoo() negates the whole macro.
 type macroExpander struct {
-	macros map[string]string
+	macros map[string]macro
 }
 
 func (m macroExpander) Visit(node *ast.Node) { //nolint:gocritic // signature imposed by ast.Visitor
@@ -36,14 +40,14 @@ func (m macroExpander) Visit(node *ast.Node) { //nolint:gocritic // signature im
 		return
 	}
 
-	body, ok := m.macros[name]
+	def, ok := m.macros[name]
 	if !ok {
 		return
 	}
 
 	// Parse a fresh tree on every expansion: the checker annotates nodes in place,
 	// so a tree can't be shared between compilations. Bodies were validated by LoadMacros.
-	tree, err := parser.Parse(body)
+	tree, err := parser.Parse(def.body)
 	if err != nil {
 		return
 	}
@@ -77,12 +81,54 @@ func macroOption() (expr.Option, bool) {
 	return expr.Patch(macroExpander{macros: macros}), true
 }
 
-// LoadMacros reads every .yaml/.yml file in dir and returns how many macros were loaded.
-// Each file is a mapping of macro name to expression. A missing directory means no macros.
-func LoadMacros(dir string) (int, error) {
-	loaded, err := readMacroDir(dir)
-	if err != nil {
-		return 0, err
+// LoadMacros replaces the current macros with those of the installed macro items,
+// and returns how many were loaded. A nil hub means no macros.
+func LoadMacros(hub *cwhub.Hub) (int, error) {
+	var files []macroFile
+
+	if hub != nil {
+		for _, item := range hub.GetInstalledByType(cwhub.MACROS, true) {
+			files = append(files, macroFile{item: item.Name, path: item.State.LocalPath})
+		}
+	}
+
+	return loadMacroFiles(files)
+}
+
+type macroFile struct {
+	item string
+	path string
+}
+
+func loadMacroFiles(files []macroFile) (int, error) {
+	loaded := map[string]macro{}
+
+	for _, f := range files {
+		content, err := os.ReadFile(f.path)
+		if err != nil {
+			return 0, err
+		}
+
+		// hub items carry metadata (name, description...) next to the macros
+		var parsed struct {
+			Macros map[string]string `yaml:"macros"`
+		}
+
+		if err := yaml.Unmarshal(content, &parsed); err != nil {
+			return 0, fmt.Errorf("%s: %w", f.path, err)
+		}
+
+		if len(parsed.Macros) == 0 {
+			return 0, fmt.Errorf("%s: no macros defined under the 'macros' key", f.path)
+		}
+
+		for name, body := range parsed.Macros {
+			if prev, dup := loaded[name]; dup {
+				return 0, fmt.Errorf("macro %q is defined by both %s and %s", name, prev.item, f.item)
+			}
+
+			loaded[name] = macro{body: body, item: f.item}
+		}
 	}
 
 	if err := validateMacros(loaded); err != nil {
@@ -94,75 +140,29 @@ func LoadMacros(dir string) (int, error) {
 	return len(loaded), nil
 }
 
-func readMacroDir(dir string) (map[string]string, error) {
-	loaded := map[string]string{}
-
-	if dir == "" {
-		return loaded, nil
-	}
-
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return loaded, nil
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("reading macro directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		ext := filepath.Ext(entry.Name())
-		if entry.IsDir() || (ext != ".yaml" && ext != ".yml") {
-			continue
-		}
-
-		path := filepath.Join(dir, entry.Name())
-
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-
-		fileMacros := map[string]string{}
-		if err := yaml.Unmarshal(content, &fileMacros); err != nil {
-			return nil, fmt.Errorf("%s: %w", path, err)
-		}
-
-		for name, body := range fileMacros {
-			if _, dup := loaded[name]; dup {
-				return nil, fmt.Errorf("%s: macro %q is already defined", path, name)
-			}
-
-			loaded[name] = body
-		}
-	}
-
-	return loaded, nil
-}
-
-func validateMacros(m map[string]string) error {
+func validateMacros(m map[string]macro) error {
 	deps := make(map[string][]string, len(m))
 
-	for name, body := range m {
+	for name, def := range m {
 		if !macroNamePattern.MatchString(name) {
-			return fmt.Errorf("macro %q: invalid name", name)
+			return fmt.Errorf("macro %q (%s): invalid name", name, def.item)
 		}
 
 		if _, ok := builtin.Index[name]; ok {
-			return fmt.Errorf("macro %q: conflicts with a builtin function", name)
+			return fmt.Errorf("macro %q (%s): conflicts with a builtin function", name, def.item)
 		}
 
 		if slices.ContainsFunc(exprFuncs, func(f exprCustomFunc) bool { return f.name == name }) {
-			return fmt.Errorf("macro %q: conflicts with a crowdsec function", name)
+			return fmt.Errorf("macro %q (%s): conflicts with a crowdsec function", name, def.item)
 		}
 
-		if strings.TrimSpace(body) == "" {
-			return fmt.Errorf("macro %q: empty expression", name)
+		if strings.TrimSpace(def.body) == "" {
+			return fmt.Errorf("macro %q (%s): empty expression", name, def.item)
 		}
 
-		tree, err := parser.Parse(body)
+		tree, err := parser.Parse(def.body)
 		if err != nil {
-			return fmt.Errorf("macro %q: %w", name, err)
+			return fmt.Errorf("macro %q (%s): %w", name, def.item, err)
 		}
 
 		deps[name] = macroRefs(tree.Node, m)
@@ -171,8 +171,50 @@ func validateMacros(m map[string]string) error {
 	return checkMacroCycles(deps)
 }
 
+// MacroItems returns the sorted names of the hub items defining the macros
+// that expression uses, directly or through other macros.
+func MacroItems(expression string) ([]string, error) {
+	tree, err := parser.Parse(expression)
+	if err != nil {
+		return nil, err
+	}
+
+	m := macros
+	seen := map[string]bool{}
+	items := []string{}
+
+	var visit func(node ast.Node)
+
+	visit = func(node ast.Node) {
+		for _, name := range macroRefs(node, m) {
+			if seen[name] {
+				continue
+			}
+
+			seen[name] = true
+
+			if !slices.Contains(items, m[name].item) {
+				items = append(items, m[name].item)
+			}
+
+			// validated by LoadMacros
+			sub, err := parser.Parse(m[name].body)
+			if err != nil {
+				continue
+			}
+
+			visit(sub.Node)
+		}
+	}
+
+	visit(tree.Node)
+	slices.Sort(items)
+
+	return items, nil
+}
+
 // macroRefs lists the macros called (without arguments) by node.
-func macroRefs(node ast.Node, m map[string]string) []string {
+func macroRefs(node ast.Node, m map[string]macro) []string {
 	var refs []string
 
 	ast.Find(node, func(n ast.Node) bool {

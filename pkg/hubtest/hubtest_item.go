@@ -29,6 +29,7 @@ type HubTestItemConfig struct {
 	Scenarios             []string            `yaml:"scenarios,omitempty"`
 	PostOverflows         []string            `yaml:"postoverflows,omitempty"`
 	AppsecRules           []string            `yaml:"appsec-rules,omitempty"`
+	Macros                []string            `yaml:"macros,omitempty"`
 	NucleiTemplate        string              `yaml:"nuclei_template,omitempty"`
 	ExpectedNucleiFailure bool                `yaml:"expect_failure,omitempty"`
 	LogFile               string              `yaml:"log_file,omitempty"`
@@ -206,6 +207,10 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	}
 
 	if err := t.installHubItems(t.Config.AppsecRules, t.installAppsecRule); err != nil {
+		return err
+	}
+
+	if err := t.installHubItems(t.Config.Macros, t.installMacro); err != nil {
 		return err
 	}
 
@@ -599,7 +604,7 @@ func (t *HubTestItem) RunWithLogFile(ctx context.Context) error {
 	return nil
 }
 
-func (t *HubTestItem) Run(ctx context.Context, patternDir string, macroDir string) error {
+func (t *HubTestItem) Run(ctx context.Context, patternDir string) error {
 	var err error
 
 	t.Success = false
@@ -632,14 +637,6 @@ func (t *HubTestItem) Run(ctx context.Context, patternDir string, macroDir strin
 	// copy template patterns folder to runtime folder
 	if err = CopyDir(patternDir, t.RuntimePatternsPath); err != nil {
 		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %w", patternDir, t.RuntimePatternsPath, err)
-	}
-
-	// the runtime config_dir is RuntimePath, so crowdsec finds them in the default macro_dir
-	if _, err = os.Stat(macroDir); err == nil {
-		runtimeMacroDir := filepath.Join(t.RuntimePath, "macros")
-		if err = CopyDir(macroDir, runtimeMacroDir); err != nil {
-			return fmt.Errorf("unable to copy 'macros' from '%s' to '%s': %w", macroDir, runtimeMacroDir, err)
-		}
 	}
 
 	// create the appsec-configs dir

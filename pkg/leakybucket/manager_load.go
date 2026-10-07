@@ -173,6 +173,19 @@ func loadBucketFactoriesFromFile(
 			return nil, fmt.Errorf("bucket %s: %w", f.Spec.Name, err)
 		}
 
+		// a pristine hub scenario can still behave differently through the macros it calls
+		if f.scenarioHash != "" && f.Spec.ScenarioVersion != "?" {
+			macroItem, err := untrustedMacroItem(hub, &f.Spec)
+			if err != nil {
+				return nil, fmt.Errorf("bucket %s: %w", f.Spec.Name, err)
+			}
+
+			if macroItem != "" {
+				f.logger.Warningf("uses macros from %s, which is local or tainted: alerts will be reported as tainted", macroItem)
+				f.Spec.ScenarioVersion = "?"
+			}
+		}
+
 		f.orderEvent = orderEvent
 
 		factories = append(factories, f)
