@@ -25,7 +25,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/containerd/errdefs v1.0.0
-	github.com/corazawaf/coraza/v3 v3.7.0
+	github.com/corazawaf/coraza/v3 v3.8.0
 	github.com/corazawaf/libinjection-go v0.3.3
 	github.com/crowdsecurity/dlog v0.0.2
 	github.com/crowdsecurity/go-cs-lib v0.0.25
@@ -284,6 +284,6 @@ require (
 
 replace golang.org/x/time => github.com/crowdsecurity/time v0.13.0-crowdsec.20250912
 
-replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.7.0-crowdsec.20260730
+replace github.com/corazawaf/coraza/v3 => github.com/crowdsecurity/coraza/v3 v3.8.0-crowdsec.20261001
 
 tool entgo.io/ent/cmd/ent
