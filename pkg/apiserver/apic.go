@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -396,6 +397,9 @@ func (a *apic) sendBatch(ctx context.Context, signals []*modelscapi.AddSignalsRe
 	defer cancel()
 
 	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*modelscapi.AddSignalsRequest)(&signals))
+	if err != nil {
+		metrics.CapiErrors.WithLabelValues(metrics.CapiOperationPush).Inc()
+	}
 
 	return err
 }
@@ -609,8 +613,11 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup, CommunityPull: a.pullCommunity, AdditionalPull: a.pullBlocklists})
 	if err != nil {
+		metrics.CapiErrors.WithLabelValues(metrics.CapiOperationPull).Inc()
 		return fmt.Errorf("get stream: %w", err)
 	}
+
+	metrics.CapiLastPullTimestamp.SetToCurrentTime()
 
 	a.startup = false
 	/*to count additions/deletions across lists*/
