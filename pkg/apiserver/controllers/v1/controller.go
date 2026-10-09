@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	log "github.com/sirupsen/logrus"
+
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
@@ -24,6 +26,8 @@ type Controller struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	DecisionsStreamPageSize int
 }
 
 type ControllerV1Config struct {
@@ -37,6 +41,8 @@ type ControllerV1Config struct {
 	ConsoleConfig   csconfig.ConsoleConfig
 	TrustedIPs      []net.IPNet
 	AutoRegisterCfg *csconfig.LocalAPIAutoRegisterCfg
+
+	DecisionsStream *csconfig.DecisionsStreamCfg
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -45,6 +51,19 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 	profiles, err := csprofiles.NewProfile(cfg.ProfilesCfg)
 	if err != nil {
 		return &Controller{}, fmt.Errorf("failed to compile profiles: %w", err)
+	}
+
+	pageSize := csconfig.DefaultDecisionsStreamPageSize
+	if cfg.DecisionsStream != nil {
+		pageSize = cfg.DecisionsStream.PageSize
+	}
+
+	// ent drops LIMIT for 0 and SQLite ignores a negative one: a page would be the whole table,
+	// and the paging loop would never end.
+	if pageSize <= 0 {
+		log.Warningf("decisions_stream.page_size must be greater than 0 (got %d), using the default value of %d", pageSize, csconfig.DefaultDecisionsStreamPageSize)
+
+		pageSize = csconfig.DefaultDecisionsStreamPageSize
 	}
 
 	v1 := &Controller{
@@ -57,6 +76,8 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
+
+		DecisionsStreamPageSize: pageSize,
 	}
 
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)

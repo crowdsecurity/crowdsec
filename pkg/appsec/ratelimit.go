@@ -381,11 +381,6 @@ func withContextValue(meta models.Meta, key, value string) models.Meta {
 	return append(meta, &models.MetaItems0{Key: key, Value: string(encoded)})
 }
 
-// requestCtxVar names the env variable expr.WithContext injects as the hidden
-// first argument of helpers registered with expr.Function: those are compiled
-// once, so the per-request state has to travel through the context.
-const requestCtxVar = "_request_ctx"
-
 type requestBindingKey struct{}
 
 type requestBinding struct {
@@ -440,5 +435,4 @@ var rateLimitExprOptions = []expr.Option{
 		new(func(context.Context, string, string) bool),
 		new(func(context.Context, string, string, string) bool),
 	),
-	expr.WithContext(requestCtxVar),
 }

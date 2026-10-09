@@ -25,6 +25,7 @@ var challengeRuntimeCallees = map[string]struct{}{
 	"SendChallenge":        {},
 	"GrantChallengeCookie": {},
 	"RejectSubmission":     {},
+	"FlagSubmission":       {},
 	"LogAccepted":          {},
 	// no runtime, no cookie validation: the helper would always return false
 	"HasValidChallengeCookie": {},

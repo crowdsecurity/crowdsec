@@ -64,17 +64,6 @@ func TestRequestScoreNegativeAndZeroPoints(t *testing.T) {
 	assert.False(t, s.Empty())
 }
 
-func TestRequestScoreBlankReasonNormalized(t *testing.T) {
-	var s RequestScore
-
-	s.Add(3, "")
-	s.Add(4, "   ")
-
-	assert.Equal(t, 7, s.Total())
-	assert.Equal(t, []string{unspecifiedScoreReason}, s.Reasons())
-	assert.Equal(t, 7, s.For(unspecifiedScoreReason))
-}
-
 func TestRequestScoreReasonsIsACopy(t *testing.T) {
 	var s RequestScore
 
@@ -123,4 +112,161 @@ func TestRequestScoreIsPerRequest(t *testing.T) {
 	fresh := &AppsecRequestState{}
 	assert.Equal(t, 0, fresh.RequestScore.Total())
 	assert.Empty(t, fresh.RequestScore.Reasons())
+}
+
+// A category left out or blank is the same thing: the signal is its own
+// category. So a config that never heard of categories can still be read back
+// by name, and the breakdown it emits is unchanged.
+func TestRequestScoreWithoutCategories(t *testing.T) {
+	var s RequestScore
+
+	s.Add(100, "cdp")
+	s.Add(3, "a", "")
+	s.Add(4, "b")
+
+	assert.Equal(t, []string{"cdp", "a", "b"}, s.Categories())
+	assert.Equal(t, 100, s.For("cdp"), "readable as a category without opting in")
+	assert.Equal(t, 107, s.Total())
+
+	assert.False(t, s.HasExplicitCategories(), "nothing was grouped under another name")
+	assert.Equal(t, "cdp=100,a=3,b=4", s.CategoryDetail())
+}
+
+func TestRequestScoreCategories(t *testing.T) {
+	var s RequestScore
+
+	s.Add(100, "cdp", "fingerprint")
+	s.Add(15, "utc_timezone", "fingerprint")
+	s.Add(30, "no_user_agent", "headers")
+	s.Add(5, "slow_pow")
+
+	assert.True(t, s.HasExplicitCategories())
+	assert.Equal(t, []string{"fingerprint", "headers", "slow_pow"}, s.Categories())
+
+	assert.Equal(t, 150, s.Total())
+	assert.Equal(t, 115, s.For("fingerprint"))
+	assert.Equal(t, 30, s.For("headers"))
+	assert.Equal(t, 5, s.For("slow_pow"), "an ungrouped signal is its own category")
+	assert.Equal(t, 0, s.For("never_used"))
+
+	assert.Equal(t, "fingerprint=115,headers=30,slow_pow=5", s.CategoryDetail())
+	// a name is namespaced only where the category says something it does not,
+	// so pre-category configs emit exactly what they always did
+	assert.Equal(t,
+		"fingerprint:cdp=100,fingerprint:utc_timezone=15,headers:no_user_agent=30,slow_pow=5",
+		s.String())
+}
+
+// The same name under two categories is two detections, reported apart, each
+// counting toward its own category.
+func TestRequestScoreSameNameInTwoCategories(t *testing.T) {
+	var s RequestScore
+
+	s.Add(10, "mismatch", "fingerprint")
+	s.Add(4, "mismatch", "headers")
+
+	assert.Equal(t, 14, s.Total())
+	assert.Equal(t, []string{"fingerprint:mismatch", "headers:mismatch"}, s.Reasons())
+	assert.Equal(t, "fingerprint:mismatch=10,headers:mismatch=4", s.String())
+	assert.Equal(t, 10, s.For("fingerprint"))
+	assert.Equal(t, 4, s.For("headers"))
+}
+
+func TestRequestScoreSet(t *testing.T) {
+	t.Run("it replaces only the named category", func(t *testing.T) {
+		var s RequestScore
+
+		s.Add(100, "cdp", "fingerprint")
+		s.Add(15, "utc_timezone", "fingerprint")
+		s.Add(30, "no_user_agent", "headers")
+
+		assert.Equal(t, 80, s.Set(50, "fingerprint"))
+		assert.Equal(t, 50, s.For("fingerprint"))
+		assert.Equal(t, 30, s.For("headers"), "other categories are untouched")
+	})
+
+	// Rule 5. The detections are the record of what fired; a reset changes what
+	// the request is worth, not the fact that the signals triggered.
+	t.Run("the detections survive the reset", func(t *testing.T) {
+		var s RequestScore
+
+		s.Add(12, "utc", "foobar")
+		s.Add(50, "cdp", "foobar")
+		s.Set(10, "foobar")
+
+		assert.Equal(t, 10, s.For("foobar"))
+		assert.Equal(t, "foobar:utc=12,foobar:cdp=50", s.String(),
+			"every detection is still listed, at the value it claimed")
+		assert.Equal(t, []string{"foobar:utc", "foobar:cdp"}, s.Reasons())
+	})
+
+	// Traceability: without the marker, foobar=10 next to 62 points of
+	// detections reads as a bug rather than a deliberate override.
+	t.Run("an overridden category is marked", func(t *testing.T) {
+		var s RequestScore
+
+		s.Add(12, "utc", "foobar")
+		s.Add(50, "cdp", "foobar")
+		s.Add(5, "slow_pow")
+		s.Set(10, "foobar")
+
+		assert.Equal(t, "foobar=10(set),slow_pow=5", s.CategoryDetail())
+	})
+
+	t.Run("a later Add counts on top and keeps the marker", func(t *testing.T) {
+		var s RequestScore
+
+		s.Add(100, "cdp", "fingerprint")
+		s.Set(20, "fingerprint")
+		s.Add(7, "slow_pow", "fingerprint")
+
+		assert.Equal(t, 27, s.For("fingerprint"))
+		assert.Equal(t, "fingerprint=27(set)", s.CategoryDetail(),
+			"still not the sum of its detections")
+	})
+
+	t.Run("it creates a category nothing scored yet", func(t *testing.T) {
+		var s RequestScore
+
+		assert.Equal(t, 40, s.Set(40, "policy"))
+		assert.Equal(t, []string{"policy"}, s.Categories())
+		assert.Empty(t, s.String(), "no detection fired")
+	})
+}
+
+func TestSetRequestScoreMirrorsHookVars(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	require.NoError(t, w.AddRequestScore(state, 100, "cdp", "fingerprint"))
+	require.NoError(t, w.SetRequestScore(state, 20, "fingerprint"))
+
+	assert.Equal(t, "20", state.HookVars[hookVarRequestScore])
+	assert.Equal(t, "fingerprint:cdp=100", state.HookVars[hookVarRequestScoreReasons])
+	assert.Equal(t, "fingerprint=20(set)", state.HookVars[hookVarRequestScoreCategories])
+}
+
+// Every signal has a category now, so the key would otherwise appear on every
+// alert repeating request_score_reasons verbatim.
+func TestCategoryHookVarAbsentWithoutCategories(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	require.NoError(t, w.AddRequestScore(state, 100, "cdp"))
+
+	assert.Equal(t, "cdp=100", state.HookVars[hookVarRequestScoreReasons])
+	assert.NotContains(t, state.HookVars, hookVarRequestScoreCategories)
+}
+
+// A Set with no detection behind it has nothing in request_score_reasons to
+// explain the number, so the category key has to carry it.
+func TestSetOnlyScoreIsStillExplained(t *testing.T) {
+	w := makeRuntime()
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+
+	require.NoError(t, w.SetRequestScore(state, 40, "policy"))
+
+	assert.Equal(t, "40", state.HookVars[hookVarRequestScore])
+	assert.Equal(t, "policy=40(set)", state.HookVars[hookVarRequestScoreCategories])
+	assert.Empty(t, state.RequestScore.String(), "nothing fired, policy just assigned a number")
 }

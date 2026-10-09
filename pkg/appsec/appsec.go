@@ -146,14 +146,17 @@ func (h *Hook) Build(ctx context.Context, stage hookStage, patcher *appsecExprPa
 	case hookPostEval:
 		env = GetPostEvalEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnMatch:
-		env = GetOnMatchEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
+		env = GetOnMatchEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{}, pipeline.Event{})
 	case hookOnChallenge:
 		env = GetOnChallengeEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	case hookOnChallengeSubmit:
-		env = GetOnChallengeSubmitEnv(&AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
+		env = GetOnChallengeSubmitEnv(ctx, &AppsecRuntimeConfig{}, placeholderState, &ParsedRequest{})
 	}
 
 	opts := exprhelpers.GetExprOptions(env)
+	if stage != hookOnLoad {
+		opts = append(opts, scoreExprOptions...)
+	}
 	if stage == hookPreEval {
 		opts = append(opts, rateLimitExprOptions...)
 	}
@@ -262,6 +265,10 @@ type AppsecRequestState struct {
 	// challenge submission. nil for any other phase / outcome.
 	SubmissionRejection *SubmissionRejectInfo
 
+	// SubmissionFlagReason is set by FlagSubmission: the cookie is still
+	// issued, but an alert is raised. A rejection takes precedence.
+	SubmissionFlagReason string
+
 	// ChallengeBypassed is set by GrantChallengeCookie to suppress later
 	// SendChallenge calls in the same request. Per-request only; cleared
 	// on ResetResponse. The bypass for subsequent requests is carried by
@@ -326,6 +333,7 @@ func (s *AppsecRequestState) ResetResponse(cfg *AppsecConfig) {
 	s.PendingHTTPCode = nil
 	s.RequireChallenge = false
 	s.SubmissionRejection = nil
+	s.SubmissionFlagReason = ""
 	s.ChallengeBypassed = false
 	s.HooksHalted = false
 }
@@ -514,11 +522,12 @@ func (w *AppsecRuntimeConfig) emitChallenge(state *AppsecRequestState, request *
 	evt := ChallengeEventFromRequest(request, w.Labels, request.UUID, info)
 	StampHookVars(&evt, state)
 
-	// A submission we refused is the only moment worth an alert of its own.
+	// Only refused or explicitly flagged submissions are worth an alert of their own.
 	var overflow *pipeline.Event
 
-	switch info.Reason {
-	case ChallengeReasonRejected, ChallengeReasonFailed:
+	switch {
+	case info.Reason == ChallengeReasonRejected, info.Reason == ChallengeReasonFailed,
+		info.Reason == ChallengeReasonSolved && info.FlagReason != "":
 		overflow = w.buildChallengeOverflow(state, request, info, evt.Appsec.HookVars)
 	}
 
@@ -1255,8 +1264,8 @@ func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]inte
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessOnMatchRules(state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(w, state, request, evt), request)
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
+	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(ctx, w, state, request, evt), request)
 }
 
 // ProcessOnChallengeRules is the in-band-only challenge entry point. It
@@ -1332,7 +1341,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		state.Fingerprint = &fpData
 		state.CookiePowDifficulty = provenDifficulty
 
-		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(w, state, request), "on_challenge_submit", state); err != nil {
+		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(ctx, w, state, request), "on_challenge_submit", state); err != nil {
 			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
 		}
 
@@ -1352,11 +1361,17 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, nil)
 		}
 
-		w.emitChallenge(state, request, ChallengeEventInfo{
+		info := ChallengeEventInfo{
 			Reason:      ChallengeReasonSolved,
 			Difficulty:  state.CookiePowDifficulty,
 			Fingerprint: &fpData,
-		})
+		}
+		if state.SubmissionFlagReason != "" {
+			info.FlagReason = state.SubmissionFlagReason
+			info.Score = state.RequestScore.Total()
+			info.ScoreDetail = state.RequestScore.String()
+		}
+		w.emitChallenge(state, request, info)
 
 		return w.setChallengeResponse(state, http.StatusOK, bodyChallengeOK,
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
@@ -1689,26 +1704,66 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 }
 
 const (
+	// The total request score.
 	hookVarRequestScore = "request_score"
-	// Weighted form ("cdp=100,utc_timezone=15") so this hookvar and the
-	// event/alert key of the same name never disagree on format.
+	// Individual reasons contributing to score.
 	hookVarRequestScoreReasons = "request_score_reasons"
+	// Score categories
+	hookVarRequestScoreCategories = "request_score_categories"
 )
 
-func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string) error {
-	total := state.RequestScore.Add(points, reason)
-
-	if state.HookVars != nil {
-		state.HookVars[hookVarRequestScore] = strconv.Itoa(total)
-		state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
+// syncScoreHookVars updates the sum of scores.
+func syncScoreHookVars(state *AppsecRequestState) {
+	if state.HookVars == nil {
+		return
 	}
+
+	state.HookVars[hookVarRequestScore] = strconv.Itoa(state.RequestScore.Total())
+	state.HookVars[hookVarRequestScoreReasons] = state.RequestScore.String()
+
+	// update category hook vars if set.
+	if state.RequestScore.HasExplicitCategories() {
+		state.HookVars[hookVarRequestScoreCategories] = state.RequestScore.CategoryDetail()
+	}
+}
+
+func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points int, reason string, category ...string) error {
+	if reason == "" {
+		return errors.New("AddRequestScore: reason cannot be empty")
+	}
+
+	total := state.RequestScore.Add(points, reason, category...)
+
+	syncScoreHookVars(state)
 
 	if w.Logger != nil {
 		w.Logger.WithFields(log.Fields{
-			"reason": reason,
-			"points": points,
-			"total":  total,
+			"reason":   reason,
+			"category": category,
+			"points":   points,
+			"total":    total,
 		}).Debug("request score updated")
+	}
+
+	return nil
+}
+
+// A reset has to name what it resets: there is no whole-score reset.
+func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points int, category string) error {
+	if category == "" {
+		return errors.New("SetRequestScore: category cannot be empty")
+	}
+
+	total := state.RequestScore.Set(points, category)
+
+	syncScoreHookVars(state)
+
+	if w.Logger != nil {
+		w.Logger.WithFields(log.Fields{
+			"category": category,
+			"points":   points,
+			"total":    total,
+		}).Debug("request score set")
 	}
 
 	return nil
@@ -1828,6 +1883,17 @@ func (*AppsecRuntimeConfig) RejectSubmission(state *AppsecRequestState, reason s
 		reason = "submission rejected by on_challenge_submit"
 	}
 	state.SubmissionRejection = &SubmissionRejectInfo{Reason: reason}
+	return nil
+}
+
+// FlagSubmission raises an alert for the in-flight challenge submission
+// without refusing the cookie. Only inspected at submit time.
+func (*AppsecRuntimeConfig) FlagSubmission(state *AppsecRequestState, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "submission flagged by on_challenge_submit"
+	}
+	state.SubmissionFlagReason = reason
 	return nil
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	csmetrics "github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -275,6 +276,7 @@ func (a *apic) sendUsageMetricsBatch(ctx context.Context, batch *usageMetricsBat
 
 	_, resp, err := a.apiClient.UsageMetrics.Add(ctx, batch.metrics)
 	if err != nil {
+		csmetrics.CapiErrors.WithLabelValues(csmetrics.CapiOperationMetrics).Inc()
 		log.Errorf("unable to send usage metrics: %s", err)
 
 		if resp == nil || resp.Response == nil {
@@ -518,6 +520,7 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 
 				_, _, err = a.apiClient.Metrics.Add(ctx, metrics)
 				if err != nil {
+					csmetrics.CapiErrors.WithLabelValues(csmetrics.CapiOperationMetrics).Inc()
 					log.Errorf("capi metrics: failed: %s", err)
 				}
 			}

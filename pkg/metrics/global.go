@@ -80,7 +80,7 @@ var GlobalAlerts = prometheus.NewGaugeVec(
 		Name: GlobalAlertsMetricName,
 		Help: "Number of alerts (excluding CAPI).",
 	},
-	[]string{"reason"},
+	[]string{"reason", "kind"},
 )
 
 const GlobalMachinesLastHeartbeatTimestampMetricName = "cs_machines_last_heartbeat_timestamp"

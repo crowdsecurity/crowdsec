@@ -10,13 +10,13 @@ import (
 	"time"
 
 	backoff "github.com/cenkalti/backoff/v5"
+	"github.com/containerd/errdefs"
 	dockerContainer "github.com/moby/moby/api/types/container"
 	dockerTypesEvents "github.com/moby/moby/api/types/events"
 	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
 	"github.com/moby/moby/client"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"github.com/containerd/errdefs"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/dlog"
@@ -28,15 +28,15 @@ import (
 type BackOffFactory func() backoff.BackOff
 
 func newDockerBackOffFactory() BackOffFactory {
-    return func() backoff.BackOff {
-        exp := backoff.NewExponentialBackOff()
-        exp.InitialInterval = 2 * time.Second
-        exp.Multiplier = 2.5
-        exp.MaxInterval = 2 * time.Minute
-        exp.RandomizationFactor = 0.5
+	return func() backoff.BackOff {
+		exp := backoff.NewExponentialBackOff()
+		exp.InitialInterval = 2 * time.Second
+		exp.Multiplier = 2.5
+		exp.MaxInterval = 2 * time.Minute
+		exp.RandomizationFactor = 0.5
 
-        return exp
-    }
+		return exp
+	}
 }
 
 // OneShotAcquisition reads a set of file and returns when done
@@ -278,6 +278,9 @@ func (d *Source) checkServices(ctx context.Context, monitChan chan *ContainerCon
 		}
 
 		if serviceConfig := d.EvalService(ctx, service); serviceConfig != nil {
+			// same as containers: the logs of the previous tasks are still there
+			serviceConfig.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
+
 			monitChan <- serviceConfig
 		}
 	}
@@ -329,6 +332,10 @@ func (d *Source) checkContainers(ctx context.Context, monitChan chan *ContainerC
 		}
 
 		if containerConfig := d.EvalContainer(ctx, container); containerConfig != nil {
+			// A restarted container keeps the logs of its previous runs, which we already
+			// read: always tail from now on, whatever the configured "since".
+			containerConfig.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
+
 			monitChan <- containerConfig
 		}
 	}
@@ -345,8 +352,8 @@ func (d *Source) checkContainers(ctx context.Context, monitChan chan *ContainerC
 }
 
 type subscription struct {
-    events <-chan dockerTypesEvents.Message
-    errs   <-chan error
+	events <-chan dockerTypesEvents.Message
+	errs   <-chan error
 }
 
 func (d *Source) trySubscribeEvents(ctx context.Context) (*subscription, error) {

@@ -36,6 +36,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -857,10 +858,16 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 func LookupHost(params ...any) (any, error) {
 	value := params[0].(string)
 
-	addresses, err := net.LookupHost(value)
+	ips, err := dnscache.ForwardLookup(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
 		return []string{}, nil
+	}
+
+	addresses := make([]string, 0, len(ips))
+
+	for _, ip := range ips {
+		addresses = append(addresses, ip.String())
 	}
 
 	return addresses, nil
