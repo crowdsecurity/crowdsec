@@ -28,6 +28,7 @@ type Source struct {
 	lapiURL               string
 	AuthCache             AuthCache
 	AppsecRunners         []AppsecRunner // one for each go-routine
+	OutOfBandRunners      []AppsecRunner
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
 	authGroup             singleflight.Group

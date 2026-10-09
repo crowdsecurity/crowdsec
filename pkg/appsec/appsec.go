@@ -234,6 +234,9 @@ type SubmissionRejectInfo struct {
 }
 
 type AppsecRequestState struct {
+	// Logger carries the request's fields. Use it rather than the runtime's,
+	// which is shared by every runner.
+	Logger       *log.Entry
 	Tx           ExtendedTransaction
 	CurrentPhase phase
 	Response     AppsecTempResponse
@@ -296,6 +299,11 @@ type AppsecRequestState struct {
 
 	// Tracks the request score + reasons
 	RequestScore RequestScore
+
+	// Set by pre_eval SetRemediationBy*: they apply to this request only and
+	// take precedence over the ones set in on_load.
+	RemediationByTag map[string]string
+	RemediationByID  map[int]string
 
 	// HookVars is a per-request scratch space exposed to expr hooks as
 	// `hook_vars`. Helpers (e.g. ValidateRequestWithSchema) publish string
@@ -638,6 +646,15 @@ func (w *AppsecRuntimeConfig) NewRequestState() AppsecRequestState {
 	return state
 }
 
+// requestLogger falls back to the runtime logger for states built without one.
+func (w *AppsecRuntimeConfig) requestLogger(state *AppsecRequestState) *log.Entry {
+	if state != nil && state.Logger != nil {
+		return state.Logger
+	}
+
+	return w.Logger
+}
+
 func (w *AppsecRuntimeConfig) ClearResponse(state *AppsecRequestState) {
 	state.ResetResponse(w.Config)
 }
@@ -662,7 +679,7 @@ func requestBand(request *ParsedRequest) (string, error) {
 // picked by the order of the runner's checks.
 func (w *AppsecRuntimeConfig) setOutcome(state *AppsecRequestState, request *ParsedRequest, outcome *HookOutcome) (bool, error) {
 	if existing := state.Outcome(request); existing != nil {
-		w.Logger.Warnf("ignoring %s outcome (%s): request already had a %s outcome (%s)",
+		w.requestLogger(state).Warnf("ignoring %s outcome (%s): request already had a %s outcome (%s)",
 			outcome.Action, outcome.Reason, existing.Action, existing.Reason)
 
 		return false, nil
@@ -724,7 +741,7 @@ func (w *AppsecRuntimeConfig) DropRequest(state *AppsecRequestState, request *Pa
 	}
 
 	state.Tx.Interrupt(interrupt)
-	w.Logger.Debugf("drop request helper triggered for %s phase: %s", band, reason)
+	w.requestLogger(state).Debugf("drop request helper triggered for %s phase: %s", band, reason)
 
 	return nil
 }
@@ -752,7 +769,7 @@ func (w *AppsecRuntimeConfig) SkipProcessing(state *AppsecRequestState, request 
 		return err
 	}
 
-	w.Logger.Debugf("skip processing helper triggered for %s phase: %s", band, reason)
+	w.requestLogger(state).Debugf("skip processing helper triggered for %s phase: %s", band, reason)
 
 	return nil
 }
@@ -1177,17 +1194,17 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 // RejectSubmission or the on_challenge_submit GrantChallengeCookie),
 // remaining rules in this phase are skipped. ProcessOnLoadRules passes
 // nil — it has no request state at all.
-func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState) error {
+func (*AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interface{}, hookType string, state *AppsecRequestState, logger *log.Entry) error {
 	has_match := false
 
 	for _, rule := range hooks {
 		if state != nil && state.HooksHalted {
-			w.Logger.Debugf("hooks halted by a terminal action; skipping remaining %s rules", hookType)
+			logger.Debugf("hooks halted by a terminal action; skipping remaining %s rules", hookType)
 			break
 		}
 
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, env, logger, logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec %s filter %s : %w", hookType, rule.Filter, err)
 			}
@@ -1195,11 +1212,11 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					w.Logger.Debugf("filter didnt match")
+					logger.Debugf("filter didnt match")
 					continue
 				}
 			default:
-				w.Logger.Errorf("Filter must return a boolean, can't filter")
+				logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
 
@@ -1207,15 +1224,15 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 		}
 
 		for _, applyExpr := range rule.ApplyExpr {
-			o, err := exprhelpers.Run(applyExpr, env, w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, env, logger, logger.Level >= log.DebugLevel)
 			if err != nil {
-				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, err)
+				logger.Errorf("unable to apply appsec %s expr: %s", hookType, err)
 				continue
 			}
 
 			switch t := o.(type) {
 			case error:
-				w.Logger.Errorf("unable to apply appsec %s expr: %s", hookType, t)
+				logger.Errorf("unable to apply appsec %s expr: %s", hookType, t)
 				continue
 			default:
 			}
@@ -1230,30 +1247,31 @@ func (w *AppsecRuntimeConfig) processHooks(hooks []Hook, env map[string]interfac
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
-	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load", nil)
+	return w.processHooks(w.CompiledOnLoad, GetOnLoadEnv(w), "on_load", nil, w.Logger)
 }
 
 // runPhaseHooks runs the common hooks for the given stage, then dispatches to
 // the in-band or out-of-band phase hooks depending on the request band.
-func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) runPhaseHooks(stage hookStage, env map[string]interface{}, state *AppsecRequestState, request *ParsedRequest) error {
 	label := stage.String()
+	logger := w.requestLogger(state)
 
-	if err := w.processHooks(w.CommonHooks.get(stage), env, label, nil); err != nil {
+	if err := w.processHooks(w.CommonHooks.get(stage), env, label, nil, logger); err != nil {
 		return err
 	}
 
 	switch {
 	case request.IsInBand:
-		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]", nil)
+		return w.processHooks(w.InBandHooks.get(stage), env, label+"[inband]", nil, logger)
 	case request.IsOutBand:
-		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]", nil)
+		return w.processHooks(w.OutOfBandHooks.get(stage), env, label+"[outofband]", nil, logger)
 	}
 
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) ProcessOnMatchRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) error {
-	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(ctx, w, state, request, evt), request)
+	return w.runPhaseHooks(hookOnMatch, GetOnMatchEnv(ctx, w, state, request, evt), state, request)
 }
 
 // ProcessOnChallengeRules is the in-band-only challenge entry point. It
@@ -1302,12 +1320,12 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 	// to reject the submission, then issue (or deny) the cookie. Per-route
 	// on_challenge inspection happens on subsequent cookie-bearing requests.
 	if path == challenge.ChallengeSubmitPath && request.HTTPRequest.Method == http.MethodPost {
-		w.Logger.Debugf("validating challenge response")
+		w.requestLogger(state).Debugf("validating challenge response")
 		w.emitChallenge(state, request, ChallengeEventInfo{Reason: ChallengeReasonSubmitted})
 
 		ck, fpData, provenDifficulty, err := w.ChallengeRuntime.ValidateChallengeResponse(request.HTTPRequest, request.Body)
 		if err != nil {
-			w.Logger.Errorf("challenge validation failed: %s", err)
+			w.requestLogger(state).Errorf("challenge validation failed: %s", err)
 			info := ChallengeEventInfo{
 				Reason:     ChallengeReasonFailed,
 				FailReason: err.Error(),
@@ -1329,8 +1347,8 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		state.Fingerprint = &fpData
 		state.CookiePowDifficulty = provenDifficulty
 
-		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(ctx, w, state, request), "on_challenge_submit", state); err != nil {
-			w.Logger.Errorf("unable to process on_challenge_submit rules: %s", err)
+		if err := w.processHooks(w.CompiledOnChallengeSubmit, GetOnChallengeSubmitEnv(ctx, w, state, request), "on_challenge_submit", state, w.requestLogger(state)); err != nil {
+			w.requestLogger(state).Errorf("unable to process on_challenge_submit rules: %s", err)
 		}
 
 		if state.SubmissionRejection != nil {
@@ -1397,7 +1415,7 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				state.ChallengeBypassed = true
 				msg = "valid allowlist challenge cookie — bypassing challenge"
 			}
-			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, msg)
+			fp.LogAccepted(w.requestLogger(state), log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, msg)
 		}
 	}
 
@@ -1407,79 +1425,79 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 		return nil
 	}
 
-	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", state)
+	return w.processHooks(w.CompiledOnChallenge, GetOnChallengeEnv(ctx, w, state, request), "on_challenge", state, w.requestLogger(state))
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
-	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(ctx, w, state, request), request)
+	return w.runPhaseHooks(hookPreEval, GetPreEvalEnv(ctx, w, state, request), state, request)
 }
 
 func (w *AppsecRuntimeConfig) ProcessPostEvalRules(ctx context.Context, state *AppsecRequestState, request *ParsedRequest) error {
-	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(ctx, w, state, request), request)
+	return w.runPhaseHooks(hookPostEval, GetPostEvalEnv(ctx, w, state, request), state, request)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(state *AppsecRequestState, id int) error {
 	if state.CurrentPhase != PhaseInBand {
-		w.Logger.Warnf("cannot remove inband rule %d when not in inband phase", id)
+		w.requestLogger(state).Warnf("cannot remove inband rule %d when not in inband phase", id)
 		return nil
 	}
 
-	w.Logger.Debugf("removing inband rule %d", id)
+	w.requestLogger(state).Debugf("removing inband rule %d", id)
 	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(state *AppsecRequestState, id int) error {
 	if state.CurrentPhase != PhaseOutOfBand {
-		w.Logger.Warnf("cannot remove outband rule %d when not in outband phase", id)
+		w.requestLogger(state).Warnf("cannot remove outband rule %d when not in outband phase", id)
 		return nil
 	}
 
-	w.Logger.Debugf("removing outband rule %d", id)
+	w.requestLogger(state).Debugf("removing outband rule %d", id)
 	return state.Tx.RemoveRuleByIDWithError(id)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(state *AppsecRequestState, tag string) error {
 	if state.CurrentPhase != PhaseInBand {
-		w.Logger.Warnf("cannot remove inband rule with tag %s when not in inband phase", tag)
+		w.requestLogger(state).Warnf("cannot remove inband rule with tag %s when not in inband phase", tag)
 		return nil
 	}
 
-	w.Logger.Debugf("removing inband rule with tag %s", tag)
+	w.requestLogger(state).Debugf("removing inband rule with tag %s", tag)
 	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(state *AppsecRequestState, tag string) error {
 	if state.CurrentPhase != PhaseOutOfBand {
-		w.Logger.Warnf("cannot remove outband rule with tag %s when not in outband phase", tag)
+		w.requestLogger(state).Warnf("cannot remove outband rule with tag %s when not in outband phase", tag)
 		return nil
 	}
 
-	w.Logger.Debugf("removing outband rule with tag %s", tag)
+	w.requestLogger(state).Debugf("removing outband rule with tag %s", tag)
 	return state.Tx.RemoveRuleByTagWithError(tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(state *AppsecRequestState, name string) error {
 	if state.CurrentPhase != PhaseInBand {
-		w.Logger.Warnf("cannot remove inband rule with name %s when not in inband phase", name)
+		w.requestLogger(state).Warnf("cannot remove inband rule with name %s when not in inband phase", name)
 		return nil
 	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
-	w.Logger.Debugf("removing inband rule %s", tag)
+	w.requestLogger(state).Debugf("removing inband rule %s", tag)
 	return w.RemoveInbandRuleByTag(state, tag)
 }
 
 func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(state *AppsecRequestState, name string) error {
 	if state.CurrentPhase != PhaseOutOfBand {
-		w.Logger.Warnf("cannot remove outband rule with name %s when not in outband phase", name)
+		w.requestLogger(state).Warnf("cannot remove outband rule with name %s when not in outband phase", name)
 		return nil
 	}
 	tag := fmt.Sprintf("crowdsec-%s", name)
-	w.Logger.Debugf("removing outband rule %s", tag)
+	w.requestLogger(state).Debugf("removing outband rule %s", tag)
 	return w.RemoveOutbandRuleByTag(state, tag)
 }
 
 func (w *AppsecRuntimeConfig) CancelEvent(state *AppsecRequestState) error {
-	w.Logger.Debugf("canceling event")
+	w.requestLogger(state).Debugf("canceling event")
 	state.Response.SendEvent = false
 
 	return nil
@@ -1524,19 +1542,19 @@ func (w *AppsecRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 }
 
 func (w *AppsecRuntimeConfig) SendEvent(state *AppsecRequestState) error {
-	w.Logger.Debugf("sending event")
+	w.requestLogger(state).Debugf("sending event")
 	state.Response.SendEvent = true
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SendAlert(state *AppsecRequestState) error {
-	w.Logger.Debugf("sending alert")
+	w.requestLogger(state).Debugf("sending alert")
 	state.Response.SendAlert = true
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) CancelAlert(state *AppsecRequestState) error {
-	w.Logger.Debugf("canceling alert")
+	w.requestLogger(state).Debugf("canceling alert")
 	state.Response.SendAlert = false
 	return nil
 }
@@ -1569,32 +1587,54 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 	return nil
 }
 
+func (w *AppsecRuntimeConfig) SetRequestActionByTag(state *AppsecRequestState, tag string, action string) error {
+	if state.RemediationByTag == nil {
+		state.RemediationByTag = make(map[string]string)
+	}
+	w.requestLogger(state).Debugf("setting action of %s to %s for this request", tag, action)
+	state.RemediationByTag[tag] = action
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestActionByID(state *AppsecRequestState, id int, action string) error {
+	if state.RemediationByID == nil {
+		state.RemediationByID = make(map[int]string)
+	}
+	w.requestLogger(state).Debugf("setting action of %d to %s for this request", id, action)
+	state.RemediationByID[id] = action
+	return nil
+}
+
+func (w *AppsecRuntimeConfig) SetRequestActionByName(state *AppsecRequestState, name string, action string) error {
+	return w.SetRequestActionByTag(state, fmt.Sprintf("crowdsec-%s", name), action)
+}
+
 func (w *AppsecRuntimeConfig) SetAction(state *AppsecRequestState, action string) error {
-	w.Logger.Debugf("setting action to %s", action)
+	w.requestLogger(state).Debugf("setting action to %s", action)
 	state.Response.Action = action
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SetHTTPCode(state *AppsecRequestState, code int) error {
-	w.Logger.Debugf("setting http code to %d", code)
+	w.requestLogger(state).Debugf("setting http code to %d", code)
 	state.Response.UserHTTPResponseCode = code
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SetChallengeBody(state *AppsecRequestState, content string) error {
-	w.Logger.Debugf("setting challenge body content")
+	w.requestLogger(state).Debugf("setting challenge body content")
 	state.Response.UserHTTPBodyContent = content
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SetChallengeCookie(state *AppsecRequestState, cookie cookie.AppsecCookie) error {
-	w.Logger.Debugf("adding challenge cookie")
+	w.requestLogger(state).Debugf("adding challenge cookie")
 	state.Response.UserHTTPCookies = append(state.Response.UserHTTPCookies, cookie)
 	return nil
 }
 
 func (w *AppsecRuntimeConfig) SetChallengeHeader(state *AppsecRequestState, name string, value string) error {
-	w.Logger.Debugf("adding challenge headers")
+	w.requestLogger(state).Debugf("adding challenge headers")
 	if state.Response.UserHeaders == nil {
 		state.Response.UserHeaders = make(map[string][]string)
 	}
@@ -1724,8 +1764,8 @@ func (w *AppsecRuntimeConfig) AddRequestScore(state *AppsecRequestState, points 
 
 	syncScoreHookVars(state)
 
-	if w.Logger != nil {
-		w.Logger.WithFields(log.Fields{
+	if w.requestLogger(state) != nil {
+		w.requestLogger(state).WithFields(log.Fields{
 			"reason":   reason,
 			"category": category,
 			"points":   points,
@@ -1746,8 +1786,8 @@ func (w *AppsecRuntimeConfig) SetRequestScore(state *AppsecRequestState, points 
 
 	syncScoreHookVars(state)
 
-	if w.Logger != nil {
-		w.Logger.WithFields(log.Fields{
+	if w.requestLogger(state) != nil {
+		w.requestLogger(state).WithFields(log.Fields{
 			"category": category,
 			"points":   points,
 			"total":    total,
@@ -1771,8 +1811,8 @@ func (w *AppsecRuntimeConfig) emitMismatchObservability(
 		fsid = state.Fingerprint.FSID
 	}
 
-	if w.Logger != nil {
-		w.Logger.WithFields(log.Fields{
+	if w.requestLogger(state) != nil {
+		w.requestLogger(state).WithFields(log.Fields{
 			"fsid":    fsid,
 			"source":  request.ClientIP,
 			"bouncer": request.RemoteAddrNormalized,
@@ -1808,20 +1848,20 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	// SkipProcessing). Serving a challenge on top of it produced an
 	// incoherent response: a "ban" remediation carrying a challenge page.
 	if outcome := state.Outcome(request); outcome != nil {
-		w.Logger.Warnf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
+		w.requestLogger(state).Warnf("SendChallenge no-op: request already %s (%s)", outcome.Action, outcome.Reason)
 		return nil
 	}
 
 	// GrantChallengeCookie earlier in the same request already minted an
 	// allowlist cookie; refuse to overwrite it with a challenge page.
 	if state.ChallengeBypassed {
-		w.Logger.Debugf("SendChallenge no-op: allowlist cookie already granted this request")
+		w.requestLogger(state).Debugf("SendChallenge no-op: allowlist cookie already granted this request")
 		return nil
 	}
 
 	// A hook flagged this request as exempt (verified bot, well-known path, ...).
 	if state.ChallengeExempt {
-		w.Logger.Debugf("SendChallenge no-op: request exempt from challenge")
+		w.requestLogger(state).Debugf("SendChallenge no-op: request exempt from challenge")
 		return nil
 	}
 
@@ -1831,12 +1871,12 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 	}
 
 	if state.Fingerprint != nil && state.CookiePowDifficulty >= target {
-		w.Logger.Debugf("client already proved difficulty %d >= target %d, skipping challenge issue",
+		w.requestLogger(state).Debugf("client already proved difficulty %d >= target %d, skipping challenge issue",
 			state.CookiePowDifficulty, target)
 		return nil
 	}
 
-	w.Logger.Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
+	w.requestLogger(state).Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
 
 	challengePage, err := w.ChallengeRuntime.GetChallengePage(ctx, request.HTTPRequest.UserAgent(), target)
 	if err != nil {
@@ -1947,7 +1987,7 @@ func (w *AppsecRuntimeConfig) GrantChallengeCookie(state *AppsecRequestState, re
 	}
 
 	state.Fingerprint.LogAccepted(
-		w.Logger.WithField("location", headers["Location"]),
+		w.requestLogger(state).WithField("location", headers["Location"]),
 		log.InfoLevel,
 		request.ClientIP,
 		request.RemoteAddrNormalized,
@@ -1973,7 +2013,7 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 		return err
 	}
 
-	state.Fingerprint.LogAccepted(w.Logger, log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
+	state.Fingerprint.LogAccepted(w.requestLogger(state), log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
 
 	return nil
 }
@@ -1997,7 +2037,7 @@ func (w *AppsecRuntimeConfig) SetBodySizeExceededAction(action string) error {
 // Intended for use in pre_eval hooks.
 func (w *AppsecRuntimeConfig) DisableBodyInspection(state *AppsecRequestState) error {
 	state.DisableBodyInspection = true
-	w.Logger.Debugf("body inspection disabled for this request")
+	w.requestLogger(state).Debugf("body inspection disabled for this request")
 
 	return nil
 }
@@ -2167,7 +2207,7 @@ func (w *AppsecRuntimeConfig) ValidateRequestWithSchema(ctx context.Context, sta
 		// Non-ValidationError paths cover things like "no schema loaded for
 		// ref X". Log loudly and surface a synthetic entry so the hook can
 		// still build a message.
-		w.Logger.Errorf("request validation failed: %s", err)
+		w.requestLogger(state).Errorf("request validation failed: %s", err)
 		valErr = &apivalidation.ValidationError{
 			Reason:  "internal",
 			Message: err.Error(),

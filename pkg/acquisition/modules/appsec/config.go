@@ -302,26 +302,10 @@ func (w *Source) Configure(ctx context.Context, yamlConfig []byte, logger *log.E
 		return fmt.Errorf("unable to process on load rules: %w", err)
 	}
 
-	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
-
 	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.logger)
 
-	for nbRoutine := range w.config.Routines {
-		appsecRunnerUUID := uuid.New().String()
-		runner := AppsecRunner{
-			inChan:                 w.InChan,
-			UUID:                   appsecRunnerUUID,
-			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
-			AppsecRuntime:          w.AppsecRuntime,
-			Labels:                 w.config.Labels,
-			appsecAllowlistsClient: w.appsecAllowlistClient,
-		}
-
-		if err = runner.Init(w.hub.GetDataDir()); err != nil {
-			return fmt.Errorf("unable to initialize runner: %w", err)
-		}
-
-		w.AppsecRunners[nbRoutine] = runner
+	if err := w.buildRunners(); err != nil {
+		return err
 	}
 
 	w.logger.Infof("Created %d appsec runners", len(w.AppsecRunners))
@@ -496,4 +480,45 @@ func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 			logger.Errorf("unable to write response: %s", err)
 		}
 	}
+}
+
+// buildRunners creates the in-band runners serving the bouncers and the
+// out-of-band runners they hand requests to.
+func (w *Source) buildRunners() error {
+	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
+	w.OutOfBandRunners = make([]AppsecRunner, w.config.Routines)
+
+	outOfBandChan := make(chan *outOfBandJob, w.config.Routines*outOfBandQueuePerRoutine)
+
+	newRunner := func() AppsecRunner {
+		appsecRunnerUUID := uuid.New().String()
+
+		return AppsecRunner{
+			inChan:                 w.InChan,
+			outOfBandChan:          outOfBandChan,
+			UUID:                   appsecRunnerUUID,
+			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
+			AppsecRuntime:          w.AppsecRuntime,
+			Labels:                 w.config.Labels,
+			appsecAllowlistsClient: w.appsecAllowlistClient,
+		}
+	}
+
+	for nbRoutine := range w.config.Routines {
+		runner := newRunner()
+		if err := runner.InitInBand(w.hub.GetDataDir()); err != nil {
+			return fmt.Errorf("unable to initialize runner: %w", err)
+		}
+
+		w.AppsecRunners[nbRoutine] = runner
+
+		runner = newRunner()
+		if err := runner.InitOutOfBand(w.hub.GetDataDir()); err != nil {
+			return fmt.Errorf("unable to initialize out-of-band runner: %w", err)
+		}
+
+		w.OutOfBandRunners[nbRoutine] = runner
+	}
+
+	return nil
 }
