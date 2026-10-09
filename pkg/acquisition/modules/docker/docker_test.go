@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/moby/moby/api/types/system"
 	"github.com/moby/moby/client"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
@@ -711,5 +714,174 @@ func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
 	// Try to parse the same labels multiple times to ensure deterministic behavior
 	for range 50 {
 		assert.Equal(t, first, parseLabels(labels))
+	}
+}
+
+// shutdownRaceCli holds the second ContainerList call (the one triggered by a
+// docker event) until the test releases it, and lets the test send events.
+type shutdownRaceCli struct {
+	mockDockerCli
+	events      chan dockerTypesEvents.Message
+	listCalls   atomic.Int32
+	listStarted chan struct{}
+	listRelease chan struct{}
+}
+
+func (c *shutdownRaceCli) Events(_ context.Context, _ client.EventsListOptions) client.EventsResult {
+	return client.EventsResult{Messages: c.events, Err: make(chan error)}
+}
+
+func (c *shutdownRaceCli) ContainerList(ctx context.Context, opts client.ContainerListOptions) (client.ContainerListResult, error) {
+	if c.listCalls.Add(1) > 1 {
+		close(c.listStarted)
+		<-c.listRelease
+	}
+
+	return c.mockDockerCli.ContainerList(ctx, opts)
+}
+
+// A container event that is still being handled when the acquisition is
+// stopped must not crash or hang the shutdown (#4665).
+func TestStreamingAcquisitionShutdownDuringContainerCheck(t *testing.T) {
+	ctx := t.Context()
+
+	logger, hook := logtest.NewNullLogger()
+	logger.SetLevel(log.DebugLevel)
+
+	dockerSource := Source{}
+	err := dockerSource.Configure(ctx, []byte("source: docker\nmode: tail\ncontainer_name:\n - "+testContainerName), logger.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	cli := &shutdownRaceCli{
+		events:      make(chan dockerTypesEvents.Message),
+		listStarted: make(chan struct{}),
+		listRelease: make(chan struct{}),
+	}
+	dockerSource.Client = cli
+
+	out := make(chan pipeline.Event)
+	go func() {
+		for range out {
+		}
+	}()
+
+	// same as StartAcquisition: the source runs in the tomb it is given
+	dockerTomb := tomb.Tomb{}
+	dockerTomb.Go(func() error {
+		return dockerSource.StreamingAcquisition(ctx, out, &dockerTomb)
+	})
+
+	// another container dies, Watch starts to re-list the containers
+	cli.events <- dockerTypesEvents.Message{Type: dockerTypesEvents.ContainerEventType, Action: dockerTypesEvents.ActionDie}
+	<-cli.listStarted
+
+	// SIGTERM arrives while the list call is in flight
+	dockerTomb.Kill(nil)
+	require.Eventually(t, func() bool {
+		for _, entry := range hook.AllEntries() {
+			if entry.Message == "routine cleanup done, return" {
+				return true
+			}
+		}
+
+		return false
+	}, 5*time.Second, 10*time.Millisecond, "container manager did not shut down")
+
+	close(cli.listRelease)
+
+	done := make(chan error, 1)
+	go func() { done <- dockerTomb.Wait() }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("acquisition did not shut down")
+	}
+}
+
+// tailRaceCli ends every log stream right away and holds the ContainerInspect
+// that follows it (the "is it still running?" check) until released.
+type tailRaceCli struct {
+	mockDockerCli
+	logsServed     atomic.Bool
+	inspectStarted chan struct{}
+	inspectRelease chan struct{}
+	once           sync.Once
+}
+
+func (c *tailRaceCli) ContainerLogs(_ context.Context, _ string, _ client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	c.logsServed.Store(true)
+	return io.NopCloser(strings.NewReader("")), nil
+}
+
+func (c *tailRaceCli) ContainerInspect(ctx context.Context, id string, opts client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	// inspect calls made while evaluating the container, before tailing starts
+	if !c.logsServed.Load() {
+		return c.mockDockerCli.ContainerInspect(ctx, id, opts)
+	}
+
+	c.once.Do(func() { close(c.inspectStarted) })
+	<-c.inspectRelease
+
+	res := client.ContainerInspectResult{}
+	res.Container = dockerContainer.InspectResponse{
+		Config: &dockerContainer.Config{Tty: false},
+		State:  &dockerContainer.State{Running: false},
+	}
+
+	return res, nil
+}
+
+// A tail that finds its container gone while the acquisition is being stopped
+// must not block on the container manager, which is waiting for that tail (#4665).
+func TestStreamingAcquisitionShutdownWhileTailRemovesContainer(t *testing.T) {
+	ctx := t.Context()
+
+	logger, hook := logtest.NewNullLogger()
+	logger.SetLevel(log.DebugLevel)
+
+	dockerSource := Source{}
+	err := dockerSource.Configure(ctx, []byte("source: docker\nmode: tail\ncontainer_name:\n - "+testContainerName), logger.WithField("type", ModuleName), metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	cli := &tailRaceCli{
+		inspectStarted: make(chan struct{}),
+		inspectRelease: make(chan struct{}),
+	}
+	dockerSource.Client = cli
+
+	out := make(chan pipeline.Event)
+	// same as StartAcquisition: the source runs in the tomb it is given
+	dockerTomb := tomb.Tomb{}
+	dockerTomb.Go(func() error {
+		return dockerSource.StreamingAcquisition(ctx, out, &dockerTomb)
+	})
+
+	// the log stream ended, the tail is checking whether the container still runs
+	<-cli.inspectStarted
+
+	// SIGTERM arrives, the container manager starts waiting for the tail
+	dockerTomb.Kill(nil)
+	require.Eventually(t, func() bool {
+		for _, entry := range hook.AllEntries() {
+			if entry.Message == "killing tail for container "+testContainerName {
+				return true
+			}
+		}
+
+		return false
+	}, 5*time.Second, 10*time.Millisecond, "container manager did not start shutting down")
+
+	close(cli.inspectRelease)
+
+	done := make(chan error, 1)
+	go func() { done <- dockerTomb.Wait() }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("acquisition did not shut down")
 	}
 }
