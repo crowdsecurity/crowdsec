@@ -1,0 +1,72 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Journalctl datasource
+description: >
+  Schema for journalctl acquisition entries consumed by CrowdSec. Every
+  field mirrors pkg/acquisition/modules/journalctl.Configuration and the
+  embedded configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: journalctl
+    description: >
+      Must be journalctl to bind this acquisition entry to the Journalctl
+      datasource.
+  mode:
+    type: string
+    enum: [tail, cat]
+    default: tail
+    description: >
+      Acquisition mode (tail streams new entries, cat performs a finite read).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: syslog).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  journalctl_filter:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      minLength: 1
+    description: >
+      Arguments appended to the journalctl command line (for example
+      ["-u", "ssh.service"]).
+required:
+  - source
+  - journalctl_filter
+examples:
+  - source: journalctl
+    journalctl_filter:
+      - "-u"
+      - ssh.service
+    labels:
+      type: syslog
