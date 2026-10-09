@@ -53,12 +53,23 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("VictoriaLogs query is mandatory")
 	}
 
-	if s.Config.WaitForReady == 0 {
-		s.Config.WaitForReady = 10 * time.Second
-	}
-
 	if s.Config.Mode == "" {
 		s.Config.Mode = configuration.TAIL_MODE
+	}
+
+	if s.Config.Mode == configuration.TAIL_MODE {
+		// the acquisition restarts the tail with a fixed backoff instead
+		if s.Config.WaitForReady != 0 {
+			s.logger.Warn("wait_for_ready is ignored in tail mode")
+		}
+
+		if s.Config.MaxFailureDuration != 0 {
+			s.logger.Warn("max_failure_duration is ignored in tail mode")
+		}
+	}
+
+	if s.Config.WaitForReady == 0 {
+		s.Config.WaitForReady = 10 * time.Second
 	}
 
 	if s.Config.Prefix == "" {
