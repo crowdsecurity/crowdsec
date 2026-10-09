@@ -7,11 +7,6 @@ import (
 	"github.com/expr-lang/expr"
 )
 
-// scoreCtxVar names the env variable expr.WithContext injects as the hidden
-// first argument of AddRequestScore. Underscore-prefixed because it is wiring:
-// rules never write it.
-const scoreCtxVar = "_score_ctx"
-
 // AddRequestScore has two prototypes, only expr.Function accepts more than one per name.
 type scoreBindingKey struct{}
 
@@ -52,5 +47,5 @@ var scoreExprOptions = []expr.Option{
 		new(func(context.Context, int, string) error),
 		new(func(context.Context, int, string, string) error),
 	),
-	expr.WithContext(scoreCtxVar),
+	expr.WithContext(requestCtxVar),
 }

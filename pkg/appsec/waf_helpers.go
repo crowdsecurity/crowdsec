@@ -13,6 +13,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+// requestCtxVar names the env variable expr.WithContext injects as the hidden
+// first argument of helpers registered with expr.Function. Underscore-prefixed
+// because it is wiring: rules never write it.
+const requestCtxVar = "_request_ctx"
+
 // parseLogVerbosity maps an optional expr-side verbosity argument
 // ("minimal", "info", "verbose") to a FingerprintLogVerbosity. Empty /
 // missing returns FingerprintLogInfo (the default tier). Unknown values
@@ -135,7 +140,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		},
 		"DisableBodyInspection":  func() error { return w.DisableBodyInspection(state) },
 		"ExemptFromChallenge":    func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
-		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		requestCtxVar:            withRequestBinding(withScoreBinding(ctx, w, state), w, state, request),
 		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
 		"RequestScore":           func() int { return state.RequestScore.Total() },
 		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
@@ -171,7 +176,7 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"hook_vars":               state.HookVars,
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
-		scoreCtxVar:               withScoreBinding(ctx, w, state),
+		requestCtxVar:             withScoreBinding(ctx, w, state),
 		"SetRequestScore":         func(points int, category string) error { return w.SetRequestScore(state, points, category) },
 		"RequestScore":            func() int { return state.RequestScore.Total() },
 		"RequestScoreFor":         func(category string) int { return state.RequestScore.For(category) },
@@ -216,7 +221,7 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		"EvaluateMismatches": func() *challenge.MismatchReport {
 			return w.EvaluateMismatches(state, request)
 		},
-		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		requestCtxVar:            withScoreBinding(ctx, w, state),
 		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
 		"RequestScore":           func() int { return state.RequestScore.Total() },
 		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
@@ -331,7 +336,7 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 		"DumpFingerprint": func(label string) string {
 			return DumpFingerprint(w.FingerprintDumpDir, label, state.Fingerprint, request)
 		},
-		scoreCtxVar:              withScoreBinding(ctx, w, state),
+		requestCtxVar:            withScoreBinding(ctx, w, state),
 		"SetRequestScore":        func(points int, category string) error { return w.SetRequestScore(state, points, category) },
 		"RequestScore":           func() int { return state.RequestScore.Total() },
 		"RequestScoreFor":        func(category string) int { return state.RequestScore.For(category) },
@@ -362,7 +367,7 @@ func GetOnMatchEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"AppsecCookie":            cookie.NewAppsecCookie,
 		"ExemptFromChallenge":     func(reason string) error { return w.ExemptFromChallenge(state, request, reason) },
 		"HasValidChallengeCookie": state.HasValidChallengeCookie,
-		scoreCtxVar:               withScoreBinding(ctx, w, state),
+		requestCtxVar:             withScoreBinding(ctx, w, state),
 		"SetRequestScore":         func(points int, category string) error { return w.SetRequestScore(state, points, category) },
 		"RequestScore":            func() int { return state.RequestScore.Total() },
 		"RequestScoreFor":         func(category string) int { return state.RequestScore.For(category) },

@@ -19,6 +19,9 @@ const (
 	// challenge lifecycle. It is intentionally distinct from SourceWAF so that
 	// challenge scenarios can filter on it without colliding with WAF scenarios.
 	SourceChallenge = "crowdsec-appsec-challenge"
+	// SourceRateLimit is the `source` field set on events generated for requests
+	// rejected by RateLimit().
+	SourceRateLimit = "crowdsec-appsec-rate-limit"
 )
 
 // ChallengeReason identifies a challenge lifecycle moment. Its string value is
@@ -116,6 +119,22 @@ func ChallengeEventFromRequest(r *ParsedRequest, labels map[string]string, txUui
 		}
 		evt.Parsed["platform"] = fp.Signals.Device.Platform
 	}
+
+	return evt
+}
+
+// rateLimitEventFromRequest builds the LOG event emitted for every request
+// rejected by RateLimit(). The source value the limiter was keyed on is left
+// out on purpose: it can be a session cookie.
+func rateLimitEventFromRequest(r *ParsedRequest, labels map[string]string, txUuid string, spec rateLimitSpec) pipeline.Event {
+	evt := baseEventFromRequest(r, labels, txUuid, SourceRateLimit)
+
+	if r.HTTPRequest != nil {
+		evt.Parsed["user_agent"] = r.HTTPRequest.UserAgent()
+	}
+
+	evt.Parsed[rateLimitKeyField] = spec.key
+	evt.Parsed[rateLimitExprField] = spec.expr
 
 	return evt
 }
