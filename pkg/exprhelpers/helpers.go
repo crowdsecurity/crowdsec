@@ -72,9 +72,13 @@ var (
 
 func GetExprOptions(ctx map[string]any) []expr.Option {
 	// copy the pre‑built options + one Env(...) for this call
-	opts := make([]expr.Option, len(exprFunctionOptions)+1)
+	opts := make([]expr.Option, len(exprFunctionOptions), len(exprFunctionOptions)+2)
 	copy(opts, exprFunctionOptions)
-	opts[len(opts)-1] = expr.Env(ctx)
+	opts = append(opts, expr.Env(ctx))
+
+	if macroOpt, ok := macroOption(); ok {
+		opts = append(opts, macroOpt)
+	}
 
 	return opts
 }

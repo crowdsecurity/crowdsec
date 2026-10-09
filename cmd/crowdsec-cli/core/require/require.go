@@ -11,9 +11,27 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 var ErrAgentDisabled = errors.New("log processor is disabled -- this command cannot run on a LAPI-only instance")
+
+// ExprMacros must run before compiling any expression that may call a macro.
+// Without a hub (LAPI-only instance), there are no macros.
+func ExprMacros(c *csconfig.Config) error {
+	hub, err := Hub(c, nil)
+	if err != nil {
+		logrus.Warningf("hub not available, expression macros are disabled: %s", err)
+
+		hub = nil
+	}
+
+	if _, err := exprhelpers.LoadMacros(hub); err != nil {
+		return fmt.Errorf("while loading expression macros: %w", err)
+	}
+
+	return nil
+}
 
 func Agent(c *csconfig.Config) error {
 	if err := c.LoadCrowdsec(); err != nil {

@@ -29,6 +29,7 @@ type HubTestItemConfig struct {
 	Scenarios             []string            `yaml:"scenarios,omitempty"`
 	PostOverflows         []string            `yaml:"postoverflows,omitempty"`
 	AppsecRules           []string            `yaml:"appsec-rules,omitempty"`
+	Macros                []string            `yaml:"macros,omitempty"`
 	NucleiTemplate        string              `yaml:"nuclei_template,omitempty"`
 	ExpectedNucleiFailure bool                `yaml:"expect_failure,omitempty"`
 	LogFile               string              `yaml:"log_file,omitempty"`
@@ -206,6 +207,10 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	}
 
 	if err := t.installHubItems(t.Config.AppsecRules, t.installAppsecRule); err != nil {
+		return err
+	}
+
+	if err := t.installHubItems(t.Config.Macros, t.installMacro); err != nil {
 		return err
 	}
 
