@@ -25,6 +25,13 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 	serverError := make(chan error, 2)
 
 	startServer := func(listener net.Listener, canTLS bool) {
+		// The listener is this goroutine's to close. http.Server closes the ones
+		// it tracks, but it never gets to track this one when the TLS config is
+		// rejected below or by ServeTLS itself (a cert that fails to load returns
+		// before the listener reaches Serve), and an untracked listener is one
+		// Shutdown cannot release either.
+		defer listener.Close()
+
 		var err error
 
 		if canTLS && (w.config.CertFilePath != "" || w.config.KeyFilePath != "") {
@@ -93,34 +100,45 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		startServer(listener, true)
 	}(w.config.ListenAddr)
 
+	// Whichever way this returns, the server goes with it. One listener failing
+	// to bind used to return straight away and leave the other one serving: the
+	// port stayed held for the lifetime of the process, and because nothing
+	// rebinds, every later reload failed on an address that was still in use
+	// while the rest of the process carried on looking healthy.
+	defer w.shutdownServer(ctx)
+
 	select {
 	case err := <-serverError:
 		return err
 	case <-t.Dying():
-		w.logger.Info("Shutting down Appsec server")
-		// xx let's clean up the appsec runners :)
-		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
+		return nil
+	}
+}
 
-		if err := w.server.Shutdown(ctx); err != nil {
-			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
-		}
+// shutdownServer stops the HTTP server and releases what the listeners hold.
+func (w *Source) shutdownServer(ctx context.Context) {
+	w.logger.Info("Shutting down Appsec server")
 
-		if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
-			if err := w.AppsecRuntime.ChallengeRuntime.Close(ctx); err != nil {
-				w.logger.Errorf("Error closing challenge runtime: %s", err)
-			}
-		}
+	// xx let's clean up the appsec runners :)
+	appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 
-		if w.config.ListenSocket != "" {
-			if err := os.Remove(w.config.ListenSocket); err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
-					w.logger.Errorf("can't remove socket %s: %s", w.config.ListenSocket, err)
-				}
-			}
+	if err := w.server.Shutdown(ctx); err != nil {
+		w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
+	}
+
+	if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
+		if err := w.AppsecRuntime.ChallengeRuntime.Close(ctx); err != nil {
+			w.logger.Errorf("Error closing challenge runtime: %s", err)
 		}
 	}
 
-	return nil
+	if w.config.ListenSocket != "" {
+		if err := os.Remove(w.config.ListenSocket); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				w.logger.Errorf("can't remove socket %s: %s", w.config.ListenSocket, err)
+			}
+		}
+	}
 }
 
 func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
