@@ -273,6 +273,34 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 	return nil
 }
 
+// LimitStreamConcurrency queues stream requests beyond the configured limit. The slot is held until
+// the response is fully written, because that is what bounds memory. It runs before StreamDecision
+// reads the cursor, so a request that waited still gets an up-to-date delta.
+func (c *Controller) LimitStreamConcurrency(gctx *gin.Context) {
+	if c.streamSlots == nil {
+		gctx.Next()
+
+		return
+	}
+
+	select {
+	case c.streamSlots <- struct{}{}:
+	case <-gctx.Request.Context().Done():
+		// The bouncer gave up while queued. Nothing was sent, so its cursor does not move.
+		if bouncer, err := getBouncerFromContext(gctx); err == nil {
+			log.Debugf("decisions stream: bouncer %s gave up while queued", bouncer.Name)
+		}
+
+		gctx.AbortWithStatus(http.StatusServiceUnavailable)
+
+		return
+	}
+
+	defer func() { <-c.streamSlots }()
+
+	gctx.Next()
+}
+
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	streamStartTime := time.Now().UTC()
 
