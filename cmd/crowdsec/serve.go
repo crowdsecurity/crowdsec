@@ -11,7 +11,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -27,12 +26,7 @@ import (
 )
 
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
-	// re-initialize tombs
-	acquisTomb = tomb.Tomb{}
-	outputsTomb = tomb.Tomb{}
-	apiTomb = tomb.Tomb{}
-	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
+	initTombs()
 
 	sd := NewStateDumper(flags.DumpDir)
 
@@ -161,27 +155,39 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, data
 }
 
 func shutdownAPI() error {
-	log.Debugf("shutting down api via Tomb")
+	if apiTomb == nil {
+		log.Debug("apiTomb is nil")
+		return nil
+	}
+
+	log.Debug("shutting down api via Tomb")
+
 	apiTomb.Kill(nil)
 
 	if err := apiTomb.Wait(); err != nil {
 		return err
 	}
 
-	log.Debugf("done")
+	log.Debug("done")
 
 	return nil
 }
 
 func shutdownCrowdsec() error {
-	log.Debugf("shutting down crowdsec via Tomb")
+	if crowdsecTomb == nil {
+		log.Debug("crowdsecTomb is nil")
+		return nil
+	}
+
+	log.Debug("shutting down crowdsec via Tomb")
+
 	crowdsecTomb.Kill(nil)
 
 	if err := crowdsecTomb.Wait(); err != nil {
 		return err
 	}
 
-	log.Debugf("done")
+	log.Debug("done")
 
 	return nil
 }
@@ -310,11 +316,7 @@ func Serve(
 	agentReady chan bool,
 	sd *StateDumper,
 ) error {
-	acquisTomb = tomb.Tomb{}
-	outputsTomb = tomb.Tomb{}
-	apiTomb = tomb.Tomb{}
-	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
+	initTombs()
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig
