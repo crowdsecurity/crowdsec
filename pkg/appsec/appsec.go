@@ -1365,9 +1365,9 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 			map[string]string{"Content-Type": "application/json", "Cache-Control": "no-cache, no-store"}, ck)
 	}
 
-	// Regular request: validate the existing cookie (if any) to populate
-	// fingerprint and remember the difficulty the client proved.
-	if httpCookie, err := request.HTTPRequest.Cookie(challenge.ChallengeCookieName); err == nil {
+	// Partitioned and unpartitioned cookies can coexist after a mode switch.
+	// An old invalid cookie must not hide a valid clearance cookie.
+	for _, httpCookie := range request.HTTPRequest.CookiesNamed(challenge.ChallengeCookieName) {
 		cookieData, validErr := w.ChallengeRuntime.ValidCookie(httpCookie, request.HTTPRequest.UserAgent())
 		switch {
 		case validErr != nil:
@@ -1398,6 +1398,9 @@ func (w *AppsecRuntimeConfig) ProcessOnChallengeRules(ctx context.Context, state
 				msg = "valid allowlist challenge cookie — bypassing challenge"
 			}
 			fp.LogAccepted(w.Logger, log.DebugLevel, request.ClientIP, request.RemoteAddrNormalized, msg)
+		}
+		if state.ChallengeCookieValid {
+			break
 		}
 	}
 
