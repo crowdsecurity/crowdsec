@@ -176,7 +176,8 @@ type ChallengeRuntime struct {
 	// cookieTTL is how long a challenge cookie stays valid. Enforced by the
 	// not_after stamp in the sealed envelope (crypto.go), not keyring eviction,
 	// so it can exceed the per-epoch signing window.
-	cookieTTL time.Duration
+	cookieTTL         time.Duration
+	cookiePartitioned bool
 
 	// maxCookieLen is the size ceiling enforced when sealing and opening cookies
 	// (crypto.go). Bounds the allocation derived from the attacker-influenced
@@ -206,6 +207,7 @@ type runtimeOptions struct {
 	rotationInterval          time.Duration
 	maxLiveEpochs             int
 	cookieTTL                 time.Duration
+	cookiePartitioned         bool
 	maxCookieLen              int
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
@@ -274,6 +276,13 @@ func WithCookieTTL(ttl time.Duration) Option {
 		if ttl > 0 {
 			o.cookieTTL = ttl
 		}
+	}
+}
+
+// WithCookiePartitioned enables cross-site iframe cookies (see Config.CookiePartitioned).
+func WithCookiePartitioned(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.cookiePartitioned = enabled
 	}
 }
 
@@ -513,6 +522,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cryptoPoolSize:     cryptoPoolSize,
 		dynamicModuleCache: make(map[int64][]string),
 		cookieTTL:          cookieTTL,
+		cookiePartitioned:  resolvedOpts.cookiePartitioned,
 		maxCookieLen:       maxCookieLen,
 		htmlTpl:            htmlTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
@@ -652,6 +662,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		"FPScannerPath":     ChallengeFPScannerPath,
 		"CustomJSPath":      customJSPath,
 		"CustomJSTimeoutMS": c.customJSTimeout.Milliseconds(),
+		"CookiePartitioned": c.cookiePartitioned,
 		"PowDifficulty":     difficulty,
 		"PowPrefix":         powSalt,
 		"PowMAC":            powMAC,
@@ -796,10 +807,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, 0, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
-	if request.URL.Scheme == "https" {
-		ck = ck.Secure()
-	}
+	ck := c.clearanceCookie(request).ExpiresIn(c.cookieTTL).Value(cookieValue)
 
 	return ck, fpData, clientDifficulty, nil
 }
@@ -825,12 +833,21 @@ func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason str
 		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(ttl).Value(cookieValue)
+	ck := c.clearanceCookie(request).ExpiresIn(ttl).Value(cookieValue)
+
+	return ck, nil
+}
+
+func (c *ChallengeRuntime) clearanceCookie(request *http.Request) *cookie.AppsecCookie {
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax)
+	if c.cookiePartitioned {
+		return ck.SameSite(cookie.SameSiteNone).Partitioned()
+	}
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
 
-	return ck, nil
+	return ck
 }
 
 // CookieData bundles the decoded fingerprint with cookie-envelope metadata for

@@ -430,9 +430,9 @@
         function cookiesEnabled() {
           try {
             if (navigator.cookieEnabled === false) return false;
-            document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax";
+            document.cookie = "__crowdsec_cookie_test=1; path=/; {{if .CookiePartitioned}}SameSite=None; Secure; Partitioned{{else}}SameSite=Lax{{end}}";
             const stored = document.cookie.indexOf("__crowdsec_cookie_test=") !== -1;
-            document.cookie = "__crowdsec_cookie_test=; path=/; SameSite=Lax; Max-Age=0";
+            document.cookie = "__crowdsec_cookie_test=; path=/; {{if .CookiePartitioned}}SameSite=None; Secure; Partitioned{{else}}SameSite=Lax{{end}}; Max-Age=0";
             return stored;
           } catch (e) {
             return false;
