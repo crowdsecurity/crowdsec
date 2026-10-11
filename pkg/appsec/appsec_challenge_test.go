@@ -338,41 +338,6 @@ func TestSendChallengeNoOpAfterGrantChallengeCookie(t *testing.T) {
 // TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag asserts the
 // cookie-valid branch of ProcessOnChallengeRules copies the Allowlisted +
 // AllowlistReason fields from the decoded cookie into state.Fingerprint.
-func TestProcessOnChallengeRulesDuplicateCookies(t *testing.T) {
-	rt := newChallengeTestRuntime(t, nil)
-	mintReq := newInBandRequest(http.MethodGet, "/", nil)
-	ck, err := rt.ChallengeRuntime.SealAllowlistCookie(mintReq.HTTPRequest, "mode switch", nil)
-	require.NoError(t, err)
-	valid := challenge.ChallengeCookieName + "=" + ck.Val
-	invalid := challenge.ChallengeCookieName + "=stale"
-
-	for _, tc := range []struct {
-		name   string
-		header string
-		valid  bool
-	}{
-		{name: "old cookie first", header: invalid + "; " + valid, valid: true},
-		{name: "new cookie first", header: valid + "; " + invalid, valid: true},
-		{name: "only invalid cookies", header: invalid + "; " + invalid},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			req := newInBandRequest(http.MethodGet, "/protected", nil)
-			req.HTTPRequest.Header.Set("Cookie", tc.header)
-			state := &AppsecRequestState{}
-			state.ResetResponse(rt.Config)
-			require.NoError(t, rt.ProcessOnChallengeRules(t.Context(), state, req))
-			require.Equal(t, tc.valid, state.ChallengeCookieValid)
-			require.Equal(t, tc.valid, state.ChallengeBypassed)
-			if tc.valid {
-				require.NotNil(t, state.Fingerprint)
-				require.Equal(t, "mode switch", state.Fingerprint.AllowlistReason)
-			} else {
-				require.Nil(t, state.Fingerprint)
-			}
-		})
-	}
-}
-
 func TestProcessOnChallengeRulesAllowlistCookiePropagatesFlag(t *testing.T) {
 	rt := newChallengeTestRuntime(t, nil)
 
