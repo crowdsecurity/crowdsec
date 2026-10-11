@@ -36,6 +36,10 @@ type Leaky struct {
 	pendingOverflow *pipeline.Queue
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan pipeline.Event `json:"-"`
+	// outDone is closed by shutdown once the overflow readers are dead: the
+	// final cleanup/overflow sends below must not park a bucket forever on a
+	// channel nobody will read again. nil keeps the plain send semantics.
+	outDone <-chan struct{}
 	// the unique identifier of the bucket (a hash)
 	Mapkey              string
 	ready               chan struct{} // closed when LeakRoutine is ready
@@ -93,6 +97,7 @@ func NewLeakyFromFactory(f *BucketFactory) *Leaky {
 		Queue:   pipeline.NewQueue(Qsize),
 		Suicide: make(chan bool, 1),
 		AllOut:  f.ret,
+		outDone: f.retDone,
 		Factory: f,
 		Pour:    Pour,
 		Mode:    pipeline.LIVE,
@@ -213,7 +218,7 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 			l.markDone()
 			metrics.BucketsCanceled.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 			l.logger.Debugf("Suicide triggered")
-			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
+			l.sendEvent(pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}})
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		// we underflow or reach bucket deadline (timers)
@@ -228,13 +233,13 @@ func (l *Leaky) LeakRoutine(ctx context.Context, gate pourGate) {
 				l.logger.Debugf("bucket underflow, destroy")
 				l.markDone()
 				metrics.BucketsUnderflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
-				l.AllOut <- pipeline.Event{Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}, Type: pipeline.OVFLW}
+				l.sendEvent(pipeline.Event{Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}, Type: pipeline.OVFLW})
 			}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		case <-ctx.Done():
 			l.logger.Debugf("Bucket externally killed, return")
-			l.AllOut <- pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}}
+			l.sendEvent(pipeline.Event{Type: pipeline.OVFLW, Overflow: pipeline.RuntimeAlert{Mapkey: l.Mapkey}})
 			return
 		}
 	End:
@@ -292,7 +297,24 @@ func (l *Leaky) overflow(ofw *pipeline.Queue) {
 
 	metrics.BucketsOverflow.With(prometheus.Labels{"name": l.Factory.Spec.Name}).Inc()
 
-	l.AllOut <- pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)}
+	l.sendEvent(pipeline.Event{Overflow: alert, Type: pipeline.OVFLW, MarshaledTime: string(mt)})
+}
+
+// sendEvent pushes an overflow (or a bucket-cleanup marker) to the output
+// readers. Once outDone is closed, the event is dropped instead: after a
+// shutdown or reload no reader is left, and parking here would strand the
+// bucket goroutine with its queue until process exit (#4748).
+func (l *Leaky) sendEvent(event pipeline.Event) {
+	if l.outDone == nil {
+		l.AllOut <- event
+		return
+	}
+
+	select {
+	case l.AllOut <- event:
+	case <-l.outDone:
+		l.logger.Debugf("output readers are gone, dropping event of type %d", event.Type)
+	}
 }
 
 func (l *Leaky) markReady() {
