@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,16 +27,48 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 type PluginConfig struct {
-	Name     string `yaml:"name"`
-	URL      string `yaml:"url"`
-	Token    string `yaml:"token"`
-	LogLevel string `yaml:"log_level"`
+	Name                string       `yaml:"name"`
+	URL                 string       `yaml:"url"`
+	Token               string       `yaml:"token"`
+	LogLevel            string       `yaml:"log_level"`
+	SkipTLSVerification bool         `yaml:"skip_tls_verification"`
+	CAPath              string       `yaml:"ca_cert_path"`
+	Client              *http.Client `yaml:"-"`
 }
 
 type Splunk struct {
 	protobufs.UnimplementedNotifierServer
 	PluginConfigByName map[string]PluginConfig
-	Client             http.Client
+}
+
+func getHTTPClient(c *PluginConfig) (*http.Client, error) {
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: c.SkipTLSVerification, //nolint:gosec // explicitly opted-in by the user
+	}
+
+	if c.CAPath != "" {
+		cp, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("unable to load system CA certificates: %w", err)
+		}
+
+		caCert, err := os.ReadFile(c.CAPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load CA certificate '%s': %w", c.CAPath, err)
+		}
+
+		if !cp.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("no valid certificate found in '%s'", c.CAPath)
+		}
+
+		tlsConfig.RootCAs = cp
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}, nil
 }
 
 type Payload struct {
@@ -71,7 +104,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	req.Header.Add("Authorization", fmt.Sprintf("Splunk %s", cfg.Token))
 	logger.Debug(fmt.Sprintf("posting event %s to %s", string(data), req.URL))
 
-	resp, err := s.Client.Do(req)
+	resp, err := cfg.Client.Do(req)
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -98,11 +131,21 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 
 func (s *Splunk) Configure(_ context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
-	err := yaml.Unmarshal(config.GetConfig(), &d)
+
+	if err := yaml.Unmarshal(config.GetConfig(), &d); err != nil {
+		return &protobufs.Empty{}, err
+	}
+
+	client, err := getHTTPClient(&d)
+	if err != nil {
+		return &protobufs.Empty{}, err
+	}
+
+	d.Client = client
 	s.PluginConfigByName[d.Name] = d
 	logger.Debug(fmt.Sprintf("Splunk plugin '%s' use URL '%s'", d.Name, d.URL))
 
-	return &protobufs.Empty{}, err
+	return &protobufs.Empty{}, nil
 }
 
 func main() {
@@ -112,12 +155,7 @@ func main() {
 		MagicCookieValue: os.Getenv("CROWDSEC_PLUGIN_KEY"),
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-
-	sp := &Splunk{PluginConfigByName: make(map[string]PluginConfig), Client: *client}
+	sp := &Splunk{PluginConfigByName: make(map[string]PluginConfig)}
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
