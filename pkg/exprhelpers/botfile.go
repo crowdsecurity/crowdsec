@@ -33,7 +33,8 @@ type botEntry struct {
 	Ranges    []string `json:"ranges,omitempty"`
 	RDNS      []string `json:"rdns,omitempty"`
 
-	// compiled at load time
+	// set at load time
+	file        string // data file this entry comes from
 	uaRegex     *regexp.Regexp
 	pathRegexes []*regexp.Regexp
 	ipSet       map[netip.Addr]struct{}
@@ -115,6 +116,8 @@ func botFileInit(filename string, line string) error {
 		entry.rdnsRegexes = append(entry.rdnsRegexes, re)
 	}
 
+	entry.file = filename
+
 	dataFileBots[filename] = append(dataFileBots[filename], entry)
 
 	return nil
@@ -140,21 +143,48 @@ func parseBotAddr(s string) (netip.Addr, bool) {
 	return addr.WithZone("").Unmap(), true
 }
 
+// BotMatch describes how a request was recognized as a known bot: which entry
+// matched, in which data file, and through which identity check. It is what
+// makes `cscli appsec-configs match-bot` able to explain a decision.
+type BotMatch struct {
+	Name   string `json:"name"`
+	File   string `json:"file"`
+	Method string `json:"method"` // "ip", "range" or "rdns"
+	Detail string `json:"detail"` // the address, CIDR or FCrDNS name that matched
+}
+
 // MatchKnownBot reports whether the request (source address, User-Agent, path)
 // matches a bot definition in any of the named "bots" data files:
 // (UA && PATH) && (IP || RANGE || RDNS).
+func MatchKnownBot(ip string, ua string, path string, filenames ...string) bool {
+	match, err := ExplainKnownBot(ip, ua, path, filenames...)
+	if err != nil {
+		log.Debugf("MatchKnownBot: %s", err)
+		return false
+	}
+
+	if match == nil {
+		return false
+	}
+
+	log.Debugf("MatchKnownBot: %s verified as '%s' via %s (%s)", ip, match.Name, match.Method, match.Detail)
+
+	return true
+}
+
+// ExplainKnownBot is MatchKnownBot with the reason attached: it returns the
+// matching entry, or nil if the request matches no bot definition.
 // The expensive FCrDNS resolution runs at most once per call — after the cheap
 // checks across all named files, against every candidate entry at once — and is
 // cached per IP.
-func MatchKnownBot(ip string, ua string, path string, filenames ...string) bool {
+func ExplainKnownBot(ip string, ua string, path string, filenames ...string) (*BotMatch, error) {
 	if len(dataFileBots) == 0 || len(filenames) == 0 {
-		return false
+		return nil, nil
 	}
 
 	addr, ok := parseBotAddr(ip)
 	if !ok {
-		log.Debugf("MatchKnownBot: invalid source address '%s'", ip)
-		return false
+		return nil, fmt.Errorf("invalid source address '%s'", ip)
 	}
 
 	var rdnsCandidates []*botEntry
@@ -166,25 +196,24 @@ func MatchKnownBot(ip string, ua string, path string, filenames ...string) bool 
 			continue
 		}
 
-		if matchBotEntriesByAddr(addr, ua, path, entries, &rdnsCandidates) {
-			return true
+		if match := matchBotEntriesByAddr(addr, ua, path, filename, entries, &rdnsCandidates); match != nil {
+			return match, nil
 		}
 	}
 
 	if len(rdnsCandidates) == 0 {
-		return false
+		return nil, nil
 	}
 
 	for _, name := range dnscache.ForwardConfirmedNames(addr) {
 		for _, entry := range rdnsCandidates {
 			if matchAnyRegex(entry.rdnsRegexes, name) {
-				log.Debugf("MatchKnownBot: %s verified as '%s' via FCrDNS (%s)", addr, entry.Name, name)
-				return true
+				return &BotMatch{Name: entry.Name, File: entry.file, Method: "rdns", Detail: name}, nil
 			}
 		}
 	}
 
-	return false
+	return nil, nil
 }
 
 // MatchKnownBotExpr is the expr-registry entrypoint for MatchKnownBot.
@@ -205,10 +234,10 @@ func MatchKnownBotExpr(params ...any) (any, error) {
 }
 
 // matchBotEntriesByAddr runs the cheap (non-DNS) checks for one file's entries.
-// It returns true on an exact-IP or CIDR-range match, and collects entries that
+// It returns a match on an exact-IP or CIDR-range hit, and collects entries that
 // still need FCrDNS verification into rdnsCandidates for the caller to resolve
 // once across all files.
-func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, entries []*botEntry, rdnsCandidates *[]*botEntry) bool {
+func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, filename string, entries []*botEntry, rdnsCandidates *[]*botEntry) *BotMatch {
 	for _, entry := range entries {
 		if entry.uaRegex != nil && !entry.uaRegex.MatchString(ua) {
 			continue
@@ -219,14 +248,12 @@ func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, entries []*b
 		}
 
 		if _, found := entry.ipSet[addr]; found {
-			log.Debugf("MatchKnownBot: %s verified as '%s' via exact IP", addr, entry.Name)
-			return true
+			return &BotMatch{Name: entry.Name, File: filename, Method: "ip", Detail: addr.String()}
 		}
 
 		for _, prefix := range entry.prefixes {
 			if prefix.Contains(addr) {
-				log.Debugf("MatchKnownBot: %s verified as '%s' via range %s", addr, entry.Name, prefix)
-				return true
+				return &BotMatch{Name: entry.Name, File: filename, Method: "range", Detail: prefix.String()}
 			}
 		}
 
@@ -235,7 +262,7 @@ func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, entries []*b
 		}
 	}
 
-	return false
+	return nil
 }
 
 func matchAnyRegex(regexes []*regexp.Regexp, s string) bool {

@@ -187,6 +187,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
+		DecisionsStream:               config.DecisionsStream,
 	}
 
 	var (
@@ -383,7 +384,15 @@ func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) 
 				return
 			}
 
-			err = s.httpServer.ServeTLS(listener, s.cfg.TLS.CertFilePath, s.cfg.TLS.KeyFilePath)
+			reloader, rerr := newCertReloader(s.cfg.TLS.CertFilePath, s.cfg.TLS.KeyFilePath)
+			if rerr != nil {
+				serverError <- rerr
+				return
+			}
+
+			s.httpServer.TLSConfig.GetCertificate = reloader.GetCertificate
+
+			err = s.httpServer.ServeTLS(listener, "", "")
 		} else {
 			err = s.httpServer.Serve(listener)
 		}

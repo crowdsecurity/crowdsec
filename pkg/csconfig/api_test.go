@@ -243,6 +243,7 @@ func TestLoadAPIServer(t *testing.T) {
 					AllowedRanges:       nil,
 					AllowedRangesParsed: nil,
 				},
+				DecisionsStream: &DecisionsStreamCfg{PageSize: DefaultDecisionsStreamPageSize},
 			},
 		},
 		{
@@ -280,6 +281,28 @@ func TestLoadAPIServer(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expected, tc.input.API.Server)
+		})
+	}
+}
+
+func TestLoadDecisionsStream(t *testing.T) {
+	tests := []struct {
+		name  string
+		input *DecisionsStreamCfg
+		want  int
+	}{
+		{"section unset", nil, DefaultDecisionsStreamPageSize},
+		{"page_size unset", &DecisionsStreamCfg{}, DefaultDecisionsStreamPageSize},
+		{"page_size set", &DecisionsStreamCfg{PageSize: 5000}, 5000},
+		// left as is, so the controller can warn about it
+		{"page_size negative", &DecisionsStreamCfg{PageSize: -1}, -1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := LocalApiServerCfg{DecisionsStream: tc.input}
+			cfg.LoadDecisionsStream()
+			require.Equal(t, tc.want, cfg.DecisionsStream.PageSize)
 		})
 	}
 }
