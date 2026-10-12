@@ -158,8 +158,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 // writeDecisions streams the decisions returned by query into the array the caller has already
 // opened, paginating by id from startID. A startup resync passes 0, a stream delta passes the
 // bouncer cursor: both are the same query, they only differ in where they start.
-func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
-	limit := 30000 // FIXME : make it configurable
+func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, limit int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	needComma := false
 	lastId := startID
 
@@ -233,7 +232,7 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
 
 	// Active decisions. A startup resync is this same query with a zero cursor.
-	if err := writeDecisions(gctx, now, filters, cursor, c.DBClient.QueryAllDecisionsWithFilters); err != nil {
+	if err := writeDecisions(gctx, now, filters, cursor, c.DecisionsStreamPageSize, c.DBClient.QueryAllDecisionsWithFilters); err != nil {
 		log.Errorf("failed sending new decisions: %v", err)
 		gctx.Writer.WriteString(`], "deleted": []}`)
 		gctx.Writer.Flush()
@@ -260,7 +259,7 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 		}
 	}
 
-	if err := writeDecisions(gctx, now, filters, 0, expired); err != nil {
+	if err := writeDecisions(gctx, now, filters, 0, c.DecisionsStreamPageSize, expired); err != nil {
 		log.Errorf("failed sending expired decisions: %v", err)
 		gctx.Writer.WriteString(`]}`)
 		gctx.Writer.Flush()

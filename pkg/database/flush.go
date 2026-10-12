@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
@@ -21,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -293,7 +295,60 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 		c.flushBouncers(ctx, types.ApiKeyAuthType, bouncersCfg.ApiDuration)
 	}
 
+	// cscli deletes machines and bouncers from its own process, so this is where LAPI finds out.
+	c.pruneMachineSeries(ctx)
+	c.pruneBouncerSeries(ctx)
+
 	return nil
+}
+
+func (c *Client) pruneMachineSeries(ctx context.Context) {
+	ids := metrics.MachineIDsWithSeries()
+	if len(ids) == 0 {
+		return
+	}
+
+	machines, err := c.Ent.Machine.Query().Select(machine.FieldMachineId).Strings(ctx)
+	if err != nil {
+		c.Log.Errorf("while looking up machines for metrics cleanup: %s", err)
+		return
+	}
+
+	// password login keeps the ID as the client sent it, and MySQL matches it case-insensitively
+	kept := make(map[string]struct{}, len(machines))
+	for _, id := range machines {
+		kept[strings.ToLower(id)] = struct{}{}
+	}
+
+	for _, id := range ids {
+		if _, ok := kept[strings.ToLower(id)]; !ok {
+			metrics.DeleteMachineSeries(id)
+		}
+	}
+}
+
+func (c *Client) pruneBouncerSeries(ctx context.Context) {
+	names := metrics.BouncerNamesWithSeries()
+	if len(names) == 0 {
+		return
+	}
+
+	bouncers, err := c.Ent.Bouncer.Query().Select(bouncer.FieldName).Strings(ctx)
+	if err != nil {
+		c.Log.Errorf("while looking up bouncers for metrics cleanup: %s", err)
+		return
+	}
+
+	kept := make(map[string]struct{}, len(bouncers))
+	for _, name := range bouncers {
+		kept[name] = struct{}{}
+	}
+
+	for _, name := range names {
+		if _, ok := kept[name]; !ok {
+			metrics.DeleteBouncerSeries(name)
+		}
+	}
 }
 
 // alertWithoutActiveDecision matches alerts that have no decision still in

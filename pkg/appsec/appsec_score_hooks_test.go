@@ -188,3 +188,55 @@ func TestOnChallengeScoreCanEscalateDifficulty(t *testing.T) {
 	require.NotNil(t, state.ChallengeDifficulty)
 	assert.Equal(t, challenge.PowDifficultyHigh, *state.ChallengeDifficulty)
 }
+
+// FlagSubmission is the debug band below the reject bar: the cookie is still
+// issued, later rules keep running, and a later reject still wins.
+func TestOnChallengeSubmitFlagSubmission(t *testing.T) {
+	flagHook := Hook{
+		Filter: `RequestScore() >= 5 && RequestScore() < 75`,
+		Apply:  []string{`FlagSubmission("request score " + string(RequestScore()), "minimal")`},
+	}
+	sentinel := Hook{Filter: `true`, Apply: []string{`AddRequestScore(0, "sentinel")`}}
+
+	tests := []struct {
+		name         string
+		fp           func(*testing.T) *challenge.FingerprintData
+		hooks        []Hook
+		wantFlag     string
+		wantRejected bool
+	}{
+		{
+			name:     "below reject bar is flagged",
+			fp:       fpEuropeParisClean,
+			hooks:    append(scoringSignalHooks(), flagHook, scoringPolicyHook(), sentinel),
+			wantFlag: "request score 5",
+		},
+		{
+			name:         "above reject bar is rejected, not flagged",
+			fp:           fpEuropeParisCDP,
+			hooks:        append(scoringSignalHooks(), flagHook, scoringPolicyHook()),
+			wantRejected: true,
+		},
+		{
+			name:         "flag then reject keeps both, reject takes precedence",
+			fp:           fpEuropeParisClean,
+			hooks:        append(scoringSignalHooks(), flagHook, Hook{Filter: `true`, Apply: []string{`RejectSubmission("later rule")`}}),
+			wantFlag:     "request score 5",
+			wantRejected: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := newChallengeTestRuntime(t, nil)
+			state := runSubmitHooks(t, rt, tc.hooks, tc.fp(t))
+
+			require.Equal(t, tc.wantFlag, state.SubmissionFlagReason)
+			require.Equal(t, tc.wantRejected, state.SubmissionRejection != nil)
+			if !tc.wantRejected {
+				require.False(t, state.HooksHalted, "FlagSubmission must not halt later rules")
+				require.Contains(t, state.RequestScore.Reasons(), "sentinel")
+			}
+		})
+	}
+}
