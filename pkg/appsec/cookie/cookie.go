@@ -28,14 +28,15 @@ const (
 // and chain the builder methods below; the final String() call renders it
 // to a Set-Cookie-compatible string.
 type AppsecCookie struct {
-	Name         string
-	Expiration   int64
-	Val          string
-	PathVal      string
-	DomainName   string
-	SecureFlag   bool
-	HttpOnlyFlag bool
-	SameSiteMode string
+	Name            string
+	Expiration      int64
+	Val             string
+	PathVal         string
+	DomainName      string
+	SecureFlag      bool
+	HttpOnlyFlag    bool
+	SameSiteMode    string
+	PartitionedFlag bool
 }
 
 // NewAppsecCookie returns a cookie pre-populated with sensible defaults.
@@ -90,6 +91,12 @@ func (c *AppsecCookie) Secure() *AppsecCookie {
 	return c
 }
 
+// Partitioned scopes the cookie to the top-level site. Browsers require Secure.
+func (c *AppsecCookie) Partitioned() *AppsecCookie {
+	c.PartitionedFlag = true
+	return c.Secure()
+}
+
 // HttpOnly marks the cookie HttpOnly so it cannot be read from JS.
 func (c *AppsecCookie) HttpOnly() *AppsecCookie {
 	c.HttpOnlyFlag = true
@@ -120,13 +127,14 @@ func (c *AppsecCookie) String() string {
 	c.withDefaults()
 
 	cookie := http.Cookie{
-		Name:     c.Name,
-		Value:    c.Val,
-		Path:     c.PathVal,
-		Domain:   c.DomainName,
-		Secure:   c.SecureFlag,
-		HttpOnly: c.HttpOnlyFlag,
-		SameSite: toSameSite(c.SameSiteMode),
+		Name:        c.Name,
+		Value:       c.Val,
+		Path:        c.PathVal,
+		Domain:      c.DomainName,
+		Secure:      c.SecureFlag,
+		HttpOnly:    c.HttpOnlyFlag,
+		SameSite:    toSameSite(c.SameSiteMode),
+		Partitioned: c.PartitionedFlag,
 	}
 
 	if c.Expiration > 0 {
@@ -134,8 +142,8 @@ func (c *AppsecCookie) String() string {
 		cookie.MaxAge = int(time.Until(cookie.Expires).Seconds())
 	}
 
-	// SameSite=None requires Secure=true per modern browsers; enforce to avoid invalid cookies.
-	if cookie.SameSite == http.SameSiteNoneMode && !cookie.Secure {
+	// SameSite=None and Partitioned require Secure in modern browsers.
+	if cookie.SameSite == http.SameSiteNoneMode || cookie.Partitioned {
 		cookie.Secure = true
 	}
 

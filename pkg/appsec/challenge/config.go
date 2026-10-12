@@ -42,6 +42,12 @@ type Config struct {
 	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
+	// CookiePartitioned opts into SameSite=None; Secure; Partitioned for test
+	// and clearance cookies in cross-site iframes. Defaults to false (Lax).
+	// Requires HTTPS and browser support for partitioned cookies. Restrict
+	// embedding with CSP frame-ancestors; clearance is per top-level site.
+	CookiePartitioned *bool `yaml:"cookie_partitioned"`
+
 	// CustomJSTimeout bounds the time all CUSTOM_JS detection hooks get, in
 	// total rather than each.
 	// Defaults to DefaultCustomJSTimeout.
@@ -88,6 +94,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.CookieTTL != nil {
 		c.CookieTTL = other.CookieTTL
+	}
+	if other.CookiePartitioned != nil {
+		c.CookiePartitioned = other.CookiePartitioned
 	}
 	if other.CustomJSTimeout != nil {
 		c.CustomJSTimeout = other.CustomJSTimeout
@@ -144,6 +153,9 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.CookieTTL != nil {
 		opts = append(opts, WithCookieTTL(*c.CookieTTL))
+	}
+	if c.CookiePartitioned != nil {
+		opts = append(opts, WithCookiePartitioned(*c.CookiePartitioned))
 	}
 	if c.CustomJSTimeout != nil {
 		opts = append(opts, WithCustomJSTimeout(*c.CustomJSTimeout))
