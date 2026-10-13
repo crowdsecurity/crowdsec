@@ -294,6 +294,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "GetDecisionsSinceCountByScenario",
+		function: GetDecisionsSinceCountByScenario,
+		signature: []any{
+			new(func(string, string, string) int),
+		},
+	},
+	{
 		name:     "Sprintf",
 		function: Sprintf,
 		signature: []any{

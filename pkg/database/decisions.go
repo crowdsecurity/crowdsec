@@ -386,6 +386,16 @@ func (c *Client) ExpireDecisionByID(ctx context.Context, decisionID int) (int, [
 }
 
 func (c *Client) CountDecisionsByValue(ctx context.Context, value string, since *time.Time, onlyActive bool) (int, error) {
+	return c.countDecisions(ctx, value, nil, since, onlyActive)
+}
+
+// CountDecisionsByValueAndScenario is CountDecisionsByValue, counting only the
+// decisions created by the given scenario.
+func (c *Client) CountDecisionsByValueAndScenario(ctx context.Context, value string, scenario string, since *time.Time, onlyActive bool) (int, error) {
+	return c.countDecisions(ctx, value, &scenario, since, onlyActive)
+}
+
+func (c *Client) countDecisions(ctx context.Context, value string, scenario *string, since *time.Time, onlyActive bool) (int, error) {
 	rng, err := csnet.NewRange(value)
 	if err != nil {
 		return 0, fmt.Errorf("unable to convert '%s' to int: %w", value, err)
@@ -397,6 +407,10 @@ func (c *Client) CountDecisionsByValue(ctx context.Context, value string, since 
 	decisions, err = decisionIPFilter(decisions, contains, rng)
 	if err != nil {
 		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
+	}
+
+	if scenario != nil {
+		decisions = decisions.Where(decision.ScenarioEQ(*scenario))
 	}
 
 	if since != nil {

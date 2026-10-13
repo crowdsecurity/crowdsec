@@ -816,6 +816,35 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	return count, nil
 }
 
+// func GetDecisionsSinceCountByScenario(value string, since string, scenario string) int {
+func GetDecisionsSinceCountByScenario(params ...any) (any, error) {
+	value := params[0].(string)
+	since := params[1].(string)
+	scenario := params[2].(string)
+
+	if dbClient == nil {
+		log.Error("No database config to call GetDecisionsSinceCountByScenario()")
+		return 0, nil
+	}
+
+	sinceDuration, err := cstime.ParseDurationWithDays(since)
+	if err != nil {
+		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
+		return 0, nil
+	}
+
+	ctx := context.TODO()
+	sinceTime := time.Now().UTC().Add(-sinceDuration)
+
+	count, err := dbClient.CountDecisionsByValueAndScenario(ctx, value, scenario, &sinceTime, false)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from value '%s' and scenario '%s'", value, scenario)
+		return 0, nil //nolint:nilerr // Same as GetDecisionsSinceCount: a failed lookup counts as 0 rather than failing the expression
+	}
+
+	return count, nil
+}
+
 func GetActiveDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
 
