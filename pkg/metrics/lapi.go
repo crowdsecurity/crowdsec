@@ -1,6 +1,12 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"maps"
+	"slices"
+
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
+)
 
 const LapiRouteHitsMetricName = "cs_lapi_route_requests_total"
 
@@ -70,3 +76,51 @@ var LapiResponseTime = prometheus.NewHistogramVec(
 	},
 	[]string{"endpoint", "method"},
 )
+
+func MachineIDsWithSeries() []string {
+	return labelValues("machine", LapiMachineHits, GlobalMachinesLastHeartbeatTimestamp)
+}
+
+func BouncerNamesWithSeries() []string {
+	return labelValues("bouncer", LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions)
+}
+
+func DeleteMachineSeries(machineID string) {
+	LapiMachineHits.DeletePartialMatch(prometheus.Labels{"machine": machineID})
+	GlobalMachinesLastHeartbeatTimestamp.DeleteLabelValues(machineID)
+}
+
+func DeleteBouncerSeries(name string) {
+	LapiBouncerHits.DeletePartialMatch(prometheus.Labels{"bouncer": name})
+	LapiNilDecisions.DeleteLabelValues(name)
+	LapiNonNilDecisions.DeleteLabelValues(name)
+}
+
+func labelValues(label string, collectors ...prometheus.Collector) []string {
+	ch := make(chan prometheus.Metric)
+
+	go func() {
+		for _, c := range collectors {
+			c.Collect(ch)
+		}
+
+		close(ch)
+	}()
+
+	seen := map[string]struct{}{}
+
+	for m := range ch {
+		var pb dto.Metric
+		if err := m.Write(&pb); err != nil {
+			continue
+		}
+
+		for _, lp := range pb.GetLabel() {
+			if lp.GetName() == label {
+				seen[lp.GetValue()] = struct{}{}
+			}
+		}
+	}
+
+	return slices.Sorted(maps.Keys(seen))
+}

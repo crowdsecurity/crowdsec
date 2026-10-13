@@ -461,7 +461,8 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		r.Header.Del("User-Agent")
 	}
 
-	if r.RemoteAddr == "@" {
+	// Unix socket peers have no address: "@" on Linux, "" on FreeBSD.
+	if r.RemoteAddr == "@" || r.RemoteAddr == "" {
 		r.RemoteAddr = "127.0.0.1:65535"
 	}
 
