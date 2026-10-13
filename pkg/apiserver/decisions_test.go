@@ -6,10 +6,13 @@ import (
 	"testing"
 	"time"
 
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -489,6 +492,84 @@ func TestStreamDecisionDeltaFilters(t *testing.T) {
 			decisions, code = readDecisionsStreamResp(t, w)
 			require.Equal(t, 200, code)
 			require.Empty(t, decisions["new"])
+		})
+	}
+}
+
+// Small pages force the stream across several id_gt boundaries, for active and expired
+// decisions, on startup and on a delta.
+func TestStreamDecisionPageSize(t *testing.T) {
+	tests := []struct {
+		name   string
+		stream *csconfig.DecisionsStreamCfg
+		want   int
+	}{
+		{"section unset", nil, 30000},
+		{"zero falls back to default", &csconfig.DecisionsStreamCfg{PageSize: 0}, 30000},
+		{"negative falls back to default", &csconfig.DecisionsStreamCfg{PageSize: -1}, 30000},
+		{"one per page", &csconfig.DecisionsStreamCfg{PageSize: 1}, 1},
+		{"partial last page", &csconfig.DecisionsStreamCfg{PageSize: 2}, 2},
+		{"exact multiple", &csconfig.DecisionsStreamCfg{PageSize: 5}, 5},
+	}
+
+	values := func(ds []*models.Decision) []string {
+		out := make([]string, 0, len(ds))
+		for _, d := range ds {
+			out = append(out, *d.Value)
+		}
+
+		return out
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			config := LoadTestConfig(t)
+			config.API.Server.DecisionsStream = tc.stream
+
+			logger, _ := logtest.NewNullLogger()
+			apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
+			require.NoError(t, err)
+			require.NoError(t, apiServer.InitController())
+			require.Equal(t, tc.want, apiServer.controller.HandlerV1.DecisionsStreamPageSize)
+
+			router, err := apiServer.Router()
+			require.NoError(t, err)
+
+			apiKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+			lapi := LAPI{router: router, bouncerKey: apiKey, DBClient: dbClient}
+
+			for _, v := range []string{"1.0.0.1", "1.0.0.2", "1.0.0.3", "1.0.0.4", "1.0.0.5"} {
+				seedOne(t, ctx, lapi, v, "lists", "test/page", types.Ip, "ban")
+			}
+
+			for _, v := range []string{"2.0.0.1", "2.0.0.2", "2.0.0.3"} {
+				_, err = dbClient.Ent.Decision.Create().
+					SetUntil(time.Now().UTC().Add(-time.Second)).
+					SetScenario("test/page").
+					SetType("ban").
+					SetScope(types.Ip).
+					SetValue(v).
+					SetOrigin("lists").
+					Save(ctx)
+				require.NoError(t, err)
+			}
+
+			w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+			decisions, code := readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+			require.Equal(t, []string{"1.0.0.1", "1.0.0.2", "1.0.0.3", "1.0.0.4", "1.0.0.5"}, values(decisions["new"]))
+			require.Equal(t, []string{"2.0.0.1", "2.0.0.2", "2.0.0.3"}, values(decisions["deleted"]))
+
+			for _, v := range []string{"3.0.0.1", "3.0.0.2", "3.0.0.3"} {
+				seedOne(t, ctx, lapi, v, "lists", "test/page", types.Ip, "ban")
+			}
+
+			w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+			decisions, code = readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+			require.Equal(t, []string{"3.0.0.1", "3.0.0.2", "3.0.0.3"}, values(decisions["new"]))
 		})
 	}
 }
