@@ -13,6 +13,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
+func localTimestamp(value string) string {
+	timestamp, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return value
+	}
+
+	return timestamp.Local().Format(time.RFC3339Nano) //nolint:gosmopolitan // Human-readable output follows the process timezone.
+}
+
 func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsResponse, printMachine bool) {
 	t := cstable.New(out, wantColor)
 	t.SetRowLines(false)
@@ -39,7 +48,7 @@ func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsRespon
 			alertItem.Source.Cn,
 			alertItem.Source.GetAsNumberName(),
 			decisionsFromAlert(alertItem),
-			*alertItem.StartAt,
+			localTimestamp(*alertItem.StartAt),
 			alertItem.Kind,
 		}
 
