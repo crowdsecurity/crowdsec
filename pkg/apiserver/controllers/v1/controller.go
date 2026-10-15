@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"net"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -30,7 +31,8 @@ type Controller struct {
 	DecisionsStreamPageSize int
 
 	// nil when the stream is not limited
-	streamSlots chan struct{}
+	streamSlots        chan struct{}
+	streamMaxQueueWait time.Duration
 }
 
 type ControllerV1Config struct {
@@ -70,14 +72,24 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 	}
 
 	maxStreams := 0
+	maxQueueWait := csconfig.DefaultDecisionsStreamMaxQueueWait
+
 	if cfg.DecisionsStream != nil {
 		maxStreams = cfg.DecisionsStream.MaxConcurrentRequests
+		maxQueueWait = cfg.DecisionsStream.MaxQueueWait
 	}
 
 	if maxStreams < 0 {
 		log.Warningf("decisions_stream.max_concurrent_requests cannot be negative (got %d), not limiting the decisions stream", maxStreams)
 
 		maxStreams = 0
+	}
+
+	// a timer of 0 or less fires at once, which would turn away every request beyond the limit
+	if maxQueueWait <= 0 {
+		log.Warningf("decisions_stream.max_queue_wait must be greater than 0 (got %s), using the default value of %s", maxQueueWait, csconfig.DefaultDecisionsStreamMaxQueueWait)
+
+		maxQueueWait = csconfig.DefaultDecisionsStreamMaxQueueWait
 	}
 
 	v1 := &Controller{
@@ -92,6 +104,8 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		AutoRegisterCfg:    cfg.AutoRegisterCfg,
 
 		DecisionsStreamPageSize: pageSize,
+
+		streamMaxQueueWait: maxQueueWait,
 	}
 
 	if maxStreams > 0 {
