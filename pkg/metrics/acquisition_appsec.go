@@ -37,6 +37,16 @@ var AppsecOutbandParsingHistogram = prometheus.NewHistogramVec(
 	[]string{"source", "appsec_engine"},
 )
 
+const AppsecOutOfBandDroppedMetricName = "cs_appsec_outofband_dropped_total"
+
+var AppsecOutOfBandDropped = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecOutOfBandDroppedMetricName,
+		Help: "Requests not evaluated by out-of-band rules because the out-of-band queue was full.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
 const AppsecReqCounterMetricName = "cs_appsec_reqs_total"
 
 var AppsecReqCounter = prometheus.NewCounterVec(

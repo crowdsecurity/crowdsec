@@ -105,6 +105,7 @@ func runSubmitHooks(t *testing.T, rt *AppsecRuntimeConfig, hooks []Hook, fp *cha
 		GetOnChallengeSubmitEnv(t.Context(), rt, state, req),
 		"on_challenge_submit",
 		state,
+		rt.Logger,
 	))
 
 	return state
@@ -180,6 +181,7 @@ func TestOnChallengeScoreCanEscalateDifficulty(t *testing.T) {
 		GetOnChallengeEnv(t.Context(), rt, state, req),
 		"on_challenge",
 		state,
+		rt.Logger,
 	))
 
 	assert.Equal(t, 105, state.RequestScore.Total())

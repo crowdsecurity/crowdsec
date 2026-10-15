@@ -150,6 +150,13 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 			})
 		}
 
+		for _, runner := range w.OutOfBandRunners {
+			t.Go(func() error {
+				defer trace.ReportPanic()
+				return runner.RunOutOfBand(ctx, t)
+			})
+		}
+
 		return w.listenAndServe(ctx, t)
 	})
 

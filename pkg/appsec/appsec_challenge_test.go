@@ -517,7 +517,7 @@ func TestHasValidChallengeCookieInPreEval(t *testing.T) {
 
 			req := newInBandRequest(http.MethodGet, "/protected", nil)
 
-			require.NoError(t, rt.processHooks(compiled, GetPreEvalEnv(t.Context(), rt, state, req), "pre_eval", state))
+			require.NoError(t, rt.processHooks(compiled, GetPreEvalEnv(t.Context(), rt, state, req), "pre_eval", state, rt.Logger))
 
 			if valid {
 				require.NotNil(t, state.PendingAction)
