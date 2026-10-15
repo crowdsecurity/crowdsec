@@ -238,8 +238,8 @@ func PourItemToHolders(
 			}
 			// we assume we a bool should add type check here
 			if condition, ok = output.(bool); !ok {
-				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
-				holders[idx].logger.Fatalf("Filter issue")
+				holders[idx].logger.Errorf("unexpected non-bool return : %T, ignoring event for holder %d/%d", output, idx, len(holders))
+				continue
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -257,7 +257,7 @@ func PourItemToHolders(
 			}
 
 			if groupby, ok = tmpGroupBy.(string); !ok {
-				holders[idx].logger.Fatalf("failed groupby type : %v", err)
+				holders[idx].logger.Errorf("failed groupby type : %v", err)
 				return false, errors.New("groupby wrong type")
 			}
 		}
