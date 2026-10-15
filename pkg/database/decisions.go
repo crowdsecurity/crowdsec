@@ -385,17 +385,9 @@ func (c *Client) ExpireDecisionByID(ctx context.Context, decisionID int) (int, [
 	return count, toUpdate, err
 }
 
-func (c *Client) CountDecisionsByValue(ctx context.Context, value string, since *time.Time, onlyActive bool) (int, error) {
-	return c.countDecisions(ctx, value, nil, since, onlyActive)
-}
-
-// CountDecisionsByValueAndScenario is CountDecisionsByValue, counting only the
-// decisions created by the given scenario.
-func (c *Client) CountDecisionsByValueAndScenario(ctx context.Context, value string, scenario string, since *time.Time, onlyActive bool) (int, error) {
-	return c.countDecisions(ctx, value, &scenario, since, onlyActive)
-}
-
-func (c *Client) countDecisions(ctx context.Context, value string, scenario *string, since *time.Time, onlyActive bool) (int, error) {
+// CountDecisionsByValue counts the decisions whose range contains value. A nil scenario or since
+// does not filter on it.
+func (c *Client) CountDecisionsByValue(ctx context.Context, value string, scenario *string, since *time.Time, onlyActive bool) (int, error) {
 	rng, err := csnet.NewRange(value)
 	if err != nil {
 		return 0, fmt.Errorf("unable to convert '%s' to int: %w", value, err)
