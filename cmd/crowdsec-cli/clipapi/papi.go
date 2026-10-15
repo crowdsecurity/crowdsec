@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -65,9 +66,14 @@ func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Clie
 		return err
 	}
 
+	lastOrder := info.LastOrder
+	if cfg.Cscli.Output == "human" {
+		lastOrder = csformat.LocalTimestamp(lastOrder)
+	}
+
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
 	fmt.Fprintf(out, "Console plan: %s\n", info.Plan)
-	fmt.Fprintf(out, "Last order received: %s\n", info.LastOrder)
+	fmt.Fprintf(out, "Last order received: %s\n", lastOrder)
 	fmt.Fprint(out, "PAPI subscriptions:\n")
 
 	for _, sub := range info.Categories {

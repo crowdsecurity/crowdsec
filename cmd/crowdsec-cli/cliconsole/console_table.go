@@ -6,6 +6,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/text"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/emoji"
@@ -51,7 +52,7 @@ func cmdConsoleConnectionTable(out io.Writer, wantColor string, st liveConsoleSt
 	}
 
 	if st.papi != nil {
-		t.AddRow("Last order received", st.papi.LastOrder)
+		t.AddRow("Last order received", csformat.LocalTimestamp(st.papi.LastOrder))
 		if len(st.papi.Categories) > 0 {
 			t.AddRow("PAPI subscriptions", strings.Join(st.papi.Categories, ", "))
 		}

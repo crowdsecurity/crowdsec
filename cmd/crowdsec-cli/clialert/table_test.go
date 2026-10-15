@@ -2,16 +2,18 @@ package clialert
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 //nolint:gosmopolitan // The renderer uses the process timezone, which these nonparallel tests control.
-func TestAlertsTableLocalTime(t *testing.T) {
+func TestAlertHumanTimestamps(t *testing.T) {
 	tests := []struct {
 		name      string
 		zone      string
@@ -55,9 +57,13 @@ func TestAlertsTableLocalTime(t *testing.T) {
 			t.Cleanup(func() { time.Local = previousLocation })
 
 			alerts := models.GetAlertsResponse{{
-				ID:       1,
-				Scenario: new("example"),
-				StartAt:  new(tt.timestamp),
+				ID:        1,
+				Scenario:  new("example"),
+				CreatedAt: tt.timestamp,
+				StartAt:   new(tt.timestamp),
+				StopAt:    new(tt.timestamp),
+				Events:    []*models.Event{{Timestamp: new(tt.timestamp)}},
+				Decisions: []*models.Decision{{Scope: new("ip"), Value: new("192.0.2.1"), Type: new("ban"), Duration: new("1h"), Simulated: new(false)}},
 				Source: &models.Source{
 					Scope: new("ip"),
 					Value: new("192.0.2.1"),
@@ -69,7 +75,11 @@ func TestAlertsTableLocalTime(t *testing.T) {
 			alertsTable(&output, "no", &alerts, false)
 
 			require.Contains(t, output.String(), tt.want)
-			require.Equal(t, tt.timestamp, *alerts[0].StartAt)
+
+			output.Reset()
+			cli := New(func() *csconfig.Config { return &csconfig.Config{Cscli: &csconfig.CscliCfg{Color: "no"}} })
+			require.NoError(t, cli.displayOneAlert(&output, alerts[0], true))
+			require.Equal(t, 5, strings.Count(output.String(), tt.want), output.String())
 		})
 	}
 }
