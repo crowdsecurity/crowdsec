@@ -291,12 +291,6 @@ var exprFuncs = []exprCustomFunc{
 		function: GetDecisionsSinceCount,
 		signature: []any{
 			new(func(string, string) int),
-		},
-	},
-	{
-		name:     "GetDecisionsSinceCountByScenario",
-		function: GetDecisionsSinceCountByScenario,
-		signature: []any{
 			new(func(string, string, string) int),
 		},
 	},

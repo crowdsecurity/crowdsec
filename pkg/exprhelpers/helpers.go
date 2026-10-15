@@ -788,7 +788,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 	return count, nil
 }
 
-// func GetDecisionsSinceCount(value string, since string) int {
+// func GetDecisionsSinceCount(value string, since string, [scenario string]) int {
 func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
@@ -807,39 +807,16 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
+	var count int
+	if len(params) > 2 {
+		count, err = dbClient.CountDecisionsByValueAndScenario(ctx, value, params[2].(string), &sinceTime, false)
+	} else {
+		count, err = dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
+	}
+
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
-	}
-
-	return count, nil
-}
-
-// func GetDecisionsSinceCountByScenario(value string, since string, scenario string) int {
-func GetDecisionsSinceCountByScenario(params ...any) (any, error) {
-	value := params[0].(string)
-	since := params[1].(string)
-	scenario := params[2].(string)
-
-	if dbClient == nil {
-		log.Error("No database config to call GetDecisionsSinceCountByScenario()")
-		return 0, nil
-	}
-
-	sinceDuration, err := cstime.ParseDurationWithDays(since)
-	if err != nil {
-		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
-		return 0, nil
-	}
-
-	ctx := context.TODO()
-	sinceTime := time.Now().UTC().Add(-sinceDuration)
-
-	count, err := dbClient.CountDecisionsByValueAndScenario(ctx, value, scenario, &sinceTime, false)
-	if err != nil {
-		log.Errorf("Failed to get decisions count from value '%s' and scenario '%s'", value, scenario)
-		return 0, nil //nolint:nilerr // Same as GetDecisionsSinceCount: a failed lookup counts as 0 rather than failing the expression
 	}
 
 	return count, nil

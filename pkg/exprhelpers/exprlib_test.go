@@ -1675,7 +1675,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
-func TestGetDecisionsSinceCountByScenario(t *testing.T) {
+func TestGetDecisionsSinceCountWithScenario(t *testing.T) {
 	ctx := t.Context()
 
 	existingIP := "1.2.3.4"
@@ -1718,14 +1718,15 @@ func TestGetDecisionsSinceCountByScenario(t *testing.T) {
 		name     string
 		value    string
 		scenario string
-		since    string
+		code     string
 		result   string
 	}{
-		{"same scenario, since more than 1 day", existingIP, "crowdsec/test", "25h", "2"},
-		{"same scenario, since 1 hour", existingIP, "crowdsec/test", "1h", "1"},
-		{"other scenario only counts its own", existingIP, "crowdsec/other", "25h", "1"},
-		{"unknown scenario", existingIP, "crowdsec/unknown", "25h", "0"},
-		{"unknown IP", unknownIP, "crowdsec/test", "25h", "0"},
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h')", "3"},
+		{"same scenario, since more than 1 day", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "2"},
+		{"same scenario, since 1 hour", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '1h', Alert.GetScenario())", "1"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
 	}
 
 	for _, test := range tests {
@@ -1736,15 +1737,20 @@ func TestGetDecisionsSinceCountByScenario(t *testing.T) {
 					Scenario: &test.scenario,
 				},
 			}
-			code := "Sprintf('%d', GetDecisionsSinceCountByScenario(Alert.GetValue(), '" + test.since + "', Alert.GetScenario()))"
 
-			program, err := expr.Compile(code, GetExprOptions(env)...)
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
 			require.NoError(t, err)
 			output, err := expr.Run(program, env)
 			require.NoError(t, err)
 			require.Equal(t, test.result, output)
 		})
 	}
+
+	t.Run("more than 3 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsSinceCount(Alert.GetValue(), '25h', 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
 }
 
 func TestGetActiveDecisionsCount(t *testing.T) {
