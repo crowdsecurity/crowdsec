@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -49,11 +50,15 @@ func (m *DecisionsStreamResponse) validateDeleted(formats strfmt.Registry) error
 	}
 
 	if err := m.Deleted.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("deleted")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("deleted")
 		}
+
 		return err
 	}
 
@@ -66,11 +71,15 @@ func (m *DecisionsStreamResponse) validateNew(formats strfmt.Registry) error {
 	}
 
 	if err := m.New.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("new")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("new")
 		}
+
 		return err
 	}
 
@@ -98,11 +107,15 @@ func (m *DecisionsStreamResponse) ContextValidate(ctx context.Context, formats s
 func (m *DecisionsStreamResponse) contextValidateDeleted(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.Deleted.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("deleted")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("deleted")
 		}
+
 		return err
 	}
 
@@ -112,11 +125,15 @@ func (m *DecisionsStreamResponse) contextValidateDeleted(ctx context.Context, fo
 func (m *DecisionsStreamResponse) contextValidateNew(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.New.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("new")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("new")
 		}
+
 		return err
 	}
 
