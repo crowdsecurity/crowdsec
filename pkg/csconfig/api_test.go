@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -243,7 +244,10 @@ func TestLoadAPIServer(t *testing.T) {
 					AllowedRanges:       nil,
 					AllowedRangesParsed: nil,
 				},
-				DecisionsStream: &DecisionsStreamCfg{PageSize: DefaultDecisionsStreamPageSize},
+				DecisionsStream: &DecisionsStreamCfg{
+					PageSize:     DefaultDecisionsStreamPageSize,
+					MaxQueueWait: DefaultDecisionsStreamMaxQueueWait,
+				},
 			},
 		},
 		{
@@ -303,6 +307,29 @@ func TestLoadDecisionsStream(t *testing.T) {
 			cfg := LocalApiServerCfg{DecisionsStream: tc.input}
 			cfg.LoadDecisionsStream()
 			require.Equal(t, tc.want, cfg.DecisionsStream.PageSize)
+		})
+	}
+}
+
+func TestLoadDecisionsStreamMaxQueueWait(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  time.Duration
+	}{
+		{"section unset", "", DefaultDecisionsStreamMaxQueueWait},
+		{"max_queue_wait unset", "decisions_stream: {}", DefaultDecisionsStreamMaxQueueWait},
+		{"max_queue_wait set", "decisions_stream: {max_queue_wait: 30s}", 30 * time.Second},
+		// left as is, so the controller can warn about it
+		{"max_queue_wait negative", "decisions_stream: {max_queue_wait: -1s}", -time.Second},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg LocalApiServerCfg
+			require.NoError(t, yaml.Unmarshal([]byte(tc.input), &cfg))
+			cfg.LoadDecisionsStream()
+			require.Equal(t, tc.want, cfg.DecisionsStream.MaxQueueWait)
 		})
 	}
 }
