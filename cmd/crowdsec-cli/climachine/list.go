@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/clientinfo"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -53,7 +54,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AppendRow(table.Row{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb})
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, csformat.LocalTime(m.UpdatedAt).Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb})
 	}
 
 	fmt.Fprintln(out, t.Render())
