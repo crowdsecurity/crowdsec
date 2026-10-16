@@ -1675,6 +1675,84 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
+func TestGetDecisionsSinceCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one decision now, one a day ago. crowdsec/other: one now.
+	for _, d := range []struct {
+		scenario  string
+		createdAt time.Time
+	}{
+		{"crowdsec/test", time.Now()},
+		{"crowdsec/test", time.Now().AddDate(0, 0, -1)},
+		{"crowdsec/other", time.Now()},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetCreatedAt(d.createdAt).
+			SetUntil(d.createdAt.Add(time.Hour)).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h')", "3"},
+		{"same scenario, since more than 1 day", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "2"},
+		{"same scenario, since 1 hour", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '1h', Alert.GetScenario())", "1"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 3 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsSinceCount(Alert.GetValue(), '25h', 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
+}
+
 func TestGetActiveDecisionsCount(t *testing.T) {
 	ctx := t.Context()
 
