@@ -71,7 +71,7 @@ func (cli *cliNotifications) NewCommand() *cobra.Command {
 				return fmt.Errorf("loading api client: %w", err)
 			}
 
-			return nil
+			return require.ExprMacros(cfg)
 		},
 	}
 

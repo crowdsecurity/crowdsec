@@ -40,7 +40,7 @@ teardown() {
     rune -0 cscli hub list
     assert_output "No items to display"
     rune -0 cscli hub list -o json
-    assert_json '{"appsec-configs":[],"appsec-rules":[],parsers:[],scenarios:[],collections:[],contexts:[],postoverflows:[]}'
+    assert_json '{"appsec-configs":[],"appsec-rules":[],parsers:[],scenarios:[],collections:[],contexts:[],macros:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
@@ -302,12 +302,13 @@ teardown() {
     assert_line "postoverflows"
     assert_line "scenarios"
     assert_line "contexts"
+    assert_line "macros"
     assert_line "collections"
     rune -0 cscli hub types -o human
     rune -0 yq -o json <(output)
-    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","macros","collections"]'
     rune -0 cscli hub types -o json
-    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","macros","collections"]'
 }
 
 @test "cscli waf aliases for hub items" {

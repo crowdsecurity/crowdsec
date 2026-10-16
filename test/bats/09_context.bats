@@ -110,3 +110,18 @@ teardown() {
     assert_stderr --partial "loading console context from $CONFIG_DIR/console/context.yaml"
     assert_stderr --regexp 'console context to send: .*one.*evt.Parsed.source_ip.*evt.Parsed.source_ip_2'
 }
+
+@test "context expressions can use macros" {
+    rune -1 cscli lapi context add --key ip --value 'SourceIP()'
+    assert_stderr --partial "unknown name SourceIP"
+
+    mkdir -p "$CONFIG_DIR/macros"
+    echo "macros: {SourceIP: evt.Meta.source_ip}" > "$CONFIG_DIR/macros/test.yaml"
+    rune -0 cscli lapi context add --key ip --value 'SourceIP()'
+    rune -0 cscli lapi context status
+    assert_output --partial 'SourceIP()'
+
+    echo "macros: {Loop: Loop()}" > "$CONFIG_DIR/macros/test.yaml"
+    rune -1 cscli lapi context status
+    assert_stderr --partial 'while loading expression macros: macro "Loop": recursive definition (Loop -> Loop)'
+}
