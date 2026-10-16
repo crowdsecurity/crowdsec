@@ -183,6 +183,11 @@ type ChallengeRuntime struct {
 	// fingerprint envelope. Defaults to MaxCookieLen (the browser limit).
 	maxCookieLen int
 
+	// cookieSameSiteNone issues the challenge and test cookies as
+	// SameSite=None; Secure; Partitioned so the challenge works in a
+	// cross-site iframe. False keeps SameSite=Lax.
+	cookieSameSiteNone bool
+
 	// htmlTpl is the challenge HTML template, parsed once and reused so
 	// GetChallengePage doesn't re-parse per request.
 	htmlTpl *template.Template
@@ -207,6 +212,7 @@ type runtimeOptions struct {
 	maxLiveEpochs             int
 	cookieTTL                 time.Duration
 	maxCookieLen              int
+	cookieSameSiteNone        bool
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
 	customJS                  string
@@ -284,6 +290,14 @@ func WithMaxCookieLen(n int) Option {
 		if n > 0 {
 			o.maxCookieLen = n
 		}
+	}
+}
+
+// WithCookieSameSiteNone switches the challenge cookies to
+// SameSite=None; Secure; Partitioned (see Config.CookieSameSite).
+func WithCookieSameSiteNone(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.cookieSameSiteNone = enabled
 	}
 }
 
@@ -514,6 +528,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		dynamicModuleCache: make(map[int64][]string),
 		cookieTTL:          cookieTTL,
 		maxCookieLen:       maxCookieLen,
+		cookieSameSiteNone: resolvedOpts.cookieSameSiteNone,
 		htmlTpl:            htmlTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
 		customJSTimeout:    customJSTimeout,
@@ -552,6 +567,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		"rotation_interval": rotationInterval,
 		"cookie_ttl":        cookieTTL,
 		"max_cookie_len":    maxCookieLen,
+		"cookie_same_site":  challengeRuntime.cookieSameSite(),
 		"pow_difficulty":    defaultPowDifficulty,
 		"crypto_pool_size":  cryptoPoolSize,
 	}
@@ -652,6 +668,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		"FPScannerPath":     ChallengeFPScannerPath,
 		"CustomJSPath":      customJSPath,
 		"CustomJSTimeoutMS": c.customJSTimeout.Milliseconds(),
+		"TestCookieAttrs":   c.testCookieAttrs(),
 		"PowDifficulty":     difficulty,
 		"PowPrefix":         powSalt,
 		"PowMAC":            powMAC,
@@ -796,12 +813,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 		return nil, FingerprintData{}, 0, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
-	if request.URL.Scheme == "https" {
-		ck = ck.Secure()
-	}
-
-	return ck, fpData, clientDifficulty, nil
+	return c.newChallengeCookie(request, c.cookieTTL, cookieValue), fpData, clientDifficulty, nil
 }
 
 // SealAllowlistCookie mints an allowlist-bypass cookie (no fingerprint, with
@@ -825,12 +837,38 @@ func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason str
 		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(ttl).Value(cookieValue)
+	return c.newChallengeCookie(request, ttl, cookieValue), nil
+}
+
+func (c *ChallengeRuntime) cookieSameSite() string {
+	if c.cookieSameSiteNone {
+		return cookie.SameSiteNone
+	}
+	return cookie.SameSiteLax
+}
+
+// newChallengeCookie builds the challenge cookie with the configured SameSite
+// mode. In None mode Secure is set regardless of request.URL.Scheme: behind a
+// bouncer the scheme seen here is often http even when the browser is on https.
+func (c *ChallengeRuntime) newChallengeCookie(request *http.Request, ttl time.Duration, value string) *cookie.AppsecCookie {
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(c.cookieSameSite()).ExpiresIn(ttl).Value(value)
+	if c.cookieSameSiteNone {
+		return ck.Secure().Partitioned()
+	}
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
+	return ck
+}
 
-	return ck, nil
+// testCookieAttrs are the attributes of the page's cookies-enabled probe. They
+// must match the challenge cookie's, or the probe passes where the real cookie
+// is then dropped.
+func (c *ChallengeRuntime) testCookieAttrs() string {
+	if c.cookieSameSiteNone {
+		return "path=/; SameSite=None; Secure; Partitioned"
+	}
+	return "path=/; SameSite=Lax"
 }
 
 // CookieData bundles the decoded fingerprint with cookie-envelope metadata for
