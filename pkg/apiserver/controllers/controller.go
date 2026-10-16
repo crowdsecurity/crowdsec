@@ -148,7 +148,7 @@ func (c *Controller) NewV1() error {
 	{
 		apiKeyAuth.GET("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
-		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
+		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.LimitStreamConcurrency, c.HandlerV1.StreamDecision)
 		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
 	}
 
