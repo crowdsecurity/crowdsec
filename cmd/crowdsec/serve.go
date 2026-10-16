@@ -141,6 +141,10 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, data
 		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
+	// The overflow readers are dead: let the bucket goroutines still holding a
+	// final event drop it instead of parking on the channel forever (#4748).
+	close(outDone)
+
 	cancel()
 
 	if err := waitErrGroup(g, 3*time.Second); err != nil {

@@ -44,6 +44,7 @@ var (
 	logLines     chan pipeline.Event
 	inEvents     chan pipeline.Event
 	outEvents    chan pipeline.Event // the buckets init returns its own chan that is used for multiplexing
+	outDone      chan struct{}       // closed when the outEvents readers are gone (shutdown/reload)
 	pluginBroker csplugin.PluginBroker
 )
 
@@ -54,7 +55,7 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 
 	log.Infof("Loading %d scenario files", len(scenarios))
 
-	holders, outEvents, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, flags.OrderEvent)
+	holders, outEvents, outDone, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, scenarios, flags.OrderEvent)
 	if err != nil {
 		return err
 	}
