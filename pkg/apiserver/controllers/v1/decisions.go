@@ -287,6 +287,64 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 	return nil
 }
 
+// LimitStreamConcurrency queues stream requests beyond the configured limit. The slot is held until
+// the response is fully written, because that is what bounds memory. It runs before StreamDecision
+// reads the cursor, so a request that waited still gets an up-to-date delta.
+func (c *Controller) LimitStreamConcurrency(gctx *gin.Context) {
+	if c.streamSlots == nil {
+		gctx.Next()
+
+		return
+	}
+
+	if !c.waitForStreamSlot(gctx) {
+		// Nothing was sent, so the bouncer's cursor does not move.
+		gctx.AbortWithStatus(http.StatusServiceUnavailable)
+
+		return
+	}
+
+	defer func() { <-c.streamSlots }()
+
+	gctx.Next()
+}
+
+// waitForStreamSlot reports whether the request got a slot within max_queue_wait.
+func (c *Controller) waitForStreamSlot(gctx *gin.Context) bool {
+	// A free slot is taken before the timer starts: select picks at random between ready cases,
+	// so an expired timer could otherwise turn a request away while a slot is free.
+	select {
+	case c.streamSlots <- struct{}{}:
+		return true
+	default:
+	}
+
+	timer := time.NewTimer(c.streamMaxQueueWait)
+	defer timer.Stop()
+
+	select {
+	case c.streamSlots <- struct{}{}:
+		return true
+	case <-timer.C:
+		bouncerName := "unknown"
+		if bouncer, err := getBouncerFromContext(gctx); err == nil {
+			bouncerName = bouncer.Name
+		}
+
+		// The 503 lets the bouncer log it too.
+		log.Warningf("decisions stream: no free slot for bouncer %s after %s (max_concurrent_requests: %d), returning 503",
+			bouncerName, c.streamMaxQueueWait, cap(c.streamSlots))
+
+		return false
+	case <-gctx.Request.Context().Done():
+		if bouncer, err := getBouncerFromContext(gctx); err == nil {
+			log.Debugf("decisions stream: bouncer %s gave up while queued", bouncer.Name)
+		}
+
+		return false
+	}
+}
+
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	streamStartTime := time.Now().UTC()
 

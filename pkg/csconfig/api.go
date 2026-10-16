@@ -253,8 +253,17 @@ type LocalApiServerCfg struct {
 // Each page is held in memory while it is written out, once per in-flight stream request.
 const DefaultDecisionsStreamPageSize = 30000
 
+// Under lua-cs-bouncer's 15s stream timeout, so it gets the 503 before giving up on its own.
+const DefaultDecisionsStreamMaxQueueWait = 10 * time.Second
+
 type DecisionsStreamCfg struct {
 	PageSize int `yaml:"page_size"`
+
+	// 0 means no limit.
+	MaxConcurrentRequests int `yaml:"max_concurrent_requests"`
+
+	// How long a request beyond max_concurrent_requests waits for a slot before getting a 503.
+	MaxQueueWait time.Duration `yaml:"max_queue_wait"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -535,6 +544,10 @@ func (c *LocalApiServerCfg) LoadDecisionsStream() {
 
 	if c.DecisionsStream.PageSize == 0 {
 		c.DecisionsStream.PageSize = DefaultDecisionsStreamPageSize
+	}
+
+	if c.DecisionsStream.MaxQueueWait == 0 {
+		c.DecisionsStream.MaxQueueWait = DefaultDecisionsStreamMaxQueueWait
 	}
 }
 
