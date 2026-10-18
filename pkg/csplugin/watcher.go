@@ -160,9 +160,22 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		select {
 		case pluginName := <-pw.Inserts:
 			// we only "count" pending alerts, and watchPluginTicker is actually going to send it
-			if _, ok := pw.PluginConfigByName[pluginName]; ok {
+			if cfg, ok := pw.PluginConfigByName[pluginName]; ok {
 				// atomic increment, prevent race between Get/Set
 				pw.AlertCountByPluginName.Inc(pluginName)
+
+				// threshold reached: flush now instead of at the next tick. In a goroutine,
+				// the broker may be blocked sending us the next insert.
+				if pc, _ := pw.AlertCountByPluginName.Get(pluginName); cfg.GroupThreshold > 0 && pc >= cfg.GroupThreshold {
+					pw.AlertCountByPluginName.Set(pluginName, 0)
+
+					go func() {
+						select {
+						case pw.PluginEvents <- pluginName:
+						case <-pw.tomb.Dead():
+						}
+					}()
+				}
 			}
 		case <-pw.tomb.Dying():
 			return

@@ -297,8 +297,6 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, s.outFile)
 	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 
 	time.Sleep(time.Second)
 
@@ -310,15 +308,11 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 
 	var alerts []models.Alert
 
-	// two notifications, one with 4 alerts, one with 2 alerts
+	// one notification with 4 alerts
 
 	err = decoder.Decode(&alerts)
 	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
-
-	err = decoder.Decode(&alerts)
-	require.NoError(t, err)
-	assert.Len(t, alerts, 2)
 
 	err = decoder.Decode(&alerts)
 	assert.Equal(t, err, io.EOF)
