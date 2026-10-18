@@ -127,3 +127,39 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	require.NoError(t, err)
 	resetTestTomb(t, &testTomb, &pw)
 }
+
+func TestPluginAlertCountWatcherFlushesImmediately(t *testing.T) {
+	cstest.SkipOnWindowsBecause(t, "timing is not reliable")
+
+	// only an immediate flush can get the event out before the first tick
+	oldTicker := DefaultEmptyTicker
+	DefaultEmptyTicker = time.Hour
+
+	t.Cleanup(func() { DefaultEmptyTicker = oldTicker })
+
+	tests := []struct {
+		name   string
+		config PluginConfig
+	}{
+		{"threshold only", PluginConfig{GroupThreshold: 1}},
+		{"threshold and long interval", PluginConfig{GroupThreshold: 1, GroupWait: time.Hour}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			pw := PluginWatcher{}
+			testTomb := tomb.Tomb{}
+			pw.Init(map[string]PluginConfig{"testPlugin": tc.config}, make(map[string][]*models.Alert))
+			pw.Start(&testTomb)
+
+			insertNAlertsToPlugin(&pw, 1, "testPlugin")
+
+			ct, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+			defer cancel()
+
+			err := listenChannelWithTimeout(ct, pw.PluginEvents)
+			require.NoError(t, err)
+			resetTestTomb(t, &testTomb, &pw)
+		})
+	}
+}
