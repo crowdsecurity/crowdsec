@@ -13,10 +13,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/nxadm/tail"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -53,19 +52,28 @@ func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	return nil
 }
 
-func (s *Source) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+// Stream tails configured files and emits line events until ctx is canceled.
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("Starting live acquisition")
-	t.Go(func() error {
-		return s.monitorNewFiles(out, t)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Start file monitoring goroutine
+	g.Go(func() error {
+		defer trace.ReportPanic()
+		return s.monitorNewFiles(ctx, out, g)
 	})
 
+	// Start tailing existing files
 	for _, file := range s.files {
-		if err := s.setupTailForFile(file, out, true, t); err != nil {
+		if err := s.setupTailForFile(ctx, file, out, true, g); err != nil {
+			// One file failing setup must not fail Stream. It is tried again only by discovery polling or an fsnotify Create.
 			s.logger.Errorf("Error setting up tail for %s: %s", file, err)
 		}
 	}
 
-	return nil
+	// Block until all goroutines complete or context is canceled
+	return g.Wait()
 }
 
 // checkAndTailFile validates and sets up tailing for a given file. It performs the following checks:
@@ -74,13 +82,14 @@ func (s *Source) StreamingAcquisition(_ context.Context, out chan pipeline.Event
 // 3. Sets up file tailing if the file is valid and matches patterns
 //
 // Parameters:
+//   - ctx: Context for cancellation
 //   - filename: The path to the file to check and potentially tail
 //   - logger: A log.Entry for contextual logging
 //   - out: Channel to send file events to
-//   - t: A tomb.Tomb for graceful shutdown handling
+//   - g: An errgroup.Group for goroutine management
 //
 // Returns an error if any validation fails or if tailing setup fails
-func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) checkAndTailFile(ctx context.Context, filename string, logger *log.Entry, out chan pipeline.Event, g *errgroup.Group) error {
 	// Check if it's a directory
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -117,7 +126,7 @@ func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan p
 	}
 
 	// Setup the tail if needed
-	if err := s.setupTailForFile(filename, out, false, t); err != nil {
+	if err := s.setupTailForFile(ctx, filename, out, false, g); err != nil {
 		logger.Errorf("Error setting up tail for file %s: %s", filename, err)
 		return err
 	}
@@ -125,13 +134,13 @@ func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan p
 	return nil
 }
 
-func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) monitorNewFiles(ctx context.Context, out chan pipeline.Event, g *errgroup.Group) error {
 	logger := s.logger.WithField("goroutine", "inotify")
 
 	// Setup polling if enabled
 	var (
 		tickerChan <-chan time.Time
-		ticker *time.Ticker
+		ticker     *time.Ticker
 	)
 
 	if s.config.DiscoveryPollEnable {
@@ -154,7 +163,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 				continue
 			}
 
-			_ = s.checkAndTailFile(event.Name, logger, out, t)
+			_ = s.checkAndTailFile(ctx, event.Name, logger, out, g)
 
 		case <-tickerChan: // Will never trigger if tickerChan is nil
 			// Poll for all configured patterns
@@ -166,7 +175,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 				}
 
 				for _, file := range files {
-					_ = s.checkAndTailFile(file, logger, out, t)
+					_ = s.checkAndTailFile(ctx, file, logger, out, g)
 				}
 			}
 
@@ -177,7 +186,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 
 			logger.Errorf("Error while monitoring folder: %s", err)
 
-		case <-t.Dying():
+		case <-ctx.Done():
 			err := s.watcher.Close()
 			if err != nil {
 				return fmt.Errorf("could not remove all inotify watches: %w", err)
@@ -188,24 +197,48 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd bool, t *tomb.Tomb) error {
+// claimTail records file as tailed. It returns false when another caller already claimed it.
+func (s *Source) claimTail(file string) bool {
+	s.tailMapMutex.Lock()
+	defer s.tailMapMutex.Unlock()
+
+	if s.tails[file] {
+		return false
+	}
+
+	s.tails[file] = true
+
+	return true
+}
+
+// releaseTail drops a claim that did not start a live reader, or the claim of a reader that has stopped.
+func (s *Source) releaseTail(file string) {
+	s.tailMapMutex.Lock()
+	defer s.tailMapMutex.Unlock()
+
+	delete(s.tails, file)
+}
+
+// setupTailForFile claims file, then starts one tailer. A setup that does not leave a live reader drops the claim.
+func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pipeline.Event, seekEnd bool, g *errgroup.Group) error {
 	logger := s.logger.WithField("file", file)
 
 	if s.isExcluded(file) {
 		return nil
 	}
 
-	// Check if we're already tailing
-	s.tailMapMutex.RLock()
-
-	if s.tails[file] {
-		s.tailMapMutex.RUnlock()
+	if !s.claimTail(file) {
 		logger.Debugf("Already tailing file %s, not creating a new tail", file)
-
 		return nil
 	}
 
-	s.tailMapMutex.RUnlock()
+	// Make sure the tail claim is RELEASED in case startup fails.
+	keepClaim := false
+	defer func() {
+		if !keepClaim {
+			s.releaseTail(file)
+		}
+	}()
 
 	// Validate file
 	fd, err := os.Open(file)
@@ -227,22 +260,26 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 		return nil
 	}
 
-	// Determine polling mode
+	// nxadm watches with inotify. poll_without_inotify, or a network share, switches that watch to os.Stat.
+	// polltail stats the path itself, so those warnings are useless in that mode.
+	usesInotifyWatch := s.config.Mode == configuration.TAIL_MODE || s.config.Mode == configuration.CAT_MODE
 	pollFile := false
-	if s.config.PollWithoutInotify != nil {
-		pollFile = *s.config.PollWithoutInotify
-	} else {
-		networkFS, fsType, err := fsutil.IsNetworkFS(file)
-		if err != nil {
-			logger.Warningf("Could not get fs type for %s : %s", file, err)
-		}
+	if usesInotifyWatch {
+		if s.config.PollWithoutInotify != nil {
+			pollFile = *s.config.PollWithoutInotify
+		} else {
+			networkFS, fsType, err := fsutil.IsNetworkFS(file)
+			if err != nil {
+				logger.Warningf("Could not get fs type for %s : %s", file, err)
+			}
 
-		logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
+			logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 
-		if networkFS {
-			logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
+			if networkFS {
+				logger.Warnf("Disabling inotify polling on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
 
-			pollFile = true
+				pollFile = true
+			}
 		}
 	}
 
@@ -252,117 +289,66 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 		return fmt.Errorf("could not lstat() file %s: %w", file, err)
 	}
 
-	if filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
+	if usesInotifyWatch && filink.Mode()&os.ModeSymlink == os.ModeSymlink && !pollFile {
 		logger.Warnf("File %s is a symlink, but inotify polling is enabled. Crowdsec will not be able to detect rotation. Consider setting poll_without_inotify to true in your configuration", file)
 	}
 
-	// Create the tailer with appropriate configuration
-	seekInfo := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
-	if s.config.Mode == configuration.CAT_MODE {
-		seekInfo.Whence = io.SeekStart
+	// Where following starts. seekEnd wins over cat mode, matching the historical nxadm setup.
+	whence := io.SeekEnd
+	if s.config.Mode == configuration.CAT_MODE && !seekEnd {
+		whence = io.SeekStart
 	}
 
-	if seekEnd {
-		seekInfo.Whence = io.SeekEnd
+	logger.Infof("Starting tail (offset: %d, whence: %d)", 0, whence)
+
+	if err := s.startTailedFile(ctx, file, out, g, pollFile, whence); err != nil {
+		return err
 	}
 
-	logger.Infof("Starting tail (offset: %d, whence: %d)", seekInfo.Offset, seekInfo.Whence)
-
-	tail, err := tail.TailFile(file, tail.Config{
-		ReOpen:   true,
-		Follow:   true,
-		Poll:     pollFile,
-		Location: seekInfo,
-		Logger:   log.NewEntry(log.StandardLogger()),
-	})
-	if err != nil {
-		return fmt.Errorf("could not start tailing file %s : %w", file, err)
-	}
-
-	s.tailMapMutex.Lock()
-	s.tails[file] = true
-	s.tailMapMutex.Unlock()
-
-	t.Go(func() error {
-		defer trace.ReportPanic()
-		return s.tailFile(out, t, tail)
-	})
+	keepClaim = true
 
 	return nil
 }
 
-func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail) error {
-	logger := s.logger.WithField("tail", tail.Filename)
-	logger.Debug("-> start tailing")
+// pushTailLine records one tailed line and sends it on the shared acquisition channel.
+// It returns false when ctx is canceled and the line was not sent.
+func (s *Source) pushTailLine(ctx context.Context, out chan pipeline.Event, filename string, text string, lineTime time.Time) bool {
+	src := filename
+	if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
+		src = filepath.Base(filename)
+	}
 
-	for {
-		select {
-		case <-t.Dying():
-			logger.Info("File datasource stopping")
+	line := pipeline.Line{
+		Raw:     trimLine(text),
+		Labels:  s.config.Labels,
+		Time:    lineTime,
+		Src:     src,
+		Process: true,
+		Module:  s.GetName(),
+	}
+	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
+	evt.Line = line
 
-			if err := tail.Stop(); err != nil {
-				s.logger.Errorf("error in stop : %s", err)
-				return err
-			}
+	if !sendEvent(ctx, out, evt) {
+		return false
+	}
 
-			return nil
-		case <-tail.Dying(): // our tailer is dying
-			errMsg := "file reader died"
+	s.logger.WithField("tail", filename).Debugf("pushing %+v", line)
 
-			err := tail.Err()
-			if err != nil {
-				errMsg = fmt.Sprintf(errMsg+" : %s", err)
-			}
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
+	}
 
-			logger.Warning(errMsg)
+	return true
+}
 
-			// Just remove the dead tailer from our map and return
-			// monitorNewFiles will pick up the file again if it's recreated
-			s.tailMapMutex.Lock()
-			delete(s.tails, tail.Filename)
-			s.tailMapMutex.Unlock()
-
-			return nil
-		case line := <-tail.Lines:
-			if line == nil {
-				logger.Warning("tail is empty")
-				continue
-			}
-
-			if line.Err != nil {
-				logger.Warningf("fetch error : %v", line.Err)
-				return line.Err
-			}
-
-			if line.Text == "" { // skip empty lines
-				continue
-			}
-
-			if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
-				metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": tail.Filename, "datasource_type": ModuleName, "acquis_type": s.config.Labels["type"]}).Inc()
-			}
-
-			src := tail.Filename
-			if s.metricsLevel == metrics.AcquisitionMetricsLevelAggregated {
-				src = filepath.Base(tail.Filename)
-			}
-
-			l := pipeline.Line{
-				Raw:     trimLine(line.Text),
-				Labels:  s.config.Labels,
-				Time:    line.Time,
-				Src:     src,
-				Process: true,
-				Module:  s.GetName(),
-			}
-			// we're tailing, it must be real time logs
-			logger.Debugf("pushing %+v", l)
-
-			evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
-			evt.Line = l
-
-			out <- evt
-		}
+// sendEvent sends evt on out. It returns false when ctx is done and the send was not taken, so shutdown is not stuck on a full channel.
+func sendEvent(ctx context.Context, out chan pipeline.Event, evt pipeline.Event) bool {
+	select {
+	case out <- evt:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
 
@@ -405,24 +391,30 @@ func (s *Source) readFile(ctx context.Context, filename string, out chan pipelin
 			logger.Info("File datasource stopping")
 			return nil
 		default:
-			if scanner.Text() == "" {
-				continue
-			}
-
-			l := pipeline.Line{
-				Raw:     scanner.Text(),
-				Time:    time.Now().UTC(),
-				Src:     filename,
-				Labels:  s.config.Labels,
-				Process: true,
-				Module:  s.GetName(),
-			}
-			logger.Debugf("line %s", l.Raw)
-			metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
-
-			// we're reading logs at once, it must be time-machine buckets
-			out <- pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)}
 		}
+
+		if scanner.Text() == "" {
+			continue
+		}
+
+		l := pipeline.Line{
+			Raw:     scanner.Text(),
+			Time:    time.Now().UTC(),
+			Src:     filename,
+			Labels:  s.config.Labels,
+			Process: true,
+			Module:  s.GetName(),
+		}
+		logger.Debugf("line %s", l.Raw)
+
+		// we're reading logs at once, it must be time-machine buckets
+		sent := sendEvent(ctx, out, pipeline.Event{Line: l, Process: true, Type: pipeline.LOG, ExpectMode: pipeline.TIMEMACHINE, Unmarshaled: make(map[string]any)})
+		if !sent {
+			logger.Info("File datasource stopping")
+			return nil
+		}
+
+		metrics.FileDatasourceLinesRead.With(prometheus.Labels{"source": filename, "datasource_type": ModuleName, "acquis_type": l.Labels["type"]}).Inc()
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -445,10 +437,7 @@ func (s *Source) IsTailing(filename string) bool {
 // RemoveTail is used for testing to simulate a dead tailer. For testing purposes.
 // It is case sensitive and path delimiter sensitive (filename must match exactly what the filename would look being OS specific)
 func (s *Source) RemoveTail(filename string) {
-	s.tailMapMutex.Lock()
-	defer s.tailMapMutex.Unlock()
-
-	delete(s.tails, filename)
+	s.releaseTail(filename)
 }
 
 // isExcluded returns the first matching regexp from the list of excluding patterns,

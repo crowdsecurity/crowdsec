@@ -29,7 +29,18 @@ type Configuration struct {
 	PollWithoutInotify                *bool         `yaml:"poll_without_inotify"`
 	DiscoveryPollEnable               bool          `yaml:"discovery_poll_enable"`
 	DiscoveryPollInterval             time.Duration `yaml:"discovery_poll_interval"`
+	PollTailReadInterval              time.Duration `yaml:"polltail_read_interval"` // how often polltail stats and reads (default 2s, 0=2s, negative=manual)
 	configuration.DataSourceCommonCfg `yaml:",inline"`
+}
+
+// liveFileMode reports whether mode follows a file instead of reading it once.
+func liveFileMode(mode string) bool {
+	switch mode {
+	case configuration.TAIL_MODE, configuration.POLLTAIL_MODE:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
@@ -52,12 +63,22 @@ func (s *Source) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.New("no filename or filenames configuration provided")
 	}
 
+	if s.config.DiscoveryPollInterval < 0 {
+		return errors.New("discovery_poll_interval must be >= 0")
+	}
+
 	if s.config.Mode == "" {
 		s.config.Mode = configuration.TAIL_MODE
 	}
 
-	if s.config.Mode != configuration.CAT_MODE && s.config.Mode != configuration.TAIL_MODE {
-		return fmt.Errorf("unsupported mode %s for file source", s.config.Mode)
+	switch s.config.Mode {
+	case configuration.TAIL_MODE, configuration.CAT_MODE:
+	case configuration.POLLTAIL_MODE:
+		if s.config.PollTailReadInterval == 0 {
+			s.config.PollTailReadInterval = 2 * time.Second
+		}
+	default:
+		return fmt.Errorf("unsupported mode %q for file source (supported: tail, cat, polltail)", s.config.Mode)
 	}
 
 	for _, exclude := range s.config.ExcludeRegexps {
@@ -123,7 +144,7 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 				continue
 			}
 
-			if files[0] != pattern && s.config.Mode == configuration.TAIL_MODE { // we have a glob pattern
+			if files[0] != pattern && liveFileMode(s.config.Mode) { // we have a glob pattern
 				directory := filepath.Dir(file)
 				s.logger.Debugf("Will add watch to directory: %s", directory)
 
