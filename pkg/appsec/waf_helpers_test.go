@@ -283,7 +283,7 @@ func TestScoreHelpersRejectBlankArguments(t *testing.T) {
 			require.NoError(t, h.Build(t.Context(), hookPostEval, &appsecExprPatcher{}))
 
 			env := scoreEnvForStage(hookPostEval, w, state, &ParsedRequest{})
-			require.NoError(t, w.processHooks([]Hook{h}, env, "post_eval", state),
+			require.NoError(t, w.processHooks([]Hook{h}, env, "post_eval", state, w.Logger),
 				"a rejected argument must not abort the stage")
 
 			// the bad call did nothing, the one after it still ran

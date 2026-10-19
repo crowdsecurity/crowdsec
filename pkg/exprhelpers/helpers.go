@@ -36,6 +36,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -778,7 +779,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, false)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, nil, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -787,7 +788,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 	return count, nil
 }
 
-// func GetDecisionsSinceCount(value string, since string) int {
+// func GetDecisionsSinceCount(value string, since string, [scenario string]) int {
 func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
@@ -806,7 +807,13 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
+	var scenario *string
+	if len(params) > 2 {
+		s := params[2].(string)
+		scenario = &s
+	}
+
+	count, err := dbClient.CountDecisionsByValue(ctx, value, scenario, &sinceTime, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -825,7 +832,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, true)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, nil, true)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -857,10 +864,16 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 func LookupHost(params ...any) (any, error) {
 	value := params[0].(string)
 
-	addresses, err := net.LookupHost(value)
+	ips, err := dnscache.ForwardLookup(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
 		return []string{}, nil
+	}
+
+	addresses := make([]string, 0, len(ips))
+
+	for _, ip := range ips {
+		addresses = append(addresses, ip.String())
 	}
 
 	return addresses, nil

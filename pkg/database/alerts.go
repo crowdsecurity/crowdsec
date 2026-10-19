@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -764,9 +765,16 @@ func (c *Client) CreateAlert(ctx context.Context, machineID string, alertList []
 	return alertIDs, nil
 }
 
-func (c *Client) AlertsCountPerScenario(ctx context.Context, filter map[string][]string) (map[string]int, error) {
+type AlertsByScenario struct {
+	Scenario string
+	Kind     string
+	Count    int
+}
+
+func (c *Client) AlertsCountPerScenario(ctx context.Context, filter map[string][]string) ([]AlertsByScenario, error) {
 	var res []struct {
 		Scenario string
+		Kind     sql.NullString // alerts created before the kind field existed have NULL
 		Count    int
 	}
 
@@ -777,15 +785,15 @@ func (c *Client) AlertsCountPerScenario(ctx context.Context, filter map[string][
 		return nil, fmt.Errorf("failed to build alert request: %w", err)
 	}
 
-	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
+	err = query.GroupBy(alert.FieldScenario, alert.FieldKind).Aggregate(ent.Count()).Scan(ctx, &res)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count alerts per scenario: %w", err)
 	}
 
-	counts := make(map[string]int)
+	counts := make([]AlertsByScenario, 0, len(res))
 
 	for _, r := range res {
-		counts[r.Scenario] = r.Count
+		counts = append(counts, AlertsByScenario{Scenario: r.Scenario, Kind: r.Kind.String, Count: r.Count})
 	}
 
 	return counts, nil

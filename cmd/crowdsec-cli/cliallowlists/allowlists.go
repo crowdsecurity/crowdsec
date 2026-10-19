@@ -23,6 +23,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -175,7 +176,12 @@ func (cli *cliAllowLists) listHuman(out io.Writer, allowlists *models.GetAllowli
 			managed = "yes"
 		}
 
-		t.AppendRow(table.Row{allowlist.Name, allowlist.Description, allowlist.CreatedAt, allowlist.UpdatedAt, managed, len(allowlist.Items)})
+		t.AppendRow(table.Row{
+			allowlist.Name, allowlist.Description,
+			csformat.LocalTime(time.Time(allowlist.CreatedAt)).Format(strfmt.RFC3339Millis),
+			csformat.LocalTime(time.Time(allowlist.UpdatedAt)).Format(strfmt.RFC3339Millis),
+			managed, len(allowlist.Items),
+		})
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -201,16 +207,16 @@ func (cli *cliAllowLists) listContentHuman(out io.Writer, allowlist *models.GetA
 	infoTable.AppendRows([]table.Row{
 		{"Name", allowlist.Name},
 		{"Description", allowlist.Description},
-		{"Created at", allowlist.CreatedAt},
-		{"Updated at", allowlist.UpdatedAt},
+		{"Created at", csformat.LocalTime(time.Time(allowlist.CreatedAt)).Format(strfmt.RFC3339Millis)},
+		{"Updated at", csformat.LocalTime(time.Time(allowlist.UpdatedAt)).Format(strfmt.RFC3339Millis)},
 		{"Managed by Console", managed},
 	})
 
 	for _, content := range allowlist.Items {
-		createdAt := time.Time(content.CreatedAt).Format(time.RFC3339)
+		createdAt := csformat.LocalTime(time.Time(content.CreatedAt)).Format(time.RFC3339)
 		expiration := "never"
 		if !time.Time(content.Expiration).IsZero() {
-			expiration = content.Expiration.String()
+			expiration = csformat.LocalTime(time.Time(content.Expiration)).Format(strfmt.RFC3339Millis)
 		}
 
 		contentTable.AppendRow(table.Row{content.Value, content.Description, expiration, createdAt})

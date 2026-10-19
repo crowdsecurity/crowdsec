@@ -2,14 +2,20 @@ package apiserver
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -489,6 +495,195 @@ func TestStreamDecisionDeltaFilters(t *testing.T) {
 			decisions, code = readDecisionsStreamResp(t, w)
 			require.Equal(t, 200, code)
 			require.Empty(t, decisions["new"])
+		})
+	}
+}
+
+// Small pages force the stream across several id_gt boundaries, for active and expired
+// decisions, on startup and on a delta.
+func TestStreamDecisionPageSize(t *testing.T) {
+	tests := []struct {
+		name   string
+		stream *csconfig.DecisionsStreamCfg
+		want   int
+	}{
+		{"section unset", nil, 30000},
+		{"zero falls back to default", &csconfig.DecisionsStreamCfg{PageSize: 0}, 30000},
+		{"negative falls back to default", &csconfig.DecisionsStreamCfg{PageSize: -1}, 30000},
+		{"one per page", &csconfig.DecisionsStreamCfg{PageSize: 1}, 1},
+		{"partial last page", &csconfig.DecisionsStreamCfg{PageSize: 2}, 2},
+		{"exact multiple", &csconfig.DecisionsStreamCfg{PageSize: 5}, 5},
+	}
+
+	values := func(ds []*models.Decision) []string {
+		out := make([]string, 0, len(ds))
+		for _, d := range ds {
+			out = append(out, *d.Value)
+		}
+
+		return out
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			config := LoadTestConfig(t)
+			config.API.Server.DecisionsStream = tc.stream
+
+			logger, _ := logtest.NewNullLogger()
+			apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
+			require.NoError(t, err)
+			require.NoError(t, apiServer.InitController())
+			require.Equal(t, tc.want, apiServer.controller.HandlerV1.DecisionsStreamPageSize)
+
+			router, err := apiServer.Router()
+			require.NoError(t, err)
+
+			apiKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+			lapi := LAPI{router: router, bouncerKey: apiKey, DBClient: dbClient}
+
+			for _, v := range []string{"1.0.0.1", "1.0.0.2", "1.0.0.3", "1.0.0.4", "1.0.0.5"} {
+				seedOne(t, ctx, lapi, v, "lists", "test/page", types.Ip, "ban")
+			}
+
+			for _, v := range []string{"2.0.0.1", "2.0.0.2", "2.0.0.3"} {
+				_, err = dbClient.Ent.Decision.Create().
+					SetUntil(time.Now().UTC().Add(-time.Second)).
+					SetScenario("test/page").
+					SetType("ban").
+					SetScope(types.Ip).
+					SetValue(v).
+					SetOrigin("lists").
+					Save(ctx)
+				require.NoError(t, err)
+			}
+
+			w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+			decisions, code := readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+			require.Equal(t, []string{"1.0.0.1", "1.0.0.2", "1.0.0.3", "1.0.0.4", "1.0.0.5"}, values(decisions["new"]))
+			require.Equal(t, []string{"2.0.0.1", "2.0.0.2", "2.0.0.3"}, values(decisions["deleted"]))
+
+			for _, v := range []string{"3.0.0.1", "3.0.0.2", "3.0.0.3"} {
+				seedOne(t, ctx, lapi, v, "lists", "test/page", types.Ip, "ban")
+			}
+
+			w = lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+			decisions, code = readDecisionsStreamResp(t, w)
+			require.Equal(t, 200, code)
+			require.Equal(t, []string{"3.0.0.1", "3.0.0.2", "3.0.0.3"}, values(decisions["new"]))
+		})
+	}
+}
+
+// stalledWriter blocks the first write until released, like a bouncer that stops reading mid-stream.
+type stalledWriter struct {
+	*httptest.ResponseRecorder
+
+	writing chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (w *stalledWriter) stall() {
+	w.once.Do(func() {
+		close(w.writing)
+		<-w.release
+	})
+}
+
+func (w *stalledWriter) Write(b []byte) (int, error) {
+	w.stall()
+	return w.ResponseRecorder.Write(b)
+}
+
+func (w *stalledWriter) WriteString(s string) (int, error) {
+	w.stall()
+	return w.ResponseRecorder.WriteString(s)
+}
+
+// The limiter's own behavior is covered in controllers/v1. This checks the config reaches it, that
+// it sits on the real stream route, and that the route gives its slot back once the response is written.
+func TestStreamDecisionMaxConcurrentRequests(t *testing.T) {
+	tests := []struct {
+		name  string
+		limit int
+		// status of a pull made while another one is stuck mid-response
+		concurrentCode int
+	}{
+		{"unset", 0, http.StatusOK},
+		{"negative is ignored", -1, http.StatusOK},
+		{"one at a time", 1, http.StatusServiceUnavailable},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			config := LoadTestConfig(t)
+			config.API.Server.DecisionsStream = &csconfig.DecisionsStreamCfg{MaxConcurrentRequests: tc.limit}
+
+			logger, _ := logtest.NewNullLogger()
+			apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
+			require.NoError(t, err)
+			require.NoError(t, apiServer.InitController())
+
+			router, err := apiServer.Router()
+			require.NoError(t, err)
+
+			apiKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+			lapi := LAPI{router: router, bouncerKey: apiKey, DBClient: dbClient}
+
+			seedOne(t, ctx, lapi, "1.0.0.1", "lists", "test/limit", types.Ip, "ban")
+
+			// with a limit of 1, a leaked slot would leave the second pull queued until its context times out
+			for _, query := range []string{"?startup=true", ""} {
+				reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				w := lapi.RecordResponse(t, reqCtx, "GET", "/v1/decisions/stream"+query, emptyBody, APIKEY)
+				cancel()
+
+				require.Equal(t, 200, w.Code)
+			}
+
+			stalled := &stalledWriter{
+				ResponseRecorder: httptest.NewRecorder(),
+				writing:          make(chan struct{}),
+				release:          make(chan struct{}),
+			}
+			stalledDone := make(chan struct{})
+
+			go func() {
+				defer close(stalledDone)
+
+				req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/decisions/stream?startup=true", http.NoBody)
+				req.Header.Add("X-Api-Key", apiKey)
+				req.RemoteAddr = "127.0.0.1:1234"
+				router.ServeHTTP(stalled, req)
+			}()
+
+			releaseStalled := sync.OnceFunc(func() { close(stalled.release) })
+			// Frees the stalled pull if an assertion below fails first.
+			t.Cleanup(func() {
+				releaseStalled()
+				<-stalledDone
+			})
+
+			select {
+			case <-stalled.writing:
+			case <-time.After(5 * time.Second):
+				t.Fatal("stalled pull never started writing")
+			}
+
+			// when limited, this pull waits for the stalled one until its context times out
+			reqCtx, cancel := context.WithTimeout(ctx, time.Second)
+			w := lapi.RecordResponse(t, reqCtx, "GET", "/v1/decisions/stream", emptyBody, APIKEY)
+			cancel()
+			require.Equal(t, tc.concurrentCode, w.Code)
+
+			releaseStalled()
+			<-stalledDone
+			require.Equal(t, 200, stalled.Code)
 		})
 	}
 }

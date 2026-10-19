@@ -224,7 +224,10 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 		appsecAllowlistsClient: allowlistClient,
 	}
 
-	err = runner.Init("/tmp/")
+	err = runner.InitInBand("/tmp/")
+	if err == nil {
+		err = runner.InitOutOfBand("/tmp/")
+	}
 	if err != nil {
 		if !test.expected_load_ok {
 			return
@@ -249,10 +252,12 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	responses := []appsec.AppsecTempResponse{}
 	events := []pipeline.Event{}
 
-	// handleRequest is synchronous: once it returns, every response and event it emits has
-	// already been buffered, so we can drain both channels deterministically without relying
+	// Both phases run synchronously here: once they return, every response and event they emit
+	// has already been buffered, so we can drain both channels deterministically without relying
 	// on a timer (which used to deadlock when a slow request outran the idle timeout).
-	runner.handleRequest(t.Context(), &input)
+	if job := runner.handleRequest(t.Context(), &input); job != nil {
+		runner.handleOutOfBand(t.Context(), job)
+	}
 
 	for draining := true; draining; {
 		select {

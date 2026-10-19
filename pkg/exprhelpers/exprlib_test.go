@@ -2,12 +2,14 @@ package exprhelpers
 
 import (
 	"errors"
+	"net"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1673,6 +1675,84 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
+func TestGetDecisionsSinceCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one decision now, one a day ago. crowdsec/other: one now.
+	for _, d := range []struct {
+		scenario  string
+		createdAt time.Time
+	}{
+		{"crowdsec/test", time.Now()},
+		{"crowdsec/test", time.Now().AddDate(0, 0, -1)},
+		{"crowdsec/other", time.Now()},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetCreatedAt(d.createdAt).
+			SetUntil(d.createdAt.Add(time.Hour)).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h')", "3"},
+		{"same scenario, since more than 1 day", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "2"},
+		{"same scenario, since 1 hour", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '1h', Alert.GetScenario())", "1"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 3 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsSinceCount(Alert.GetValue(), '25h', 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
+}
+
 func TestGetActiveDecisionsCount(t *testing.T) {
 	ctx := t.Context()
 
@@ -2398,6 +2478,77 @@ func TestParseKvLax(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
+
+func TestLookupHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		want    []string
+		wantLog string
+	}{
+		{
+			name: "known host",
+			host: "home.example.com",
+			want: []string{"192.0.2.10", "2001:db8::10"},
+		},
+		{
+			name:    "unknown host",
+			host:    "nope.example.com",
+			want:    []string{},
+			wantLog: "Failed to lookup host 'nope.example.com' : lookup nope.example.com: no such host",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := &fakeResolver{
+				fwd: map[string][]net.IPAddr{
+					"home.example.com": {
+						{IP: net.ParseIP("192.0.2.10")},
+						{IP: net.ParseIP("2001:db8::10")},
+					},
+				},
+			}
+			setupBotTest(t, resolver)
+
+			logger := log.StandardLogger()
+			hooks := logger.ReplaceHooks(make(log.LevelHooks))
+			hook := logtest.NewLocal(logger)
+
+			t.Cleanup(func() { logger.ReplaceHooks(hooks) })
+
+			env := map[string]any{"host": tc.host}
+
+			vm, err := expr.Compile("LookupHost(host)", GetExprOptions(env)...)
+			require.NoError(t, err)
+
+			// the second call is served from the cache, a failure with its error
+			for range 2 {
+				hook.Reset()
+
+				got, err := expr.Run(vm, env)
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+
+				logged := []string{}
+
+				for _, entry := range hook.AllEntries() {
+					if entry.Level == log.ErrorLevel {
+						logged = append(logged, entry.Message)
+					}
+				}
+
+				if tc.wantLog == "" {
+					require.Empty(t, logged)
+				} else {
+					require.Equal(t, []string{tc.wantLog}, logged)
+				}
+			}
+
+			require.Equal(t, int32(1), resolver.fwdCalls.Load())
 		})
 	}
 }

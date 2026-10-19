@@ -12,6 +12,8 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    # Expected metrics tables use UTC independently of the host timezone.
+    export TZ=UTC
     ./instance-data load
     ./instance-crowdsec start
 }

@@ -294,65 +294,41 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 	}
 }
 
-// Tail live-tailing for logs
+// Tail sends live logs to c until the server closes the stream or ctx is canceled.
+// It doesn't retry: the stream ending is returned as an error for the caller to handle.
 // See: https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
-func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
-	t := time.Now().Add(-1 * lc.config.Since)
+func (lc *VLClient) Tail(ctx context.Context, c chan *Log) error {
 	u := lc.getURLFor("select/logsql/tail", map[string]string{
-		"limit": strconv.Itoa(lc.config.Limit),
-		"start": t.Format(time.RFC3339Nano),
 		"query": lc.config.Query,
 	})
 
-	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, t)
 	lc.Logger.Infof("Connecting to %s", u)
 
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	for {
-		resp, err = lc.Get(ctx, u)
-		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
-
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return nil, nil
-			}
-
-			if ok := lc.shouldRetry(); !ok {
-				return nil, fmt.Errorf("error tailing logs: %w", err)
-			}
-
-			continue
+	resp, err := lc.Get(ctx, u)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil
 		}
 
-		break
+		return fmt.Errorf("tail request: %w", err)
 	}
+
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		lc.Logger.Warnf("bad HTTP response code for tail request: %d", resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if ok := lc.shouldRetry(); !ok {
-			return nil, fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
-		}
+		return fmt.Errorf("bad HTTP response code for tail request: %d: %s", resp.StatusCode, string(body))
 	}
 
-	responseChan := make(chan *Log)
+	if _, _, err := lc.readResponse(ctx, resp, c); err != nil {
+		return fmt.Errorf("reading tail response: %w", err)
+	}
 
-	lc.t.Go(func() error {
-		_, _, err = lc.readResponse(ctx, resp, responseChan)
-		if err != nil {
-			return fmt.Errorf("error while reading tail response: %w", err)
-		}
-
+	if ctx.Err() != nil {
 		return nil
-	})
+	}
 
-	return responseChan, nil
+	return errors.New("tail stream closed by server")
 }
 
 // QueryRange queries the logs
