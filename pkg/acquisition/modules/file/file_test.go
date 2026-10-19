@@ -557,6 +557,22 @@ mode: tail
 	require.NoError(t, tomb.Wait())
 }
 
+// Windows only reports a write to the file watcher once the writer's handle
+// is closed, so don't keep one open.
+func appendToFile(path string, s string) error {
+	fd, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+
+	if _, err := fd.WriteString(s); err != nil {
+		fd.Close()
+		return err
+	}
+
+	return fd.Close()
+}
+
 // The tailer can reach EOF in the middle of a line, for instance when a write
 // crosses a page boundary: the partial line must not be sent on its own, and
 // the lines written after it must not be skipped.
@@ -591,15 +607,12 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testFile := filepath.Join(t.TempDir(), "test.log")
 
-			fd, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-			require.NoError(t, err)
-
-			defer fd.Close()
+			require.NoError(t, os.WriteFile(testFile, nil, 0o644))
 
 			config := fmt.Sprintf("mode: tail\nfilename: '%s'", testFile)
 
 			f := fileacquisition.Source{}
-			err = f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
+			err := f.Configure(ctx, []byte(config), log.NewEntry(log.New()), metrics.AcquisitionMetricsLevelNone)
 			require.NoError(t, err)
 
 			out := make(chan pipeline.Event)
@@ -613,7 +626,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 			// The tailer seeks to the end when it opens the file, which may not have
 			// happened yet: write markers until one comes back.
 			require.Eventually(t, func() bool {
-				if _, err := fd.WriteString("ready\n"); err != nil {
+				if err := appendToFile(testFile, "ready\n"); err != nil {
 					return false
 				}
 
@@ -625,8 +638,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 				}
 			}, readTimeout, 10*time.Millisecond, "tailer never delivered a line")
 
-			_, err = fd.WriteString("second\n" + `{"a":`)
-			require.NoError(t, err)
+			require.NoError(t, appendToFile(testFile, "second\n"+`{"a":`))
 
 			// Skip leftover markers. "second" means the tailer has read that write
 			// and now sits on the partial line.
@@ -648,8 +660,7 @@ func TestLiveAcquisitionPartialLine(t *testing.T) {
 				require.NoError(t, os.Truncate(testFile, 0))
 			}
 
-			_, err = fd.WriteString(tc.rest)
-			require.NoError(t, err)
+			require.NoError(t, appendToFile(testFile, tc.rest))
 
 			var got []string
 
