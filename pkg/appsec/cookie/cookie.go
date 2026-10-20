@@ -36,6 +36,9 @@ type AppsecCookie struct {
 	SecureFlag   bool
 	HttpOnlyFlag bool
 	SameSiteMode string
+	// PartitionedFlag keys the cookie to the top-level site (CHIPS), so it
+	// survives third-party cookie blocking in cross-site iframes.
+	PartitionedFlag bool
 }
 
 // NewAppsecCookie returns a cookie pre-populated with sensible defaults.
@@ -96,6 +99,12 @@ func (c *AppsecCookie) HttpOnly() *AppsecCookie {
 	return c
 }
 
+// Partitioned marks the cookie Partitioned. Implies Secure.
+func (c *AppsecCookie) Partitioned() *AppsecCookie {
+	c.PartitionedFlag = true
+	return c
+}
+
 // SameSite sets the SameSite mode (Lax / Strict / None). Unknown values are
 // passed through verbatim; validation happens on String() rendering.
 func (c *AppsecCookie) SameSite(mode string) *AppsecCookie {
@@ -120,13 +129,14 @@ func (c *AppsecCookie) String() string {
 	c.withDefaults()
 
 	cookie := http.Cookie{
-		Name:     c.Name,
-		Value:    c.Val,
-		Path:     c.PathVal,
-		Domain:   c.DomainName,
-		Secure:   c.SecureFlag,
-		HttpOnly: c.HttpOnlyFlag,
-		SameSite: toSameSite(c.SameSiteMode),
+		Name:        c.Name,
+		Value:       c.Val,
+		Path:        c.PathVal,
+		Domain:      c.DomainName,
+		Secure:      c.SecureFlag,
+		HttpOnly:    c.HttpOnlyFlag,
+		SameSite:    toSameSite(c.SameSiteMode),
+		Partitioned: c.PartitionedFlag,
 	}
 
 	if c.Expiration > 0 {
@@ -134,8 +144,8 @@ func (c *AppsecCookie) String() string {
 		cookie.MaxAge = int(time.Until(cookie.Expires).Seconds())
 	}
 
-	// SameSite=None requires Secure=true per modern browsers; enforce to avoid invalid cookies.
-	if cookie.SameSite == http.SameSiteNoneMode && !cookie.Secure {
+	// SameSite=None and Partitioned require Secure=true per modern browsers; enforce to avoid invalid cookies.
+	if (cookie.SameSite == http.SameSiteNoneMode || cookie.Partitioned) && !cookie.Secure {
 		cookie.Secure = true
 	}
 

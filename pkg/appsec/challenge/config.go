@@ -8,6 +8,7 @@ package challenge
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -54,6 +55,13 @@ type Config struct {
 	// if a non-browser client tolerates larger cookies.
 	MaxCookieSize *int `yaml:"max_cookie_size"`
 
+	// CookieSameSite is the SameSite mode of the challenge cookies: "lax"
+	// (default) or "none". "none" also sets Secure and Partitioned, for sites
+	// embedded in a cross-site iframe; it requires the site to be served
+	// over https. "strict" is not offered: the cookie would not be sent when
+	// arriving from a link on another site, re-challenging every such visit.
+	CookieSameSite *string `yaml:"cookie_same_site"`
+
 	// CryptoObfuscationPoolSize is how many obfuscations of the per-epoch
 	// sign-key module to keep per live epoch. Each variant embeds the same key
 	// with different byte layout, giving per-visitor variance. Defaults to 1.
@@ -94,6 +102,9 @@ func (c *Config) MergeFrom(other *Config) {
 	}
 	if other.MaxCookieSize != nil {
 		c.MaxCookieSize = other.MaxCookieSize
+	}
+	if other.CookieSameSite != nil {
+		c.CookieSameSite = other.CookieSameSite
 	}
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
@@ -150,6 +161,16 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	}
 	if c.MaxCookieSize != nil && *c.MaxCookieSize > 0 {
 		opts = append(opts, WithMaxCookieLen(*c.MaxCookieSize))
+	}
+	if c.CookieSameSite != nil {
+		switch strings.ToLower(*c.CookieSameSite) {
+		case "lax":
+			opts = append(opts, WithCookieSameSiteNone(false))
+		case "none":
+			opts = append(opts, WithCookieSameSiteNone(true))
+		default:
+			return nil, fmt.Errorf("invalid challenge cookie_same_site %q (expected lax or none)", *c.CookieSameSite)
+		}
 	}
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))
