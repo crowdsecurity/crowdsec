@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	csmetrics "github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 const keyLength = 32
@@ -41,6 +43,7 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	papi           *Papi
+	features       []string
 	httpServerTomb tomb.Tomb
 }
 
@@ -226,6 +229,12 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		}
 	}
 
+	features := lapiFeatures(apiClient, papiClient)
+
+	if apiClient != nil {
+		apiClient.features = features
+	}
+
 	trustedIPs, err := config.GetTrustedIPs()
 	if err != nil {
 		return nil, err
@@ -241,8 +250,31 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		router:         router,
 		apic:           apiClient,
 		papi:           papiClient,
+		features:       features,
 		httpServerTomb: tomb.Tomb{},
 	}, nil
+}
+
+func lapiFeatures(apiClient *apic, papiClient *Papi) []string {
+	features := []string{csmetrics.FeatureLAPI}
+
+	if apiClient != nil {
+		features = append(features, csmetrics.FeatureCAPI)
+	}
+
+	// same condition initAPIC starts PAPI on
+	if papiClient != nil && papiClient.URL != "" {
+		features = append(features, csmetrics.FeaturePAPI)
+	}
+
+	slices.Sort(features)
+
+	return features
+}
+
+// Features returns the features enabled on this LAPI (see metrics.AllFeatures).
+func (s *APIServer) Features() []string {
+	return s.features
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {

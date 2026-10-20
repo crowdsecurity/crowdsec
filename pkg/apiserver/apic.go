@@ -66,7 +66,9 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	consoleConfig *csconfig.ConsoleConfig
-	isPulling     chan bool
+	// reported in the LAPI usage metrics
+	features  []string
+	isPulling chan bool
 	whitelists    *csconfig.CapiWhitelist
 
 	pullBlocklists bool

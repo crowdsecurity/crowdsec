@@ -1050,6 +1050,16 @@ func DatasourcesNotNil() predicate.Machine {
 	return predicate.Machine(sql.FieldNotNull(FieldDatasources))
 }
 
+// FeaturesIsNil applies the IsNil predicate on the "features" field.
+func FeaturesIsNil() predicate.Machine {
+	return predicate.Machine(sql.FieldIsNull(FieldFeatures))
+}
+
+// FeaturesNotNil applies the NotNil predicate on the "features" field.
+func FeaturesNotNil() predicate.Machine {
+	return predicate.Machine(sql.FieldNotNull(FieldFeatures))
+}
+
 // HasAlerts applies the HasEdge predicate on the "alerts" edge.
 func HasAlerts() predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
