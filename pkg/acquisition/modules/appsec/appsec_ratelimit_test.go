@@ -39,7 +39,8 @@ func newRateLimitHarness(t *testing.T, preEval ...appsec.Hook) *rateLimitHarness
 		logger:        log.WithField("test", t.Name()),
 		AppsecRuntime: rt,
 	}
-	require.NoError(t, runner.Init(t.TempDir()))
+	require.NoError(t, runner.InitInBand(t.TempDir()))
+	require.NoError(t, runner.InitOutOfBand(t.TempDir()))
 
 	return &rateLimitHarness{t: t, engine: engine, runner: runner, out: out}
 }
@@ -65,7 +66,9 @@ func (h *rateLimitHarness) send(clientIP string, session string) (appsec.AppsecT
 		ResponseChannel: make(chan appsec.AppsecTempResponse, 1),
 	}
 
-	h.runner.handleRequest(h.t.Context(), &req)
+	if job := h.runner.handleRequest(h.t.Context(), &req); job != nil {
+		h.runner.handleOutOfBand(h.t.Context(), job)
+	}
 
 	var events []pipeline.Event
 
