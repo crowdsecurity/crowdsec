@@ -102,6 +102,10 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
 	}
 
+	for _, feature := range machine.Features {
+		t.AppendRow(table.Row{"Features", feature})
+	}
+
 	for _, coll := range machine.Hubstate[cwhub.COLLECTIONS] {
 		t.AppendRow(table.Row{"Collections", coll.Name})
 	}

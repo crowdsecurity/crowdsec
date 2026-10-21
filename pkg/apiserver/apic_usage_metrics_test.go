@@ -18,6 +18,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -276,6 +277,28 @@ func TestAPICPushUsageMetrics(t *testing.T) {
 		require.Len(t, *sent, 1)
 		require.NotNil(t, (*sent)[0].Lapi)
 		require.Empty(t, (*sent)[0].LogProcessors)
+	})
+
+	t.Run("features are forwarded", func(t *testing.T) {
+		api := getAPIC(t, ctx)
+		api.features = []string{"capi", "lapi", "papi"}
+		sent := mockCAPI(t, api, http.StatusOK)
+
+		addMachine(t, ctx, api, "lp1")
+		addMachine(t, ctx, api, "lp2")
+		api.dbClient.Ent.Machine.Update().Where(machine.MachineIdEQ("lp1")).SetFeatures([]string{"log_processor", "waf"}).ExecX(ctx)
+		addMetrics(t, ctx, api, metric.GeneratedTypeLP, "lp1", time.Now().UTC(), usageMetricsPayload("a", 128))
+		addMetrics(t, ctx, api, metric.GeneratedTypeLP, "lp2", time.Now().UTC(), usageMetricsPayload("b", 128))
+
+		api.pushUsageMetrics(ctx)
+
+		require.Len(t, *sent, 1)
+		require.Equal(t, []string{"capi", "lapi", "papi"}, (*sent)[0].Lapi.Features)
+		require.Len(t, (*sent)[0].LogProcessors, 2)
+		require.Equal(t, []string{"log_processor", "waf"}, (*sent)[0].LogProcessors[0].Features)
+		// lp2 predates features: an empty list, not null
+		require.NotNil(t, (*sent)[0].LogProcessors[1].Features)
+		require.Empty(t, (*sent)[0].LogProcessors[1].Features)
 	})
 
 	t.Run("a refused batch is dropped instead of growing forever", func(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -276,6 +277,24 @@ func (_u *MachineUpdate) ClearDatasources() *MachineUpdate {
 	return _u
 }
 
+// SetFeatures sets the "features" field.
+func (_u *MachineUpdate) SetFeatures(v []string) *MachineUpdate {
+	_u.mutation.SetFeatures(v)
+	return _u
+}
+
+// AppendFeatures appends value to the "features" field.
+func (_u *MachineUpdate) AppendFeatures(v []string) *MachineUpdate {
+	_u.mutation.AppendFeatures(v)
+	return _u
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (_u *MachineUpdate) ClearFeatures() *MachineUpdate {
+	_u.mutation.ClearFeatures()
+	return _u
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (_u *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
 	_u.mutation.AddAlertIDs(ids...)
@@ -449,6 +468,17 @@ func (_u *MachineUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DatasourcesCleared() {
 		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Features(); ok {
+		_spec.SetField(machine.FieldFeatures, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedFeatures(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, machine.FieldFeatures, value)
+		})
+	}
+	if _u.mutation.FeaturesCleared() {
+		_spec.ClearField(machine.FieldFeatures, field.TypeJSON)
 	}
 	if _u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -761,6 +791,24 @@ func (_u *MachineUpdateOne) ClearDatasources() *MachineUpdateOne {
 	return _u
 }
 
+// SetFeatures sets the "features" field.
+func (_u *MachineUpdateOne) SetFeatures(v []string) *MachineUpdateOne {
+	_u.mutation.SetFeatures(v)
+	return _u
+}
+
+// AppendFeatures appends value to the "features" field.
+func (_u *MachineUpdateOne) AppendFeatures(v []string) *MachineUpdateOne {
+	_u.mutation.AppendFeatures(v)
+	return _u
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (_u *MachineUpdateOne) ClearFeatures() *MachineUpdateOne {
+	_u.mutation.ClearFeatures()
+	return _u
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (_u *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
 	_u.mutation.AddAlertIDs(ids...)
@@ -964,6 +1012,17 @@ func (_u *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err er
 	}
 	if _u.mutation.DatasourcesCleared() {
 		_spec.ClearField(machine.FieldDatasources, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Features(); ok {
+		_spec.SetField(machine.FieldFeatures, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedFeatures(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, machine.FieldFeatures, value)
+		})
+	}
+	if _u.mutation.FeaturesCleared() {
+		_spec.ClearField(machine.FieldFeatures, field.TypeJSON)
 	}
 	if _u.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{

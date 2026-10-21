@@ -8856,6 +8856,8 @@ type MachineMutation struct {
 	featureflags   *string
 	hubstate       *map[string][]schema.ItemState
 	datasources    *map[string]int64
+	features       *[]string
+	appendfeatures []string
 	clearedFields  map[string]struct{}
 	alerts         map[int]struct{}
 	removedalerts  map[int]struct{}
@@ -9705,6 +9707,71 @@ func (m *MachineMutation) ResetDatasources() {
 	delete(m.clearedFields, machine.FieldDatasources)
 }
 
+// SetFeatures sets the "features" field.
+func (m *MachineMutation) SetFeatures(s []string) {
+	m.features = &s
+	m.appendfeatures = nil
+}
+
+// Features returns the value of the "features" field in the mutation.
+func (m *MachineMutation) Features() (r []string, exists bool) {
+	v := m.features
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFeatures returns the old "features" field's value of the Machine entity.
+// If the Machine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MachineMutation) OldFeatures(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFeatures is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFeatures requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFeatures: %w", err)
+	}
+	return oldValue.Features, nil
+}
+
+// AppendFeatures adds s to the "features" field.
+func (m *MachineMutation) AppendFeatures(s []string) {
+	m.appendfeatures = append(m.appendfeatures, s...)
+}
+
+// AppendedFeatures returns the list of values that were appended to the "features" field in this mutation.
+func (m *MachineMutation) AppendedFeatures() ([]string, bool) {
+	if len(m.appendfeatures) == 0 {
+		return nil, false
+	}
+	return m.appendfeatures, true
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (m *MachineMutation) ClearFeatures() {
+	m.features = nil
+	m.appendfeatures = nil
+	m.clearedFields[machine.FieldFeatures] = struct{}{}
+}
+
+// FeaturesCleared returns if the "features" field was cleared in this mutation.
+func (m *MachineMutation) FeaturesCleared() bool {
+	_, ok := m.clearedFields[machine.FieldFeatures]
+	return ok
+}
+
+// ResetFeatures resets all changes to the "features" field.
+func (m *MachineMutation) ResetFeatures() {
+	m.features = nil
+	m.appendfeatures = nil
+	delete(m.clearedFields, machine.FieldFeatures)
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by ids.
 func (m *MachineMutation) AddAlertIDs(ids ...int) {
 	if m.alerts == nil {
@@ -9793,7 +9860,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -9845,6 +9912,9 @@ func (m *MachineMutation) Fields() []string {
 	if m.datasources != nil {
 		fields = append(fields, machine.FieldDatasources)
 	}
+	if m.features != nil {
+		fields = append(fields, machine.FieldFeatures)
+	}
 	return fields
 }
 
@@ -9887,6 +9957,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.Hubstate()
 	case machine.FieldDatasources:
 		return m.Datasources()
+	case machine.FieldFeatures:
+		return m.Features()
 	}
 	return nil, false
 }
@@ -9930,6 +10002,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldHubstate(ctx)
 	case machine.FieldDatasources:
 		return m.OldDatasources(ctx)
+	case machine.FieldFeatures:
+		return m.OldFeatures(ctx)
 	}
 	return nil, fmt.Errorf("unknown Machine field %s", name)
 }
@@ -10058,6 +10132,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDatasources(v)
 		return nil
+	case machine.FieldFeatures:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFeatures(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Machine field %s", name)
 }
@@ -10118,6 +10199,9 @@ func (m *MachineMutation) ClearedFields() []string {
 	if m.FieldCleared(machine.FieldDatasources) {
 		fields = append(fields, machine.FieldDatasources)
 	}
+	if m.FieldCleared(machine.FieldFeatures) {
+		fields = append(fields, machine.FieldFeatures)
+	}
 	return fields
 }
 
@@ -10161,6 +10245,9 @@ func (m *MachineMutation) ClearField(name string) error {
 		return nil
 	case machine.FieldDatasources:
 		m.ClearDatasources()
+		return nil
+	case machine.FieldFeatures:
+		m.ClearFeatures()
 		return nil
 	}
 	return fmt.Errorf("unknown Machine nullable field %s", name)
@@ -10220,6 +10307,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldDatasources:
 		m.ResetDatasources()
+		return nil
+	case machine.FieldFeatures:
+		m.ResetFeatures()
 		return nil
 	}
 	return fmt.Errorf("unknown Machine field %s", name)

@@ -97,9 +97,11 @@ func lpBaseMetrics(lp *ent.Machine) *models.LogProcessorsMetrics {
 
 	ret := &models.LogProcessorsMetrics{
 		Datasources: lp.Datasources,
-		HubItems:    hubItems,
-		LastUpdate:  lp.UpdatedAt.UTC().Unix(),
-		Name:        lp.MachineId,
+		// not null when the log processor predates features
+		Features:   append([]string{}, lp.Features...),
+		HubItems:   hubItems,
+		LastUpdate: lp.UpdatedAt.UTC().Unix(),
+		Name:       lp.MachineId,
 	}
 
 	if lp.LastPush != nil {
@@ -147,6 +149,7 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 		ConsoleOptions: models.ConsoleOptions{
 			strings.Join(a.consoleConfig.EnabledOptions(), ","),
 		},
+		Features: append([]string{}, a.features...),
 	}
 
 	ret.Os = &models.OSversion{
