@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -28,6 +29,7 @@ type LokiClient struct {
 	failStart             time.Time
 	currentTickerInterval time.Duration
 	requestHeaders        map[string]string
+	httpClient            *http.Client
 }
 
 type Config struct {
@@ -43,6 +45,8 @@ type Config struct {
 	Until time.Duration
 
 	FailMaxDuration time.Duration
+	// RequestTimeout bounds each HTTP request, response body included. 0 means no timeout.
+	RequestTimeout time.Duration
 
 	DelayFor int
 	Limit    int
@@ -135,6 +139,9 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 		case <-ticker.C:
 			resp, err := lc.Get(ctx, uri)
 			if err != nil {
+				if isTimeout(err) {
+					lc.Logger.Warnf("query range request timed out after %s, retrying", lc.config.RequestTimeout)
+				}
 				if ok := lc.shouldRetry(); !ok {
 					return fmt.Errorf("error querying range: %w", err)
 				}
@@ -156,6 +163,9 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 			var lq LokiQueryRangeResponse
 			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
 				resp.Body.Close()
+				if isTimeout(err) {
+					lc.Logger.Warnf("query range response body timed out after %s, retrying", lc.config.RequestTimeout)
+				}
 				if ok := lc.shouldRetry(); !ok {
 					return fmt.Errorf("error decoding Loki response: %w", err)
 				}
@@ -251,7 +261,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 
 func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	responseChan := make(chan *LokiResponse)
-	dialer := &websocket.Dialer{}
+	dialer := &websocket.Dialer{HandshakeTimeout: lc.config.RequestTimeout}
 	u := lc.getURLFor("loki/api/v1/tail", map[string]string{
 		"limit":     strconv.Itoa(lc.config.Limit),
 		"start":     strconv.FormatInt(time.Now().Add(-lc.config.Since).UnixNano(), 10),
@@ -330,7 +340,12 @@ func (lc *LokiClient) Get(ctx context.Context, url string) (*http.Response, erro
 	for k, v := range lc.requestHeaders {
 		request.Header.Add(k, v)
 	}
-	return http.DefaultClient.Do(request)
+	return lc.httpClient.Do(request)
+}
+
+func isTimeout(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 func NewLokiClient(config Config) *LokiClient {
@@ -340,5 +355,10 @@ func NewLokiClient(config Config) *LokiClient {
 		headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(config.Username+":"+config.Password))
 	}
 	headers["User-Agent"] = useragent.Default()
-	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config, requestHeaders: headers}
+	return &LokiClient{
+		Logger:         log.WithField("component", "lokiclient"),
+		config:         config,
+		requestHeaders: headers,
+		httpClient:     &http.Client{Timeout: config.RequestTimeout},
+	}
 }
