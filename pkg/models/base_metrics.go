@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -77,11 +78,15 @@ func (m *BaseMetrics) validateMetrics(formats strfmt.Registry) error {
 
 		if m.Metrics[i] != nil {
 			if err := m.Metrics[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("metrics" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("metrics" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -98,11 +103,15 @@ func (m *BaseMetrics) validateOs(formats strfmt.Registry) error {
 
 	if m.Os != nil {
 		if err := m.Os.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("os")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("os")
 			}
+
 			return err
 		}
 	}
@@ -161,11 +170,15 @@ func (m *BaseMetrics) contextValidateMetrics(ctx context.Context, formats strfmt
 			}
 
 			if err := m.Metrics[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("metrics" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("metrics" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -184,11 +197,15 @@ func (m *BaseMetrics) contextValidateOs(ctx context.Context, formats strfmt.Regi
 		}
 
 		if err := m.Os.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("os")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("os")
 			}
+
 			return err
 		}
 	}
