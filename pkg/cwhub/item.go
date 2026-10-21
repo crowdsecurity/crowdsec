@@ -22,6 +22,7 @@ const (
 	CONTEXTS       = "contexts"
 	APPSEC_CONFIGS = "appsec-configs"
 	APPSEC_RULES   = "appsec-rules"
+	MACROS         = "macros"
 )
 
 const (
@@ -32,7 +33,7 @@ const (
 )
 
 // The order is important, as it is used to range over sub-items in collections.
-var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
+var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, MACROS, COLLECTIONS}
 
 type HubItems map[string]map[string]*Item
 
@@ -52,6 +53,7 @@ type Dependencies struct {
 	Contexts      []string `json:"contexts,omitempty"       yaml:"contexts,omitempty"`
 	AppsecConfigs []string `json:"appsec-configs,omitempty" yaml:"appsec-configs,omitempty"`
 	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
+	Macros        []string `json:"macros,omitempty"         yaml:"macros,omitempty"`
 }
 
 // DependencyGroup pairs an item type with the names of the dependencies of that type.
@@ -70,6 +72,7 @@ func (d Dependencies) ByType() []DependencyGroup {
 		{CONTEXTS, d.Contexts},
 		{APPSEC_CONFIGS, d.AppsecConfigs},
 		{APPSEC_RULES, d.AppsecRules},
+		{MACROS, d.Macros},
 		{COLLECTIONS, d.Collections},
 	}
 }

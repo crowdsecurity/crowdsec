@@ -41,6 +41,11 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		return nil, err
 	}
 
+	hub, err := loadHub(cConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	if !cConfig.DisableAPI {
 		if flags.DisableCAPI {
 			log.Warningf("Communication with CrowdSec Central API disabled from args")
@@ -57,15 +62,6 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
-		if err != nil {
-			return nil, err
-		}
-
-		if err = hub.Load(); err != nil {
-			return nil, err
-		}
-
 		// Reset data files to avoid any potential conflicts with the new configuration
 		exprhelpers.ResetDataFiles()
 
@@ -316,6 +312,11 @@ func Serve(
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
+	hub, err := loadHub(cConfig)
+	if err != nil {
+		return err
+	}
+
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig
 		dbClient, err := database.NewClient(ctx, dbCfg, dbCfg.NewLogger())
@@ -366,15 +367,6 @@ func Serve(
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
-		if err != nil {
-			return err
-		}
-
-		if err = hub.Load(); err != nil {
-			return err
-		}
-
 		csParsers, datasources, err := initCrowdsec(ctx, cConfig, hub, flags.TestMode)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
@@ -430,4 +422,35 @@ func Serve(
 	}
 
 	return nil
+}
+
+// loadHub also loads the expression macros, which must happen before anything compiles
+// an expression: LAPI profiles as well as the agent's parsers and scenarios.
+// LAPI-only instances may have no hub, in which case they run without macros.
+func loadHub(cConfig *csconfig.Config) (*cwhub.Hub, error) {
+	hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
+	if err == nil {
+		err = hub.Load()
+	}
+
+	if err != nil {
+		if !cConfig.DisableAgent {
+			return nil, err
+		}
+
+		log.Warningf("hub not available, expression macros are disabled: %s", err)
+
+		hub = nil
+	}
+
+	nbMacros, err := exprhelpers.LoadMacros(hub)
+	if err != nil {
+		return nil, fmt.Errorf("while loading expression macros: %w", err)
+	}
+
+	if nbMacros > 0 {
+		log.Infof("loaded %d expression macros", nbMacros)
+	}
+
+	return hub, nil
 }
