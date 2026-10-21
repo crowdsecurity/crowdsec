@@ -301,7 +301,7 @@ func outputLoop(
 		case event := <-overflow:
 			// if alert is empty and mapKey is present, the overflow is just to cleanup bucket
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
-				bucketStore.Delete(event.Overflow.Mapkey)
+				bucketStore.DeleteIfDead(event.Overflow.Mapkey)
 				break
 			}
 
