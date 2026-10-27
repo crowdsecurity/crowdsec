@@ -633,6 +633,10 @@ func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerC
 		return fmt.Errorf("unable to read logs from container %s: %w", container.Name, err)
 	}
 
+	// The scanner can stop (e.g. a line over its 64KiB limit) while the daemon keeps the
+	// stream open: without this, every retry leaks a connection and its log file handles.
+	defer dockerReader.Close()
+
 	// Log connection (both initial and reconnections)
 	container.logger.Info("connected to container logs")
 
@@ -757,6 +761,8 @@ func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfi
 	if err != nil {
 		return fmt.Errorf("unable to read logs from service %s: %w", service.Name, err)
 	}
+
+	defer dockerReader.Close()
 
 	// Log connection (both initial and reconnections)
 	service.logger.Info("connected to service logs")
