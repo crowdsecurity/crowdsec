@@ -58,7 +58,7 @@ jobs:
           cscli hubtest run --all --clean --max-jobs 4
 
     - name: "Collect hub coverage"
-      run: ./test/bin/collect-hub-coverage ./hub >> $GITHUB_ENV
+      run: ./test/bin/collect-hub-coverage /hub >> $GITHUB_ENV
 
     - name: "Update coverage badges"
       if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
