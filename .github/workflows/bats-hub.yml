@@ -52,8 +52,9 @@ jobs:
       run: |
           PATH=$(pwd)/test/local/bin:$PATH
           ./test/instance-data load
-          git clone --depth 1 https://github.com/crowdsecurity/hub.git ./hub
-          cd ./hub
+          sudo install -d -o "$USER" /hub          
+          git clone --depth 1 https://github.com/crowdsecurity/hub.git /hub
+          cd /hub
           cscli hubtest run --all --clean --max-jobs 4
 
     - name: "Collect hub coverage"
