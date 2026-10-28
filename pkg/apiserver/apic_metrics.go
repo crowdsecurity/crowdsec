@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	csmetrics "github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -96,9 +97,11 @@ func lpBaseMetrics(lp *ent.Machine) *models.LogProcessorsMetrics {
 
 	ret := &models.LogProcessorsMetrics{
 		Datasources: lp.Datasources,
-		HubItems:    hubItems,
-		LastUpdate:  lp.UpdatedAt.UTC().Unix(),
-		Name:        lp.MachineId,
+		// not null when the log processor predates features
+		Features:   append([]string{}, lp.Features...),
+		HubItems:   hubItems,
+		LastUpdate: lp.UpdatedAt.UTC().Unix(),
+		Name:       lp.MachineId,
 	}
 
 	if lp.LastPush != nil {
@@ -146,6 +149,7 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 		ConsoleOptions: models.ConsoleOptions{
 			strings.Join(a.consoleConfig.EnabledOptions(), ","),
 		},
+		Features: append([]string{}, a.features...),
 	}
 
 	ret.Os = &models.OSversion{
@@ -275,6 +279,7 @@ func (a *apic) sendUsageMetricsBatch(ctx context.Context, batch *usageMetricsBat
 
 	_, resp, err := a.apiClient.UsageMetrics.Add(ctx, batch.metrics)
 	if err != nil {
+		csmetrics.CapiErrors.WithLabelValues(csmetrics.CapiOperationMetrics).Inc()
 		log.Errorf("unable to send usage metrics: %s", err)
 
 		if resp == nil || resp.Response == nil {
@@ -518,6 +523,7 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 
 				_, _, err = a.apiClient.Metrics.Add(ctx, metrics)
 				if err != nil {
+					csmetrics.CapiErrors.WithLabelValues(csmetrics.CapiOperationMetrics).Inc()
 					log.Errorf("capi metrics: failed: %s", err)
 				}
 			}

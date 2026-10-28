@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -52,6 +53,8 @@ const (
 	ChallengeSubmitPath    = "/crowdsec-internal/challenge/submit"
 	ChallengePowWorkerPath = "/crowdsec-internal/challenge/pow-worker.js"
 	ChallengeFPScannerPath = "/crowdsec-internal/challenge/fpscanner.js"
+	// ChallengeCustomJSPath serves the custom detection script; see WithCustomJS.
+	ChallengeCustomJSPath = "/crowdsec-internal/challenge/custom.js"
 )
 
 // Sentinel errors (reasons) returned by ValidateChallengeResponse.
@@ -78,11 +81,17 @@ const cryptoObfuscationPoolDefaultSize = 1
 // outlive the per-epoch signing window without widening forgery exposure.
 const defaultCookieTTL = 12 * time.Hour
 
+// DefaultCustomJSTimeout is the wall-clock all detection hooks share when
+// custom_js_timeout is unset. It is time the visitor spends on the challenge
+// page, so it is deliberately short.
+const DefaultCustomJSTimeout = 500 * time.Millisecond
+
 // DefaultChallengeCSP is the Content-Security-Policy header used on the
 // challenge page when the operator hasn't configured a custom one. Allows
-// inline script/style (the challenge runtime injects both) and blob workers
-// (the PoW worker is loaded from a blob URL).
-const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
+// inline script/style (the challenge runtime injects both), blob workers
+// (the PoW worker is loaded from a blob URL) and WebAssembly compilation
+// (hub-shipped detection modules can use it).
+const DefaultChallengeCSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:;"
 
 //go:embed challenge.html.tmpl
 var htmlTemplate string
@@ -134,6 +143,23 @@ type ChallengeRuntime struct {
 	// dynamic_module.go.
 	challengeCode string
 
+	// customJS is the concatenated detection script shipped through the hub.
+	customJS string
+
+	// customJSTimeout is the budget those hooks share, sent to the browser on
+	// each challenge page.
+	customJSTimeout time.Duration
+
+	// customJSVersion is a digest of customJS. It is reported at startup so an
+	// operator can tell which build of the shipped detections an engine is
+	// actually running; it is not part of the script URL.
+	customJSVersion string
+
+	// customOverflowWarned latches the first cookie-overflow warning. Overflow is
+	// a property of the deployment (a detector reporting too much), not of the
+	// visitor, so warning per submission repeats it for every visitor.
+	customOverflowWarned atomic.Bool
+
 	powDifficulty int
 
 	// keys derives per-epoch sign keys (per-challenge secret / PoW MAC HMACs)
@@ -166,6 +192,11 @@ type ChallengeRuntime struct {
 	// fingerprint envelope. Defaults to MaxCookieLen (the browser limit).
 	maxCookieLen int
 
+	// cookieSameSiteNone issues the challenge and test cookies as
+	// SameSite=None; Secure; Partitioned so the challenge works in a
+	// cross-site iframe. False keeps SameSite=Lax.
+	cookieSameSiteNone bool
+
 	// htmlTpl is the challenge HTML page template (built-in, or the operator's
 	// via Config.TemplatePath), parsed once and reused so GetChallengePage
 	// doesn't re-parse per request.
@@ -194,8 +225,11 @@ type runtimeOptions struct {
 	maxLiveEpochs             int
 	cookieTTL                 time.Duration
 	maxCookieLen              int
+	cookieSameSiteNone        bool
 	cryptoObfuscationPoolSize int
 	spentSetMaxEntries        int
+	customJS                  string
+	customJSTimeout           time.Duration
 	logger                    *log.Entry // nil → default "challenge" sublogger
 	// htmlTpl is the operator's challenge page (Config.TemplatePath), already
 	// parsed and validated by BuildOptions. nil → the built-in page.
@@ -203,6 +237,21 @@ type runtimeOptions struct {
 	// skipPreWarm drops the constructor's synchronous obfuscation and the
 	// background pre-warmer. Only withoutPreWarm (challenge_test.go) sets it.
 	skipPreWarm bool
+}
+
+// WithCustomJS sets the hub-distributed detection script. Empty disables it.
+func WithCustomJS(src string) Option {
+	return func(o *runtimeOptions) {
+		o.customJS = src
+	}
+}
+
+// WithCustomJSTimeout sets the shared detection-hook budget; zero or negative
+// is ignored, leaving DefaultCustomJSTimeout.
+func WithCustomJSTimeout(d time.Duration) Option {
+	return func(o *runtimeOptions) {
+		o.customJSTimeout = d
+	}
 }
 
 func WithLogger(logger *log.Entry) Option {
@@ -257,6 +306,14 @@ func WithMaxCookieLen(n int) Option {
 		if n > 0 {
 			o.maxCookieLen = n
 		}
+	}
+}
+
+// WithCookieSameSiteNone switches the challenge cookies to
+// SameSite=None; Secure; Partitioned (see Config.CookieSameSite).
+func WithCookieSameSiteNone(enabled bool) Option {
+	return func(o *runtimeOptions) {
+		o.cookieSameSiteNone = enabled
 	}
 }
 
@@ -331,33 +388,25 @@ func (c *ChallengeRuntime) SetDifficulty(level string) error {
 // secret + keyring, pre-warms the dynamic-module cache, and (if configured)
 // spawns the background obfuscation refresher. Safe for concurrent use across
 // all appsec runners. Pass WithXxx options to override defaults.
-// compileObfuscatorModule decompresses the baked-in obfuscator WASM (once,
-// process-wide) and compiles it for the given runtime. Pre-compiling lets each
-// ObfuscateJS call merely instantiate the module instead of re-parsing the WASM
-// bytes, which would otherwise cost ~4-5s per call.
+// compileObfuscatorModule decompresses the baked-in obfuscator WASM and
+// compiles it for the given runtime. Pre-compiling lets each ObfuscateJS call
+// merely instantiate the module instead of re-parsing the WASM bytes, which
+// would otherwise cost ~4-5s per call. The decompressed bytes (~17MB) are not
+// retained: the CompiledModule keeps what it needs, and decompressing again on
+// the rare second call (a reload) costs ~100ms.
 func compileObfuscatorModule(ctx context.Context, r wazero.Runtime) (wazero.CompiledModule, error) {
-	var obfuscatorWasmErr error
+	zr, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
+	}
+	defer zr.Close()
 
-	obfuscatorWasmOnce.Do(func() {
-		zr, err := gzip.NewReader(bytes.NewReader(obfuscatorWasmGz))
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to create gzip reader for obfuscator wasm: %w", err)
-			return
-		}
-		defer zr.Close()
-
-		obfuscatorWasm, err = io.ReadAll(zr)
-		if err != nil {
-			obfuscatorWasmErr = fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
-			return
-		}
-	})
-
-	if obfuscatorWasmErr != nil {
-		return nil, obfuscatorWasmErr
+	wasm, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress obfuscator wasm: %w", err)
 	}
 
-	compiledMod, err := r.CompileModule(ctx, obfuscatorWasm)
+	compiledMod, err := r.CompileModule(ctx, wasm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile obfuscator wasm module: %w", err)
 	}
@@ -453,6 +502,11 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		cookieTTL = defaultCookieTTL
 	}
 
+	customJSTimeout := resolvedOpts.customJSTimeout
+	if customJSTimeout <= 0 {
+		customJSTimeout = DefaultCustomJSTimeout
+	}
+
 	maxCookieLen := resolvedOpts.maxCookieLen
 	if maxCookieLen <= 0 {
 		maxCookieLen = MaxCookieLen
@@ -509,11 +563,15 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		dynamicModuleCache: make(map[int64][]string),
 		cookieTTL:          cookieTTL,
 		maxCookieLen:       maxCookieLen,
+		cookieSameSiteNone: resolvedOpts.cookieSameSiteNone,
 		htmlTpl:            htmlTpl,
 		blockTpl:           blockTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
+		customJSTimeout:    customJSTimeout,
 		logger:             logger,
 	}
+
+	challengeRuntime.setCustomJS(resolvedOpts.customJS)
 
 	// Load the build-time-obfuscated challenge code from the baked-in bundle so
 	// we can serve immediately.
@@ -541,13 +599,23 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		go challengeRuntime.dynamicModulePreWarmer(runCtx)
 	}
 
-	logger.WithFields(log.Fields{
+	fields := log.Fields{
 		"rotation_interval": rotationInterval,
 		"cookie_ttl":        cookieTTL,
 		"max_cookie_len":    maxCookieLen,
+		"cookie_same_site":  challengeRuntime.cookieSameSite(),
 		"pow_difficulty":    defaultPowDifficulty,
 		"crypto_pool_size":  cryptoPoolSize,
-	}).Info("WAF challenge runtime initialized")
+	}
+
+	// Only with a script loaded: the timeout bounds nothing without hooks, and an
+	// empty version on every challenge-mode startup reads as a failed load.
+	if challengeRuntime.customJS != "" {
+		fields["custom_js_version"] = challengeRuntime.customJSVersion
+		fields["custom_js_timeout"] = customJSTimeout
+	}
+
+	logger.WithFields(fields).Info("WAF challenge runtime initialized")
 
 	return challengeRuntime, nil
 }
@@ -621,7 +689,7 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		return "", fmt.Errorf("build dynamic key module: %w", err)
 	}
 
-	data := newPageData(challengeCode, dynamicModule, difficulty, powSalt, powMAC, ts, r)
+	data := c.newPageData(challengeCode, dynamicModule, difficulty, powSalt, powMAC, ts, r)
 
 	var renderedBlock strings.Builder
 	if err := c.blockTpl.Execute(&renderedBlock, data); err != nil {
@@ -639,23 +707,33 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 
 // newPageData builds the template data shared by the challenge block and the
 // page itself.
-func newPageData(challengeCode, dynamicModule string, difficulty int, powSalt, powMAC, ts, r string) map[string]interface{} {
+func (c *ChallengeRuntime) newPageData(challengeCode, dynamicModule string, difficulty int, powSalt, powMAC, ts, r string) map[string]interface{} {
+	// Empty drops the script tag, rather than pointing every challenge page at
+	// an empty file.
+	customJSPath := ""
+	if c.customJS != "" {
+		customJSPath = ChallengeCustomJSPath
+	}
+
 	return map[string]interface{}{
-		"JSChallenge":   challengeCode,
-		"DynamicModule": dynamicModule,
-		"FPScannerPath": ChallengeFPScannerPath,
-		"PowDifficulty": difficulty,
-		"PowPrefix":     powSalt,
-		"PowMAC":        powMAC,
-		"Timestamp":     ts,
-		"R":             r,
+		"JSChallenge":       challengeCode,
+		"DynamicModule":     dynamicModule,
+		"FPScannerPath":     ChallengeFPScannerPath,
+		"CustomJSPath":      customJSPath,
+		"CustomJSTimeoutMS": c.customJSTimeout.Milliseconds(),
+		"TestCookieAttrs":   c.testCookieAttrs(),
+		"PowDifficulty":     difficulty,
+		"PowPrefix":         powSalt,
+		"PowMAC":            powMAC,
+		"Timestamp":         ts,
+		"R":                 r,
 	}
 }
 
 // zeroPageData is the render-path data with every value zeroed, so template
 // validation (config.go) offers the same keys and types the real render does.
 func zeroPageData() map[string]interface{} {
-	return newPageData("", "", 0, "", "", "", "")
+	return (&ChallengeRuntime{}).newPageData("", "", 0, "", "", "", "")
 }
 
 // ValidateChallengeResponse parses a submit POST and runs the full chain:
@@ -761,6 +839,7 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 			"k_epoch": fmt.Sprintf("%x", signKey),
 			"fsid":    fpData.FSID,
 			"is_bot":  fpData.FastBotDetection,
+			"custom":  fpData.CustomKeys(),
 		}).Debug("validated submission")
 	}
 
@@ -777,16 +856,20 @@ func (c *ChallengeRuntime) ValidateChallengeResponse(request *http.Request, body
 	// rotation); the browser Max-Age below matches so both expire together.
 	notAfter := time.Now().Add(c.cookieTTL).Unix()
 	cookieValue, err := sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
+
+	// If the cookie is too large, try to drop custom detection as a last chance to fit it within the size limit.
+	if errors.Is(err, ErrCookieTooLarge) && envelope.GetFingerprint().GetCustom() != nil {
+		c.logCustomOverflow(&fpData)
+
+		envelope.Fingerprint.Custom = nil
+		cookieValue, err = sealCookieV0(envelope, c.keys.MasterCookieKey(), notAfter, 0, "", []byte(request.UserAgent()), c.maxCookieLen)
+	}
+
 	if err != nil {
 		return nil, FingerprintData{}, 0, fmt.Errorf("failed to seal challenge cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(c.cookieTTL).Value(cookieValue)
-	if request.URL.Scheme == "https" {
-		ck = ck.Secure()
-	}
-
-	return ck, fpData, clientDifficulty, nil
+	return c.newChallengeCookie(request, c.cookieTTL, cookieValue), fpData, clientDifficulty, nil
 }
 
 // SealAllowlistCookie mints an allowlist-bypass cookie (no fingerprint, with
@@ -810,12 +893,38 @@ func (c *ChallengeRuntime) SealAllowlistCookie(request *http.Request, reason str
 		return nil, fmt.Errorf("failed to seal allowlist cookie: %w", err)
 	}
 
-	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(cookie.SameSiteLax).ExpiresIn(ttl).Value(cookieValue)
+	return c.newChallengeCookie(request, ttl, cookieValue), nil
+}
+
+func (c *ChallengeRuntime) cookieSameSite() string {
+	if c.cookieSameSiteNone {
+		return cookie.SameSiteNone
+	}
+	return cookie.SameSiteLax
+}
+
+// newChallengeCookie builds the challenge cookie with the configured SameSite
+// mode. In None mode Secure is set regardless of request.URL.Scheme: behind a
+// bouncer the scheme seen here is often http even when the browser is on https.
+func (c *ChallengeRuntime) newChallengeCookie(request *http.Request, ttl time.Duration, value string) *cookie.AppsecCookie {
+	ck := cookie.NewAppsecCookie(ChallengeCookieName).HttpOnly().Path("/").SameSite(c.cookieSameSite()).ExpiresIn(ttl).Value(value)
+	if c.cookieSameSiteNone {
+		return ck.Secure().Partitioned()
+	}
 	if request.URL.Scheme == "https" {
 		ck = ck.Secure()
 	}
+	return ck
+}
 
-	return ck, nil
+// testCookieAttrs are the attributes of the page's cookies-enabled probe. They
+// must match the challenge cookie's, or the probe passes where the real cookie
+// is then dropped.
+func (c *ChallengeRuntime) testCookieAttrs() string {
+	if c.cookieSameSiteNone {
+		return "path=/; SameSite=None; Secure; Partitioned"
+	}
+	return "path=/; SameSite=Lax"
 }
 
 // CookieData bundles the decoded fingerprint with cookie-envelope metadata for
@@ -849,4 +958,37 @@ func (c *ChallengeRuntime) ValidCookie(ck *http.Cookie, userAgent string) (*Cook
 		Allowlisted:     envelope.Allowlisted,
 		AllowlistReason: envelope.AllowlistReason,
 	}, nil
+}
+
+// setCustomJS keeps the script and the digest reported for it in step.
+func (c *ChallengeRuntime) setCustomJS(src string) {
+	c.customJS = src
+	c.customJSVersion = CustomJSVersion(src)
+}
+
+// CustomJS returns the detection script the dispatcher serves at
+// ChallengeCustomJSPath, empty when none is loaded.
+func (c *ChallengeRuntime) CustomJS() string {
+	if c == nil {
+		return ""
+	}
+
+	return c.customJS
+}
+
+// logCustomOverflow reports a dropped custom map. The first one is the operator's
+// signal; the rest are the same deployment fact repeated once per visitor, so they
+// go to debug. CustomKeys allocates, hence the level check.
+func (c *ChallengeRuntime) logCustomOverflow(fpData *FingerprintData) {
+	const msg = "custom detections do not fit in the cookie, dropped"
+
+	if c.customOverflowWarned.CompareAndSwap(false, true) {
+		c.log().WithField("custom", fpData.CustomKeys()).Warn(msg)
+
+		return
+	}
+
+	if c.log().Logger.IsLevelEnabled(log.DebugLevel) {
+		c.log().WithField("custom", fpData.CustomKeys()).Debug(msg)
+	}
 }

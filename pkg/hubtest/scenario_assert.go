@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
@@ -256,7 +257,29 @@ func (b BucketResults) Len() int {
 }
 
 func (b BucketResults) Less(i, j int) bool {
-	return b[i].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@") > b[j].Overflow.Alert.GetScenario()+strings.Join(b[j].Overflow.GetSources(), "@")
+	ki := b[i].Overflow.Alert.GetScenario() + strings.Join(b[i].Overflow.GetSources(), "@")
+	kj := b[j].Overflow.Alert.GetScenario() + strings.Join(b[j].Overflow.GetSources(), "@")
+
+	if ki != kj {
+		return ki > kj
+	}
+
+	// Successive buckets with the same key can reach the output in any order,
+	// so the dump order can't be relied on.
+	return alertStartAt(b[i]).Before(alertStartAt(b[j]))
+}
+
+func alertStartAt(evt pipeline.Event) time.Time {
+	if evt.Overflow.Alert == nil || evt.Overflow.Alert.StartAt == nil {
+		return time.Time{}
+	}
+
+	t, err := time.Parse(time.RFC3339Nano, *evt.Overflow.Alert.StartAt)
+	if err != nil {
+		return time.Time{}
+	}
+
+	return t
 }
 
 func (b BucketResults) Swap(i, j int) {
@@ -281,7 +304,7 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 		return nil, err
 	}
 
-	sort.Sort(bucketDump)
+	sort.Stable(bucketDump)
 
 	return &bucketDump, nil
 }

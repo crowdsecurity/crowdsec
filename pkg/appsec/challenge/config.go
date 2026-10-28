@@ -49,12 +49,24 @@ type Config struct {
 	// per-epoch keys rotate tightly. Defaults to 12h.
 	CookieTTL *time.Duration `yaml:"cookie_ttl"`
 
+	// CustomJSTimeout bounds the time all CUSTOM_JS detection hooks get, in
+	// total rather than each.
+	// Defaults to DefaultCustomJSTimeout.
+	CustomJSTimeout *time.Duration `yaml:"custom_js_timeout"`
+
 	// MaxCookieSize caps the challenge cookie's encoded size, enforced on both
 	// seal and open. It bounds the memory allocated from the (attacker-supplied)
 	// fingerprint envelope, closing an over-allocation DoS. Defaults to
 	// MaxCookieLen (4096, the per-cookie size browsers guarantee); raise it only
 	// if a non-browser client tolerates larger cookies.
 	MaxCookieSize *int `yaml:"max_cookie_size"`
+
+	// CookieSameSite is the SameSite mode of the challenge cookies: "lax"
+	// (default) or "none". "none" also sets Secure and Partitioned, for sites
+	// embedded in a cross-site iframe; it requires the site to be served
+	// over https. "strict" is not offered: the cookie would not be sent when
+	// arriving from a link on another site, re-challenging every such visit.
+	CookieSameSite *string `yaml:"cookie_same_site"`
 
 	// CryptoObfuscationPoolSize is how many obfuscations of the per-epoch
 	// sign-key module to keep per live epoch. Each variant embeds the same key
@@ -103,8 +115,14 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.CookieTTL != nil {
 		c.CookieTTL = other.CookieTTL
 	}
+	if other.CustomJSTimeout != nil {
+		c.CustomJSTimeout = other.CustomJSTimeout
+	}
 	if other.MaxCookieSize != nil {
 		c.MaxCookieSize = other.MaxCookieSize
+	}
+	if other.CookieSameSite != nil {
+		c.CookieSameSite = other.CookieSameSite
 	}
 	if other.CryptoObfuscationPoolSize != nil {
 		c.CryptoObfuscationPoolSize = other.CryptoObfuscationPoolSize
@@ -161,8 +179,21 @@ func BuildOptions(c *Config, parent *log.Entry, dataDir string) ([]Option, error
 	if c.CookieTTL != nil {
 		opts = append(opts, WithCookieTTL(*c.CookieTTL))
 	}
+	if c.CustomJSTimeout != nil {
+		opts = append(opts, WithCustomJSTimeout(*c.CustomJSTimeout))
+	}
 	if c.MaxCookieSize != nil && *c.MaxCookieSize > 0 {
 		opts = append(opts, WithMaxCookieLen(*c.MaxCookieSize))
+	}
+	if c.CookieSameSite != nil {
+		switch strings.ToLower(*c.CookieSameSite) {
+		case "lax":
+			opts = append(opts, WithCookieSameSiteNone(false))
+		case "none":
+			opts = append(opts, WithCookieSameSiteNone(true))
+		default:
+			return nil, fmt.Errorf("invalid challenge cookie_same_site %q (expected lax or none)", *c.CookieSameSite)
+		}
 	}
 	if c.CryptoObfuscationPoolSize != nil && *c.CryptoObfuscationPoolSize > 0 {
 		opts = append(opts, WithCryptoObfuscationPoolSize(*c.CryptoObfuscationPoolSize))

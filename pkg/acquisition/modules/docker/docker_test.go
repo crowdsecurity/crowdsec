@@ -23,6 +23,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker/tracker"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -31,6 +32,10 @@ const testContainerName = "docker_test"
 const testServiceName = "test_service"
 
 func TestConfigureDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestConfigureDSN'")
 
 	ctx := t.Context()
@@ -162,6 +167,10 @@ func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options client.
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
@@ -273,6 +282,10 @@ service_name_regexp:
 }
 
 func TestServiceEvaluation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestServiceEvaluation'")
 
 	ctx := t.Context()
@@ -408,6 +421,10 @@ use_service_labels: true`,
 }
 
 func TestSwarmManagerDetection(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestSwarmManagerDetection'")
 
 	ctx := t.Context()
@@ -555,6 +572,10 @@ func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) clie
 }
 
 func TestOneShot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.Info("Test 'TestOneShot'")
@@ -610,6 +631,10 @@ func TestOneShot(t *testing.T) {
 }
 
 func TestParseLabels(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	tests := []struct {
 		name     string
 		labels   map[string]string
@@ -661,6 +686,10 @@ func TestParseLabels(t *testing.T) {
 }
 
 func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	// A leaf label and a branch label under the same key (set by whoever
 	// launches the container) must not panic the type assertion in
 	// parseKeyToMap. Only one of the two can win, but the result must be the
@@ -683,5 +712,65 @@ func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
 	// Try to parse the same labels multiple times to ensure deterministic behavior
 	for range 50 {
 		assert.Equal(t, first, parseLabels(labels))
+	}
+}
+
+// A restarted container (or service) keeps the logs of its previous runs: tailing it again
+// from the configured "since" would replay everything we already sent to the parsers.
+func TestCheckTailsFromNow(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name   string
+		config string
+		check  func(*Source, context.Context, chan *ContainerConfig, chan *ContainerConfig) error
+	}{
+		{
+			name: "container",
+			config: fmt.Sprintf(`
+source: docker
+container_name:
+ - %s
+since: 2020-01-01T00:00:00Z`, testContainerName),
+			check: func(d *Source, ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+				return d.checkContainers(ctx, monitChan, deleteChan)
+			},
+		},
+		{
+			name: "service",
+			config: fmt.Sprintf(`
+source: docker
+service_name:
+ - %s
+since: 2020-01-01T00:00:00Z`, testServiceName),
+			check: func(d *Source, ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+				return d.checkServices(ctx, monitChan, deleteChan)
+			},
+		},
+	}
+
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			dockerSource := &Source{logger: log.WithField("type", ModuleName)}
+
+			require.NoError(t, dockerSource.UnmarshalConfig([]byte(ts.config)))
+
+			dockerSource.runningContainerState = tracker.NewTracker[*ContainerConfig]()
+			dockerSource.runningServiceState = tracker.NewTracker[*ContainerConfig]()
+			dockerSource.Client = &mockDockerCli{}
+
+			before := time.Now().UTC()
+
+			monitChan := make(chan *ContainerConfig, 1)
+			deleteChan := make(chan *ContainerConfig, 1)
+
+			require.NoError(t, ts.check(dockerSource, ctx, monitChan, deleteChan))
+
+			cfg := <-monitChan
+
+			since, err := time.Parse(time.RFC3339Nano, cfg.logOptions.Since)
+			require.NoError(t, err)
+			assert.False(t, since.Before(before), "expected to tail from now, got %s", cfg.logOptions.Since)
+		})
 	}
 }

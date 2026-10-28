@@ -108,9 +108,9 @@
     function cookiesEnabled() {
       try {
         if (navigator.cookieEnabled === false) return false;
-        document.cookie = "__crowdsec_cookie_test=1; path=/; SameSite=Lax";
+        document.cookie = "__crowdsec_cookie_test=1; {{.TestCookieAttrs}}";
         const stored = document.cookie.indexOf("__crowdsec_cookie_test=") !== -1;
-        document.cookie = "__crowdsec_cookie_test=; path=/; SameSite=Lax; Max-Age=0";
+        document.cookie = "__crowdsec_cookie_test=; {{.TestCookieAttrs}}; Max-Age=0";
         return stored;
       } catch (e) {
         return false;
@@ -154,10 +154,13 @@
   })();
 </script>
 
-<script>var _powD={{.PowDifficulty}},_powP="{{.PowPrefix}}",_powM="{{.PowMAC}}",_ts="{{.Timestamp}}",_r="{{.R}}"</script>
+<script>var _powD={{.PowDifficulty}},_powP="{{.PowPrefix}}",_powM="{{.PowMAC}}",_ts="{{.Timestamp}}",_r="{{.R}}",_cjsT={{.CustomJSTimeoutMS}}</script>
 <!-- Classic script: runs before the deferred module below, so the scanner
      global is ready when the challenge code runs. -->
 <script src="{{.FPScannerPath}}"></script>
+{{if .CustomJSPath}}<!-- Classic script like the scanner, so the hooks are
+     registered before the module below runs them. -->
+<script src="{{.CustomJSPath}}"></script>{{end}}
 <script type="module">
 {{.JSChallenge}}
 {{.DynamicModule}}

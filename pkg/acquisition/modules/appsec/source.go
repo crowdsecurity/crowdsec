@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 type Source struct {
@@ -28,6 +29,7 @@ type Source struct {
 	lapiURL               string
 	AuthCache             AuthCache
 	AppsecRunners         []AppsecRunner // one for each go-routine
+	OutOfBandRunners      []AppsecRunner
 	appsecAllowlistClient *allowlists.AppsecAllowlist
 	lapiCACertPool        *x509.CertPool
 	authGroup             singleflight.Group
@@ -72,6 +74,14 @@ func (w *Source) SetClientConfig(config *csconfig.LocalApiClientCfg) {
 
 func (w *Source) SetHub(hub *cwhub.Hub) {
 	w.hub = hub
+}
+
+func (w *Source) Features() []string {
+	if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
+		return []string{metrics.FeatureWAF, metrics.FeatureBotDetection}
+	}
+
+	return []string{metrics.FeatureWAF}
 }
 
 func (w *Source) GetMode() string {
