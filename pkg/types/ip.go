@@ -12,6 +12,12 @@ import (
 func LastAddress(n net.IPNet) net.IP {
 	// get the last address by ORing the hostmask and the IP
 	ip := n.IP.To4()
+
+	// an IPv4-mapped range keeps its 16-byte mask
+	if ip != nil && len(n.Mask) == net.IPv6len {
+		n.Mask = n.Mask[12:]
+	}
+
 	if ip == nil {
 		// IPv6
 		ip = n.IP

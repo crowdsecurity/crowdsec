@@ -174,6 +174,33 @@ func TestAdd2Int(t *testing.T) {
 			exp_end_ip:    -math.MaxInt64 + 0x010203FF,
 			exp_end_sfx:   0,
 		},
+		{
+			in_addr: "::ffff:1.2.3.0/120",
+			/*1.2.3.0 -> 1.2.3.255*/
+			exp_sz:        4,
+			exp_start_ip:  -math.MaxInt64 + 0x01020300,
+			exp_start_sfx: 0,
+			exp_end_ip:    -math.MaxInt64 + 0x010203FF,
+			exp_end_sfx:   0,
+		},
+		{
+			in_addr: "::ffff:10.0.0.0/104",
+			/*10.0.0.0 -> 10.255.255.255*/
+			exp_sz:        4,
+			exp_start_ip:  -math.MaxInt64 + 0x0A000000,
+			exp_start_sfx: 0,
+			exp_end_ip:    -math.MaxInt64 + 0x0AFFFFFF,
+			exp_end_sfx:   0,
+		},
+		{
+			in_addr: "::ffff:1.2.3.4/128",
+			/*1.2.3.4*/
+			exp_sz:        4,
+			exp_start_ip:  -math.MaxInt64 + 0x01020304,
+			exp_start_sfx: 0,
+			exp_end_ip:    -math.MaxInt64 + 0x01020304,
+			exp_end_sfx:   0,
+		},
 		/*errors*/
 		{
 			in_addr:   "xxx/24",
