@@ -2,7 +2,7 @@ name: Deploy to Cloudflare Pages (Direct Upload)
 
 on:
   release:
-    types: [published]
+    types: [released]
   workflow_dispatch:
     inputs:
       version:
