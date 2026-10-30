@@ -277,6 +277,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetActiveDecisionsCount,
 		signature: []any{
 			new(func(string) int),
+			new(func(string, string) int),
 		},
 	},
 	{
@@ -284,6 +285,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetActiveDecisionsTimeLeft,
 		signature: []any{
 			new(func(string) time.Duration),
+			new(func(string, string) time.Duration),
 		},
 	},
 	{
