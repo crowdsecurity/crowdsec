@@ -19,6 +19,14 @@ func (e *BouncerNotFoundError) Error() string {
 	return fmt.Sprintf("'%s' does not exist", e.BouncerName)
 }
 
+type BouncerExistsError struct {
+	BouncerName string
+}
+
+func (e *BouncerExistsError) Error() string {
+	return fmt.Sprintf("bouncer %s already exists", e.BouncerName)
+}
+
 func (c *Client) BouncerUpdateBaseMetrics(ctx context.Context, bouncerName string, bouncerType string, baseMetrics models.BaseMetrics) error {
 	os := baseMetrics.Os
 	features := strings.Join(baseMetrics.FeatureFlags, ",")
@@ -90,7 +98,7 @@ func (c *Client) CreateBouncer(ctx context.Context, name string, ipAddr string, 
 		Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
-			return nil, fmt.Errorf("bouncer %s already exists", name)
+			return nil, &BouncerExistsError{BouncerName: name}
 		}
 
 		return nil, fmt.Errorf("unable to create bouncer: %w", err)
