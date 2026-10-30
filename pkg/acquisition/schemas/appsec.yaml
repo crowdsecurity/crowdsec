@@ -1,0 +1,140 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec AppSec datasource
+description: >
+  Schema for appsec acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/appsec.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: appsec
+    description: >
+      Must be appsec to bind this acquisition entry to the AppSec WAF datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: appsec).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: >
+      Friendly identifier for the datasource entry; defaults to listen_addr
+      and path (or listen_socket) when omitted.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  listen_addr:
+    type: string
+    default: "127.0.0.1:7422"
+    description: >
+      Address:port to bind the AppSec HTTP listener on. Mutually exclusive
+      with listen_socket.
+  listen_socket:
+    type: string
+    description: >
+      Unix socket path to bind the AppSec listener on, instead of listen_addr.
+  cert_file:
+    type: string
+    description: TLS certificate file for the AppSec listener.
+  key_file:
+    type: string
+    description: TLS key file for the AppSec listener.
+  path:
+    type: string
+    default: "/"
+    description: >
+      HTTP path the bouncer posts requests to; a leading / is added if missing.
+  routines:
+    type: integer
+    minimum: 1
+    default: 1
+    description: >
+      Number of parallel appsec runner goroutines.
+  appsec_config:
+    type: string
+    description: >
+      Single appsec-config item (or glob pattern) to load. Mutually exclusive
+      with appsec_configs and appsec_config_path.
+  appsec_configs:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      minLength: 1
+    description: >
+      List of appsec-config items (or glob patterns) to load. Mutually
+      exclusive with appsec_config and appsec_config_path.
+  appsec_config_path:
+    type: string
+    description: >
+      Path to an appsec-config file to load directly. Mutually exclusive
+      with appsec_config and appsec_configs.
+  auth_cache_duration:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    default: 1m
+    description: >
+      How long a validated bouncer API key is cached before being re-checked
+      against LAPI.
+  auth_timeout:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    default: 200ms
+    description: >
+      Timeout for the LAPI round-trip that validates a bouncer API key. 0
+      disables the timeout.
+  body_read_timeout:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    default: 1s
+    description: >
+      Timeout for reading the bouncer request body. 0 disables the timeout.
+required:
+  - source
+allOf:
+  - description: >
+      Exactly one appsec-config source must be provided, matching the
+      UnmarshalConfig checks.
+    not:
+      anyOf:
+        - required: [appsec_config, appsec_configs]
+        - required: [appsec_config_path, appsec_configs]
+  - anyOf:
+      - required: [appsec_config]
+      - required: [appsec_configs]
+      - required: [appsec_config_path]
+examples:
+  - source: appsec
+    listen_addr: 127.0.0.1:7422
+    appsec_config: crowdsecurity/vpatch-generic-rules
+    labels:
+      type: appsec
