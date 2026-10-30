@@ -78,7 +78,7 @@ func TestCustomJSTimeoutConfig(t *testing.T) {
 	})
 
 	t.Run("BuildOptions carries it to the runtime", func(t *testing.T) {
-		opts, err := BuildOptions(&Config{CustomJSTimeout: &d}, nil)
+		opts, err := BuildOptions(&Config{CustomJSTimeout: &d}, nil, "")
 		require.NoError(t, err)
 
 		var resolved runtimeOptions
@@ -98,8 +98,8 @@ func TestCustomJSTimeoutVarNameMatchesBundle(t *testing.T) {
 
 	assert.Contains(t, rt.getChallengeCode(), "_cjsT",
 		"the obfuscated bundle must still read the injected _cjsT var")
-	assert.Contains(t, htmlTemplate, "_cjsT=",
-		"the challenge page must still inject _cjsT")
+	assert.Contains(t, challengeBlockTemplate, "_cjsT=",
+		"the challenge block must still inject _cjsT")
 }
 
 // The script is served uncached, so the page must point at the bare path: a
