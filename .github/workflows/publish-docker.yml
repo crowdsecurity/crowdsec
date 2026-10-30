@@ -34,10 +34,37 @@ permissions:
   packages: write # push images to ghcr.io
 
 jobs:
-  push_to_registry:
-    name: Push Docker image to registries
-    runs-on: crowdsec-large-runner
+  prepare:
+    name: Prepare build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      created: ${{ steps.matrix.outputs.created }}
+    steps:
+      - name: Map platforms to runners
+        id: matrix
+        env:
+          PLATFORMS: ${{ inputs.platform }}
+        # one job per platform on a native runner: building everything under QEMU on a
+        # single host took hours. arm/v6 and arm/v7 still use QEMU if the arm64 host
+        # can't run 32-bit code.
+        run: |
+          matrix=$(jq -cn --arg p "$PLATFORMS" '[
+            $p | split(",")[] | gsub("^\\s+|\\s+$"; "") | select(. != "")
+            | {platform: ., slug: gsub("/"; "-"),
+               runner: (if startswith("linux/arm") then "ubuntu-24.04-arm" else "ubuntu-latest" end)}
+          ]')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
     environment: ${{ inputs.environment }}
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,64 +93,118 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare (slim)
+      - name: Build and push image by digest (slim)
         if: ${{ inputs.slim }}
         id: slim
-        run: |
-          DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
-          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
-          VERSION=${{ inputs.image_version }}
-          DEBIAN=${{ inputs.debian && '-debian' || '' }}
-          TAGS="${DOCKERHUB_IMAGE}:${VERSION}-slim${DEBIAN},${GHCR_IMAGE}:${VERSION}-slim${DEBIAN}"
-          if [[ ${{ inputs.latest }} == true ]]; then
-            TAGS=$TAGS,${DOCKERHUB_IMAGE}:slim${DEBIAN},${GHCR_IMAGE}:slim${DEBIAN}
-          fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-
-      - name: Prepare (full)
-        id: full
-        run: |
-          DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
-          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
-          VERSION=${{ inputs.image_version }}
-          DEBIAN=${{ inputs.debian && '-debian' || '' }}
-          TAGS="${DOCKERHUB_IMAGE}:${VERSION}${DEBIAN},${GHCR_IMAGE}:${VERSION}${DEBIAN}"
-          if [[ ${{ inputs.latest }} == true ]]; then
-            TAGS=$TAGS,${DOCKERHUB_IMAGE}:latest${DEBIAN},${GHCR_IMAGE}:latest${DEBIAN}
-          fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-
-      - name: Build and push image (slim)
-        if: ${{ inputs.slim }}
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
-          push: ${{ inputs.push }}
-          tags: ${{ steps.slim.outputs.tags }}
+          outputs: type=image,"name=${{ secrets.DOCKER_USERNAME }}/crowdsec,ghcr.io/${{ github.repository_owner }}/crowdsec",push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
           target: slim
-          platforms: ${{ inputs.platform }}
+          platforms: ${{ matrix.platform }}
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
-            org.opencontainers.image.created=${{ steps.slim.outputs.created }}
+            org.opencontainers.image.created=${{ needs.prepare.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             BUILD_VERSION=${{ inputs.crowdsec_version }}
 
-      - name: Build and push image (full)
+      - name: Build and push image by digest (full)
+        id: full
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: ./build/docker/Dockerfile${{ inputs.debian && '.debian' || '' }}
-          push: ${{ inputs.push }}
-          tags: ${{ steps.full.outputs.tags }}
+          outputs: type=image,"name=${{ secrets.DOCKER_USERNAME }}/crowdsec,ghcr.io/${{ github.repository_owner }}/crowdsec",push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
           target: full
-          platforms: ${{ inputs.platform }}
+          platforms: ${{ matrix.platform }}
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
-            org.opencontainers.image.created=${{ steps.full.outputs.created }}
+            org.opencontainers.image.created=${{ needs.prepare.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             BUILD_VERSION=${{ inputs.crowdsec_version }}
+
+      - name: Export digests
+        if: ${{ inputs.push }}
+        env:
+          SLIM_DIGEST: ${{ steps.slim.outputs.digest }}
+          FULL_DIGEST: ${{ steps.full.outputs.digest }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests/full"
+          touch "${RUNNER_TEMP}/digests/full/${FULL_DIGEST#sha256:}"
+          if [[ -n "$SLIM_DIGEST" ]]; then
+            mkdir -p "${RUNNER_TEMP}/digests/slim"
+            touch "${RUNNER_TEMP}/digests/slim/${SLIM_DIGEST#sha256:}"
+          fi
+
+      - name: Upload digests
+        if: ${{ inputs.push }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          # the flavor keeps alpine and debian apart when both are built in the same run
+          name: digests-${{ inputs.debian && 'debian' || 'alpine' }}-${{ matrix.slug }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Push multi-arch manifests
+    needs: build
+    if: ${{ inputs.push }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-${{ inputs.debian && 'debian' || 'alpine' }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - name: Login to DockerHub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest lists
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          DOCKERHUB_IMAGE: ${{ secrets.DOCKER_USERNAME }}/crowdsec
+          GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/crowdsec
+          VERSION: ${{ inputs.image_version }}
+          DEBIAN: ${{ inputs.debian && '-debian' || '' }}
+          LATEST: ${{ inputs.latest }}
+          SLIM: ${{ inputs.slim }}
+        run: |
+          # create <target> <version tag suffix> <latest tag>
+          create() {
+            local target=$1 suffix=$2 latest_tag=$3 image digest
+            for image in "$DOCKERHUB_IMAGE" "$GHCR_IMAGE"; do
+              local args=(-t "${image}:${VERSION}${suffix}")
+              if [[ "$LATEST" == true ]]; then
+                args+=(-t "${image}:${latest_tag}")
+              fi
+              for digest in "$target"/*; do
+                args+=("${image}@sha256:$(basename "$digest")")
+              done
+              docker buildx imagetools create "${args[@]}"
+              docker buildx imagetools inspect "${image}:${VERSION}${suffix}"
+            done
+          }
+          create full "$DEBIAN" "latest${DEBIAN}"
+          if [[ "$SLIM" == true ]]; then
+            create slim "-slim${DEBIAN}" "slim${DEBIAN}"
+          fi
