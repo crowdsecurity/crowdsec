@@ -46,6 +46,24 @@ func (b *BucketStore) Delete(key string) {
 	b.mu.Unlock()
 }
 
+// DeleteIfDead removes the bucket only if it has stopped: a dead bucket's
+// cleanup event can be handled after a new bucket took over its key.
+func (b *BucketStore) DeleteIfDead(key string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	l, ok := b.m[key]
+	if !ok {
+		return
+	}
+
+	select {
+	case <-l.done:
+		delete(b.m, key)
+	default:
+	}
+}
+
 func (b *BucketStore) Snapshot() map[string]*Leaky {
 	b.mu.Lock()
 	snap := maps.Clone(b.m)
