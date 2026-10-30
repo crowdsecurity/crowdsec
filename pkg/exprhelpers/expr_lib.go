@@ -270,6 +270,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetDecisionsCount,
 		signature: []any{
 			new(func(string) int),
+			new(func(string, string) int),
 		},
 	},
 	{

@@ -1550,6 +1550,82 @@ func TestGetDecisionsCount(t *testing.T) {
 	}
 }
 
+func TestGetDecisionsCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one active, one expired. crowdsec/other: one active.
+	for _, d := range []struct {
+		scenario string
+		until    time.Time
+	}{
+		{"crowdsec/test", time.Now().UTC().Add(time.Hour)},
+		{"crowdsec/test", time.Now().UTC().Add(-time.Hour)},
+		{"crowdsec/other", time.Now().UTC().Add(time.Hour)},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetUntil(d.until).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue())", "3"},
+		{"same scenario, expired one counted too", existingIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "2"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 2 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsCount(Alert.GetValue(), 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
+}
+
 func TestGetDecisionsSinceCount(t *testing.T) {
 	ctx := t.Context()
 
