@@ -8,9 +8,12 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	backoff "github.com/cenkalti/backoff/v5"
 	dockerContainer "github.com/moby/moby/api/types/container"
 	dockerTypesEvents "github.com/moby/moby/api/types/events"
 	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
@@ -771,6 +774,98 @@ since: 2020-01-01T00:00:00Z`, testServiceName),
 			since, err := time.Parse(time.RFC3339Nano, cfg.logOptions.Since)
 			require.NoError(t, err)
 			assert.False(t, since.Before(before), "expected to tail from now, got %s", cfg.logOptions.Since)
+		})
+	}
+}
+
+// longLineCli serves log streams that, like the daemon, stay open after sending a line too long
+// for the scanner, so the reader gives up while the connection is still alive.
+type longLineCli struct {
+	mockDockerCli
+	opened atomic.Int64
+	closed atomic.Int64
+}
+
+type trackedStream struct {
+	*io.PipeReader
+	w    *io.PipeWriter
+	once sync.Once
+	cli  *longLineCli
+}
+
+func (s *trackedStream) Close() error {
+	s.once.Do(func() { s.cli.closed.Add(1) })
+	s.w.Close()
+
+	return s.PipeReader.Close()
+}
+
+func (cli *longLineCli) stream() *trackedStream {
+	reader, writer := io.Pipe()
+	cli.opened.Add(1)
+
+	go func() {
+		// docker splits long lines in 16KiB frames
+		chunk := strings.Repeat("a", 16*1024)
+		frame := binary.BigEndian.AppendUint32([]byte{1, 0, 0, 0}, uint32(len(chunk))) // stdout
+		frame = append(frame, chunk...)
+
+		for range 5 {
+			if _, err := writer.Write(frame); err != nil {
+				return
+			}
+		}
+	}()
+
+	return &trackedStream{PipeReader: reader, w: writer, cli: cli}
+}
+
+func (cli *longLineCli) ContainerLogs(_ context.Context, _ string, _ client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	return cli.stream(), nil
+}
+
+func (cli *longLineCli) ServiceLogs(_ context.Context, _ string, _ client.ServiceLogsOptions) (client.ServiceLogsResult, error) {
+	return cli.stream(), nil
+}
+
+func (*longLineCli) ServiceInspect(_ context.Context, _ string, _ client.ServiceInspectOptions) (client.ServiceInspectResult, error) {
+	return client.ServiceInspectResult{}, nil
+}
+
+// A tail that fails while the daemon keeps the stream open must close it before retrying,
+// or each retry leaks a connection and the daemon's handles on the log files (#4781).
+func TestTailClosesLogStreams(t *testing.T) {
+	tests := []struct {
+		name string
+		tail func(*Source, context.Context, *ContainerConfig, chan pipeline.Event, chan *ContainerConfig) error
+	}{
+		{name: "container", tail: (*Source).TailContainer},
+		{name: "service", tail: (*Source).TailService},
+	}
+
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			cli := &longLineCli{}
+			d := &Source{
+				logger:         log.WithField("type", ModuleName),
+				Client:         cli,
+				backoffFactory: func() backoff.BackOff { return &backoff.ZeroBackOff{} },
+			}
+
+			cfg := NewContainerConfig(&client.ContainerLogsOptions{Follow: true}, "12456", ts.name, nil, false)
+			cfg.logger = d.logger
+
+			out := make(chan pipeline.Event)
+			deleteChan := make(chan *ContainerConfig, 1)
+
+			cfg.t.Go(func() error { return ts.tail(d, t.Context(), cfg, out, deleteChan) })
+
+			require.Eventually(t, func() bool { return cli.opened.Load() >= 5 }, 5*time.Second, time.Millisecond)
+			require.LessOrEqual(t, cli.opened.Load()-cli.closed.Load(), int64(1), "streams left open across retries")
+
+			cfg.t.Kill(nil)
+			require.NoError(t, cfg.t.Wait())
+			require.Equal(t, cli.opened.Load(), cli.closed.Load(), "stream left open after the tail stopped")
 		})
 	}
 }
