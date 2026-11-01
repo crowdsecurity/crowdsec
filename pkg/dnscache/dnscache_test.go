@@ -89,6 +89,30 @@ func TestForwardIPsKeyNormalization(t *testing.T) {
 	assert.Equal(t, int32(1), resolver.fwdCalls.Load(), "normalized variants must share one cache entry")
 }
 
+func TestForwardLookupCachesTheError(t *testing.T) {
+	resolver := &fakeResolver{
+		fwd: map[string][]net.IPAddr{"host.example.com": {{IP: net.ParseIP("192.0.2.1")}}},
+	}
+	setupDNSTest(t, resolver)
+
+	ips, err := ForwardLookup("host.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, []netip.Addr{netip.MustParseAddr("192.0.2.1")}, ips)
+
+	// the error of a failed lookup comes back from the cache as well
+	for range 2 {
+		ips, err = ForwardLookup("nope.example.com")
+
+		var dnsErr *net.DNSError
+
+		require.ErrorAs(t, err, &dnsErr)
+		assert.True(t, dnsErr.IsNotFound)
+		assert.Empty(t, ips)
+	}
+
+	assert.Equal(t, int32(2), resolver.fwdCalls.Load(), "failed lookup must be cached as negative")
+}
+
 func TestForwardConfirmedNames(t *testing.T) {
 	tests := []struct {
 		name     string

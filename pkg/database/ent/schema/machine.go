@@ -51,6 +51,7 @@ func (Machine) Fields() []ent.Field {
 		field.String("featureflags").Optional(),
 		field.JSON("hubstate", map[string][]ItemState{}).Optional(),
 		field.JSON("datasources", map[string]int64{}).Optional(),
+		field.JSON("features", []string{}).Optional(),
 	}
 }
 

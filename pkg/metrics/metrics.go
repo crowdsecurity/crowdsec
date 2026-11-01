@@ -34,21 +34,25 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 		// Do not register any metrics
 	case MetricsLevelAggregated:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
-			GlobalCsInfo, GlobalParsingHistogram, GlobalPourHistogram,
+			GlobalCsInfo, Features, GlobalParsingHistogram, GlobalPourHistogram,
 			BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow,
 			LapiRouteHits,
 			BucketsCurrentCount,
 			CacheMetrics, RegexpCacheMetrics, NodesWlHitsOk, NodesWlHits,
-			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
+			GlobalPostOverflowQueueDepth, GlobalPostOverflowDropped,
+			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors,
+			CapiLastPullTimestamp, CapiErrors)
 	case MetricsLevelFull:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
 			NodesHits, NodesHitsOk, NodesHitsKo,
-			GlobalCsInfo, GlobalParsingHistogram, GlobalPourHistogram,
+			GlobalCsInfo, Features, GlobalParsingHistogram, GlobalPourHistogram,
 			LapiRouteHits, LapiMachineHits, LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions, LapiResponseTime,
 			BucketsPour, BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow, BucketsCurrentCount,
 			GlobalActiveDecisions, GlobalAlerts, GlobalMachinesLastHeartbeatTimestamp, NodesWlHitsOk, NodesWlHits,
+			GlobalPostOverflowQueueDepth, GlobalPostOverflowDropped,
 			CacheMetrics, RegexpCacheMetrics,
-			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors)
+			PapiOrdersReceived, PapiInvalidOrdersReceived, PapiLastPullTimestamp, PapiPollErrors,
+			CapiLastPullTimestamp, CapiErrors)
 	default:
 		return fmt.Errorf("%w: %s", ErrInvalidMetricsLevel, metricsLevel)
 	}

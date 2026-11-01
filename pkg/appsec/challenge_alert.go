@@ -25,6 +25,10 @@ import (
 // the operator's context file.
 const challengeScenario = "crowdsecurity/rejected-browser-submission"
 
+// challengeFlaggedScenario is stamped on alerts for submissions that were
+// accepted but flagged with FlagSubmission.
+const challengeFlaggedScenario = "crowdsecurity/suspicious-browser-submission"
+
 // challengeEventMeta builds the event Meta for a bot-detection alert. The keys
 // mirror the crowdsecurity/appsec-bot-detection-logs parser (which enriches the
 // LOG-event path) so the crowdsecurity/appsec-bot-detection context file
@@ -41,6 +45,7 @@ func challengeEventMeta(request *ParsedRequest, info ChallengeEventInfo) map[str
 		"request_uuid":          request.UUID,
 		"challenge_event":       string(info.Reason),
 		"challenge_fail_reason": info.FailReason,
+		"challenge_flag_reason": info.FlagReason,
 	}
 	if request.HTTPRequest != nil {
 		meta["http_user_agent"] = request.HTTPRequest.UserAgent()
@@ -122,7 +127,7 @@ func GeoIPEnrichSource(src *models.Source) error {
 	return nil
 }
 
-// buildChallengeAlert creates an alert for rejected or failed challenge submission.
+// buildChallengeAlert creates an alert for a rejected, failed or flagged challenge submission.
 func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo) *models.Alert {
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -133,10 +138,13 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 		Scope: new(types.Ip),
 	}
 	if err := GeoIPEnrichSource(&source); err != nil {
-		w.Logger.Debugf("unable to enrich challenge alert source with GeoIP data: %s", err)
+		w.requestLogger(state).Debugf("unable to enrich challenge alert source with GeoIP data: %s", err)
 	}
 
 	scenario := challengeScenario
+	if info.FlagReason != "" {
+		scenario = challengeFlaggedScenario
+	}
 
 	// Build the challenge event the context engine consumes: raw fields in Meta
 	// (parser-equivalent), fingerprint exposed via Unmarshaled
@@ -146,7 +154,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 
 	contextMeta, errs := alertcontext.EventToContext([]pipeline.Event{cevt})
 	for _, err := range errs {
-		w.Logger.Debugf("while generating bot-detection alert context: %s", err)
+		w.requestLogger(state).Debugf("while generating bot-detection alert context: %s", err)
 	}
 
 	event := &models.Event{
@@ -155,7 +163,9 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 	}
 
 	msg := fmt.Sprintf("WAF bot-detection: %s %s by %s", source.IP, info.Reason, scenario)
-	if info.FailReason != "" {
+	if info.FlagReason != "" {
+		msg = fmt.Sprintf("WAF bot-detection: %s flagged by %s (%s)", source.IP, scenario, info.FlagReason)
+	} else if info.FailReason != "" {
 		msg += fmt.Sprintf(" (%s)", info.FailReason)
 	}
 
@@ -179,7 +189,7 @@ func (w *AppsecRuntimeConfig) buildChallengeAlert(state *AppsecRequestState, req
 
 // buildChallengeOverflow doesn't send: emission is centralized in EmitAlertAndEvent.
 func (w *AppsecRuntimeConfig) buildChallengeOverflow(state *AppsecRequestState, request *ParsedRequest, info ChallengeEventInfo, hookVars map[string]string) *pipeline.Event {
-	// Operators suppress the alert with CancelAlert() in on_challenge_submit.
+	// Operators suppress the alert with CancelAlert() in on_challenge_submit, flagged or not.
 	if state != nil && !state.Response.SendAlert {
 		return nil
 	}

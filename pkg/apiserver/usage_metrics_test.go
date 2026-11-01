@@ -23,6 +23,7 @@ func TestLPMetrics(t *testing.T) {
 		expectedOSName       string
 		expectedOSVersion    string
 		expectedFeatureFlags string
+		expectedFeatures     []string
 		authType             string
 	}{
 		{
@@ -44,6 +45,7 @@ func TestLPMetrics(t *testing.T) {
 		"utc_startup_timestamp": 42,
 		"metrics": [],
 		"feature_flags": ["a", "b", "c"],
+		"features": ["log_processor", "waf"],
 		"datasources": {"file": 42},
 		"hub_items": {}
 	}
@@ -55,6 +57,7 @@ func TestLPMetrics(t *testing.T) {
 			expectedOSName:       "foo",
 			expectedOSVersion:    "42",
 			expectedFeatureFlags: "a,b,c",
+			expectedFeatures:     []string{"log_processor", "waf"},
 			authType:             PASSWORD,
 		},
 		{
@@ -205,6 +208,7 @@ func TestLPMetrics(t *testing.T) {
 			assert.Equal(t, tt.expectedOSName, machine.Osname)
 			assert.Equal(t, tt.expectedOSVersion, machine.Osversion)
 			assert.Equal(t, tt.expectedFeatureFlags, machine.Featureflags)
+			assert.Equal(t, tt.expectedFeatures, machine.Features)
 
 			if len(metrics) > 0 {
 				assert.Equal(t, "test", metrics[0].GeneratedBy)

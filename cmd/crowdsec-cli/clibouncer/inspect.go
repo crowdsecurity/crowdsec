@@ -12,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/clientinfo"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
@@ -28,12 +29,12 @@ func (cli *cliBouncers) inspectHuman(out io.Writer, bouncer *ent.Bouncer) {
 
 	lastPull := ""
 	if bouncer.LastPull != nil {
-		lastPull = bouncer.LastPull.String()
+		lastPull = csformat.LocalTime(*bouncer.LastPull).String()
 	}
 
 	t.AppendRows([]table.Row{
-		{"Created At", bouncer.CreatedAt},
-		{"Last Update", bouncer.UpdatedAt},
+		{"Created At", csformat.LocalTime(bouncer.CreatedAt)},
+		{"Last Update", csformat.LocalTime(bouncer.UpdatedAt)},
 		{"Revoked?", bouncer.Revoked},
 		{"IP Address", bouncer.IPAddress},
 		{"Type", bouncer.Type},

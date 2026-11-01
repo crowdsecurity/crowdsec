@@ -18,6 +18,7 @@ func fingerprintDataFromProto(p *pb.FingerprintData) FingerprintData {
 		Time:             p.GetTime(),
 		URL:              p.GetUrl(),
 		FastBotDetection: FlexBool(p.GetFastBotDetection()),
+		Custom:           customFromProto(p.GetCustom()),
 	}
 
 	if s := p.GetSignals(); s != nil {
@@ -340,7 +341,82 @@ func (f *FingerprintData) ToProto() *pb.FingerprintData {
 		FastBotDetection:        bool(f.FastBotDetection),
 		FastBotDetectionDetails: f.FastBotDetectionDetails.toProto(),
 		Bot:                     f.Bot.toProto(),
+		Custom:                  customToProto(f.Custom),
 	}
+}
+
+// customToProto skips unset entries: a caseless oneof decodes back to the zero
+// CustomValue anyway, so storing them costs bytes for nothing.
+func customToProto(in map[string]CustomValue) map[string]*pb.CustomValue {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := make(map[string]*pb.CustomValue, len(in))
+
+	for k, v := range in {
+		var pv *pb.CustomValue
+
+		switch v.Kind {
+		case CustomKindBool:
+			pv = &pb.CustomValue{Value: &pb.CustomValue_B{B: v.Bool}}
+		case CustomKindString:
+			pv = &pb.CustomValue{Value: &pb.CustomValue_S{S: v.Str}}
+		case CustomKindNumber:
+			pv = &pb.CustomValue{Value: &pb.CustomValue_N{N: v.Number}}
+		case CustomKindStrings:
+			pv = &pb.CustomValue{Value: &pb.CustomValue_Ss{Ss: &pb.CustomStringList{Values: v.Strings}}}
+		case CustomKindFloats:
+			pv = &pb.CustomValue{Value: &pb.CustomValue_Ff{Ff: &pb.CustomFloatList{Values: v.Floats}}}
+		case CustomKindNone:
+			continue
+		}
+
+		out[k] = pv
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
+}
+
+// customFromProto maps a nil or caseless entry to the zero CustomValue, which
+// reads as "absent" to a rule.
+func customFromProto(in map[string]*pb.CustomValue) map[string]CustomValue {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := make(map[string]CustomValue, len(in))
+
+	for k, pv := range in {
+		var v CustomValue
+
+		switch pv.GetValue().(type) {
+		case *pb.CustomValue_B:
+			v = CustomValue{Kind: CustomKindBool, Bool: pv.GetB()}
+		case *pb.CustomValue_S:
+			v = CustomValue{Kind: CustomKindString, Str: pv.GetS()}
+		case *pb.CustomValue_N:
+			v = CustomValue{Kind: CustomKindNumber, Number: pv.GetN()}
+		case *pb.CustomValue_Ss:
+			v = CustomValue{Kind: CustomKindStrings, Strings: pv.GetSs().GetValues()}
+		case *pb.CustomValue_Ff:
+			v = CustomValue{Kind: CustomKindFloats, Floats: pv.GetFf().GetValues()}
+		default:
+			continue
+		}
+
+		out[k] = v
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
 }
 
 func (a fingerprintAutomation) toProto() *pb.FingerprintAutomation {

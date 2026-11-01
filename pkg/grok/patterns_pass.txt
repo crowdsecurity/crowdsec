@@ -1,0 +1,10 @@
+#
+# for testing
+#
+ONE \d
+TWO %{ONE:two}
+THREE %{ONE:one}-%{TWO}-%{ONE:three}
+
+#
+# enough
+#

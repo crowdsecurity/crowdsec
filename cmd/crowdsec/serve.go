@@ -16,13 +16,14 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
@@ -41,6 +42,8 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 		return nil, err
 	}
 
+	var lapiFeatures []string
+
 	if !cConfig.DisableAPI {
 		if flags.DisableCAPI {
 			log.Warningf("Communication with CrowdSec Central API disabled from args")
@@ -53,8 +56,12 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
 		}
 
+		lapiFeatures = apiServer.Features()
+
 		serveAPIServer(ctx, apiServer)
 	}
+
+	features := lapiFeatures
 
 	if !cConfig.DisableAgent {
 		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
@@ -74,14 +81,18 @@ func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
 
+		features = lpFeatures(lapiFeatures, datasources)
+
 		// reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
+		serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, features, agentReady, sd)
 	}
+
+	metrics.SetFeatures(features)
 
 	log.Info("Reload is finished")
 
@@ -100,7 +111,7 @@ func waitErrGroup(g *errgroup.Group, timeout time.Duration) error {
 	}
 }
 
-func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, datasources []acquisitionTypes.DataSource) error {
+func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, datasources []acquisition.ConfiguredSource) error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
@@ -344,6 +355,8 @@ func Serve(
 		}
 	}
 
+	var lapiFeatures []string
+
 	if !cConfig.DisableAPI {
 		if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 			log.Warningf("Communication with CrowdSec Central API disabled from configuration file")
@@ -360,10 +373,14 @@ func Serve(
 			return fmt.Errorf("api server init: %w", err)
 		}
 
+		lapiFeatures = apiServer.Features()
+
 		if !flags.TestMode {
 			serveAPIServer(ctx, apiServer)
 		}
 	}
+
+	features := lapiFeatures
 
 	if !cConfig.DisableAgent {
 		hub, err := cwhub.NewHub(cConfig.Hub, log.StandardLogger())
@@ -380,15 +397,19 @@ func Serve(
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
 
+		features = lpFeatures(lapiFeatures, datasources)
+
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, agentReady, sd)
+			serveCrowdsec(ctx, csParsers, cConfig, hub, datasources, features, agentReady, sd)
 		} else {
 			agentReady <- true
 		}
 	} else {
 		agentReady <- true
 	}
+
+	metrics.SetFeatures(features)
 
 	if flags.TestMode {
 		log.Infof("Configuration test done")

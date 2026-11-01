@@ -74,6 +74,12 @@ func PourItemToBucket(
 	var buckey = bucket.Mapkey
 	var err error
 
+	// Make a copy of the various maps for this bucket
+	// Otherwise, we could risk reading and writing to the same map concurrently
+	// (eg, with a call to evt.SetMeta in a filter, which the same event has lead to an overflow for another bucket)
+	localEvt := parsed.CopyForBucket()
+	parsed = &localEvt
+
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
@@ -232,8 +238,8 @@ func PourItemToHolders(
 			}
 			// we assume we a bool should add type check here
 			if condition, ok = output.(bool); !ok {
-				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
-				holders[idx].logger.Fatalf("Filter issue")
+				holders[idx].logger.Errorf("unexpected non-bool return : %T, ignoring event for holder %d/%d", output, idx, len(holders))
+				continue
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -251,7 +257,7 @@ func PourItemToHolders(
 			}
 
 			if groupby, ok = tmpGroupBy.(string); !ok {
-				holders[idx].logger.Fatalf("failed groupby type : %v", err)
+				holders[idx].logger.Errorf("failed groupby type : %v", err)
 				return false, errors.New("groupby wrong type")
 			}
 		}

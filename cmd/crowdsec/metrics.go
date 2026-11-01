@@ -63,8 +63,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		for k, v := range alerts {
-			metrics.GlobalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
+		for _, a := range alerts {
+			metrics.GlobalAlerts.With(prometheus.Labels{"reason": a.Scenario, "kind": a.Kind}).Set(float64(a.Count))
 		}
 
 		next.ServeHTTP(w, r)

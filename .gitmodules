@@ -12,4 +12,4 @@
 	url = https://github.com/bats-core/bats-support.git
 [submodule "pkg/appsec/challenge/js/fpscanner/fpscanner"]
 	path = pkg/appsec/challenge/js/fpscanner/fpscanner
-	url = https://github.com/antoinevastel/fpscanner
+	url = https://github.com/crowdsecurity/fpscanner

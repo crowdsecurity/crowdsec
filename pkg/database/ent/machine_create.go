@@ -222,6 +222,12 @@ func (_c *MachineCreate) SetDatasources(v map[string]int64) *MachineCreate {
 	return _c
 }
 
+// SetFeatures sets the "features" field.
+func (_c *MachineCreate) SetFeatures(v []string) *MachineCreate {
+	_c.mutation.SetFeatures(v)
+	return _c
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (_c *MachineCreate) AddAlertIDs(ids ...int) *MachineCreate {
 	_c.mutation.AddAlertIDs(ids...)
@@ -416,6 +422,10 @@ func (_c *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Datasources(); ok {
 		_spec.SetField(machine.FieldDatasources, field.TypeJSON, value)
 		_node.Datasources = value
+	}
+	if value, ok := _c.mutation.Features(); ok {
+		_spec.SetField(machine.FieldFeatures, field.TypeJSON, value)
+		_node.Features = value
 	}
 	if nodes := _c.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -722,6 +732,24 @@ func (u *MachineUpsert) UpdateDatasources() *MachineUpsert {
 // ClearDatasources clears the value of the "datasources" field.
 func (u *MachineUpsert) ClearDatasources() *MachineUpsert {
 	u.SetNull(machine.FieldDatasources)
+	return u
+}
+
+// SetFeatures sets the "features" field.
+func (u *MachineUpsert) SetFeatures(v []string) *MachineUpsert {
+	u.Set(machine.FieldFeatures, v)
+	return u
+}
+
+// UpdateFeatures sets the "features" field to the value that was provided on create.
+func (u *MachineUpsert) UpdateFeatures() *MachineUpsert {
+	u.SetExcluded(machine.FieldFeatures)
+	return u
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (u *MachineUpsert) ClearFeatures() *MachineUpsert {
+	u.SetNull(machine.FieldFeatures)
 	return u
 }
 
@@ -1050,6 +1078,27 @@ func (u *MachineUpsertOne) UpdateDatasources() *MachineUpsertOne {
 func (u *MachineUpsertOne) ClearDatasources() *MachineUpsertOne {
 	return u.Update(func(s *MachineUpsert) {
 		s.ClearDatasources()
+	})
+}
+
+// SetFeatures sets the "features" field.
+func (u *MachineUpsertOne) SetFeatures(v []string) *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetFeatures(v)
+	})
+}
+
+// UpdateFeatures sets the "features" field to the value that was provided on create.
+func (u *MachineUpsertOne) UpdateFeatures() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateFeatures()
+	})
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (u *MachineUpsertOne) ClearFeatures() *MachineUpsertOne {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearFeatures()
 	})
 }
 
@@ -1544,6 +1593,27 @@ func (u *MachineUpsertBulk) UpdateDatasources() *MachineUpsertBulk {
 func (u *MachineUpsertBulk) ClearDatasources() *MachineUpsertBulk {
 	return u.Update(func(s *MachineUpsert) {
 		s.ClearDatasources()
+	})
+}
+
+// SetFeatures sets the "features" field.
+func (u *MachineUpsertBulk) SetFeatures(v []string) *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.SetFeatures(v)
+	})
+}
+
+// UpdateFeatures sets the "features" field to the value that was provided on create.
+func (u *MachineUpsertBulk) UpdateFeatures() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.UpdateFeatures()
+	})
+}
+
+// ClearFeatures clears the value of the "features" field.
+func (u *MachineUpsertBulk) ClearFeatures() *MachineUpsertBulk {
+	return u.Update(func(s *MachineUpsert) {
+		s.ClearFeatures()
 	})
 }
 

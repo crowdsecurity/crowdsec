@@ -27,8 +27,6 @@ func applyDecisionFilter(query *ent.DecisionQuery, filter map[string][]string) (
 		if v[0] == "false" {
 			query = query.Where(decision.SimulatedEQ(false))
 		}
-
-		delete(filter, "simulated")
 	} else {
 		query = query.Where(decision.SimulatedEQ(false))
 	}

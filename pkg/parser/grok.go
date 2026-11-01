@@ -8,7 +8,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/grokky"
+	"github.com/crowdsecurity/crowdsec/pkg/grok"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -26,7 +26,7 @@ type GrokPattern struct {
 type RuntimeGrokPattern struct {
 	Config *GrokPattern
 
-	RunTimeRegexp  grokky.Pattern // the actual regexp
+	RunTimeRegexp  grok.Pattern // the actual regexp
 	RunTimeValue   *vm.Program    // the actual compiled filter
 	RuntimeStatics []RuntimeStatic
 }

@@ -13,6 +13,7 @@ var (
 	_ types.MetricsProvider = (*Source)(nil)
 	_ types.HubAware        = (*Source)(nil)
 	_ types.LAPIClientAware = (*Source)(nil)
+	_ types.FeatureProvider = (*Source)(nil)
 )
 
 const ModuleName = appsec.ModuleName

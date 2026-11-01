@@ -247,6 +247,23 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+	DecisionsStream               *DecisionsStreamCfg      `yaml:"decisions_stream,omitempty"`
+}
+
+// Each page is held in memory while it is written out, once per in-flight stream request.
+const DefaultDecisionsStreamPageSize = 30000
+
+// Under lua-cs-bouncer's 15s stream timeout, so it gets the 503 before giving up on its own.
+const DefaultDecisionsStreamMaxQueueWait = 10 * time.Second
+
+type DecisionsStreamCfg struct {
+	PageSize int `yaml:"page_size"`
+
+	// 0 means no limit.
+	MaxConcurrentRequests int `yaml:"max_concurrent_requests"`
+
+	// How long a request beyond max_concurrent_requests waits for a slot before getting a 503.
+	MaxQueueWait time.Duration `yaml:"max_queue_wait"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -411,6 +428,8 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 		return err
 	}
 
+	c.API.Server.LoadDecisionsStream()
+
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
 	}
@@ -516,6 +535,20 @@ func (c *Config) LoadAPIClient() error {
 	}
 
 	return c.API.Client.Load()
+}
+
+func (c *LocalApiServerCfg) LoadDecisionsStream() {
+	if c.DecisionsStream == nil {
+		c.DecisionsStream = &DecisionsStreamCfg{}
+	}
+
+	if c.DecisionsStream.PageSize == 0 {
+		c.DecisionsStream.PageSize = DefaultDecisionsStreamPageSize
+	}
+
+	if c.DecisionsStream.MaxQueueWait == 0 {
+		c.DecisionsStream.MaxQueueWait = DefaultDecisionsStreamMaxQueueWait
+	}
 }
 
 func (c *LocalApiServerCfg) LoadAutoRegister() error {

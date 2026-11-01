@@ -273,3 +273,31 @@ func TestNewParsedRequestFromRequestBodyLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestNewParsedRequestFromRequestRemoteAddr(t *testing.T) {
+	logger := log.WithField("test", "remote-addr")
+
+	tests := []struct {
+		name             string
+		remoteAddr       string
+		expectNormalized string
+	}{
+		{name: "tcp ipv4", remoteAddr: "1.2.3.4:1234", expectNormalized: "1.2.3.4"},
+		{name: "tcp ipv6", remoteAddr: "[::1]:1234", expectNormalized: "::1"},
+		{name: "unix socket linux", remoteAddr: "@", expectNormalized: "127.0.0.1"},
+		{name: "unix socket freebsd", remoteAddr: "", expectNormalized: "127.0.0.1"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := makeTestRequest(t, nil)
+			r.RemoteAddr = test.remoteAddr
+
+			parsed, err := NewParsedRequestFromRequest(r, logger, BodySettings{})
+			require.NoError(t, err)
+
+			require.Equal(t, test.expectNormalized, parsed.RemoteAddrNormalized)
+			require.Equal(t, "1.2.3.4", parsed.ClientIP)
+		})
+	}
+}

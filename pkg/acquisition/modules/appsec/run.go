@@ -142,11 +142,24 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 		// Runners share this pointer; it owns the only handle on the channel.
 		w.AppsecRuntime.OutChan = out
 
+		t.Go(func() error {
+			defer trace.ReportPanic()
+			w.AppsecRuntime.RateLimits.RunSweepers(t.Dying())
+			return nil
+		})
+
 		// runner is a per-iteration copy (Go >= 1.22), which the closure relies on.
 		for _, runner := range w.AppsecRunners {
 			t.Go(func() error {
 				defer trace.ReportPanic()
 				return runner.Run(ctx, t)
+			})
+		}
+
+		for _, runner := range w.OutOfBandRunners {
+			t.Go(func() error {
+				defer trace.ReportPanic()
+				return runner.RunOutOfBand(ctx, t)
 			})
 		}
 

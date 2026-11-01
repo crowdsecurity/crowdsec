@@ -383,6 +383,55 @@ function reportChallengeStatus(status) {
 
 const CSEC_HOOK_NAME = "__CSEC_CHALLENGE_HOOK_v1__";
 
+// --- Custom detections ---
+// Hub-shipped scripts push a function onto this global; each may mutate the
+// collected fingerprint to clear an fpscanner false positive or add fp.custom
+// entries for appsec-rules to score. reservedStrings in
+// js/obfuscate/obfuscate.js keeps the name literal, so the separately-built
+// bundles agree on the symbol.
+const CSEC_CUSTOM_NAME = "__CSEC_CUSTOM_DETECT_v1__";
+
+// Budget for all hooks combined: the visitor is watching a spinner, so one that
+// hangs must not hold them there. Injected per request from custom_js_timeout;
+// the fallback matches DefaultCustomJSTimeout.
+const CSEC_CUSTOM_BUDGET_MS = typeof _cjsT !== "undefined" ? _cjsT : 500;
+
+// Each hook is isolated — a throw, rejection or timeout drops only its own
+// effect, so a broken script cannot cost a visitor the page.
+async function applyCustomDetections(fp) {
+  const hooks = globalThis[CSEC_CUSTOM_NAME];
+  if (!Array.isArray(hooks) || hooks.length === 0) {
+    return;
+  }
+
+  const deadline = new Promise((resolve) =>
+    setTimeout(resolve, CSEC_CUSTOM_BUDGET_MS),
+  );
+
+  for (const hook of hooks) {
+    if (typeof hook !== "function") {
+      continue;
+    }
+    try {
+      await Promise.race([Promise.resolve(hook(fp)), deadline]);
+    } catch (_) {
+      // Deliberately swallowed; see above.
+    }
+  }
+
+  // collectFingerprint set this before the hooks ran, so a cleared detection
+  // would otherwise leave the summary flag stuck on. fsid is left alone: it
+  // hashes the pre-hook bitmask, which keeps ids comparable between
+  // deployments running different scripts.
+  try {
+    fp.fastBotDetection = Object.values(fp.fastBotDetectionDetails).some(
+      (d) => d && d.detected,
+    );
+  } catch (_) {
+    // Malformed details; leave the flag as fpscanner set it.
+  }
+}
+
 async function runChallenge(epochKey) {
   // Fail closed if the fpscanner bundle didn't load.
   const Scanner = globalThis.CrowdsecFingerprintScanner;
@@ -404,6 +453,9 @@ async function runChallenge(epochKey) {
     reportChallengeStatus("fail");
     return;
   }
+
+  // Runs before anything is signed, so hooks can still correct fpscanner.
+  await applyCustomDetections(fpResult);
 
   // Per-challenge secret s = HMAC(K_epoch, r). Never transmitted; the server
   // derives the same s from its per-epoch key and the cleartext r. epochKey is

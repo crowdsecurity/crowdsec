@@ -205,3 +205,70 @@ func TestEmitChallengeCancelAlertKeepsLog(t *testing.T) {
 	require.Len(t, out, 1)
 	assert.Equal(t, pipeline.LOG, (<-out).Type)
 }
+
+func TestBuildChallengeAlertFlagged(t *testing.T) {
+	setupGeoIP(t)
+	w := makeRuntime()
+
+	info := ChallengeEventInfo{
+		Reason:      ChallengeReasonSolved,
+		FlagReason:  "request score 60",
+		Fingerprint: fpEuropeParisCDP(t),
+		Score:       60,
+		ScoreDetail: "timezone_country=60",
+	}
+	alert := w.buildChallengeAlert(nil, challengeReq(t, true), info)
+
+	require.NoError(t, alert.Validate(strfmt.Default))
+	require.Equal(t, challengeFlaggedScenario, *alert.Scenario)
+	require.Equal(t, string(ChallengeReasonSolved), metaValue(alert, "challenge_event"))
+	require.Equal(t, "request score 60", metaValue(alert, "challenge_flag_reason"))
+	require.Empty(t, metaValue(alert, "challenge_fail_reason"))
+	require.Equal(t, "60", metaValue(alert, "request_score"))
+	require.Contains(t, *alert.Message, "flagged")
+}
+
+// A solved submission only raises an alert when it was flagged.
+func TestEmitChallengeSolved(t *testing.T) {
+	tests := []struct {
+		name       string
+		flagReason string
+		sendAlert  bool
+		wantAlert  bool
+	}{
+		{name: "not flagged", sendAlert: true},
+		{name: "flagged", flagReason: "request score 60", sendAlert: true, wantAlert: true},
+		{name: "flagged but alert canceled", flagReason: "request score 60"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setupGeoIP(t)
+
+			out := make(chan pipeline.Event, 4)
+			w := makeRuntime()
+			w.OutChan = out
+
+			state := &AppsecRequestState{Response: AppsecTempResponse{SendAlert: tc.sendAlert}}
+			w.emitChallenge(state, challengeReq(t, true), ChallengeEventInfo{
+				Reason:      ChallengeReasonSolved,
+				FlagReason:  tc.flagReason,
+				Fingerprint: fpEuropeParisCDP(t),
+			})
+
+			if tc.wantAlert {
+				require.Len(t, out, 2)
+				alertEvt := <-out
+				require.NotNil(t, alertEvt.Overflow.Alert)
+				require.Equal(t, challengeFlaggedScenario, *alertEvt.Overflow.Alert.Scenario)
+			} else {
+				require.Len(t, out, 1)
+			}
+
+			logEvt := <-out
+			require.Equal(t, pipeline.LOG, logEvt.Type)
+			require.Equal(t, string(ChallengeReasonSolved), logEvt.Parsed["challenge_event"])
+			require.Equal(t, tc.flagReason, logEvt.Parsed["challenge_flag_reason"])
+		})
+	}
+}

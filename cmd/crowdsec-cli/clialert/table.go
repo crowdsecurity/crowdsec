@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -39,7 +40,7 @@ func alertsTable(out io.Writer, wantColor string, alerts *models.GetAlertsRespon
 			alertItem.Source.Cn,
 			alertItem.Source.GetAsNumberName(),
 			decisionsFromAlert(alertItem),
-			*alertItem.StartAt,
+			csformat.LocalTimestamp(*alertItem.StartAt),
 			alertItem.Kind,
 		}
 
@@ -82,7 +83,7 @@ func alertDecisionsTable(out io.Writer, wantColor string, alert *models.Alert) {
 			scopeAndValue,
 			*decision.Type,
 			*decision.Duration,
-			alert.CreatedAt,
+			csformat.LocalTimestamp(alert.CreatedAt),
 		)
 	}
 
@@ -93,7 +94,7 @@ func alertDecisionsTable(out io.Writer, wantColor string, alert *models.Alert) {
 }
 
 func alertEventTable(out io.Writer, wantColor string, event *models.Event) {
-	fmt.Fprintf(out, "\n- Date: %s\n", *event.Timestamp)
+	fmt.Fprintf(out, "\n- Date: %s\n", csformat.LocalTimestamp(*event.Timestamp))
 
 	t := cstable.New(out, wantColor)
 	t.SetHeaders("Key", "Value")

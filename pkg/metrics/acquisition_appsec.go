@@ -37,6 +37,16 @@ var AppsecOutbandParsingHistogram = prometheus.NewHistogramVec(
 	[]string{"source", "appsec_engine"},
 )
 
+const AppsecOutOfBandDroppedMetricName = "cs_appsec_outofband_dropped_total"
+
+var AppsecOutOfBandDropped = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecOutOfBandDroppedMetricName,
+		Help: "Requests not evaluated by out-of-band rules because the out-of-band queue was full.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
 const AppsecReqCounterMetricName = "cs_appsec_reqs_total"
 
 var AppsecReqCounter = prometheus.NewCounterVec(
@@ -162,6 +172,26 @@ var AppsecValidationFailedCounter = prometheus.NewCounterVec(
 		Help: "Count of requests that failed OpenAPI schema validation, by schema_ref and reason.",
 	},
 	[]string{"source", "appsec_engine", "schema_ref", "reason"},
+)
+
+const AppsecRateLimitedMetricName = "cs_appsec_rate_limited_total"
+
+var AppsecRateLimited = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecRateLimitedMetricName,
+		Help: "Total requests rejected by RateLimit(), by key.",
+	},
+	[]string{"source", "appsec_engine", "key"},
+)
+
+const AppsecRateLimitersMetricName = "cs_appsec_rate_limiters"
+
+var AppsecRateLimiters = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: AppsecRateLimitersMetricName,
+		Help: "Number of sources currently tracked by RateLimit(), by key.",
+	},
+	[]string{"appsec_engine", "key"},
 )
 
 // Bot detection / WAF challenge infrastructure counters. These track the

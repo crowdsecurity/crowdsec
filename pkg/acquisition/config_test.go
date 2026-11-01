@@ -127,6 +127,11 @@ func TestParseSourceConfig(t *testing.T) {
 						return
 					}
 
+					// valid configs connect to the daemon; docker windows is broken on github CI
+					if runtime.GOOS == "windows" && s.expectValid && strings.Contains(path, "docker") {
+						return
+					}
+
 					if runtime.GOOS != "windows" && strings.Contains(path, "wineventlog") {
 						return
 					}

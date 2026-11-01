@@ -50,7 +50,11 @@ func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
 
-var transformRuntimes = map[string]*vm.Program{}
+// ConfiguredSource keeps orchestration options alongside the datasource that owns them.
+type ConfiguredSource struct {
+	types.DataSource
+	transform *vm.Program
+}
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
@@ -110,27 +114,27 @@ func LoadAcquisitionFromDSN(
 	labels map[string]string,
 	transformExpr string,
 	hub *cwhub.Hub,
-) (types.DataSource, error) {
+) (ConfiguredSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
-		return nil, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
+		return ConfiguredSource{}, fmt.Errorf("%s is not a valid dsn (no protocol)", dsn)
 	}
 
 	factory, err := registry.LookupFactory(frags[0])
 	if err != nil {
-		return nil, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
+		return ConfiguredSource{}, fmt.Errorf("no acquisition for protocol %s:// - %w", frags[0], err)
 	}
 
 	dataSrc := factory()
 	uniqueID := uuid.NewString()
 
-	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
-		if err != nil {
-			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
-		}
+	var transformRuntime *vm.Program
 
-		transformRuntimes[uniqueID] = vm
+	if transformExpr != "" {
+		transformRuntime, err = expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]any{"evt": &pipeline.Event{}})...)
+		if err != nil {
+			return ConfiguredSource{}, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
+		}
 	}
 
 	if hubAware, ok := dataSrc.(types.HubAware); ok {
@@ -144,16 +148,16 @@ func LoadAcquisitionFromDSN(
 
 	dsnConf, ok := dataSrc.(types.DSNConfigurer)
 	if !ok {
-		return nil, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
+		return ConfiguredSource{}, fmt.Errorf("%s datasource does not support command-line acquisition", frags[0])
 	}
 
 	subLogger := log.StandardLogger().WithField("type", labels["type"])
 
 	if err = dsnConf.ConfigureByDSN(ctx, dsn, labels, subLogger, uniqueID); err != nil {
-		return nil, fmt.Errorf("datasource for %q: %w", dsn, err)
+		return ConfiguredSource{}, fmt.Errorf("datasource for %q: %w", dsn, err)
 	}
 
-	return dataSrc, nil
+	return ConfiguredSource{DataSource: dataSrc, transform: transformRuntime}, nil
 }
 
 func GetMetricsLevelFromPromCfg(prom *csconfig.PrometheusCfg) metrics.AcquisitionMetricsLevel {
@@ -284,9 +288,6 @@ func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics
 		return nil, errors.New("missing labels")
 	}
 
-	uniqueID := uuid.NewString()
-	sub.UniqueId = uniqueID
-
 	src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
 	if err != nil {
 		return nil, fmt.Errorf("datasource of type %s: %w", sub.Source, err)
@@ -321,8 +322,8 @@ func sourcesFromFile(
 	acquisFile string,
 	metricsLevel metrics.AcquisitionMetricsLevel,
 	hub *cwhub.Hub,
-) ([]types.DataSource, error) {
-	var sources []types.DataSource
+) ([]ConfiguredSource, error) {
+	var sources []ConfiguredSource
 
 	log.Infof("loading acquisition file : %s", acquisFile)
 
@@ -379,11 +380,7 @@ func sourcesFromFile(
 			return nil, fmt.Errorf("%s: %w", loc, err)
 		}
 
-		if parsed.Transform != nil {
-			transformRuntimes[parsed.Common.UniqueId] = parsed.Transform
-		}
-
-		sources = append(sources, parsed.Source)
+		sources = append(sources, ConfiguredSource{DataSource: parsed.Source, transform: parsed.Transform})
 	}
 
 	return sources, nil
@@ -395,8 +392,8 @@ func LoadAcquisitionFromFiles(
 	config *csconfig.CrowdsecServiceCfg,
 	prom *csconfig.PrometheusCfg,
 	hub *cwhub.Hub,
-) ([]types.DataSource, error) {
-	var allSources []types.DataSource
+) ([]ConfiguredSource, error) {
+	var allSources []ConfiguredSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
@@ -412,9 +409,9 @@ func LoadAcquisitionFromFiles(
 	return allSources, nil
 }
 
-func GetMetrics(sources []types.DataSource, aggregated bool) error {
+func GetMetrics(sources []ConfiguredSource, aggregated bool) error {
 	for i := range sources {
-		mp, ok := sources[i].(types.MetricsProvider)
+		mp, ok := sources[i].DataSource.(types.MetricsProvider)
 		if !ok {
 			// the source does not expose metrics
 			continue
@@ -618,7 +615,7 @@ func acquireSource(
 
 func StartAcquisition(
 	ctx context.Context,
-	sources []types.DataSource,
+	sources []ConfiguredSource,
 	output chan pipeline.Event,
 	acquisTomb *tomb.Tomb,
 ) error {
@@ -628,7 +625,8 @@ func StartAcquisition(
 	}
 
 	for i := range sources {
-		subsrc := sources[i] // ensure it's a copy
+		subsrc := sources[i].DataSource
+		transformRuntime := sources[i].transform
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		acquisTomb.Go(func() error {
@@ -638,9 +636,7 @@ func StartAcquisition(
 
 			var transformChan chan pipeline.Event
 
-			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
-
-			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
+			if transformRuntime != nil {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 
 				transformChan = make(chan pipeline.Event)

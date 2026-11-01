@@ -1,0 +1,238 @@
+{
+  "fastBotDetection": true,
+  "fastBotDetectionDetails": {
+    "hasCDP": {
+      "detected": true,
+      "severity": "high"
+    },
+    "hasHighCPUCount": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasImpossibleDeviceMemory": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasMismatchPlatformIframe": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasMismatchPlatformWorker": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasMismatchWebGLInWorker": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasMissingChromeObject": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasPlaywright": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasSeleniumProperty": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasSwiftshaderRenderer": {
+      "detected": false,
+      "severity": "low"
+    },
+    "hasUTCTimezone": {
+      "detected": false,
+      "severity": "medium"
+    },
+    "hasWebdriver": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasWebdriverIframe": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasWebdriverWorker": {
+      "detected": false,
+      "severity": "high"
+    },
+    "hasWebdriverWritable": {
+      "detected": false,
+      "severity": "high"
+    },
+    "headlessChromeScreenResolution": {
+      "detected": false,
+      "severity": "high"
+    }
+  },
+  "fsid": "FS1_00001000000000_00010h02ba_2304x1296c14m08b10011h-5db59_f1000111100e00000000p1100h-7ce12_0h06653c_1h-36e6b_en4h720e_0100h-156f8",
+  "nonce": "jb8t2jfm839",
+  "signals": {
+    "automation": {
+      "cdp": true,
+      "navigatorPropertyDescriptors": "00000",
+      "playwright": false,
+      "selenium": false,
+      "webdriver": false,
+      "webdriverWritable": false
+    },
+    "browser": {
+      "ai": {
+        "summarizerAvailability": "downloadable",
+        "summarizerLanguageAvailability": "available"
+      },
+      "etsl": 33,
+      "extensions": {
+        "bitmask": "00000000",
+        "extensions": []
+      },
+      "features": {
+        "applePaySupport": false,
+        "attachShadow": true,
+        "bitmask": "11111111111111111111111111111",
+        "brave": false,
+        "buffer": false,
+        "caches": true,
+        "chrome": true,
+        "opera": false,
+        "serial": true,
+        "showModalDialog": false,
+        "webAssembly": true
+      },
+      "highEntropyValues": {
+        "architecture": "arm",
+        "bitness": "64",
+        "brands": [
+          {
+            "brand": "Not(A:Brand",
+            "version": "8"
+          },
+          {
+            "brand": "Chromium",
+            "version": "144"
+          },
+          {
+            "brand": "Google Chrome",
+            "version": "144"
+          }
+        ],
+        "mobile": false,
+        "model": "",
+        "platform": "macOS",
+        "platformVersion": "26.2.0",
+        "uaFullVersion": "144.0.7559.133"
+      },
+      "maths": "67d0b556",
+      "plugins": {
+        "isValidPluginArray": true,
+        "pluginConsistency1": true,
+        "pluginCount": 5,
+        "pluginNamesHash": "-2cdc5c8b",
+        "pluginOverflow": false
+      },
+      "toSourceError": {
+        "hasToSource": false,
+        "toSourceError": "TypeError: Cannot read properties of null (reading usdfsh)"
+      },
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+    },
+    "codecs": {
+      "audioCanPlayTypeHash": "688c7345",
+      "audioMediaSourceHash": "-3cbc04a4",
+      "hasMediaSource": true,
+      "rtcAudioCapabilitiesHash": "26a15cc5",
+      "rtcVideoCapabilitiesHash": "4f24a817",
+      "videoCanPlayTypeHash": "-126cde82",
+      "videoMediaSourceHash": "-48c15d34"
+    },
+    "contexts": {
+      "iframe": {
+        "cpuCount": 14,
+        "language": "en",
+        "memory": 8,
+        "platform": "MacIntel",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "webdriver": false
+      },
+      "webWorker": {
+        "cpuCount": 14,
+        "language": "en",
+        "memory": 8,
+        "platform": "MacIntel",
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        "vendor": "Google Inc. (Apple)"
+      }
+    },
+    "device": {
+      "cpuCount": 14,
+      "keyboard": {
+        "layout": "Backquote,e Backslash,h BracketLeft,t BracketRight,t Comma,a Digit0,0 Digit1,1 Digit2,2 Digit3,3 Digit4,4 Digit5,5 Digit6,6 Digit7,7 Digit8,8 Digit9,9 Equal,l IntlBackslash,h KeyA,a KeyB,b KeyC,c KeyD,d KeyE,e KeyF,f KeyG,g KeyH,h KeyI,i KeyJ,j KeyK,k KeyL,l KeyM,m KeyN,n KeyO,o KeyP,p KeyQ,q KeyR,r KeyS,s KeyT,t KeyU,u KeyV,v KeyW,w KeyX,x KeyY,y KeyZ,z Minus,s Period,d Quote,e Semicolon,n Slash,h",
+        "layoutSize": 4
+      },
+      "mediaQueries": {
+        "anyHover": true,
+        "anyPointer": "fine",
+        "colorDepth": 10,
+        "colorGamut": "p3",
+        "hover": true,
+        "pointer": "fine",
+        "prefersColorScheme": "dark",
+        "prefersReducedMotion": false,
+        "prefersReducedTransparency": false
+      },
+      "memory": 8,
+      "multimediaDevices": {
+        "microphones": 1,
+        "speakers": 1,
+        "webcams": 1
+      },
+      "platform": "MacIntel",
+      "screenResolution": {
+        "availableHeight": 1265,
+        "availableWidth": 2304,
+        "colorDepth": 30,
+        "hasMultipleDisplays": true,
+        "height": 1296,
+        "innerHeight": 1144,
+        "innerWidth": 1444,
+        "pixelDepth": 30,
+        "width": 2304
+      }
+    },
+    "graphics": {
+      "canvas": {
+        "canvasFingerprint": "-421c84e0",
+        "hasModifiedCanvas": false
+      },
+      "webGL": {
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)",
+        "vendor": "Google Inc. (Apple)"
+      },
+      "webgpu": {
+        "architecture": "metal-3",
+        "description": "",
+        "device": "",
+        "vendor": "apple"
+      }
+    },
+    "locale": {
+      "internationalization": {
+        "localeLanguage": "en-US",
+        "timezone": "Europe/Paris"
+      },
+      "languages": {
+        "language": "en",
+        "languages": [
+          "en",
+          "en-US",
+          "fr-FR",
+          "fr"
+        ]
+      }
+    }
+  },
+  "time": 1770669806462,
+  "url": "https://example.com/some/product/page?ref=abc"
+}
