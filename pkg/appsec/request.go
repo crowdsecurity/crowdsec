@@ -2,6 +2,8 @@ package appsec
 
 import (
 	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -308,6 +311,8 @@ var forwardedHeaders = []string{
 // readRequestBody reads r.Body bounded by bodySettings.MaxSize, applies the oversize action, and
 // replaces r.Body with a buffered copy of what was kept so downstream code can still read it.
 // A timeout on Read is treated as end-of-body — whatever was received is returned without error.
+// When bodySettings.Decompress is set, a body with a supported Content-Encoding is decompressed,
+// and the size limit applies to the decompressed data as well.
 func readRequestBody(r *http.Request, bodySettings BodySettings, logger *log.Entry) (body []byte, truncated, exceeded bool, err error) {
 	if r.Body == nil {
 		return nil, false, false, nil
@@ -339,24 +344,133 @@ func readRequestBody(r *http.Request, bodySettings BodySettings, logger *log.Ent
 		// Drain remaining bytes so the client doesn't time out waiting for us to finish reading.
 		// The LimitReader stopped at maxSize+1, so r.Body may still have unread bytes.
 		_, _ = io.Copy(io.Discard, r.Body)
+	}
 
-		switch action {
-		case BodySizeActionDrop:
-			logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
-			body = nil
-			exceeded = true
-		case BodySizeActionAllow:
-			logger.Warnf("request body exceeds limit %d bytes, skipping body inspection", maxSize)
-			body = nil
-		case BodySizeActionPartial:
-			logger.Warnf("request body exceeds limit %d bytes, truncating", maxSize)
-			body = body[:maxSize]
-			truncated = true
-		}
+	body, truncated, exceeded = applyBodySizeLimit(body, maxSize, action, logger)
+
+	if bodySettings.Decompress && len(body) > 0 {
+		body, truncated, exceeded = decompressBody(body, r.Header.Values("Content-Encoding"), truncated, maxSize, action, logger)
 	}
 
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 	return body, truncated, exceeded, nil
+}
+
+// applyBodySizeLimit applies the oversize action to a body read with a maxSize+1 bound.
+func applyBodySizeLimit(body []byte, maxSize int64, action string, logger *log.Entry) (kept []byte, truncated, exceeded bool) {
+	if int64(len(body)) <= maxSize {
+		return body, false, false
+	}
+
+	switch action {
+	case BodySizeActionDrop:
+		logger.Warnf("request body exceeds limit %d bytes, will drop request", maxSize)
+		return nil, false, true
+	case BodySizeActionAllow:
+		logger.Warnf("request body exceeds limit %d bytes, skipping body inspection", maxSize)
+		return nil, false, false
+	case BodySizeActionPartial:
+		logger.Warnf("request body exceeds limit %d bytes, truncating", maxSize)
+		return body[:maxSize], true, false
+	}
+
+	return body, false, false
+}
+
+// maxContentEncodings bounds the work done on stacked encodings: each layer costs at most maxSize of input.
+const maxContentEncodings = 3
+
+// errUnsafeGzipHeader rejects gzip header fields: they can carry bytes that a backend ignoring
+// Content-Encoding would parse, but that never show up in the decompressed output.
+var errUnsafeGzipHeader = errors.New("gzip header has name, comment or extra fields")
+
+func newBodyDecoder(encoding string, data *bytes.Reader) (io.Reader, error) {
+	switch encoding {
+	case "gzip", "x-gzip":
+		zr, err := gzip.NewReader(data)
+		if err != nil {
+			return nil, err
+		}
+		// Trailing members then count as leftover input, which sends the body back to raw inspection.
+		zr.Multistream(false)
+		if zr.Name != "" || zr.Comment != "" || len(zr.Extra) > 0 {
+			return nil, errUnsafeGzipHeader
+		}
+		return zr, nil
+	case "deflate":
+		// No raw deflate fallback: it has no header, so plain text "decodes" into garbage.
+		return zlib.NewReader(data)
+	default:
+		return nil, fmt.Errorf("unsupported content encoding %q", encoding)
+	}
+}
+
+// decompressBody undoes the Content-Encoding layers of body. Every layer's output is bounded by
+// maxSize and goes through the oversize action, so a compression bomb can't grow past the limit.
+// The decompressed body is only used if every layer decodes cleanly and entirely: otherwise body
+// is returned unchanged and inspected as received, which is also what a backend ignoring
+// Content-Encoding will parse. A decode cut short is accepted only when the input was truncated.
+func decompressBody(body []byte, contentEncoding []string, inputTruncated bool, maxSize int64, action string, logger *log.Entry) (decoded []byte, truncated, exceeded bool) {
+	var encodings []string
+
+	for _, value := range contentEncoding {
+		for enc := range strings.SplitSeq(value, ",") {
+			enc = strings.ToLower(strings.TrimSpace(enc))
+			if enc != "" && enc != "identity" {
+				encodings = append(encodings, enc)
+			}
+		}
+	}
+
+	if len(encodings) == 0 {
+		return body, inputTruncated, false
+	}
+
+	if len(encodings) > maxContentEncodings {
+		logger.Warnf("request body has %d content encodings (max %d), inspecting it as-is", len(encodings), maxContentEncodings)
+		return body, inputTruncated, false
+	}
+
+	decoded = body
+	truncated = inputTruncated
+
+	// Encodings are listed in the order they were applied.
+	for i := len(encodings) - 1; i >= 0; i-- {
+		in := bytes.NewReader(decoded)
+
+		dec, err := newBodyDecoder(encodings[i], in)
+		if err != nil {
+			logger.Warnf("unable to decompress request body (%s): %s, inspecting it as-is", encodings[i], err)
+			return body, inputTruncated, false
+		}
+
+		out, err := io.ReadAll(io.LimitReader(dec, maxSize+1))
+
+		switch {
+		case int64(len(out)) > maxSize:
+			// Stopped at the limit: the rest of the stream is never decoded, the oversize action decides.
+		case truncated && errors.Is(err, io.ErrUnexpectedEOF) && len(out) > 0:
+			logger.Debugf("request body decompression (%s) stopped at the truncated end of its input", encodings[i])
+		case err != nil:
+			logger.Warnf("unable to decompress request body (%s): %s, inspecting it as-is", encodings[i], err)
+			return body, inputTruncated, false
+		case in.Len() > 0:
+			logger.Warnf("request body has %d bytes after the end of the %s stream, inspecting it as-is", in.Len(), encodings[i])
+			return body, inputTruncated, false
+		}
+
+		var layerTruncated bool
+		decoded, layerTruncated, exceeded = applyBodySizeLimit(out, maxSize, action, logger)
+		truncated = truncated || layerTruncated
+
+		if decoded == nil {
+			return nil, truncated, exceeded
+		}
+	}
+
+	logger.Debugf("decompressed request body from %d to %d bytes", len(body), len(decoded))
+
+	return decoded, truncated, exceeded
 }
 
 // applyHTTPVersion parses the 2-character HTTP version header (e.g. "11" for HTTP/1.1, "20" for HTTP/2)
