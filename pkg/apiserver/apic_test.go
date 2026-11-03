@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1039,11 +1041,11 @@ func TestAPICPush(t *testing.T) {
 			expectedCalls: 0,
 		},
 		{
-			name:          "1 request per 50 alerts",
+			name:          "1 request per 200 alerts",
 			expectedCalls: 2,
 			alerts: func() []*models.Alert {
-				alerts := make([]*models.Alert, 100)
-				for i := range 100 {
+				alerts := make([]*models.Alert, 400)
+				for i := range 400 {
 					alerts[i] = &models.Alert{
 						Scenario:        new("crowdsec/test"),
 						ScenarioHash:    new("certified"),
@@ -1093,6 +1095,159 @@ func TestAPICPush(t *testing.T) {
 			err = api.Push(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedCalls, httpmock.GetTotalCallCount())
+		})
+	}
+}
+
+func TestAPICPushSlowCAPI(t *testing.T) {
+	ctx := t.Context()
+	api := getAPIC(t, ctx)
+	api.pushInterval = time.Millisecond
+	api.pushIntervalFirst = time.Millisecond
+
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	api.apiClient, err = apiclient.NewDefaultClient(url, "/api", "", nil)
+	require.NoError(t, err)
+
+	var inFlight, maxInFlight atomic.Int32
+
+	httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", func(*http.Request) (*http.Response, error) {
+		n := inFlight.Add(1)
+		defer inFlight.Add(-1)
+
+		for cur := maxInFlight.Load(); n > cur && !maxInFlight.CompareAndSwap(cur, n); cur = maxInFlight.Load() {
+		}
+
+		time.Sleep(100 * time.Millisecond)
+
+		return httpmock.NewBytesResponse(200, []byte{}), nil
+	})
+
+	go func() {
+		// many ticks happen while each push is still running
+		for range 10 {
+			api.AlertsAddChan <- []*models.Alert{{
+				Scenario:        new("crowdsec/test"),
+				ScenarioHash:    new("certified"),
+				ScenarioVersion: new("v1.0"),
+				Simulated:       new(false),
+				Source:          &models.Source{},
+			}}
+
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		time.Sleep(200 * time.Millisecond)
+		api.Shutdown()
+	}()
+
+	require.NoError(t, api.Push(ctx))
+	require.Greater(t, httpmock.GetTotalCallCount(), 1)
+	require.Equal(t, int32(1), maxInFlight.Load())
+}
+
+func TestSplitSignals(t *testing.T) {
+	signal := func(scenario string) *modelscapi.AddSignalsRequestItem {
+		return &modelscapi.AddSignalsRequestItem{Scenario: new(scenario)}
+	}
+
+	signalSize := func(s *modelscapi.AddSignalsRequestItem) int {
+		raw, err := json.Marshal(s)
+		require.NoError(t, err)
+
+		return len(raw)
+	}
+
+	small := signal("a")
+	big := signal(strings.Repeat("b", 10000))
+	// room for exactly 2 small signals: brackets, newline, 2 signals with their separator
+	twoSmall := 3 + 2*(signalSize(small)+1)
+
+	tests := []struct {
+		name     string
+		signals  []*modelscapi.AddSignalsRequestItem
+		maxItems int
+		maxBytes int
+		expected []int
+	}{
+		{
+			name:     "empty",
+			maxItems: 2,
+			maxBytes: 1024,
+			expected: nil,
+		},
+		{
+			name:     "split on count",
+			signals:  []*modelscapi.AddSignalsRequestItem{small, small, small, small, small},
+			maxItems: 2,
+			maxBytes: 1024,
+			expected: []int{2, 2, 1},
+		},
+		{
+			name:     "split on size",
+			signals:  []*modelscapi.AddSignalsRequestItem{small, small, small, small, small},
+			maxItems: 100,
+			maxBytes: twoSmall,
+			expected: []int{2, 2, 1},
+		},
+		{
+			name:     "one byte short",
+			signals:  []*modelscapi.AddSignalsRequestItem{small, small, small},
+			maxItems: 100,
+			maxBytes: twoSmall - 1,
+			expected: []int{1, 1, 1},
+		},
+		{
+			name:     "oversized signal is dropped",
+			signals:  []*modelscapi.AddSignalsRequestItem{small, big, small},
+			maxItems: 100,
+			maxBytes: twoSmall,
+			expected: []int{2},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			batches := splitSignals(tc.signals, tc.maxItems, tc.maxBytes)
+
+			var sizes []int
+
+			for _, batch := range batches {
+				sizes = append(sizes, len(batch))
+
+				body, err := json.Marshal(batch)
+				require.NoError(t, err)
+				require.LessOrEqual(t, len(body)+1, tc.maxBytes)
+			}
+
+			require.Equal(t, tc.expected, sizes)
+		})
+	}
+}
+
+func TestPushIntervalFor(t *testing.T) {
+	tests := []struct {
+		name             string
+		enrolled         bool
+		subscriptionType string
+		expected         time.Duration
+	}{
+		{"not enrolled", false, "", 5 * time.Minute},
+		{"not enrolled, stale plan claim", false, apiclient.SubscriptionTypeCommunity, 5 * time.Minute},
+		{"community", true, apiclient.SubscriptionTypeCommunity, time.Minute},
+		{"enterprise", true, apiclient.SubscriptionTypeEnterprise, 10 * time.Second},
+		{"secops", true, apiclient.SubscriptionTypeSecOps, 10 * time.Second},
+		{"enrolled, no plan", true, "", 10 * time.Second},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, pushIntervalFor(tc.enrolled, tc.subscriptionType))
 		})
 	}
 }
