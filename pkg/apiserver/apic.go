@@ -41,7 +41,7 @@ const (
 	pullIntervalDelta         = time.Minute * 5
 	pushIntervalDefault       = time.Second * 10
 	pushIntervalDelta         = time.Second * 7
-	pushIntervalCommunity     = time.Minute
+	pushCooldownCommunity     = time.Minute
 	pushIntervalNotEnrolled   = time.Minute * 5
 	metricsIntervalDefault    = time.Minute * 30
 	metricsIntervalDelta      = time.Minute * 15
@@ -61,6 +61,7 @@ type apic struct {
 	pullInterval              time.Duration
 	pullIntervalFirst         time.Duration
 	pushInterval              time.Duration // zero: depends on enrollment and plan
+	pushCooldown              time.Duration // only used along with pushInterval
 	pushIntervalFirst         time.Duration
 	metricsInterval           time.Duration
 	metricsIntervalFirst      time.Duration
@@ -308,13 +309,14 @@ func (a *apic) Push(ctx context.Context) error {
 	var (
 		cache modelscapi.AddSignalsRequest
 		// overlapping pushes would pile up against a slow CAPI
-		sending atomic.Bool
+		sending  atomic.Bool
+		lastPush time.Time
 	)
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
-	interval := a.currentPushInterval()
+	interval, cooldown := a.currentPushSchedule()
 
-	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", a.pushIntervalFirst.Round(time.Second), interval)
+	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s, at least %s between pushes)", a.pushIntervalFirst.Round(time.Second), interval, cooldown)
 
 	for {
 		select {
@@ -332,14 +334,14 @@ func (a *apic) Push(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			// the plan can change when the token is refreshed
-			if newInterval := a.currentPushInterval(); newInterval != interval {
-				log.Infof("Signal push interval changed from %s to %s", interval, newInterval)
-				interval = newInterval
+			if newInterval, newCooldown := a.currentPushSchedule(); newInterval != interval || newCooldown != cooldown {
+				log.Infof("Signal push schedule changed to every %s, at least %s between pushes", newInterval, newCooldown)
+				interval, cooldown = newInterval, newCooldown
 			}
 
 			ticker.Reset(interval)
 
-			if len(cache) == 0 {
+			if len(cache) == 0 || time.Since(lastPush) < cooldown {
 				continue
 			}
 
@@ -353,6 +355,8 @@ func (a *apic) Push(ctx context.Context) error {
 			cache = make(modelscapi.AddSignalsRequest, 0)
 			a.mu.Unlock()
 			log.Infof("Signal push: %d signals to push", len(cacheCopy))
+
+			lastPush = time.Now()
 
 			go func() {
 				defer sending.Store(false)
@@ -376,23 +380,25 @@ func (a *apic) Push(ctx context.Context) error {
 	}
 }
 
-func pushIntervalFor(enrolled bool, subscriptionType string) time.Duration {
+// pushSchedule returns how often the cache is checked, and the minimum time between two pushes.
+func pushSchedule(enrolled bool, subscriptionType string) (time.Duration, time.Duration) {
 	switch {
 	case !enrolled:
-		return pushIntervalNotEnrolled
+		return pushIntervalNotEnrolled, 0
 	case subscriptionType == apiclient.SubscriptionTypeCommunity:
-		return pushIntervalCommunity
+		// an alert after a quiet period goes out quickly, a steady stream is batched
+		return pushIntervalDefault, pushCooldownCommunity
 	default:
-		return pushIntervalDefault
+		return pushIntervalDefault, 0
 	}
 }
 
-func (a *apic) currentPushInterval() time.Duration {
+func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
 	if a.pushInterval > 0 {
-		return a.pushInterval
+		return a.pushInterval, a.pushCooldown
 	}
 
-	return pushIntervalFor(a.apiClient.IsEnrolled(), a.apiClient.GetSubscriptionType())
+	return pushSchedule(a.apiClient.IsEnrolled(), a.apiClient.GetSubscriptionType())
 }
 
 func getScenarioTrustOfAlert(alert *models.Alert) string {

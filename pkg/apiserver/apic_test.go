@@ -1230,25 +1230,94 @@ func TestSplitSignals(t *testing.T) {
 	}
 }
 
-func TestPushIntervalFor(t *testing.T) {
+func TestPushSchedule(t *testing.T) {
 	tests := []struct {
 		name             string
 		enrolled         bool
 		subscriptionType string
-		expected         time.Duration
+		interval         time.Duration
+		cooldown         time.Duration
 	}{
-		{"not enrolled", false, "", 5 * time.Minute},
-		{"not enrolled, stale plan claim", false, apiclient.SubscriptionTypeCommunity, 5 * time.Minute},
-		{"community", true, apiclient.SubscriptionTypeCommunity, time.Minute},
-		{"enterprise", true, apiclient.SubscriptionTypeEnterprise, 10 * time.Second},
-		{"secops", true, apiclient.SubscriptionTypeSecOps, 10 * time.Second},
-		{"enrolled, no plan", true, "", 10 * time.Second},
+		{"not enrolled", false, "", 5 * time.Minute, 0},
+		{"not enrolled, stale plan claim", false, apiclient.SubscriptionTypeCommunity, 5 * time.Minute, 0},
+		{"community", true, apiclient.SubscriptionTypeCommunity, 10 * time.Second, time.Minute},
+		{"enterprise", true, apiclient.SubscriptionTypeEnterprise, 10 * time.Second, 0},
+		{"secops", true, apiclient.SubscriptionTypeSecOps, 10 * time.Second, 0},
+		{"enrolled, no plan", true, "", 10 * time.Second, 0},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.expected, pushIntervalFor(tc.enrolled, tc.subscriptionType))
+			interval, cooldown := pushSchedule(tc.enrolled, tc.subscriptionType)
+			require.Equal(t, tc.interval, interval)
+			require.Equal(t, tc.cooldown, cooldown)
 		})
+	}
+}
+
+func TestAPICPushCooldown(t *testing.T) {
+	ctx := t.Context()
+	api := getAPIC(t, ctx)
+	api.pushInterval = 10 * time.Millisecond
+	api.pushIntervalFirst = 10 * time.Millisecond
+	api.pushCooldown = 300 * time.Millisecond
+
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	api.apiClient, err = apiclient.NewDefaultClient(url, "/api", "", nil)
+	require.NoError(t, err)
+
+	var (
+		mu       sync.Mutex
+		requests []time.Time
+	)
+
+	httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", func(*http.Request) (*http.Response, error) {
+		mu.Lock()
+		requests = append(requests, time.Now())
+		mu.Unlock()
+
+		return httpmock.NewBytesResponse(200, []byte{}), nil
+	})
+
+	alert := []*models.Alert{{
+		Scenario:        new("crowdsec/test"),
+		ScenarioHash:    new("certified"),
+		ScenarioVersion: new("v1.0"),
+		Simulated:       new(false),
+		Source:          &models.Source{},
+	}}
+
+	var firstAlert time.Time
+
+	go func() {
+		// a steady stream, longer than a few cooldowns
+		firstAlert = time.Now()
+		for range 100 {
+			api.AlertsAddChan <- alert
+
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		// let the last signals go out on a tick, so that shutdown has nothing left to flush
+		time.Sleep(500 * time.Millisecond)
+		api.Shutdown()
+	}()
+
+	require.NoError(t, api.Push(ctx))
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	require.GreaterOrEqual(t, len(requests), 3)
+	require.Less(t, requests[0].Sub(firstAlert), 100*time.Millisecond, "the first alert after a quiet period is not delayed")
+
+	for i := 1; i < len(requests); i++ {
+		require.GreaterOrEqual(t, requests[i].Sub(requests[i-1]), 250*time.Millisecond, "a steady stream is batched")
 	}
 }
 
