@@ -45,6 +45,8 @@ const (
 	pushIntervalNotEnrolled   = time.Minute * 5
 	metricsIntervalDefault    = time.Minute * 30
 	metricsIntervalDelta      = time.Minute * 15
+	metricsIntervalUnenrolled = time.Hour * 12
+	metricsDeltaUnenrolled    = time.Hour
 	usageMetricsInterval      = time.Minute * 30
 	usageMetricsIntervalDelta = time.Minute * 15
 
@@ -256,6 +258,12 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	})
 
 	err = ret.Authenticate(ctx, config)
+
+	// enrolling requires a restart
+	if !ret.apiClient.IsEnrolled() {
+		ret.metricsInterval = metricsIntervalUnenrolled
+		ret.metricsIntervalFirst = randomDuration(metricsIntervalUnenrolled, metricsDeltaUnenrolled)
+	}
 
 	return ret, err
 }
