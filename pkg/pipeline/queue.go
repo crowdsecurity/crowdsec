@@ -19,7 +19,7 @@ func NewQueue(l int) *Queue {
 		}
 	}
 	q := &Queue{
-		Queue: make([]Event, 0, l),
+		Queue: make([]Event, 0),
 		L:     l,
 	}
 	log.WithField("Capacity", q.L).Debugf("Creating queue")
