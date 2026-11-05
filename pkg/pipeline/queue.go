@@ -19,6 +19,7 @@ func NewQueue(l int) *Queue {
 		}
 	}
 	q := &Queue{
+		// don't preallocate l slots: every live bucket would hold them, Add grows the queue up to L
 		Queue: make([]Event, 0),
 		L:     l,
 	}
