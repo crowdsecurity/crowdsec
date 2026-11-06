@@ -69,7 +69,7 @@ func PrometheusMiddleware(c *gin.Context) {
 	elapsed := time.Since(startTime)
 	metrics.LapiResponseTime.With(
 		prometheus.Labels{
-			"method": c.Request.Method,
-			"endpoint": c.FullPath(),
+			"method":   c.Request.Method,
+			"endpoint": cmp.Or(c.FullPath(), "invalid-endpoint"),
 		}).Observe(elapsed.Seconds())
 }
