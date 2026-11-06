@@ -373,7 +373,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheusCfg csconfig.PrometheusCfg, endpoint string) error {
+func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, pprofCfg csconfig.PProfCfg, endpoint string) error {
 	fmt.Fprintf(os.Stdout, "Collecting pprof/%s data\n", endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -385,8 +385,8 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 		fmt.Sprintf(
 			"http://%s/debug/pprof/%s",
 			net.JoinHostPort(
-				prometheusCfg.ListenAddr,
-				strconv.Itoa(prometheusCfg.ListenPort),
+				pprofCfg.ListenAddr,
+				strconv.Itoa(pprofCfg.ListenPort),
 			),
 			endpoint,
 		),
@@ -616,20 +616,24 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) erro
 
 		// call pprof separately, one might fail for timeout
 
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "goroutine"); err != nil {
-			log.Warnf("could not collect pprof goroutine data: %s", err)
-		}
-
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "heap"); err != nil {
-			log.Warnf("could not collect pprof heap data: %s", err)
-		}
-
-		if !fast {
-			fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
-
-			if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
-				log.Warnf("could not collect pprof cpu data: %s", err)
+		if cfg.PProf != nil && cfg.PProf.Enabled != nil && *cfg.PProf.Enabled {
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "goroutine"); err != nil {
+				log.Warnf("could not collect pprof goroutine data: %s", err)
 			}
+
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "heap"); err != nil {
+				log.Warnf("could not collect pprof heap data: %s", err)
+			}
+
+			if !fast {
+				fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
+
+				if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "profile"); err != nil {
+					log.Warnf("could not collect pprof cpu data: %s", err)
+				}
+			}
+		} else {
+			log.Info("pprof is disabled, skipping pprof collection")
 		}
 
 		cli.dumpProfiles(zipWriter)

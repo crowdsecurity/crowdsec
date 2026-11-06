@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	// enable profiling
-	_ "net/http/pprof"
 	"os"
 	"sort"
 	"strings"
