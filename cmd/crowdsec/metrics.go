@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -89,9 +90,23 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 		return
 	}
 
-	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 
-	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), nil); err != nil {
+	// Only expose the Go pprof profiling endpoints when explicitly enabled.
+	// They used to be reachable on the metrics listener via the blank
+	// net/http/pprof import on DefaultServeMux; on a non-local listen_addr
+	// that exposes profiling data and a cheap DoS. cscli support collects
+	// pprof from this listener, so keep it available behind an opt-in.
+	if config.EnablePprof {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
+
+	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), mux); err != nil {
 		// in time machine, we most likely have the LAPI using the port
 		if !flags.haveTimeMachine() {
 			log.WithError(err).Warning("serving metrics")
