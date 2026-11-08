@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,6 +147,45 @@ func (r *AppsecRunner) InitOutOfBand(datadir string) error {
 	return err
 }
 
+// queryArgCounts counts each key/value pair of a URI's query string, so
+// processRequest can skip the arguments ProcessURI is about to add itself.
+// An unparseable URI counts as no query arguments, keeping the previous
+// behavior of feeding every argument to the transaction.
+type queryArgCounts map[string]int
+
+func newQueryArgCounts(rawURI string) queryArgCounts {
+	counts := queryArgCounts{}
+
+	u, err := url.Parse(rawURI)
+	if err != nil {
+		return counts
+	}
+
+	// ParseQuery still returns the pairs it could decode when it reports
+	// an error, which is good enough for a best-effort dedup.
+	values, _ := url.ParseQuery(u.RawQuery)
+	for k, vs := range values {
+		for _, v := range vs {
+			counts[k+"\x00"+v]++
+		}
+	}
+
+	return counts
+}
+
+// take reports whether one occurrence of the pair was present in the URI
+// query, consuming it so repeated values are counted individually.
+func (c queryArgCounts) take(key, value string) bool {
+	n := c[key+"\x00"+value]
+	if n == 0 {
+		return false
+	}
+
+	c[key+"\x00"+value] = n - 1
+
+	return true
+}
+
 func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecRequestState, request *appsec.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
@@ -203,9 +243,18 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
+	// request.Args is populated from the URI query string (see
+	// NewParsedRequestFromRequest), and ProcessURI below extracts those same
+	// arguments into the transaction. Adding them here as well counted every
+	// parameter twice (crowdsecurity/crowdsec#4311), so only add the
+	// arguments ProcessURI will not add: values supplied outside the URI
+	// still reach the rules, while query arguments are counted once.
+	uriQueryArgs := newQueryArgCounts(request.URI)
 	for k, v := range request.Args {
 		for _, vv := range v {
-			state.Tx.AddGetRequestArgument(k, vv)
+			if !uriQueryArgs.take(k, vv) {
+				state.Tx.AddGetRequestArgument(k, vv)
+			}
 		}
 	}
 

@@ -943,3 +943,51 @@ func TestAppsecRuleZones(t *testing.T) {
 
 	runTests(t, tests)
 }
+
+// Query-string arguments must be counted once: ProcessURI already extracts
+// them from the URI, so feeding request.Args into the transaction as well
+// double-counts every parameter (crowdsecurity/crowdsec#4311).
+func TestAppsecQueryArgsNotDoubleCounted(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "single query arg counts as one",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				`SecRule &ARGS_GET:whatever "@eq 1" "id:1000,phase:1,deny,log,msg:'single query arg'"`,
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?whatever=x",
+				Args:        url.Values{"whatever": []string{"x"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "repeated query arg counts each value once",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				`SecRule &ARGS_GET:whatever "@eq 2" "id:1001,phase:1,deny,log,msg:'two query arg values'"`,
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/?whatever=x&whatever=y",
+				Args:        url.Values{"whatever": []string{"x", "y"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
