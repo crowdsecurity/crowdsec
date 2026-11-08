@@ -225,7 +225,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 
 			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
 		} else {
-			log.Error("Machine is not enrolled in the console, can't synchronize with the console")
+			log.Warning("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	}
 
