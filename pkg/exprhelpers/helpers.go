@@ -768,7 +768,18 @@ func KeyExists(params ...any) (any, error) {
 	return ok, nil
 }
 
-// func GetDecisionsCount(value string) int {
+// optionalString returns params[i] when the expression passed it, nil otherwise.
+func optionalString(params []any, i int) *string {
+	if len(params) <= i {
+		return nil
+	}
+
+	s := params[i].(string)
+
+	return &s
+}
+
+// func GetDecisionsCount(value string, [scenario string]) int {
 func GetDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -779,7 +790,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, nil, false)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 1), nil, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -807,13 +818,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	var scenario *string
-	if len(params) > 2 {
-		s := params[2].(string)
-		scenario = &s
-	}
-
-	count, err := dbClient.CountDecisionsByValue(ctx, value, scenario, &sinceTime, false)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 2), &sinceTime, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -822,6 +827,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	return count, nil
 }
 
+// func GetActiveDecisionsCount(value string, [scenario string]) int {
 func GetActiveDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -832,7 +838,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, nil, true)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 1), nil, true)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -841,6 +847,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 	return count, nil
 }
 
+// func GetActiveDecisionsTimeLeft(value string, [scenario string]) time.Duration {
 func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -851,7 +858,7 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value, optionalString(params, 1))
 	if err != nil {
 		log.Errorf("Failed to get active decisions time left from value '%s'", value)
 		return 0, err

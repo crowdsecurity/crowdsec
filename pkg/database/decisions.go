@@ -421,7 +421,9 @@ func (c *Client) CountDecisionsByValue(ctx context.Context, value string, scenar
 	return count, nil
 }
 
-func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decisionValue string) (time.Duration, error) {
+// GetActiveDecisionsTimeLeftByValue returns the time left on the longest active decision whose
+// range contains value, 0 when there is none. A nil scenario does not filter on it.
+func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decisionValue string, scenario *string) (time.Duration, error) {
 	rng, err := csnet.NewRange(decisionValue)
 	if err != nil {
 		return 0, fmt.Errorf("unable to convert '%s' to int: %w", decisionValue, err)
@@ -435,6 +437,10 @@ func (c *Client) GetActiveDecisionsTimeLeftByValue(ctx context.Context, decision
 	decisions, err = decisionIPFilter(decisions, contains, rng)
 	if err != nil {
 		return 0, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
+	}
+
+	if scenario != nil {
+		decisions = decisions.Where(decision.ScenarioEQ(*scenario))
 	}
 
 	decisions = decisions.Order(ent.Desc(decision.FieldUntil))
