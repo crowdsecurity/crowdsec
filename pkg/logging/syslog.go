@@ -10,6 +10,12 @@ import (
 )
 
 func setupSyslogDefault() error {
+	// already set up by a previous config load (SIGHUP)
+	if HasHook[*FormatterSyslogHook](logrus.StandardLogger()) {
+		logrus.SetOutput(io.Discard)
+		return nil
+	}
+
 	w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
 	if err != nil {
 		return err

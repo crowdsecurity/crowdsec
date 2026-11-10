@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"slices"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,10 +17,9 @@ func SubLogger(base *logrus.Logger, module string, level logrus.Level) *logrus.E
 	l.SetFormatter(base.Formatter)
 	l.SetOutput(base.Out)
 
-	for _, hooks := range base.Hooks {
-		for _, h := range hooks {
-			l.AddHook(h)
-		}
+	// Copy per level: AddHook() would register each hook again for all of its levels.
+	for lvl, hooks := range base.Hooks {
+		l.Hooks[lvl] = slices.Clone(hooks)
 	}
 
 	if level == 0 {
@@ -36,4 +37,17 @@ func SubLogger(base *logrus.Logger, module string, level logrus.Level) *logrus.E
 	}
 
 	return l.WithFields(fields)
+}
+
+// HasHook reports whether a hook of type T is registered on the logger.
+func HasHook[T logrus.Hook](logger *logrus.Logger) bool {
+	for _, hooks := range logger.Hooks {
+		for _, h := range hooks {
+			if _, ok := h.(T); ok {
+				return true
+			}
+		}
+	}
+
+	return false
 }
