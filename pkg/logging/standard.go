@@ -3,6 +3,7 @@ package logging
 import (
 	"cmp"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -22,13 +23,16 @@ func SetupStandardLogger(cfg LogConfig, level logrus.Level, forceColors bool) er
 
 	switch cfg.GetMedia() {
 	case "file":
+		removeSyslogHooks(logrus.StandardLogger())
 		logrus.SetOutput(cfg.NewRotatingLogger(defLogFilename))
 	case "syslog":
 		if err := setupSyslogDefault(); err != nil {
 			return err
 		}
 	case "stdout":
-		// noop
+		removeSyslogHooks(logrus.StandardLogger())
+		// logrus default, in case a previous config load discarded it for syslog
+		logrus.SetOutput(os.Stderr)
 	default:
 		return fmt.Errorf("unknown log_mode %q", cfg.GetMedia())
 	}

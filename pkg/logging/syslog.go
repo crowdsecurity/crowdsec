@@ -28,6 +28,31 @@ func setupSyslogDefault() error {
 	return nil
 }
 
+// removeSyslogHooks drops the hooks left by a previous config load that used log_media: syslog.
+func removeSyslogHooks(logger *logrus.Logger) {
+	hooks := make(logrus.LevelHooks)
+	writers := make(map[*syslog.Writer]struct{})
+
+	for lvl, hs := range logger.Hooks {
+		for _, h := range hs {
+			if sh, ok := h.(*FormatterSyslogHook); ok {
+				writers[sh.Writer] = struct{}{}
+				continue
+			}
+
+			hooks[lvl] = append(hooks[lvl], h)
+		}
+	}
+
+	logger.ReplaceHooks(hooks)
+
+	for w := range writers {
+		if w != nil {
+			_ = w.Close()
+		}
+	}
+}
+
 type SyslogFormatter struct{}
 
 func (*SyslogFormatter) Format(e *logrus.Entry) ([]byte, error) {
