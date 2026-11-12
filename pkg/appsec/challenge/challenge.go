@@ -637,8 +637,9 @@ func (c *ChallengeRuntime) Close(ctx context.Context) error {
 }
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
-// If difficulty is 0, the default difficulty is used.
-func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent string, difficulty int) (string, error) {
+// If difficulty is 0, the default difficulty is used. A nil page renders the
+// default title and no meta tags.
+func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent string, difficulty int, page *PageOverrides) (string, error) {
 	_ = userAgent
 
 	if difficulty <= 0 {
@@ -689,7 +690,12 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 		return "", fmt.Errorf("build dynamic key module: %w", err)
 	}
 
+	if page == nil {
+		page = &PageOverrides{}
+	}
+
 	data := c.newPageData(challengeCode, dynamicModule, difficulty, powSalt, powMAC, ts, r)
+	page.addTo(data)
 
 	var renderedBlock strings.Builder
 	if err := c.blockTpl.Execute(&renderedBlock, data); err != nil {
@@ -733,7 +739,10 @@ func (c *ChallengeRuntime) newPageData(challengeCode, dynamicModule string, diff
 // zeroPageData is the render-path data with every value zeroed, so template
 // validation (config.go) offers the same keys and types the real render does.
 func zeroPageData() map[string]interface{} {
-	return (&ChallengeRuntime{}).newPageData("", "", 0, "", "", "", "")
+	data := (&ChallengeRuntime{}).newPageData("", "", 0, "", "", "", "")
+	(&PageOverrides{}).addTo(data)
+
+	return data
 }
 
 // ValidateChallengeResponse parses a submit POST and runs the full chain:

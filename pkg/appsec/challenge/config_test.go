@@ -199,7 +199,7 @@ func TestBuildOptionsCustomTemplate(t *testing.T) {
 	rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), withoutPreWarm())...)
 	require.NoError(t, err)
 
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 
 	assert.Contains(t, html, "<h1>my own page</h1>")
@@ -247,7 +247,7 @@ func TestBuildOptionsUnusableTemplate(t *testing.T) {
 			rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), withoutPreWarm())...)
 			require.NoError(t, err)
 
-			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 			require.NoError(t, err)
 			assert.Contains(t, html, "Why am I seeing this?", "the built-in page must be served instead")
 		})
@@ -278,7 +278,7 @@ func TestChallengePageAlwaysAttributesCrowdSec(t *testing.T) {
 			rt, err := NewChallengeRuntime(t.Context(), append(tc.opts, WithMasterSecret(testSecret), withoutPreWarm())...)
 			require.NoError(t, err)
 
-			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 			require.NoError(t, err)
 
 			assert.Contains(t, html, "Security check powered by")

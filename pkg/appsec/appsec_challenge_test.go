@@ -528,3 +528,35 @@ func TestHasValidChallengeCookieInPreEval(t *testing.T) {
 		})
 	}
 }
+
+// Page overrides set in pre_eval must reach the page SendChallenge serves, even
+// though the response is reset between the two.
+func TestChallengePageOverridesFromPreEval(t *testing.T) {
+	rt := newChallengeTestRuntime(t, nil)
+
+	compiled, err := buildHookList(t.Context(), []Hook{
+		{
+			Filter: "true",
+			Apply: []string{
+				`SetChallengeTitle("Shop - security check")`,
+				`SetChallengeMeta("og:title", "<b>Shop</b>")`,
+			},
+		},
+	}, hookPreEval, &appsecExprPatcher{})
+	require.NoError(t, err)
+
+	state := &AppsecRequestState{HookVars: map[string]string{}}
+	state.ResetResponse(rt.Config)
+
+	req := newInBandRequest(http.MethodGet, "/protected", nil)
+
+	require.NoError(t, rt.processHooks(compiled, GetPreEvalEnv(t.Context(), rt, state, req), "pre_eval", state, rt.Logger))
+
+	rt.ClearResponse(state)
+	state.CurrentPhase = PhaseInBand
+	require.NoError(t, rt.SendChallenge(t.Context(), state, req))
+
+	body := state.Response.UserHTTPBodyContent
+	assert.Contains(t, body, "<title>Shop - security check</title>")
+	assert.Contains(t, body, `<meta property="og:title" content="&lt;b&gt;Shop&lt;/b&gt;" />`)
+}

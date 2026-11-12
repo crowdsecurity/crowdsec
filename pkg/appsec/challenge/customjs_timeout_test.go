@@ -52,7 +52,7 @@ func TestCustomJSTimeoutReachesThePage(t *testing.T) {
 			rt, err := NewChallengeRuntime(t.Context(), append(tc.opts, WithMasterSecret(testSecret), withoutPreWarm())...)
 			require.NoError(t, err)
 
-			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 			require.NoError(t, err)
 
 			assert.Contains(t, html, tc.want)
@@ -109,7 +109,7 @@ func TestCustomJSURLIsUnversioned(t *testing.T) {
 		WithMasterSecret(testSecret), WithCustomJS("hookA();"), withoutPreWarm())
 	require.NoError(t, err)
 
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 
 	require.Contains(t, html, ChallengeCustomJSPath)

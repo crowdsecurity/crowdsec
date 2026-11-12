@@ -779,7 +779,7 @@ func TestValidateChallengeResponse_MalformedR(t *testing.T) {
 func TestChallengePageChecksCookiesEnabled(t *testing.T) {
 	rt := newChallengeRuntimeForSplitTest(t, testKeyRing())
 
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 
 	for _, want := range []string{

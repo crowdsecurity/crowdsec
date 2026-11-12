@@ -227,7 +227,8 @@ func LoadPageTemplate(dataDir, path string) (*template.Template, error) {
 		return nil, fmt.Errorf("read challenge template: %w", err)
 	}
 
-	tpl, err := template.New("challenge").Parse(string(content))
+	// missingkey=zero: a {{.Vars.x}} no hook set renders empty, not "<no value>".
+	tpl, err := template.New("challenge").Option("missingkey=zero").Parse(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("parse challenge template %s: %w", resolved, err)
 	}
