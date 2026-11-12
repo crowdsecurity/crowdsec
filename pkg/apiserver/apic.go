@@ -388,25 +388,19 @@ func (a *apic) Push(ctx context.Context) error {
 	}
 }
 
-// pushSchedule returns how often the cache is checked, and the minimum time between two pushes.
-func pushSchedule(enrolled bool, subscriptionType string) (time.Duration, time.Duration) {
+// currentPushSchedule returns how often the cache is checked, and the minimum time between two pushes.
+func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
 	switch {
-	case !enrolled:
+	case a.pushInterval > 0:
+		return a.pushInterval, a.pushCooldown
+	case !a.apiClient.IsEnrolled():
 		return pushIntervalNotEnrolled, 0
-	case subscriptionType == apiclient.SubscriptionTypeCommunity:
+	case a.apiClient.GetSubscriptionType() == apiclient.SubscriptionTypeCommunity:
 		// an alert after a quiet period goes out quickly, a steady stream is batched
 		return pushIntervalDefault, pushCooldownCommunity
 	default:
 		return pushIntervalDefault, 0
 	}
-}
-
-func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
-	if a.pushInterval > 0 {
-		return a.pushInterval, a.pushCooldown
-	}
-
-	return pushSchedule(a.apiClient.IsEnrolled(), a.apiClient.GetSubscriptionType())
 }
 
 func getScenarioTrustOfAlert(alert *models.Alert) string {

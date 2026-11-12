@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -1230,25 +1231,47 @@ func TestSplitSignals(t *testing.T) {
 	}
 }
 
-func TestPushSchedule(t *testing.T) {
+// testJWT returns an unsigned token: the client only reads its claims.
+func testJWT(t *testing.T, claims jwt.MapClaims) string {
+	t.Helper()
+
+	raw, err := jwt.NewWithClaims(jwt.SigningMethodNone, claims).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	return raw
+}
+
+func TestCurrentPushSchedule(t *testing.T) {
+	ctx := t.Context()
+
 	tests := []struct {
-		name             string
-		enrolled         bool
-		subscriptionType string
-		interval         time.Duration
-		cooldown         time.Duration
+		name     string
+		claims   jwt.MapClaims
+		interval time.Duration
+		cooldown time.Duration
 	}{
-		{"not enrolled", false, "", 5 * time.Minute, 0},
-		{"not enrolled, stale plan claim", false, apiclient.SubscriptionTypeCommunity, 5 * time.Minute, 0},
-		{"community", true, apiclient.SubscriptionTypeCommunity, 10 * time.Second, time.Minute},
-		{"enterprise", true, apiclient.SubscriptionTypeEnterprise, 10 * time.Second, 0},
-		{"secops", true, apiclient.SubscriptionTypeSecOps, 10 * time.Second, 0},
-		{"enrolled, no plan", true, "", 10 * time.Second, 0},
+		{"no token", nil, 5 * time.Minute, 0},
+		{"not enrolled", jwt.MapClaims{"id": "machine"}, 5 * time.Minute, 0},
+		{"not enrolled, stale plan claim", jwt.MapClaims{"id": "machine", "subscription_type": apiclient.SubscriptionTypeCommunity}, 5 * time.Minute, 0},
+		{"community", jwt.MapClaims{"organization_id": "org", "subscription_type": apiclient.SubscriptionTypeCommunity}, 10 * time.Second, time.Minute},
+		{"enterprise", jwt.MapClaims{"organization_id": "org", "subscription_type": apiclient.SubscriptionTypeEnterprise}, 10 * time.Second, 0},
+		{"secops", jwt.MapClaims{"organization_id": "org", "subscription_type": apiclient.SubscriptionTypeSecOps}, 10 * time.Second, 0},
+		{"enrolled, no plan", jwt.MapClaims{"organization_id": "org"}, 10 * time.Second, 0},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			interval, cooldown := pushSchedule(tc.enrolled, tc.subscriptionType)
+			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+			require.NoError(t, err)
+
+			api := getAPIC(t, ctx)
+			api.apiClient = apiclient.NewClient(&apiclient.Config{URL: url, VersionPrefix: "v3"})
+
+			if tc.claims != nil {
+				api.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = testJWT(t, tc.claims)
+			}
+
+			interval, cooldown := api.currentPushSchedule()
 			require.Equal(t, tc.interval, interval)
 			require.Equal(t, tc.cooldown, cooldown)
 		})

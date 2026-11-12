@@ -107,13 +107,6 @@ func TestAPICSendMetrics(t *testing.T) {
 func TestNewAPICMetricsIntervals(t *testing.T) {
 	ctx := t.Context()
 
-	token := func(claims jwt.MapClaims) string {
-		raw, err := jwt.NewWithClaims(jwt.SigningMethodNone, claims).SignedString(jwt.UnsafeAllowNoneSignatureType)
-		require.NoError(t, err)
-
-		return raw
-	}
-
 	tests := []struct {
 		name     string
 		token    string
@@ -121,8 +114,8 @@ func TestNewAPICMetricsIntervals(t *testing.T) {
 		firstMax time.Duration
 		interval time.Duration
 	}{
-		{"not enrolled", token(jwt.MapClaims{"id": "machine"}), 11 * time.Hour, 13 * time.Hour, 12 * time.Hour},
-		{"enrolled", token(jwt.MapClaims{"id": "machine", "organization_id": "org"}), 15 * time.Minute, 45 * time.Minute, 30 * time.Minute},
+		{"not enrolled", testJWT(t, jwt.MapClaims{"id": "machine"}), 11 * time.Hour, 13 * time.Hour, 12 * time.Hour},
+		{"enrolled", testJWT(t, jwt.MapClaims{"id": "machine", "organization_id": "org"}), 15 * time.Minute, 45 * time.Minute, 30 * time.Minute},
 	}
 
 	for _, tc := range tests {
