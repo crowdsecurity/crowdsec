@@ -245,7 +245,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.apiClient = apiclient.NewClient(&apiclient.Config{
+	ret.apiClient = apiclient.NewCAPIClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
@@ -901,7 +901,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		return nil
 	}
 
-	client, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	client, err := apiclient.NewDefaultCAPIClient(a.apiClient.BaseURL)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
@@ -1120,7 +1120,7 @@ func (a *apic) UpdateBlocklists(ctx context.Context, blocklists []*modelscapi.Bl
 
 	// we must use a different http client than apiClient's because the transport of apiClient is jwtTransport or here we have signed apis that are incompatibles
 	// we can use the same baseUrl as the urls are absolute and the parse will take care of it
-	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	defaultClient, err := apiclient.NewDefaultCAPIClient(a.apiClient.BaseURL)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
