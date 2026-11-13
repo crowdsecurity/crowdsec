@@ -3,7 +3,6 @@ package appsecacquisition
 import (
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -384,7 +383,7 @@ toto
 				require.True(t, responses[0].InBandInterrupt)
 
 				// Might fail if you have artifacts from previous tests, but good enough 99% of the time
-				tmpFiles, err := filepath.Glob(filepath.Join(os.TempDir(), "crzmp*"))
+				tmpFiles, err := filepath.Glob(filepath.Join(t.TempDir(), "crzmp*"))
 				require.NoError(t, err)
 				require.Empty(t, tmpFiles)
 			},
