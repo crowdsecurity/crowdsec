@@ -123,8 +123,9 @@ func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string) {
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
 
-	holders, response, err := LoadBuckets(cscfg, hub, scenarios, false)
+	holders, response, retDone, err := LoadBuckets(cscfg, hub, scenarios, false)
 	require.NoError(t, err)
+	defer close(retDone)
 
 	testFile(t, filepath.Join(dir, "test.json"), holders, response, bucketStore)
 }
