@@ -89,6 +89,7 @@ func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 		"RegisterAPISchemaBodyDecoder": w.RegisterAPISchemaBodyDecoder,
 		"SetMaxBodySize":               w.SetMaxBodySize,
 		"SetBodySizeExceededAction":    w.SetBodySizeExceededAction,
+		"SetBodyDecompression":         w.SetBodyDecompression,
 	}
 }
 

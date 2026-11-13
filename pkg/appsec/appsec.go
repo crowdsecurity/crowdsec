@@ -404,6 +404,9 @@ type BodySettings struct {
 	// Action controls what happens when a body exceeds MaxSize:
 	// "drop" (default) - block the request, "partial" - inspect up to MaxSize bytes, "allow" - skip body inspection.
 	Action string `yaml:"body_size_exceeded_action"`
+	// Decompress inspects bodies with a gzip or deflate Content-Encoding after decompressing them.
+	// MaxSize and Action apply to the decompressed data. Enabled by default.
+	Decompress bool `yaml:"decompress_body"`
 }
 
 // AppsecPhaseConfig holds configuration scoped to a specific phase (inband or outofband).
@@ -1070,8 +1073,9 @@ func (wc *AppsecConfig) Build(ctx context.Context, hub *cwhub.Hub) (*AppsecRunti
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
 	ret.BodySettings = BodySettings{
-		MaxSize: DefaultMaxBodySize,
-		Action:  BodySizeActionDrop,
+		MaxSize:    DefaultMaxBodySize,
+		Action:     BodySizeActionDrop,
+		Decompress: true,
 	}
 
 	wc.Logger.Tracef("Loading config %+v", wc)
@@ -2027,6 +2031,14 @@ func (w *AppsecRuntimeConfig) GrantAllowlistCookieInline(state *AppsecRequestSta
 
 	state.Fingerprint.LogAccepted(w.requestLogger(state), log.InfoLevel, request.ClientIP, request.RemoteAddrNormalized, "granted allowlist challenge cookie inline (submit phase)")
 
+	return nil
+}
+
+// SetBodyDecompression enables or disables decompression of request bodies before inspection.
+// Intended for use in on_load hooks.
+func (w *AppsecRuntimeConfig) SetBodyDecompression(enabled bool) error {
+	w.Logger.Debugf("setting body decompression to %t", enabled)
+	w.BodySettings.Decompress = enabled
 	return nil
 }
 
