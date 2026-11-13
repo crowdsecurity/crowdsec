@@ -7,14 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -436,4 +440,191 @@ func (l *LogValue) MarshalJSON() ([]byte, error) {
 	}
 
 	return []byte(fmt.Sprintf(`["%d",%s]`, l.Time.UnixNano(), string(line))), nil
+}
+
+// lokiHangingOnce answers query_range like Loki, except the first request, which it accepts
+// and never answers, like a query frontend that lost the sub-query.
+func lokiHangingOnce(t *testing.T, lines int) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+
+	var calls atomic.Int32
+
+	release := make(chan struct{})
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/loki/api/v1/query_range" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		result := `[]`
+
+		switch calls.Add(1) {
+		case 1:
+			select {
+			case <-r.Context().Done():
+			case <-release:
+			}
+
+			return
+		case 2:
+			values := make([]string, lines)
+			for i := range lines {
+				values[i] = fmt.Sprintf(`["%d","line %d"]`, time.Now().UnixNano(), i)
+			}
+
+			result = `[{"stream":{"server":"demo"},"values":[` + strings.Join(values, ",") + `]}]`
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":%s}}`, result)
+	}))
+	// cleanups run in reverse: unblock the hanging handler before Close waits for it
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+
+	return srv, &calls
+}
+
+func TestRequestTimeoutRecovers(t *testing.T) {
+	tests := []struct {
+		name string
+		mode string
+	}{
+		{name: "streaming", mode: "tail"},
+		{name: "one shot", mode: "cat"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			srv, calls := lokiHangingOnce(t, 3)
+
+			logger := log.New()
+			hook := logtest.NewLocal(logger)
+			lokiSource := loki.Source{}
+
+			config := fmt.Sprintf(`
+mode: %s
+source: loki
+url: %s
+query: '{server="demo"}'
+request_timeout: 300ms
+`, tc.mode, srv.URL)
+			require.NoError(t, lokiSource.Configure(ctx, []byte(config), logger.WithField("type", loki.ModuleName), metrics.AcquisitionMetricsLevelNone))
+
+			out := make(chan pipeline.Event, 10)
+			lokiTomb := &tomb.Tomb{}
+
+			errCh := make(chan error, 1)
+
+			go func() {
+				if tc.mode == "cat" {
+					errCh <- lokiSource.OneShotAcquisition(ctx, out, lokiTomb)
+				} else {
+					errCh <- lokiSource.StreamingAcquisition(ctx, out, lokiTomb)
+				}
+			}()
+
+			for i := range 3 {
+				select {
+				case evt := <-out:
+					require.Equal(t, fmt.Sprintf("line %d", i), evt.Line.Raw)
+				case <-time.After(5 * time.Second):
+					t.Fatalf("got %d lines; source stuck on the unanswered request", i)
+				}
+			}
+
+			select {
+			case err := <-errCh:
+				require.NoError(t, err)
+			case <-time.After(5 * time.Second):
+				t.Fatal("acquisition did not return")
+			}
+
+			lokiTomb.Kill(nil)
+
+			require.GreaterOrEqual(t, calls.Load(), int32(2))
+
+			timedOut := false
+
+			for _, e := range hook.AllEntries() {
+				if e.Level == log.WarnLevel && strings.Contains(e.Message, "timed out after 300ms") {
+					timedOut = true
+				}
+			}
+
+			require.True(t, timedOut, "no warning logged for the timed out request")
+		})
+	}
+}
+
+func TestRequestTimeoutConfig(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name        string
+		config      string
+		dsn         string
+		expected    time.Duration
+		expectedErr string
+	}{
+		{
+			name:     "streaming default",
+			config:   "mode: tail\nsource: loki\nurl: http://localhost:3100\nquery: '{a=\"b\"}'",
+			expected: 2 * time.Minute,
+		},
+		{
+			name:     "one shot default",
+			config:   "mode: cat\nsource: loki\nurl: http://localhost:3100\nquery: '{a=\"b\"}'",
+			expected: 2 * time.Minute,
+		},
+		{
+			name:     "explicit",
+			config:   "mode: tail\nsource: loki\nurl: http://localhost:3100\nquery: '{a=\"b\"}'\nrequest_timeout: 5s",
+			expected: 5 * time.Second,
+		},
+		{
+			name:        "negative",
+			config:      "mode: tail\nsource: loki\nurl: http://localhost:3100\nquery: '{a=\"b\"}'\nrequest_timeout: -1s",
+			expectedErr: "request_timeout must be positive",
+		},
+		{
+			name:     "dsn default",
+			dsn:      `loki://localhost:3100/?query={a="b"}`,
+			expected: 2 * time.Minute,
+		},
+		{
+			name:     "dsn explicit",
+			dsn:      `loki://localhost:3100/?query={a="b"}&request_timeout=10s`,
+			expected: 10 * time.Second,
+		},
+		{
+			name:        "dsn invalid",
+			dsn:         `loki://localhost:3100/?query={a="b"}&request_timeout=soon`,
+			expectedErr: "invalid request_timeout in dsn",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := log.WithField("type", loki.ModuleName)
+			lokiSource := loki.Source{}
+
+			var err error
+			if tc.dsn != "" {
+				err = lokiSource.ConfigureByDSN(ctx, tc.dsn, map[string]string{"type": "testtype"}, logger, "")
+			} else {
+				err = lokiSource.Configure(ctx, []byte(tc.config), logger, metrics.AcquisitionMetricsLevelNone)
+			}
+
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			if tc.expectedErr != "" {
+				return
+			}
+
+			require.Equal(t, tc.expected, lokiSource.Config.RequestTimeout)
+		})
+	}
 }
