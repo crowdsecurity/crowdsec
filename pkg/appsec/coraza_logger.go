@@ -5,6 +5,8 @@ import (
 	"io"
 	"maps"
 
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
+
 	dbg "github.com/corazawaf/coraza/v3/debuglog"
 	log "github.com/sirupsen/logrus"
 )
@@ -37,24 +39,10 @@ func (e *crzLogEvent) Msg(msg string) {
 		return
 	}
 
-	/*this is a hack. As we want to have per-level rule debug but it's not allowed by coraza/modsec, if a rule ID is flagged to be in debug mode, the
-	.Int("rule_id", <ID>) call will set the log_level of the event to debug. However, given the logger is global to the appsec-runner,
-	we are switching forth and back the log level of the logger*/
-	oldLvl := e.logger.Logger.GetLevel()
-
-	if e.level != oldLvl {
-		e.logger.Logger.SetLevel(e.level)
-	}
-
 	if len(e.fields) == 0 {
 		e.logger.Log(e.level, msg)
 	} else {
 		e.logger.WithFields(e.fields).Log(e.level, msg)
-	}
-
-	if e.level != oldLvl {
-		e.logger.Logger.SetLevel(oldLvl)
-		e.level = oldLvl
 	}
 }
 
@@ -135,7 +123,14 @@ type crzLogger struct {
 }
 
 func NewCrzLogger(logger *log.Entry) *crzLogger {
-	return &crzLogger{logger: logger, logLevel: logger.Logger.GetLevel()}
+	// Create an isolated logger to avoid mutating a shared one at runtime.
+	// Use TraceLevel so filtering is handled by crzLogger logic (for per-rule debug).
+	entry := logging.SubLogger(logger.Logger, "", log.TraceLevel)
+	if len(logger.Data) > 0 {
+		entry = entry.WithFields(logger.Data)
+	}
+
+	return &crzLogger{logger: entry, logLevel: logger.Logger.GetLevel()}
 }
 
 func (c *crzLogger) NewMutedEvt(lvl log.Level) dbg.Event {
@@ -157,8 +152,8 @@ func (c *crzLogger) WithOutput(w io.Writer) dbg.Logger {
 }
 
 func (c *crzLogger) WithLevel(lvl dbg.Level) dbg.Logger {
+	// Adjust only the logical threshold; do not mutate the underlying logger level
 	c.logLevel = log.Level(lvl)
-	c.logger.Logger.SetLevel(c.logLevel)
 
 	return c
 }
