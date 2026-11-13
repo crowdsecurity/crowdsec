@@ -1,0 +1,113 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Kinesis datasource
+description: >
+  Schema for kinesis acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/kinesis.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: kinesis
+    description: >
+      Must be kinesis to bind this acquisition entry to the Kinesis
+      datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: kinesis).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  stream_name:
+    type: string
+    description: >
+      Kinesis stream name. Mandatory when use_enhanced_fanout is false;
+      mutually exclusive with stream_arn.
+  stream_arn:
+    type: string
+    description: >
+      Kinesis stream ARN. Mandatory when use_enhanced_fanout is true;
+      mutually exclusive with stream_name.
+  use_enhanced_fanout:
+    type: boolean
+    default: false
+    description: >
+      Use RegisterStreamConsumer/SubscribeToShard instead of GetRecords
+      polling.
+  aws_profile:
+    type: string
+    description: Named AWS profile to use for credentials.
+  aws_region:
+    type: string
+    default: us-east-1
+    description: AWS region to use.
+  aws_endpoint:
+    type: string
+    description: Override the AWS Kinesis API endpoint (for local testing).
+  consumer_name:
+    type: string
+    description: >
+      Enhanced fan-out consumer name; mandatory when use_enhanced_fanout is
+      true.
+  from_subscription:
+    type: boolean
+    default: false
+    description: Internal flag set when reading via a shard subscription.
+  max_retries:
+    type: integer
+    minimum: 1
+    default: 10
+    description: Maximum number of retries for Kinesis API calls.
+required:
+  - source
+allOf:
+  - not:
+      required: [stream_name, stream_arn]
+  - if:
+      properties:
+        use_enhanced_fanout:
+          const: true
+      required: [use_enhanced_fanout]
+    then:
+      required: [stream_arn, consumer_name]
+    else:
+      required: [stream_name]
+examples:
+  - source: kinesis
+    stream_name: my-stream
+    aws_region: eu-west-1
+    labels:
+      type: kinesis

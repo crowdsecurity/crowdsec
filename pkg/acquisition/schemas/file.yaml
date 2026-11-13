@@ -1,0 +1,114 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec File datasource
+description: >
+  Schema for file acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/file.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: file
+    description: >
+      Must be file to bind this acquisition entry to the File datasource.
+  mode:
+    type: string
+    enum: [tail, cat]
+    default: tail
+    description: >
+      Acquisition mode (tail streams new lines, cat reads the file(s) once).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: syslog).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  filenames:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      minLength: 1
+    description: >
+      Glob patterns of files to read/tail. At least one of filenames or
+      filename is required.
+  filename:
+    type: string
+    minLength: 1
+    description: >
+      Single glob pattern, appended to filenames when set.
+  exclude_regexps:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      minLength: 1
+      format: regex
+    description: >
+      Regular expressions used to exclude matched files from acquisition.
+  force_inotify:
+    type: boolean
+    default: false
+    description: >
+      Force an inotify watch on the parent directory even for non-glob
+      patterns.
+  max_buffer_size:
+    type: integer
+    minimum: 1
+    description: >
+      Maximum size, in bytes, of a scanned line; defaults to bufio's
+      MaxScanTokenSize when unset.
+  poll_without_inotify:
+    type: boolean
+    description: >
+      Fall back to polling instead of inotify (auto-detected on some
+      filesystems such as network shares when unset).
+  discovery_poll_enable:
+    type: boolean
+    default: false
+    description: >
+      Periodically re-glob patterns to discover newly created files matching
+      them, in addition to inotify-based discovery.
+  discovery_poll_interval:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Interval between discovery polls when discovery_poll_enable is true.
+required:
+  - source
+anyOf:
+  - required: [filenames]
+  - required: [filename]
+examples:
+  - source: file
+    filenames:
+      - /var/log/nginx/access.log
+    labels:
+      type: nginx

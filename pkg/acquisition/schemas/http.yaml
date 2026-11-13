@@ -1,0 +1,171 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec HTTP datasource
+description: >
+  Schema for http acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/http.Configuration and the embedded
+  configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: http
+    description: >
+      Must be http to bind this acquisition entry to the HTTP datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: http).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  listen_addr:
+    type: string
+    description: >
+      Address:port to bind the HTTP listener on. Required unless
+      listen_socket is set.
+  listen_socket:
+    type: string
+    description: >
+      Unix socket path to bind the HTTP listener on, instead of listen_addr.
+  path:
+    type: string
+    default: "/"
+    minLength: 1
+    description: HTTP path this datasource listens on; must start with /.
+  auth_type:
+    type: string
+    enum: [basic_auth, headers, mtls]
+    description: >
+      Authentication method required from callers.
+  basic_auth:
+    type: object
+    additionalProperties: false
+    description: Required when auth_type is basic_auth.
+    properties:
+      username:
+        type: string
+        minLength: 1
+      password:
+        type: string
+        minLength: 1
+    required:
+      - username
+      - password
+  headers:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      type: string
+    description: >
+      Expected header/value pairs; required when auth_type is headers.
+  tls:
+    type: object
+    additionalProperties: false
+    description: >
+      TLS listener settings; ca_cert is required when auth_type is mtls.
+    properties:
+      insecure_skip_verify:
+        type: boolean
+        default: false
+      server_cert:
+        type: string
+        minLength: 1
+      server_key:
+        type: string
+        minLength: 1
+      ca_cert:
+        type: string
+    required:
+      - server_cert
+      - server_key
+  custom_status_code:
+    type: integer
+    description: >
+      HTTP status code returned on successful ingestion, in place of the
+      default.
+  custom_headers:
+    type: object
+    additionalProperties:
+      type: string
+    description: Extra response headers to send back to the caller.
+  max_body_size:
+    type: integer
+    minimum: 1
+    default: 10485760
+    description: >
+      Maximum accepted request body size, in bytes, after decompression.
+  timeout:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: Request handling timeout.
+required:
+  - source
+  - auth_type
+anyOf:
+  - required: [listen_addr]
+  - required: [listen_socket]
+allOf:
+  - if:
+      properties:
+        auth_type:
+          const: basic_auth
+      required: [auth_type]
+    then:
+      required: [basic_auth]
+  - if:
+      properties:
+        auth_type:
+          const: headers
+      required: [auth_type]
+    then:
+      required: [headers]
+  - if:
+      properties:
+        auth_type:
+          const: mtls
+      required: [auth_type]
+    then:
+      required: [tls]
+      properties:
+        tls:
+          required: [ca_cert]
+examples:
+  - source: http
+    listen_addr: 127.0.0.1:8080
+    auth_type: headers
+    headers:
+      X-Api-Key: secret
+    labels:
+      type: http
