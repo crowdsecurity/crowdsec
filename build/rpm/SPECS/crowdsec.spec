@@ -200,7 +200,7 @@ if [ $1 == 1 ]; then
     if [ "$API" = "nil" ] ; then
         LAPI=false
     else
-       ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+       ENABLED=$(cscli config show --key "Config.API.Server.Enable" -o json 2>/dev/null || true)
        if [ "$ENABLED" = "false" ]; then
            LAPI=false
        fi

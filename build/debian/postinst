@@ -72,7 +72,7 @@ if [ "$1" = configure ]; then
         LAPI=false
     else
         # If API server is explicitly disabled, don't attempt port checks
-        ENABLED=$(cscli config show --key "Config.API.Server.Enable" 2>/dev/null || true)
+        ENABLED=$(cscli config show --key "Config.API.Server.Enable" -o json 2>/dev/null || true)
         if [ "$ENABLED" = "false" ]; then
             LAPI=false
         fi
