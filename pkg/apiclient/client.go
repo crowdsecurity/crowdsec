@@ -150,7 +150,29 @@ func GetLAPIClient() (*ApiClient, error) {
 	return lapiClient, nil
 }
 
+// lapiTLSConfig returns the TLS settings from api.client, which only apply to LAPI.
+func lapiTLSConfig() *tls.Config {
+	tlsconfig := &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig.RootCAs = CaCertPool
+
+	if Cert != nil {
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+
+	return tlsconfig
+}
+
+// NewClient returns a client for LAPI.
 func NewClient(config *Config) *ApiClient {
+	return newJWTClient(config, lapiTLSConfig())
+}
+
+// NewCAPIClient returns a client for CAPI/PAPI, ignoring the LAPI client TLS settings.
+func NewCAPIClient(config *Config) *ApiClient {
+	return newJWTClient(config, &tls.Config{})
+}
+
+func newJWTClient(config *Config, tlsconfig *tls.Config) *ApiClient {
 	userAgent := config.UserAgent
 	if userAgent == "" {
 		userAgent = useragent.Default()
@@ -185,15 +207,8 @@ func NewClient(config *Config) *ApiClient {
 
 	t.URL = baseURL
 
-	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-	tlsconfig.RootCAs = CaCertPool
-
-	if Cert != nil {
-		tlsconfig.Certificates = []tls.Certificate{*Cert}
-	}
-
 	if t.Transport != nil {
-		t.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
+		t.Transport.(*http.Transport).TLSClientConfig = tlsconfig
 	}
 
 	c := &ApiClient{client: t.Client(), BaseURL: baseURL, UserAgent: userAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
@@ -211,7 +226,17 @@ func NewClient(config *Config) *ApiClient {
 	return c
 }
 
+// NewDefaultClient returns a client for LAPI, without JWT authentication.
 func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
+	return newNoAuthClient(url, prefix, userAgent, client, lapiTLSConfig())
+}
+
+// NewDefaultCAPIClient returns a client for CAPI without JWT authentication, ignoring the LAPI client TLS settings.
+func NewDefaultCAPIClient(url *url.URL) (*ApiClient, error) {
+	return newNoAuthClient(url, "", "", nil, &tls.Config{})
+}
+
+func newNoAuthClient(url *url.URL, prefix string, userAgent string, client *http.Client, tlsconfig *tls.Config) (*ApiClient, error) {
 	transport, baseURL := createTransport(url)
 
 	if client == nil {
@@ -222,14 +247,7 @@ func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *htt
 		} else {
 			if ht, ok := http.DefaultTransport.(*http.Transport); ok {
 				ht = ht.Clone()
-				tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-				tlsconfig.RootCAs = CaCertPool
-
-				if Cert != nil {
-					tlsconfig.Certificates = []tls.Certificate{*Cert}
-				}
-
-				ht.TLSClientConfig = &tlsconfig
+				ht.TLSClientConfig = tlsconfig
 				client.Transport = ht
 			}
 		}
@@ -254,7 +272,23 @@ func NewDefaultClient(url *url.URL, prefix string, userAgent string, client *htt
 	return c, nil
 }
 
+// RegisterClient registers a machine to LAPI.
 func RegisterClient(ctx context.Context, config *Config, client *http.Client) (*ApiClient, error) {
+	tlsconfig := &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+
+	return registerMachine(ctx, config, client, tlsconfig)
+}
+
+// RegisterCAPIClient registers a machine to CAPI, ignoring the LAPI client TLS settings.
+func RegisterCAPIClient(ctx context.Context, config *Config) (*ApiClient, error) {
+	return registerMachine(ctx, config, nil, &tls.Config{})
+}
+
+func registerMachine(ctx context.Context, config *Config, client *http.Client, tlsconfig *tls.Config) (*ApiClient, error) {
 	transport, baseURL := createTransport(config.URL)
 
 	if client == nil {
@@ -262,14 +296,8 @@ func RegisterClient(ctx context.Context, config *Config, client *http.Client) (*
 		if transport != nil {
 			client.Transport = transport
 		} else {
-			tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-			if Cert != nil {
-				tlsconfig.RootCAs = CaCertPool
-				tlsconfig.Certificates = []tls.Certificate{*Cert}
-			}
-
 			client.Transport = http.DefaultTransport.(*http.Transport).Clone()
-			client.Transport.(*http.Transport).TLSClientConfig = &tlsconfig
+			client.Transport.(*http.Transport).TLSClientConfig = tlsconfig
 		}
 	} else if client.Transport == nil && transport != nil {
 		client.Transport = transport
