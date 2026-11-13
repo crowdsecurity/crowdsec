@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/netip"
@@ -116,6 +117,15 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 		logger.Infof("Creating bouncer %s", bouncerName)
 
 		bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType, true)
+		if existsErr := (*database.BouncerExistsError)(nil); errors.As(err, &existsErr) {
+			// a concurrent request with the same certificate created it first
+			bouncer, err = a.DbClient.SelectBouncerByName(ctx, bouncerName)
+			if err == nil && bouncer.AuthType != types.TlsAuthType {
+				logger.Errorf("bouncer isn't allowed to auth by TLS")
+				return nil
+			}
+		}
+
 		if err != nil {
 			logger.Errorf("while creating bouncer db entry: %s", err)
 			return nil
@@ -208,6 +218,11 @@ func (a *APIKey) authPlain(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 	logger.Infof("Creating bouncer %s", bouncerName)
 
 	bouncer, err = a.DbClient.CreateBouncer(ctx, bouncerName, clientIP, hashStr, types.ApiKeyAuthType, true)
+	if existsErr := (*database.BouncerExistsError)(nil); errors.As(err, &existsErr) {
+		// a concurrent request with the same key from this IP created it first
+		bouncer, err = a.DbClient.SelectBouncerWithIP(ctx, hashStr, clientIP)
+	}
+
 	if err != nil {
 		logger.Errorf("while creating bouncer db entry: %s", err)
 		return nil
