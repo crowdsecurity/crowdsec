@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
@@ -67,6 +68,13 @@ func (s *DummyPlugin) Notify(_ context.Context, notification *protobufs.Notifica
 	}
 
 	fmt.Fprintln(os.Stdout, text)
+
+	// simulate a slow plugin in tests: hold the delivery open so the broker
+	// has an in-flight call during shutdown. Empty batches (signaled by the
+	// watcher on shutdown even with nothing pending) return right away.
+	if d, err := time.ParseDuration(os.Getenv("DUMMY_SLEEP")); err == nil && d > 0 && text != "" && text != "null" && text != "[]" {
+		time.Sleep(d)
+	}
 
 	return &protobufs.Empty{}, nil
 }

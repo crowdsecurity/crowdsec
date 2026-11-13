@@ -401,3 +401,108 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	err = decoder.Decode(&alerts)
 	assert.Equal(t, err, io.EOF)
 }
+
+func (s *PluginSuite) TestBrokerShutdownPendingAlert() {
+	ctx := s.T().Context()
+
+	// don't flush by timer: the alert must stay pending until shutdown
+	defer func(orig time.Duration) { DefaultEmptyTicker = orig }(DefaultEmptyTicker)
+	DefaultEmptyTicker = time.Hour
+
+	t := s.T()
+
+	// threshold won't be reached by a single alert
+	cfg := s.readconfig()
+	cfg.GroupThreshold = 5
+	s.writeconfig(cfg)
+
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
+
+	tomb := tomb.Tomb{}
+
+	done := make(chan struct{})
+
+	go func() {
+		pb.Run(&tomb)
+		close(done)
+	}()
+
+	// enqueue and shut down right away, like cscli notifications test:
+	// the broker must not drop an alert that had no chance to be delivered
+	// yet. The send returns once the broker has queued the alert, so the
+	// shutdown flush has to be the one delivering it.
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
+	tomb.Kill(nil)
+
+	select {
+	case <-done:
+	case <-time.After(15 * time.Second):
+		t.Fatal("plugin broker did not stop after shutdown")
+	}
+
+	content, err := os.ReadFile(s.outFile)
+	require.NoError(t, err, "pending alert was lost on shutdown")
+
+	decoder := json.NewDecoder(bytes.NewReader(content))
+
+	// count the alerts across batches: the shutdown flush may be followed by
+	// an empty batch from the watcher
+	var alerts []models.Alert
+
+	for {
+		var batch []models.Alert
+		if err := decoder.Decode(&batch); err != nil {
+			require.Equal(t, io.EOF, err)
+			break
+		}
+
+		alerts = append(alerts, batch...)
+	}
+
+	require.Len(t, alerts, 1)
+}
+
+func (s *PluginSuite) TestBrokerShutdownInflightDelivery() {
+	ctx := s.T().Context()
+
+	DefaultEmptyTicker = 50 * time.Millisecond
+
+	t := s.T()
+
+	// make the plugin hold the delivery open for 2s
+	t.Setenv("DUMMY_SLEEP", "2s")
+
+	pb, err := s.InitBroker(ctx, nil)
+	require.NoError(t, err)
+
+	tomb := tomb.Tomb{}
+
+	done := make(chan struct{})
+
+	go func() {
+		pb.Run(&tomb)
+		close(done)
+	}()
+
+	pb.PluginChannel <- models.ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
+	// the plugin writes the file before sleeping: the delivery is in flight
+	require.Eventually(t, func() bool {
+		_, err := os.Stat(s.outFile)
+		return err == nil
+	}, 5*time.Second, 25*time.Millisecond, "alert was not delivered to the plugin")
+
+	start := time.Now()
+	tomb.Kill(nil)
+
+	select {
+	case <-done:
+		// shutdown must wait for the in-flight delivery to complete instead
+		// of killing the plugin
+		require.GreaterOrEqual(t, time.Since(start), time.Second, "shutdown did not wait for the in-flight delivery")
+	case <-time.After(15 * time.Second):
+		t.Fatal("plugin broker did not stop after shutdown")
+	}
+}
