@@ -72,6 +72,54 @@ func TestDateParse(t *testing.T) {
 			},
 			expected: "2024-11-26T20:13:32.123456789Z",
 		},
+		{
+			name: "ISO 8601, space separator, timezone",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32+01:00",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32+01:00",
+		},
+		{
+			name: "ISO 8601, space separator, negative timezone",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32-05:00",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32-05:00",
+		},
+		{
+			name: "ISO 8601, space separator, UTC",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32Z",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32Z",
+		},
+		{
+			name: "ISO 8601, space separator, timezone, milliseconds",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32.123+01:00",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32.123+01:00",
+		},
+		{
+			name: "ISO 8601, space separator, timezone without colon",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32-0700",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32-07:00",
+		},
+		{
+			name: "ISO 8601, space separator, timezone without colon, milliseconds",
+			evt: pipeline.Event{
+				StrTime:       "2024-11-26 20:13:32.123-0700",
+				StrTimeFormat: "",
+			},
+			expected: "2024-11-26T20:13:32.123-07:00",
+		},
 	}
 
 	logger := log.WithField("test", "test")
