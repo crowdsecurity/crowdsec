@@ -1,6 +1,6 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.27.1
+go 1.27.3
 
 require (
 	ariga.io/atlas v1.3.0
