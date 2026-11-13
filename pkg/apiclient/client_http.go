@@ -120,14 +120,14 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v any) (*Response
 		return response, err
 	}
 
-	if log.IsLevelEnabled(log.DebugLevel) {
+	if log.IsLevelEnabled(log.TraceLevel) {
 		for k, v := range resp.Header {
-			log.Debugf("[headers] %s: %s", k, v)
+			log.Tracef("[headers] %s: %s", k, v)
 		}
 
 		dump, err := httputil.DumpResponse(resp, true)
 		if err == nil {
-			log.Debugf("Response: %s", string(dump))
+			log.Tracef("Response: %s", string(dump))
 		}
 	}
 
