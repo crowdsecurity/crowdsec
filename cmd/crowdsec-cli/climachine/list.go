@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -41,7 +42,7 @@ func getLastHeartbeat(m *ent.Machine) (string, bool) {
 
 func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 	t := cstable.NewLight(out, cli.cfg().Cscli.Color).Writer
-	t.AppendHeader(table.Row{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Last Heartbeat"})
+	t.AppendHeader(table.Row{"Name", "IP Address", "Last Update", "Status", "Version", "OS", "Auth Type", "Last Heartbeat", "Features"})
 
 	for _, m := range machines {
 		validated := emoji.Prohibited
@@ -54,7 +55,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AppendRow(table.Row{m.MachineId, m.IpAddress, csformat.LocalTime(m.UpdatedAt).Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb})
+		t.AppendRow(table.Row{m.MachineId, m.IpAddress, csformat.LocalTime(m.UpdatedAt).Format(time.RFC3339), validated, m.Version, clientinfo.GetOSNameAndVersion(m), m.AuthType, hb, strings.Join(m.Features, ",")})
 	}
 
 	fmt.Fprintln(out, t.Render())
@@ -63,7 +64,7 @@ func (cli *cliMachines) listHuman(out io.Writer, machines ent.Machines) {
 func (*cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 	csvwriter := csv.NewWriter(out)
 
-	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os"})
+	err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat", "os", "features"})
 	if err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
@@ -79,7 +80,12 @@ func (*cliMachines) listCSV(out io.Writer, machines ent.Machines) error {
 			hb = m.LastHeartbeat.Format(time.RFC3339)
 		}
 
-		if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb, fmt.Sprintf("%s/%s", m.Osname, m.Osversion)}); err != nil {
+		row := []string{
+			m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb,
+			fmt.Sprintf("%s/%s", m.Osname, m.Osversion), strings.Join(m.Features, ","),
+		}
+
+		if err := csvwriter.Write(row); err != nil {
 			return fmt.Errorf("failed to write raw output: %w", err)
 		}
 	}

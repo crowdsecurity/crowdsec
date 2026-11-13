@@ -134,13 +134,21 @@ func startOutputRoutines(ctx context.Context, cConfig *csconfig.Config, parsers 
 	}
 }
 
-func startLPMetrics(ctx context.Context, cConfig *csconfig.Config, apiClient *apiclient.ApiClient, hub *cwhub.Hub, datasources []acquisition.ConfiguredSource) error {
+func startLPMetrics(
+	ctx context.Context,
+	cConfig *csconfig.Config,
+	apiClient *apiclient.ApiClient,
+	hub *cwhub.Hub,
+	datasources []acquisition.ConfiguredSource,
+	features []string,
+) error {
 	mp := NewMetricsProvider(
 		apiClient,
 		lpMetricsDefaultInterval,
 		log.WithField("service", "lpmetrics"),
 		datasources,
 		hub,
+		features,
 	)
 
 	go func() {
@@ -170,6 +178,7 @@ func runCrowdsec(
 	parsers *parser.Parsers,
 	hub *cwhub.Hub,
 	datasources []acquisition.ConfiguredSource,
+	features []string,
 	sd *StateDumper,
 	bucketStore *leakybucket.BucketStore,
 ) error {
@@ -188,7 +197,7 @@ func runCrowdsec(
 
 	startOutputRoutines(ctx, cConfig, parsers, apiClient, sd, bucketStore)
 
-	if err := startLPMetrics(ctx, cConfig, apiClient, hub, datasources); err != nil {
+	if err := startLPMetrics(ctx, cConfig, apiClient, hub, datasources, features); err != nil {
 		return err
 	}
 
@@ -208,6 +217,7 @@ func serveCrowdsec(
 	cConfig *csconfig.Config,
 	hub *cwhub.Hub,
 	datasources []acquisition.ConfiguredSource,
+	features []string,
 	agentReady chan bool,
 	sd *StateDumper,
 ) {
@@ -227,7 +237,7 @@ func serveCrowdsec(
 
 			agentReady <- true
 
-			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd, bucketStore); err != nil {
+			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, features, sd, bucketStore); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()

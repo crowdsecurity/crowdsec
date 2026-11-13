@@ -21,6 +21,9 @@ type LapiMetrics struct {
 
 	// console options
 	ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
+
+	// features enabled on the LAPI (lapi, capi, papi)
+	Features []string `json:"features"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -35,12 +38,16 @@ func (m *LapiMetrics) UnmarshalJSON(raw []byte) error {
 	// AO1
 	var dataAO1 struct {
 		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
+
+		Features []string `json:"features"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
 
 	m.ConsoleOptions = dataAO1.ConsoleOptions
+
+	m.Features = dataAO1.Features
 
 	return nil
 }
@@ -56,9 +63,13 @@ func (m LapiMetrics) MarshalJSON() ([]byte, error) {
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
 		ConsoleOptions ConsoleOptions `json:"console_options,omitempty"`
+
+		Features []string `json:"features"`
 	}
 
 	dataAO1.ConsoleOptions = m.ConsoleOptions
+
+	dataAO1.Features = m.Features
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {

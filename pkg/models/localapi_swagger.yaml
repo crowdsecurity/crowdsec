@@ -1231,6 +1231,11 @@ definitions:
           last_update:
             type: integer
             description: last update date
+          features:
+            type: array
+            items:
+              type: string
+            description: features enabled on the log processor (log_processor, waf, bot_detection), plus those of the LAPI it runs with in the same process (lapi, capi, papi)
         required:
           - hub_items
           - datasources
@@ -1242,6 +1247,11 @@ definitions:
       - properties:
           console_options:
             $ref: '#/definitions/ConsoleOptions'
+          features:
+            type: array
+            items:
+              type: string
+            description: features enabled on the LAPI (lapi, capi, papi)
   AllMetrics:
     title: AllMetrics
     type: object

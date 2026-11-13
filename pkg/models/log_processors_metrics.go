@@ -24,6 +24,9 @@ type LogProcessorsMetrics struct {
 	// Required: true
 	Datasources map[string]int64 `json:"datasources"`
 
+	// features enabled on the log processor (log_processor, waf, bot_detection), plus those of the LAPI it runs with in the same process (lapi, capi, papi)
+	Features []string `json:"features"`
+
 	// hub items
 	// Required: true
 	HubItems HubItems `json:"hub_items"`
@@ -51,6 +54,8 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Datasources map[string]int64 `json:"datasources"`
 
+		Features []string `json:"features"`
+
 		HubItems HubItems `json:"hub_items"`
 
 		LastPush int64 `json:"last_push,omitempty"`
@@ -64,6 +69,8 @@ func (m *LogProcessorsMetrics) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.Datasources = dataAO1.Datasources
+
+	m.Features = dataAO1.Features
 
 	m.HubItems = dataAO1.HubItems
 
@@ -88,6 +95,8 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Datasources map[string]int64 `json:"datasources"`
 
+		Features []string `json:"features"`
+
 		HubItems HubItems `json:"hub_items"`
 
 		LastPush int64 `json:"last_push,omitempty"`
@@ -98,6 +107,8 @@ func (m LogProcessorsMetrics) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.Datasources = m.Datasources
+
+	dataAO1.Features = m.Features
 
 	dataAO1.HubItems = m.HubItems
 

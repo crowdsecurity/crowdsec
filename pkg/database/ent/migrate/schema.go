@@ -314,6 +314,7 @@ var (
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
 		{Name: "hubstate", Type: field.TypeJSON, Nullable: true},
 		{Name: "datasources", Type: field.TypeJSON, Nullable: true},
+		{Name: "features", Type: field.TypeJSON, Nullable: true},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{

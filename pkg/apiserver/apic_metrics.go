@@ -97,9 +97,11 @@ func lpBaseMetrics(lp *ent.Machine) *models.LogProcessorsMetrics {
 
 	ret := &models.LogProcessorsMetrics{
 		Datasources: lp.Datasources,
-		HubItems:    hubItems,
-		LastUpdate:  lp.UpdatedAt.UTC().Unix(),
-		Name:        lp.MachineId,
+		// not null when the log processor predates features
+		Features:   append([]string{}, lp.Features...),
+		HubItems:   hubItems,
+		LastUpdate: lp.UpdatedAt.UTC().Unix(),
+		Name:       lp.MachineId,
 	}
 
 	if lp.LastPush != nil {
@@ -147,6 +149,7 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 		ConsoleOptions: models.ConsoleOptions{
 			strings.Join(a.consoleConfig.EnabledOptions(), ","),
 		},
+		Features: append([]string{}, a.features...),
 	}
 
 	ret.Os = &models.OSversion{
@@ -156,10 +159,11 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 	}
 	ret.Version = new(version.String())
 	ret.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
+	// sent with the usage metrics, which don't follow the legacy metrics interval
 	ret.Metrics = []*models.DetailedMetrics{{
 		Meta: &models.MetricsMeta{
 			UtcNowTimestamp:   new(time.Now().UTC().Unix()),
-			WindowSizeSeconds: new(int64(a.metricsInterval.Seconds())),
+			WindowSizeSeconds: new(int64(metricsIntervalDefault.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	}}

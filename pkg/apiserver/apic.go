@@ -13,12 +13,15 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -38,10 +41,20 @@ const (
 	pullIntervalDelta         = time.Minute * 5
 	pushIntervalDefault       = time.Second * 10
 	pushIntervalDelta         = time.Second * 7
+	pushCooldownCommunity     = time.Minute
+	pushIntervalNotEnrolled   = time.Minute * 5
 	metricsIntervalDefault    = time.Minute * 30
 	metricsIntervalDelta      = time.Minute * 15
+	metricsIntervalUnenrolled = time.Hour * 12
+	metricsDeltaUnenrolled    = time.Hour
 	usageMetricsInterval      = time.Minute * 30
 	usageMetricsIntervalDelta = time.Minute * 15
+
+	signalsBatchSize = 200
+	// the CAPI answers 413 above 6MiB, measured on the uncompressed json body
+	signalsBatchBytes = 6 * 1024 * 1024
+	// matches the timeout of the API gateway in front of the CAPI
+	signalsBatchTimeout = 30 * time.Second
 )
 
 type apic struct {
@@ -49,7 +62,8 @@ type apic struct {
 	// or they can be negative
 	pullInterval              time.Duration
 	pullIntervalFirst         time.Duration
-	pushInterval              time.Duration
+	pushInterval              time.Duration // zero: depends on enrollment and plan
+	pushCooldown              time.Duration // only used along with pushInterval
 	pushIntervalFirst         time.Duration
 	metricsInterval           time.Duration
 	metricsIntervalFirst      time.Duration
@@ -66,7 +80,9 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	consoleConfig *csconfig.ConsoleConfig
-	isPulling     chan bool
+	// reported in the LAPI usage metrics
+	features  []string
+	isPulling chan bool
 	whitelists    *csconfig.CapiWhitelist
 
 	pullBlocklists bool
@@ -206,7 +222,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
-		pushInterval:              pushIntervalDefault,
 		pushIntervalFirst:         randomDuration(pushIntervalDefault, pushIntervalDelta),
 		metricsInterval:           metricsIntervalDefault,
 		metricsIntervalFirst:      randomDuration(metricsIntervalDefault, metricsIntervalDelta),
@@ -243,6 +258,12 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	})
 
 	err = ret.Authenticate(ctx, config)
+
+	// enrolling requires a restart
+	if !ret.apiClient.IsEnrolled() {
+		ret.metricsInterval = metricsIntervalUnenrolled
+		ret.metricsIntervalFirst = randomDuration(metricsIntervalUnenrolled, metricsDeltaUnenrolled)
+	}
 
 	return ret, err
 }
@@ -293,11 +314,17 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	var cache modelscapi.AddSignalsRequest
+	var (
+		cache modelscapi.AddSignalsRequest
+		// overlapping pushes would pile up against a slow CAPI
+		sending  atomic.Bool
+		lastPush time.Time
+	)
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
+	interval, cooldown := a.currentPushSchedule()
 
-	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", a.pushIntervalFirst.Round(time.Second), a.pushInterval)
+	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s, at least %s between pushes)", a.pushIntervalFirst.Round(time.Second), interval, cooldown)
 
 	for {
 		select {
@@ -314,17 +341,35 @@ func (a *apic) Push(ctx context.Context) error {
 
 			return nil
 		case <-ticker.C:
-			ticker.Reset(a.pushInterval)
-
-			if len(cache) > 0 {
-				a.mu.Lock()
-				cacheCopy := cache
-				cache = make(modelscapi.AddSignalsRequest, 0)
-				a.mu.Unlock()
-				log.Infof("Signal push: %d signals to push", len(cacheCopy))
-
-				go a.Send(ctx, &cacheCopy)
+			// the plan can change when the token is refreshed
+			if newInterval, newCooldown := a.currentPushSchedule(); newInterval != interval || newCooldown != cooldown {
+				log.Infof("Signal push schedule changed to every %s, at least %s between pushes", newInterval, newCooldown)
+				interval, cooldown = newInterval, newCooldown
 			}
+
+			ticker.Reset(interval)
+
+			if len(cache) == 0 || time.Since(lastPush) < cooldown {
+				continue
+			}
+
+			if !sending.CompareAndSwap(false, true) {
+				log.Infof("Signal push: previous push still running, keeping %d signals for the next one", len(cache))
+				continue
+			}
+
+			a.mu.Lock()
+			cacheCopy := cache
+			cache = make(modelscapi.AddSignalsRequest, 0)
+			a.mu.Unlock()
+			log.Infof("Signal push: %d signals to push", len(cacheCopy))
+
+			lastPush = time.Now()
+
+			go func() {
+				defer sending.Store(false)
+				a.Send(ctx, &cacheCopy)
+			}()
 		case alerts := <-a.AlertsAddChan:
 			var signals []*modelscapi.AddSignalsRequestItem
 
@@ -340,6 +385,21 @@ func (a *apic) Push(ctx context.Context) error {
 
 			a.mu.Unlock()
 		}
+	}
+}
+
+// currentPushSchedule returns how often the cache is checked, and the minimum time between two pushes.
+func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
+	switch {
+	case a.pushInterval > 0:
+		return a.pushInterval, a.pushCooldown
+	case !a.apiClient.IsEnrolled():
+		return pushIntervalNotEnrolled, 0
+	case a.apiClient.GetSubscriptionType() == apiclient.SubscriptionTypeCommunity:
+		// an alert after a quiet period goes out quickly, a steady stream is batched
+		return pushIntervalDefault, pushCooldownCommunity
+	default:
+		return pushIntervalDefault, 0
 	}
 }
 
@@ -393,7 +453,7 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 }
 
 func (a *apic) sendBatch(ctx context.Context, signals []*modelscapi.AddSignalsRequestItem) error {
-	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctxBatch, cancel := context.WithTimeout(ctx, signalsBatchTimeout)
 	defer cancel()
 
 	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*modelscapi.AddSignalsRequest)(&signals))
@@ -416,18 +476,58 @@ func (a *apic) Send(ctx context.Context, cacheOrig *modelscapi.AddSignalsRequest
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var cache []*modelscapi.AddSignalsRequestItem = *cacheOrig
-
-	batchSize := 50
-
-	for start := 0; start < len(cache); start += batchSize {
-		end := min(start+batchSize, len(cache))
-
-		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
+	for _, batch := range splitSignals(*cacheOrig, signalsBatchSize, signalsBatchBytes) {
+		if err := a.sendBatch(ctx, batch); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
 			return
 		}
 	}
+}
+
+// splitSignals groups signals in batches of at most maxItems, whose json array encoding is at most maxBytes.
+// A signal that can't fit in a batch on its own is dropped.
+func splitSignals(signals []*modelscapi.AddSignalsRequestItem, maxItems int, maxBytes int) [][]*modelscapi.AddSignalsRequestItem {
+	var (
+		batches [][]*modelscapi.AddSignalsRequestItem
+		batch   []*modelscapi.AddSignalsRequestItem
+	)
+
+	// brackets and the encoder's trailing newline
+	const overhead = 3
+
+	size := overhead
+
+	for _, signal := range signals {
+		// json.Marshal escapes html, the client doesn't: this overestimates, never underestimates
+		raw, err := json.Marshal(signal)
+		if err != nil {
+			log.Errorf("dropping signal that can't be encoded: %s", err)
+			continue
+		}
+
+		// +1 for the separator
+		itemSize := len(raw) + 1
+
+		if overhead+itemSize > maxBytes {
+			log.Errorf("dropping signal for scenario %s: %d bytes is over the %d bytes limit", ptr.OrEmpty(signal.Scenario), itemSize, maxBytes)
+			continue
+		}
+
+		if len(batch) == maxItems || size+itemSize > maxBytes {
+			batches = append(batches, batch)
+			batch = nil
+			size = overhead
+		}
+
+		batch = append(batch, signal)
+		size += itemSize
+	}
+
+	if len(batch) > 0 {
+		batches = append(batches, batch)
+	}
+
+	return batches
 }
 
 func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {

@@ -34,7 +34,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 		// Do not register any metrics
 	case MetricsLevelAggregated:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
-			GlobalCsInfo, GlobalParsingHistogram, GlobalPourHistogram,
+			GlobalCsInfo, Features, GlobalParsingHistogram, GlobalPourHistogram,
 			BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow,
 			LapiRouteHits,
 			BucketsCurrentCount,
@@ -45,7 +45,7 @@ func RegisterMetrics(metricsLevel MetricsLevelConfig) error {
 	case MetricsLevelFull:
 		prometheus.MustRegister(GlobalParserHits, GlobalParserHitsOk, GlobalParserHitsKo,
 			NodesHits, NodesHitsOk, NodesHitsKo,
-			GlobalCsInfo, GlobalParsingHistogram, GlobalPourHistogram,
+			GlobalCsInfo, Features, GlobalParsingHistogram, GlobalPourHistogram,
 			LapiRouteHits, LapiMachineHits, LapiBouncerHits, LapiNilDecisions, LapiNonNilDecisions, LapiResponseTime,
 			BucketsPour, BucketsUnderflow, BucketsCanceled, BucketsInstantiation, BucketsOverflow, BucketsCurrentCount,
 			GlobalActiveDecisions, GlobalAlerts, GlobalMachinesLastHeartbeatTimestamp, NodesWlHitsOk, NodesWlHits,

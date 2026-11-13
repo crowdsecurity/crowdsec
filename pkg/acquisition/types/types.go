@@ -115,6 +115,11 @@ type LAPIClientAware interface {
 	SetClientConfig(config *csconfig.LocalApiClientCfg)
 }
 
+// FeatureProvider is implemented by datasources that enable instance features (see metrics.AllFeatures).
+type FeatureProvider interface {
+	Features() []string
+}
+
 // HubAware is implemented by datasources that need access to the Hub (e.g. for appsec rules/scenarios).
 type HubAware interface {
 	SetHub(hub *cwhub.Hub)

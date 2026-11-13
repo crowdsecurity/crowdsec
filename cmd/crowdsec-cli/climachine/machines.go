@@ -77,6 +77,7 @@ type machineInfo struct {
 	AuthType      string           `json:"auth_type"`
 	OS            string           `json:"os,omitempty"`
 	Featureflags  []string         `json:"featureflags,omitempty"`
+	Features      []string         `json:"features,omitempty"`
 	Datasources   map[string]int64 `json:"datasources,omitempty"`
 }
 
@@ -93,6 +94,7 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		AuthType:      m.AuthType,
 		OS:            clientinfo.GetOSNameAndVersion(m),
 		Featureflags:  clientinfo.GetFeatureFlagList(m),
+		Features:      m.Features,
 		Datasources:   m.Datasources,
 	}
 }
