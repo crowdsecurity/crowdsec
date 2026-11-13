@@ -7,6 +7,7 @@ package modelscapi
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -56,11 +57,15 @@ func (m *GetDecisionsStreamResponseLinks) validateAllowlists(formats strfmt.Regi
 
 		if m.Allowlists[i] != nil {
 			if err := m.Allowlists[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("allowlists" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("allowlists" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -82,11 +87,15 @@ func (m *GetDecisionsStreamResponseLinks) validateBlocklists(formats strfmt.Regi
 
 		if m.Blocklists[i] != nil {
 			if err := m.Blocklists[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("blocklists" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("blocklists" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -125,11 +134,15 @@ func (m *GetDecisionsStreamResponseLinks) contextValidateAllowlists(ctx context.
 			}
 
 			if err := m.Allowlists[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("allowlists" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("allowlists" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -150,11 +163,15 @@ func (m *GetDecisionsStreamResponseLinks) contextValidateBlocklists(ctx context.
 			}
 
 			if err := m.Blocklists[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("blocklists" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("blocklists" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}

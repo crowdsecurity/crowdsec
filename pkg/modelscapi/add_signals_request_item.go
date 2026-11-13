@@ -7,6 +7,7 @@ package modelscapi
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -131,11 +132,15 @@ func (m *AddSignalsRequestItem) validateContext(formats strfmt.Registry) error {
 
 		if m.Context[i] != nil {
 			if err := m.Context[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("context" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("context" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -151,11 +156,15 @@ func (m *AddSignalsRequestItem) validateDecisions(formats strfmt.Registry) error
 	}
 
 	if err := m.Decisions.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("decisions")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("decisions")
 		}
+
 		return err
 	}
 
@@ -206,11 +215,15 @@ func (m *AddSignalsRequestItem) validateSource(formats strfmt.Registry) error {
 
 	if m.Source != nil {
 		if err := m.Source.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("source")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("source")
 			}
+
 			return err
 		}
 	}
@@ -269,11 +282,15 @@ func (m *AddSignalsRequestItem) contextValidateContext(ctx context.Context, form
 			}
 
 			if err := m.Context[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("context" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("context" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -286,11 +303,15 @@ func (m *AddSignalsRequestItem) contextValidateContext(ctx context.Context, form
 func (m *AddSignalsRequestItem) contextValidateDecisions(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.Decisions.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("decisions")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("decisions")
 		}
+
 		return err
 	}
 
@@ -302,11 +323,15 @@ func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, forma
 	if m.Source != nil {
 
 		if err := m.Source.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("source")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("source")
 			}
+
 			return err
 		}
 	}

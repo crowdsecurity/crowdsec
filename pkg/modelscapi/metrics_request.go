@@ -7,6 +7,7 @@ package modelscapi
 
 import (
 	"context"
+	stderrors "errors"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -62,11 +63,15 @@ func (m *MetricsRequest) validateBouncers(formats strfmt.Registry) error {
 
 		if m.Bouncers[i] != nil {
 			if err := m.Bouncers[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("bouncers" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("bouncers" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -89,11 +94,15 @@ func (m *MetricsRequest) validateMachines(formats strfmt.Registry) error {
 
 		if m.Machines[i] != nil {
 			if err := m.Machines[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("machines" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("machines" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -132,11 +141,15 @@ func (m *MetricsRequest) contextValidateBouncers(ctx context.Context, formats st
 			}
 
 			if err := m.Bouncers[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("bouncers" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("bouncers" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}
@@ -157,11 +170,15 @@ func (m *MetricsRequest) contextValidateMachines(ctx context.Context, formats st
 			}
 
 			if err := m.Machines[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
 					return ve.ValidateName("machines" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
 					return ce.ValidateName("machines" + "." + strconv.Itoa(i))
 				}
+
 				return err
 			}
 		}

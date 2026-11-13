@@ -171,7 +171,7 @@ func (m *Decision) ContextValidate(ctx context.Context, formats strfmt.Registry)
 
 func (m *Decision) contextValidateID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "id", "body", int64(m.ID)); err != nil {
+	if err := validate.ReadOnly(ctx, "id", "body", m.ID); err != nil {
 		return err
 	}
 
@@ -189,7 +189,7 @@ func (m *Decision) contextValidateSimulated(ctx context.Context, formats strfmt.
 
 func (m *Decision) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+	if err := validate.ReadOnly(ctx, "uuid", "body", m.UUID); err != nil {
 		return err
 	}
 

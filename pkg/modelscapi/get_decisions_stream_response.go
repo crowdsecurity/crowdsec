@@ -7,6 +7,7 @@ package modelscapi
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -58,11 +59,15 @@ func (m *GetDecisionsStreamResponse) validateDeleted(formats strfmt.Registry) er
 	}
 
 	if err := m.Deleted.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("deleted")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("deleted")
 		}
+
 		return err
 	}
 
@@ -76,11 +81,15 @@ func (m *GetDecisionsStreamResponse) validateLinks(formats strfmt.Registry) erro
 
 	if m.Links != nil {
 		if err := m.Links.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("links")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("links")
 			}
+
 			return err
 		}
 	}
@@ -94,11 +103,15 @@ func (m *GetDecisionsStreamResponse) validateNew(formats strfmt.Registry) error 
 	}
 
 	if err := m.New.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("new")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("new")
 		}
+
 		return err
 	}
 
@@ -130,11 +143,15 @@ func (m *GetDecisionsStreamResponse) ContextValidate(ctx context.Context, format
 func (m *GetDecisionsStreamResponse) contextValidateDeleted(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.Deleted.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("deleted")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("deleted")
 		}
+
 		return err
 	}
 
@@ -150,11 +167,15 @@ func (m *GetDecisionsStreamResponse) contextValidateLinks(ctx context.Context, f
 		}
 
 		if err := m.Links.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
+			ve := new(errors.Validation)
+			if stderrors.As(err, &ve) {
 				return ve.ValidateName("links")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
+			}
+			ce := new(errors.CompositeError)
+			if stderrors.As(err, &ce) {
 				return ce.ValidateName("links")
 			}
+
 			return err
 		}
 	}
@@ -165,11 +186,15 @@ func (m *GetDecisionsStreamResponse) contextValidateLinks(ctx context.Context, f
 func (m *GetDecisionsStreamResponse) contextValidateNew(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := m.New.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
+		ve := new(errors.Validation)
+		if stderrors.As(err, &ve) {
 			return ve.ValidateName("new")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
+		}
+		ce := new(errors.CompositeError)
+		if stderrors.As(err, &ce) {
 			return ce.ValidateName("new")
 		}
+
 		return err
 	}
 
