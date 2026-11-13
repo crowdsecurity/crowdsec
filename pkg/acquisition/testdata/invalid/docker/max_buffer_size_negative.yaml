@@ -1,0 +1,6 @@
+# wantErr: datasource of type docker: max_buffer_size must be positive
+# schemaErr: /max_buffer_size: minimum: got -1, want 1
+source: docker
+container_name:
+  - foo
+max_buffer_size: -1
