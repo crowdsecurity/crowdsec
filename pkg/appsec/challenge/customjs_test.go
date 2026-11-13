@@ -32,13 +32,13 @@ func TestCustomJS_ScriptTag(t *testing.T) {
 
 	// Unreferenced with no script loaded, so a challenge page doesn't request a
 	// file that isn't there.
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 	require.NotContains(t, html, ChallengeCustomJSPath)
 
 	rt.setCustomJS("globalThis.__CSEC_CUSTOM_DETECT_v1__ = [];")
 
-	html, err = rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err = rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 	assert.Contains(t, html, ChallengeCustomJSPath)
 

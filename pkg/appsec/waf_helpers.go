@@ -126,6 +126,9 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
+		"SetChallengeTitle":       state.ChallengePage.SetTitle,
+		"SetChallengeMeta":        state.ChallengePage.SetMeta,
+		"SetChallengeTemplateVar": state.ChallengePage.SetVar,
 		"GrantChallengeCookie": func(reason string, ttl ...string) error {
 			ttlOverride, err := parseChallengeCookieTTLArg(ttl)
 			if err != nil {
@@ -162,6 +165,9 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
+		"SetChallengeTitle":       state.ChallengePage.SetTitle,
+		"SetChallengeMeta":        state.ChallengePage.SetMeta,
+		"SetChallengeTemplateVar": state.ChallengePage.SetVar,
 		"GrantChallengeCookie": func(reason string, ttl ...string) error {
 			ttlOverride, err := parseChallengeCookieTTLArg(ttl)
 			if err != nil {
@@ -207,6 +213,9 @@ func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *Appse
 		"SetChallengeDifficulty": func(level string) error {
 			return w.SetChallengeDifficultyPerRequest(state, level)
 		},
+		"SetChallengeTitle":       state.ChallengePage.SetTitle,
+		"SetChallengeMeta":        state.ChallengePage.SetMeta,
+		"SetChallengeTemplateVar": state.ChallengePage.SetVar,
 
 		// EvaluateMismatches: aggregate fingerprint mismatch report. First
 		// call per request computes the report, caches it on state, and
