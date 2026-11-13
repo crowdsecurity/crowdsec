@@ -158,7 +158,8 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 // writeDecisions streams the decisions returned by query into the array the caller has already
 // opened, paginating by id from startID. A startup resync passes 0, a stream delta passes the
 // bouncer cursor: both are the same query, they only differ in where they start.
-func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, limit int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
+// If begin is not nil, it is called once the first page has been fetched, before anything is written.
+func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, limit int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error), begin func()) error {
 	needComma := false
 	lastId := startID
 
@@ -182,6 +183,11 @@ func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]strin
 		data, err := query(ctx, now, filters)
 		if err != nil {
 			return err
+		}
+
+		if begin != nil {
+			begin()
+			begin = nil
 		}
 
 		for _, d := range data {
@@ -226,15 +232,24 @@ func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]strin
 }
 
 func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, now time.Time, filters map[string][]string, cursor int, startup bool) error {
-	gctx.Writer.Header().Set("Content-Type", "application/json")
-	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
-	gctx.Writer.WriteHeader(http.StatusOK)
-	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
+	// Hold the 200 until the first query has succeeded, so an early failure can still be reported.
+	begin := func() {
+		gctx.Writer.Header().Set("Content-Type", "application/json")
+		gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
+		gctx.Writer.WriteHeader(http.StatusOK)
+		gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
+	}
 
 	// Active decisions. A startup resync is this same query with a zero cursor.
-	if err := writeDecisions(gctx, now, filters, cursor, c.DecisionsStreamPageSize, c.DBClient.QueryAllDecisionsWithFilters); err != nil {
+	// On a failure after the 200 is sent, the JSON is left unterminated so that a partial
+	// response cannot be parsed as a complete snapshot.
+	if err := writeDecisions(gctx, now, filters, cursor, c.DecisionsStreamPageSize, c.DBClient.QueryAllDecisionsWithFilters, begin); err != nil {
 		log.Errorf("failed sending new decisions: %v", err)
-		gctx.Writer.WriteString(`], "deleted": []}`)
+
+		if !gctx.Writer.Written() {
+			c.HandleDBErrors(gctx, err)
+		}
+
 		gctx.Writer.Flush()
 
 		return err
@@ -259,9 +274,8 @@ func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer
 		}
 	}
 
-	if err := writeDecisions(gctx, now, filters, 0, c.DecisionsStreamPageSize, expired); err != nil {
+	if err := writeDecisions(gctx, now, filters, 0, c.DecisionsStreamPageSize, expired, nil); err != nil {
 		log.Errorf("failed sending expired decisions: %v", err)
-		gctx.Writer.WriteString(`]}`)
 		gctx.Writer.Flush()
 
 		return err
