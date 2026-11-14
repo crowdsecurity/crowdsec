@@ -2,17 +2,18 @@ package exprhelpers
 
 import (
 	"errors"
+	"net"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
@@ -223,6 +224,64 @@ func TestParseQueryInExpr(t *testing.T) {
 	}
 }
 
+func TestDistinct(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	// Direct calls: any slice/array element type must dedupe while preserving order.
+	out, err := Distinct([]string{"a", "a", "b"})
+	require.NoError(t, err)
+	require.Equal(t, []any{"a", "b"}, out)
+
+	out, err = Distinct([]any{"a", "a", "b", 1, 1})
+	require.NoError(t, err)
+	require.Equal(t, []any{"a", "b", 1}, out)
+
+	// Empty and nil slices return an empty []any (not nil).
+	out, err = Distinct([]string{})
+	require.NoError(t, err)
+	require.Equal(t, []any{}, out)
+
+	out, err = Distinct([]any(nil))
+	require.NoError(t, err)
+	require.Equal(t, []any{}, out)
+
+	// Non-slice input returns nil (unchanged contract).
+	out, err = Distinct("notaslice")
+	require.NoError(t, err)
+	require.Nil(t, out)
+
+	// Expr-level: Distinct(Split(...)) — Split returns []string, the regressed case.
+	tests := []struct {
+		name   string
+		env    map[string]any
+		code   string
+		result any
+		err    string
+	}{
+		{
+			name:   "Distinct(Split()) dedupes a []string",
+			env:    map[string]any{"raw": "a,a,b,b,c"},
+			code:   `Distinct(Split(raw, ","))`,
+			result: []any{"a", "b", "c"},
+		},
+		{
+			name:   "Distinct over an expr list literal",
+			env:    map[string]any{},
+			code:   `Distinct(["a", "a", "b"])`,
+			result: []any{"a", "b"},
+		},
+	}
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
 func TestDistanceHelper(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
@@ -276,7 +335,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// cache with no TTL
-	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(1)})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: new(1)})
 	require.NoError(t, err)
 
 	ret, _ := RegexpInFile("crowdsec", filename)
@@ -289,7 +348,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 
 	// cache with TTL
 	ttl := 500 * time.Millisecond
-	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: ptr.Of(2), TTL: &ttl})
+	err = RegexpCacheInit(filename, enrichment.DataProvider{Type: "regex", Size: new(2), TTL: &ttl})
 	require.NoError(t, err)
 
 	ret, _ = RegexpInFile("crowdsec", filename)
@@ -1491,6 +1550,82 @@ func TestGetDecisionsCount(t *testing.T) {
 	}
 }
 
+func TestGetDecisionsCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one active, one expired. crowdsec/other: one active.
+	for _, d := range []struct {
+		scenario string
+		until    time.Time
+	}{
+		{"crowdsec/test", time.Now().UTC().Add(time.Hour)},
+		{"crowdsec/test", time.Now().UTC().Add(-time.Hour)},
+		{"crowdsec/other", time.Now().UTC().Add(time.Hour)},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetUntil(d.until).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue())", "3"},
+		{"same scenario, expired one counted too", existingIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "2"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 2 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsCount(Alert.GetValue(), 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
+}
+
 func TestGetDecisionsSinceCount(t *testing.T) {
 	ctx := t.Context()
 
@@ -1616,6 +1751,84 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
+func TestGetDecisionsSinceCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one decision now, one a day ago. crowdsec/other: one now.
+	for _, d := range []struct {
+		scenario  string
+		createdAt time.Time
+	}{
+		{"crowdsec/test", time.Now()},
+		{"crowdsec/test", time.Now().AddDate(0, 0, -1)},
+		{"crowdsec/other", time.Now()},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetCreatedAt(d.createdAt).
+			SetUntil(d.createdAt.Add(time.Hour)).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h')", "3"},
+		{"same scenario, since more than 1 day", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "2"},
+		{"same scenario, since 1 hour", existingIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '1h', Alert.GetScenario())", "1"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetDecisionsSinceCount(Alert.GetValue(), '25h', Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 3 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetDecisionsSinceCount(Alert.GetValue(), '25h', 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
+}
+
 func TestGetActiveDecisionsCount(t *testing.T) {
 	ctx := t.Context()
 
@@ -1722,6 +1935,82 @@ func TestGetActiveDecisionsCount(t *testing.T) {
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
 	}
+}
+
+func TestGetActiveDecisionsCountWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: one active, one expired. crowdsec/other: one active.
+	for _, d := range []struct {
+		scenario string
+		until    time.Time
+	}{
+		{"crowdsec/test", time.Now().UTC().Add(time.Hour)},
+		{"crowdsec/test", time.Now().UTC().Add(-time.Hour)},
+		{"crowdsec/other", time.Now().UTC().Add(time.Hour)},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetUntil(d.until).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		result   string
+	}{
+		{"scenario omitted counts every scenario", existingIP, "crowdsec/test", "GetActiveDecisionsCount(Alert.GetValue())", "2"},
+		{"same scenario, expired one not counted", existingIP, "crowdsec/test", "GetActiveDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "1"},
+		{"other scenario only counts its own", existingIP, "crowdsec/other", "GetActiveDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "1"},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetActiveDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetActiveDecisionsCount(Alert.GetValue(), Alert.GetScenario())", "0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile("Sprintf('%d', "+test.code+")", GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+			require.Equal(t, test.result, output)
+		})
+	}
+
+	t.Run("more than 2 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetActiveDecisionsCount(Alert.GetValue(), 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
 }
 
 func TestGetActiveDecisionsTimeLeft(t *testing.T) {
@@ -1880,6 +2169,88 @@ func TestGetActiveDecisionsTimeLeft(t *testing.T) {
 			t.Fatal("GetActiveDecisionsTimeLeft() should return a time.Duration or a float64")
 		}
 	}
+}
+
+func TestGetActiveDecisionsTimeLeftWithScenario(t *testing.T) {
+	ctx := t.Context()
+
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+
+	rng, err := csnet.NewRange(existingIP)
+	require.NoError(t, err)
+
+	dbClient = getDBClient(t)
+
+	// crowdsec/test: 1h left, plus one expired. crowdsec/other: 2h left.
+	for _, d := range []struct {
+		scenario string
+		until    time.Time
+	}{
+		{"crowdsec/test", time.Now().UTC().Add(time.Hour)},
+		{"crowdsec/test", time.Now().UTC().Add(-time.Hour)},
+		{"crowdsec/other", time.Now().UTC().Add(2 * time.Hour)},
+	} {
+		dbClient.Ent.Decision.Create().
+			SetUntil(d.until).
+			SetScenario(d.scenario).
+			SetStartIP(rng.Start.Addr).
+			SetStartSuffix(rng.Start.Sfx).
+			SetEndIP(rng.End.Addr).
+			SetEndSuffix(rng.End.Sfx).
+			SetIPSize(int64(rng.Size())).
+			SetType("ban").
+			SetScope("IP").
+			SetValue(existingIP).
+			SetOrigin("crowdsec").
+			SaveX(ctx)
+	}
+
+	err = Init(dbClient)
+	require.NoError(t, err)
+
+	// 5 seconds margin so the test doesn't fail randomly in the CI
+	tests := []struct {
+		name     string
+		value    string
+		scenario string
+		code     string
+		min      int
+		max      int
+	}{
+		{"scenario omitted returns the longest of any scenario", existingIP, "crowdsec/test", "GetActiveDecisionsTimeLeft(Alert.GetValue())", 7195, 7200},
+		{"same scenario returns its own, not the longest", existingIP, "crowdsec/test", "GetActiveDecisionsTimeLeft(Alert.GetValue(), Alert.GetScenario())", 3595, 3600},
+		{"other scenario", existingIP, "crowdsec/other", "GetActiveDecisionsTimeLeft(Alert.GetValue(), Alert.GetScenario())", 7195, 7200},
+		{"unknown scenario", existingIP, "crowdsec/unknown", "GetActiveDecisionsTimeLeft(Alert.GetValue(), Alert.GetScenario())", 0, 0},
+		{"unknown IP", unknownIP, "crowdsec/test", "GetActiveDecisionsTimeLeft(Alert.GetValue(), Alert.GetScenario())", 0, 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]any{
+				"Alert": &models.Alert{
+					Source:   &models.Source{Value: &test.value},
+					Scenario: &test.scenario,
+				},
+			}
+
+			program, err := expr.Compile(test.code, GetExprOptions(env)...)
+			require.NoError(t, err)
+			output, err := expr.Run(program, env)
+			require.NoError(t, err)
+
+			timeLeft, ok := output.(time.Duration)
+			require.True(t, ok, "GetActiveDecisionsTimeLeft() should return a time.Duration")
+			require.LessOrEqual(t, int(timeLeft.Seconds()), test.max)
+			require.GreaterOrEqual(t, int(timeLeft.Seconds()), test.min)
+		})
+	}
+
+	t.Run("more than 2 arguments does not compile", func(t *testing.T) {
+		env := map[string]any{"Alert": &models.Alert{}}
+		_, err := expr.Compile("GetActiveDecisionsTimeLeft(Alert.GetValue(), 'a', 'b')", GetExprOptions(env)...)
+		require.Error(t, err)
+	})
 }
 
 func TestParseUnixTime(t *testing.T) {
@@ -2341,6 +2712,77 @@ func TestParseKvLax(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, outMap["a"])
+		})
+	}
+}
+
+func TestLookupHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		want    []string
+		wantLog string
+	}{
+		{
+			name: "known host",
+			host: "home.example.com",
+			want: []string{"192.0.2.10", "2001:db8::10"},
+		},
+		{
+			name:    "unknown host",
+			host:    "nope.example.com",
+			want:    []string{},
+			wantLog: "Failed to lookup host 'nope.example.com' : lookup nope.example.com: no such host",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := &fakeResolver{
+				fwd: map[string][]net.IPAddr{
+					"home.example.com": {
+						{IP: net.ParseIP("192.0.2.10")},
+						{IP: net.ParseIP("2001:db8::10")},
+					},
+				},
+			}
+			setupBotTest(t, resolver)
+
+			logger := log.StandardLogger()
+			hooks := logger.ReplaceHooks(make(log.LevelHooks))
+			hook := logtest.NewLocal(logger)
+
+			t.Cleanup(func() { logger.ReplaceHooks(hooks) })
+
+			env := map[string]any{"host": tc.host}
+
+			vm, err := expr.Compile("LookupHost(host)", GetExprOptions(env)...)
+			require.NoError(t, err)
+
+			// the second call is served from the cache, a failure with its error
+			for range 2 {
+				hook.Reset()
+
+				got, err := expr.Run(vm, env)
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+
+				logged := []string{}
+
+				for _, entry := range hook.AllEntries() {
+					if entry.Level == log.ErrorLevel {
+						logged = append(logged, entry.Message)
+					}
+				}
+
+				if tc.wantLog == "" {
+					require.Empty(t, logged)
+				} else {
+					require.Equal(t, []string{tc.wantLog}, logged)
+				}
+			}
+
+			require.Equal(t, int32(1), resolver.fwdCalls.Load())
 		})
 	}
 }

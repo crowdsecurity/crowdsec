@@ -71,6 +71,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	resetTestTomb(t, &testTomb, &pw)
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
+	insertNAlertsToPlugin(&pw, 1, "testPlugin")
 
 	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
 	defer cancel()

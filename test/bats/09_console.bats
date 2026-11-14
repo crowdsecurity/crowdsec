@@ -26,7 +26,11 @@ setup() {
 #----------
 
 @test "cscli console status" {
+    # credentials point to CAPI with dummy login/password, so the live console section
+    # falls back gracefully (unreachable) while the sharing options are always shown.
     rune -0 cscli console status
+    assert_output --partial "Console connection"
+    assert_output --partial "Central API (CAPI)"
     assert_output --partial "Option Name"
     assert_output --partial "Activated"
     assert_output --partial "Description"
@@ -34,15 +38,24 @@ setup() {
     assert_output --partial "manual"
     assert_output --partial "tainted"
     assert_output --partial "context"
-    assert_output --partial "console_management"
+    # decision management is no longer a sharing option
+    refute_output --partial "console_management"
     rune -0 cscli console status -o json
     assert_json - <<- EOT
 	{
-	"console_management": false,
+	"console": {
+	"registered": true,
+	"authenticated": false,
+	"decision_management": false,
+	"enrolled": false,
+	"plan": ""
+	},
+	"sharing_options": {
 	"context": false,
 	"custom": true,
 	"manual": false,
 	"tainted": true
+	}
 	}
 	EOT
     rune -0 cscli console status -o raw
@@ -52,8 +65,32 @@ setup() {
 	custom,true
 	tainted,true
 	context,false
-	console_management,false
 	EOT
+}
+
+@test "cscli console status: not registered" {
+    # blank credentials -> the engine is not registered against CAPI; status must still
+    # succeed, report the state, and show the sharing options instead of erroring out.
+    creds=$(config_get '.api.server.online_client.credentials_path')
+    echo "" > "$creds"
+    rune -0 cscli console status
+    assert_output --partial "cscli capi register"
+    assert_output --partial "custom"
+    rune -0 cscli console status -o json
+    rune -0 jq -r '.console.registered' <(output)
+    assert_output "false"
+}
+
+@test "cscli console status: missing credentials file does not error" {
+    # a missing credentials file must degrade to the same table, not a hard error
+    creds=$(config_get '.api.server.online_client.credentials_path')
+    rm -f "$creds"
+    rune -0 cscli console status
+    assert_output --partial "cscli capi register"
+    assert_output --partial "custom"
+    rune -0 cscli console status -o json
+    rune -0 jq -r '.console.registered' <(output)
+    assert_output "false"
 }
 
 @test "cscli console enable" {
@@ -71,10 +108,17 @@ setup() {
     assert_stderr --partial "manual already set to true"
     assert_stderr --partial "tainted already set to true"
     assert_stderr --partial "context already set to true"
-    assert_stderr --partial "console_management set to true"
     assert_stderr --partial "All features have been enabled successfully"
     rune -1 cscli console enable tralala
     assert_stderr --partial "unknown flag tralala"
+}
+
+@test "cscli console enable console_management: deprecated no-op" {
+    # console_management is gone but still accepted as a deprecated no-op (exit 0 + warning)
+    rune -0 cscli console enable console_management
+    assert_stderr --partial "'console_management' is deprecated"
+    rune -0 cscli console disable console_management
+    assert_stderr --partial "'console_management' is deprecated"
 }
 
 @test "cscli console disable" {
@@ -92,7 +136,6 @@ setup() {
     assert_stderr --partial "manual already set to false"
     assert_stderr --partial "tainted already set to false"
     assert_stderr --partial "context already set to false"
-    assert_stderr --partial "console_management already set to false"
     assert_stderr --partial "All features have been disabled"
     rune -1 cscli console disable tralala
     assert_stderr --partial "unknown flag tralala"

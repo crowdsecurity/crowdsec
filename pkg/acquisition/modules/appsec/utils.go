@@ -1,26 +1,21 @@
 package appsecacquisition
 
 import (
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/corazawaf/coraza/v3/collection"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/corazawaf/coraza/v3/types/variables"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -49,43 +44,6 @@ var CRSAnomalyScores = []string{
 	"anomaly_score",
 }
 
-func AppsecEventGenerationGeoIPEnrich(src *models.Source) error {
-
-	if src == nil || src.Scope == nil || *src.Scope != types.Ip {
-		return errors.New("source is nil or not an IP")
-	}
-
-	//GeoIP enrich
-	asndata, err := exprhelpers.GeoIPASNEnrich(src.IP)
-
-	if err != nil {
-		return err
-	} else if asndata != nil {
-		record := asndata.(*geoip2.ASN)
-		src.AsName = record.AutonomousSystemOrganization
-		src.AsNumber = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	}
-
-	cityData, err := exprhelpers.GeoIPEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if cityData != nil {
-		record := cityData.(*geoip2.City)
-		src.Cn = record.Country.IsoCode
-		src.Latitude = float32(record.Location.Latitude)
-		src.Longitude = float32(record.Location.Longitude)
-	}
-
-	rangeData, err := exprhelpers.GeoIPRangeEnrich(src.IP)
-	if err != nil {
-		return err
-	} else if rangeData != nil {
-		record := rangeData.(*net.IPNet)
-		src.Range = record.String()
-	}
-	return nil
-}
-
 func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMatches bool) string {
 	msg := "anomaly score "
 	switch {
@@ -108,28 +66,22 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		return nil, nil
 	}
 
-	evt := pipeline.Event{}
-	evt.Type = pipeline.APPSEC
-	evt.Process = true
 	sourceIP := inEvt.Parsed["source_ip"]
 	source := models.Source{
 		Value: &sourceIP,
 		IP:    sourceIP,
-		Scope: ptr.Of(types.Ip),
+		Scope: new(types.Ip),
 	}
 
 	// Enrich source with GeoIP data
-	if err := AppsecEventGenerationGeoIPEnrich(&source); err != nil {
+	if err := appsec.GeoIPEnrichSource(&source); err != nil {
 		log.Errorf("unable to enrich source with GeoIP data : %s", err)
 	}
 
-	// Build overflow
-	evt.Overflow.Sources = make(map[string]models.Source)
-	evt.Overflow.Sources[sourceIP] = source
-
 	alert := models.Alert{}
-	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, len(evt.Appsec.MatchedRules))
+	alert.Capacity = new(int32(1))
+	// Length 0, not len(MatchedRules): the loop below appends.
+	alert.Events = make([]*models.Event, 0, len(inEvt.Appsec.MatchedRules))
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -188,8 +140,8 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 
 	alert.Meta = metas
 
-	alert.EventsCount = ptr.Of(int32(len(alert.Events)))
-	alert.Leakspeed = ptr.Of("")
+	alert.EventsCount = new(int32(len(alert.Events)))
+	alert.Leakspeed = new("")
 
 	var scenarioName string
 
@@ -239,11 +191,12 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		}
 	}
 
-	alert.Scenario = ptr.Of(scenarioName)
-	alert.ScenarioHash = ptr.Of(inEvt.Appsec.GetHash())
-	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.GetVersion())
-	alert.Simulated = ptr.Of(false)
+	alert.Scenario = new(scenarioName)
+	alert.ScenarioHash = new(inEvt.Appsec.GetHash())
+	alert.ScenarioVersion = new(inEvt.Appsec.GetVersion())
+	alert.Simulated = new(false)
 	alert.Source = &source
+	alert.Kind = types.WAFAlertKind.String()
 
 	msg := ""
 
@@ -257,12 +210,13 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 	msg += fmt.Sprintf("%s from %s (%s)", scenarioName,
 		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])
 	alert.Message = &msg
-	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-	evt.Overflow.APIAlerts = []models.Alert{alert}
-	evt.Overflow.Alert = &alert
+	alert.StartAt = new(time.Now().UTC().Format(time.RFC3339))
+	alert.StopAt = new(time.Now().UTC().Format(time.RFC3339))
 
-	return &evt, nil
+	// Hook vars ride along so consumers of the alert, not just the log event, see them.
+	overflow := appsec.NewAppsecOverflow(&alert, inEvt.Appsec.HookVars)
+
+	return &overflow, nil
 }
 
 // Check if all the rule matched zones are part of the excluded zones
@@ -281,64 +235,6 @@ func containsAll(excludedZones []string, matchedZones []string) bool {
 		}
 	}
 	return true
-}
-
-func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string, txUuid string) (pipeline.Event, error) {
-	evt := pipeline.MakeEvent(false, pipeline.LOG, true)
-	// def needs fixing
-	evt.Stage = "s00-raw"
-	evt.Parsed = map[string]string{
-		"source_ip":           r.ClientIP,
-		"target_host":         r.Host,
-		"target_uri":          r.URI,
-		"method":              r.Method,
-		"req_uuid":            txUuid,
-		"source":              "crowdsec-appsec",
-		"remediation_cmpt_ip": r.RemoteAddrNormalized,
-		// TBD:
-		// http_status
-		// user_agent
-
-	}
-	evt.Line = pipeline.Line{
-		Time: time.Now(),
-		// should we add some info like listen addr/port/path ?
-		Labels:  labels,
-		Process: true,
-		Module:  ModuleName,
-		Src:     ModuleName,
-		Raw:     "dummy-appsec-data", // we discard empty Line.Raw items :)
-	}
-	evt.Appsec = pipeline.AppsecEvent{}
-
-	return evt, nil
-}
-
-func LogAppsecEvent(evt *pipeline.Event, logger *log.Entry) {
-	req := evt.Parsed["target_uri"]
-	if len(req) > 12 {
-		req = req[:10] + ".."
-	}
-
-	if evt.Meta["appsec_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else if evt.Parsed["outofband_interrupted"] == "true" {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	} else {
-		logger.WithFields(log.Fields{
-			"module":     ModuleName,
-			"source":     evt.Parsed["source_ip"],
-			"target_uri": req,
-		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
-	}
 }
 
 type ruleData struct {
@@ -438,7 +334,7 @@ func initializeEventMaps(evt *pipeline.Event) {
 	}
 }
 
-func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.AppsecDropInfo) {
+func updateEventPhaseMetadata(evt *pipeline.Event, state *appsec.AppsecRequestState, dropInfo *appsec.HookOutcome) {
 	if state.CurrentPhase == appsec.PhaseInBand {
 		evt.Meta["appsec_interrupted"] = "true"
 		evt.Meta["appsec_action"] = state.Tx.Interruption().Action
@@ -575,7 +471,7 @@ func getMethodWithFallback(evt *pipeline.Event, req *appsec.ParsedRequest) strin
 	return method
 }
 
-func processDropInfo(dropInfo *appsec.AppsecDropInfo, evt *pipeline.Event, req *appsec.ParsedRequest) {
+func processDropInfo(dropInfo *appsec.HookOutcome, evt *pipeline.Event, req *appsec.ParsedRequest) {
 	kind := determineRuleKind(req.IsInBand, evt)
 
 	if evt.Appsec.MatchedRules == nil {
@@ -627,7 +523,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *pipeline.Event, state *appsec.Ap
 		return
 	}
 
-	var dropInfo *appsec.AppsecDropInfo
+	var dropInfo *appsec.HookOutcome
 	if state != nil {
 		dropInfo = state.DropInfo(req)
 	}

@@ -38,6 +38,7 @@ func (AllowListItem) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("id"),
 		index.Fields("start_ip", "end_ip"),
+		index.Fields("expires_at"),
 	}
 }
 

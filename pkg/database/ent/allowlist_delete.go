@@ -20,56 +20,56 @@ type AllowListDelete struct {
 }
 
 // Where appends a list predicates to the AllowListDelete builder.
-func (ald *AllowListDelete) Where(ps ...predicate.AllowList) *AllowListDelete {
-	ald.mutation.Where(ps...)
-	return ald
+func (_d *AllowListDelete) Where(ps ...predicate.AllowList) *AllowListDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (ald *AllowListDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, ald.sqlExec, ald.mutation, ald.hooks)
+func (_d *AllowListDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ald *AllowListDelete) ExecX(ctx context.Context) int {
-	n, err := ald.Exec(ctx)
+func (_d *AllowListDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (ald *AllowListDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *AllowListDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(allowlist.Table, sqlgraph.NewFieldSpec(allowlist.FieldID, field.TypeInt))
-	if ps := ald.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, ald.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	ald.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // AllowListDeleteOne is the builder for deleting a single AllowList entity.
 type AllowListDeleteOne struct {
-	ald *AllowListDelete
+	_d *AllowListDelete
 }
 
 // Where appends a list predicates to the AllowListDelete builder.
-func (aldo *AllowListDeleteOne) Where(ps ...predicate.AllowList) *AllowListDeleteOne {
-	aldo.ald.mutation.Where(ps...)
-	return aldo
+func (_d *AllowListDeleteOne) Where(ps ...predicate.AllowList) *AllowListDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (aldo *AllowListDeleteOne) Exec(ctx context.Context) error {
-	n, err := aldo.ald.Exec(ctx)
+func (_d *AllowListDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (aldo *AllowListDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (aldo *AllowListDeleteOne) ExecX(ctx context.Context) {
-	if err := aldo.Exec(ctx); err != nil {
+func (_d *AllowListDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

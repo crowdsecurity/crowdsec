@@ -1,6 +1,7 @@
 package syslogserver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -59,7 +60,8 @@ func (s *SyslogServer) Serve(ctx context.Context, msgChan chan SyslogMessage) er
 			return fmt.Errorf("reading from socket: %w", err)
 		}
 
-		msg := SyslogMessage{Message: buf[:n], Client: strings.Split(addr.String(), ":")[0]}
+		// the buffer is reused by the next ReadFrom(), the consumer must own its copy
+		msg := SyslogMessage{Message: bytes.Clone(buf[:n]), Client: strings.Split(addr.String(), ":")[0]}
 
 		select {
 		case msgChan <- msg:

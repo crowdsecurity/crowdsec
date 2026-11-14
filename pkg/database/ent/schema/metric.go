@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // Metric is actually a set of metrics collected by a device
@@ -30,5 +31,14 @@ func (Metric) Fields() []ent.Field {
 		field.Text("payload").
 			Immutable().
 			Comment("The actual metrics (item0)"),
+	}
+}
+
+func (Metric) Indexes() []ent.Index {
+	return []ent.Index{
+		// the flush job deletes by age, every minute
+		index.Fields("received_at"),
+		// cscli machines inspect
+		index.Fields("generated_type", "generated_by", "pushed_at"),
 	}
 }

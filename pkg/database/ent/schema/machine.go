@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -50,6 +51,7 @@ func (Machine) Fields() []ent.Field {
 		field.String("featureflags").Optional(),
 		field.JSON("hubstate", map[string][]ItemState{}).Optional(),
 		field.JSON("datasources", map[string]int64{}).Optional(),
+		field.JSON("features", []string{}).Optional(),
 	}
 }
 
@@ -57,5 +59,12 @@ func (Machine) Fields() []ent.Field {
 func (Machine) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("alerts", Alert.Type),
+	}
+}
+
+func (Machine) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("last_heartbeat", "created_at"),
+		index.Fields("isValidated"),
 	}
 }

@@ -13,9 +13,9 @@ import (
 )
 
 type StateDumper struct {
-	DumpDir string
-	Pour *leakybucket.PourCollector
-	StageParse *parser.StageParseCollector
+	DumpDir         string
+	Pour            *leakybucket.PourCollector
+	StageParse      *parser.StageParseCollector
 	BucketOverflows []pipeline.Event
 }
 

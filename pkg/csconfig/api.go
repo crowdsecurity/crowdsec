@@ -1,7 +1,6 @@
 package csconfig
 
 import (
-	"bytes"
 	"cmp"
 	"crypto/tls"
 	"crypto/x509"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
@@ -75,7 +73,7 @@ type CTICfg struct {
 
 func (a *CTICfg) Load() error {
 	if a.Key == nil {
-		a.Enabled = ptr.Of(false)
+		a.Enabled = new(false)
 	}
 
 	if a.Key != nil && *a.Key == "" {
@@ -83,7 +81,7 @@ func (a *CTICfg) Load() error {
 	}
 
 	if a.Enabled == nil {
-		a.Enabled = ptr.Of(true)
+		a.Enabled = new(true)
 	}
 
 	if a.CacheTimeout == nil {
@@ -108,7 +106,9 @@ func (o *OnlineApiClientCfg) Load() error {
 		return err
 	}
 
-	dec := yaml.NewDecoder(bytes.NewReader(fcontent))
+	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
+
+	dec := yaml.NewDecoder(strings.NewReader(configData))
 	dec.KnownFields(true)
 
 	err = dec.Decode(o.Credentials)
@@ -119,6 +119,10 @@ func (o *OnlineApiClientCfg) Load() error {
 	}
 
 	switch {
+	case o.Credentials.Login == "" && o.Credentials.Password == "" && o.Credentials.URL == "":
+		// An empty credentials file just means the engine was never registered against CAPI.
+		log.Debugf("no CAPI credentials found in '%s', engine is not registered", o.CredentialsFilePath)
+		o.Credentials = nil
 	case o.Credentials.Login == "":
 		log.Warningf("can't load CAPI credentials from '%s' (missing login field)", o.CredentialsFilePath)
 		o.Credentials = nil
@@ -243,6 +247,23 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist           `yaml:"-"`
 	AutoRegister                  *LocalAPIAutoRegisterCfg `yaml:"auto_registration,omitempty"`
 	DisableUsageMetricsExport     bool                     `yaml:"disable_usage_metrics_export"`
+	DecisionsStream               *DecisionsStreamCfg      `yaml:"decisions_stream,omitempty"`
+}
+
+// Each page is held in memory while it is written out, once per in-flight stream request.
+const DefaultDecisionsStreamPageSize = 30000
+
+// Under lua-cs-bouncer's 15s stream timeout, so it gets the 503 before giving up on its own.
+const DefaultDecisionsStreamMaxQueueWait = 10 * time.Second
+
+type DecisionsStreamCfg struct {
+	PageSize int `yaml:"page_size"`
+
+	// 0 means no limit.
+	MaxConcurrentRequests int `yaml:"max_concurrent_requests"`
+
+	// How long a request beyond max_concurrent_requests waits for a slot before getting a 503.
+	MaxQueueWait time.Duration `yaml:"max_queue_wait"`
 }
 
 // NewAccessLogger builds and returns a logger configured for HTTP access
@@ -349,7 +370,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
+		c.API.Server.Enable = new(true)
 	}
 
 	if !*c.API.Server.Enable {
@@ -379,15 +400,15 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	// Set default values for CAPI push/pull
 	if c.API.Server.OnlineClient != nil {
 		if c.API.Server.OnlineClient.PullConfig.Community == nil {
-			c.API.Server.OnlineClient.PullConfig.Community = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Community = new(true)
 		}
 
 		if c.API.Server.OnlineClient.PullConfig.Blocklists == nil {
-			c.API.Server.OnlineClient.PullConfig.Blocklists = ptr.Of(true)
+			c.API.Server.OnlineClient.PullConfig.Blocklists = new(true)
 		}
 
 		if c.API.Server.OnlineClient.Sharing == nil {
-			c.API.Server.OnlineClient.Sharing = ptr.Of(true)
+			c.API.Server.OnlineClient.Sharing = new(true)
 		}
 	}
 
@@ -406,6 +427,8 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	if err := c.API.Server.LoadAutoRegister(); err != nil {
 		return err
 	}
+
+	c.API.Server.LoadDecisionsStream()
 
 	if c.API.Server.AutoRegister != nil && c.API.Server.AutoRegister.Enable != nil && *c.API.Server.AutoRegister.Enable && !inCli {
 		log.Infof("auto LAPI registration enabled for ranges %+v", c.API.Server.AutoRegister.AllowedRanges)
@@ -514,10 +537,24 @@ func (c *Config) LoadAPIClient() error {
 	return c.API.Client.Load()
 }
 
+func (c *LocalApiServerCfg) LoadDecisionsStream() {
+	if c.DecisionsStream == nil {
+		c.DecisionsStream = &DecisionsStreamCfg{}
+	}
+
+	if c.DecisionsStream.PageSize == 0 {
+		c.DecisionsStream.PageSize = DefaultDecisionsStreamPageSize
+	}
+
+	if c.DecisionsStream.MaxQueueWait == 0 {
+		c.DecisionsStream.MaxQueueWait = DefaultDecisionsStreamMaxQueueWait
+	}
+}
+
 func (c *LocalApiServerCfg) LoadAutoRegister() error {
 	if c.AutoRegister == nil {
 		c.AutoRegister = &LocalAPIAutoRegisterCfg{
-			Enable: ptr.Of(false),
+			Enable: new(false),
 		}
 
 		return nil
@@ -525,7 +562,7 @@ func (c *LocalApiServerCfg) LoadAutoRegister() error {
 
 	// Disable by default
 	if c.AutoRegister.Enable == nil {
-		c.AutoRegister.Enable = ptr.Of(false)
+		c.AutoRegister.Enable = new(false)
 	}
 
 	if !*c.AutoRegister.Enable {

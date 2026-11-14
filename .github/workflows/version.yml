@@ -1,0 +1,78 @@
+name: Deploy to Cloudflare Pages (Direct Upload)
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CrowdSec version/tag to deploy (e.g. v1.6.0). Leave empty to deploy latest release."
+        required: false
+        type: string
+      date:
+        description: "Deployment date (YYYY-MM-DDTHH:MM:SSZ). Cannot be empty if version is not empty."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' && github.event.release.prerelease == false)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20
+
+      - name: Pick CrowdSec version
+        id: pick_version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_DATE: ${{ inputs.date }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${INPUT_VERSION:-}" ] && [ -z "${INPUT_DATE:-}" ]; then
+            echo "Error: If version is provided, date must also be provided." >&2
+            exit 1
+          fi
+
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            TAG="${INPUT_VERSION}"
+            DATE="${INPUT_DATE}"
+          else
+            # latest non-prerelease tag
+            JSON_CONTENT="$(gh release list --json tagName,publishedAt --exclude-pre-releases --limit 1)"
+            TAG="$(echo "$JSON_CONTENT" | jq -r '.[0].tagName')"
+            DATE="$(echo "$JSON_CONTENT" | jq -r '.[0].publishedAt')"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Write dist artifact
+        env:
+          TAG: ${{ steps.pick_version.outputs.tag }}
+          DATE: ${{ steps.pick_version.outputs.date }}
+        run: |
+          set -euo pipefail
+          mkdir -p ./dist
+          printf '{"name":"%s", "tag_name":"%s", "published_at":"%s"}\n' "$TAG" "$TAG" "$DATE" > ./dist/latest
+          cat ./dist/latest
+
+      # Deploy the build output directory (adjust ./dist to your framework output)
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./dist --project-name version --branch main

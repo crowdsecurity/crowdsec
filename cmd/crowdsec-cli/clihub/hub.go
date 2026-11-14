@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
@@ -51,6 +52,7 @@ cscli hub upgrade`,
 
 	cmd.AddCommand(cli.newBranchCmd())
 	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newSearchCmd())
 	cmd.AddCommand(cli.newUpdateCmd())
 	cmd.AddCommand(cli.newUpgradeCmd())
 	cmd.AddCommand(cli.newTypesCmd())
@@ -58,7 +60,7 @@ cscli hub upgrade`,
 	return cmd
 }
 
-func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
+func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool, full bool, statuses []string) error {
 	cfg := cli.cfg()
 
 	for _, v := range hub.Warnings {
@@ -69,21 +71,72 @@ func (cli *cliHub) List(out io.Writer, hub *cwhub.Hub, all bool) error {
 		fmt.Fprintln(os.Stderr, line)
 	}
 
-	items := make(map[string][]*cwhub.Item)
-
-	var err error
-
-	for _, itemType := range cwhub.ItemTypes {
-		items[itemType], err = SelectItems(hub, itemType, nil, !all)
+	// json/raw keep the per-type structure for scripts, regardless of the human view
+	if cfg.Cscli.Output != "human" {
+		items, err := itemsByType(hub, all, statuses)
 		if err != nil {
 			return err
 		}
+
+		return ListItems(out, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
 	}
 
-	err = ListItems(out, cfg.Cscli.Color, cwhub.ItemTypes, items, true, cfg.Cscli.Output)
-	if err != nil {
-		return err
+	// -a: flat table of every item type (installed and not)
+	if all {
+		items, err := itemsByType(hub, all, statuses)
+		if err != nil {
+			return err
+		}
+
+		merged := make([]*cwhub.Item, 0)
+		for _, itemType := range cwhub.ItemTypes {
+			merged = append(merged, items[itemType]...)
+		}
+
+		if len(merged) == 0 {
+			fmt.Fprintln(out, "No items to display")
+			return nil
+		}
+
+		renderItemTable(out, cfg.Cscli.Color, flatRows(merged), false)
+
+		return nil
 	}
+
+	// default: a tree of installed items (sub-collections nested), then standalone items.
+	// cwhub owns the tree; status/full pruning happens in the flatten walk.
+	forest := hub.InstalledItems()
+
+	var rows []overviewRow
+	for _, node := range forest {
+		rows = append(rows, treeRows(node, 0, statuses, full)...)
+	}
+
+	// --full is exhaustive: also surface installed items the tree places nowhere (e.g. a sub-item
+	// kept after its parent collection was removed). items[] is already installed + status-filtered.
+	if full {
+		items, err := itemsByType(hub, all, statuses)
+		if err != nil {
+			return err
+		}
+
+		placed := placedInTree(forest)
+
+		for _, itemType := range cwhub.ItemTypes {
+			for _, item := range items[itemType] {
+				if !placed[item.FQName()] {
+					rows = append(rows, overviewRow{item: item})
+				}
+			}
+		}
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintln(out, "No items to display")
+		return nil
+	}
+
+	renderItemTable(out, cfg.Cscli.Color, rows, false)
 
 	return nil
 }
@@ -115,25 +168,43 @@ func (cli *cliHub) newBranchCmd() *cobra.Command {
 }
 
 func (cli *cliHub) newListCmd() *cobra.Command {
-	var all bool
+	var (
+		all      bool
+		full     bool
+		statuses []string
+	)
 
 	cmd := &cobra.Command{
-		Use:               "list [-a]",
-		Short:             "List all installed configurations",
+		Use:   "list [-a]",
+		Short: "List relevant installed items",
+		Long: `List installed relevant items (collections, standalone items) and shows their status.
+Use --all to list all items, including those not installed.
+Use --full to list every installed item individually, instead of summarizing collection contents.`,
 		Args:              args.NoArgs,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := validateStatuses(statuses); err != nil {
+				return err
+			}
+
 			hub, err := require.Hub(cli.cfg(), log.StandardLogger())
 			if err != nil {
 				return err
 			}
 
-			return cli.List(color.Output, hub, all)
+			return cli.List(color.Output, hub, all, full, statuses)
 		},
 	}
 
 	flags := cmd.Flags()
 	flags.BoolVarP(&all, "all", "a", false, "List all available items, including those not installed")
+	flags.BoolVar(&full, "full", false, "List every installed item individually instead of summarizing collection contents")
+	flags.StringSliceVar(&statuses, "status", nil, "Filter by status ("+strings.Join(validItemStatuses, ", ")+")")
+	cmd.MarkFlagsMutuallyExclusive("all", "full")
+
+	_ = cmd.RegisterFlagCompletionFunc("status", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return validItemStatuses, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	return cmd
 }

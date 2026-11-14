@@ -27,164 +27,164 @@ type AlertUpdate struct {
 }
 
 // Where appends a list predicates to the AlertUpdate builder.
-func (au *AlertUpdate) Where(ps ...predicate.Alert) *AlertUpdate {
-	au.mutation.Where(ps...)
-	return au
+func (_u *AlertUpdate) Where(ps ...predicate.Alert) *AlertUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (au *AlertUpdate) SetUpdatedAt(t time.Time) *AlertUpdate {
-	au.mutation.SetUpdatedAt(t)
-	return au
+func (_u *AlertUpdate) SetUpdatedAt(v time.Time) *AlertUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
-	au.mutation.SetOwnerID(id)
-	return au
+func (_u *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (au *AlertUpdate) SetNillableOwnerID(id *int) *AlertUpdate {
+func (_u *AlertUpdate) SetNillableOwnerID(id *int) *AlertUpdate {
 	if id != nil {
-		au = au.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return au
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Machine entity.
-func (au *AlertUpdate) SetOwner(m *Machine) *AlertUpdate {
-	return au.SetOwnerID(m.ID)
+func (_u *AlertUpdate) SetOwner(v *Machine) *AlertUpdate {
+	return _u.SetOwnerID(v.ID)
 }
 
 // AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
-func (au *AlertUpdate) AddDecisionIDs(ids ...int) *AlertUpdate {
-	au.mutation.AddDecisionIDs(ids...)
-	return au
+func (_u *AlertUpdate) AddDecisionIDs(ids ...int) *AlertUpdate {
+	_u.mutation.AddDecisionIDs(ids...)
+	return _u
 }
 
 // AddDecisions adds the "decisions" edges to the Decision entity.
-func (au *AlertUpdate) AddDecisions(d ...*Decision) *AlertUpdate {
-	ids := make([]int, len(d))
-	for i := range d {
-		ids[i] = d[i].ID
+func (_u *AlertUpdate) AddDecisions(v ...*Decision) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.AddDecisionIDs(ids...)
+	return _u.AddDecisionIDs(ids...)
 }
 
 // AddEventIDs adds the "events" edge to the Event entity by IDs.
-func (au *AlertUpdate) AddEventIDs(ids ...int) *AlertUpdate {
-	au.mutation.AddEventIDs(ids...)
-	return au
+func (_u *AlertUpdate) AddEventIDs(ids ...int) *AlertUpdate {
+	_u.mutation.AddEventIDs(ids...)
+	return _u
 }
 
 // AddEvents adds the "events" edges to the Event entity.
-func (au *AlertUpdate) AddEvents(e ...*Event) *AlertUpdate {
-	ids := make([]int, len(e))
-	for i := range e {
-		ids[i] = e[i].ID
+func (_u *AlertUpdate) AddEvents(v ...*Event) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.AddEventIDs(ids...)
+	return _u.AddEventIDs(ids...)
 }
 
 // AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
-func (au *AlertUpdate) AddMetaIDs(ids ...int) *AlertUpdate {
-	au.mutation.AddMetaIDs(ids...)
-	return au
+func (_u *AlertUpdate) AddMetaIDs(ids ...int) *AlertUpdate {
+	_u.mutation.AddMetaIDs(ids...)
+	return _u
 }
 
 // AddMetas adds the "metas" edges to the Meta entity.
-func (au *AlertUpdate) AddMetas(m ...*Meta) *AlertUpdate {
-	ids := make([]int, len(m))
-	for i := range m {
-		ids[i] = m[i].ID
+func (_u *AlertUpdate) AddMetas(v ...*Meta) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.AddMetaIDs(ids...)
+	return _u.AddMetaIDs(ids...)
 }
 
 // Mutation returns the AlertMutation object of the builder.
-func (au *AlertUpdate) Mutation() *AlertMutation {
-	return au.mutation
+func (_u *AlertUpdate) Mutation() *AlertMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Machine entity.
-func (au *AlertUpdate) ClearOwner() *AlertUpdate {
-	au.mutation.ClearOwner()
-	return au
+func (_u *AlertUpdate) ClearOwner() *AlertUpdate {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // ClearDecisions clears all "decisions" edges to the Decision entity.
-func (au *AlertUpdate) ClearDecisions() *AlertUpdate {
-	au.mutation.ClearDecisions()
-	return au
+func (_u *AlertUpdate) ClearDecisions() *AlertUpdate {
+	_u.mutation.ClearDecisions()
+	return _u
 }
 
 // RemoveDecisionIDs removes the "decisions" edge to Decision entities by IDs.
-func (au *AlertUpdate) RemoveDecisionIDs(ids ...int) *AlertUpdate {
-	au.mutation.RemoveDecisionIDs(ids...)
-	return au
+func (_u *AlertUpdate) RemoveDecisionIDs(ids ...int) *AlertUpdate {
+	_u.mutation.RemoveDecisionIDs(ids...)
+	return _u
 }
 
 // RemoveDecisions removes "decisions" edges to Decision entities.
-func (au *AlertUpdate) RemoveDecisions(d ...*Decision) *AlertUpdate {
-	ids := make([]int, len(d))
-	for i := range d {
-		ids[i] = d[i].ID
+func (_u *AlertUpdate) RemoveDecisions(v ...*Decision) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.RemoveDecisionIDs(ids...)
+	return _u.RemoveDecisionIDs(ids...)
 }
 
 // ClearEvents clears all "events" edges to the Event entity.
-func (au *AlertUpdate) ClearEvents() *AlertUpdate {
-	au.mutation.ClearEvents()
-	return au
+func (_u *AlertUpdate) ClearEvents() *AlertUpdate {
+	_u.mutation.ClearEvents()
+	return _u
 }
 
 // RemoveEventIDs removes the "events" edge to Event entities by IDs.
-func (au *AlertUpdate) RemoveEventIDs(ids ...int) *AlertUpdate {
-	au.mutation.RemoveEventIDs(ids...)
-	return au
+func (_u *AlertUpdate) RemoveEventIDs(ids ...int) *AlertUpdate {
+	_u.mutation.RemoveEventIDs(ids...)
+	return _u
 }
 
 // RemoveEvents removes "events" edges to Event entities.
-func (au *AlertUpdate) RemoveEvents(e ...*Event) *AlertUpdate {
-	ids := make([]int, len(e))
-	for i := range e {
-		ids[i] = e[i].ID
+func (_u *AlertUpdate) RemoveEvents(v ...*Event) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.RemoveEventIDs(ids...)
+	return _u.RemoveEventIDs(ids...)
 }
 
 // ClearMetas clears all "metas" edges to the Meta entity.
-func (au *AlertUpdate) ClearMetas() *AlertUpdate {
-	au.mutation.ClearMetas()
-	return au
+func (_u *AlertUpdate) ClearMetas() *AlertUpdate {
+	_u.mutation.ClearMetas()
+	return _u
 }
 
 // RemoveMetaIDs removes the "metas" edge to Meta entities by IDs.
-func (au *AlertUpdate) RemoveMetaIDs(ids ...int) *AlertUpdate {
-	au.mutation.RemoveMetaIDs(ids...)
-	return au
+func (_u *AlertUpdate) RemoveMetaIDs(ids ...int) *AlertUpdate {
+	_u.mutation.RemoveMetaIDs(ids...)
+	return _u
 }
 
 // RemoveMetas removes "metas" edges to Meta entities.
-func (au *AlertUpdate) RemoveMetas(m ...*Meta) *AlertUpdate {
-	ids := make([]int, len(m))
-	for i := range m {
-		ids[i] = m[i].ID
+func (_u *AlertUpdate) RemoveMetas(v ...*Meta) *AlertUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return au.RemoveMetaIDs(ids...)
+	return _u.RemoveMetaIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (au *AlertUpdate) Save(ctx context.Context) (int, error) {
-	au.defaults()
-	return withHooks(ctx, au.sqlSave, au.mutation, au.hooks)
+func (_u *AlertUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (au *AlertUpdate) SaveX(ctx context.Context) int {
-	affected, err := au.Save(ctx)
+func (_u *AlertUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -192,99 +192,102 @@ func (au *AlertUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (au *AlertUpdate) Exec(ctx context.Context) error {
-	_, err := au.Save(ctx)
+func (_u *AlertUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (au *AlertUpdate) ExecX(ctx context.Context) {
-	if err := au.Exec(ctx); err != nil {
+func (_u *AlertUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (au *AlertUpdate) defaults() {
-	if _, ok := au.mutation.UpdatedAt(); !ok {
+func (_u *AlertUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := alert.UpdateDefaultUpdatedAt()
-		au.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *AlertUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(alert.Table, alert.Columns, sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt))
-	if ps := au.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := au.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if au.mutation.BucketIdCleared() {
+	if _u.mutation.BucketIdCleared() {
 		_spec.ClearField(alert.FieldBucketId, field.TypeString)
 	}
-	if au.mutation.MessageCleared() {
+	if _u.mutation.MessageCleared() {
 		_spec.ClearField(alert.FieldMessage, field.TypeString)
 	}
-	if au.mutation.EventsCountCleared() {
+	if _u.mutation.EventsCountCleared() {
 		_spec.ClearField(alert.FieldEventsCount, field.TypeInt32)
 	}
-	if au.mutation.StartedAtCleared() {
+	if _u.mutation.StartedAtCleared() {
 		_spec.ClearField(alert.FieldStartedAt, field.TypeTime)
 	}
-	if au.mutation.StoppedAtCleared() {
+	if _u.mutation.StoppedAtCleared() {
 		_spec.ClearField(alert.FieldStoppedAt, field.TypeTime)
 	}
-	if au.mutation.SourceIpCleared() {
+	if _u.mutation.SourceIpCleared() {
 		_spec.ClearField(alert.FieldSourceIp, field.TypeString)
 	}
-	if au.mutation.SourceRangeCleared() {
+	if _u.mutation.SourceRangeCleared() {
 		_spec.ClearField(alert.FieldSourceRange, field.TypeString)
 	}
-	if au.mutation.SourceAsNumberCleared() {
+	if _u.mutation.SourceAsNumberCleared() {
 		_spec.ClearField(alert.FieldSourceAsNumber, field.TypeString)
 	}
-	if au.mutation.SourceAsNameCleared() {
+	if _u.mutation.SourceAsNameCleared() {
 		_spec.ClearField(alert.FieldSourceAsName, field.TypeString)
 	}
-	if au.mutation.SourceCountryCleared() {
+	if _u.mutation.SourceCountryCleared() {
 		_spec.ClearField(alert.FieldSourceCountry, field.TypeString)
 	}
-	if au.mutation.SourceLatitudeCleared() {
+	if _u.mutation.SourceLatitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLatitude, field.TypeFloat32)
 	}
-	if au.mutation.SourceLongitudeCleared() {
+	if _u.mutation.SourceLongitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLongitude, field.TypeFloat32)
 	}
-	if au.mutation.SourceScopeCleared() {
+	if _u.mutation.SourceScopeCleared() {
 		_spec.ClearField(alert.FieldSourceScope, field.TypeString)
 	}
-	if au.mutation.SourceValueCleared() {
+	if _u.mutation.SourceValueCleared() {
 		_spec.ClearField(alert.FieldSourceValue, field.TypeString)
 	}
-	if au.mutation.CapacityCleared() {
+	if _u.mutation.CapacityCleared() {
 		_spec.ClearField(alert.FieldCapacity, field.TypeInt32)
 	}
-	if au.mutation.LeakSpeedCleared() {
+	if _u.mutation.LeakSpeedCleared() {
 		_spec.ClearField(alert.FieldLeakSpeed, field.TypeString)
 	}
-	if au.mutation.ScenarioVersionCleared() {
+	if _u.mutation.ScenarioVersionCleared() {
 		_spec.ClearField(alert.FieldScenarioVersion, field.TypeString)
 	}
-	if au.mutation.ScenarioHashCleared() {
+	if _u.mutation.ScenarioHashCleared() {
 		_spec.ClearField(alert.FieldScenarioHash, field.TypeString)
 	}
-	if au.mutation.UUIDCleared() {
+	if _u.mutation.UUIDCleared() {
 		_spec.ClearField(alert.FieldUUID, field.TypeString)
 	}
-	if au.mutation.RemediationCleared() {
+	if _u.mutation.RemediationCleared() {
 		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
 	}
-	if au.mutation.OwnerCleared() {
+	if _u.mutation.KindCleared() {
+		_spec.ClearField(alert.FieldKind, field.TypeString)
+	}
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -297,7 +300,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -313,7 +316,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.DecisionsCleared() {
+	if _u.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -326,7 +329,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !au.mutation.DecisionsCleared() {
+	if nodes := _u.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !_u.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -342,7 +345,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.DecisionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.DecisionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -358,7 +361,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.EventsCleared() {
+	if _u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -371,7 +374,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.RemovedEventsIDs(); len(nodes) > 0 && !au.mutation.EventsCleared() {
+	if nodes := _u.mutation.RemovedEventsIDs(); len(nodes) > 0 && !_u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -387,7 +390,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.EventsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.EventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -403,7 +406,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.MetasCleared() {
+	if _u.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -416,7 +419,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.RemovedMetasIDs(); len(nodes) > 0 && !au.mutation.MetasCleared() {
+	if nodes := _u.mutation.RemovedMetasIDs(); len(nodes) > 0 && !_u.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -432,7 +435,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.MetasIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MetasIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -448,7 +451,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, au.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -456,8 +459,8 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	au.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // AlertUpdateOne is the builder for updating a single Alert entity.
@@ -469,171 +472,171 @@ type AlertUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (auo *AlertUpdateOne) SetUpdatedAt(t time.Time) *AlertUpdateOne {
-	auo.mutation.SetUpdatedAt(t)
-	return auo
+func (_u *AlertUpdateOne) SetUpdatedAt(v time.Time) *AlertUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
-	auo.mutation.SetOwnerID(id)
-	return auo
+func (_u *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableOwnerID(id *int) *AlertUpdateOne {
+func (_u *AlertUpdateOne) SetNillableOwnerID(id *int) *AlertUpdateOne {
 	if id != nil {
-		auo = auo.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return auo
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Machine entity.
-func (auo *AlertUpdateOne) SetOwner(m *Machine) *AlertUpdateOne {
-	return auo.SetOwnerID(m.ID)
+func (_u *AlertUpdateOne) SetOwner(v *Machine) *AlertUpdateOne {
+	return _u.SetOwnerID(v.ID)
 }
 
 // AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
-func (auo *AlertUpdateOne) AddDecisionIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.AddDecisionIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) AddDecisionIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.AddDecisionIDs(ids...)
+	return _u
 }
 
 // AddDecisions adds the "decisions" edges to the Decision entity.
-func (auo *AlertUpdateOne) AddDecisions(d ...*Decision) *AlertUpdateOne {
-	ids := make([]int, len(d))
-	for i := range d {
-		ids[i] = d[i].ID
+func (_u *AlertUpdateOne) AddDecisions(v ...*Decision) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.AddDecisionIDs(ids...)
+	return _u.AddDecisionIDs(ids...)
 }
 
 // AddEventIDs adds the "events" edge to the Event entity by IDs.
-func (auo *AlertUpdateOne) AddEventIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.AddEventIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) AddEventIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.AddEventIDs(ids...)
+	return _u
 }
 
 // AddEvents adds the "events" edges to the Event entity.
-func (auo *AlertUpdateOne) AddEvents(e ...*Event) *AlertUpdateOne {
-	ids := make([]int, len(e))
-	for i := range e {
-		ids[i] = e[i].ID
+func (_u *AlertUpdateOne) AddEvents(v ...*Event) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.AddEventIDs(ids...)
+	return _u.AddEventIDs(ids...)
 }
 
 // AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
-func (auo *AlertUpdateOne) AddMetaIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.AddMetaIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) AddMetaIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.AddMetaIDs(ids...)
+	return _u
 }
 
 // AddMetas adds the "metas" edges to the Meta entity.
-func (auo *AlertUpdateOne) AddMetas(m ...*Meta) *AlertUpdateOne {
-	ids := make([]int, len(m))
-	for i := range m {
-		ids[i] = m[i].ID
+func (_u *AlertUpdateOne) AddMetas(v ...*Meta) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.AddMetaIDs(ids...)
+	return _u.AddMetaIDs(ids...)
 }
 
 // Mutation returns the AlertMutation object of the builder.
-func (auo *AlertUpdateOne) Mutation() *AlertMutation {
-	return auo.mutation
+func (_u *AlertUpdateOne) Mutation() *AlertMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Machine entity.
-func (auo *AlertUpdateOne) ClearOwner() *AlertUpdateOne {
-	auo.mutation.ClearOwner()
-	return auo
+func (_u *AlertUpdateOne) ClearOwner() *AlertUpdateOne {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // ClearDecisions clears all "decisions" edges to the Decision entity.
-func (auo *AlertUpdateOne) ClearDecisions() *AlertUpdateOne {
-	auo.mutation.ClearDecisions()
-	return auo
+func (_u *AlertUpdateOne) ClearDecisions() *AlertUpdateOne {
+	_u.mutation.ClearDecisions()
+	return _u
 }
 
 // RemoveDecisionIDs removes the "decisions" edge to Decision entities by IDs.
-func (auo *AlertUpdateOne) RemoveDecisionIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.RemoveDecisionIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) RemoveDecisionIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.RemoveDecisionIDs(ids...)
+	return _u
 }
 
 // RemoveDecisions removes "decisions" edges to Decision entities.
-func (auo *AlertUpdateOne) RemoveDecisions(d ...*Decision) *AlertUpdateOne {
-	ids := make([]int, len(d))
-	for i := range d {
-		ids[i] = d[i].ID
+func (_u *AlertUpdateOne) RemoveDecisions(v ...*Decision) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.RemoveDecisionIDs(ids...)
+	return _u.RemoveDecisionIDs(ids...)
 }
 
 // ClearEvents clears all "events" edges to the Event entity.
-func (auo *AlertUpdateOne) ClearEvents() *AlertUpdateOne {
-	auo.mutation.ClearEvents()
-	return auo
+func (_u *AlertUpdateOne) ClearEvents() *AlertUpdateOne {
+	_u.mutation.ClearEvents()
+	return _u
 }
 
 // RemoveEventIDs removes the "events" edge to Event entities by IDs.
-func (auo *AlertUpdateOne) RemoveEventIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.RemoveEventIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) RemoveEventIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.RemoveEventIDs(ids...)
+	return _u
 }
 
 // RemoveEvents removes "events" edges to Event entities.
-func (auo *AlertUpdateOne) RemoveEvents(e ...*Event) *AlertUpdateOne {
-	ids := make([]int, len(e))
-	for i := range e {
-		ids[i] = e[i].ID
+func (_u *AlertUpdateOne) RemoveEvents(v ...*Event) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.RemoveEventIDs(ids...)
+	return _u.RemoveEventIDs(ids...)
 }
 
 // ClearMetas clears all "metas" edges to the Meta entity.
-func (auo *AlertUpdateOne) ClearMetas() *AlertUpdateOne {
-	auo.mutation.ClearMetas()
-	return auo
+func (_u *AlertUpdateOne) ClearMetas() *AlertUpdateOne {
+	_u.mutation.ClearMetas()
+	return _u
 }
 
 // RemoveMetaIDs removes the "metas" edge to Meta entities by IDs.
-func (auo *AlertUpdateOne) RemoveMetaIDs(ids ...int) *AlertUpdateOne {
-	auo.mutation.RemoveMetaIDs(ids...)
-	return auo
+func (_u *AlertUpdateOne) RemoveMetaIDs(ids ...int) *AlertUpdateOne {
+	_u.mutation.RemoveMetaIDs(ids...)
+	return _u
 }
 
 // RemoveMetas removes "metas" edges to Meta entities.
-func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
-	ids := make([]int, len(m))
-	for i := range m {
-		ids[i] = m[i].ID
+func (_u *AlertUpdateOne) RemoveMetas(v ...*Meta) *AlertUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return auo.RemoveMetaIDs(ids...)
+	return _u.RemoveMetaIDs(ids...)
 }
 
 // Where appends a list predicates to the AlertUpdate builder.
-func (auo *AlertUpdateOne) Where(ps ...predicate.Alert) *AlertUpdateOne {
-	auo.mutation.Where(ps...)
-	return auo
+func (_u *AlertUpdateOne) Where(ps ...predicate.Alert) *AlertUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (auo *AlertUpdateOne) Select(field string, fields ...string) *AlertUpdateOne {
-	auo.fields = append([]string{field}, fields...)
-	return auo
+func (_u *AlertUpdateOne) Select(field string, fields ...string) *AlertUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Alert entity.
-func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
-	auo.defaults()
-	return withHooks(ctx, auo.sqlSave, auo.mutation, auo.hooks)
+func (_u *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (auo *AlertUpdateOne) SaveX(ctx context.Context) *Alert {
-	node, err := auo.Save(ctx)
+func (_u *AlertUpdateOne) SaveX(ctx context.Context) *Alert {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -641,34 +644,34 @@ func (auo *AlertUpdateOne) SaveX(ctx context.Context) *Alert {
 }
 
 // Exec executes the query on the entity.
-func (auo *AlertUpdateOne) Exec(ctx context.Context) error {
-	_, err := auo.Save(ctx)
+func (_u *AlertUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (auo *AlertUpdateOne) ExecX(ctx context.Context) {
-	if err := auo.Exec(ctx); err != nil {
+func (_u *AlertUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (auo *AlertUpdateOne) defaults() {
-	if _, ok := auo.mutation.UpdatedAt(); !ok {
+func (_u *AlertUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := alert.UpdateDefaultUpdatedAt()
-		auo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error) {
+func (_u *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error) {
 	_spec := sqlgraph.NewUpdateSpec(alert.Table, alert.Columns, sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt))
-	id, ok := auo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Alert.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := auo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, alert.FieldID)
 		for _, f := range fields {
@@ -680,77 +683,80 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			}
 		}
 	}
-	if ps := auo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := auo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(alert.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if auo.mutation.BucketIdCleared() {
+	if _u.mutation.BucketIdCleared() {
 		_spec.ClearField(alert.FieldBucketId, field.TypeString)
 	}
-	if auo.mutation.MessageCleared() {
+	if _u.mutation.MessageCleared() {
 		_spec.ClearField(alert.FieldMessage, field.TypeString)
 	}
-	if auo.mutation.EventsCountCleared() {
+	if _u.mutation.EventsCountCleared() {
 		_spec.ClearField(alert.FieldEventsCount, field.TypeInt32)
 	}
-	if auo.mutation.StartedAtCleared() {
+	if _u.mutation.StartedAtCleared() {
 		_spec.ClearField(alert.FieldStartedAt, field.TypeTime)
 	}
-	if auo.mutation.StoppedAtCleared() {
+	if _u.mutation.StoppedAtCleared() {
 		_spec.ClearField(alert.FieldStoppedAt, field.TypeTime)
 	}
-	if auo.mutation.SourceIpCleared() {
+	if _u.mutation.SourceIpCleared() {
 		_spec.ClearField(alert.FieldSourceIp, field.TypeString)
 	}
-	if auo.mutation.SourceRangeCleared() {
+	if _u.mutation.SourceRangeCleared() {
 		_spec.ClearField(alert.FieldSourceRange, field.TypeString)
 	}
-	if auo.mutation.SourceAsNumberCleared() {
+	if _u.mutation.SourceAsNumberCleared() {
 		_spec.ClearField(alert.FieldSourceAsNumber, field.TypeString)
 	}
-	if auo.mutation.SourceAsNameCleared() {
+	if _u.mutation.SourceAsNameCleared() {
 		_spec.ClearField(alert.FieldSourceAsName, field.TypeString)
 	}
-	if auo.mutation.SourceCountryCleared() {
+	if _u.mutation.SourceCountryCleared() {
 		_spec.ClearField(alert.FieldSourceCountry, field.TypeString)
 	}
-	if auo.mutation.SourceLatitudeCleared() {
+	if _u.mutation.SourceLatitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLatitude, field.TypeFloat32)
 	}
-	if auo.mutation.SourceLongitudeCleared() {
+	if _u.mutation.SourceLongitudeCleared() {
 		_spec.ClearField(alert.FieldSourceLongitude, field.TypeFloat32)
 	}
-	if auo.mutation.SourceScopeCleared() {
+	if _u.mutation.SourceScopeCleared() {
 		_spec.ClearField(alert.FieldSourceScope, field.TypeString)
 	}
-	if auo.mutation.SourceValueCleared() {
+	if _u.mutation.SourceValueCleared() {
 		_spec.ClearField(alert.FieldSourceValue, field.TypeString)
 	}
-	if auo.mutation.CapacityCleared() {
+	if _u.mutation.CapacityCleared() {
 		_spec.ClearField(alert.FieldCapacity, field.TypeInt32)
 	}
-	if auo.mutation.LeakSpeedCleared() {
+	if _u.mutation.LeakSpeedCleared() {
 		_spec.ClearField(alert.FieldLeakSpeed, field.TypeString)
 	}
-	if auo.mutation.ScenarioVersionCleared() {
+	if _u.mutation.ScenarioVersionCleared() {
 		_spec.ClearField(alert.FieldScenarioVersion, field.TypeString)
 	}
-	if auo.mutation.ScenarioHashCleared() {
+	if _u.mutation.ScenarioHashCleared() {
 		_spec.ClearField(alert.FieldScenarioHash, field.TypeString)
 	}
-	if auo.mutation.UUIDCleared() {
+	if _u.mutation.UUIDCleared() {
 		_spec.ClearField(alert.FieldUUID, field.TypeString)
 	}
-	if auo.mutation.RemediationCleared() {
+	if _u.mutation.RemediationCleared() {
 		_spec.ClearField(alert.FieldRemediation, field.TypeBool)
 	}
-	if auo.mutation.OwnerCleared() {
+	if _u.mutation.KindCleared() {
+		_spec.ClearField(alert.FieldKind, field.TypeString)
+	}
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -763,7 +769,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -779,7 +785,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.DecisionsCleared() {
+	if _u.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -792,7 +798,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !auo.mutation.DecisionsCleared() {
+	if nodes := _u.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !_u.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -808,7 +814,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.DecisionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.DecisionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -824,7 +830,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.EventsCleared() {
+	if _u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -837,7 +843,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.RemovedEventsIDs(); len(nodes) > 0 && !auo.mutation.EventsCleared() {
+	if nodes := _u.mutation.RemovedEventsIDs(); len(nodes) > 0 && !_u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -853,7 +859,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.EventsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.EventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -869,7 +875,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.MetasCleared() {
+	if _u.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -882,7 +888,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.RemovedMetasIDs(); len(nodes) > 0 && !auo.mutation.MetasCleared() {
+	if nodes := _u.mutation.RemovedMetasIDs(); len(nodes) > 0 && !_u.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -898,7 +904,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.MetasIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MetasIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -914,10 +920,10 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Alert{config: auo.config}
+	_node = &Alert{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, auo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -925,6 +931,6 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		return nil, err
 	}
-	auo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

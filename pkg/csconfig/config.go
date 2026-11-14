@@ -14,7 +14,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/csstring"
 	"github.com/crowdsecurity/go-cs-lib/csyaml"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
@@ -34,6 +33,7 @@ type Config struct {
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
 	Prometheus   *PrometheusCfg      `yaml:"prometheus,omitempty"`
+	PProf        *PProfCfg           `yaml:"pprof,omitempty"`
 	Crowdsec     *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
 	Cscli        *CscliCfg           `yaml:"cscli,omitempty"`
 	DbConfig     *DatabaseCfg        `yaml:"db_config,omitempty"`
@@ -86,6 +86,27 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		log.Debugf("prometheus.listen_port is empty or zero, defaulting to %d", cfg.Prometheus.ListenPort)
 	}
 
+	if cfg.PProf == nil {
+		cfg.PProf = &PProfCfg{}
+	}
+
+	if cfg.PProf.Enabled == nil {
+		// pprof is enabled by default, bound to localhost (see ListenAddr below),
+		// so profiling stays available without exposing it to the network.
+		enabled := true
+		cfg.PProf.Enabled = &enabled
+	}
+
+	if cfg.PProf.ListenAddr == "" {
+		cfg.PProf.ListenAddr = "127.0.0.1"
+		log.Debugf("pprof.listen_addr is empty, defaulting to %s", cfg.PProf.ListenAddr)
+	}
+
+	if cfg.PProf.ListenPort == 0 {
+		cfg.PProf.ListenPort = 6092
+		log.Debugf("pprof.listen_port is empty or zero, defaulting to %d", cfg.PProf.ListenPort)
+	}
+
 	if err = cfg.loadCommon(); err != nil {
 		return nil, "", err
 	}
@@ -117,6 +138,12 @@ func NewDefaultConfig() *Config {
 		Enabled: true,
 		Level:   metrics.MetricsLevelFull,
 	}
+	pprofEnabled := true
+	pprof := PProfCfg{
+		Enabled:    &pprofEnabled,
+		ListenAddr: "127.0.0.1",
+		ListenPort: 6092,
+	}
 	configPaths := ConfigurationPaths{
 		ConfigDir:          DefaultConfigPath("."),
 		DataDir:            DefaultDataPath("."),
@@ -146,7 +173,7 @@ func NewDefaultConfig() *Config {
 			},
 		},
 		CTI: &CTICfg{
-			Enabled: ptr.Of(false),
+			Enabled: new(false),
 		},
 	}
 
@@ -159,6 +186,7 @@ func NewDefaultConfig() *Config {
 	globalCfg := Config{
 		Common:      &commonCfg,
 		Prometheus:  &prometheus,
+		PProf:       &pprof,
 		Crowdsec:    &crowdsecCfg,
 		Cscli:       &cscliCfg,
 		API:         &apiCfg,

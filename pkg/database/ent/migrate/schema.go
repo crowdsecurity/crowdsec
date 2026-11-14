@@ -35,6 +35,7 @@ var (
 		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "remediation", Type: field.TypeBool, Nullable: true},
+		{Name: "kind", Type: field.TypeString, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -45,7 +46,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[25]},
+				Columns:    []*schema.Column{AlertsColumns[26]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -55,6 +56,16 @@ var (
 				Name:    "alert_id",
 				Unique:  false,
 				Columns: []*schema.Column{AlertsColumns[0]},
+			},
+			{
+				Name:    "alert_uuid",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[23]},
+			},
+			{
+				Name:    "alert_scenario",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[3]},
 			},
 		},
 	}
@@ -83,6 +94,11 @@ var (
 				Name:    "allowlist_name",
 				Unique:  true,
 				Columns: []*schema.Column{AllowListsColumns[3]},
+			},
+			{
+				Name:    "allowlist_allowlist_id",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListsColumns[6]},
 			},
 		},
 	}
@@ -116,6 +132,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{AllowListItemsColumns[6], AllowListItemsColumns[7]},
 			},
+			{
+				Name:    "allowlistitem_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{AllowListItemsColumns[3]},
+			},
 		},
 	}
 	// BouncersColumns holds the columns for the "bouncers" table.
@@ -130,6 +151,7 @@ var (
 		{Name: "type", Type: field.TypeString, Nullable: true},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "last_pull", Type: field.TypeTime, Nullable: true},
+		{Name: "stream_cursor", Type: field.TypeInt, Default: 0},
 		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 		{Name: "osname", Type: field.TypeString, Nullable: true},
 		{Name: "osfamily", Type: field.TypeString, Nullable: true},
@@ -142,6 +164,23 @@ var (
 		Name:       "bouncers",
 		Columns:    BouncersColumns,
 		PrimaryKey: []*schema.Column{BouncersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "bouncer_api_key_auth_type",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[11]},
+			},
+			{
+				Name:    "bouncer_api_key_ip_address",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[4], BouncersColumns[6]},
+			},
+			{
+				Name:    "bouncer_last_pull_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{BouncersColumns[9], BouncersColumns[1]},
+			},
+		},
 	}
 	// ConfigItemsColumns holds the columns for the "config_items" table.
 	ConfigItemsColumns = []*schema.Column{
@@ -197,9 +236,9 @@ var (
 				Columns: []*schema.Column{DecisionsColumns[6], DecisionsColumns[7]},
 			},
 			{
-				Name:    "decision_value",
+				Name:    "decision_value_type_scope_until_simulated",
 				Unique:  false,
-				Columns: []*schema.Column{DecisionsColumns[12]},
+				Columns: []*schema.Column{DecisionsColumns[12], DecisionsColumns[5], DecisionsColumns[11], DecisionsColumns[3], DecisionsColumns[14]},
 			},
 			{
 				Name:    "decision_until",
@@ -275,12 +314,25 @@ var (
 		{Name: "featureflags", Type: field.TypeString, Nullable: true},
 		{Name: "hubstate", Type: field.TypeJSON, Nullable: true},
 		{Name: "datasources", Type: field.TypeJSON, Nullable: true},
+		{Name: "features", Type: field.TypeJSON, Nullable: true},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{
 		Name:       "machines",
 		Columns:    MachinesColumns,
 		PrimaryKey: []*schema.Column{MachinesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "machine_last_heartbeat_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{MachinesColumns[4], MachinesColumns[1]},
+			},
+			{
+				Name:    "machine_is_validated",
+				Unique:  false,
+				Columns: []*schema.Column{MachinesColumns[10]},
+			},
+		},
 	}
 	// MetaColumns holds the columns for the "meta" table.
 	MetaColumns = []*schema.Column{
@@ -326,6 +378,18 @@ var (
 		Name:       "metrics",
 		Columns:    MetricsColumns,
 		PrimaryKey: []*schema.Column{MetricsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "metric_received_at",
+				Unique:  false,
+				Columns: []*schema.Column{MetricsColumns[3]},
+			},
+			{
+				Name:    "metric_generated_type_generated_by_pushed_at",
+				Unique:  false,
+				Columns: []*schema.Column{MetricsColumns[1], MetricsColumns[2], MetricsColumns[4]},
+			},
+		},
 	}
 	// AllowListAllowlistItemsColumns holds the columns for the "allow_list_allowlist_items" table.
 	AllowListAllowlistItemsColumns = []*schema.Column{

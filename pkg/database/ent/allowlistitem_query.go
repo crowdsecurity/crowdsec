@@ -31,44 +31,44 @@ type AllowListItemQuery struct {
 }
 
 // Where adds a new predicate for the AllowListItemQuery builder.
-func (aliq *AllowListItemQuery) Where(ps ...predicate.AllowListItem) *AllowListItemQuery {
-	aliq.predicates = append(aliq.predicates, ps...)
-	return aliq
+func (_q *AllowListItemQuery) Where(ps ...predicate.AllowListItem) *AllowListItemQuery {
+	_q.predicates = append(_q.predicates, ps...)
+	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (aliq *AllowListItemQuery) Limit(limit int) *AllowListItemQuery {
-	aliq.ctx.Limit = &limit
-	return aliq
+func (_q *AllowListItemQuery) Limit(limit int) *AllowListItemQuery {
+	_q.ctx.Limit = &limit
+	return _q
 }
 
 // Offset to start from.
-func (aliq *AllowListItemQuery) Offset(offset int) *AllowListItemQuery {
-	aliq.ctx.Offset = &offset
-	return aliq
+func (_q *AllowListItemQuery) Offset(offset int) *AllowListItemQuery {
+	_q.ctx.Offset = &offset
+	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (aliq *AllowListItemQuery) Unique(unique bool) *AllowListItemQuery {
-	aliq.ctx.Unique = &unique
-	return aliq
+func (_q *AllowListItemQuery) Unique(unique bool) *AllowListItemQuery {
+	_q.ctx.Unique = &unique
+	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (aliq *AllowListItemQuery) Order(o ...allowlistitem.OrderOption) *AllowListItemQuery {
-	aliq.order = append(aliq.order, o...)
-	return aliq
+func (_q *AllowListItemQuery) Order(o ...allowlistitem.OrderOption) *AllowListItemQuery {
+	_q.order = append(_q.order, o...)
+	return _q
 }
 
 // QueryAllowlist chains the current query on the "allowlist" edge.
-func (aliq *AllowListItemQuery) QueryAllowlist() *AllowListQuery {
-	query := (&AllowListClient{config: aliq.config}).Query()
+func (_q *AllowListItemQuery) QueryAllowlist() *AllowListQuery {
+	query := (&AllowListClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := aliq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := aliq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func (aliq *AllowListItemQuery) QueryAllowlist() *AllowListQuery {
 			sqlgraph.To(allowlist.Table, allowlist.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, allowlistitem.AllowlistTable, allowlistitem.AllowlistPrimaryKey...),
 		)
-		fromU = sqlgraph.SetNeighbors(aliq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
@@ -85,8 +85,8 @@ func (aliq *AllowListItemQuery) QueryAllowlist() *AllowListQuery {
 
 // First returns the first AllowListItem entity from the query.
 // Returns a *NotFoundError when no AllowListItem was found.
-func (aliq *AllowListItemQuery) First(ctx context.Context) (*AllowListItem, error) {
-	nodes, err := aliq.Limit(1).All(setContextOp(ctx, aliq.ctx, ent.OpQueryFirst))
+func (_q *AllowListItemQuery) First(ctx context.Context) (*AllowListItem, error) {
+	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +97,8 @@ func (aliq *AllowListItemQuery) First(ctx context.Context) (*AllowListItem, erro
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (aliq *AllowListItemQuery) FirstX(ctx context.Context) *AllowListItem {
-	node, err := aliq.First(ctx)
+func (_q *AllowListItemQuery) FirstX(ctx context.Context) *AllowListItem {
+	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -107,9 +107,9 @@ func (aliq *AllowListItemQuery) FirstX(ctx context.Context) *AllowListItem {
 
 // FirstID returns the first AllowListItem ID from the query.
 // Returns a *NotFoundError when no AllowListItem ID was found.
-func (aliq *AllowListItemQuery) FirstID(ctx context.Context) (id int, err error) {
+func (_q *AllowListItemQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = aliq.Limit(1).IDs(setContextOp(ctx, aliq.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -120,8 +120,8 @@ func (aliq *AllowListItemQuery) FirstID(ctx context.Context) (id int, err error)
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (aliq *AllowListItemQuery) FirstIDX(ctx context.Context) int {
-	id, err := aliq.FirstID(ctx)
+func (_q *AllowListItemQuery) FirstIDX(ctx context.Context) int {
+	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -131,8 +131,8 @@ func (aliq *AllowListItemQuery) FirstIDX(ctx context.Context) int {
 // Only returns a single AllowListItem entity found by the query, ensuring it only returns one.
 // Returns a *NotSingularError when more than one AllowListItem entity is found.
 // Returns a *NotFoundError when no AllowListItem entities are found.
-func (aliq *AllowListItemQuery) Only(ctx context.Context) (*AllowListItem, error) {
-	nodes, err := aliq.Limit(2).All(setContextOp(ctx, aliq.ctx, ent.OpQueryOnly))
+func (_q *AllowListItemQuery) Only(ctx context.Context) (*AllowListItem, error) {
+	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +147,8 @@ func (aliq *AllowListItemQuery) Only(ctx context.Context) (*AllowListItem, error
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (aliq *AllowListItemQuery) OnlyX(ctx context.Context) *AllowListItem {
-	node, err := aliq.Only(ctx)
+func (_q *AllowListItemQuery) OnlyX(ctx context.Context) *AllowListItem {
+	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -158,9 +158,9 @@ func (aliq *AllowListItemQuery) OnlyX(ctx context.Context) *AllowListItem {
 // OnlyID is like Only, but returns the only AllowListItem ID in the query.
 // Returns a *NotSingularError when more than one AllowListItem ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (aliq *AllowListItemQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *AllowListItemQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = aliq.Limit(2).IDs(setContextOp(ctx, aliq.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -175,8 +175,8 @@ func (aliq *AllowListItemQuery) OnlyID(ctx context.Context) (id int, err error) 
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (aliq *AllowListItemQuery) OnlyIDX(ctx context.Context) int {
-	id, err := aliq.OnlyID(ctx)
+func (_q *AllowListItemQuery) OnlyIDX(ctx context.Context) int {
+	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -184,18 +184,18 @@ func (aliq *AllowListItemQuery) OnlyIDX(ctx context.Context) int {
 }
 
 // All executes the query and returns a list of AllowListItems.
-func (aliq *AllowListItemQuery) All(ctx context.Context) ([]*AllowListItem, error) {
-	ctx = setContextOp(ctx, aliq.ctx, ent.OpQueryAll)
-	if err := aliq.prepareQuery(ctx); err != nil {
+func (_q *AllowListItemQuery) All(ctx context.Context) ([]*AllowListItem, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
 	qr := querierAll[[]*AllowListItem, *AllowListItemQuery]()
-	return withInterceptors[[]*AllowListItem](ctx, aliq, qr, aliq.inters)
+	return withInterceptors[[]*AllowListItem](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (aliq *AllowListItemQuery) AllX(ctx context.Context) []*AllowListItem {
-	nodes, err := aliq.All(ctx)
+func (_q *AllowListItemQuery) AllX(ctx context.Context) []*AllowListItem {
+	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -203,20 +203,20 @@ func (aliq *AllowListItemQuery) AllX(ctx context.Context) []*AllowListItem {
 }
 
 // IDs executes the query and returns a list of AllowListItem IDs.
-func (aliq *AllowListItemQuery) IDs(ctx context.Context) (ids []int, err error) {
-	if aliq.ctx.Unique == nil && aliq.path != nil {
-		aliq.Unique(true)
+func (_q *AllowListItemQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if _q.ctx.Unique == nil && _q.path != nil {
+		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, aliq.ctx, ent.OpQueryIDs)
-	if err = aliq.Select(allowlistitem.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
+	if err = _q.Select(allowlistitem.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (aliq *AllowListItemQuery) IDsX(ctx context.Context) []int {
-	ids, err := aliq.IDs(ctx)
+func (_q *AllowListItemQuery) IDsX(ctx context.Context) []int {
+	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -224,17 +224,17 @@ func (aliq *AllowListItemQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (aliq *AllowListItemQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, aliq.ctx, ent.OpQueryCount)
-	if err := aliq.prepareQuery(ctx); err != nil {
+func (_q *AllowListItemQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, aliq, querierCount[*AllowListItemQuery](), aliq.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*AllowListItemQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (aliq *AllowListItemQuery) CountX(ctx context.Context) int {
-	count, err := aliq.Count(ctx)
+func (_q *AllowListItemQuery) CountX(ctx context.Context) int {
+	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -242,9 +242,9 @@ func (aliq *AllowListItemQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (aliq *AllowListItemQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, aliq.ctx, ent.OpQueryExist)
-	switch _, err := aliq.FirstID(ctx); {
+func (_q *AllowListItemQuery) Exist(ctx context.Context) (bool, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
+	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -255,8 +255,8 @@ func (aliq *AllowListItemQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (aliq *AllowListItemQuery) ExistX(ctx context.Context) bool {
-	exist, err := aliq.Exist(ctx)
+func (_q *AllowListItemQuery) ExistX(ctx context.Context) bool {
+	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -265,32 +265,32 @@ func (aliq *AllowListItemQuery) ExistX(ctx context.Context) bool {
 
 // Clone returns a duplicate of the AllowListItemQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (aliq *AllowListItemQuery) Clone() *AllowListItemQuery {
-	if aliq == nil {
+func (_q *AllowListItemQuery) Clone() *AllowListItemQuery {
+	if _q == nil {
 		return nil
 	}
 	return &AllowListItemQuery{
-		config:        aliq.config,
-		ctx:           aliq.ctx.Clone(),
-		order:         append([]allowlistitem.OrderOption{}, aliq.order...),
-		inters:        append([]Interceptor{}, aliq.inters...),
-		predicates:    append([]predicate.AllowListItem{}, aliq.predicates...),
-		withAllowlist: aliq.withAllowlist.Clone(),
+		config:        _q.config,
+		ctx:           _q.ctx.Clone(),
+		order:         append([]allowlistitem.OrderOption{}, _q.order...),
+		inters:        append([]Interceptor{}, _q.inters...),
+		predicates:    append([]predicate.AllowListItem{}, _q.predicates...),
+		withAllowlist: _q.withAllowlist.Clone(),
 		// clone intermediate query.
-		sql:  aliq.sql.Clone(),
-		path: aliq.path,
+		sql:  _q.sql.Clone(),
+		path: _q.path,
 	}
 }
 
 // WithAllowlist tells the query-builder to eager-load the nodes that are connected to
 // the "allowlist" edge. The optional arguments are used to configure the query builder of the edge.
-func (aliq *AllowListItemQuery) WithAllowlist(opts ...func(*AllowListQuery)) *AllowListItemQuery {
-	query := (&AllowListClient{config: aliq.config}).Query()
+func (_q *AllowListItemQuery) WithAllowlist(opts ...func(*AllowListQuery)) *AllowListItemQuery {
+	query := (&AllowListClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	aliq.withAllowlist = query
-	return aliq
+	_q.withAllowlist = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -307,10 +307,10 @@ func (aliq *AllowListItemQuery) WithAllowlist(opts ...func(*AllowListQuery)) *Al
 //		GroupBy(allowlistitem.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (aliq *AllowListItemQuery) GroupBy(field string, fields ...string) *AllowListItemGroupBy {
-	aliq.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &AllowListItemGroupBy{build: aliq}
-	grbuild.flds = &aliq.ctx.Fields
+func (_q *AllowListItemQuery) GroupBy(field string, fields ...string) *AllowListItemGroupBy {
+	_q.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &AllowListItemGroupBy{build: _q}
+	grbuild.flds = &_q.ctx.Fields
 	grbuild.label = allowlistitem.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
@@ -328,58 +328,58 @@ func (aliq *AllowListItemQuery) GroupBy(field string, fields ...string) *AllowLi
 //	client.AllowListItem.Query().
 //		Select(allowlistitem.FieldCreatedAt).
 //		Scan(ctx, &v)
-func (aliq *AllowListItemQuery) Select(fields ...string) *AllowListItemSelect {
-	aliq.ctx.Fields = append(aliq.ctx.Fields, fields...)
-	sbuild := &AllowListItemSelect{AllowListItemQuery: aliq}
+func (_q *AllowListItemQuery) Select(fields ...string) *AllowListItemSelect {
+	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
+	sbuild := &AllowListItemSelect{AllowListItemQuery: _q}
 	sbuild.label = allowlistitem.Label
-	sbuild.flds, sbuild.scan = &aliq.ctx.Fields, sbuild.Scan
+	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
 // Aggregate returns a AllowListItemSelect configured with the given aggregations.
-func (aliq *AllowListItemQuery) Aggregate(fns ...AggregateFunc) *AllowListItemSelect {
-	return aliq.Select().Aggregate(fns...)
+func (_q *AllowListItemQuery) Aggregate(fns ...AggregateFunc) *AllowListItemSelect {
+	return _q.Select().Aggregate(fns...)
 }
 
-func (aliq *AllowListItemQuery) prepareQuery(ctx context.Context) error {
-	for _, inter := range aliq.inters {
+func (_q *AllowListItemQuery) prepareQuery(ctx context.Context) error {
+	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
 		}
 		if trv, ok := inter.(Traverser); ok {
-			if err := trv.Traverse(ctx, aliq); err != nil {
+			if err := trv.Traverse(ctx, _q); err != nil {
 				return err
 			}
 		}
 	}
-	for _, f := range aliq.ctx.Fields {
+	for _, f := range _q.ctx.Fields {
 		if !allowlistitem.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
-	if aliq.path != nil {
-		prev, err := aliq.path(ctx)
+	if _q.path != nil {
+		prev, err := _q.path(ctx)
 		if err != nil {
 			return err
 		}
-		aliq.sql = prev
+		_q.sql = prev
 	}
 	return nil
 }
 
-func (aliq *AllowListItemQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*AllowListItem, error) {
+func (_q *AllowListItemQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*AllowListItem, error) {
 	var (
 		nodes       = []*AllowListItem{}
-		_spec       = aliq.querySpec()
+		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
-			aliq.withAllowlist != nil,
+			_q.withAllowlist != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*AllowListItem).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &AllowListItem{config: aliq.config}
+		node := &AllowListItem{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -387,14 +387,14 @@ func (aliq *AllowListItemQuery) sqlAll(ctx context.Context, hooks ...queryHook) 
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
-	if err := sqlgraph.QueryNodes(ctx, aliq.driver, _spec); err != nil {
+	if err := sqlgraph.QueryNodes(ctx, _q.driver, _spec); err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := aliq.withAllowlist; query != nil {
-		if err := aliq.loadAllowlist(ctx, query, nodes,
+	if query := _q.withAllowlist; query != nil {
+		if err := _q.loadAllowlist(ctx, query, nodes,
 			func(n *AllowListItem) { n.Edges.Allowlist = []*AllowList{} },
 			func(n *AllowListItem, e *AllowList) { n.Edges.Allowlist = append(n.Edges.Allowlist, e) }); err != nil {
 			return nil, err
@@ -403,7 +403,7 @@ func (aliq *AllowListItemQuery) sqlAll(ctx context.Context, hooks ...queryHook) 
 	return nodes, nil
 }
 
-func (aliq *AllowListItemQuery) loadAllowlist(ctx context.Context, query *AllowListQuery, nodes []*AllowListItem, init func(*AllowListItem), assign func(*AllowListItem, *AllowList)) error {
+func (_q *AllowListItemQuery) loadAllowlist(ctx context.Context, query *AllowListQuery, nodes []*AllowListItem, init func(*AllowListItem), assign func(*AllowListItem, *AllowList)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[int]*AllowListItem)
 	nids := make(map[int]map[*AllowListItem]struct{})
@@ -465,24 +465,24 @@ func (aliq *AllowListItemQuery) loadAllowlist(ctx context.Context, query *AllowL
 	return nil
 }
 
-func (aliq *AllowListItemQuery) sqlCount(ctx context.Context) (int, error) {
-	_spec := aliq.querySpec()
-	_spec.Node.Columns = aliq.ctx.Fields
-	if len(aliq.ctx.Fields) > 0 {
-		_spec.Unique = aliq.ctx.Unique != nil && *aliq.ctx.Unique
+func (_q *AllowListItemQuery) sqlCount(ctx context.Context) (int, error) {
+	_spec := _q.querySpec()
+	_spec.Node.Columns = _q.ctx.Fields
+	if len(_q.ctx.Fields) > 0 {
+		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
 	}
-	return sqlgraph.CountNodes(ctx, aliq.driver, _spec)
+	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (aliq *AllowListItemQuery) querySpec() *sqlgraph.QuerySpec {
+func (_q *AllowListItemQuery) querySpec() *sqlgraph.QuerySpec {
 	_spec := sqlgraph.NewQuerySpec(allowlistitem.Table, allowlistitem.Columns, sqlgraph.NewFieldSpec(allowlistitem.FieldID, field.TypeInt))
-	_spec.From = aliq.sql
-	if unique := aliq.ctx.Unique; unique != nil {
+	_spec.From = _q.sql
+	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
-	} else if aliq.path != nil {
+	} else if _q.path != nil {
 		_spec.Unique = true
 	}
-	if fields := aliq.ctx.Fields; len(fields) > 0 {
+	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, allowlistitem.FieldID)
 		for i := range fields {
@@ -491,20 +491,20 @@ func (aliq *AllowListItemQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if ps := aliq.predicates; len(ps) > 0 {
+	if ps := _q.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if limit := aliq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := aliq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
-	if ps := aliq.order; len(ps) > 0 {
+	if ps := _q.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -514,33 +514,33 @@ func (aliq *AllowListItemQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (aliq *AllowListItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
-	builder := sql.Dialect(aliq.driver.Dialect())
+func (_q *AllowListItemQuery) sqlQuery(ctx context.Context) *sql.Selector {
+	builder := sql.Dialect(_q.driver.Dialect())
 	t1 := builder.Table(allowlistitem.Table)
-	columns := aliq.ctx.Fields
+	columns := _q.ctx.Fields
 	if len(columns) == 0 {
 		columns = allowlistitem.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
-	if aliq.sql != nil {
-		selector = aliq.sql
+	if _q.sql != nil {
+		selector = _q.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if aliq.ctx.Unique != nil && *aliq.ctx.Unique {
+	if _q.ctx.Unique != nil && *_q.ctx.Unique {
 		selector.Distinct()
 	}
-	for _, p := range aliq.predicates {
+	for _, p := range _q.predicates {
 		p(selector)
 	}
-	for _, p := range aliq.order {
+	for _, p := range _q.order {
 		p(selector)
 	}
-	if offset := aliq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := aliq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -553,41 +553,41 @@ type AllowListItemGroupBy struct {
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (aligb *AllowListItemGroupBy) Aggregate(fns ...AggregateFunc) *AllowListItemGroupBy {
-	aligb.fns = append(aligb.fns, fns...)
-	return aligb
+func (_g *AllowListItemGroupBy) Aggregate(fns ...AggregateFunc) *AllowListItemGroupBy {
+	_g.fns = append(_g.fns, fns...)
+	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (aligb *AllowListItemGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, aligb.build.ctx, ent.OpQueryGroupBy)
-	if err := aligb.build.prepareQuery(ctx); err != nil {
+func (_g *AllowListItemGroupBy) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
+	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*AllowListItemQuery, *AllowListItemGroupBy](ctx, aligb.build, aligb, aligb.build.inters, v)
+	return scanWithInterceptors[*AllowListItemQuery, *AllowListItemGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (aligb *AllowListItemGroupBy) sqlScan(ctx context.Context, root *AllowListItemQuery, v any) error {
+func (_g *AllowListItemGroupBy) sqlScan(ctx context.Context, root *AllowListItemQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
-	aggregation := make([]string, 0, len(aligb.fns))
-	for _, fn := range aligb.fns {
+	aggregation := make([]string, 0, len(_g.fns))
+	for _, fn := range _g.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
 	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(*aligb.flds)+len(aligb.fns))
-		for _, f := range *aligb.flds {
+		columns := make([]string, 0, len(*_g.flds)+len(_g.fns))
+		for _, f := range *_g.flds {
 			columns = append(columns, selector.C(f))
 		}
 		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
-	selector.GroupBy(selector.Columns(*aligb.flds...)...)
+	selector.GroupBy(selector.Columns(*_g.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := aligb.build.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _g.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
@@ -601,27 +601,27 @@ type AllowListItemSelect struct {
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (alis *AllowListItemSelect) Aggregate(fns ...AggregateFunc) *AllowListItemSelect {
-	alis.fns = append(alis.fns, fns...)
-	return alis
+func (_s *AllowListItemSelect) Aggregate(fns ...AggregateFunc) *AllowListItemSelect {
+	_s.fns = append(_s.fns, fns...)
+	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (alis *AllowListItemSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, alis.ctx, ent.OpQuerySelect)
-	if err := alis.prepareQuery(ctx); err != nil {
+func (_s *AllowListItemSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
+	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*AllowListItemQuery, *AllowListItemSelect](ctx, alis.AllowListItemQuery, alis, alis.inters, v)
+	return scanWithInterceptors[*AllowListItemQuery, *AllowListItemSelect](ctx, _s.AllowListItemQuery, _s, _s.inters, v)
 }
 
-func (alis *AllowListItemSelect) sqlScan(ctx context.Context, root *AllowListItemQuery, v any) error {
+func (_s *AllowListItemSelect) sqlScan(ctx context.Context, root *AllowListItemQuery, v any) error {
 	selector := root.sqlQuery(ctx)
-	aggregation := make([]string, 0, len(alis.fns))
-	for _, fn := range alis.fns {
+	aggregation := make([]string, 0, len(_s.fns))
+	for _, fn := range _s.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
-	switch n := len(*alis.selector.flds); {
+	switch n := len(*_s.selector.flds); {
 	case n == 0 && len(aggregation) > 0:
 		selector.Select(aggregation...)
 	case n != 0 && len(aggregation) > 0:
@@ -629,7 +629,7 @@ func (alis *AllowListItemSelect) sqlScan(ctx context.Context, root *AllowListIte
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := alis.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _s.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()

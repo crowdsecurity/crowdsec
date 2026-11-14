@@ -24,115 +24,115 @@ type AllowListUpdate struct {
 }
 
 // Where appends a list predicates to the AllowListUpdate builder.
-func (alu *AllowListUpdate) Where(ps ...predicate.AllowList) *AllowListUpdate {
-	alu.mutation.Where(ps...)
-	return alu
+func (_u *AllowListUpdate) Where(ps ...predicate.AllowList) *AllowListUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (alu *AllowListUpdate) SetUpdatedAt(t time.Time) *AllowListUpdate {
-	alu.mutation.SetUpdatedAt(t)
-	return alu
+func (_u *AllowListUpdate) SetUpdatedAt(v time.Time) *AllowListUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetName sets the "name" field.
-func (alu *AllowListUpdate) SetName(s string) *AllowListUpdate {
-	alu.mutation.SetName(s)
-	return alu
+func (_u *AllowListUpdate) SetName(v string) *AllowListUpdate {
+	_u.mutation.SetName(v)
+	return _u
 }
 
 // SetNillableName sets the "name" field if the given value is not nil.
-func (alu *AllowListUpdate) SetNillableName(s *string) *AllowListUpdate {
-	if s != nil {
-		alu.SetName(*s)
+func (_u *AllowListUpdate) SetNillableName(v *string) *AllowListUpdate {
+	if v != nil {
+		_u.SetName(*v)
 	}
-	return alu
+	return _u
 }
 
 // SetFromConsole sets the "from_console" field.
-func (alu *AllowListUpdate) SetFromConsole(b bool) *AllowListUpdate {
-	alu.mutation.SetFromConsole(b)
-	return alu
+func (_u *AllowListUpdate) SetFromConsole(v bool) *AllowListUpdate {
+	_u.mutation.SetFromConsole(v)
+	return _u
 }
 
 // SetNillableFromConsole sets the "from_console" field if the given value is not nil.
-func (alu *AllowListUpdate) SetNillableFromConsole(b *bool) *AllowListUpdate {
-	if b != nil {
-		alu.SetFromConsole(*b)
+func (_u *AllowListUpdate) SetNillableFromConsole(v *bool) *AllowListUpdate {
+	if v != nil {
+		_u.SetFromConsole(*v)
 	}
-	return alu
+	return _u
 }
 
 // SetDescription sets the "description" field.
-func (alu *AllowListUpdate) SetDescription(s string) *AllowListUpdate {
-	alu.mutation.SetDescription(s)
-	return alu
+func (_u *AllowListUpdate) SetDescription(v string) *AllowListUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
 }
 
 // SetNillableDescription sets the "description" field if the given value is not nil.
-func (alu *AllowListUpdate) SetNillableDescription(s *string) *AllowListUpdate {
-	if s != nil {
-		alu.SetDescription(*s)
+func (_u *AllowListUpdate) SetNillableDescription(v *string) *AllowListUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
 	}
-	return alu
+	return _u
 }
 
 // ClearDescription clears the value of the "description" field.
-func (alu *AllowListUpdate) ClearDescription() *AllowListUpdate {
-	alu.mutation.ClearDescription()
-	return alu
+func (_u *AllowListUpdate) ClearDescription() *AllowListUpdate {
+	_u.mutation.ClearDescription()
+	return _u
 }
 
 // AddAllowlistItemIDs adds the "allowlist_items" edge to the AllowListItem entity by IDs.
-func (alu *AllowListUpdate) AddAllowlistItemIDs(ids ...int) *AllowListUpdate {
-	alu.mutation.AddAllowlistItemIDs(ids...)
-	return alu
+func (_u *AllowListUpdate) AddAllowlistItemIDs(ids ...int) *AllowListUpdate {
+	_u.mutation.AddAllowlistItemIDs(ids...)
+	return _u
 }
 
 // AddAllowlistItems adds the "allowlist_items" edges to the AllowListItem entity.
-func (alu *AllowListUpdate) AddAllowlistItems(a ...*AllowListItem) *AllowListUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListUpdate) AddAllowlistItems(v ...*AllowListItem) *AllowListUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return alu.AddAllowlistItemIDs(ids...)
+	return _u.AddAllowlistItemIDs(ids...)
 }
 
 // Mutation returns the AllowListMutation object of the builder.
-func (alu *AllowListUpdate) Mutation() *AllowListMutation {
-	return alu.mutation
+func (_u *AllowListUpdate) Mutation() *AllowListMutation {
+	return _u.mutation
 }
 
 // ClearAllowlistItems clears all "allowlist_items" edges to the AllowListItem entity.
-func (alu *AllowListUpdate) ClearAllowlistItems() *AllowListUpdate {
-	alu.mutation.ClearAllowlistItems()
-	return alu
+func (_u *AllowListUpdate) ClearAllowlistItems() *AllowListUpdate {
+	_u.mutation.ClearAllowlistItems()
+	return _u
 }
 
 // RemoveAllowlistItemIDs removes the "allowlist_items" edge to AllowListItem entities by IDs.
-func (alu *AllowListUpdate) RemoveAllowlistItemIDs(ids ...int) *AllowListUpdate {
-	alu.mutation.RemoveAllowlistItemIDs(ids...)
-	return alu
+func (_u *AllowListUpdate) RemoveAllowlistItemIDs(ids ...int) *AllowListUpdate {
+	_u.mutation.RemoveAllowlistItemIDs(ids...)
+	return _u
 }
 
 // RemoveAllowlistItems removes "allowlist_items" edges to AllowListItem entities.
-func (alu *AllowListUpdate) RemoveAllowlistItems(a ...*AllowListItem) *AllowListUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListUpdate) RemoveAllowlistItems(v ...*AllowListItem) *AllowListUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return alu.RemoveAllowlistItemIDs(ids...)
+	return _u.RemoveAllowlistItemIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (alu *AllowListUpdate) Save(ctx context.Context) (int, error) {
-	alu.defaults()
-	return withHooks(ctx, alu.sqlSave, alu.mutation, alu.hooks)
+func (_u *AllowListUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (alu *AllowListUpdate) SaveX(ctx context.Context) int {
-	affected, err := alu.Save(ctx)
+func (_u *AllowListUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -140,54 +140,54 @@ func (alu *AllowListUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (alu *AllowListUpdate) Exec(ctx context.Context) error {
-	_, err := alu.Save(ctx)
+func (_u *AllowListUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (alu *AllowListUpdate) ExecX(ctx context.Context) {
-	if err := alu.Exec(ctx); err != nil {
+func (_u *AllowListUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (alu *AllowListUpdate) defaults() {
-	if _, ok := alu.mutation.UpdatedAt(); !ok {
+func (_u *AllowListUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := allowlist.UpdateDefaultUpdatedAt()
-		alu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *AllowListUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(allowlist.Table, allowlist.Columns, sqlgraph.NewFieldSpec(allowlist.FieldID, field.TypeInt))
-	if ps := alu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := alu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlist.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := alu.mutation.Name(); ok {
+	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(allowlist.FieldName, field.TypeString, value)
 	}
-	if value, ok := alu.mutation.FromConsole(); ok {
+	if value, ok := _u.mutation.FromConsole(); ok {
 		_spec.SetField(allowlist.FieldFromConsole, field.TypeBool, value)
 	}
-	if value, ok := alu.mutation.Description(); ok {
+	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(allowlist.FieldDescription, field.TypeString, value)
 	}
-	if alu.mutation.DescriptionCleared() {
+	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(allowlist.FieldDescription, field.TypeString)
 	}
-	if alu.mutation.AllowlistIDCleared() {
+	if _u.mutation.AllowlistIDCleared() {
 		_spec.ClearField(allowlist.FieldAllowlistID, field.TypeString)
 	}
-	if alu.mutation.AllowlistItemsCleared() {
+	if _u.mutation.AllowlistItemsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -200,7 +200,7 @@ func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := alu.mutation.RemovedAllowlistItemsIDs(); len(nodes) > 0 && !alu.mutation.AllowlistItemsCleared() {
+	if nodes := _u.mutation.RemovedAllowlistItemsIDs(); len(nodes) > 0 && !_u.mutation.AllowlistItemsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -216,7 +216,7 @@ func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := alu.mutation.AllowlistItemsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AllowlistItemsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -232,7 +232,7 @@ func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, alu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{allowlist.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -240,8 +240,8 @@ func (alu *AllowListUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	alu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // AllowListUpdateOne is the builder for updating a single AllowList entity.
@@ -253,122 +253,122 @@ type AllowListUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (aluo *AllowListUpdateOne) SetUpdatedAt(t time.Time) *AllowListUpdateOne {
-	aluo.mutation.SetUpdatedAt(t)
-	return aluo
+func (_u *AllowListUpdateOne) SetUpdatedAt(v time.Time) *AllowListUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetName sets the "name" field.
-func (aluo *AllowListUpdateOne) SetName(s string) *AllowListUpdateOne {
-	aluo.mutation.SetName(s)
-	return aluo
+func (_u *AllowListUpdateOne) SetName(v string) *AllowListUpdateOne {
+	_u.mutation.SetName(v)
+	return _u
 }
 
 // SetNillableName sets the "name" field if the given value is not nil.
-func (aluo *AllowListUpdateOne) SetNillableName(s *string) *AllowListUpdateOne {
-	if s != nil {
-		aluo.SetName(*s)
+func (_u *AllowListUpdateOne) SetNillableName(v *string) *AllowListUpdateOne {
+	if v != nil {
+		_u.SetName(*v)
 	}
-	return aluo
+	return _u
 }
 
 // SetFromConsole sets the "from_console" field.
-func (aluo *AllowListUpdateOne) SetFromConsole(b bool) *AllowListUpdateOne {
-	aluo.mutation.SetFromConsole(b)
-	return aluo
+func (_u *AllowListUpdateOne) SetFromConsole(v bool) *AllowListUpdateOne {
+	_u.mutation.SetFromConsole(v)
+	return _u
 }
 
 // SetNillableFromConsole sets the "from_console" field if the given value is not nil.
-func (aluo *AllowListUpdateOne) SetNillableFromConsole(b *bool) *AllowListUpdateOne {
-	if b != nil {
-		aluo.SetFromConsole(*b)
+func (_u *AllowListUpdateOne) SetNillableFromConsole(v *bool) *AllowListUpdateOne {
+	if v != nil {
+		_u.SetFromConsole(*v)
 	}
-	return aluo
+	return _u
 }
 
 // SetDescription sets the "description" field.
-func (aluo *AllowListUpdateOne) SetDescription(s string) *AllowListUpdateOne {
-	aluo.mutation.SetDescription(s)
-	return aluo
+func (_u *AllowListUpdateOne) SetDescription(v string) *AllowListUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
 }
 
 // SetNillableDescription sets the "description" field if the given value is not nil.
-func (aluo *AllowListUpdateOne) SetNillableDescription(s *string) *AllowListUpdateOne {
-	if s != nil {
-		aluo.SetDescription(*s)
+func (_u *AllowListUpdateOne) SetNillableDescription(v *string) *AllowListUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
 	}
-	return aluo
+	return _u
 }
 
 // ClearDescription clears the value of the "description" field.
-func (aluo *AllowListUpdateOne) ClearDescription() *AllowListUpdateOne {
-	aluo.mutation.ClearDescription()
-	return aluo
+func (_u *AllowListUpdateOne) ClearDescription() *AllowListUpdateOne {
+	_u.mutation.ClearDescription()
+	return _u
 }
 
 // AddAllowlistItemIDs adds the "allowlist_items" edge to the AllowListItem entity by IDs.
-func (aluo *AllowListUpdateOne) AddAllowlistItemIDs(ids ...int) *AllowListUpdateOne {
-	aluo.mutation.AddAllowlistItemIDs(ids...)
-	return aluo
+func (_u *AllowListUpdateOne) AddAllowlistItemIDs(ids ...int) *AllowListUpdateOne {
+	_u.mutation.AddAllowlistItemIDs(ids...)
+	return _u
 }
 
 // AddAllowlistItems adds the "allowlist_items" edges to the AllowListItem entity.
-func (aluo *AllowListUpdateOne) AddAllowlistItems(a ...*AllowListItem) *AllowListUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListUpdateOne) AddAllowlistItems(v ...*AllowListItem) *AllowListUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aluo.AddAllowlistItemIDs(ids...)
+	return _u.AddAllowlistItemIDs(ids...)
 }
 
 // Mutation returns the AllowListMutation object of the builder.
-func (aluo *AllowListUpdateOne) Mutation() *AllowListMutation {
-	return aluo.mutation
+func (_u *AllowListUpdateOne) Mutation() *AllowListMutation {
+	return _u.mutation
 }
 
 // ClearAllowlistItems clears all "allowlist_items" edges to the AllowListItem entity.
-func (aluo *AllowListUpdateOne) ClearAllowlistItems() *AllowListUpdateOne {
-	aluo.mutation.ClearAllowlistItems()
-	return aluo
+func (_u *AllowListUpdateOne) ClearAllowlistItems() *AllowListUpdateOne {
+	_u.mutation.ClearAllowlistItems()
+	return _u
 }
 
 // RemoveAllowlistItemIDs removes the "allowlist_items" edge to AllowListItem entities by IDs.
-func (aluo *AllowListUpdateOne) RemoveAllowlistItemIDs(ids ...int) *AllowListUpdateOne {
-	aluo.mutation.RemoveAllowlistItemIDs(ids...)
-	return aluo
+func (_u *AllowListUpdateOne) RemoveAllowlistItemIDs(ids ...int) *AllowListUpdateOne {
+	_u.mutation.RemoveAllowlistItemIDs(ids...)
+	return _u
 }
 
 // RemoveAllowlistItems removes "allowlist_items" edges to AllowListItem entities.
-func (aluo *AllowListUpdateOne) RemoveAllowlistItems(a ...*AllowListItem) *AllowListUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+func (_u *AllowListUpdateOne) RemoveAllowlistItems(v ...*AllowListItem) *AllowListUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return aluo.RemoveAllowlistItemIDs(ids...)
+	return _u.RemoveAllowlistItemIDs(ids...)
 }
 
 // Where appends a list predicates to the AllowListUpdate builder.
-func (aluo *AllowListUpdateOne) Where(ps ...predicate.AllowList) *AllowListUpdateOne {
-	aluo.mutation.Where(ps...)
-	return aluo
+func (_u *AllowListUpdateOne) Where(ps ...predicate.AllowList) *AllowListUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (aluo *AllowListUpdateOne) Select(field string, fields ...string) *AllowListUpdateOne {
-	aluo.fields = append([]string{field}, fields...)
-	return aluo
+func (_u *AllowListUpdateOne) Select(field string, fields ...string) *AllowListUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated AllowList entity.
-func (aluo *AllowListUpdateOne) Save(ctx context.Context) (*AllowList, error) {
-	aluo.defaults()
-	return withHooks(ctx, aluo.sqlSave, aluo.mutation, aluo.hooks)
+func (_u *AllowListUpdateOne) Save(ctx context.Context) (*AllowList, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (aluo *AllowListUpdateOne) SaveX(ctx context.Context) *AllowList {
-	node, err := aluo.Save(ctx)
+func (_u *AllowListUpdateOne) SaveX(ctx context.Context) *AllowList {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -376,34 +376,34 @@ func (aluo *AllowListUpdateOne) SaveX(ctx context.Context) *AllowList {
 }
 
 // Exec executes the query on the entity.
-func (aluo *AllowListUpdateOne) Exec(ctx context.Context) error {
-	_, err := aluo.Save(ctx)
+func (_u *AllowListUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (aluo *AllowListUpdateOne) ExecX(ctx context.Context) {
-	if err := aluo.Exec(ctx); err != nil {
+func (_u *AllowListUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (aluo *AllowListUpdateOne) defaults() {
-	if _, ok := aluo.mutation.UpdatedAt(); !ok {
+func (_u *AllowListUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := allowlist.UpdateDefaultUpdatedAt()
-		aluo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, err error) {
+func (_u *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, err error) {
 	_spec := sqlgraph.NewUpdateSpec(allowlist.Table, allowlist.Columns, sqlgraph.NewFieldSpec(allowlist.FieldID, field.TypeInt))
-	id, ok := aluo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "AllowList.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := aluo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, allowlist.FieldID)
 		for _, f := range fields {
@@ -415,32 +415,32 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 			}
 		}
 	}
-	if ps := aluo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := aluo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(allowlist.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := aluo.mutation.Name(); ok {
+	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(allowlist.FieldName, field.TypeString, value)
 	}
-	if value, ok := aluo.mutation.FromConsole(); ok {
+	if value, ok := _u.mutation.FromConsole(); ok {
 		_spec.SetField(allowlist.FieldFromConsole, field.TypeBool, value)
 	}
-	if value, ok := aluo.mutation.Description(); ok {
+	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(allowlist.FieldDescription, field.TypeString, value)
 	}
-	if aluo.mutation.DescriptionCleared() {
+	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(allowlist.FieldDescription, field.TypeString)
 	}
-	if aluo.mutation.AllowlistIDCleared() {
+	if _u.mutation.AllowlistIDCleared() {
 		_spec.ClearField(allowlist.FieldAllowlistID, field.TypeString)
 	}
-	if aluo.mutation.AllowlistItemsCleared() {
+	if _u.mutation.AllowlistItemsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -453,7 +453,7 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aluo.mutation.RemovedAllowlistItemsIDs(); len(nodes) > 0 && !aluo.mutation.AllowlistItemsCleared() {
+	if nodes := _u.mutation.RemovedAllowlistItemsIDs(); len(nodes) > 0 && !_u.mutation.AllowlistItemsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -469,7 +469,7 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := aluo.mutation.AllowlistItemsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.AllowlistItemsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
@@ -485,10 +485,10 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &AllowList{config: aluo.config}
+	_node = &AllowList{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, aluo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{allowlist.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -496,6 +496,6 @@ func (aluo *AllowListUpdateOne) sqlSave(ctx context.Context) (_node *AllowList, 
 		}
 		return nil, err
 	}
-	aluo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

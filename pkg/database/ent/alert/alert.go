@@ -62,6 +62,8 @@ const (
 	FieldUUID = "uuid"
 	// FieldRemediation holds the string denoting the remediation field in the database.
 	FieldRemediation = "remediation"
+	// FieldKind holds the string denoting the kind field in the database.
+	FieldKind = "kind"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// EdgeDecisions holds the string denoting the decisions edge name in mutations.
@@ -129,6 +131,7 @@ var Columns = []string{
 	FieldSimulated,
 	FieldUUID,
 	FieldRemediation,
+	FieldKind,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "alerts"
@@ -299,6 +302,11 @@ func ByUUID(opts ...sql.OrderTermOption) OrderOption {
 // ByRemediation orders the results by the remediation field.
 func ByRemediation(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemediation, opts...).ToFunc()
+}
+
+// ByKind orders the results by the kind field.
+func ByKind(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKind, opts...).ToFunc()
 }
 
 // ByOwnerField orders the results by owner field.

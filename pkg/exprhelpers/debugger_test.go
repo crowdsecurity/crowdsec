@@ -49,10 +49,6 @@ func UpperN(params ...any) (any, error) {
 	return strings.ToUpper(s) + strings.ToUpper(v) + strings.ToUpper(x) + strings.ToUpper(y), nil
 }
 
-func boolPtr(b bool) *bool {
-	return &b
-}
-
 type teststruct struct {
 	Foo string
 }
@@ -92,8 +88,8 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedFailRuntime: true,
 			ExpectedOutputs: []OpOutput{
 				{Code: "Upper('1')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"1\""}, FuncResults: []string{"\"1\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== '1'", CodeDepth: 0, Comparison: true, Left: "\"1\"", Right: "\"1\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "<nil>", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== '1'", CodeDepth: 0, Comparison: true, Left: "\"1\"", Right: "\"1\"", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "<nil>", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -102,7 +98,7 @@ func TestBaseDbg(t *testing.T) {
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
 				{Code: "UpperTwo('hello', 'world')", CodeDepth: 0, Func: true, FuncName: "UpperTwo", Args: []string{"\"world\"", "\"hello\""}, FuncResults: []string{"\"HELLOWORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'HELLOWORLD'", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLD\"", Right: "\"HELLOWORLD\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 'HELLOWORLD'", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLD\"", Right: "\"HELLOWORLD\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -111,7 +107,7 @@ func TestBaseDbg(t *testing.T) {
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
 				{Code: "UpperThree('hello', 'world', 'foo')", CodeDepth: 0, Func: true, FuncName: "UpperThree", Args: []string{"\"foo\"", "\"world\"", "\"hello\""}, FuncResults: []string{"\"HELLOWORLDFOO\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'HELLOWORLDFOO'", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLDFOO\"", Right: "\"HELLOWORLDFOO\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 'HELLOWORLDFOO'", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLDFOO\"", Right: "\"HELLOWORLDFOO\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -121,7 +117,7 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedOutputs: []OpOutput{
 				{Code: "UpperN('hello', 'world', 'foo', 'lol')", CodeDepth: 0, Func: true, FuncName: "OpCallN", Args: []string{"\"lol\"", "\"foo\"", "\"world\"", "\"hello\""}, FuncResults: []string{"\"HELLOWORLDFOOLOL\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "UpperN('hello', 'world', 'foo', 'lol')", CodeDepth: 0, Func: true, FuncName: "OpCallN", Args: []string{"\"lol\"", "\"foo\"", "\"world\"", "\"hello\""}, FuncResults: []string{"\"HELLOWORLDFOOLOL\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== UpperN('hello', 'world', 'foo', 'lol')", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLDFOOLOL\"", Right: "\"HELLOWORLDFOOLOL\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== UpperN('hello', 'world', 'foo', 'lol')", CodeDepth: 0, Comparison: true, Left: "\"HELLOWORLDFOOLOL\"", Right: "\"HELLOWORLDFOOLOL\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -129,7 +125,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_string == 'hello world'",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -139,16 +135,16 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedOutputs: []OpOutput{
 				{Code: "count(base_struct.Myarr, {", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"a\""}, FuncResults: []string{"\"A\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"b\""}, FuncResults: []string{"\"B\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"B\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"B\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"c\""}, FuncResults: []string{"\"C\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"C\"", Right: "\"C\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"C\"", Right: "\"C\"", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: false},
 				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 0, BlockEnd: true, StrConditionResult: "[1]", ConditionResult: (*bool)(nil), Finalized: false},
-				{Code: "== 1", CodeDepth: 0, Comparison: true, Left: "1", Right: "1", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 1", CodeDepth: 0, Comparison: true, Left: "1", Right: "1", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -158,19 +154,19 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedOutputs: []OpOutput{
 				{Code: "count(base_struct.Myarr, {", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"a\""}, FuncResults: []string{"\"A\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"b\""}, FuncResults: []string{"\"B\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"B\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"B\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"c\""}, FuncResults: []string{"\"C\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"C\"", Right: "\"C\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
+				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"C\"", Right: "\"C\"", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: false},
 				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 0, BlockEnd: true, StrConditionResult: "[1]", ConditionResult: (*bool)(nil), Finalized: false},
-				{Code: "== 1", CodeDepth: 0, Comparison: true, Left: "1", Right: "1", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
+				{Code: "== 1", CodeDepth: 0, Comparison: true, Left: "1", Right: "1", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: false},
 				{Code: "Upper(base_struct.Foo)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"bar\""}, FuncResults: []string{"\"BAR\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "== 'BAR'", CodeDepth: 0, Comparison: true, Left: "\"BAR\"", Right: "\"BAR\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 'BAR'", CodeDepth: 0, Comparison: true, Left: "\"BAR\"", Right: "\"BAR\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -178,7 +174,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_int in [1,2,3,4,42]",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "in [1,2,3,4,42]", CodeDepth: 0, Args: []string{"42", "map[1:{} 2:{} 3:{} 4:{} 42:{}]"}, Condition: true, ConditionIn: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "in [1,2,3,4,42]", CodeDepth: 0, Args: []string{"42", "map[1:{} 2:{} 3:{} 4:{} 42:{}]"}, Condition: true, ConditionIn: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -186,7 +182,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_string == 'hello world'",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -194,7 +190,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_int == 42",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -202,7 +198,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_int != 43",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "!= 43", CodeDepth: 0, Negated: true, Comparison: true, Left: "42", Right: "43", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "!= 43", CodeDepth: 0, Negated: true, Comparison: true, Left: "42", Right: "43", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -210,9 +206,9 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "base_int == 43 || base_int == 42",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "== 43", CodeDepth: 0, Comparison: true, Left: "42", Right: "43", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
-				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 43", CodeDepth: 0, Comparison: true, Left: "42", Right: "43", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
+				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -220,7 +216,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "true",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "true", CodeDepth: 0, Condition: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "true", CodeDepth: 0, Condition: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -228,7 +224,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "false",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "false", CodeDepth: 0, Condition: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: true},
+				{Code: "false", CodeDepth: 0, Condition: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: true},
 			},
 		},
 		{
@@ -238,13 +234,13 @@ func TestBaseDbg(t *testing.T) {
 					(base_struct.Bar == 41 || base_struct.Bar == 42)`,
 			Env: defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
-				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "&& (", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
-				{Code: "== 41", CodeDepth: 0, Comparison: true, Left: "42", Right: "41", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
-				{Code: "== 42)", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: false},
+				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "&& (", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: false},
+				{Code: "== 41", CodeDepth: 0, Comparison: true, Left: "42", Right: "41", StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
+				{Code: "== 42)", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -254,7 +250,7 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedOutputs: []OpOutput{
 				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "Upper('wOrlD')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"wOrlD\""}, FuncResults: []string{"\"WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "contains Upper('wOrlD')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"WORLD\""}, Condition: true, ConditionContains: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "contains Upper('wOrlD')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"WORLD\""}, Condition: true, ConditionContains: true, StrConditionResult: "true", ConditionResult: new(true), Finalized: true},
 			},
 		},
 		{
@@ -266,12 +262,12 @@ func TestBaseDbg(t *testing.T) {
 			ExpectedOutputs: []OpOutput{
 				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "Upper('/someurl?x=1')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someurl?x=1\""}, FuncResults: []string{"\"/SOMEURL?X=1\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "contains Upper('/someurl?x=1')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEURL?X=1\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "contains Upper('/someurl?x=1')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEURL?X=1\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: false},
 				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someotherurl?account-name=admin&account...\""}, FuncResults: []string{"\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, ConditionResult: (*bool)(nil), Finalized: true},
-				{Code: "contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
-				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: true},
+				{Code: "contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT...\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: new(false), Finalized: true},
+				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: new(false), Finalized: true},
 			},
 		},
 		{
@@ -283,9 +279,9 @@ func TestBaseDbg(t *testing.T) {
 }`,
 			Env: defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "!= 42 {", CodeDepth: 0, Negated: true, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "if base_int != 42 {", CodeDepth: 0, ConditionResult: boolPtr(false), Finalized: false, IfFalse: true, JumpIf: true, StrConditionResult: "false"},
-				{Code: "false }", CodeDepth: 0, StrConditionResult: "false", Condition: true, ConditionResult: boolPtr(false), Finalized: true},
+				{Code: "!= 42 {", CodeDepth: 0, Negated: true, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: new(true), Finalized: true},
+				{Code: "if base_int != 42 {", CodeDepth: 0, ConditionResult: new(false), Finalized: false, IfFalse: true, JumpIf: true, StrConditionResult: "false"},
+				{Code: "false }", CodeDepth: 0, StrConditionResult: "false", Condition: true, ConditionResult: new(false), Finalized: true},
 			},
 		},
 	}

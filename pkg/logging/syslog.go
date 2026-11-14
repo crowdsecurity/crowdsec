@@ -10,6 +10,12 @@ import (
 )
 
 func setupSyslogDefault() error {
+	// already set up by a previous config load (SIGHUP)
+	if HasHook[*FormatterSyslogHook](logrus.StandardLogger()) {
+		logrus.SetOutput(io.Discard)
+		return nil
+	}
+
 	w, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "crowdsec")
 	if err != nil {
 		return err
@@ -20,6 +26,31 @@ func setupSyslogDefault() error {
 	logrus.SetOutput(io.Discard)
 
 	return nil
+}
+
+// removeSyslogHooks drops the hooks left by a previous config load that used log_media: syslog.
+func removeSyslogHooks(logger *logrus.Logger) {
+	hooks := make(logrus.LevelHooks)
+	writers := make(map[*syslog.Writer]struct{})
+
+	for lvl, hs := range logger.Hooks {
+		for _, h := range hs {
+			if sh, ok := h.(*FormatterSyslogHook); ok {
+				writers[sh.Writer] = struct{}{}
+				continue
+			}
+
+			hooks[lvl] = append(hooks[lvl], h)
+		}
+	}
+
+	logger.ReplaceHooks(hooks)
+
+	for w := range writers {
+		if w != nil {
+			_ = w.Close()
+		}
+	}
 }
 
 type SyslogFormatter struct{}

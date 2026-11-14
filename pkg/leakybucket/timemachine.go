@@ -8,7 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func TimeMachinePour(l *Leaky, msg pipeline.Event) {
+func TimeMachinePour(l *Leaky, _ pourGate, msg pipeline.Event) {
 	var (
 		d   time.Time
 		err error
@@ -17,7 +17,7 @@ func TimeMachinePour(l *Leaky, msg pipeline.Event) {
 		log.WithFields(log.Fields{
 			"evt_type": msg.Line.Labels["type"],
 			"evt_src":  msg.Line.Src,
-			"scenario": l.Name,
+			"scenario": l.Factory.Spec.Name,
 		}).Warningf("Trying to process event without evt.StrTime. Event cannot be poured to scenario")
 		return
 	}
@@ -43,13 +43,13 @@ func TimeMachinePour(l *Leaky, msg pipeline.Event) {
 		l.Ovflw_ts = d
 		l.logger.Debugf("Bucket overflow at %s", l.Ovflw_ts)
 		l.Queue.Add(msg)
-		l.Out <- l.Queue
+		l.pendingOverflow = l.Queue
 	}
 }
 
-func NewTimeMachine(g BucketFactory) *Leaky {
-	l := NewLeakyFromFactory(g)
-	g.logger.Tracef("Instantiating timeMachine bucket")
+func NewTimeMachine(f *BucketFactory) *Leaky {
+	l := NewLeakyFromFactory(f)
+	f.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
 	l.Mode = pipeline.TIMEMACHINE
 	return l

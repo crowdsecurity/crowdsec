@@ -2,6 +2,8 @@ package kubernetesauditacquisition
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -235,4 +237,119 @@ webhook_path: /k8s-audit`, port)
 			assert.Equal(t, test.eventCount, eventCount)
 		})
 	}
+}
+
+func TestMaxBodySize(t *testing.T) {
+	ctx := t.Context()
+
+	// smallest valid payload, one audit event
+	body := `{"Items":[{"Level":"RequestResponse","AuditID":"2fca7950-03b6-41fa-95cd-08c5bcec8487","Stage":"ResponseComplete","StageTimestamp":"2022-09-26T15:24:52.322575Z"}]}`
+
+	tests := []struct {
+		name               string
+		maxBodySize        string
+		knownLength        bool
+		expectedStatusCode int
+		eventCount         int
+	}{
+		{
+			name:               "default_max_body_size",
+			expectedStatusCode: 200,
+			knownLength:        true,
+			eventCount:         1,
+		},
+		{
+			name:               "under_max_body_size",
+			maxBodySize:        "\nmax_body_size: 4096",
+			knownLength:        true,
+			expectedStatusCode: 200,
+			eventCount:         1,
+		},
+		{
+			name:               "over_max_body_size",
+			maxBodySize:        "\nmax_body_size: 10",
+			knownLength:        true,
+			expectedStatusCode: 413,
+			eventCount:         0,
+		},
+		{
+			// a body sent without a known length must not bypass max_body_size
+			name:               "over_max_body_size_unknown_length",
+			maxBodySize:        "\nmax_body_size: 10",
+			knownLength:        false,
+			expectedStatusCode: 413,
+			eventCount:         0,
+		},
+	}
+
+	subLogger := log.WithField("type", ModuleName)
+
+	for idx, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			out := make(chan pipeline.Event)
+			tb := &tomb.Tomb{}
+			eventCount := 0
+
+			tb.Go(func() error {
+				for {
+					select {
+					case <-out:
+						eventCount++
+					case <-tb.Dying():
+						return nil
+					}
+				}
+			})
+
+			f := Source{}
+
+			config := fmt.Sprintf(`source: k8s-audit
+listen_addr: 127.0.0.1
+listen_port: %d
+webhook_path: /k8s-audit%s`, 49334+idx, test.maxBodySize)
+
+			err := f.Configure(ctx, []byte(config), subLogger, metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			err = f.StreamingAcquisition(ctx, out, tb)
+			require.NoError(t, err)
+
+			var reader io.Reader = strings.NewReader(body)
+			if !test.knownLength {
+				// hide the concrete type so httptest does not set ContentLength
+				reader = io.MultiReader(reader)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/k8s-audit", reader)
+			w := httptest.NewRecorder()
+
+			f.webhookHandler(w, req)
+
+			assert.Equal(t, test.expectedStatusCode, w.Result().StatusCode)
+
+			tb.Kill(nil)
+			require.NoError(t, tb.Wait())
+
+			assert.Equal(t, test.eventCount, eventCount)
+		})
+	}
+}
+
+func TestMaxBodySizeDefault(t *testing.T) {
+	cfg, err := ConfigurationFromYAML([]byte(`source: k8s-audit
+listen_addr: 127.0.0.1
+listen_port: 1234
+webhook_path: /k8s-audit`))
+	require.NoError(t, err)
+	require.NotNil(t, cfg.MaxBodySize)
+	assert.Equal(t, int64(10*1024*1024), *cfg.MaxBodySize)
+}
+
+func TestMaxBodySizeInvalid(t *testing.T) {
+	_, err := ConfigurationFromYAML([]byte(`source: k8s-audit
+listen_addr: 127.0.0.1
+listen_port: 1234
+webhook_path: /k8s-audit
+max_body_size: 0`))
+	cstest.RequireErrorContains(t, err, "max_body_size must be positive")
 }

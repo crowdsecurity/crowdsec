@@ -1,0 +1,19 @@
+NGUSERNAME [a-zA-Z\.\@\-\+_%]+
+NGUSER %{NGUSERNAME}
+
+# '$remote_addr - $remote_user [$time_local] '
+#                    '"$request" $status $body_bytes_sent '
+#                    '"$http_referer" "$http_user_agent"';
+
+# 127.0.0.1 - - [28/Jan/2016:14:19:36 +0300] "GET /zero.html HTTP/1.1" 200 398 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36"
+
+NOTDQUOTE [^"]*
+DAY2 \d{2}
+
+#NGINXERRTIME %{YEAR:year}/%{MONTHNUM2:month}/%{DAY2:day} %{HOUR:hour}:%{MINUTE:minute}:%{SECOND:second}
+NGINXERRTIME %{YEAR}/%{MONTHNUM2}/%{DAY2} %{HOUR}:%{MINUTE}:%{SECOND}
+
+NGINXACCESS %{IPORHOST:remote_addr} - %{NGUSER:remote_user} \[%{HTTPDATE:time_local}\] "%{WORD:method} %{URIPATHPARAM:request} HTTP/%{NUMBER:http_version}" %{NUMBER:status} %{NUMBER:body_bytes_sent} "%{NOTDQUOTE:http_referer}" "%{NOTDQUOTE:http_user_agent}"
+
+# YYYY/MM/DD HH:MM:SS [LEVEL] PID#TID: *CID MESSAGE
+NGINXERROR %{NGINXERRTIME:time} \[%{LOGLEVEL:loglevel}\] %{NONNEGINT:pid}#%{NONNEGINT:tid}: (\*%{NONNEGINT:cid} )?%{GREEDYDATA:message}

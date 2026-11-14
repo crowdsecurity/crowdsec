@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -21,7 +22,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -29,6 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -40,10 +41,20 @@ const (
 	pullIntervalDelta         = time.Minute * 5
 	pushIntervalDefault       = time.Second * 10
 	pushIntervalDelta         = time.Second * 7
+	pushCooldownCommunity     = time.Minute
+	pushIntervalNotEnrolled   = time.Minute * 5
 	metricsIntervalDefault    = time.Minute * 30
 	metricsIntervalDelta      = time.Minute * 15
+	metricsIntervalUnenrolled = time.Hour * 12
+	metricsDeltaUnenrolled    = time.Hour
 	usageMetricsInterval      = time.Minute * 30
 	usageMetricsIntervalDelta = time.Minute * 15
+
+	signalsBatchSize = 200
+	// the CAPI answers 413 above 6MiB, measured on the uncompressed json body
+	signalsBatchBytes = 6 * 1024 * 1024
+	// matches the timeout of the API gateway in front of the CAPI
+	signalsBatchTimeout = 30 * time.Second
 )
 
 type apic struct {
@@ -51,12 +62,14 @@ type apic struct {
 	// or they can be negative
 	pullInterval              time.Duration
 	pullIntervalFirst         time.Duration
-	pushInterval              time.Duration
+	pushInterval              time.Duration // zero: depends on enrollment and plan
+	pushCooldown              time.Duration // only used along with pushInterval
 	pushIntervalFirst         time.Duration
 	metricsInterval           time.Duration
 	metricsIntervalFirst      time.Duration
 	usageMetricsInterval      time.Duration
 	usageMetricsIntervalFirst time.Duration
+	usageMetricsBatchBytes    int
 	dbClient                  *database.Client
 	apiClient                 *apiclient.ApiClient
 	AlertsAddChan             chan []*models.Alert
@@ -67,7 +80,9 @@ type apic struct {
 	metricsTomb   tomb.Tomb
 	startup       bool
 	consoleConfig *csconfig.ConsoleConfig
-	isPulling     chan bool
+	// reported in the LAPI usage metrics
+	features  []string
+	isPulling chan bool
 	whitelists    *csconfig.CapiWhitelist
 
 	pullBlocklists bool
@@ -95,8 +110,14 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}
+
 	// merge all scenarios together
 	for _, v := range machines {
+		if v.Scenarios == "" {
+			log.Debugf("No scenarios for machine %d", v.ID)
+			continue
+		}
+
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
 
@@ -112,20 +133,20 @@ func (a *apic) FetchScenariosListFromDB(ctx context.Context) ([]string, error) {
 	return scenarios, nil
 }
 
-func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
-	apiDecisions := models.AddSignalsRequestItemDecisions{}
+func decisionsToAPIDecisions(decisions []*models.Decision) modelscapi.AddSignalsRequestItemDecisions {
+	apiDecisions := modelscapi.AddSignalsRequestItemDecisions{}
 
 	for _, decision := range decisions {
-		x := &models.AddSignalsRequestItemDecisionsItem{
-			Duration: ptr.Of(*decision.Duration),
+		x := &modelscapi.AddSignalsRequestItemDecisionsItem{
+			Duration: new(*decision.Duration),
 			ID:       new(int64),
-			Origin:   ptr.Of(*decision.Origin),
-			Scenario: ptr.Of(*decision.Scenario),
-			Scope:    ptr.Of(*decision.Scope),
+			Origin:   new(*decision.Origin),
+			Scenario: new(*decision.Scenario),
+			Scope:    new(*decision.Scope),
 			// Simulated: *decision.Simulated,
-			Type:  ptr.Of(*decision.Type),
+			Type:  new(*decision.Type),
 			Until: decision.Until,
-			Value: ptr.Of(*decision.Value),
+			Value: new(*decision.Value),
 			UUID:  decision.UUID,
 		}
 
@@ -141,13 +162,13 @@ func decisionsToAPIDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	return apiDecisions
 }
 
-func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *models.AddSignalsRequestItem {
-	signal := &models.AddSignalsRequestItem{
+func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *modelscapi.AddSignalsRequestItem {
+	signal := &modelscapi.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
 		ScenarioVersion: alert.ScenarioVersion,
-		Source: &models.AddSignalsRequestItemSource{
+		Source: &modelscapi.AddSignalsRequestItemSource{
 			AsName:    alert.Source.AsName,
 			AsNumber:  alert.Source.AsNumber,
 			Cn:        alert.Source.Cn,
@@ -165,12 +186,13 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 		ScenarioTrust: scenarioTrust,
 		Decisions:     decisionsToAPIDecisions(alert.Decisions),
 		UUID:          alert.UUID,
+		Kind:          alert.Kind,
 	}
 	if shareContext {
-		signal.Context = make([]*models.AddSignalsRequestItemContextItems0, 0)
+		signal.Context = make([]*modelscapi.AddSignalsRequestItemContextItems0, 0)
 
 		for _, meta := range alert.Meta {
-			contextItem := models.AddSignalsRequestItemContextItems0{
+			contextItem := modelscapi.AddSignalsRequestItemContextItems0{
 				Key:   meta.Key,
 				Value: meta.Value,
 			}
@@ -200,12 +222,12 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
-		pushInterval:              pushIntervalDefault,
 		pushIntervalFirst:         randomDuration(pushIntervalDefault, pushIntervalDelta),
 		metricsInterval:           metricsIntervalDefault,
 		metricsIntervalFirst:      randomDuration(metricsIntervalDefault, metricsIntervalDelta),
 		usageMetricsInterval:      usageMetricsInterval,
 		usageMetricsIntervalFirst: randomDuration(usageMetricsInterval, usageMetricsIntervalDelta),
+		usageMetricsBatchBytes:    usageMetricsBatchBytes,
 		isPulling:                 make(chan bool, 1),
 		whitelists:                apicWhitelist,
 		pullBlocklists:            *config.PullConfig.Blocklists,
@@ -223,7 +245,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		return nil, fmt.Errorf("while parsing '%s': %w", config.Credentials.PapiURL, err)
 	}
 
-	ret.apiClient = apiclient.NewClient(&apiclient.Config{
+	ret.apiClient = apiclient.NewCAPIClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       strfmt.Password(config.Credentials.Password),
 		URL:            apiURL,
@@ -236,6 +258,12 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 	})
 
 	err = ret.Authenticate(ctx, config)
+
+	// enrolling requires a restart
+	if !ret.apiClient.IsEnrolled() {
+		ret.metricsInterval = metricsIntervalUnenrolled
+		ret.metricsIntervalFirst = randomDuration(metricsIntervalUnenrolled, metricsDeltaUnenrolled)
+	}
 
 	return ret, err
 }
@@ -286,13 +314,17 @@ func (a *apic) Authenticate(ctx context.Context, config *csconfig.OnlineApiClien
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pushToAPIC")
-
-	var cache models.AddSignalsRequest
+	var (
+		cache modelscapi.AddSignalsRequest
+		// overlapping pushes would pile up against a slow CAPI
+		sending  atomic.Bool
+		lastPush time.Time
+	)
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
+	interval, cooldown := a.currentPushSchedule()
 
-	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", a.pushIntervalFirst.Round(time.Second), a.pushInterval)
+	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s, at least %s between pushes)", a.pushIntervalFirst.Round(time.Second), interval, cooldown)
 
 	for {
 		select {
@@ -309,19 +341,37 @@ func (a *apic) Push(ctx context.Context) error {
 
 			return nil
 		case <-ticker.C:
-			ticker.Reset(a.pushInterval)
-
-			if len(cache) > 0 {
-				a.mu.Lock()
-				cacheCopy := cache
-				cache = make(models.AddSignalsRequest, 0)
-				a.mu.Unlock()
-				log.Infof("Signal push: %d signals to push", len(cacheCopy))
-
-				go a.Send(ctx, &cacheCopy)
+			// the plan can change when the token is refreshed
+			if newInterval, newCooldown := a.currentPushSchedule(); newInterval != interval || newCooldown != cooldown {
+				log.Infof("Signal push schedule changed to every %s, at least %s between pushes", newInterval, newCooldown)
+				interval, cooldown = newInterval, newCooldown
 			}
+
+			ticker.Reset(interval)
+
+			if len(cache) == 0 || time.Since(lastPush) < cooldown {
+				continue
+			}
+
+			if !sending.CompareAndSwap(false, true) {
+				log.Infof("Signal push: previous push still running, keeping %d signals for the next one", len(cache))
+				continue
+			}
+
+			a.mu.Lock()
+			cacheCopy := cache
+			cache = make(modelscapi.AddSignalsRequest, 0)
+			a.mu.Unlock()
+			log.Infof("Signal push: %d signals to push", len(cacheCopy))
+
+			lastPush = time.Now()
+
+			go func() {
+				defer sending.Store(false)
+				a.Send(ctx, &cacheCopy)
+			}()
 		case alerts := <-a.AlertsAddChan:
-			var signals []*models.AddSignalsRequestItem
+			var signals []*modelscapi.AddSignalsRequestItem
 
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig, a.shareSignals); ok {
@@ -335,6 +385,21 @@ func (a *apic) Push(ctx context.Context) error {
 
 			a.mu.Unlock()
 		}
+	}
+}
+
+// currentPushSchedule returns how often the cache is checked, and the minimum time between two pushes.
+func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
+	switch {
+	case a.pushInterval > 0:
+		return a.pushInterval, a.pushCooldown
+	case !a.apiClient.IsEnrolled():
+		return pushIntervalNotEnrolled, 0
+	case a.apiClient.GetSubscriptionType() == apiclient.SubscriptionTypeCommunity:
+		// an alert after a quiet period goes out quickly, a steady stream is batched
+		return pushIntervalDefault, pushCooldownCommunity
+	default:
+		return pushIntervalDefault, 0
 	}
 }
 
@@ -387,16 +452,19 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
-func (a *apic) sendBatch(ctx context.Context, signals []*models.AddSignalsRequestItem) error {
-	ctxBatch, cancel := context.WithTimeout(ctx, 5*time.Second)
+func (a *apic) sendBatch(ctx context.Context, signals []*modelscapi.AddSignalsRequestItem) error {
+	ctxBatch, cancel := context.WithTimeout(ctx, signalsBatchTimeout)
 	defer cancel()
 
-	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*models.AddSignalsRequest)(&signals))
+	_, _, err := a.apiClient.Signal.Add(ctxBatch, (*modelscapi.AddSignalsRequest)(&signals))
+	if err != nil {
+		metrics.CapiErrors.WithLabelValues(metrics.CapiOperationPush).Inc()
+	}
 
 	return err
 }
 
-func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
+func (a *apic) Send(ctx context.Context, cacheOrig *modelscapi.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
 	This chan is filled by Controller.CreateAlert
@@ -408,18 +476,58 @@ func (a *apic) Send(ctx context.Context, cacheOrig *models.AddSignalsRequest) {
 
 	I don't know enough about gin to tell how much of an issue it can be.
 	*/
-	var cache []*models.AddSignalsRequestItem = *cacheOrig
-
-	batchSize := 50
-
-	for start := 0; start < len(cache); start += batchSize {
-		end := min(start+batchSize, len(cache))
-
-		if err := a.sendBatch(ctx, cache[start:end]); err != nil {
+	for _, batch := range splitSignals(*cacheOrig, signalsBatchSize, signalsBatchBytes) {
+		if err := a.sendBatch(ctx, batch); err != nil {
 			log.Errorf("sending signal to central API: %s", err)
 			return
 		}
 	}
+}
+
+// splitSignals groups signals in batches of at most maxItems, whose json array encoding is at most maxBytes.
+// A signal that can't fit in a batch on its own is dropped.
+func splitSignals(signals []*modelscapi.AddSignalsRequestItem, maxItems int, maxBytes int) [][]*modelscapi.AddSignalsRequestItem {
+	var (
+		batches [][]*modelscapi.AddSignalsRequestItem
+		batch   []*modelscapi.AddSignalsRequestItem
+	)
+
+	// brackets and the encoder's trailing newline
+	const overhead = 3
+
+	size := overhead
+
+	for _, signal := range signals {
+		// json.Marshal escapes html, the client doesn't: this overestimates, never underestimates
+		raw, err := json.Marshal(signal)
+		if err != nil {
+			log.Errorf("dropping signal that can't be encoded: %s", err)
+			continue
+		}
+
+		// +1 for the separator
+		itemSize := len(raw) + 1
+
+		if overhead+itemSize > maxBytes {
+			log.Errorf("dropping signal for scenario %s: %d bytes is over the %d bytes limit", ptr.OrEmpty(signal.Scenario), itemSize, maxBytes)
+			continue
+		}
+
+		if len(batch) == maxItems || size+itemSize > maxBytes {
+			batches = append(batches, batch)
+			batch = nil
+			size = overhead
+		}
+
+		batch = append(batch, signal)
+		size += itemSize
+	}
+
+	if len(batch) > 0 {
+		batches = append(batches, batch)
+	}
+
+	return batches
 }
 
 func (a *apic) CAPIPullIsOld(ctx context.Context) (bool, error) {
@@ -462,7 +570,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 				return 0, fmt.Errorf("expiring decisions error: %w", err)
 			}
 
-			updateCounterForDecision(deleteCounters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
+			updateCounterForDecision(deleteCounters, new(types.CAPIOrigin), nil, dbCliDel)
 
 			nbDeleted += dbCliDel
 		}
@@ -471,49 +579,7 @@ func (a *apic) HandleDeletedDecisionsV3(ctx context.Context, deletedDecisions []
 	return nbDeleted, nil
 }
 
-func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
-	newAlerts := make([]*models.Alert, 0)
-
-	for _, decision := range decisions {
-		found := false
-
-		for _, sub := range newAlerts {
-			if sub.Source.Scope == nil {
-				log.Warningf("nil scope in %+v", sub)
-				continue
-			}
-
-			if *decision.Origin == types.CAPIOrigin {
-				if *sub.Source.Scope == types.CAPIOrigin {
-					found = true
-					break
-				}
-			} else if *decision.Origin == types.ListOrigin {
-				if *sub.Source.Scope == *decision.Origin {
-					if sub.Scenario == nil {
-						log.Warningf("nil scenario in %+v", sub)
-					}
-
-					if *sub.Scenario == *decision.Scenario {
-						found = true
-						break
-					}
-				}
-			} else {
-				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
-			}
-		}
-
-		if !found {
-			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
-			newAlerts = append(newAlerts, createAlertForDecision(decision))
-		}
-	}
-
-	return newAlerts
-}
-
-func createAlertForDecision(decision *models.Decision) *models.Alert {
+func createAlertForDecision(decision *models.Decision, kind types.AlertKind) *models.Alert {
 	var (
 		scenario string
 		scope    string
@@ -535,19 +601,20 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 
 	return &models.Alert{
 		Source: &models.Source{
-			Scope: ptr.Of(scope),
-			Value: ptr.Of(""),
+			Scope: new(scope),
+			Value: new(""),
 		},
-		Scenario:        ptr.Of(scenario),
-		Message:         ptr.Of(""),
-		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		Capacity:        ptr.Of(int32(0)),
-		Simulated:       ptr.Of(false),
-		EventsCount:     ptr.Of(int32(0)),
-		Leakspeed:       ptr.Of(""),
-		ScenarioHash:    ptr.Of(""),
-		ScenarioVersion: ptr.Of(""),
+		Scenario:        new(scenario),
+		Kind:            kind.String(),
+		Message:         new(""),
+		StartAt:         new(time.Now().UTC().Format(time.RFC3339)),
+		StopAt:          new(time.Now().UTC().Format(time.RFC3339)),
+		Capacity:        new(int32(0)),
+		Simulated:       new(false),
+		EventsCount:     new(int32(0)),
+		Leakspeed:       new(""),
+		ScenarioHash:    new(""),
+		ScenarioVersion: new(""),
 		MachineID:       database.CapiMachineID,
 	}
 }
@@ -646,8 +713,11 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 
 	data, _, err := a.apiClient.Decisions.GetStreamV3(ctx, apiclient.DecisionsStreamOpts{Startup: a.startup, CommunityPull: a.pullCommunity, AdditionalPull: a.pullBlocklists})
 	if err != nil {
+		metrics.CapiErrors.WithLabelValues(metrics.CapiOperationPull).Inc()
 		return fmt.Errorf("get stream: %w", err)
 	}
+
+	metrics.CapiLastPullTimestamp.SetToCurrentTime()
 
 	a.startup = false
 	/*to count additions/deletions across lists*/
@@ -687,7 +757,7 @@ func (a *apic) PullTop(ctx context.Context, forcePull bool) error {
 		// apply APIC specific whitelists
 		decisions = a.ApplyApicWhitelists(ctx, decisions)
 
-		alert := createAlertForDecision(decisions[0])
+		alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 		alertsFromCapi := []*models.Alert{alert}
 		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
@@ -831,7 +901,7 @@ func (a *apic) UpdateAllowlists(ctx context.Context, allowlistsLinks []*modelsca
 		return nil
 	}
 
-	client, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	client, err := apiclient.NewDefaultCAPIClient(a.apiClient.BaseURL)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
@@ -1031,7 +1101,7 @@ func (a *apic) updateBlocklist(ctx context.Context, client *apiclient.ApiClient,
 	}
 	// apply APIC specific whitelists
 	decisions = a.ApplyApicWhitelists(ctx, decisions)
-	alert := createAlertForDecision(decisions[0])
+	alert := createAlertForDecision(decisions[0], types.CAPIAlertKind)
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, addCounters)
 
@@ -1050,7 +1120,7 @@ func (a *apic) UpdateBlocklists(ctx context.Context, blocklists []*modelscapi.Bl
 
 	// we must use a different http client than apiClient's because the transport of apiClient is jwtTransport or here we have signed apis that are incompatibles
 	// we can use the same baseUrl as the urls are absolute and the parse will take care of it
-	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
+	defaultClient, err := apiclient.NewDefaultCAPIClient(a.apiClient.BaseURL)
 	if err != nil {
 		return fmt.Errorf("while creating default client: %w", err)
 	}
@@ -1068,20 +1138,18 @@ func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int
 	switch *alert.Source.Scope {
 	case types.CAPIOrigin:
 		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+		alert.Scenario = new(fmt.Sprintf("update : +%d/-%d IPs",
 			addCounters[types.CAPIOrigin]["all"],
 			deleteCounters[types.CAPIOrigin]["all"]))
 	case types.ListOrigin:
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+		alert.Scenario = new(fmt.Sprintf("update : +%d/-%d IPs",
 			addCounters[types.ListOrigin][*alert.Scenario],
 			deleteCounters[types.ListOrigin][*alert.Scenario]))
 	}
 }
 
 func (a *apic) Pull(ctx context.Context) error {
-	defer trace.CatchPanic("lapi/pullFromAPIC")
-
 	toldOnce := false
 
 	for {
@@ -1100,7 +1168,14 @@ func (a *apic) Pull(ctx context.Context) error {
 			toldOnce = true
 		}
 
-		time.Sleep(1 * time.Second)
+		select {
+		case <-time.After(1 * time.Second):
+		case <-a.pullTomb.Dying():
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
+
+			return nil
+		}
 	}
 
 	if err := a.PullTop(ctx, false); err != nil {

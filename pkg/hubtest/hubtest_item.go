@@ -210,13 +210,13 @@ func (t *HubTestItem) InstallHub(ctx context.Context) error {
 	}
 
 	if len(t.Config.OverrideStatics) > 0 {
-		n := parser.Node{
+		cfg := parser.NodeConfig{
 			Name:    "overrides",
 			Filter:  "1==1",
 			Statics: t.Config.OverrideStatics,
 		}
 
-		b, err := yaml.Marshal(n)
+		b, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("unable to serialize overrides: %w", err)
 		}

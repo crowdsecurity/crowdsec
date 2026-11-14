@@ -6,6 +6,9 @@ on:
       CODECOV_TOKEN:
         required: true
 
+permissions:
+  contents: read
+
 env:
   TEST_COVERAGE: true
 
@@ -23,13 +26,14 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Check out CrowdSec repository"
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
         submodules: true
+        persist-credentials: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: go.mod
 
@@ -40,6 +44,9 @@ jobs:
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq libre2-dev
 
     - name: "Build crowdsec and fixture"
+      # fetch the hub index from a git clone to avoid cdn-hub rate limiting (403)
+      env:
+        TEST_HUB_CLONE: "true"
       run: |
         make clean bats-build bats-fixture BUILD_STATIC=1
 
@@ -75,7 +82,7 @@ jobs:
       if: ${{ always() }}
 
     - name: Upload bats coverage to codecov
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
       with:
         files: ./coverage-bats.out
         flags: bats

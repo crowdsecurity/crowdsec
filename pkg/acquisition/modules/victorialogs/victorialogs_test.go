@@ -7,14 +7,17 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
@@ -248,16 +251,16 @@ url: "http://127.0.0.1:9429"
 query: >
   server:"demo"`, // Wrong port
 			expectedErr:   "",
-			streamErr:     `VictoriaLogs is not ready`,
+			streamErr:     `tail request`,
 			expectedLines: 0,
 		},
 		{
 			name: "ok",
-			config: `mode: tail
+			config: fmt.Sprintf(`mode: tail
 source: victorialogs
 url: "http://127.0.0.1:9428"
 query: >
-  server:"demo"`,
+  server:"demo" key:%q`, title),
 			expectedErr:   "",
 			streamErr:     "",
 			expectedLines: 20,
@@ -273,7 +276,6 @@ query: >
 			})
 
 			out := make(chan pipeline.Event)
-			vlTomb := tomb.Tomb{}
 			vlSource := victorialogs.Source{}
 
 			err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -281,12 +283,19 @@ query: >
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = vlSource.StreamingAcquisition(ctx, out, &vlTomb)
-			cstest.AssertErrorContains(t, err, ts.streamErr)
-
 			if ts.streamErr != "" {
+				err = vlSource.Stream(ctx, out)
+				cstest.RequireErrorContains(t, err, ts.streamErr)
+
 				return
 			}
+
+			streamCtx, streamCancel := context.WithCancel(ctx)
+			streamErr := make(chan error, 1)
+
+			go func() {
+				streamErr <- vlSource.Stream(streamCtx, out)
+			}()
 
 			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
 
@@ -329,6 +338,9 @@ query: >
 			}
 
 			assert.Equal(t, ts.expectedLines, count)
+
+			streamCancel()
+			require.NoError(t, <-streamErr)
 		})
 	}
 }
@@ -357,12 +369,12 @@ query: >
 
 	out := make(chan pipeline.Event, 10)
 
-	vlTomb := &tomb.Tomb{}
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	streamErr := make(chan error, 1)
 
-	err = vlSource.StreamingAcquisition(ctx, out, vlTomb)
-	if err != nil {
-		t.Fatalf("Unexpected error : %s", err)
-	}
+	go func() {
+		streamErr <- vlSource.Stream(streamCtx, out)
+	}()
 
 	time.Sleep(time.Second * 2)
 
@@ -371,10 +383,104 @@ query: >
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	vlTomb.Kill(nil)
+	streamCancel()
+	require.NoError(t, <-streamErr)
+}
 
-	err = vlTomb.Wait()
-	if err != nil {
-		t.Fatalf("Unexpected error : %s", err)
+func TestStreamReturnsWhenServerCloses(t *testing.T) {
+	ctx := t.Context()
+
+	var conns atomic.Int32
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := conns.Add(1)
+		fmt.Fprintf(w, `{"_msg":"line %d","_time":%q}`+"\n", n, time.Now().Format(time.RFC3339Nano))
+
+		if n == 1 {
+			// the server goes away, e.g. VictoriaLogs restarts
+			return
+		}
+
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	vlSource := victorialogs.Source{}
+	config := fmt.Sprintf("mode: tail\nsource: victorialogs\nurl: %s\nquery: '*'\n", srv.URL)
+	err := vlSource.Configure(ctx, []byte(config), log.WithField("type", victorialogs.ModuleName), metrics.AcquisitionMetricsLevelNone)
+	require.NoError(t, err)
+
+	out := make(chan pipeline.Event, 10)
+
+	err = vlSource.Stream(ctx, out)
+	require.ErrorContains(t, err, "tail stream closed by server")
+	require.Equal(t, "line 1", (<-out).Line.Raw)
+
+	// the orchestrator calls Stream again
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	defer streamCancel() // before srv.Close(), which waits for the handler
+	streamErr := make(chan error, 1)
+
+	go func() {
+		streamErr <- vlSource.Stream(streamCtx, out)
+	}()
+
+	select {
+	case evt := <-out:
+		require.Equal(t, "line 2", evt.Line.Raw)
+	case <-time.After(5 * time.Second):
+		t.Fatal("no line after reconnect")
+	}
+
+	streamCancel()
+	require.NoError(t, <-streamErr)
+}
+
+func TestTailModeIgnoredOptionsWarning(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       string
+		expectedWarn []string
+	}{
+		{
+			name:   "tail mode, defaults",
+			config: "mode: tail",
+		},
+		{
+			name:         "tail mode, wait_for_ready",
+			config:       "mode: tail\nwait_for_ready: 5s",
+			expectedWarn: []string{"wait_for_ready is ignored in tail mode"},
+		},
+		{
+			name:         "default mode, max_failure_duration",
+			config:       "max_failure_duration: 1m",
+			expectedWarn: []string{"max_failure_duration is ignored in tail mode"},
+		},
+		{
+			name:   "cat mode, both",
+			config: "mode: cat\nwait_for_ready: 5s\nmax_failure_duration: 1m",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logger, hook := logtest.NewNullLogger()
+			vlSource := victorialogs.Source{}
+
+			config := "source: victorialogs\nurl: http://127.0.0.1:9428\nquery: '*'\n" + tc.config
+			err := vlSource.Configure(t.Context(), []byte(config), logger.WithField("type", victorialogs.ModuleName), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			var warnings []string
+
+			for _, entry := range hook.AllEntries() {
+				if entry.Level == log.WarnLevel {
+					warnings = append(warnings, entry.Message)
+				}
+			}
+
+			require.Equal(t, tc.expectedWarn, warnings)
+		})
 	}
 }

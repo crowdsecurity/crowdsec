@@ -7,7 +7,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -29,10 +28,7 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	respChan, err := s.getResponseChan(ctx, false)
-	if err != nil {
-		return fmt.Errorf("error when starting acquisition: %w", err)
-	}
+	respChan := s.Client.QueryRange(ctx, false)
 
 	for {
 		select {
@@ -45,12 +41,12 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 				return nil
 			}
 
-			s.readOneEntry(resp, s.Config.Labels, out)
+			s.readOneEntry(ctx, resp, s.Config.Labels, out)
 		}
 	}
 }
 
-func (s *Source) readOneEntry(entry *vlclient.Log, labels map[string]string, out chan pipeline.Event) {
+func (s *Source) readOneEntry(ctx context.Context, entry *vlclient.Log, labels map[string]string, out chan pipeline.Event) {
 	ll := pipeline.Line{}
 	ll.Raw = entry.Message
 	ll.Time = entry.Time
@@ -68,80 +64,35 @@ func (s *Source) readOneEntry(entry *vlclient.Log, labels map[string]string, out
 		expectMode = pipeline.TIMEMACHINE
 	}
 
-	out <- pipeline.Event{
+	evt := pipeline.Event{
 		Line:       ll,
 		Process:    true,
 		Type:       pipeline.LOG,
 		ExpectMode: expectMode,
 	}
+
+	select {
+	case out <- evt:
+	case <-ctx.Done():
+	}
 }
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.Client.SetTomb(t)
-
-	readyCtx, cancel := context.WithTimeout(ctx, s.Config.WaitForReady)
+// Stream tails VictoriaLogs until the server closes the stream.
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	err := s.Client.Ready(readyCtx)
-	if err != nil {
-		return fmt.Errorf("VictoriaLogs is not ready: %w", err)
+	logs := make(chan *vlclient.Log)
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- s.Client.Tail(ctx, logs)
+		close(logs)
+	}()
+
+	for entry := range logs {
+		s.readOneEntry(ctx, entry, s.Config.Labels, out)
 	}
 
-	lctx, clientCancel := context.WithCancel(ctx)
-	// Don't defer clientCancel(), the client outlives this function call
-
-	t.Go(func() error {
-		<-t.Dying()
-		clientCancel()
-
-		return nil
-	})
-
-	t.Go(func() error {
-		respChan, err := s.getResponseChan(lctx, true)
-		if err != nil {
-			clientCancel()
-			s.logger.Errorf("could not start VictoriaLogs tail: %s", err)
-
-			return fmt.Errorf("while starting VictoriaLogs tail: %w", err)
-		}
-
-		for {
-			select {
-			case resp, ok := <-respChan:
-				if !ok {
-					s.logger.Warnf("VictoriaLogs channel closed")
-					clientCancel()
-
-					return err
-				}
-
-				s.readOneEntry(resp, s.Config.Labels, out)
-			case <-t.Dying():
-				clientCancel()
-				return nil
-			}
-		}
-	})
-
-	return nil
-}
-
-func (s *Source) getResponseChan(ctx context.Context, infinite bool) (chan *vlclient.Log, error) {
-	var (
-		respChan chan *vlclient.Log
-		err      error
-	)
-
-	if s.Config.Mode == configuration.TAIL_MODE {
-		respChan, err = s.Client.Tail(ctx)
-		if err != nil {
-			s.logger.Errorf("could not start VictoriaLogs tail: %s", err)
-			return respChan, fmt.Errorf("while starting VictoriaLogs tail: %w", err)
-		}
-	} else {
-		respChan = s.Client.QueryRange(ctx, infinite)
-	}
-
-	return respChan, err
+	return <-errChan
 }

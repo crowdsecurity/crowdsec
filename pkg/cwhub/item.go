@@ -54,14 +54,16 @@ type Dependencies struct {
 	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
-// a group of items of the same type
-type itemgroup struct {
-	typeName  string
-	itemNames []string
+// DependencyGroup pairs an item type with the names of the dependencies of that type.
+type DependencyGroup struct {
+	Type  string
+	Names []string
 }
 
-func (d Dependencies) byType() []itemgroup {
-	return []itemgroup{
+// ByType returns the direct dependencies grouped by item type, in ItemTypes order.
+// This is the single source of truth for iterating a Dependencies struct by type.
+func (d Dependencies) ByType() []DependencyGroup {
+	return []DependencyGroup{
 		{PARSERS, d.Parsers},
 		{POSTOVERFLOWS, d.PostOverflows},
 		{SCENARIOS, d.Scenarios},
@@ -75,9 +77,9 @@ func (d Dependencies) byType() []itemgroup {
 // SubItems iterates over the sub-items in the struct, excluding the ones that were not found in the hub.
 func (d Dependencies) SubItems(hub *Hub) func(func(*Item) bool) {
 	return func(yield func(*Item) bool) {
-		for _, typeGroup := range d.byType() {
-			for _, name := range typeGroup.itemNames {
-				s := hub.GetItem(typeGroup.typeName, name)
+		for _, group := range d.ByType() {
+			for _, name := range group.Names {
+				s := hub.GetItem(group.Type, name)
 				if s == nil {
 					continue
 				}
@@ -239,10 +241,10 @@ func (i *Item) CurrentDependencies() Dependencies {
 }
 
 func (i *Item) logMissingSubItems() {
-	for _, sub := range i.CurrentDependencies().byType() {
-		for _, subName := range sub.itemNames {
-			if i.hub.GetItem(sub.typeName, subName) == nil {
-				i.hub.logger.Errorf("can't find %s:%s, required by %s", sub.typeName, subName, i.Name)
+	for _, group := range i.CurrentDependencies().ByType() {
+		for _, subName := range group.Names {
+			if i.hub.GetItem(group.Type, subName) == nil {
+				i.hub.logger.Errorf("can't find %s:%s, required by %s", group.Type, subName, i.Name)
 			}
 		}
 	}
@@ -259,6 +261,20 @@ func (i *Item) Ancestors() []*Item {
 		}
 
 		ret = append(ret, parent)
+	}
+
+	return ret
+}
+
+// InstalledParents returns the installed collections that have this item as a direct or indirect
+// dependency.
+func (i *Item) InstalledParents() []*Item {
+	ret := make([]*Item, 0)
+
+	for _, parent := range i.Ancestors() {
+		if parent.State.IsInstalled() {
+			ret = append(ret, parent)
+		}
 	}
 
 	return ret
@@ -393,7 +409,12 @@ func (i *Item) FQName() string {
 
 // addTaint marks the item as tainted, and propagates the taint to the ancestors.
 // sub: the sub-item that caused the taint. May be the item itself!
+// Taint only applies to installed items.
 func (i *Item) addTaint(sub *Item) {
+	if !i.State.IsInstalled() {
+		return
+	}
+
 	i.State.Tainted = true
 	taintedBy := sub.FQName()
 

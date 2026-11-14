@@ -56,14 +56,7 @@ func (t *TLSCfg) GetTLSConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
-	caCertPool, err := x509.SystemCertPool()
-	if err != nil {
-		log.Warnf("Error loading system CA certificates: %s", err)
-	}
-
-	if caCertPool == nil {
-		caCertPool = x509.NewCertPool()
-	}
+	caCertPool := x509.NewCertPool()
 
 	// the > condition below is a weird way to say "if a client certificate is required"
 	// see https://pkg.go.dev/crypto/tls#ClientAuthType

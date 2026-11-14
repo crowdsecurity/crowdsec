@@ -24,76 +24,76 @@ type EventUpdate struct {
 }
 
 // Where appends a list predicates to the EventUpdate builder.
-func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
-	eu.mutation.Where(ps...)
-	return eu
+func (_u *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
-	eu.mutation.SetUpdatedAt(t)
-	return eu
+func (_u *EventUpdate) SetUpdatedAt(v time.Time) *EventUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAlertEvents sets the "alert_events" field.
-func (eu *EventUpdate) SetAlertEvents(i int) *EventUpdate {
-	eu.mutation.SetAlertEvents(i)
-	return eu
+func (_u *EventUpdate) SetAlertEvents(v int) *EventUpdate {
+	_u.mutation.SetAlertEvents(v)
+	return _u
 }
 
 // SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableAlertEvents(i *int) *EventUpdate {
-	if i != nil {
-		eu.SetAlertEvents(*i)
+func (_u *EventUpdate) SetNillableAlertEvents(v *int) *EventUpdate {
+	if v != nil {
+		_u.SetAlertEvents(*v)
 	}
-	return eu
+	return _u
 }
 
 // ClearAlertEvents clears the value of the "alert_events" field.
-func (eu *EventUpdate) ClearAlertEvents() *EventUpdate {
-	eu.mutation.ClearAlertEvents()
-	return eu
+func (_u *EventUpdate) ClearAlertEvents() *EventUpdate {
+	_u.mutation.ClearAlertEvents()
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
-func (eu *EventUpdate) SetOwnerID(id int) *EventUpdate {
-	eu.mutation.SetOwnerID(id)
-	return eu
+func (_u *EventUpdate) SetOwnerID(id int) *EventUpdate {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
-func (eu *EventUpdate) SetNillableOwnerID(id *int) *EventUpdate {
+func (_u *EventUpdate) SetNillableOwnerID(id *int) *EventUpdate {
 	if id != nil {
-		eu = eu.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return eu
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Alert entity.
-func (eu *EventUpdate) SetOwner(a *Alert) *EventUpdate {
-	return eu.SetOwnerID(a.ID)
+func (_u *EventUpdate) SetOwner(v *Alert) *EventUpdate {
+	return _u.SetOwnerID(v.ID)
 }
 
 // Mutation returns the EventMutation object of the builder.
-func (eu *EventUpdate) Mutation() *EventMutation {
-	return eu.mutation
+func (_u *EventUpdate) Mutation() *EventMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Alert entity.
-func (eu *EventUpdate) ClearOwner() *EventUpdate {
-	eu.mutation.ClearOwner()
-	return eu
+func (_u *EventUpdate) ClearOwner() *EventUpdate {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
-	eu.defaults()
-	return withHooks(ctx, eu.sqlSave, eu.mutation, eu.hooks)
+func (_u *EventUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (eu *EventUpdate) SaveX(ctx context.Context) int {
-	affected, err := eu.Save(ctx)
+func (_u *EventUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -101,39 +101,39 @@ func (eu *EventUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (eu *EventUpdate) Exec(ctx context.Context) error {
-	_, err := eu.Save(ctx)
+func (_u *EventUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (eu *EventUpdate) ExecX(ctx context.Context) {
-	if err := eu.Exec(ctx); err != nil {
+func (_u *EventUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (eu *EventUpdate) defaults() {
-	if _, ok := eu.mutation.UpdatedAt(); !ok {
+func (_u *EventUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
-		eu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *EventUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
-	if ps := eu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := eu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if eu.mutation.OwnerCleared() {
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -146,7 +146,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := eu.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -162,7 +162,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, eu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -170,8 +170,8 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	eu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // EventUpdateOne is the builder for updating a single Event entity.
@@ -183,83 +183,83 @@ type EventUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
-	euo.mutation.SetUpdatedAt(t)
-	return euo
+func (_u *EventUpdateOne) SetUpdatedAt(v time.Time) *EventUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAlertEvents sets the "alert_events" field.
-func (euo *EventUpdateOne) SetAlertEvents(i int) *EventUpdateOne {
-	euo.mutation.SetAlertEvents(i)
-	return euo
+func (_u *EventUpdateOne) SetAlertEvents(v int) *EventUpdateOne {
+	_u.mutation.SetAlertEvents(v)
+	return _u
 }
 
 // SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableAlertEvents(i *int) *EventUpdateOne {
-	if i != nil {
-		euo.SetAlertEvents(*i)
+func (_u *EventUpdateOne) SetNillableAlertEvents(v *int) *EventUpdateOne {
+	if v != nil {
+		_u.SetAlertEvents(*v)
 	}
-	return euo
+	return _u
 }
 
 // ClearAlertEvents clears the value of the "alert_events" field.
-func (euo *EventUpdateOne) ClearAlertEvents() *EventUpdateOne {
-	euo.mutation.ClearAlertEvents()
-	return euo
+func (_u *EventUpdateOne) ClearAlertEvents() *EventUpdateOne {
+	_u.mutation.ClearAlertEvents()
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
-func (euo *EventUpdateOne) SetOwnerID(id int) *EventUpdateOne {
-	euo.mutation.SetOwnerID(id)
-	return euo
+func (_u *EventUpdateOne) SetOwnerID(id int) *EventUpdateOne {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableOwnerID(id *int) *EventUpdateOne {
+func (_u *EventUpdateOne) SetNillableOwnerID(id *int) *EventUpdateOne {
 	if id != nil {
-		euo = euo.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return euo
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Alert entity.
-func (euo *EventUpdateOne) SetOwner(a *Alert) *EventUpdateOne {
-	return euo.SetOwnerID(a.ID)
+func (_u *EventUpdateOne) SetOwner(v *Alert) *EventUpdateOne {
+	return _u.SetOwnerID(v.ID)
 }
 
 // Mutation returns the EventMutation object of the builder.
-func (euo *EventUpdateOne) Mutation() *EventMutation {
-	return euo.mutation
+func (_u *EventUpdateOne) Mutation() *EventMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Alert entity.
-func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
-	euo.mutation.ClearOwner()
-	return euo
+func (_u *EventUpdateOne) ClearOwner() *EventUpdateOne {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // Where appends a list predicates to the EventUpdate builder.
-func (euo *EventUpdateOne) Where(ps ...predicate.Event) *EventUpdateOne {
-	euo.mutation.Where(ps...)
-	return euo
+func (_u *EventUpdateOne) Where(ps ...predicate.Event) *EventUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (euo *EventUpdateOne) Select(field string, fields ...string) *EventUpdateOne {
-	euo.fields = append([]string{field}, fields...)
-	return euo
+func (_u *EventUpdateOne) Select(field string, fields ...string) *EventUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Event entity.
-func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
-	euo.defaults()
-	return withHooks(ctx, euo.sqlSave, euo.mutation, euo.hooks)
+func (_u *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (euo *EventUpdateOne) SaveX(ctx context.Context) *Event {
-	node, err := euo.Save(ctx)
+func (_u *EventUpdateOne) SaveX(ctx context.Context) *Event {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -267,34 +267,34 @@ func (euo *EventUpdateOne) SaveX(ctx context.Context) *Event {
 }
 
 // Exec executes the query on the entity.
-func (euo *EventUpdateOne) Exec(ctx context.Context) error {
-	_, err := euo.Save(ctx)
+func (_u *EventUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (euo *EventUpdateOne) ExecX(ctx context.Context) {
-	if err := euo.Exec(ctx); err != nil {
+func (_u *EventUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (euo *EventUpdateOne) defaults() {
-	if _, ok := euo.mutation.UpdatedAt(); !ok {
+func (_u *EventUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := event.UpdateDefaultUpdatedAt()
-		euo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {
+func (_u *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {
 	_spec := sqlgraph.NewUpdateSpec(event.Table, event.Columns, sqlgraph.NewFieldSpec(event.FieldID, field.TypeInt))
-	id, ok := euo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Event.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := euo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, event.FieldID)
 		for _, f := range fields {
@@ -306,17 +306,17 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			}
 		}
 	}
-	if ps := euo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := euo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(event.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if euo.mutation.OwnerCleared() {
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -329,7 +329,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := euo.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -345,10 +345,10 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Event{config: euo.config}
+	_node = &Event{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, euo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -356,6 +356,6 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		return nil, err
 	}
-	euo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

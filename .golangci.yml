@@ -26,6 +26,11 @@ linters:
 
     # Disabled atm, likely to be enabled later
 
+    # new checks in golangci-lint v2.13, to enable soon
+    - canonicalheader
+    - noctx
+    - recvcheck
+
     - funcorder
     - exhaustive
     - errname      # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`.
@@ -59,6 +64,7 @@ linters:
     - paralleltest          # Detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
     - exhaustruct           # Checks if all structure fields are initialized
+    - exhaustruct_v5        # same, new major version
     - gochecknoglobals      # Check that no global variables exist.
     - goconst               # Finds repeated strings that could be replaced by a constant
     - tagliatelle           # Checks the struct tags.
@@ -121,9 +127,10 @@ linters:
             - '!**/pkg/appsec/appsec.go'
             - '!**/pkg/appsec/loader.go'
             - '!**/pkg/csplugin/broker.go'
-            - '!**/pkg/leakybucket/buckets_test.go'
+            - '!**/pkg/leakybucket/bucketstore_test.go'
             - '!**/pkg/leakybucket/manager_load.go'
-            - '!**/pkg/parser/node.go'
+            - '!**/pkg/parser/node_config.go'
+            - '!**/pkg/parser/node_subnodes_test.go'
             - '!**/pkg/parser/node_test.go'
             - '!**/pkg/parser/parsing_test.go'
             - '!**/pkg/parser/stage.go'
@@ -237,6 +244,7 @@ linters:
     govet:
       disable:
         - fieldalignment
+        - inline  # new in v2.13, to enable soon
       enable-all: true
 
     iface:
@@ -263,11 +271,15 @@ linters:
     modernize:
       disable:
         - any
-        - fmtappendf
+        # embedlit, errorsastype, slicesbackward and stringscut are new in v2.13, to enable soon
+        - embedlit
+        - errorsastype
         - forvar
         - omitzero
+        - slicesbackward
         - stringsbuilder
-        - waitgroup
+        - stringscut
+        - waitgroupgo
 
     nestif:
       # lower this after refactoring
@@ -336,6 +348,10 @@ linters:
       # A wildcard `*` can use as a struct name (ex: `*.MethodName`).
       exclusions:
         - "HCLogAdapter.SetLevel"
+        # Unmarshal methods must have a pointer receiver by nature; getters on
+        # the same type legitimately use value receivers (same rationale as the
+        # built-in Marshal* exclusions, which don't cover Unmarshal*).
+        - "*.UnmarshalJSON"
 
     revive:
       severity: error
@@ -348,7 +364,7 @@ linters:
         - name: cognitive-complexity
           arguments:
             # lower this after refactoring
-            - 91
+            - 73
         - name: comment-spacings
           disabled: true
         - name: confusing-results
@@ -403,6 +419,9 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        # new in v2.13, to enable soon
+        - name: package-naming
+          disabled: true
         - name: package-directory-mismatch
           disabled: true
         - name: redundant-import-alias
@@ -431,6 +450,9 @@ linters:
           disabled: true
         - name: use-any
           disabled: true
+        # new in v2.13, to enable soon
+        - name: use-slices-sort
+          disabled: true
         - name: use-waitgroup-go
           disabled: true
         - name: useless-break
@@ -444,6 +466,7 @@ linters:
         - -ST1012  # error var ... should have name of the form ...
         - -QF1003  # could use tagged switch on ...
         - -QF1012  # QF1012: Use fmt.Fprintf(...) instead of ...
+        - -SA4023  # comparison is always true; new in v2.13, to enable soon
 
     unused:
       # Mark all struct fields that have been written to as used.
@@ -547,6 +570,14 @@ linters:
         path: pkg/acquisition/modules/victorialogs/internal/vlclient/vl_client.go
         text: 'confusing-naming: Method ''QueryRange'' differs only by capitalization to method ''queryRange'' in the same source file'
 
+      # pkg/dnscache lookups are deliberately detached from the request
+      # context: their results are shared across requests (singleflight +
+      # cache), so one caller's cancellation must not abort the lookup for
+      # the others; a fixed timeout bounds them instead.
+      - linters:
+          - contextcheck
+        text: '(lookupPTR|lookupForward)` should pass the context parameter'
+
       # tolerate complex functions in tests for now
       - linters:
           - maintidx
@@ -595,11 +626,6 @@ linters:
       - linters:
           - revive
         path: cmd/crowdsec/win_service.go
-        text: 'deep-exit: .*'
-
-      - linters:
-          - revive
-        path: cmd/crowdsec/flags.go
         text: 'deep-exit: .*'
 
       - linters:
@@ -662,6 +688,12 @@ linters:
       - linters:
           - embeddedstructfieldcheck
         text: "embedded fields should be listed before regular fields"
+
+      # TODO: remove when NodeConfig is not embedded anymore
+      - linters:
+          - staticcheck
+        path: pkg/parser/(.+).go
+        text: 'QF1008: could remove embedded field "NodeConfig" from selector'
 
     paths:
       - third_party$

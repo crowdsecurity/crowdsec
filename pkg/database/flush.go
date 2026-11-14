@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/go-co-op/gocron"
-	log "github.com/sirupsen/logrus"
+	"github.com/go-co-op/gocron/v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstime"
 
@@ -18,7 +18,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
+	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -26,9 +30,14 @@ const (
 	// how long to keep metrics in the local database
 	defaultMetricsMaxAge = 7 * 24 * time.Hour
 	flushInterval        = 1 * time.Minute
+	// orphan metas are deleted in bounded batches: an install upgrading with a
+	// backlog can carry hundreds of millions of them, and a single unbounded
+	// DELETE would hold the table for minutes.
+	orphanMetaBatchSize = 5_000
+	orphanMetaMaxPerRun = 500_000
 )
 
-func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
+func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.FlushDBCfg) (gocron.Scheduler, error) {
 	maxItems := 0
 
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
@@ -40,14 +49,23 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 	}
 
 	// Init & Start cronjob every minute for alerts
-	scheduler := gocron.NewScheduler(time.UTC)
+	scheduler, err := gocron.NewScheduler(
+		gocron.WithLocation(time.UTC),
+		gocron.WithLogger(logging.GoCronLoggerAdapter{Logger: c.Log}),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(1*time.Minute),
+		gocron.NewTask(c.FlushAlerts, ctx, time.Duration(config.MaxAge), maxItems),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
 
-	job.SingletonMode()
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
 		if config.AgentsGC.Cert != nil {
@@ -69,7 +87,7 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.AgentsGC.Api != nil {
-			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
+			c.Log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
 		}
 	}
 
@@ -93,32 +111,38 @@ func (c *Client) StartFlushScheduler(ctx context.Context, config *csconfig.Flush
 		}
 
 		if config.BouncersGC.LoginPassword != nil {
-			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+			c.Log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
 		}
 	}
 
-	baJob, err := scheduler.Every(flushInterval).Do(c.FlushAgentsAndBouncers, ctx, config.AgentsGC, config.BouncersGC)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.FlushAgentsAndBouncers, ctx, config.AgentsGC, config.BouncersGC),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
 	}
 
-	baJob.SingletonMode()
-
-	metricsJob, err := scheduler.Every(flushInterval).Do(c.flushMetrics, ctx, time.Duration(config.MetricsMaxAge))
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.flushMetrics, ctx, time.Duration(config.MetricsMaxAge)),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting flushMetrics scheduler: %w", err)
 	}
 
-	metricsJob.SingletonMode()
-
-	allowlistsJob, err := scheduler.Every(flushInterval).Do(c.flushAllowlists, ctx)
+	_, err = scheduler.NewJob(
+		gocron.DurationJob(flushInterval),
+		gocron.NewTask(c.flushAllowlists, ctx),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAllowlists scheduler: %w", err)
 	}
 
-	allowlistsJob.SingletonMode()
-
-	scheduler.StartAsync()
+	scheduler.Start()
 
 	return scheduler, nil
 }
@@ -167,6 +191,54 @@ func (c *Client) FlushOrphans(ctx context.Context) {
 	if eventsCount > 0 {
 		c.Log.Infof("%d deleted orphan decisions", eventsCount)
 	}
+
+	metasCount, err := c.flushOrphanMetas(ctx)
+	if err != nil {
+		c.Log.Warningf("error while deleting orphan metas: %s", err)
+		return
+	}
+
+	if metasCount > 0 {
+		c.Log.Infof("%d deleted orphan metas", metasCount)
+	}
+}
+
+// flushOrphanMetas deletes meta rows that were never linked to an alert, up to
+// orphanMetaMaxPerRun per call. Versions before 1.8.0 inserted metas outside the
+// alert transaction, so an upgraded database can hold a large backlog: it is
+// drained over several runs instead of in one statement.
+func (c *Client) flushOrphanMetas(ctx context.Context) (int, error) {
+	deleted := 0
+
+	for deleted < orphanMetaMaxPerRun {
+		ids, err := c.Ent.Meta.Query().Where(meta.Not(meta.HasOwner())).Limit(orphanMetaBatchSize).IDs(ctx)
+		if err != nil {
+			return deleted, err
+		}
+
+		if len(ids) == 0 {
+			break
+		}
+
+		count, err := c.Ent.Meta.Delete().Where(meta.IDIn(ids...)).Exec(ctx)
+		if err != nil {
+			return deleted, err
+		}
+
+		// nothing deleted for a full batch means someone else got there first: stop
+		// rather than spin on the same rows
+		if count == 0 {
+			break
+		}
+
+		deleted += count
+
+		if len(ids) < orphanMetaBatchSize {
+			break
+		}
+	}
+
+	return deleted, nil
 }
 
 func (c *Client) flushBouncers(ctx context.Context, authType string, duration *time.Duration) {
@@ -198,6 +270,7 @@ func (c *Client) flushAgents(ctx context.Context, authType string, duration *tim
 		machine.LastHeartbeatLTE(time.Now().UTC().Add(-*duration)),
 		machine.Not(machine.HasAlerts()),
 		machine.AuthTypeEQ(authType),
+		machine.IpAddressNotIn("127.0.0.1", "::1"),
 	).Exec(ctx)
 	if err != nil {
 		c.Log.Errorf("while auto-deleting expired machines (%s): %s", authType, err)
@@ -210,7 +283,7 @@ func (c *Client) flushAgents(ctx context.Context, authType string, duration *tim
 }
 
 func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
-	log.Debug("starting FlushAgentsAndBouncers")
+	c.Log.Debug("starting FlushAgentsAndBouncers")
 
 	if agentsCfg != nil {
 		c.flushAgents(ctx, types.TlsAuthType, agentsCfg.CertDuration)
@@ -222,7 +295,68 @@ func (c *Client) FlushAgentsAndBouncers(ctx context.Context, agentsCfg *csconfig
 		c.flushBouncers(ctx, types.ApiKeyAuthType, bouncersCfg.ApiDuration)
 	}
 
+	// cscli deletes machines and bouncers from its own process, so this is where LAPI finds out.
+	c.pruneMachineSeries(ctx)
+	c.pruneBouncerSeries(ctx)
+
 	return nil
+}
+
+func (c *Client) pruneMachineSeries(ctx context.Context) {
+	ids := metrics.MachineIDsWithSeries()
+	if len(ids) == 0 {
+		return
+	}
+
+	machines, err := c.Ent.Machine.Query().Select(machine.FieldMachineId).Strings(ctx)
+	if err != nil {
+		c.Log.Errorf("while looking up machines for metrics cleanup: %s", err)
+		return
+	}
+
+	// password login keeps the ID as the client sent it, and MySQL matches it case-insensitively
+	kept := make(map[string]struct{}, len(machines))
+	for _, id := range machines {
+		kept[strings.ToLower(id)] = struct{}{}
+	}
+
+	for _, id := range ids {
+		if _, ok := kept[strings.ToLower(id)]; !ok {
+			metrics.DeleteMachineSeries(id)
+		}
+	}
+}
+
+func (c *Client) pruneBouncerSeries(ctx context.Context) {
+	names := metrics.BouncerNamesWithSeries()
+	if len(names) == 0 {
+		return
+	}
+
+	bouncers, err := c.Ent.Bouncer.Query().Select(bouncer.FieldName).Strings(ctx)
+	if err != nil {
+		c.Log.Errorf("while looking up bouncers for metrics cleanup: %s", err)
+		return
+	}
+
+	kept := make(map[string]struct{}, len(bouncers))
+	for _, name := range bouncers {
+		kept[name] = struct{}{}
+	}
+
+	for _, name := range names {
+		if _, ok := kept[name]; !ok {
+			metrics.DeleteBouncerSeries(name)
+		}
+	}
+}
+
+// alertWithoutActiveDecision matches alerts that have no decision still in
+// effect at the given time. Because the alert->decisions edge cascades on
+// delete, flushing must never remove an alert that still carries an active
+// decision: doing so would silently delete a live (e.g. long-term) decision.
+func alertWithoutActiveDecision(now time.Time) predicate.Alert {
+	return alert.Not(alert.HasDecisionsWith(decision.UntilGTE(now)))
 }
 
 func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems int) error {
@@ -233,10 +367,11 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 		err             error
 	)
 
-	if !c.CanFlush {
+	if !c.TryFlushLock() {
 		c.Log.Debug("a list is being imported, flushing later")
 		return nil
 	}
+	defer c.FlushUnlock()
 
 	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans(ctx)
@@ -251,14 +386,17 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 
 	if maxAge != 0 {
-		filter := map[string][]string{
-			"created_before": {maxAge.String()},
-		}
+		now := time.Now().UTC()
 
-		nbDeleted, err := c.DeleteAlertWithFilter(ctx, filter)
+		// Delete alerts older than maxAge, but never one that still has an
+		// active decision (the cascade would take the live decision with it).
+		nbDeleted, err := c.Ent.Alert.Delete().Where(
+			alert.CreatedAtLTE(now.Add(-maxAge)),
+			alertWithoutActiveDecision(now),
+		).Exec(ctx)
 		if err != nil {
 			c.Log.Warningf("FlushAlerts (max age): %s", err)
-			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", maxAge, err)
+			return fmt.Errorf("unable to flush alerts older than %s: %w", maxAge, err)
 		}
 
 		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
@@ -291,7 +429,12 @@ func (c *Client) FlushAlerts(ctx context.Context, maxAge time.Duration, maxItems
 
 			if maxid > 0 {
 				// This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
-				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(ctx)
+				// Alerts that still carry an active decision are kept regardless of the count: deleting them would
+				// cascade-delete the live decision. They are flushed on a later run, once their decisions expire.
+				deletedByNbItem, err = c.Ent.Alert.Delete().Where(
+					alert.IDLT(maxid),
+					alertWithoutActiveDecision(time.Now().UTC()),
+				).Exec(ctx)
 				if err != nil {
 					c.Log.Errorf("FlushAlerts: Could not delete alerts: %s", err)
 					return fmt.Errorf("could not delete alerts: %w", err)

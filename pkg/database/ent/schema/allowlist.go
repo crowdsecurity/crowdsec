@@ -32,6 +32,7 @@ func (AllowList) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("id").Unique(),
 		index.Fields("name").Unique(),
+		index.Fields("allowlist_id"),
 	}
 }
 

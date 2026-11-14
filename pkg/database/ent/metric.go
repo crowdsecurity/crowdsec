@@ -51,7 +51,7 @@ func (*Metric) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Metric fields.
-func (m *Metric) assignValues(columns []string, values []any) error {
+func (_m *Metric) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -62,40 +62,40 @@ func (m *Metric) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			m.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case metric.FieldGeneratedType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field generated_type", values[i])
 			} else if value.Valid {
-				m.GeneratedType = metric.GeneratedType(value.String)
+				_m.GeneratedType = metric.GeneratedType(value.String)
 			}
 		case metric.FieldGeneratedBy:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field generated_by", values[i])
 			} else if value.Valid {
-				m.GeneratedBy = value.String
+				_m.GeneratedBy = value.String
 			}
 		case metric.FieldReceivedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field received_at", values[i])
 			} else if value.Valid {
-				m.ReceivedAt = value.Time
+				_m.ReceivedAt = value.Time
 			}
 		case metric.FieldPushedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field pushed_at", values[i])
 			} else if value.Valid {
-				m.PushedAt = new(time.Time)
-				*m.PushedAt = value.Time
+				_m.PushedAt = new(time.Time)
+				*_m.PushedAt = value.Time
 			}
 		case metric.FieldPayload:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field payload", values[i])
 			} else if value.Valid {
-				m.Payload = value.String
+				_m.Payload = value.String
 			}
 		default:
-			m.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -103,49 +103,49 @@ func (m *Metric) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Metric.
 // This includes values selected through modifiers, order, etc.
-func (m *Metric) Value(name string) (ent.Value, error) {
-	return m.selectValues.Get(name)
+func (_m *Metric) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Metric.
 // Note that you need to call Metric.Unwrap() before calling this method if this Metric
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (m *Metric) Update() *MetricUpdateOne {
-	return NewMetricClient(m.config).UpdateOne(m)
+func (_m *Metric) Update() *MetricUpdateOne {
+	return NewMetricClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Metric entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (m *Metric) Unwrap() *Metric {
-	_tx, ok := m.config.driver.(*txDriver)
+func (_m *Metric) Unwrap() *Metric {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Metric is not a transactional entity")
 	}
-	m.config.driver = _tx.drv
-	return m
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (m *Metric) String() string {
+func (_m *Metric) String() string {
 	var builder strings.Builder
 	builder.WriteString("Metric(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("generated_type=")
-	builder.WriteString(fmt.Sprintf("%v", m.GeneratedType))
+	builder.WriteString(fmt.Sprintf("%v", _m.GeneratedType))
 	builder.WriteString(", ")
 	builder.WriteString("generated_by=")
-	builder.WriteString(m.GeneratedBy)
+	builder.WriteString(_m.GeneratedBy)
 	builder.WriteString(", ")
 	builder.WriteString("received_at=")
-	builder.WriteString(m.ReceivedAt.Format(time.ANSIC))
+	builder.WriteString(_m.ReceivedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := m.PushedAt; v != nil {
+	if v := _m.PushedAt; v != nil {
 		builder.WriteString("pushed_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("payload=")
-	builder.WriteString(m.Payload)
+	builder.WriteString(_m.Payload)
 	builder.WriteByte(')')
 	return builder.String()
 }

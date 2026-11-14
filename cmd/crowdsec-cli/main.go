@@ -19,6 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clialert"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliallowlists"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibot"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/cliconfig"
@@ -35,6 +36,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisimulation"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clisupport"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
@@ -70,7 +72,6 @@ func (lf *logFlags) Level() log.Level {
 		return log.InfoLevel
 	}
 }
-
 
 type cliRoot struct {
 	logFlags     logFlags
@@ -218,7 +219,7 @@ func (cli *cliRoot) NewCommand() (*cobra.Command, error) {
 
 	// list of valid subcommands for the shell completion
 	validArgs := []string{
-		"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+		"alerts", "appsec-configs", "waf-configs", "appsec-rules", "waf-rules", "bot", "bouncers", "capi", "collections",
 		"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
 		"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
 		"postoverflows", "scenarios", "simulation", "support", "version",
@@ -232,13 +233,18 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		ValidArgs:         validArgs,
 		DisableAutoGenTag: true,
 		SilenceErrors:     true,
-		SilenceUsage:      true,
-		/*TBD examples*/
+		// We don't want usage to be printed for every error: Example 'cscli parser install foo/bar'
+		// But we set NoArgs for commands that require a subcommand and print Usage explicitly in RunE.
+		SilenceUsage: true,
+		Args:         args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cli.colorize(cmd)
 
-	/*don't sort flags so we can enforce order*/
+	// don't sort flags so we can enforce order
 	cmd.Flags().SortFlags = false
 
 	pflags := cmd.PersistentFlags()
@@ -299,6 +305,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(cliitem.NewAppsecConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(cliitem.NewAppsecRule(cli.cfg).NewCommand())
 	cmd.AddCommand(cliallowlists.New(cli.cfg).NewCommand())
+	cmd.AddCommand(clibot.New(cli.cfg).NewCommand())
 
 	cli.addSetup(cmd)
 

@@ -1,0 +1,338 @@
+package kubernetes
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metrics"
+	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
+)
+
+// errProcessLine marks onLineFunc failures as fatal, as opposed to stream/scan
+// errors which followPodLogs retries.
+var errProcessLine = errors.New("failed to process line")
+
+func podRef(p *corev1.Pod) string {
+	if p == nil {
+		return "<nil pod>"
+	}
+	return fmt.Sprintf("%s/%s uid=%s phase=%s rv=%s node=%s",
+		p.Namespace,
+		p.Name,
+		p.UID,
+		p.Status.Phase,
+		p.ResourceVersion,
+		p.Spec.NodeName,
+	)
+}
+
+func (s *Source) initClient() error {
+	cfg, err := s.config.buildClientConfig(s.logger)
+	if err != nil {
+		return fmt.Errorf("building kubernetes client config for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("can't create a kubernetes client for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+
+	s.client = client
+
+	return nil
+}
+
+func (s *Source) initCancels() {
+	s.mu.Lock()
+	s.cancels = map[types.UID]context.CancelFunc{}
+	s.mu.Unlock()
+}
+
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	var wg sync.WaitGroup
+
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+	}).Info("starting kubernetes acquisition")
+
+	err := s.initClient()
+	if err != nil {
+		return err
+	}
+
+	informerCtx, cancelInformer := context.WithCancel(ctx)
+	defer cancelInformer()
+
+	s.initCancels()
+	watchErrCh := make(chan error, 1)
+
+	f := informers.NewSharedInformerFactoryWithOptions(s.client, 0,
+		informers.WithNamespace(s.config.Namespace),
+		informers.WithTweakListOptions(func(o *metav1.ListOptions) {
+			// We set the LabelSelector on the ListOptions to filter pods at the
+			// API level, so we only get events for pods that match our
+			// selector. This is more efficient than getting all pod events and
+			// filtering them in our event handlers.
+			o.LabelSelector = s.config.Selector
+		}),
+	)
+	inf := f.Core().V1().Pods().Informer()
+	if err := inf.SetWatchErrorHandler(func(_ *cache.Reflector, watchErr error) {
+		fields := log.Fields{
+			"namespace": s.config.Namespace,
+			"selector":  s.config.Selector,
+			"error":     watchErr,
+		}
+		if apierrors.IsUnauthorized(watchErr) {
+			s.logger.WithFields(fields).Error("kubernetes informer received Unauthorized, forcing datasource restart")
+			select {
+			case watchErrCh <- fmt.Errorf("kubernetes informer unauthorized for namespace=%q selector=%q unique_id=%q: %w", s.config.Namespace, s.config.Selector, s.config.UniqueId, watchErr):
+			default:
+			}
+			cancelInformer()
+			return
+		}
+		s.logger.WithFields(fields).Warn("kubernetes informer watch error")
+	}); err != nil {
+		return fmt.Errorf("while setting watch error handler for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+
+	// We ignore the ResourceEventHandlerRegistration returned by
+	// AddEventHandler since we don't need to remove the handlers until shutdown,
+	// and we will stop the entire informer at that time.
+	s.logger.WithFields(log.Fields{
+		"namespace": s.config.Namespace,
+		"selector":  s.config.Selector,
+	}).Info("adding kubernetes event handler")
+	_, err = inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			p := obj.(*corev1.Pod)
+			s.logger.Debugf("ADD %s labels=%v", podRef(p), p.Labels)
+			s.tailPod(informerCtx, p, out, &wg)
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			oldP := oldObj.(*corev1.Pod)
+			newP := newObj.(*corev1.Pod)
+
+			if oldP.Status.Phase != newP.Status.Phase {
+				s.logger.Debugf("UPDATE phase %s -> %s", podRef(oldP), podRef(newP))
+				if newP.Status.Phase == corev1.PodRunning {
+					s.tailPod(informerCtx, newP, out, &wg)
+				}
+			} else {
+				s.logger.Tracef("UPDATE %s", podRef(newP))
+			}
+		},
+		DeleteFunc: func(obj any) {
+			pod, ok := obj.(*corev1.Pod)
+			if !ok {
+				t, _ := obj.(cache.DeletedFinalStateUnknown)
+				pod, _ = t.Obj.(*corev1.Pod)
+				s.logger.Debugf("DELETE(tombstone) %s", podRef(pod))
+			} else {
+				s.logger.Debugf("DELETE %s", podRef(pod))
+			}
+
+			if pod != nil {
+				s.stopPod(pod)
+			}
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("while adding event handler for namespace=%q selector=%q: %w", s.config.Namespace, s.config.Selector, err)
+	}
+	f.Start(informerCtx.Done())
+	if !cache.WaitForCacheSync(informerCtx.Done(), inf.HasSynced) {
+		select {
+		case watchErr := <-watchErrCh:
+			return watchErr
+		default:
+		}
+		return fmt.Errorf("cache sync failed for namespace=%q selector=%q", s.config.Namespace, s.config.Selector)
+	}
+
+	select {
+	case <-ctx.Done():
+	case watchErr := <-watchErrCh:
+		s.stopPods()
+		wg.Wait()
+		return watchErr
+	}
+	s.stopPods()
+	wg.Wait()
+
+	return nil
+}
+
+func (s *Source) Dump() any {
+	return s
+}
+
+func (s *Source) followPodLogs(ctx context.Context, ns string, pod string, container string, out chan pipeline.Event,
+	onLineFunc func(string, string, chan pipeline.Event) error) error {
+	client := s.client
+	if client == nil {
+		return errors.New("kubernetes client is not initialized")
+	}
+
+	// TailLines: 0 means "no historical catch-up, only new lines from now on".
+	// Unlike SinceTime, this stays correct across reconnects: a fixed SinceTime
+	// would cause every retry to re-stream everything since the original call.
+	tailLines := int64(0)
+	req := client.CoreV1().Pods(ns).GetLogs(pod, &corev1.PodLogOptions{
+		Container:  container,
+		Follow:     true,
+		Timestamps: false,
+		TailLines:  &tailLines,
+	})
+	fn := func() error {
+		if err := ctx.Err(); err != nil {
+			return nil
+		}
+		stream, err := req.Stream(ctx)
+		if err != nil {
+			return err
+		}
+		defer stream.Close()
+
+		sc := bufio.NewScanner(stream)
+		for sc.Scan() {
+			if err := ctx.Err(); err != nil {
+				return nil
+			}
+			if err := onLineFunc(sc.Text(), ns+"/"+pod+"/"+container, out); err != nil {
+				return fmt.Errorf("%w: %w", errProcessLine, err)
+			}
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		return sc.Err()
+	}
+	for {
+		err := fn()
+		if err != nil {
+			if errors.Is(err, errProcessLine) {
+				return err
+			}
+			// Stream open failure or a scanner/connection error: log and retry
+			// below instead of giving up, to survive transient API server
+			// disconnects.
+			s.logger.Warnf("error following logs for %s/%s/%s, retrying: %s", ns, pod, container, err)
+		}
+		// Clean EOF or transient error: check if the pod has terminated so we
+		// don't keep retrying against a dead pod / re-stream old logs.
+		// If the Get fails or the pod is still Running, fall through and retry.
+		if p, getErr := client.CoreV1().Pods(ns).Get(ctx, pod, metav1.GetOptions{}); getErr == nil && p.Status.Phase != corev1.PodRunning {
+			s.logger.Debugf("stopped following logs for %s/%s/%s: pod is in phase %s", ns, pod, container, p.Status.Phase)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+func (s *Source) processLine(line string, source string, out chan pipeline.Event) error {
+	l := pipeline.Line{
+		Raw:     line,
+		Labels:  s.config.Labels,
+		Time:    time.Now().UTC(),
+		Src:     source,
+		Process: true,
+		Module:  s.GetName(),
+	}
+	if s.metricsLevel != metrics.AcquisitionMetricsLevelNone {
+		metrics.KubernetesDataSourceLinesRead.With(prometheus.Labels{"source": source, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
+	}
+	evt := pipeline.MakeEvent(s.config.UseTimeMachine, pipeline.LOG, true)
+	evt.Line = l
+	out <- evt
+	s.logger.Tracef("got one line from %s: %s", source, line)
+	return nil
+}
+
+func (s *Source) podWorker(parentCtx context.Context,
+	pod *corev1.Pod,
+	out chan pipeline.Event,
+	wg *sync.WaitGroup) context.CancelFunc {
+	podCtx, cancel := context.WithCancel(parentCtx)
+	wg.Go(func() {
+		defer func() {
+			s.mu.Lock()
+			delete(s.cancels, pod.UID)
+			s.mu.Unlock()
+		}()
+		var cw sync.WaitGroup
+		for _, cont := range pod.Spec.Containers {
+			cw.Go(func() {
+				err := s.followPodLogs(podCtx, pod.Namespace, pod.Name, cont.Name, out, s.processLine)
+				if err != nil {
+					s.logger.Errorf("error following logs for %s/%s/%s: %s", pod.Namespace, pod.Name, cont.Name, err)
+				} else {
+					s.logger.Debugf("stopped following logs for %s/%s/%s", pod.Namespace, pod.Name, cont.Name)
+				}
+			})
+		}
+		cw.Wait()
+	})
+	return cancel
+}
+
+func (s *Source) tailPod(ctx context.Context, p *corev1.Pod, out chan pipeline.Event, wg *sync.WaitGroup) {
+	if p.Status.Phase != corev1.PodRunning {
+		s.logger.Debugf("SKIP tailPod(non-running) %s", podRef(p))
+		return
+	}
+
+	key := p.UID
+	s.mu.Lock()
+	if _, ok := s.cancels[key]; ok {
+		s.logger.Tracef("tail already running %s", podRef(p))
+		s.mu.Unlock()
+		return
+	}
+
+	s.logger.Debugf("START tail %s", podRef(p))
+	s.cancels[key] = s.podWorker(ctx, p, out, wg)
+	s.mu.Unlock()
+}
+
+func (s *Source) stopPod(p *corev1.Pod) {
+	key := p.UID
+	s.mu.Lock()
+	cancel, ok := s.cancels[key]
+	if ok {
+		delete(s.cancels, key)
+	}
+	s.mu.Unlock()
+	if ok {
+		cancel()
+	}
+}
+
+func (s *Source) stopPods() {
+	s.mu.Lock()
+	for _, c := range s.cancels {
+		c()
+	}
+	s.mu.Unlock()
+}

@@ -40,7 +40,8 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, name string) (string, error) {
-	xHeaders := "X-Ms-Date:" + now
+	// Azure calculates HMAC with this header in lower-case
+	xHeaders := "x-ms-date:" + now
 
 	cfg := s.PluginConfigByName[name]
 
@@ -94,11 +95,13 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Log-Type", cfg.LogType)
 	req.Header.Set("Authorization", authorization)
-	req.Header.Set("X-Ms-Date", now)
+	// to match lower-case header in HMAC calculation it must not be auto-Canonicalized
+	// https://pkg.go.dev/net/http#Header.Set
+	req.Header["x-ms-date"] = []string{now}
 
 	client := &http.Client{}
 
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error("failed to send request", "error", err)
 		return &protobufs.Empty{}, err

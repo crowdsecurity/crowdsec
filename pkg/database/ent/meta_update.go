@@ -24,76 +24,76 @@ type MetaUpdate struct {
 }
 
 // Where appends a list predicates to the MetaUpdate builder.
-func (mu *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
-	mu.mutation.Where(ps...)
-	return mu
+func (_u *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (mu *MetaUpdate) SetUpdatedAt(t time.Time) *MetaUpdate {
-	mu.mutation.SetUpdatedAt(t)
-	return mu
+func (_u *MetaUpdate) SetUpdatedAt(v time.Time) *MetaUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAlertMetas sets the "alert_metas" field.
-func (mu *MetaUpdate) SetAlertMetas(i int) *MetaUpdate {
-	mu.mutation.SetAlertMetas(i)
-	return mu
+func (_u *MetaUpdate) SetAlertMetas(v int) *MetaUpdate {
+	_u.mutation.SetAlertMetas(v)
+	return _u
 }
 
 // SetNillableAlertMetas sets the "alert_metas" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableAlertMetas(i *int) *MetaUpdate {
-	if i != nil {
-		mu.SetAlertMetas(*i)
+func (_u *MetaUpdate) SetNillableAlertMetas(v *int) *MetaUpdate {
+	if v != nil {
+		_u.SetAlertMetas(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearAlertMetas clears the value of the "alert_metas" field.
-func (mu *MetaUpdate) ClearAlertMetas() *MetaUpdate {
-	mu.mutation.ClearAlertMetas()
-	return mu
+func (_u *MetaUpdate) ClearAlertMetas() *MetaUpdate {
+	_u.mutation.ClearAlertMetas()
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
-func (mu *MetaUpdate) SetOwnerID(id int) *MetaUpdate {
-	mu.mutation.SetOwnerID(id)
-	return mu
+func (_u *MetaUpdate) SetOwnerID(id int) *MetaUpdate {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
-func (mu *MetaUpdate) SetNillableOwnerID(id *int) *MetaUpdate {
+func (_u *MetaUpdate) SetNillableOwnerID(id *int) *MetaUpdate {
 	if id != nil {
-		mu = mu.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return mu
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Alert entity.
-func (mu *MetaUpdate) SetOwner(a *Alert) *MetaUpdate {
-	return mu.SetOwnerID(a.ID)
+func (_u *MetaUpdate) SetOwner(v *Alert) *MetaUpdate {
+	return _u.SetOwnerID(v.ID)
 }
 
 // Mutation returns the MetaMutation object of the builder.
-func (mu *MetaUpdate) Mutation() *MetaMutation {
-	return mu.mutation
+func (_u *MetaUpdate) Mutation() *MetaMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Alert entity.
-func (mu *MetaUpdate) ClearOwner() *MetaUpdate {
-	mu.mutation.ClearOwner()
-	return mu
+func (_u *MetaUpdate) ClearOwner() *MetaUpdate {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
-	mu.defaults()
-	return withHooks(ctx, mu.sqlSave, mu.mutation, mu.hooks)
+func (_u *MetaUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (mu *MetaUpdate) SaveX(ctx context.Context) int {
-	affected, err := mu.Save(ctx)
+func (_u *MetaUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -101,39 +101,39 @@ func (mu *MetaUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (mu *MetaUpdate) Exec(ctx context.Context) error {
-	_, err := mu.Save(ctx)
+func (_u *MetaUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mu *MetaUpdate) ExecX(ctx context.Context) {
-	if err := mu.Exec(ctx); err != nil {
+func (_u *MetaUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (mu *MetaUpdate) defaults() {
-	if _, ok := mu.mutation.UpdatedAt(); !ok {
+func (_u *MetaUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := meta.UpdateDefaultUpdatedAt()
-		mu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *MetaUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(meta.Table, meta.Columns, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
-	if ps := mu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := mu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if mu.mutation.OwnerCleared() {
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -146,7 +146,7 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := mu.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -162,7 +162,7 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -170,8 +170,8 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	mu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // MetaUpdateOne is the builder for updating a single Meta entity.
@@ -183,83 +183,83 @@ type MetaUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (muo *MetaUpdateOne) SetUpdatedAt(t time.Time) *MetaUpdateOne {
-	muo.mutation.SetUpdatedAt(t)
-	return muo
+func (_u *MetaUpdateOne) SetUpdatedAt(v time.Time) *MetaUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetAlertMetas sets the "alert_metas" field.
-func (muo *MetaUpdateOne) SetAlertMetas(i int) *MetaUpdateOne {
-	muo.mutation.SetAlertMetas(i)
-	return muo
+func (_u *MetaUpdateOne) SetAlertMetas(v int) *MetaUpdateOne {
+	_u.mutation.SetAlertMetas(v)
+	return _u
 }
 
 // SetNillableAlertMetas sets the "alert_metas" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableAlertMetas(i *int) *MetaUpdateOne {
-	if i != nil {
-		muo.SetAlertMetas(*i)
+func (_u *MetaUpdateOne) SetNillableAlertMetas(v *int) *MetaUpdateOne {
+	if v != nil {
+		_u.SetAlertMetas(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearAlertMetas clears the value of the "alert_metas" field.
-func (muo *MetaUpdateOne) ClearAlertMetas() *MetaUpdateOne {
-	muo.mutation.ClearAlertMetas()
-	return muo
+func (_u *MetaUpdateOne) ClearAlertMetas() *MetaUpdateOne {
+	_u.mutation.ClearAlertMetas()
+	return _u
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
-func (muo *MetaUpdateOne) SetOwnerID(id int) *MetaUpdateOne {
-	muo.mutation.SetOwnerID(id)
-	return muo
+func (_u *MetaUpdateOne) SetOwnerID(id int) *MetaUpdateOne {
+	_u.mutation.SetOwnerID(id)
+	return _u
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableOwnerID(id *int) *MetaUpdateOne {
+func (_u *MetaUpdateOne) SetNillableOwnerID(id *int) *MetaUpdateOne {
 	if id != nil {
-		muo = muo.SetOwnerID(*id)
+		_u = _u.SetOwnerID(*id)
 	}
-	return muo
+	return _u
 }
 
 // SetOwner sets the "owner" edge to the Alert entity.
-func (muo *MetaUpdateOne) SetOwner(a *Alert) *MetaUpdateOne {
-	return muo.SetOwnerID(a.ID)
+func (_u *MetaUpdateOne) SetOwner(v *Alert) *MetaUpdateOne {
+	return _u.SetOwnerID(v.ID)
 }
 
 // Mutation returns the MetaMutation object of the builder.
-func (muo *MetaUpdateOne) Mutation() *MetaMutation {
-	return muo.mutation
+func (_u *MetaUpdateOne) Mutation() *MetaMutation {
+	return _u.mutation
 }
 
 // ClearOwner clears the "owner" edge to the Alert entity.
-func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
-	muo.mutation.ClearOwner()
-	return muo
+func (_u *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
+	_u.mutation.ClearOwner()
+	return _u
 }
 
 // Where appends a list predicates to the MetaUpdate builder.
-func (muo *MetaUpdateOne) Where(ps ...predicate.Meta) *MetaUpdateOne {
-	muo.mutation.Where(ps...)
-	return muo
+func (_u *MetaUpdateOne) Where(ps ...predicate.Meta) *MetaUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (muo *MetaUpdateOne) Select(field string, fields ...string) *MetaUpdateOne {
-	muo.fields = append([]string{field}, fields...)
-	return muo
+func (_u *MetaUpdateOne) Select(field string, fields ...string) *MetaUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Meta entity.
-func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
-	muo.defaults()
-	return withHooks(ctx, muo.sqlSave, muo.mutation, muo.hooks)
+func (_u *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (muo *MetaUpdateOne) SaveX(ctx context.Context) *Meta {
-	node, err := muo.Save(ctx)
+func (_u *MetaUpdateOne) SaveX(ctx context.Context) *Meta {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -267,34 +267,34 @@ func (muo *MetaUpdateOne) SaveX(ctx context.Context) *Meta {
 }
 
 // Exec executes the query on the entity.
-func (muo *MetaUpdateOne) Exec(ctx context.Context) error {
-	_, err := muo.Save(ctx)
+func (_u *MetaUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (muo *MetaUpdateOne) ExecX(ctx context.Context) {
-	if err := muo.Exec(ctx); err != nil {
+func (_u *MetaUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (muo *MetaUpdateOne) defaults() {
-	if _, ok := muo.mutation.UpdatedAt(); !ok {
+func (_u *MetaUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := meta.UpdateDefaultUpdatedAt()
-		muo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
-func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) {
+func (_u *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) {
 	_spec := sqlgraph.NewUpdateSpec(meta.Table, meta.Columns, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
-	id, ok := muo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Meta.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := muo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
 		for _, f := range fields {
@@ -306,17 +306,17 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 			}
 		}
 	}
-	if ps := muo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := muo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if muo.mutation.OwnerCleared() {
+	if _u.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -329,7 +329,7 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := muo.mutation.OwnerIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -345,10 +345,10 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Meta{config: muo.config}
+	_node = &Meta{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -356,6 +356,6 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 		}
 		return nil, err
 	}
-	muo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

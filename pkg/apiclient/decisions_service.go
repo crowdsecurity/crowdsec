@@ -10,8 +10,6 @@ import (
 	qs "github.com/google/go-querystring/query"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -121,10 +119,10 @@ func (*DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.Ge
 			partialDecisions[idx] = &models.Decision{
 				Scenario: decisionsGroup.Scenario,
 				Scope:    decisionsGroup.Scope,
-				Type:     ptr.Of(types.DecisionTypeBan),
+				Type:     new(types.DecisionTypeBan),
 				Value:    decision.Value,
 				Duration: decision.Duration,
-				Origin:   ptr.Of(types.CAPIOrigin),
+				Origin:   new(types.CAPIOrigin),
 			}
 		}
 
@@ -161,10 +159,10 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 			partialDecisions[idx] = &models.Decision{
 				Scenario: &scenarioDeleted,
 				Scope:    decisionsGroup.Scope,
-				Type:     ptr.Of(types.DecisionTypeBan),
+				Type:     new(types.DecisionTypeBan),
 				Value:    &decision,
 				Duration: &durationDeleted,
-				Origin:   ptr.Of(types.CAPIOrigin),
+				Origin:   new(types.CAPIOrigin),
 			}
 		}
 
@@ -243,7 +241,7 @@ func (*DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklis
 			Type:     blocklist.Remediation,
 			Value:    &decision,
 			Duration: blocklist.Duration,
-			Origin:   ptr.Of(types.ListOrigin),
+			Origin:   new(types.ListOrigin),
 		})
 	}
 

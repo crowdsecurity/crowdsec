@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/idgen"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/reload"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile string, machine string, token string) error {
@@ -65,6 +66,11 @@ func (cli *cliLapi) register(ctx context.Context, apiURL string, outputFile stri
 	}
 
 	apiCfg := cfg.API.Client.Credentials
+	if apiCfg == nil {
+		// no pre-existing credentials file was loaded
+		apiCfg = &csconfig.ApiCredentialsCfg{}
+	}
+
 	apiCfg.Login = lapiUser
 	apiCfg.Password = password.String()
 

@@ -119,6 +119,27 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "FileMap",
+		function: FileMap,
+		signature: []any{
+			new(func(string) []map[string]string),
+		},
+	},
+	{
+		name:     "LookupFile",
+		function: LookupFile,
+		signature: []any{
+			new(func(string, string) string),
+		},
+	},
+	{
+		name:     "MatchKnownBot",
+		function: MatchKnownBotExpr,
+		signature: []any{
+			new(func(string, string, string, ...string) bool),
+		},
+	},
+	{
 		name:     "Upper",
 		function: Upper,
 		signature: []any{
@@ -249,6 +270,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetDecisionsCount,
 		signature: []any{
 			new(func(string) int),
+			new(func(string, string) int),
 		},
 	},
 	{
@@ -256,6 +278,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetActiveDecisionsCount,
 		signature: []any{
 			new(func(string) int),
+			new(func(string, string) int),
 		},
 	},
 	{
@@ -263,6 +286,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetActiveDecisionsTimeLeft,
 		signature: []any{
 			new(func(string) time.Duration),
+			new(func(string, string) time.Duration),
 		},
 	},
 	{
@@ -270,6 +294,7 @@ var exprFuncs = []exprCustomFunc{
 		function: GetDecisionsSinceCount,
 		signature: []any{
 			new(func(string, string) int),
+			new(func(string, string, string) int),
 		},
 	},
 	{
@@ -518,6 +543,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "IPToCountry",
+		function: IPToCountry,
+		signature: []any{
+			new(func(string) string),
+		},
+	},
+	{
 		name:     "JA4H",
 		function: JA4H,
 		signature: []any{
@@ -538,6 +570,34 @@ var exprFuncs = []exprCustomFunc{
 		signature: []any{
 			new(func([]time.Time) time.Duration),
 			new(func([]interface{}) time.Duration),
+		},
+	},
+	{
+		name:     "HTTPGet",
+		function: HTTPGet,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPHead",
+		function: HTTPHead,
+		signature: []any{
+			new(func(string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPPost",
+		function: HTTPPost,
+		signature: []any{
+			new(func(string, string, string) (*HTTPResponse, error)),
+		},
+	},
+	{
+		name:     "HTTPRequest",
+		function: HTTPRequest,
+		signature: []any{
+			new(func(string, string, map[string]any, string) (*HTTPResponse, error)),
 		},
 	},
 }

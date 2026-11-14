@@ -23,6 +23,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker/tracker"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -31,6 +32,10 @@ const testContainerName = "docker_test"
 const testServiceName = "test_service"
 
 func TestConfigureDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestConfigureDSN'")
 
 	ctx := t.Context()
@@ -92,7 +97,7 @@ func TestConfigureDSN(t *testing.T) {
 
 type mockDockerCli struct {
 	client.Client
-	services       []dockerTypesSwarm.Service
+	services []dockerTypesSwarm.Service
 }
 
 // Simplified Info method - just return basic info without complex types
@@ -108,7 +113,7 @@ func (cli *mockDockerCli) ServiceList(_ context.Context, _ client.ServiceListOpt
 	items := cli.services
 
 	if items == nil {
-		defaultTestService :=  dockerTypesSwarm.Service{
+		defaultTestService := dockerTypesSwarm.Service{
 			ID: "service123",
 			Spec: dockerTypesSwarm.ServiceSpec{
 				Annotations: dockerTypesSwarm.Annotations{
@@ -162,6 +167,10 @@ func (*mockDockerCli) ServiceLogs(ctx context.Context, _ string, options client.
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.SetOutput(os.Stdout)
@@ -273,6 +282,10 @@ service_name_regexp:
 }
 
 func TestServiceEvaluation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestServiceEvaluation'")
 
 	ctx := t.Context()
@@ -408,6 +421,10 @@ use_service_labels: true`,
 }
 
 func TestSwarmManagerDetection(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	log.Infof("Test 'TestSwarmManagerDetection'")
 
 	ctx := t.Context()
@@ -522,8 +539,8 @@ func (*mockDockerCli) ContainerLogs(ctx context.Context, _ string, options clien
 func (*mockDockerCli) ContainerInspect(_ context.Context, _ string, _ client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	res := client.ContainerInspectResult{}
 	res.Container = dockerContainer.InspectResponse{
-		Config: &dockerContainer.Config{ Tty: false },
-		State:  &dockerContainer.State{ Running: true }, // Mock container is running
+		Config: &dockerContainer.Config{Tty: false},
+		State:  &dockerContainer.State{Running: true}, // Mock container is running
 	}
 
 	return res, nil
@@ -542,6 +559,7 @@ func (*mockDockerCli) ServiceInspectWithRaw(_ context.Context, serviceID string,
 
 	return service, []byte("{}"), nil
 }
+
 // Since we are mocking the docker client, we return channels that will never be used
 func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) client.EventsResult {
 	eventsChan := make(chan dockerTypesEvents.Message)
@@ -549,11 +567,15 @@ func (*mockDockerCli) Events(_ context.Context, _ client.EventsListOptions) clie
 
 	return client.EventsResult{
 		Messages: eventsChan,
-		Err: errChan,
+		Err:      errChan,
 	}
 }
 
 func TestOneShot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	ctx := t.Context()
 
 	log.Info("Test 'TestOneShot'")
@@ -609,6 +631,10 @@ func TestOneShot(t *testing.T) {
 }
 
 func TestParseLabels(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
 	tests := []struct {
 		name     string
 		labels   map[string]string
@@ -655,6 +681,96 @@ func TestParseLabels(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			labels := parseLabels(test.labels)
 			assert.Equal(t, test.expected, labels)
+		})
+	}
+}
+
+func TestParseLabelsNestedCollisionDoesNotPanic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("docker windows is broken on github CI")
+	}
+
+	// A leaf label and a branch label under the same key (set by whoever
+	// launches the container) must not panic the type assertion in
+	// parseKeyToMap. Only one of the two can win, but the result must be the
+	// same every run (not decided by random map order) and unrelated labels
+	// must survive.
+	labels := map[string]string{
+		"crowdsec.enable":     "true",
+		"crowdsec.enable.foo": "bar",
+		"crowdsec.other":      "keepme",
+	}
+
+	// Sorting inside parseLabels applies the shorter "crowdsec.enable" first,
+	// then the more specific "crowdsec.enable.foo" overwrites it, so the branch
+	// wins deterministically. Run it repeatedly to catch any order dependence.
+	var first map[string]any
+	require.NotPanics(t, func() { first = parseLabels(labels) })
+	assert.Equal(t, "keepme", first["other"])
+	assert.Equal(t, map[string]any{"foo": "bar"}, first["enable"])
+
+	// Try to parse the same labels multiple times to ensure deterministic behavior
+	for range 50 {
+		assert.Equal(t, first, parseLabels(labels))
+	}
+}
+
+// A restarted container (or service) keeps the logs of its previous runs: tailing it again
+// from the configured "since" would replay everything we already sent to the parsers.
+func TestCheckTailsFromNow(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name   string
+		config string
+		check  func(*Source, context.Context, chan *ContainerConfig, chan *ContainerConfig) error
+	}{
+		{
+			name: "container",
+			config: fmt.Sprintf(`
+source: docker
+container_name:
+ - %s
+since: 2020-01-01T00:00:00Z`, testContainerName),
+			check: func(d *Source, ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+				return d.checkContainers(ctx, monitChan, deleteChan)
+			},
+		},
+		{
+			name: "service",
+			config: fmt.Sprintf(`
+source: docker
+service_name:
+ - %s
+since: 2020-01-01T00:00:00Z`, testServiceName),
+			check: func(d *Source, ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
+				return d.checkServices(ctx, monitChan, deleteChan)
+			},
+		},
+	}
+
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			dockerSource := &Source{logger: log.WithField("type", ModuleName)}
+
+			require.NoError(t, dockerSource.UnmarshalConfig([]byte(ts.config)))
+
+			dockerSource.runningContainerState = tracker.NewTracker[*ContainerConfig]()
+			dockerSource.runningServiceState = tracker.NewTracker[*ContainerConfig]()
+			dockerSource.Client = &mockDockerCli{}
+
+			before := time.Now().UTC()
+
+			monitChan := make(chan *ContainerConfig, 1)
+			deleteChan := make(chan *ContainerConfig, 1)
+
+			require.NoError(t, ts.check(dockerSource, ctx, monitChan, deleteChan))
+
+			cfg := <-monitChan
+
+			since, err := time.Parse(time.RFC3339Nano, cfg.logOptions.Since)
+			require.NoError(t, err)
+			assert.False(t, since.Before(before), "expected to tail from now, got %s", cfg.logOptions.Since)
 		})
 	}
 }

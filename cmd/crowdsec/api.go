@@ -44,10 +44,10 @@ func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 	apiReady := make(chan bool, 1)
 
 	apiTomb.Go(func() error {
-		defer trace.CatchPanic("crowdsec/serveAPIServer")
+		defer trace.ReportPanic()
 
 		go func() {
-			defer trace.CatchPanic("crowdsec/runAPIServer")
+			defer trace.ReportPanic()
 
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 

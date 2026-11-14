@@ -8,7 +8,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/crowdsecurity/grokky"
+	"github.com/crowdsecurity/crowdsec/pkg/grok"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -26,7 +26,7 @@ type GrokPattern struct {
 type RuntimeGrokPattern struct {
 	Config *GrokPattern
 
-	RunTimeRegexp  grokky.Pattern // the actual regexp
+	RunTimeRegexp  grok.Pattern // the actual regexp
 	RunTimeValue   *vm.Program    // the actual compiled filter
 	RuntimeStatics []RuntimeStatic
 }
@@ -57,11 +57,6 @@ func (g *GrokPattern) Compile(pctx *UnixParserCtx, logger *log.Entry) (*RuntimeG
 		rg.RunTimeRegexp, err = pctx.Grok.Compile(g.RegexpValue)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile grok %q: %v", g.RegexpValue, err)
-		}
-
-		if rg.RunTimeRegexp == nil {
-			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
-			return nil, fmt.Errorf("grok compilation failure: %s", g.RegexpValue)
 		}
 
 		logger.Tracef("%s regexp: %s", g.RegexpValue, rg.RunTimeRegexp.String())

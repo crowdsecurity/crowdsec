@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -32,7 +33,7 @@ func (cli *cliBouncers) listHuman(out io.Writer, bouncers ent.Bouncers) {
 
 		lastPull := ""
 		if b.LastPull != nil {
-			lastPull = b.LastPull.Format(time.RFC3339)
+			lastPull = csformat.LocalTime(*b.LastPull).Format(time.RFC3339)
 		}
 
 		t.AppendRow(table.Row{b.Name, b.IPAddress, revoked, lastPull, b.Type, b.Version, b.AuthType})

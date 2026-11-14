@@ -20,7 +20,7 @@ import (
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer trace.CatchPanic("crowdsec/computeDynamicMetrics")
+		defer trace.ReportPanic()
 
 		// update cache metrics (stash)
 		cache.UpdateCacheMetrics()
@@ -63,8 +63,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		for k, v := range alerts {
-			metrics.GlobalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
+		for _, a := range alerts {
+			metrics.GlobalAlerts.With(prometheus.Labels{"reason": a.Scenario, "kind": a.Kind}).Set(float64(a.Count))
 		}
 
 		next.ServeHTTP(w, r)
@@ -89,11 +89,10 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 		return
 	}
 
-	defer trace.CatchPanic("crowdsec/servePrometheus")
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 
-	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
-
-	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), nil); err != nil {
+	if err := http.ListenAndServe(net.JoinHostPort(config.ListenAddr, strconv.Itoa(config.ListenPort)), mux); err != nil {
 		// in time machine, we most likely have the LAPI using the port
 		if !flags.haveTimeMachine() {
 			log.WithError(err).Warning("serving metrics")

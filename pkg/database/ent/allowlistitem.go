@@ -81,7 +81,7 @@ func (*AllowListItem) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the AllowListItem fields.
-func (ali *AllowListItem) assignValues(columns []string, values []any) error {
+func (_m *AllowListItem) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -92,69 +92,69 @@ func (ali *AllowListItem) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ali.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case allowlistitem.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ali.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case allowlistitem.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ali.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case allowlistitem.FieldExpiresAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field expires_at", values[i])
 			} else if value.Valid {
-				ali.ExpiresAt = value.Time
+				_m.ExpiresAt = value.Time
 			}
 		case allowlistitem.FieldComment:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field comment", values[i])
 			} else if value.Valid {
-				ali.Comment = value.String
+				_m.Comment = value.String
 			}
 		case allowlistitem.FieldValue:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value.Valid {
-				ali.Value = value.String
+				_m.Value = value.String
 			}
 		case allowlistitem.FieldStartIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_ip", values[i])
 			} else if value.Valid {
-				ali.StartIP = value.Int64
+				_m.StartIP = value.Int64
 			}
 		case allowlistitem.FieldEndIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_ip", values[i])
 			} else if value.Valid {
-				ali.EndIP = value.Int64
+				_m.EndIP = value.Int64
 			}
 		case allowlistitem.FieldStartSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_suffix", values[i])
 			} else if value.Valid {
-				ali.StartSuffix = value.Int64
+				_m.StartSuffix = value.Int64
 			}
 		case allowlistitem.FieldEndSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_suffix", values[i])
 			} else if value.Valid {
-				ali.EndSuffix = value.Int64
+				_m.EndSuffix = value.Int64
 			}
 		case allowlistitem.FieldIPSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field ip_size", values[i])
 			} else if value.Valid {
-				ali.IPSize = value.Int64
+				_m.IPSize = value.Int64
 			}
 		default:
-			ali.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -162,67 +162,67 @@ func (ali *AllowListItem) assignValues(columns []string, values []any) error {
 
 // GetValue returns the ent.Value that was dynamically selected and assigned to the AllowListItem.
 // This includes values selected through modifiers, order, etc.
-func (ali *AllowListItem) GetValue(name string) (ent.Value, error) {
-	return ali.selectValues.Get(name)
+func (_m *AllowListItem) GetValue(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryAllowlist queries the "allowlist" edge of the AllowListItem entity.
-func (ali *AllowListItem) QueryAllowlist() *AllowListQuery {
-	return NewAllowListItemClient(ali.config).QueryAllowlist(ali)
+func (_m *AllowListItem) QueryAllowlist() *AllowListQuery {
+	return NewAllowListItemClient(_m.config).QueryAllowlist(_m)
 }
 
 // Update returns a builder for updating this AllowListItem.
 // Note that you need to call AllowListItem.Unwrap() before calling this method if this AllowListItem
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (ali *AllowListItem) Update() *AllowListItemUpdateOne {
-	return NewAllowListItemClient(ali.config).UpdateOne(ali)
+func (_m *AllowListItem) Update() *AllowListItemUpdateOne {
+	return NewAllowListItemClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the AllowListItem entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (ali *AllowListItem) Unwrap() *AllowListItem {
-	_tx, ok := ali.config.driver.(*txDriver)
+func (_m *AllowListItem) Unwrap() *AllowListItem {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: AllowListItem is not a transactional entity")
 	}
-	ali.config.driver = _tx.drv
-	return ali
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (ali *AllowListItem) String() string {
+func (_m *AllowListItem) String() string {
 	var builder strings.Builder
 	builder.WriteString("AllowListItem(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", ali.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(ali.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(ali.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("expires_at=")
-	builder.WriteString(ali.ExpiresAt.Format(time.ANSIC))
+	builder.WriteString(_m.ExpiresAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("comment=")
-	builder.WriteString(ali.Comment)
+	builder.WriteString(_m.Comment)
 	builder.WriteString(", ")
 	builder.WriteString("value=")
-	builder.WriteString(ali.Value)
+	builder.WriteString(_m.Value)
 	builder.WriteString(", ")
 	builder.WriteString("start_ip=")
-	builder.WriteString(fmt.Sprintf("%v", ali.StartIP))
+	builder.WriteString(fmt.Sprintf("%v", _m.StartIP))
 	builder.WriteString(", ")
 	builder.WriteString("end_ip=")
-	builder.WriteString(fmt.Sprintf("%v", ali.EndIP))
+	builder.WriteString(fmt.Sprintf("%v", _m.EndIP))
 	builder.WriteString(", ")
 	builder.WriteString("start_suffix=")
-	builder.WriteString(fmt.Sprintf("%v", ali.StartSuffix))
+	builder.WriteString(fmt.Sprintf("%v", _m.StartSuffix))
 	builder.WriteString(", ")
 	builder.WriteString("end_suffix=")
-	builder.WriteString(fmt.Sprintf("%v", ali.EndSuffix))
+	builder.WriteString(fmt.Sprintf("%v", _m.EndSuffix))
 	builder.WriteString(", ")
 	builder.WriteString("ip_size=")
-	builder.WriteString(fmt.Sprintf("%v", ali.IPSize))
+	builder.WriteString(fmt.Sprintf("%v", _m.IPSize))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -3,9 +3,12 @@ Smoke tests in case docker is not set up correctly or has connection issues.
 """
 
 import subprocess
+from typing import TYPE_CHECKING
 
-import docker
 import pytest
+
+if TYPE_CHECKING:
+    import docker
 
 pytestmark = pytest.mark.docker
 

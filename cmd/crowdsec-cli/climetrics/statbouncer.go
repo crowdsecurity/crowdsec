@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -438,8 +439,7 @@ func (s *statBouncer) bouncerTable(out io.Writer, bouncerName string, wantColor 
 	title = fmt.Sprintf("%s (%s)", title, bouncerName)
 
 	if s.oldestTS != nil {
-		// if you change this to .Local() beware of tests
-		title = fmt.Sprintf("%s since %s", title, s.oldestTS[bouncerName].String())
+		title = fmt.Sprintf("%s since %s", title, csformat.LocalTime(s.oldestTS[bouncerName]).String())
 	}
 
 	t.SetTitle(title)

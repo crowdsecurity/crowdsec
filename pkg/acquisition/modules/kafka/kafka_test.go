@@ -18,6 +18,39 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
+// readTimeout is only ever reached when a message never arrives: it's generous on
+// purpose, so that a slow broker doesn't turn into a test failure.
+const readTimeout = 10 * time.Second
+
+// quietPeriod is how long we wait to confirm that no extra message shows up. Kept
+// short on purpose: an unexpected message slower than this is missed, which is
+// better than failing at random on a loaded machine.
+const quietPeriod = 100 * time.Millisecond
+
+// readEvents reads exactly n events, failing if they don't all show up in time.
+func readEvents(t *testing.T, out chan pipeline.Event, n int) {
+	t.Helper()
+
+	for i := range n {
+		select {
+		case <-out:
+		case <-time.After(readTimeout):
+			t.Fatalf("timed out waiting for message %d/%d", i+1, n)
+		}
+	}
+}
+
+// requireNoMoreEvents checks that the datasource doesn't emit more than expected.
+func requireNoMoreEvents(t *testing.T, out chan pipeline.Event) {
+	t.Helper()
+
+	select {
+	case evt := <-out:
+		t.Fatalf("unexpected extra message: %q", evt.Line.Raw)
+	case <-time.After(quietPeriod):
+	}
+}
+
 func writeToKafka(ctx context.Context, w *kafka.Writer, logs []string) {
 	for idx, log := range logs {
 		err := w.WriteMessages(ctx, kafka.Message{
@@ -118,20 +151,11 @@ topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-			actualLines := 0
-
 			go writeToKafka(ctx, w, ts.logs)
-		READLOOP:
-			for {
-				select {
-				case <-out:
-					actualLines++
-				case <-time.After(2 * time.Second):
-					break READLOOP
-				}
-			}
 
-			require.Equal(t, ts.expectedLines, actualLines)
+			readEvents(t, out, ts.expectedLines)
+			requireNoMoreEvents(t, out)
+
 			tomb.Kill(nil)
 			err = tomb.Wait()
 			require.NoError(t, err)
@@ -196,20 +220,11 @@ tls:
 			err = k.StreamingAcquisition(ctx, out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-			actualLines := 0
-
 			go writeToKafka(ctx, w2, ts.logs)
-		READLOOP:
-			for {
-				select {
-				case <-out:
-					actualLines++
-				case <-time.After(2 * time.Second):
-					break READLOOP
-				}
-			}
 
-			require.Equal(t, ts.expectedLines, actualLines)
+			readEvents(t, out, ts.expectedLines)
+			requireNoMoreEvents(t, out)
+
 			tomb.Kill(nil)
 			err = tomb.Wait()
 			require.NoError(t, err)

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -35,6 +35,21 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 	}
 
 	return results
+}
+
+func formatOneDecision(dbDecision *ent.Decision) *models.Decision {
+	duration := dbDecision.Until.Sub(time.Now().UTC()).Round(time.Second).String()
+
+	return &models.Decision{
+		ID:       int64(dbDecision.ID),
+		Duration: &duration,
+		Scenario: &dbDecision.Scenario,
+		Scope:    &dbDecision.Scope,
+		Value:    &dbDecision.Value,
+		Type:     &dbDecision.Type,
+		Origin:   &dbDecision.Origin,
+		UUID:     dbDecision.UUID,
+	}
 }
 
 func (c *Controller) GetDecision(gctx *gin.Context) {
@@ -140,16 +155,23 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
-func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(context.Context, map[string][]string) ([]*ent.Decision, error)) error {
-	// respBuffer := bytes.NewBuffer([]byte{})
-	limit := 30000 // FIXME : make it configurable
+// writeDecisions streams the decisions returned by query into the array the caller has already
+// opened, paginating by id from startID. A startup resync passes 0, a stream delta passes the
+// bouncer cursor: both are the same query, they only differ in where they start.
+func writeDecisions(gctx *gin.Context, now time.Time, filters map[string][]string, startID int, limit int, query func(context.Context, time.Time, map[string][]string) ([]*ent.Decision, error)) error {
 	needComma := false
-	lastId := 0
+	lastId := startID
 
 	ctx := gctx.Request.Context()
 
+	// We write to a buffer instead of directly to the writer to avoid the \n added by enc.Encode()
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+
 	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+	// callers reuse the same filters map across calls; clear any pagination cursor left by a previous call.
+	delete(filters, "id_gt")
 
 	for {
 		if lastId > 0 {
@@ -157,37 +179,41 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			filters["id_gt"] = []string{lastIdStr}
 		}
 
-		data, err := dbFunc(ctx, filters)
+		data, err := query(ctx, now, filters)
 		if err != nil {
 			return err
 		}
 
-		if len(data) > 0 {
-			lastId = data[len(data)-1].ID
+		for _, d := range data {
+			if needComma {
+				gctx.Writer.WriteString(",")
+			} else {
+				needComma = true
+			}
 
-			results := FormatDecisions(data)
-			for _, decision := range results {
-				decisionJSON, _ := json.Marshal(decision)
+			buf.Reset()
+			if err := enc.Encode(formatOneDecision(d)); err != nil {
+				gctx.Writer.Flush()
 
-				if needComma {
-					// respBuffer.Write([]byte(","))
-					gctx.Writer.WriteString(",")
-				} else {
-					needComma = true
-				}
-				//respBuffer.Write(decisionJSON)
-				//_, err := gctx.Writer.Write(respBuffer.Bytes())
-				_, err := gctx.Writer.Write(decisionJSON)
-				if err != nil {
-					gctx.Writer.Flush()
+				return err
+			}
+			// Encode() appends a trailing newline; strip it to keep the wire format compact.
+			b := buf.Bytes()
+			if n := len(b); n > 0 && b[n-1] == '\n' {
+				b = b[:n-1]
+			}
+			if _, err := gctx.Writer.Write(b); err != nil {
+				gctx.Writer.Flush()
 
-					return err
-				}
-				// respBuffer.Reset()
+				return err
 			}
 		}
 
-		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+		if len(data) > 0 {
+			lastId = data[len(data)-1].ID
+		}
+
+		log.Debugf("stream: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 
 		if len(data) < limit {
 			gctx.Writer.Flush()
@@ -199,201 +225,113 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	return nil
 }
 
-func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull *time.Time, dbFunc func(context.Context, *time.Time, map[string][]string) ([]*ent.Decision, error)) error {
-	// respBuffer := bytes.NewBuffer([]byte{})
-	limit := 30000 // FIXME : make it configurable
-	needComma := false
-	lastId := 0
-
-	ctx := gctx.Request.Context()
-
-	limitStr := strconv.Itoa(limit)
-	filters["limit"] = []string{limitStr}
-
-	for {
-		if lastId > 0 {
-			lastIdStr := strconv.Itoa(lastId)
-			filters["id_gt"] = []string{lastIdStr}
-		}
-
-		data, err := dbFunc(ctx, lastPull, filters)
-		if err != nil {
-			return err
-		}
-
-		if len(data) > 0 {
-			lastId = data[len(data)-1].ID
-
-			results := FormatDecisions(data)
-			for _, decision := range results {
-				decisionJSON, _ := json.Marshal(decision)
-
-				if needComma {
-					// respBuffer.Write([]byte(","))
-					gctx.Writer.WriteString(",")
-				} else {
-					needComma = true
-				}
-				//respBuffer.Write(decisionJSON)
-				//_, err := gctx.Writer.Write(respBuffer.Bytes())
-				_, err := gctx.Writer.Write(decisionJSON)
-				if err != nil {
-					gctx.Writer.Flush()
-
-					return err
-				}
-				// respBuffer.Reset()
-			}
-		}
-
-		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
-
-		if len(data) < limit {
-			gctx.Writer.Flush()
-
-			break
-		}
-	}
-
-	return nil
-}
-
-func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
-	var err error
-
+func (c *Controller) streamDecisions(gctx *gin.Context, bouncerInfo *ent.Bouncer, now time.Time, filters map[string][]string, cursor int, startup bool) error {
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
 	gctx.Writer.WriteString(`{"new": [`) // No need to check for errors, the doc says it always returns nil
 
-	// if the blocker just started, return all decisions
-	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
-		// Active decisions
-		err := writeStartupDecisions(gctx, filters, c.DBClient.QueryAllDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for startup: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
+	// Active decisions. A startup resync is this same query with a zero cursor.
+	if err := writeDecisions(gctx, now, filters, cursor, c.DecisionsStreamPageSize, c.DBClient.QueryAllDecisionsWithFilters); err != nil {
+		log.Errorf("failed sending new decisions: %v", err)
+		gctx.Writer.WriteString(`], "deleted": []}`)
+		gctx.Writer.Flush()
 
-			return err
+		return err
+	}
+
+	gctx.Writer.WriteString(`], "deleted": [`)
+
+	// Expired decisions. Unlike the active ones these are keyed on until, not on the cursor:
+	// a decision expires when the clock passes it, with no write to order against.
+	expired := c.DBClient.QueryExpiredDecisionsWithFilters
+
+	if !startup {
+		// Use a 2-second overlap to avoid missing decisions that expired around the last pull time
+		var expiredSince *time.Time
+		if bouncerInfo.LastPull != nil {
+			since := bouncerInfo.LastPull.Add(-2 * time.Second)
+			expiredSince = &since
 		}
 
-		gctx.Writer.WriteString(`], "deleted": [`)
-		// Expired decisions
-		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.WriteString(`]}`)
-			gctx.Writer.Flush()
-
-			return err
+		expired = func(ctx context.Context, now time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+			return c.DBClient.QueryExpiredDecisionsSinceWithFilters(ctx, now, expiredSince, filters)
 		}
+	}
 
+	if err := writeDecisions(gctx, now, filters, 0, c.DecisionsStreamPageSize, expired); err != nil {
+		log.Errorf("failed sending expired decisions: %v", err)
 		gctx.Writer.WriteString(`]}`)
 		gctx.Writer.Flush()
-	} else {
-		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending new decisions for delta: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
-			gctx.Writer.Flush()
 
-			return err
-		}
-
-		gctx.Writer.WriteString(`], "deleted": [`)
-
-		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.WriteString("]}")
-			gctx.Writer.Flush()
-
-			return err
-		}
-
-		gctx.Writer.WriteString("]}")
-		gctx.Writer.Flush()
+		return err
 	}
+
+	gctx.Writer.WriteString(`]}`)
+	gctx.Writer.Flush()
 
 	return nil
 }
 
-func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
-	var (
-		data []*ent.Decision
-		err  error
-	)
+// LimitStreamConcurrency queues stream requests beyond the configured limit. The slot is held until
+// the response is fully written, because that is what bounds memory. It runs before StreamDecision
+// reads the cursor, so a request that waited still gets an up-to-date delta.
+func (c *Controller) LimitStreamConcurrency(gctx *gin.Context) {
+	if c.streamSlots == nil {
+		gctx.Next()
 
-	ctx := gctx.Request.Context()
+		return
+	}
 
-	ret := make(map[string][]*models.Decision, 0)
-	ret["new"] = []*models.Decision{}
-	ret["deleted"] = []*models.Decision{}
+	if !c.waitForStreamSlot(gctx) {
+		// Nothing was sent, so the bouncer's cursor does not move.
+		gctx.AbortWithStatus(http.StatusServiceUnavailable)
 
-	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
-		if val[0] == "true" {
-			data, err = c.DBClient.QueryAllDecisionsWithFilters(ctx, filters)
-			if err != nil {
-				log.Errorf("failed querying decisions: %v", err)
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
 
-				return err
-			}
-			// data = KeepLongestDecision(data)
-			ret["new"] = FormatDecisions(data)
+	defer func() { <-c.streamSlots }()
 
-			// getting expired decisions
-			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(ctx, filters)
-			if err != nil {
-				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+	gctx.Next()
+}
 
-				return err
-			}
+// waitForStreamSlot reports whether the request got a slot within max_queue_wait.
+func (c *Controller) waitForStreamSlot(gctx *gin.Context) bool {
+	// A free slot is taken before the timer starts: select picks at random between ready cases,
+	// so an expired timer could otherwise turn a request away while a slot is free.
+	select {
+	case c.streamSlots <- struct{}{}:
+		return true
+	default:
+	}
 
-			ret["deleted"] = FormatDecisions(data)
+	timer := time.NewTimer(c.streamMaxQueueWait)
+	defer timer.Stop()
 
-			gctx.JSON(http.StatusOK, ret)
-
-			return nil
+	select {
+	case c.streamSlots <- struct{}{}:
+		return true
+	case <-timer.C:
+		bouncerName := "unknown"
+		if bouncer, err := getBouncerFromContext(gctx); err == nil {
+			bouncerName = bouncer.Name
 		}
+
+		// The 503 lets the bouncer log it too.
+		log.Warningf("decisions stream: no free slot for bouncer %s after %s (max_concurrent_requests: %d), returning 503",
+			bouncerName, c.streamMaxQueueWait, cap(c.streamSlots))
+
+		return false
+	case <-gctx.Request.Context().Done():
+		if bouncer, err := getBouncerFromContext(gctx); err == nil {
+			log.Debugf("decisions stream: bouncer %s gave up while queued", bouncer.Name)
+		}
+
+		return false
 	}
-
-	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(ctx, bouncerInfo.LastPull, filters)
-	if err != nil {
-		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-
-		return err
-	}
-	// data = KeepLongestDecision(data)
-	ret["new"] = FormatDecisions(data)
-
-	since := time.Time{}
-	if bouncerInfo.LastPull != nil {
-		since = bouncerInfo.LastPull.Add(-2 * time.Second)
-	}
-
-	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(ctx, &since, filters) // do we want to give exactly lastPull time ?
-	if err != nil {
-		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-
-		return err
-	}
-
-	ret["deleted"] = FormatDecisions(data)
-	gctx.JSON(http.StatusOK, ret)
-
-	return nil
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
-	var err error
-
 	streamStartTime := time.Now().UTC()
 
 	bouncerInfo, err := getBouncerFromContext(gctx)
@@ -416,16 +354,32 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		filters["scopes"] = []string{"ip,range"}
 	}
 
-	if fflag.ChunkedDecisionsStream.IsEnabled() {
-		err = c.StreamDecisionChunked(gctx, bouncerInfo, streamStartTime, filters)
-	} else {
-		err = c.StreamDecisionNonChunked(gctx, bouncerInfo, streamStartTime, filters)
+	val, ok := filters["startup"]
+	startup := ok && val[0] == "true"
+
+	// Read the cursor before streaming anything: a decision we cannot see yet belongs to an
+	// uncommitted transaction and will get a higher id, so this value cannot step over it.
+	// A wall clock timestamp cannot make that promise, which is why last_pull is not used here.
+	latestID, err := c.DBClient.LatestDecisionID(gctx.Request.Context())
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+
+		return
 	}
 
+	cursor := bouncerInfo.StreamCursor
+	// A cursor past the end of the table means the decisions were rewound under us: a partial
+	// restore, or MySQL < 8.0 recomputing AUTO_INCREMENT after the highest rows were deleted.
+	if startup || cursor > latestID {
+		cursor = 0
+	}
+
+	err = c.streamDecisions(gctx, bouncerInfo, streamStartTime, filters, cursor, startup)
+
 	if err == nil {
-		// Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
+		// Only update the pull state if no error occurred when sending the decisions to avoid missing decisions
 		// Do not reuse the context provided by gin because we already have sent the response to the client, so there's a chance for it to already be canceled
-		if err := c.DBClient.UpdateBouncerLastPull(context.Background(), streamStartTime, bouncerInfo.ID); err != nil {
+		if err := c.DBClient.UpdateBouncerStreamPull(context.Background(), streamStartTime, latestID, bouncerInfo.ID); err != nil {
 			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		}
 	}

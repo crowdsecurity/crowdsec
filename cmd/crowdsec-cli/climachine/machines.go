@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/clientinfo"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -35,6 +36,10 @@ Note: This command requires database direct access, so is intended to be run on 
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			if err = require.LAPI(cli.cfg()); err != nil {
@@ -72,6 +77,7 @@ type machineInfo struct {
 	AuthType      string           `json:"auth_type"`
 	OS            string           `json:"os,omitempty"`
 	Featureflags  []string         `json:"featureflags,omitempty"`
+	Features      []string         `json:"features,omitempty"`
 	Datasources   map[string]int64 `json:"datasources,omitempty"`
 }
 
@@ -88,6 +94,7 @@ func newMachineInfo(m *ent.Machine) machineInfo {
 		AuthType:      m.AuthType,
 		OS:            clientinfo.GetOSNameAndVersion(m),
 		Featureflags:  clientinfo.GetFeatureFlagList(m),
+		Features:      m.Features,
 		Datasources:   m.Datasources,
 	}
 }

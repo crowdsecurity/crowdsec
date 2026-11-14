@@ -20,56 +20,56 @@ type BouncerDelete struct {
 }
 
 // Where appends a list predicates to the BouncerDelete builder.
-func (bd *BouncerDelete) Where(ps ...predicate.Bouncer) *BouncerDelete {
-	bd.mutation.Where(ps...)
-	return bd
+func (_d *BouncerDelete) Where(ps ...predicate.Bouncer) *BouncerDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (bd *BouncerDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, bd.sqlExec, bd.mutation, bd.hooks)
+func (_d *BouncerDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bd *BouncerDelete) ExecX(ctx context.Context) int {
-	n, err := bd.Exec(ctx)
+func (_d *BouncerDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (bd *BouncerDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *BouncerDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(bouncer.Table, sqlgraph.NewFieldSpec(bouncer.FieldID, field.TypeInt))
-	if ps := bd.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, bd.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	bd.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // BouncerDeleteOne is the builder for deleting a single Bouncer entity.
 type BouncerDeleteOne struct {
-	bd *BouncerDelete
+	_d *BouncerDelete
 }
 
 // Where appends a list predicates to the BouncerDelete builder.
-func (bdo *BouncerDeleteOne) Where(ps ...predicate.Bouncer) *BouncerDeleteOne {
-	bdo.bd.mutation.Where(ps...)
-	return bdo
+func (_d *BouncerDeleteOne) Where(ps ...predicate.Bouncer) *BouncerDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (bdo *BouncerDeleteOne) Exec(ctx context.Context) error {
-	n, err := bdo.bd.Exec(ctx)
+func (_d *BouncerDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (bdo *BouncerDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bdo *BouncerDeleteOne) ExecX(ctx context.Context) {
-	if err := bdo.Exec(ctx); err != nil {
+func (_d *BouncerDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

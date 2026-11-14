@@ -27,8 +27,6 @@ func StartRunSvc(
 	cConfig *csconfig.Config,
 	sd *StateDumper,
 ) error {
-	defer trace.CatchPanic("crowdsec/StartRunSvc")
-
 	// Always try to stop CPU profiling to avoid passing flags around
 	// It's a noop if profiling is not enabled
 	defer pprof.StopCPUProfile()
@@ -43,7 +41,16 @@ func StartRunSvc(
 
 	agentReady := make(chan bool, 1)
 
-	// Enable profiling early
+	// pprof listens on its own (localhost by default) listener, so profiling
+	// is available immediately, independent of prometheus and agentReady.
+	if cConfig.PProf != nil {
+		go func() {
+			defer trace.ReportPanic()
+			servePprof(cConfig.PProf)
+		}()
+	}
+
+	// Serve prometheus metrics
 	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
 
@@ -59,7 +66,10 @@ func StartRunSvc(
 
 		registerPrometheus(cConfig.Prometheus)
 
-		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		go func() {
+			defer trace.ReportPanic()
+			servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+		}()
 	} else {
 		// avoid leaking the channel
 		go func() {

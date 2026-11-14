@@ -20,8 +20,6 @@ import (
 )
 
 func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
-	defer trace.CatchPanic("crowdsec/acquis/appsec/listenAndServe")
-
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
 
 	serverError := make(chan error, 2)
@@ -107,6 +105,12 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
 		}
 
+		if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
+			if err := w.AppsecRuntime.ChallengeRuntime.Close(ctx); err != nil {
+				w.logger.Errorf("Error closing challenge runtime: %s", err)
+			}
+		}
+
 		if w.config.ListenSocket != "" {
 			if err := os.Remove(w.config.ListenSocket); err != nil {
 				if !errors.Is(err, fs.ErrNotExist) {
@@ -133,14 +137,29 @@ func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 	}
 
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
+		defer trace.ReportPanic()
 
+		// Runners share this pointer; it owns the only handle on the channel.
+		w.AppsecRuntime.OutChan = out
+
+		t.Go(func() error {
+			defer trace.ReportPanic()
+			w.AppsecRuntime.RateLimits.RunSweepers(t.Dying())
+			return nil
+		})
+
+		// runner is a per-iteration copy (Go >= 1.22), which the closure relies on.
 		for _, runner := range w.AppsecRunners {
-			runner.outChan = out
-
 			t.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
-				return runner.Run(t)
+				defer trace.ReportPanic()
+				return runner.Run(ctx, t)
+			})
+		}
+
+		for _, runner := range w.OutOfBandRunners {
+			t.Go(func() error {
+				defer trace.ReportPanic()
+				return runner.RunOutOfBand(ctx, t)
 			})
 		}
 

@@ -21,16 +21,16 @@ var bucketTypes = map[string]BucketType{
 type LeakyType struct{}
 
 func (LeakyType) Validate(f *BucketFactory) error {
-	if f.Capacity <= 0 { // capacity must be a positive int
-		return fmt.Errorf("bad capacity for leaky '%d'", f.Capacity)
+	if f.Spec.Capacity <= 0 {
+		return fmt.Errorf("invalid capacity '%d': must be > 0", f.Spec.Capacity)
 	}
 
-	if f.LeakSpeed == "" {
-		return errors.New("leakspeed can't be empty for leaky")
+	if f.Spec.LeakSpeed == "" {
+		return errors.New("leakspeed is required")
 	}
 
-	if f.leakspeed == 0 {
-		return fmt.Errorf("bad leakspeed for leaky '%s'", f.LeakSpeed)
+	if f.leakspeed <= 0 {
+		return fmt.Errorf("invalid leakspeed '%s': must be > 0", f.Spec.LeakSpeed)
 	}
 
 	return nil
@@ -43,8 +43,8 @@ func (LeakyType) BuildProcessors(_ *BucketFactory) []Processor {
 type TriggerType struct{}
 
 func (TriggerType) Validate(f *BucketFactory) error {
-	if f.Capacity != 0 {
-		return errors.New("trigger bucket must have 0 capacity")
+	if f.Spec.Capacity != 0 {
+		return fmt.Errorf("invalid capacity '%d': must be 0", f.Spec.Capacity)
 	}
 
 	return nil
@@ -57,16 +57,16 @@ func (TriggerType) BuildProcessors(_ *BucketFactory) []Processor {
 type CounterType struct{}
 
 func (CounterType) Validate(f *BucketFactory) error {
-	if f.Duration == "" {
-		return errors.New("duration can't be empty for counter")
+	if f.Spec.Capacity != -1 {
+		return fmt.Errorf("invalid capacity '%d': must be -1", f.Spec.Capacity)
 	}
 
-	if f.duration == 0 {
-		return fmt.Errorf("bad duration for counter bucket '%d'", f.duration)
+	if f.Spec.Duration == "" {
+		return errors.New("duration is required")
 	}
 
-	if f.Capacity != -1 {
-		return errors.New("counter bucket must have -1 capacity")
+	if f.duration <= 0 {
+		return fmt.Errorf("invalid duration '%d': must be > 0", f.duration)
 	}
 
 	return nil
@@ -79,20 +79,20 @@ func (CounterType) BuildProcessors(_ *BucketFactory) []Processor {
 type ConditionalType struct{}
 
 func (ConditionalType) Validate(f *BucketFactory) error {
-	if f.ConditionalOverflow == "" {
-		return errors.New("conditional bucket must have a condition")
-	}
-
-	if f.Capacity != -1 {
+	if f.Spec.Capacity != -1 {
 		f.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
 	}
 
-	if f.LeakSpeed == "" {
-		return errors.New("leakspeed can't be empty for conditional bucket")
+	if f.Spec.ConditionalOverflow == "" {
+		return errors.New("a condition is required")
 	}
 
-	if f.leakspeed == 0 {
-		return fmt.Errorf("bad leakspeed for conditional bucket '%s'", f.LeakSpeed)
+	if f.Spec.LeakSpeed == "" {
+		return errors.New("leakspeed is required")
+	}
+
+	if f.leakspeed <= 0 {
+		return fmt.Errorf("invalid leakspeed '%s': must be > 0", f.Spec.LeakSpeed)
 	}
 
 	return nil
@@ -105,28 +105,20 @@ func (ConditionalType) BuildProcessors(_ *BucketFactory) []Processor {
 type BayesianType struct{}
 
 func (BayesianType) Validate(f *BucketFactory) error {
-	if f.BayesianConditions == nil {
-		return errors.New("bayesian bucket must have bayesian conditions")
+	if len(f.Spec.BayesianConditions) == 0 {
+		return errors.New("bayesian conditions are required")
 	}
 
-	if f.BayesianPrior == 0 {
-		return errors.New("bayesian bucket must have a valid, non-zero prior")
+	if f.Spec.BayesianPrior <= 0 || f.Spec.BayesianPrior > 1 {
+		return errors.New("invalid prior: must be > 0 and <= 1")
 	}
 
-	if f.BayesianThreshold == 0 {
-		return errors.New("bayesian bucket must have a valid, non-zero threshold")
+	if f.Spec.BayesianThreshold == 0 || f.Spec.BayesianThreshold > 1 {
+		return errors.New("invalid threshold: must be > 0 and <= 1")
 	}
 
-	if f.BayesianPrior > 1 {
-		return errors.New("bayesian bucket must have a valid, non-zero prior")
-	}
-
-	if f.BayesianThreshold > 1 {
-		return errors.New("bayesian bucket must have a valid, non-zero threshold")
-	}
-
-	if f.Capacity != -1 {
-		return errors.New("bayesian bucket must have capacity -1")
+	if f.Spec.Capacity != -1 {
+		return errors.New("capacity must be -1")
 	}
 
 	return nil

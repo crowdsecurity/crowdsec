@@ -9,14 +9,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
-func intPtr(i int) *int {
-	return &i
-}
-
 func main() {
 	client := cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(os.Getenv("CTI_API_KEY")))
 	paginator := cticlient.NewFirePaginator(client, cticlient.FireParams{
-		Limit: intPtr(1000),
+		Limit: new(1000),
 	})
 
 	csvHeader := []string{

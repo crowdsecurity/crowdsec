@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"fmt"
 
-	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -40,22 +39,22 @@ func updateProbability(prior, probGivenEvil, probGivenBenign float32) float32 {
 
 func (p *BayesianProcessor) OnBucketInit(f *BucketFactory) error {
 	var err error
-	bayesianEventArray := make([]*BayesianEvent, len(f.BayesianConditions))
+	bayesianEventArray := make([]*BayesianEvent, len(f.Spec.BayesianConditions))
 
-	for index, bcond := range f.BayesianConditions {
-		var bayesianEvent BayesianEvent
-		bayesianEvent.rawCondition = bcond
-		prog, err := bayesianEvent.compileCondition()
+	for index, bcond := range f.Spec.BayesianConditions {
+		prog, err := compileCondition(bcond.ConditionalFilterName)
 		if err != nil {
 			return err
 		}
-		bayesianEvent.conditionalFilterRuntime = prog
-		bayesianEventArray[index] = &bayesianEvent
+		bayesianEventArray[index] = &BayesianEvent{
+			rawCondition:             bcond,
+			conditionalFilterRuntime: prog,
+		}
 	}
 	p.bayesianEventArray = bayesianEventArray
 
-	p.prior = f.BayesianPrior
-	p.threshold = f.BayesianThreshold
+	p.prior = f.Spec.BayesianPrior
+	p.threshold = f.Spec.BayesianThreshold
 
 	return err
 }
@@ -76,7 +75,7 @@ func (p *BayesianProcessor) AfterBucketPour(_ *BucketFactory, msg pipeline.Event
 	if p.posterior > p.threshold {
 		l.logger.Debugf("Bayesian bucket overflow")
 		l.Ovflw_ts = l.Last_ts
-		l.Out <- l.Queue
+		l.pendingOverflow = l.Queue
 		return nil
 	}
 
@@ -101,7 +100,7 @@ func (e *BayesianEvent) bayesianUpdate(p *BayesianProcessor, msg pipeline.Event,
 	}
 
 	l.logger.Debugf("running condition expression: %s", e.rawCondition.ConditionalFilterName)
-	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.BucketConfig.Debug)
+	ret, err := exprhelpers.Run(e.conditionalFilterRuntime, map[string]any{"evt": &msg, "queue": l.Queue, "leaky": l}, l.logger, l.Factory.Spec.Debug)
 	if err != nil {
 		return fmt.Errorf("unable to run conditional filter: %w", err)
 	}
@@ -135,31 +134,29 @@ func (e *BayesianEvent) triggerGuillotine() {
 	e.guillotineState = true
 }
 
-func (e *BayesianEvent) compileCondition() (*vm.Program, error) {
-	name := e.rawCondition.ConditionalFilterName
-
+func compileCondition(filterName string) (*vm.Program, error) {
 	conditionalExprCacheLock.Lock()
-	prog, ok := conditionalExprCache[name]
+	prog, ok := conditionalExprCache[filterName]
 	conditionalExprCacheLock.Unlock()
 	if ok {
 		return prog, nil
 	}
 
 	// don't hold lock during compile
-	compiled, err := expr.Compile(name, exprhelpers.GetExprOptions(map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}, "evt": &pipeline.Event{}})...)
+	compiled, err := compile(filterName, map[string]any{"queue": &pipeline.Queue{}, "leaky": &Leaky{}})
 	if err != nil {
 		return nil, fmt.Errorf("bayesian condition compile error: %w", err)
 	}
 
 	// re-check under lock in case of race, avoid double compilation
 	conditionalExprCacheLock.Lock()
-	if prog2, ok := conditionalExprCache[name]; ok {
-		conditionalExprCacheLock.Unlock()
+	defer conditionalExprCacheLock.Unlock()
+
+	if prog2, ok := conditionalExprCache[filterName]; ok {
 		return prog2, nil
 	}
 
-	conditionalExprCache[name] = compiled
-	conditionalExprCacheLock.Unlock()
+	conditionalExprCache[filterName] = compiled
 
 	return compiled, nil
 }

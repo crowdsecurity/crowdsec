@@ -1,0 +1,127 @@
+openapi: 3.0.0
+info:
+  title: Request Body Validation API
+  version: 1.0.0
+
+paths:
+  /users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - age
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 20
+                  pattern: "^[a-zA-Z0-9_]+$"
+                email:
+                  type: string
+                  format: email
+                age:
+                  type: integer
+                  minimum: 18
+                  maximum: 120
+                role:
+                  type: string
+                  enum: [admin, user, guest]
+                  default: user
+                active:
+                  type: boolean
+                  default: true
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 0
+                  maxItems: 10
+                metadata:
+                  type: object
+                  additionalProperties: true
+              additionalProperties: false
+      responses:
+        "201":
+          description: User created
+  
+  /users/{id}:
+    put:
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 20
+                email:
+                  type: string
+                  format: email
+                age:
+                  type: integer
+                  minimum: 18
+              additionalProperties: false
+      responses:
+        "200":
+          description: User updated
+  
+  /products:
+    post:
+      summary: Create a product with nested objects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                price:
+                  type: number
+                  minimum: 0.01
+                  multipleOf: 0.01
+                currency:
+                  type: string
+                  pattern: "^[A-Z]{3}$"
+                  default: USD
+                dimensions:
+                  type: object
+                  required:
+                    - width
+                    - height
+                  properties:
+                    width:
+                      type: number
+                      minimum: 0
+                    height:
+                      type: number
+                      minimum: 0
+                    depth:
+                      type: number
+                      minimum: 0
+      responses:
+        "201":
+          description: Product created

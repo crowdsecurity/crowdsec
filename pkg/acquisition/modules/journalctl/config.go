@@ -18,7 +18,7 @@ type Configuration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 
 	Filters []string `yaml:"journalctl_filter"`
-	since   string // set only by DSN
+	since   string   // set only by DSN
 }
 
 func ConfigurationFromYAML(y []byte) (Configuration, error) {
@@ -70,9 +70,7 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	}
 
 	s.setLogger(logger, 0, s.src)
-
 	s.metricsLevel = metricsLevel
-
 	return nil
 }
 

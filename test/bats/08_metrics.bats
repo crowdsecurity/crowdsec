@@ -21,6 +21,12 @@ teardown() {
 
 #----------
 
+@test "cscli metrics <unknown command>" {
+    rune -1 cscli metrics foobar
+    assert_output --partial "Usage:"
+    assert_stderr --partial 'unknown command "foobar" for "cscli metrics"'
+}
+
 @test "cscli metrics (crowdsec not running)" {
     rune -0 cscli metrics
     # crowdsec is down, we won't get an error because some metrics come from the db instead
@@ -57,6 +63,13 @@ teardown() {
     config_set 'del(.prometheus)'
     rune -1 cscli metrics
     assert_stderr --partial "prometheus is not enabled, can't show metrics"
+}
+
+@test "cscli metrics (missing db_config)" {
+    # See https://github.com/crowdsecurity/crowdsec/issues/4450
+    config_set 'del(.db_config)'
+    rune -0 cscli metrics
+    refute_stderr --partial "panic"
 }
 
 @test "cscli metrics" {

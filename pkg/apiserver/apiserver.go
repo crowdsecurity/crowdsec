@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"context"
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron"
+	"github.com/go-co-op/gocron/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
+	csmetrics "github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
 const keyLength = 32
@@ -36,11 +38,12 @@ type APIServer struct {
 	cfg            *csconfig.LocalApiServerCfg
 	dbClient       *database.Client
 	controller     *controllers.Controller
-	flushScheduler *gocron.Scheduler
+	flushScheduler gocron.Scheduler
 	router         *gin.Engine
 	httpServer     *http.Server
 	apic           *apic
 	papi           *Papi
+	features       []string
 	httpServerTomb tomb.Tomb
 }
 
@@ -116,7 +119,7 @@ func CustomRecoveryWithWriter(c *gin.Context) {
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
 func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLogger *log.Entry) (*APIServer, error) {
-	var flushScheduler *gocron.Scheduler
+	var flushScheduler gocron.Scheduler
 
 	if accessLogger == nil {
 		accessLogger = log.StandardLogger().WithFields(nil)
@@ -187,6 +190,7 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		ConsoleConfig:                 config.ConsoleConfig,
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 		AutoRegisterCfg:               config.AutoRegister,
+		DecisionsStream:               config.DecisionsStream,
 	}
 
 	var (
@@ -225,6 +229,12 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		}
 	}
 
+	features := lapiFeatures(apiClient, papiClient)
+
+	if apiClient != nil {
+		apiClient.features = features
+	}
+
 	trustedIPs, err := config.GetTrustedIPs()
 	if err != nil {
 		return nil, err
@@ -233,15 +243,38 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
-		cfg:		config,
+		cfg:            config,
 		dbClient:       dbClient,
 		controller:     controller,
 		flushScheduler: flushScheduler,
 		router:         router,
 		apic:           apiClient,
 		papi:           papiClient,
+		features:       features,
 		httpServerTomb: tomb.Tomb{},
 	}, nil
+}
+
+func lapiFeatures(apiClient *apic, papiClient *Papi) []string {
+	features := []string{csmetrics.FeatureLAPI}
+
+	if apiClient != nil {
+		features = append(features, csmetrics.FeatureCAPI)
+	}
+
+	// same condition initAPIC starts PAPI on
+	if papiClient != nil && papiClient.URL != "" {
+		features = append(features, csmetrics.FeaturePAPI)
+	}
+
+	slices.Sort(features)
+
+	return features
+}
+
+// Features returns the features enabled on this LAPI (see metrics.AllFeatures).
+func (s *APIServer) Features() []string {
+	return s.features
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
@@ -285,30 +318,44 @@ func (s *APIServer) papiSync(ctx context.Context) error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(func() error { return s.apicPush(ctx) })
-	s.apic.pullTomb.Go(func() error { return s.apicPull(ctx) })
+	s.apic.pushTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPush(ctx)
+	})
+	s.apic.pullTomb.Go(func() error {
+		defer trace.ReportPanic()
+		return s.apicPull(ctx)
+	})
 
 	if s.apic.apiClient.IsEnrolled() {
 		if s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
-				s.papi.pullTomb.Go(func() error { return s.papiPull(ctx) })
-				s.papi.syncTomb.Go(func() error { return s.papiSync(ctx) })
+				s.papi.pullTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiPull(ctx)
+				})
+				s.papi.syncTomb.Go(func() error {
+					defer trace.ReportPanic()
+					return s.papiSync(ctx)
+				})
 			} else {
-				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console")
 			}
 		} else {
-			log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+			log.Warningf("Machine is not enrolled in the console, can't synchronize decisions")
 		}
 	}
 
 	s.apic.metricsTomb.Go(func() error {
+		defer trace.ReportPanic()
 		s.apic.SendMetrics(ctx, make(chan bool))
 		return nil
 	})
 
 	if !s.cfg.DisableUsageMetricsExport {
 		s.apic.metricsTomb.Go(func() error {
+			defer trace.ReportPanic()
 			s.apic.SendUsageMetrics(ctx)
 			return nil
 		})
@@ -316,8 +363,6 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
-	defer trace.CatchPanic("lapi/runServer")
-
 	tlsCfg, err := s.cfg.TLS.GetTLSConfig()
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
@@ -371,7 +416,15 @@ func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) 
 				return
 			}
 
-			err = s.httpServer.ServeTLS(listener, s.cfg.TLS.CertFilePath, s.cfg.TLS.KeyFilePath)
+			reloader, rerr := newCertReloader(s.cfg.TLS.CertFilePath, s.cfg.TLS.KeyFilePath)
+			if rerr != nil {
+				serverError <- rerr
+				return
+			}
+
+			s.httpServer.TLSConfig.GetCertificate = reloader.GetCertificate
+
+			err = s.httpServer.ServeTLS(listener, "", "")
 		} else {
 			err = s.httpServer.Serve(listener)
 		}
@@ -458,10 +511,10 @@ func (s *APIServer) Close() {
 		s.papi.Shutdown() // papi also uses the dbClient
 	}
 
-	s.dbClient.Ent.Close()
+	s.dbClient.Close()
 
 	if s.flushScheduler != nil {
-		s.flushScheduler.Stop()
+		_ = s.flushScheduler.Shutdown()
 	}
 }
 

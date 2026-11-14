@@ -19,6 +19,8 @@ format: |
 
 url: <SPLUNK_HTTP_URL>
 token: <SPLUNK_TOKEN>
+# ca_cert_path:           # CA certificate to verify the Splunk server, in addition to the system ones
+# skip_tls_verification:  # true or false. Default is false
 
 ---
 

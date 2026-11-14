@@ -16,6 +16,7 @@ var Built = map[string]bool{
 	"datasource_k8s-audit":    false,
 	"datasource_kafka":        false,
 	"datasource_kinesis":      false,
+	"datasource_kubernetes":   false,
 	"datasource_loki":         false,
 	"datasource_s3":           false,
 	"datasource_syslog":       false,

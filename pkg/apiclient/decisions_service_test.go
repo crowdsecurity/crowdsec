@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
@@ -54,13 +53,13 @@ func TestDecisionsList(t *testing.T) {
 
 	expected := &models.GetDecisionsResponse{
 		&models.Decision{
-			Duration: ptr.Of("3h59m55.756182786s"),
+			Duration: new("3h59m55.756182786s"),
 			ID:       4,
-			Origin:   ptr.Of("cscli"),
-			Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
-			Scope:    ptr.Of("Ip"),
-			Type:     ptr.Of("ban"),
-			Value:    ptr.Of("1.2.3.4"),
+			Origin:   new("cscli"),
+			Scenario: new("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+			Scope:    new("Ip"),
+			Type:     new("ban"),
+			Value:    new("1.2.3.4"),
 		},
 	}
 
@@ -125,13 +124,13 @@ func TestDecisionsStream(t *testing.T) {
 	expected := &models.DecisionsStreamResponse{
 		New: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: ptr.Of("3h59m55.756182786s"),
+				Duration: new("3h59m55.756182786s"),
 				ID:       4,
-				Origin:   ptr.Of("cscli"),
-				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
-				Scope:    ptr.Of("Ip"),
-				Type:     ptr.Of("ban"),
-				Value:    ptr.Of("1.2.3.4"),
+				Origin:   new("cscli"),
+				Scenario: new("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+				Scope:    new("Ip"),
+				Type:     new("ban"),
+				Value:    new("1.2.3.4"),
 			},
 		},
 	}
@@ -196,22 +195,22 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	expected := &models.DecisionsStreamResponse{
 		New: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: ptr.Of("3h59m55.756182786s"),
+				Duration: new("3h59m55.756182786s"),
 				Origin:   &torigin,
-				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+				Scenario: new("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
 				Scope:    &tscope,
 				Type:     &ttype,
-				Value:    ptr.Of("1.2.3.4"),
+				Value:    new("1.2.3.4"),
 			},
 		},
 		Deleted: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: ptr.Of("1h"),
+				Duration: new("1h"),
 				Origin:   &torigin,
-				Scenario: ptr.Of("deleted"),
+				Scenario: new("deleted"),
 				Scope:    &tscope,
 				Type:     &ttype,
-				Value:    ptr.Of("1.2.3.5"),
+				Value:    new("1.2.3.5"),
 			},
 		},
 	}
@@ -261,11 +260,11 @@ func TestDecisionsStreamV3(t *testing.T) {
 			&modelscapi.GetDecisionsStreamResponseNewItem{
 				Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 					{
-						Duration: ptr.Of("3h59m55.756182786s"),
-						Value:    ptr.Of("1.2.3.4"),
+						Duration: new("3h59m55.756182786s"),
+						Value:    new("1.2.3.4"),
 					},
 				},
-				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+				Scenario: new("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
 				Scope:    &tscope,
 			},
 		},
@@ -280,11 +279,11 @@ func TestDecisionsStreamV3(t *testing.T) {
 		Links: &modelscapi.GetDecisionsStreamResponseLinks{
 			Blocklists: []*modelscapi.BlocklistLink{
 				{
-					Duration:    ptr.Of("24h"),
-					Name:        ptr.Of("blocklist1"),
-					Remediation: ptr.Of("ban"),
-					Scope:       ptr.Of("ip"),
-					URL:         ptr.Of("/v3/blocklist"),
+					Duration:    new("24h"),
+					Name:        new("blocklist1"),
+					Remediation: new("ban"),
+					Scope:       new("ip"),
+					URL:         new("/v3/blocklist"),
 				},
 			},
 		},
@@ -341,7 +340,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	expected := []*models.Decision{
 		{
 			Duration: &tdurationBlocklist,
-			Value:    ptr.Of("1.2.3.4"),
+			Value:    new("1.2.3.4"),
 			Scenario: &tnameBlocklist,
 			Scope:    &tscopeBlocklist,
 			Type:     &tremediationBlocklist,
@@ -349,7 +348,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		},
 		{
 			Duration: &tdurationBlocklist,
-			Value:    ptr.Of("1.2.3.5"),
+			Value:    new("1.2.3.5"),
 			Scenario: &tnameBlocklist,
 			Scope:    &tscopeBlocklist,
 			Type:     &tremediationBlocklist,

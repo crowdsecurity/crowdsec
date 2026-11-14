@@ -14,11 +14,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	acquisitionTypes "github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/types"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -46,13 +45,14 @@ type MetricsProvider struct {
 }
 
 type staticMetrics struct {
-	osName         string
-	osFamily       string
-	osVersion      string
-	startupTS      int64
-	featureFlags   []string
-	datasourceMap  map[string]int64
-	hubState       models.HubItems
+	osName        string
+	osFamily      string
+	osVersion     string
+	startupTS     int64
+	featureFlags  []string
+	datasourceMap map[string]int64
+	hubState      models.HubItems
+	features      []string
 }
 
 // Key is the prom label
@@ -86,8 +86,30 @@ func getHubState(hub *cwhub.Hub) models.HubItems {
 	return ret
 }
 
+// lpFeatures returns the features enabled on the log processor, plus those of the LAPI
+// running in the same process (if any), sorted.
+func lpFeatures(lapiFeatures []string, datasources []acquisition.ConfiguredSource) []string {
+	enabled := append([]string{metrics.FeatureLogProcessor}, lapiFeatures...)
+
+	for _, ds := range datasources {
+		if fp, ok := ds.DataSource.(types.FeatureProvider); ok {
+			enabled = append(enabled, fp.Features()...)
+		}
+	}
+
+	ret := make([]string, 0, len(enabled))
+
+	for _, feature := range metrics.AllFeatures {
+		if slices.Contains(enabled, feature) {
+			ret = append(ret, feature)
+		}
+	}
+
+	return ret
+}
+
 // newStaticMetrics is called when the process starts, or reloads the configuration
-func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub) staticMetrics {
+func newStaticMetrics(datasources []acquisition.ConfiguredSource, hub *cwhub.Hub, features []string) staticMetrics {
 	datasourceMap := map[string]int64{}
 
 	for _, ds := range datasources {
@@ -97,13 +119,14 @@ func newStaticMetrics(datasources []acquisitionTypes.DataSource, hub *cwhub.Hub)
 	osName, osFamily, osVersion := version.DetectOS()
 
 	return staticMetrics{
-		osName:         osName,
-		osFamily:       osFamily,
-		osVersion:      osVersion,
-		startupTS:      time.Now().UTC().Unix(),
-		featureFlags:   fflag.Crowdsec.GetEnabledFeatures(),
-		datasourceMap:  datasourceMap,
-		hubState:       getHubState(hub),
+		osName:        osName,
+		osFamily:      osFamily,
+		osVersion:     osVersion,
+		startupTS:     time.Now().UTC().Unix(),
+		featureFlags:  fflag.Crowdsec.GetEnabledFeatures(),
+		datasourceMap: datasourceMap,
+		hubState:      getHubState(hub),
+		features:      features,
 	}
 }
 
@@ -111,11 +134,12 @@ func NewMetricsProvider(
 	apic *apiclient.ApiClient,
 	interval time.Duration,
 	logger *logrus.Entry,
-	datasources []acquisitionTypes.DataSource,
+	datasources []acquisition.ConfiguredSource,
 	hub *cwhub.Hub,
+	features []string,
 ) *MetricsProvider {
-	static := newStaticMetrics(datasources, hub)
-	
+	static := newStaticMetrics(datasources, hub, features)
+
 	logger.Debugf("Detected %s %s (family: %s)", static.osName, static.osVersion, static.osFamily)
 
 	return &MetricsProvider{
@@ -214,10 +238,10 @@ func (m *MetricsProvider) gatherPromMetrics(metricsName []string, labelsMap labe
 			}
 
 			item := &models.MetricsDetailItem{
-				Name:   ptr.Of(metricName),
-				Unit:   ptr.Of(unitType),
+				Name:   new(metricName),
+				Unit:   new(unitType),
 				Labels: metricsLabels,
-				Value:  ptr.Of(value),
+				Value:  new(value),
 			}
 			m.logger.Debugf("Gathered metric: %s, item: %+v", metricFamily.GetName(), item)
 			items = append(items, item)
@@ -300,16 +324,22 @@ func (m *MetricsProvider) getAppsecBlockedMetrics() []*models.MetricsDetailItem 
 	}, nil, "appsec_blocked", "request")
 }
 
+func (m *MetricsProvider) getPostOverflowDroppedMetrics() []*models.MetricsDetailItem {
+	return m.gatherPromMetrics([]string{metrics.GlobalPostOverflowDroppedMetricName}, labelsMapping{
+		"routine": "routine",
+	}, nil, "postoverflow_dropped", "overflow")
+}
+
 func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 	os := &models.OSversion{
-		Name:    ptr.Of(m.static.osName),
-		Version: ptr.Of(m.static.osVersion),
+		Name:    new(m.static.osName),
+		Version: new(m.static.osVersion),
 	}
 
 	base := models.BaseMetrics{
-		UtcStartupTimestamp: ptr.Of(m.static.startupTS),
+		UtcStartupTimestamp: new(m.static.startupTS),
 		Os:                  os,
-		Version:             ptr.Of(version.String()),
+		Version:             new(version.String()),
 		FeatureFlags:        m.static.featureFlags,
 		Metrics:             make([]*models.DetailedMetrics, 0),
 	}
@@ -318,12 +348,13 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		BaseMetrics: base,
 		Datasources: m.static.datasourceMap,
 		HubItems:    m.static.hubState,
+		Features:    m.static.features,
 	}
 
 	met.Metrics = append(met.Metrics, &models.DetailedMetrics{
 		Meta: &models.MetricsMeta{
-			UtcNowTimestamp:   ptr.Of(time.Now().Unix()),
-			WindowSizeSeconds: ptr.Of(int64(m.interval.Seconds())),
+			UtcNowTimestamp:   new(time.Now().Unix()),
+			WindowSizeSeconds: new(int64(m.interval.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	})
@@ -375,14 +406,17 @@ func (m *MetricsProvider) metricsPayload() *models.AllMetrics {
 		met.Metrics[0].Items = append(met.Metrics[0].Items, appsecBlockedMetrics...)
 	}
 
+	postOverflowDroppedMetrics := m.getPostOverflowDroppedMetrics()
+	if len(postOverflowDroppedMetrics) > 0 {
+		met.Metrics[0].Items = append(met.Metrics[0].Items, postOverflowDroppedMetrics...)
+	}
+
 	return &models.AllMetrics{
 		LogProcessors: []*models.LogProcessorsMetrics{met},
 	}
 }
 
 func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetrics) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.sendMetrics")
-
 	ctxTime, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -402,8 +436,6 @@ func (m *MetricsProvider) sendMetrics(ctx context.Context, met *models.AllMetric
 }
 
 func (m *MetricsProvider) Run(ctx context.Context) {
-	defer trace.CatchPanic("crowdsec/MetricsProvider.Run")
-
 	if m.interval == time.Duration(0) {
 		return
 	}

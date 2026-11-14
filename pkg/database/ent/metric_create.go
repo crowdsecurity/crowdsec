@@ -23,56 +23,56 @@ type MetricCreate struct {
 }
 
 // SetGeneratedType sets the "generated_type" field.
-func (mc *MetricCreate) SetGeneratedType(mt metric.GeneratedType) *MetricCreate {
-	mc.mutation.SetGeneratedType(mt)
-	return mc
+func (_c *MetricCreate) SetGeneratedType(v metric.GeneratedType) *MetricCreate {
+	_c.mutation.SetGeneratedType(v)
+	return _c
 }
 
 // SetGeneratedBy sets the "generated_by" field.
-func (mc *MetricCreate) SetGeneratedBy(s string) *MetricCreate {
-	mc.mutation.SetGeneratedBy(s)
-	return mc
+func (_c *MetricCreate) SetGeneratedBy(v string) *MetricCreate {
+	_c.mutation.SetGeneratedBy(v)
+	return _c
 }
 
 // SetReceivedAt sets the "received_at" field.
-func (mc *MetricCreate) SetReceivedAt(t time.Time) *MetricCreate {
-	mc.mutation.SetReceivedAt(t)
-	return mc
+func (_c *MetricCreate) SetReceivedAt(v time.Time) *MetricCreate {
+	_c.mutation.SetReceivedAt(v)
+	return _c
 }
 
 // SetPushedAt sets the "pushed_at" field.
-func (mc *MetricCreate) SetPushedAt(t time.Time) *MetricCreate {
-	mc.mutation.SetPushedAt(t)
-	return mc
+func (_c *MetricCreate) SetPushedAt(v time.Time) *MetricCreate {
+	_c.mutation.SetPushedAt(v)
+	return _c
 }
 
 // SetNillablePushedAt sets the "pushed_at" field if the given value is not nil.
-func (mc *MetricCreate) SetNillablePushedAt(t *time.Time) *MetricCreate {
-	if t != nil {
-		mc.SetPushedAt(*t)
+func (_c *MetricCreate) SetNillablePushedAt(v *time.Time) *MetricCreate {
+	if v != nil {
+		_c.SetPushedAt(*v)
 	}
-	return mc
+	return _c
 }
 
 // SetPayload sets the "payload" field.
-func (mc *MetricCreate) SetPayload(s string) *MetricCreate {
-	mc.mutation.SetPayload(s)
-	return mc
+func (_c *MetricCreate) SetPayload(v string) *MetricCreate {
+	_c.mutation.SetPayload(v)
+	return _c
 }
 
 // Mutation returns the MetricMutation object of the builder.
-func (mc *MetricCreate) Mutation() *MetricMutation {
-	return mc.mutation
+func (_c *MetricCreate) Mutation() *MetricMutation {
+	return _c.mutation
 }
 
 // Save creates the Metric in the database.
-func (mc *MetricCreate) Save(ctx context.Context) (*Metric, error) {
-	return withHooks(ctx, mc.sqlSave, mc.mutation, mc.hooks)
+func (_c *MetricCreate) Save(ctx context.Context) (*Metric, error) {
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (mc *MetricCreate) SaveX(ctx context.Context) *Metric {
-	v, err := mc.Save(ctx)
+func (_c *MetricCreate) SaveX(ctx context.Context) *Metric {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -80,46 +80,46 @@ func (mc *MetricCreate) SaveX(ctx context.Context) *Metric {
 }
 
 // Exec executes the query.
-func (mc *MetricCreate) Exec(ctx context.Context) error {
-	_, err := mc.Save(ctx)
+func (_c *MetricCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mc *MetricCreate) ExecX(ctx context.Context) {
-	if err := mc.Exec(ctx); err != nil {
+func (_c *MetricCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (mc *MetricCreate) check() error {
-	if _, ok := mc.mutation.GeneratedType(); !ok {
+func (_c *MetricCreate) check() error {
+	if _, ok := _c.mutation.GeneratedType(); !ok {
 		return &ValidationError{Name: "generated_type", err: errors.New(`ent: missing required field "Metric.generated_type"`)}
 	}
-	if v, ok := mc.mutation.GeneratedType(); ok {
+	if v, ok := _c.mutation.GeneratedType(); ok {
 		if err := metric.GeneratedTypeValidator(v); err != nil {
 			return &ValidationError{Name: "generated_type", err: fmt.Errorf(`ent: validator failed for field "Metric.generated_type": %w`, err)}
 		}
 	}
-	if _, ok := mc.mutation.GeneratedBy(); !ok {
+	if _, ok := _c.mutation.GeneratedBy(); !ok {
 		return &ValidationError{Name: "generated_by", err: errors.New(`ent: missing required field "Metric.generated_by"`)}
 	}
-	if _, ok := mc.mutation.ReceivedAt(); !ok {
+	if _, ok := _c.mutation.ReceivedAt(); !ok {
 		return &ValidationError{Name: "received_at", err: errors.New(`ent: missing required field "Metric.received_at"`)}
 	}
-	if _, ok := mc.mutation.Payload(); !ok {
+	if _, ok := _c.mutation.Payload(); !ok {
 		return &ValidationError{Name: "payload", err: errors.New(`ent: missing required field "Metric.payload"`)}
 	}
 	return nil
 }
 
-func (mc *MetricCreate) sqlSave(ctx context.Context) (*Metric, error) {
-	if err := mc.check(); err != nil {
+func (_c *MetricCreate) sqlSave(ctx context.Context) (*Metric, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := mc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -127,34 +127,34 @@ func (mc *MetricCreate) sqlSave(ctx context.Context) (*Metric, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	mc.mutation.id = &_node.ID
-	mc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (mc *MetricCreate) createSpec() (*Metric, *sqlgraph.CreateSpec) {
+func (_c *MetricCreate) createSpec() (*Metric, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Metric{config: mc.config}
+		_node = &Metric{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(metric.Table, sqlgraph.NewFieldSpec(metric.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = mc.conflict
-	if value, ok := mc.mutation.GeneratedType(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.GeneratedType(); ok {
 		_spec.SetField(metric.FieldGeneratedType, field.TypeEnum, value)
 		_node.GeneratedType = value
 	}
-	if value, ok := mc.mutation.GeneratedBy(); ok {
+	if value, ok := _c.mutation.GeneratedBy(); ok {
 		_spec.SetField(metric.FieldGeneratedBy, field.TypeString, value)
 		_node.GeneratedBy = value
 	}
-	if value, ok := mc.mutation.ReceivedAt(); ok {
+	if value, ok := _c.mutation.ReceivedAt(); ok {
 		_spec.SetField(metric.FieldReceivedAt, field.TypeTime, value)
 		_node.ReceivedAt = value
 	}
-	if value, ok := mc.mutation.PushedAt(); ok {
+	if value, ok := _c.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
 		_node.PushedAt = &value
 	}
-	if value, ok := mc.mutation.Payload(); ok {
+	if value, ok := _c.mutation.Payload(); ok {
 		_spec.SetField(metric.FieldPayload, field.TypeString, value)
 		_node.Payload = value
 	}
@@ -177,10 +177,10 @@ func (mc *MetricCreate) createSpec() (*Metric, *sqlgraph.CreateSpec) {
 //			SetGeneratedType(v+v).
 //		}).
 //		Exec(ctx)
-func (mc *MetricCreate) OnConflict(opts ...sql.ConflictOption) *MetricUpsertOne {
-	mc.conflict = opts
+func (_c *MetricCreate) OnConflict(opts ...sql.ConflictOption) *MetricUpsertOne {
+	_c.conflict = opts
 	return &MetricUpsertOne{
-		create: mc,
+		create: _c,
 	}
 }
 
@@ -190,10 +190,10 @@ func (mc *MetricCreate) OnConflict(opts ...sql.ConflictOption) *MetricUpsertOne 
 //	client.Metric.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (mc *MetricCreate) OnConflictColumns(columns ...string) *MetricUpsertOne {
-	mc.conflict = append(mc.conflict, sql.ConflictColumns(columns...))
+func (_c *MetricCreate) OnConflictColumns(columns ...string) *MetricUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &MetricUpsertOne{
-		create: mc,
+		create: _c,
 	}
 }
 
@@ -345,16 +345,16 @@ type MetricCreateBulk struct {
 }
 
 // Save creates the Metric entities in the database.
-func (mcb *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
-	if mcb.err != nil {
-		return nil, mcb.err
+func (_c *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(mcb.builders))
-	nodes := make([]*Metric, len(mcb.builders))
-	mutators := make([]Mutator, len(mcb.builders))
-	for i := range mcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Metric, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := mcb.builders[i]
+			builder := _c.builders[i]
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*MetricMutation)
 				if !ok {
@@ -367,12 +367,12 @@ func (mcb *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = mcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, mcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -396,7 +396,7 @@ func (mcb *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, mcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -404,8 +404,8 @@ func (mcb *MetricCreateBulk) Save(ctx context.Context) ([]*Metric, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (mcb *MetricCreateBulk) SaveX(ctx context.Context) []*Metric {
-	v, err := mcb.Save(ctx)
+func (_c *MetricCreateBulk) SaveX(ctx context.Context) []*Metric {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -413,14 +413,14 @@ func (mcb *MetricCreateBulk) SaveX(ctx context.Context) []*Metric {
 }
 
 // Exec executes the query.
-func (mcb *MetricCreateBulk) Exec(ctx context.Context) error {
-	_, err := mcb.Save(ctx)
+func (_c *MetricCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mcb *MetricCreateBulk) ExecX(ctx context.Context) {
-	if err := mcb.Exec(ctx); err != nil {
+func (_c *MetricCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -440,10 +440,10 @@ func (mcb *MetricCreateBulk) ExecX(ctx context.Context) {
 //			SetGeneratedType(v+v).
 //		}).
 //		Exec(ctx)
-func (mcb *MetricCreateBulk) OnConflict(opts ...sql.ConflictOption) *MetricUpsertBulk {
-	mcb.conflict = opts
+func (_c *MetricCreateBulk) OnConflict(opts ...sql.ConflictOption) *MetricUpsertBulk {
+	_c.conflict = opts
 	return &MetricUpsertBulk{
-		create: mcb,
+		create: _c,
 	}
 }
 
@@ -453,10 +453,10 @@ func (mcb *MetricCreateBulk) OnConflict(opts ...sql.ConflictOption) *MetricUpser
 //	client.Metric.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (mcb *MetricCreateBulk) OnConflictColumns(columns ...string) *MetricUpsertBulk {
-	mcb.conflict = append(mcb.conflict, sql.ConflictColumns(columns...))
+func (_c *MetricCreateBulk) OnConflictColumns(columns ...string) *MetricUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &MetricUpsertBulk{
-		create: mcb,
+		create: _c,
 	}
 }
 

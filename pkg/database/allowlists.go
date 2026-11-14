@@ -15,8 +15,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlist"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/allowlistitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
+
+const allowlistExpireDecisionsBatchSize = 300
 
 func (c *Client) CreateAllowList(ctx context.Context, name string, description string, allowlistID string, fromConsole bool) (*ent.AllowList, error) {
 	allowlist, err := c.Ent.AllowList.Create().
@@ -403,7 +406,6 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 	totalCount := 0
 
 	// Get all non-expired allowlist items
-	// We will match them one by one against all decisions
 	allowlistItems, err := c.Ent.AllowListItem.Query().
 		Where(
 			allowlistitem.Or(
@@ -415,53 +417,85 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 		return 0, fmt.Errorf("unable to get allowlist items: %w", err)
 	}
 
-	now := time.Now().UTC()
+	if len(allowlistItems) == 0 {
+		return 0, nil
+	}
+
+	ipv4Items := make([]*ent.AllowListItem, 0)
+	ipv6Items := make([]*ent.AllowListItem, 0)
 
 	for _, item := range allowlistItems {
-		updateQuery := c.Ent.Decision.Update().SetUntil(now).Where(decision.UntilGTE(now))
-
 		switch item.IPSize {
 		case 4:
-			updateQuery = updateQuery.Where(
-				decision.And(
-					decision.IPSizeEQ(4),
+			ipv4Items = append(ipv4Items, item)
+		case 16:
+			ipv6Items = append(ipv6Items, item)
+		default:
+			c.Log.Errorf("unexpected IP size %d for allowlist item %s", item.IPSize, item.Value)
+		}
+	}
+
+	now := time.Now().UTC()
+
+	if len(ipv4Items) > 0 {
+		count, err := c.applyAllowlistBatch(ctx, ipv4Items, 4, now, allowlistExpireDecisionsBatchSize)
+		if err != nil {
+			c.Log.Errorf("unable to apply IPv4 allowlists: %s", err)
+		} else {
+			totalCount += count
+		}
+	}
+
+	if len(ipv6Items) > 0 {
+		count, err := c.applyAllowlistBatch(ctx, ipv6Items, 16, now, allowlistExpireDecisionsBatchSize)
+		if err != nil {
+			c.Log.Errorf("unable to apply IPv6 allowlists: %s", err)
+		} else {
+			totalCount += count
+		}
+	}
+
+	return totalCount, nil
+}
+
+func (c *Client) applyAllowlistBatch(ctx context.Context, items []*ent.AllowListItem, ipSize int64, now time.Time, batchSize int) (int, error) {
+	totalCount := 0
+
+	for i := 0; i < len(items); i += batchSize {
+		end := min(i+batchSize, len(items))
+
+		batch := items[i:end]
+
+		var conditions []predicate.Decision
+
+		for _, item := range batch {
+			if ipSize == 4 {
+				conditions = append(conditions,
 					decision.Or(
-						decision.And(
-							decision.StartIPLTE(item.StartIP),
-							decision.EndIPGTE(item.EndIP),
-						),
+						// Decision contained inside allowlist range or exact match
 						decision.And(
 							decision.StartIPGTE(item.StartIP),
 							decision.EndIPLTE(item.EndIP),
 						),
-					)))
-		case 16:
-			updateQuery = updateQuery.Where(
-				decision.And(
-					decision.IPSizeEQ(16),
-					decision.Or(
+						// Decision contains allowlist range
 						decision.And(
-							decision.Or(
-								decision.StartIPLT(item.StartIP),
-								decision.And(
-									decision.StartIPEQ(item.StartIP),
-									decision.StartSuffixLTE(item.StartSuffix),
-								)),
-							decision.Or(
-								decision.EndIPGT(item.EndIP),
-								decision.And(
-									decision.EndIPEQ(item.EndIP),
-									decision.EndSuffixGTE(item.EndSuffix),
-								),
-							),
+							decision.StartIPLTE(item.StartIP),
+							decision.EndIPGTE(item.EndIP),
 						),
+					),
+				)
+			} else { // ipSize == 16
+				conditions = append(conditions,
+					decision.Or(
+						// Decision contained inside allowlist range or exact match
 						decision.And(
 							decision.Or(
 								decision.StartIPGT(item.StartIP),
 								decision.And(
 									decision.StartIPEQ(item.StartIP),
 									decision.StartSuffixGTE(item.StartSuffix),
-								)),
+								),
+							),
 							decision.Or(
 								decision.EndIPLT(item.EndIP),
 								decision.And(
@@ -470,23 +504,43 @@ func (c *Client) ApplyAllowlistsToExistingDecisions(ctx context.Context) (int, e
 								),
 							),
 						),
+						// Decision contains allowlist range
+						decision.And(
+							decision.Or(
+								decision.StartIPLT(item.StartIP),
+								decision.And(
+									decision.StartIPEQ(item.StartIP),
+									decision.StartSuffixLTE(item.StartSuffix),
+								),
+							),
+							decision.Or(
+								decision.EndIPGT(item.EndIP),
+								decision.And(
+									decision.EndIPEQ(item.EndIP),
+									decision.EndSuffixGTE(item.EndSuffix),
+								),
+							),
+						),
 					),
-				),
-			)
-		default:
-			// This should never happen
-			// But better safe than sorry and just skip it instead of expiring all decisions
-			c.Log.Errorf("unexpected IP size %d for allowlist item %s", item.IPSize, item.Value)
-			continue
+				)
+			}
 		}
-		// Update the decisions
-		count, err := updateQuery.Save(ctx)
+
+		count, err := c.Ent.Decision.Update().
+			SetUntil(now).
+			Where(
+				decision.UntilGTE(now),
+				decision.IPSizeEQ(ipSize),
+				decision.Or(conditions...),
+			).
+			Save(ctx)
+
 		if err != nil {
-			c.Log.Errorf("unable to expire existing decisions: %s", err)
-			continue
+			return totalCount, fmt.Errorf("unable to expire decisions for batch: %w", err)
 		}
 
 		totalCount += count
+		c.Log.Debugf("expired %d decisions for batch of %d allowlist items", count, len(batch))
 	}
 
 	return totalCount, nil

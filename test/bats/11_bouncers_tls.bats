@@ -191,12 +191,14 @@ teardown() {
 }
 
 @test "simulate a bouncer request with an invalid cert" {
-    rune -77 curl --fail-with-body -sS \
+    rune curl --fail-with-body -sS \
         --cert "$tmpdir/leaf_invalid.pem" \
         --key "$tmpdir/leaf_invalid-key.pem" \
-        --cacert "$tmpdir/root-key.pem" \
+        --cacert "$tmpdir/bundle.pem" \
         https://localhost:8080/v1/decisions\?ip=42.42.42.42
-    assert_stderr --partial 'error setting certificate file'
+    # 55 or 56 depending on whether the TLS alert arrives while sending or receiving
+    [[ "$status" -eq 55 || "$status" -eq 56 ]] || fail "unexpected curl exit code $status"
+    assert_stderr --partial 'tlsv1 alert unknown ca'
     rune -0 cscli bouncers list -o json
     assert_output "[]"
 }

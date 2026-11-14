@@ -38,7 +38,7 @@ func (*TriggerProcessor) OnBucketPour(_ *BucketFactory, msg pipeline.Event, l *L
 
 	l.logger.Debug("Bucket overflow")
 	l.Queue.Add(msg)
-	l.Out <- l.Queue
+	l.pendingOverflow = l.Queue
 
 	return nil
 }

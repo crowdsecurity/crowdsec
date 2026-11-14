@@ -11,18 +11,16 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/ptr"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/metric"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // updateBaseMetrics updates the base metrics for a machine or bouncer
-func (c *Controller) updateBaseMetrics(ctx context.Context, machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64) error {
+func (c *Controller) updateBaseMetrics(ctx context.Context, machineID string, bouncer *ent.Bouncer, baseMetrics models.BaseMetrics, hubItems models.HubItems, datasources map[string]int64, features []string) error {
 	switch {
 	case machineID != "":
-		return c.DBClient.MachineUpdateBaseMetrics(ctx, machineID, baseMetrics, hubItems, datasources)
+		return c.DBClient.MachineUpdateBaseMetrics(ctx, machineID, baseMetrics, hubItems, datasources, features)
 	case bouncer != nil:
 		return c.DBClient.BouncerUpdateBaseMetrics(ctx, bouncer.Name, bouncer.Type, baseMetrics)
 	default:
@@ -98,6 +96,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		baseMetrics models.BaseMetrics
 		hubItems    models.HubItems
 		datasources map[string]int64
+		features    []string
 	)
 
 	switch len(input.LogProcessors) {
@@ -127,6 +126,7 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 		baseMetrics = item0.BaseMetrics
 		hubItems = item0.HubItems
 		datasources = item0.Datasources
+		features = item0.Features
 	default:
 		logger.Errorf("Payload has more than one log processor")
 		// this is not checked in the swagger schema
@@ -166,14 +166,14 @@ func (c *Controller) UsageMetrics(gctx *gin.Context) {
 
 	if baseMetrics.Os == nil {
 		baseMetrics.Os = &models.OSversion{
-			Name:    ptr.Of(""),
-			Version: ptr.Of(""),
+			Name:    new(""),
+			Version: new(""),
 		}
 	}
 
 	ctx := gctx.Request.Context()
 
-	err := c.updateBaseMetrics(ctx, machineID, bouncer, baseMetrics, hubItems, datasources)
+	err := c.updateBaseMetrics(ctx, machineID, bouncer, baseMetrics, hubItems, datasources, features)
 	if err != nil {
 		logger.Errorf("Failed to update base metrics: %s", err)
 		c.HandleDBErrors(gctx, err)

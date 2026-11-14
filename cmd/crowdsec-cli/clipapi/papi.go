@@ -9,9 +9,11 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/consolestatus"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -33,6 +35,10 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
@@ -55,38 +61,22 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 func (cli *cliPapi) Status(ctx context.Context, out io.Writer, db *database.Client) error {
 	cfg := cli.cfg()
 
-	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
+	info, err := consolestatus.QueryPAPIInfo(ctx, cfg.API.Server, db)
 	if err != nil {
-		return fmt.Errorf("unable to initialize API client: %w", err)
+		return err
 	}
 
-	papiLogger := cfg.API.Server.NewPAPILogger()
-	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
-	if err != nil {
-		return fmt.Errorf("unable to initialize PAPI client: %w", err)
-	}
-
-	perms, err := papi.GetPermissions(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to get PAPI permissions: %w", err)
-	}
-
-	lastTimestampStr, err := db.GetConfigItem(ctx, apiserver.PapiPullKey)
-	if err != nil {
-		lastTimestampStr = "never"
-	}
-
-	// both can and did happen
-	if lastTimestampStr == "" || lastTimestampStr == "0001-01-01T00:00:00Z" {
-		lastTimestampStr = "never"
+	lastOrder := info.LastOrder
+	if cfg.Cscli.Output == "human" {
+		lastOrder = csformat.LocalTimestamp(lastOrder)
 	}
 
 	fmt.Fprint(out, "You can successfully interact with Polling API (PAPI)\n")
-	fmt.Fprintf(out, "Console plan: %s\n", perms.Plan)
-	fmt.Fprintf(out, "Last order received: %s\n", lastTimestampStr)
+	fmt.Fprintf(out, "Console plan: %s\n", info.Plan)
+	fmt.Fprintf(out, "Last order received: %s\n", lastOrder)
 	fmt.Fprint(out, "PAPI subscriptions:\n")
 
-	for _, sub := range perms.Categories {
+	for _, sub := range info.Categories {
 		fmt.Fprintf(out, " - %s\n", sub)
 	}
 
@@ -117,14 +107,14 @@ func (cli *cliPapi) newStatusCmd() *cobra.Command {
 
 func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 	cfg := cli.cfg()
-	t := tomb.Tomb{}
 
 	apic, err := apiserver.NewAPIC(ctx, cfg.API.Server.OnlineClient, db, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 	if err != nil {
 		return fmt.Errorf("unable to initialize API client: %w", err)
 	}
 
-	t.Go(func() error { return apic.Push(ctx) })
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return apic.Push(ctx) })
 
 	papiLogger := cfg.API.Server.NewPAPILogger()
 	papi, err := apiserver.NewPAPI(apic, db, cfg.API.Server.ConsoleConfig, papiLogger)
@@ -132,7 +122,7 @@ func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 		return fmt.Errorf("unable to initialize PAPI client: %w", err)
 	}
 
-	t.Go(func() error { return papi.SyncDecisions(ctx) })
+	g.Go(func() error { return papi.SyncDecisions(ctx) })
 
 	err = papi.PullOnce(ctx, time.Time{}, true)
 	if err != nil {
@@ -143,7 +133,7 @@ func (cli *cliPapi) sync(ctx context.Context, db *database.Client) error {
 
 	apic.Shutdown()
 	papi.Shutdown()
-	_ = t.Wait()
+	_ = g.Wait()
 	time.Sleep(5 * time.Second) // FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
 	return nil

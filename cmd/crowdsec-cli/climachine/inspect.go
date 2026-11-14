@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/clientinfo"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/csformat"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/cstable"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -84,9 +85,9 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 
 	t.AppendRows([]table.Row{
 		{"IP Address", machine.IpAddress},
-		{"Created At", machine.CreatedAt},
-		{"Last Update", machine.UpdatedAt},
-		{"Last Heartbeat", machine.LastHeartbeat},
+		{"Created At", csformat.LocalTime(machine.CreatedAt)},
+		{"Last Update", csformat.LocalTime(machine.UpdatedAt)},
+		{"Last Heartbeat", csformat.LocalTimePtr(machine.LastHeartbeat)},
 		{"Validated?", machine.IsValidated},
 		{"CrowdSec version", machine.Version},
 		{"OS", clientinfo.GetOSNameAndVersion(machine)},
@@ -99,6 +100,10 @@ func (cli *cliMachines) inspectHuman(out io.Writer, machine *ent.Machine) {
 
 	for _, ff := range clientinfo.GetFeatureFlagList(machine) {
 		t.AppendRow(table.Row{"Feature Flags", ff})
+	}
+
+	for _, feature := range machine.Features {
+		t.AppendRow(table.Row{"Features", feature})
 	}
 
 	for _, coll := range machine.Hubstate[cwhub.COLLECTIONS] {

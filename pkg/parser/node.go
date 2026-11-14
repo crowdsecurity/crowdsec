@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -11,11 +12,9 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/grokky"
+	"github.com/crowdsecurity/crowdsec/pkg/grok"
 
-	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -23,50 +22,47 @@ import (
 )
 
 type Node struct {
-	FormatVersion string `yaml:"format"`
-	// Enable config + runtime debug of node via config o/
-	Debug bool `yaml:"debug,omitempty"`
-	// If enabled, the node (and its child) will report their own statistics
-	Profiling bool `yaml:"profiling,omitempty"`
-	// Name, author, description and reference(s) for parser pattern
-	Name        string   `yaml:"name,omitempty"`
-	Author      string   `yaml:"author,omitempty"`
-	Description string   `yaml:"description,omitempty"`
-	References  []string `yaml:"references,omitempty"`
+	NodeConfig `yaml:",inline"`
 	// if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
-	// This is mostly a hack to make writing less repetitive.
-	// relying on stage, we know which field to parse, and we
-	// can also promote log to next stage on success
-	Stage string `yaml:"stage,omitempty"`
-	// OnSuccess allows to tag a node to be able to move log to next stage on success
-	OnSuccess string `yaml:"onsuccess,omitempty"`
-	rn        string // this is only for us in debug, a random generated name for each node
+	rn     string     // this is only for us in debug, a random generated name for each node
 	// Filter is executed at runtime (with current log line as context)
 	// and must succeed or node is exited
-	Filter        string      `yaml:"filter,omitempty"`
 	RunTimeFilter *vm.Program `yaml:"-"` // the actual compiled filter
 	// If node has leafs, execute all of them until one asks for a 'break'
-	LeavesNodes []Node `yaml:"nodes,omitempty"`
+	LeavesNodes []Node `yaml:"-"`
 	// Flag used to describe when to 'break' or return an 'error'
 	EnrichFunctions EnricherCtx
 
-	/* If the node is actually a leaf, it can have : grok, enrich, statics */
-	// pattern_syntax are named grok patterns that are re-utilized over several grok patterns
-	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
+	RuntimeGrok    RuntimeGrokPattern `yaml:"-"`
+	RuntimeStatics []RuntimeStatic    `yaml:"-"`
+	RuntimeStashes []RuntimeStash     `yaml:"-"`
+}
 
-	// Holds a grok pattern
-	Grok        GrokPattern        `yaml:"grok,omitempty"`
-	RuntimeGrok RuntimeGrokPattern `yaml:"-"`
-	// Statics can be present in any type of node and is executed last
-	Statics        []Static        `yaml:"statics,omitempty"`
-	RuntimeStatics []RuntimeStatic `yaml:"-"`
-	// Stash allows to capture data from the log line and store it in an accessible cache
-	Stashes []Stash `yaml:"stash,omitempty"`
-	RuntimeStashes []RuntimeStash `yaml:"-"`
-	// Whitelists
-	Whitelist Whitelist                  `yaml:"whitelist,omitempty"`
-	Data      []*enrichment.DataProvider `yaml:"data,omitempty"`
+func (n *Node) UnmarshalYAML(unmarshal func(any) error) error {
+	var cfg NodeConfig
+	if err := unmarshal(&cfg); err != nil {
+		return err
+	}
+
+	// Reset node and assign config.
+	*n = Node{NodeConfig: cfg}
+	n.initRuntimeChildrenFromConfig()
+	return nil
+}
+
+func (n *Node) initRuntimeChildrenFromConfig() {
+	subNodes := n.NodeConfig.SubNodes
+	if len(subNodes) == 0 {
+		n.LeavesNodes = nil
+		return
+	}
+	n.LeavesNodes = make([]Node, len(subNodes))
+	for i := range subNodes {
+		child := Node{NodeConfig: subNodes[i]}
+		child.initRuntimeChildrenFromConfig()
+		n.LeavesNodes[i] = child
+	}
 }
 
 func (n *Node) validate(ectx EnricherCtx) error {
@@ -219,9 +215,8 @@ func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (boo
 		groklabel = n.Grok.RegexpName
 	}
 
-	grok := n.RuntimeGrok.RunTimeRegexp.Parse(gstr)
-
-	if len(grok) == 0 {
+	// captures are written straight into Parsed.
+	if !n.RuntimeGrok.RunTimeRegexp.ParseInto(gstr, p.Parsed) {
 		// grok failed, node failed
 		clog.Debugf("+ Grok %q didn't return data on %q", groklabel, gstr)
 		return false, false, nil
@@ -230,11 +225,12 @@ func (n *Node) processGrok(p *pipeline.Event, cachedExprEnv map[string]any) (boo
 	// tag explicitly that the *current* node had a successful grok pattern. it's important to know success state
 	nodeHasOKGrok = true
 
-	clog.Debugf("+ Grok %q returned %d entries to merge in Parsed", groklabel, len(grok))
-	// We managed to grok stuff, merged into parse
-	for k, v := range grok {
-		clog.Debugf("\t.Parsed[%q] = %q", k, v)
-		p.Parsed[k] = v
+	if clog.Logger.IsLevelEnabled(log.DebugLevel) {
+		names := n.RuntimeGrok.RunTimeRegexp.Names()
+		clog.Debugf("+ Grok %q returned %d entries to merge in Parsed", groklabel, len(names))
+		for _, k := range names {
+			clog.Debugf("\t.Parsed[%q] = %q", k, p.Parsed[k])
+		}
 	}
 	// if the grok succeed, process associated statics
 	err := n.RuntimeGrok.ProcessStatics(p, n.EnrichFunctions, clog, n.Debug)
@@ -380,7 +376,7 @@ func (n *Node) process(p *pipeline.Event, ctx UnixParserCtx, expressionEnv map[s
 		log.Trace("node is successful, check strategy")
 
 		if n.OnSuccess == "next_stage" {
-			idx := stageidx(p.Stage, ctx.Stages)
+			idx := slices.Index(ctx.Stages, p.Stage)
 			// we're at the last stage
 			if idx+1 == len(ctx.Stages) {
 				clog.Debugf("node reached the last stage: %s", p.Stage)
@@ -446,7 +442,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Logger.Tracef("Adding subpattern '%s': '%s'", pattern.Key, pattern.Value)
 
 		if err = pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
-			if errors.Is(err, grokky.ErrAlreadyExist) {
+			if errors.Is(err, grok.ErrAlreadyExist) {
 				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
 			}

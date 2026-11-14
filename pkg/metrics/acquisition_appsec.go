@@ -37,6 +37,16 @@ var AppsecOutbandParsingHistogram = prometheus.NewHistogramVec(
 	[]string{"source", "appsec_engine"},
 )
 
+const AppsecOutOfBandDroppedMetricName = "cs_appsec_outofband_dropped_total"
+
+var AppsecOutOfBandDropped = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecOutOfBandDroppedMetricName,
+		Help: "Requests not evaluated by out-of-band rules because the out-of-band queue was full.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
 const AppsecReqCounterMetricName = "cs_appsec_reqs_total"
 
 var AppsecReqCounter = prometheus.NewCounterVec(
@@ -65,4 +75,166 @@ var AppsecRuleHits = prometheus.NewCounterVec(
 		Help: "Count of triggered rule, by rule_name, type (inband/outofband), appsec_engine and source",
 	},
 	[]string{"rule_name", "type", "appsec_engine", "source"},
+)
+
+const AppsecFingerprintMismatchMetricName = "cs_appsec_fingerprint_mismatch_total"
+
+var AppsecFingerprintMismatch = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecFingerprintMismatchMetricName,
+		Help: "Count of fingerprint mismatch signals fired per reason and severity.",
+	},
+	[]string{"reason", "severity", "appsec_engine"},
+)
+
+// Bot detection / WAF challenge lifecycle counters. The funnel is
+// requested → submitted → accepted | rejected, with a `kind` label
+// distinguishing sub-outcomes (e.g. accepted{kind="granted"} for operator
+// allowlist grants, rejected{kind="cookie"} for tampered/expired cookies
+// caught on subsequent requests).
+
+const AppsecChallengeRequestedMetricName = "cs_appsec_challenge_requested_total"
+
+var AppsecChallengeRequested = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeRequestedMetricName,
+		Help: "Total challenges served by the Application Security Engine.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
+const AppsecChallengeSubmittedMetricName = "cs_appsec_challenge_submitted_total"
+
+var AppsecChallengeSubmitted = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeSubmittedMetricName,
+		Help: "Total challenge responses received by the Application Security Engine.",
+	},
+	[]string{"source", "appsec_engine"},
+)
+
+const AppsecChallengeAcceptedMetricName = "cs_appsec_challenge_accepted_total"
+
+// AppsecChallengeAccepted carries an extra `reason` label so operator-driven
+// grants (kind="granted") can be split by the GrantChallengeCookie reason.
+// For kind="solved" the label is empty: regular submissions have no
+// per-issue reason.
+var AppsecChallengeAccepted = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeAcceptedMetricName,
+		Help: "Total challenge cookies issued, by kind (solved=valid submission, granted=GrantChallengeCookie) and (for granted) operator-supplied reason.",
+	},
+	[]string{"source", "appsec_engine", "kind", "reason"},
+)
+
+const AppsecChallengeRejectedMetricName = "cs_appsec_challenge_rejected_total"
+
+var AppsecChallengeRejected = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeRejectedMetricName,
+		Help: "Total challenge/cookie rejections, by kind (protocol=crypto/PoW failure, submission=RejectSubmission, cookie=invalid incoming cookie) and reason.",
+	},
+	[]string{"source", "appsec_engine", "kind", "reason"},
+)
+
+const AppsecChallengeExemptMetricName = "cs_appsec_challenge_exempt_total"
+
+// AppsecChallengeExempt counts requests flagged exempt from the challenge by
+// the ExemptFromChallenge helper, split by the mandatory reason (a bot kind
+// like "gptbot" or a path class like "api"). Counted once per request.
+var AppsecChallengeExempt = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeExemptMetricName,
+		Help: "Total requests exempt from the challenge, by reason (bot kind or path class).",
+	},
+	[]string{"source", "appsec_engine", "reason"},
+)
+
+const AppsecValidationOKCounterMetricName = "cs_appsec_validation_ok_total"
+
+// AppsecValidationOKCounter counts successful OpenAPI schema validations.
+var AppsecValidationOKCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecValidationOKCounterMetricName,
+		Help: "Count of requests that passed OpenAPI schema validation, by schema_ref.",
+	},
+	[]string{"source", "appsec_engine", "schema_ref"},
+)
+
+const AppsecValidationFailedCounterMetricName = "cs_appsec_validation_failed_total"
+
+// AppsecValidationFailedCounter counts failed OpenAPI schema validations.
+// reason is one of a fixed set — "parameter", "request_body", "security",
+// "route_not_found", "method_not_allowed", "internal".
+var AppsecValidationFailedCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecValidationFailedCounterMetricName,
+		Help: "Count of requests that failed OpenAPI schema validation, by schema_ref and reason.",
+	},
+	[]string{"source", "appsec_engine", "schema_ref", "reason"},
+)
+
+const AppsecRateLimitedMetricName = "cs_appsec_rate_limited_total"
+
+var AppsecRateLimited = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecRateLimitedMetricName,
+		Help: "Total requests rejected by RateLimit(), by key.",
+	},
+	[]string{"source", "appsec_engine", "key"},
+)
+
+const AppsecRateLimitersMetricName = "cs_appsec_rate_limiters"
+
+var AppsecRateLimiters = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: AppsecRateLimitersMetricName,
+		Help: "Number of sources currently tracked by RateLimit(), by key.",
+	},
+	[]string{"appsec_engine", "key"},
+)
+
+// Bot detection / WAF challenge infrastructure counters. These track the
+// internal upkeep of the challenge runtime rather than visitor behavior.
+
+const AppsecChallengeKepochGeneratedMetricName = "cs_appsec_challenge_kepoch_generated_total"
+
+var AppsecChallengeKepochGenerated = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeKepochGeneratedMetricName,
+		Help: "Total per-epoch challenge signing keys derived (k_epoch regenerations).",
+	},
+)
+
+const AppsecChallengeKepochEvictedMetricName = "cs_appsec_challenge_kepoch_evicted_total"
+
+var AppsecChallengeKepochEvicted = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeKepochEvictedMetricName,
+		Help: "Total per-epoch challenge signing keys evicted from the keyring cache (generated minus evicted is the live cache size).",
+	},
+)
+
+const AppsecChallengeReobfuscationMetricName = "cs_appsec_challenge_reobfuscation_total"
+
+// Each obfuscation pass is CPU-expensive, so this is the headline signal for
+// obfuscator load. Only the per-epoch sign-key module is re-obfuscated at
+// runtime now (bundle="dynamic"); the public challenge code is obfuscated once
+// at build time and the fpscanner is served unobfuscated, so the historical
+// bundle="library" series is retired.
+var AppsecChallengeReobfuscation = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeReobfuscationMetricName,
+		Help: "Total JS obfuscation passes run by the challenge runtime, by bundle (dynamic=per-epoch sign-key module).",
+	},
+	[]string{"bundle"},
+)
+
+const AppsecChallengeDynamicModuleEvictedMetricName = "cs_appsec_challenge_dynamic_module_evicted_total"
+
+var AppsecChallengeDynamicModuleEvicted = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: AppsecChallengeDynamicModuleEvictedMetricName,
+		Help: "Total per-epoch dynamic-module cache entries evicted once their epoch left the keyring live window.",
+	},
 )

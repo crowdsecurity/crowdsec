@@ -23,44 +23,44 @@ type MetricUpdate struct {
 }
 
 // Where appends a list predicates to the MetricUpdate builder.
-func (mu *MetricUpdate) Where(ps ...predicate.Metric) *MetricUpdate {
-	mu.mutation.Where(ps...)
-	return mu
+func (_u *MetricUpdate) Where(ps ...predicate.Metric) *MetricUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetPushedAt sets the "pushed_at" field.
-func (mu *MetricUpdate) SetPushedAt(t time.Time) *MetricUpdate {
-	mu.mutation.SetPushedAt(t)
-	return mu
+func (_u *MetricUpdate) SetPushedAt(v time.Time) *MetricUpdate {
+	_u.mutation.SetPushedAt(v)
+	return _u
 }
 
 // SetNillablePushedAt sets the "pushed_at" field if the given value is not nil.
-func (mu *MetricUpdate) SetNillablePushedAt(t *time.Time) *MetricUpdate {
-	if t != nil {
-		mu.SetPushedAt(*t)
+func (_u *MetricUpdate) SetNillablePushedAt(v *time.Time) *MetricUpdate {
+	if v != nil {
+		_u.SetPushedAt(*v)
 	}
-	return mu
+	return _u
 }
 
 // ClearPushedAt clears the value of the "pushed_at" field.
-func (mu *MetricUpdate) ClearPushedAt() *MetricUpdate {
-	mu.mutation.ClearPushedAt()
-	return mu
+func (_u *MetricUpdate) ClearPushedAt() *MetricUpdate {
+	_u.mutation.ClearPushedAt()
+	return _u
 }
 
 // Mutation returns the MetricMutation object of the builder.
-func (mu *MetricUpdate) Mutation() *MetricMutation {
-	return mu.mutation
+func (_u *MetricUpdate) Mutation() *MetricMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (mu *MetricUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks(ctx, mu.sqlSave, mu.mutation, mu.hooks)
+func (_u *MetricUpdate) Save(ctx context.Context) (int, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (mu *MetricUpdate) SaveX(ctx context.Context) int {
-	affected, err := mu.Save(ctx)
+func (_u *MetricUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -68,34 +68,34 @@ func (mu *MetricUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (mu *MetricUpdate) Exec(ctx context.Context) error {
-	_, err := mu.Save(ctx)
+func (_u *MetricUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (mu *MetricUpdate) ExecX(ctx context.Context) {
-	if err := mu.Exec(ctx); err != nil {
+func (_u *MetricUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
-func (mu *MetricUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *MetricUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(metric.Table, metric.Columns, sqlgraph.NewFieldSpec(metric.FieldID, field.TypeInt))
-	if ps := mu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := mu.mutation.PushedAt(); ok {
+	if value, ok := _u.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
 	}
-	if mu.mutation.PushedAtCleared() {
+	if _u.mutation.PushedAtCleared() {
 		_spec.ClearField(metric.FieldPushedAt, field.TypeTime)
 	}
-	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{metric.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -103,8 +103,8 @@ func (mu *MetricUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	mu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // MetricUpdateOne is the builder for updating a single Metric entity.
@@ -116,51 +116,51 @@ type MetricUpdateOne struct {
 }
 
 // SetPushedAt sets the "pushed_at" field.
-func (muo *MetricUpdateOne) SetPushedAt(t time.Time) *MetricUpdateOne {
-	muo.mutation.SetPushedAt(t)
-	return muo
+func (_u *MetricUpdateOne) SetPushedAt(v time.Time) *MetricUpdateOne {
+	_u.mutation.SetPushedAt(v)
+	return _u
 }
 
 // SetNillablePushedAt sets the "pushed_at" field if the given value is not nil.
-func (muo *MetricUpdateOne) SetNillablePushedAt(t *time.Time) *MetricUpdateOne {
-	if t != nil {
-		muo.SetPushedAt(*t)
+func (_u *MetricUpdateOne) SetNillablePushedAt(v *time.Time) *MetricUpdateOne {
+	if v != nil {
+		_u.SetPushedAt(*v)
 	}
-	return muo
+	return _u
 }
 
 // ClearPushedAt clears the value of the "pushed_at" field.
-func (muo *MetricUpdateOne) ClearPushedAt() *MetricUpdateOne {
-	muo.mutation.ClearPushedAt()
-	return muo
+func (_u *MetricUpdateOne) ClearPushedAt() *MetricUpdateOne {
+	_u.mutation.ClearPushedAt()
+	return _u
 }
 
 // Mutation returns the MetricMutation object of the builder.
-func (muo *MetricUpdateOne) Mutation() *MetricMutation {
-	return muo.mutation
+func (_u *MetricUpdateOne) Mutation() *MetricMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the MetricUpdate builder.
-func (muo *MetricUpdateOne) Where(ps ...predicate.Metric) *MetricUpdateOne {
-	muo.mutation.Where(ps...)
-	return muo
+func (_u *MetricUpdateOne) Where(ps ...predicate.Metric) *MetricUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (muo *MetricUpdateOne) Select(field string, fields ...string) *MetricUpdateOne {
-	muo.fields = append([]string{field}, fields...)
-	return muo
+func (_u *MetricUpdateOne) Select(field string, fields ...string) *MetricUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Metric entity.
-func (muo *MetricUpdateOne) Save(ctx context.Context) (*Metric, error) {
-	return withHooks(ctx, muo.sqlSave, muo.mutation, muo.hooks)
+func (_u *MetricUpdateOne) Save(ctx context.Context) (*Metric, error) {
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (muo *MetricUpdateOne) SaveX(ctx context.Context) *Metric {
-	node, err := muo.Save(ctx)
+func (_u *MetricUpdateOne) SaveX(ctx context.Context) *Metric {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -168,26 +168,26 @@ func (muo *MetricUpdateOne) SaveX(ctx context.Context) *Metric {
 }
 
 // Exec executes the query on the entity.
-func (muo *MetricUpdateOne) Exec(ctx context.Context) error {
-	_, err := muo.Save(ctx)
+func (_u *MetricUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (muo *MetricUpdateOne) ExecX(ctx context.Context) {
-	if err := muo.Exec(ctx); err != nil {
+func (_u *MetricUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
-func (muo *MetricUpdateOne) sqlSave(ctx context.Context) (_node *Metric, err error) {
+func (_u *MetricUpdateOne) sqlSave(ctx context.Context) (_node *Metric, err error) {
 	_spec := sqlgraph.NewUpdateSpec(metric.Table, metric.Columns, sqlgraph.NewFieldSpec(metric.FieldID, field.TypeInt))
-	id, ok := muo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Metric.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := muo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, metric.FieldID)
 		for _, f := range fields {
@@ -199,23 +199,23 @@ func (muo *MetricUpdateOne) sqlSave(ctx context.Context) (_node *Metric, err err
 			}
 		}
 	}
-	if ps := muo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := muo.mutation.PushedAt(); ok {
+	if value, ok := _u.mutation.PushedAt(); ok {
 		_spec.SetField(metric.FieldPushedAt, field.TypeTime, value)
 	}
-	if muo.mutation.PushedAtCleared() {
+	if _u.mutation.PushedAtCleared() {
 		_spec.ClearField(metric.FieldPushedAt, field.TypeTime)
 	}
-	_node = &Metric{config: muo.config}
+	_node = &Metric{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{metric.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -223,6 +223,6 @@ func (muo *MetricUpdateOne) sqlSave(ctx context.Context) (_node *Metric, err err
 		}
 		return nil, err
 	}
-	muo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

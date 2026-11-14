@@ -1,0 +1,21 @@
+
+#
+# Format 1:
+#
+# [43569] 27 Aug 12:38:58.471 * RDB: 12 MB of memory used by copy-on-write
+#
+
+#
+# Format 2:
+#
+# 31493:M 17 Sep 09:02:54.807 # Server started, Redis version 3.0.2
+# 31493:M 17 Sep 09:02:54.807 # WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm$
+# 31493:M 17 Sep 09:02:54.807 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
+# 31493:M 17 Sep 09:02:54.807 * DB loaded from disk: 0.000 seconds
+# 31493:M 17 Sep 09:02:54.807 * The server is now ready to accept connections on port 6379
+#
+
+REDISTIMESTAMP %{MONTHDAY} %{MONTH} %{TIME}
+REDISLOG \[%{POSINT:pid}\] %{REDISTIMESTAMP:time} \*\s
+REDISLOG1 %{REDISLOG}
+REDISLOG2 %{POSINT:pid}:M %{REDISTIMESTAMP:time} [*#] %{GREEDYDATA:message}

@@ -81,20 +81,16 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DBClient(ctx context.Context, dbcfg *csconfig.DatabaseCfg) (*database.Client, error) {
+	if dbcfg == nil {
+		return nil, errors.New("no database configuration provided")
+	}
+
 	db, err := database.NewClient(ctx, dbcfg, dbcfg.NewLogger())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	return db, nil
-}
-
-func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(true); err != nil {
-		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
-	}
-
-	return nil
 }
 
 func HubDownloader(ctx context.Context, c *csconfig.Config) (*cwhub.Downloader, error) {

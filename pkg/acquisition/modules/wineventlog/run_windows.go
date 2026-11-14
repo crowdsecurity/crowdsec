@@ -172,7 +172,7 @@ OUTER_LOOP:
 
 func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/wineventlog/streaming")
+		defer trace.ReportPanic()
 		return s.getEvents(out, t)
 	})
 	return nil

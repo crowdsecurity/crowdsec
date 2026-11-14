@@ -26,7 +26,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clibouncer"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clicapi"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clihub"
@@ -34,6 +33,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climachine"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/climetrics"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/clipapi"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/args"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/core/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -226,9 +226,20 @@ func (cli *cliSupport) dumpHubItems(zw *zip.Writer, hub *cwhub.Hub) error {
 	}
 
 	out := new(bytes.Buffer)
-	ch := clihub.New(cli.cfg)
 
-	if err := ch.List(out, hub, false); err != nil {
+	// dump every installed item for diagnostics, not the collection-centric "cscli hub list" view
+	items := make(map[string][]*cwhub.Item)
+
+	for _, itemType := range cwhub.ItemTypes {
+		selected, err := clihub.SelectItems(hub, itemType, nil, true)
+		if err != nil {
+			return err
+		}
+
+		items[itemType] = selected
+	}
+
+	if err := clihub.ListItems(out, "no", cwhub.ItemTypes, items, true, "human"); err != nil {
 		return err
 	}
 
@@ -362,7 +373,7 @@ func (cli *cliSupport) dumpConfigYAML(zw *zip.Writer) error {
 	return nil
 }
 
-func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheusCfg csconfig.PrometheusCfg, endpoint string) error {
+func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, pprofCfg csconfig.PProfCfg, endpoint string) error {
 	fmt.Fprintf(os.Stdout, "Collecting pprof/%s data\n", endpoint)
 
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -374,8 +385,8 @@ func (cli *cliSupport) dumpPprof(ctx context.Context, zw *zip.Writer, prometheus
 		fmt.Sprintf(
 			"http://%s/debug/pprof/%s",
 			net.JoinHostPort(
-				prometheusCfg.ListenAddr,
-				strconv.Itoa(prometheusCfg.ListenPort),
+				pprofCfg.ListenAddr,
+				strconv.Itoa(pprofCfg.ListenPort),
 			),
 			endpoint,
 		),
@@ -462,6 +473,10 @@ func (cli *cliSupport) NewCommand() *cobra.Command {
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
 		DisableAutoGenTag: true,
+		Args:              args.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Usage()
+		},
 	}
 
 	cmd.AddCommand(cli.NewDumpCmd())
@@ -601,20 +616,24 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) erro
 
 		// call pprof separately, one might fail for timeout
 
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "goroutine"); err != nil {
-			log.Warnf("could not collect pprof goroutine data: %s", err)
-		}
-
-		if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "heap"); err != nil {
-			log.Warnf("could not collect pprof heap data: %s", err)
-		}
-
-		if !fast {
-			fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
-
-			if err = cli.dumpPprof(ctx, zipWriter, *cfg.Prometheus, "profile"); err != nil {
-				log.Warnf("could not collect pprof cpu data: %s", err)
+		if cfg.PProf != nil && cfg.PProf.Enabled != nil && *cfg.PProf.Enabled {
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "goroutine"); err != nil {
+				log.Warnf("could not collect pprof goroutine data: %s", err)
 			}
+
+			if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "heap"); err != nil {
+				log.Warnf("could not collect pprof heap data: %s", err)
+			}
+
+			if !fast {
+				fmt.Fprintln(os.Stdout, "The next operation will monitor the CPU usage for 30 seconds. Thank you for your patience.")
+
+				if err = cli.dumpPprof(ctx, zipWriter, *cfg.PProf, "profile"); err != nil {
+					log.Warnf("could not collect pprof cpu data: %s", err)
+				}
+			}
+		} else {
+			log.Info("pprof is disabled, skipping pprof collection")
 		}
 
 		cli.dumpProfiles(zipWriter)
@@ -663,7 +682,7 @@ func (cli *cliSupport) dump(ctx context.Context, outFile string, fast bool) erro
 func (cli *cliSupport) NewDumpCmd() *cobra.Command {
 	var (
 		outFile string
-		fast bool
+		fast    bool
 	)
 
 	cmd := &cobra.Command{

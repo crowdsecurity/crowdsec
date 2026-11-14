@@ -36,6 +36,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/dnscache"
 	"github.com/crowdsecurity/crowdsec/pkg/enrichment"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -121,6 +122,8 @@ func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
+	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 	dbClient = databaseClient
 
 	XMLCacheInit()
@@ -130,11 +133,15 @@ func Init(databaseClient *database.Client) error {
 
 // ResetDataFiles clears all datafile-related global variables.
 // This should be called during HUP reload to ensure clean state.
+// The DNS cache (pkg/dnscache) is deliberately kept: DNS facts don't change
+// with the configuration, and a reload shouldn't trigger a re-lookup storm.
 func ResetDataFiles() {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dataFileRegexCache = make(map[string]gcache.Cache)
+	dataFileMap = make(map[string]*fileMapEntry)
+	dataFileBots = make(map[string][]*botEntry)
 }
 
 func RegexpCacheInit(filename string, cacheCfg enrichment.DataProvider) error {
@@ -190,11 +197,25 @@ func UpdateRegexpCacheMetrics() {
 	}
 }
 
+// ChallengeJSDataType marks the WAF challenge's custom detection script.
+const ChallengeJSDataType = "challenge-js"
+
 func FileInit(directory string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", directory, filename, fileType)
 
 	if fileType == "" {
 		log.Debugf("ignored file %s%s because no type specified", directory, filename)
+		return nil
+	}
+
+	if fileType == "modsec" {
+		// modsec files are referenced in rules just to have cscli download them
+		// They are loaded directly by coraza
+		return nil
+	}
+
+	if fileType == ChallengeJSDataType {
+		// Read off disk by the challenge runtime; nothing to index here.
 		return nil
 	}
 
@@ -234,28 +255,44 @@ func FileInit(directory string, filename string, fileType string) error {
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
+		case "map":
+			if err := fileMapInit(filename, scanner.Text()); err != nil {
+				return err
+			}
+		case "bots":
+			if err := botFileInit(filename, scanner.Text()); err != nil {
+				return err
+			}
 		}
 	}
 
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Build the match index eagerly so errors surface at load time.
+	if fileType == "map" {
+		if entry, ok := dataFileMap[filename]; ok {
+			entry.buildIndex()
+		}
+	}
+
+	return nil
 }
 
 // Expr helpers
 
 func Distinct(params ...any) (any, error) {
-	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
+	v := reflect.ValueOf(params[0])
+	if k := v.Kind(); k != reflect.Slice && k != reflect.Array {
 		return nil, nil
 	}
 
-	array := params[0].([]any)
-	if array == nil {
-		return []any{}, nil
-	}
-
 	exists := make(map[any]bool)
-	ret := make([]any, 0)
+	ret := make([]any, 0, v.Len())
 
-	for _, val := range array {
+	for i := range v.Len() {
+		val := v.Index(i).Interface()
 		if _, ok := exists[val]; !ok {
 			exists[val] = true
 			ret = append(ret, val)
@@ -303,6 +340,10 @@ func existsInFileMaps(filename string, ftype string) (bool, error) {
 		}
 	case "string":
 		_, ok = dataFile[filename]
+	case "map":
+		_, ok = dataFileMap[filename]
+	case "bots":
+		_, ok = dataFileBots[filename]
 	default:
 		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
 	}
@@ -727,7 +768,18 @@ func KeyExists(params ...any) (any, error) {
 	return ok, nil
 }
 
-// func GetDecisionsCount(value string) int {
+// optionalString returns params[i] when the expression passed it, nil otherwise.
+func optionalString(params []any, i int) *string {
+	if len(params) <= i {
+		return nil
+	}
+
+	s := params[i].(string)
+
+	return &s
+}
+
+// func GetDecisionsCount(value string, [scenario string]) int {
 func GetDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -738,7 +790,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, false)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 1), nil, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -747,7 +799,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 	return count, nil
 }
 
-// func GetDecisionsSinceCount(value string, since string) int {
+// func GetDecisionsSinceCount(value string, since string, [scenario string]) int {
 func GetDecisionsSinceCount(params ...any) (any, error) {
 	value := params[0].(string)
 	since := params[1].(string)
@@ -766,7 +818,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	ctx := context.TODO()
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, &sinceTime, false)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 2), &sinceTime, false)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0, nil //nolint:nilerr // This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
@@ -775,6 +827,7 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	return count, nil
 }
 
+// func GetActiveDecisionsCount(value string, [scenario string]) int {
 func GetActiveDecisionsCount(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -785,7 +838,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	count, err := dbClient.CountDecisionsByValue(ctx, value, nil, true)
+	count, err := dbClient.CountDecisionsByValue(ctx, value, optionalString(params, 1), nil, true)
 	if err != nil {
 		log.Errorf("Failed to get active decisions count from value '%s'", value)
 		return 0, err
@@ -794,6 +847,7 @@ func GetActiveDecisionsCount(params ...any) (any, error) {
 	return count, nil
 }
 
+// func GetActiveDecisionsTimeLeft(value string, [scenario string]) time.Duration {
 func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 	value := params[0].(string)
 
@@ -804,7 +858,7 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 
 	ctx := context.TODO()
 
-	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value)
+	timeLeft, err := dbClient.GetActiveDecisionsTimeLeftByValue(ctx, value, optionalString(params, 1))
 	if err != nil {
 		log.Errorf("Failed to get active decisions time left from value '%s'", value)
 		return 0, err
@@ -817,10 +871,16 @@ func GetActiveDecisionsTimeLeft(params ...any) (any, error) {
 func LookupHost(params ...any) (any, error) {
 	value := params[0].(string)
 
-	addresses, err := net.LookupHost(value)
+	ips, err := dnscache.ForwardLookup(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
 		return []string{}, nil
+	}
+
+	addresses := make([]string, 0, len(ips))
+
+	for _, ip := range ips {
+		addresses = append(addresses, ip.String())
 	}
 
 	return addresses, nil
