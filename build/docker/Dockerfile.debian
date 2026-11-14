@@ -40,6 +40,8 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
 # In case we need to remove agents here..
 # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
+RUN find /var/lib/crowdsec /etc/crowdsec/hub -type f -exec chmod a+r {} +
+
 FROM docker.io/debian:trixie-slim AS slim
 
 ENV DEBIAN_FRONTEND=noninteractive
