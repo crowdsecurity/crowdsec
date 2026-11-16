@@ -114,7 +114,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	if cConfig.Common.LogMedia != "stdout" {
+	if cConfig.Common.LogMedia != "stdout" && !logging.HasHook[*FatalHook](log.StandardLogger()) {
 		log.AddHook(newFatalHook())
 	}
 
