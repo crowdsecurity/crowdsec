@@ -3,7 +3,6 @@ package alertcontext
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"slices"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -33,7 +33,7 @@ func ValidateContextExpr(key string, expressions []string) error {
 		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]any{
 			"evt":   &pipeline.Event{},
 			"match": &pipeline.MatchedRule{},
-			"req":   &http.Request{},
+			"req":   &hookreq.Request{},
 		})...)
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %w", expression, err)
@@ -73,7 +73,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]any{
 				"evt":   &pipeline.Event{},
 				"match": &pipeline.MatchedRule{},
-				"req":   &http.Request{},
+				"req":   &hookreq.Request{},
 			})...)
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %w", value, err)
@@ -156,7 +156,7 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
+func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, request *hookreq.Request, tmpContext map[string][]string) []error {
 	var errors []error
 
 	// if we're evaluating context for appsec event, match and request will be present.
@@ -166,7 +166,7 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 	}
 
 	if request == nil {
-		request = &http.Request{}
+		request = &hookreq.Request{}
 	}
 
 	ac := getAlertContext()
@@ -226,7 +226,7 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 }
 
 // Iterate over the individual appsec matched rules to create the needed alert context.
-func AppsecEventToContext(event pipeline.AppsecEvent, request *http.Request) (models.Meta, []error) {
+func AppsecEventToContext(event pipeline.AppsecEvent, request *hookreq.Request) (models.Meta, []error) {
 	var errors []error
 
 	tmpContext := make(map[string][]string)

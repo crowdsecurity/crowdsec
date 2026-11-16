@@ -2,7 +2,6 @@ package appsecacquisition
 
 import (
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -60,7 +60,7 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	return msg
 }
 
-func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeline.Event, error) {
+func AppsecEventGeneration(inEvt pipeline.Event, request *hookreq.Request) (*pipeline.Event, error) {
 	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil

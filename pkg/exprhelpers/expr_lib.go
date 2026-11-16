@@ -2,12 +2,12 @@ package exprhelpers
 
 import (
 	"net"
-	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient/ctiexpr"
 )
@@ -553,7 +553,7 @@ var exprFuncs = []exprCustomFunc{
 		name:     "JA4H",
 		function: JA4H,
 		signature: []any{
-			new(func(*http.Request) string),
+			new(func(*hookreq.Request) string),
 		},
 	},
 	{

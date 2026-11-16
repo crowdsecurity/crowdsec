@@ -375,7 +375,7 @@ func (r *AppsecRunner) emitMatch(evt *pipeline.Event, state *appsec.AppsecReques
 	var overflow *pipeline.Event
 
 	if state.Response.SendAlert {
-		appsecOvlfw, err := AppsecEventGeneration(*evt, request.HTTPRequest)
+		appsecOvlfw, err := AppsecEventGeneration(*evt, request.HookRequest)
 		if err != nil {
 			// Deliberately drops the log event too, as it always has.
 			r.logger.Errorf("unable to generate appsec event : %s", err)

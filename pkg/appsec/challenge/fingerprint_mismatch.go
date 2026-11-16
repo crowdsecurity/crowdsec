@@ -8,11 +8,12 @@
 package challenge
 
 import (
-	"net/http"
 	"slices"
 	"strings"
 
 	"golang.org/x/text/language"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 // UAMobileMismatch reports whether the fingerprint's user-agent claims a
@@ -55,7 +56,7 @@ func (f *FingerprintData) UAMobileMismatch() bool {
 // Deliberately different from the library's MismatchLanguages detection,
 // which only compares navigator.languages[0] to navigator.language inside
 // the browser; this helper brings the HTTP header into the comparison.
-func (f *FingerprintData) AcceptLanguageMismatch(req *http.Request) bool {
+func (f *FingerprintData) AcceptLanguageMismatch(req *hookreq.Request) bool {
 	if f == nil || req == nil {
 		return false
 	}
@@ -229,7 +230,7 @@ func (r *MismatchReport) String() string {
 // Iteration order is libDetections first (in the order declared there),
 // then customDetections. Reason / severity / accessor binding for every
 // check lives in one place — fingerprint_mismatch_data.go.
-func (f *FingerprintData) ComputeMismatchReport(req *http.Request, country string) *MismatchReport {
+func (f *FingerprintData) ComputeMismatchReport(req *hookreq.Request, country string) *MismatchReport {
 	report := &MismatchReport{}
 
 	if f == nil {

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 func TestParseQuery(t *testing.T) {
@@ -331,7 +333,7 @@ func TestJA4H(t *testing.T) {
 				req.Header.Add(key, value)
 			}
 
-			hash, err := JA4H(req)
+			hash, err := JA4H(hookreq.New(req))
 			require.NoError(t, err)
 
 			if hash != test.expectedHash {
