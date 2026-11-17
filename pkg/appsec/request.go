@@ -469,6 +469,9 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		r.RemoteAddr = "127.0.0.1:65535"
 	}
 
+	hookRequest := hookreq.New(originalHTTPRequest)
+	hookRequest.Geo = lookupGeo(clientIP, logger)
+
 	return ParsedRequest{
 		RemoteAddr:           r.RemoteAddr,
 		UUID:                 transactionID,
@@ -488,6 +491,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: normalizeRemoteAddr(r.RemoteAddr),
 		HTTPRequest:          originalHTTPRequest,
-		HookRequest:          hookreq.New(originalHTTPRequest),
+		HookRequest:          hookRequest,
 	}, nil
 }
