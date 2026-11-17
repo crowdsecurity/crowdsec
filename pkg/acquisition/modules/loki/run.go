@@ -6,8 +6,8 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/prometheus/client_golang/prometheus"
 	tomb "gopkg.in/tomb.v2"
@@ -87,8 +87,6 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 		}
 	}
 
-	ll := l.logger.WithField("websocket_url", l.lokiWebsocket)
-
 	t.Go(func() error {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -99,15 +97,20 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 			select {
 			case resp, ok := <-respChan:
 				if !ok {
-					ll.Warnf("loki channel closed")
-					return errors.New("loki channel closed")
+					// QueryRange reports failures through the same tomb.
+					return nil
 				}
 
+				var entries []lokiclient.Entry
 				for _, stream := range resp.Data.Result {
-					for _, entry := range stream.Entries {
-						l.readOneEntry(entry, l.Config.Labels, out)
-					}
+					entries = append(entries, stream.Entries...)
 				}
+				sort.SliceStable(entries, func(i, j int) bool { return entries[i].Timestamp.Before(entries[j].Timestamp) })
+				for _, entry := range entries {
+					l.readOneEntry(entry, l.Config.Labels, out)
+				}
+			case <-ctx.Done():
+				return nil
 			case <-t.Dying():
 				return nil
 			}

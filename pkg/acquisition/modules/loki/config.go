@@ -25,10 +25,14 @@ type AuthConfiguration struct {
 }
 
 type Configuration struct {
-	URL                               string            `yaml:"url"`    // Loki url
-	Prefix                            string            `yaml:"prefix"` // Loki prefix
-	Query                             string            `yaml:"query"`  // LogQL query
-	Limit                             int               `yaml:"limit"`  // Limit of logs to read
+	URL    string `yaml:"url"`    // Loki url
+	Prefix string `yaml:"prefix"` // Loki prefix
+	// QueryDelay settles query_range windows (default 5s); tail's delay_for is a separate option.
+	QueryDelay time.Duration `yaml:"query_delay"`
+	// PollInterval pauses between streaming windows (default 1s); replay does not wait.
+	PollInterval                      time.Duration     `yaml:"poll_interval"`
+	Query                             string            `yaml:"query"` // LogQL query
+	Limit                             int               `yaml:"limit"` // Limit of logs to read
 	DelayFor                          time.Duration     `yaml:"delay_for"`
 	Since                             time.Duration     `yaml:"since"`
 	Headers                           map[string]string `yaml:"headers"`        // HTTP headers for talking to Loki
@@ -36,13 +40,23 @@ type Configuration struct {
 	Auth                              AuthConfiguration `yaml:"auth"`
 	MaxFailureDuration                time.Duration     `yaml:"max_failure_duration"` // Max duration of failure before stopping the source
 	NoReadyCheck                      bool              `yaml:"no_ready_check"`       // Bypass /ready check before starting
-	configuration.DataSourceCommonCfg                   `yaml:",inline"`
+	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 func (l *Source) UnmarshalConfig(yamlConfig []byte) error {
 	err := yaml.UnmarshalWithOptions(yamlConfig, &l.Config, yaml.Strict())
 	if err != nil {
 		return fmt.Errorf("cannot parse loki acquisition configuration: %s", yaml.FormatError(err, false, false))
+	}
+
+	if l.Config.QueryDelay < 0 || l.Config.PollInterval < 0 {
+		return errors.New("query_delay and poll_interval must not be negative")
+	}
+	if l.Config.QueryDelay == 0 {
+		l.Config.QueryDelay = 5 * time.Second
+	}
+	if l.Config.PollInterval == 0 {
+		l.Config.PollInterval = time.Second
 	}
 
 	if l.Config.Query == "" {
@@ -97,6 +111,8 @@ func (l *Source) Configure(_ context.Context, config []byte, logger *log.Entry, 
 	l.logger.Infof("Since value: %s", l.Config.Since.String())
 
 	clientConfig := lokiclient.Config{
+		QueryDelay:      l.Config.QueryDelay,
+		PollInterval:    l.Config.PollInterval,
 		LokiURL:         l.Config.URL,
 		Headers:         l.Config.Headers,
 		Limit:           l.Config.Limit,
@@ -220,15 +236,23 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		l.Config.Auth.Password, _ = u.User.Password()
 	}
 
+	if l.Config.QueryDelay == 0 {
+		l.Config.QueryDelay = 5 * time.Second
+	}
+	if l.Config.PollInterval == 0 {
+		l.Config.PollInterval = time.Second
+	}
 	clientConfig := lokiclient.Config{
-		LokiURL:  l.Config.URL,
-		Headers:  l.Config.Headers,
-		Limit:    l.Config.Limit,
-		Query:    l.Config.Query,
-		Since:    l.Config.Since,
-		Username: l.Config.Auth.Username,
-		Password: l.Config.Auth.Password,
-		DelayFor: int(l.Config.DelayFor / time.Second),
+		QueryDelay:   l.Config.QueryDelay,
+		PollInterval: l.Config.PollInterval,
+		LokiURL:      l.Config.URL,
+		Headers:      l.Config.Headers,
+		Limit:        l.Config.Limit,
+		Query:        l.Config.Query,
+		Since:        l.Config.Since,
+		Username:     l.Config.Auth.Username,
+		Password:     l.Config.Auth.Password,
+		DelayFor:     int(l.Config.DelayFor / time.Second),
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
