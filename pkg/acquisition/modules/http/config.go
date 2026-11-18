@@ -188,15 +188,7 @@ func (c *Configuration) NewTLSConfig() (*tls.Config, error) {
 			return nil, fmt.Errorf("failed to read ca cert: %w", err)
 		}
 
-		caCertPool, err := x509.SystemCertPool()
-		if err != nil {
-			return nil, fmt.Errorf("failed to load system cert pool: %w", err)
-		}
-
-		if caCertPool == nil {
-			caCertPool = x509.NewCertPool()
-		}
-
+		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 		tlsConfig.ClientCAs = caCertPool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert

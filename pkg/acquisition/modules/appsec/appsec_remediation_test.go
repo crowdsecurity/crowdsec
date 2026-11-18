@@ -29,7 +29,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/",
+				URI:         "/?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -55,7 +55,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/",
+				URI:         "/?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -82,7 +82,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/",
+				URI:         "/?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -109,7 +109,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/",
+				URI:         "/?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -136,7 +136,7 @@ func TestAppsecDefaultPassRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/",
+				URI:         "/?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -170,7 +170,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -196,7 +196,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -223,7 +223,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -250,7 +250,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -277,7 +277,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -304,7 +304,7 @@ func TestAppsecDefaultRemediation(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},

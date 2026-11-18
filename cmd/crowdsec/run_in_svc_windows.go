@@ -80,7 +80,16 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) 
 
 	agentReady := make(chan bool, 1)
 
-	// Enable profiling early
+	// pprof listens on its own (localhost by default) listener, so profiling
+	// is available immediately, independent of prometheus and agentReady.
+	if cConfig.PProf != nil {
+		go func() {
+			defer trace.ReportPanic()
+			servePprof(cConfig.PProf)
+		}()
+	}
+
+	// Serve prometheus metrics
 	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
 		var err error

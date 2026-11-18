@@ -159,10 +159,11 @@ func (a *apic) lapiMetrics() *models.LapiMetrics {
 	}
 	ret.Version = new(version.String())
 	ret.FeatureFlags = fflag.Crowdsec.GetEnabledFeatures()
+	// sent with the usage metrics, which don't follow the legacy metrics interval
 	ret.Metrics = []*models.DetailedMetrics{{
 		Meta: &models.MetricsMeta{
 			UtcNowTimestamp:   new(time.Now().UTC().Unix()),
-			WindowSizeSeconds: new(int64(a.metricsInterval.Seconds())),
+			WindowSizeSeconds: new(int64(metricsIntervalDefault.Seconds())),
 		},
 		Items: make([]*models.MetricsDetailItem, 0),
 	}}

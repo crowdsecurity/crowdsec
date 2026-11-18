@@ -63,7 +63,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -95,7 +95,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -127,7 +127,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -159,7 +159,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -189,7 +189,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -217,7 +217,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -245,7 +245,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -275,7 +275,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -304,7 +304,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -334,7 +334,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -364,7 +364,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -395,7 +395,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -427,7 +427,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -463,7 +463,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -492,7 +492,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -527,7 +527,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -556,7 +556,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -585,7 +585,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -611,7 +611,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -646,7 +646,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -674,7 +674,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -693,7 +693,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -733,7 +733,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -756,7 +756,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -776,7 +776,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -797,7 +797,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -817,7 +817,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -854,7 +854,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -885,7 +885,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -914,7 +914,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -946,7 +946,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -972,7 +972,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1000,7 +1000,7 @@ func TestAppsecRemediationConfigHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1035,7 +1035,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1062,7 +1062,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1095,7 +1095,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1129,7 +1129,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1164,7 +1164,7 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 				ClientIP:    "5.4.3.2",
 				RemoteAddr:  "5.4.3.2",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1208,7 +1208,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1236,7 +1236,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1263,7 +1263,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1292,7 +1292,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1324,7 +1324,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1357,7 +1357,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1390,7 +1390,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1429,7 +1429,7 @@ func TestAppsecPhaseScopedHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -1563,7 +1563,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         challenge.ChallengePowWorkerPath,
+				URI:         challenge.ChallengePowWorkerPath + "?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}}, // would normally trigger rule1
 				HTTPRequest: &http.Request{Host: "example.com", URL: powWorkerURL},
 			},
@@ -1783,7 +1783,7 @@ func TestAppsecOnChallengeHooks(t *testing.T) {
 			input_request: appsec.ParsedRequest{
 				RemoteAddr:  "1.2.3.4",
 				Method:      "GET",
-				URI:         "/protected",
+				URI:         "/protected?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}}, // would match oob-rule
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -2094,7 +2094,7 @@ func TestAppsecMatchKnownBotHooks(t *testing.T) {
 		return appsec.ParsedRequest{
 			RemoteAddr: remoteAddr,
 			Method:     "GET",
-			URI:        "/crawl",
+			URI:        "/crawl?foo=toto",
 			Args:       url.Values{"foo": []string{"toto"}},
 			HTTPRequest: &http.Request{
 				Host:       "example.com",
