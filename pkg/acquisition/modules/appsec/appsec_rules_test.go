@@ -33,7 +33,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -66,7 +66,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=tutu",
 				Args:        url.Values{"foo": []string{"tutu"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -93,7 +93,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -121,7 +121,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -149,7 +149,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=toto",
 				Args:        url.Values{"foo": []string{"toto"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -180,7 +180,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=bla",
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -209,7 +209,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=bla",
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -238,7 +238,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				ClientIP:    "1.2.3.4",
 				RemoteAddr:  "127.0.0.1",
 				Method:      "GET",
-				URI:         "/urllll",
+				URI:         "/urllll?foo=bla",
 				Args:        url.Values{"foo": []string{"bla"}},
 				HTTPRequest: &http.Request{Host: "example.com"},
 			},
@@ -412,6 +412,28 @@ toto
 				require.Len(t, events[1].Appsec.MatchedRules, 1)
 				require.Equal(t, "block ip", events[1].Appsec.MatchedRules[0]["msg"])
 
+				require.Len(t, responses, 1)
+				require.True(t, responses[0].InBandInterrupt)
+			},
+		},
+		{
+			name:             "GET arguments are counted once",
+			expected_load_ok: true,
+			inband_native_rules: []string{
+				`SecRule &ARGS_GET:foo "@eq 2" "id:1,phase:1,log,deny,msg:'foo counted once'"`,
+			},
+			input_request: appsec.ParsedRequest{
+				ClientIP:    "1.2.3.4",
+				RemoteAddr:  "127.0.0.1",
+				Method:      "GET",
+				URI:         "/urllll?foo=toto&foo=tutu",
+				Args:        url.Values{"foo": []string{"toto", "tutu"}},
+				HTTPRequest: &http.Request{Host: "example.com"},
+			},
+			output_asserts: func(events []pipeline.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Len(t, events, 2)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "foo counted once", events[1].Appsec.MatchedRules[0]["msg"])
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
 			},
