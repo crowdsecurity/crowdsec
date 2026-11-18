@@ -73,12 +73,12 @@ func (cli *cliCapi) register(ctx context.Context, capiUserPrefix string, outputF
 		return fmt.Errorf("unable to parse api url %s: %w", CAPIBaseURL, err)
 	}
 
-	_, err = apiclient.RegisterClient(ctx, &apiclient.Config{
+	_, err = apiclient.RegisterCAPIClient(ctx, &apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
 		URL:           apiurl,
 		VersionPrefix: "v3",
-	}, nil)
+	})
 	if err != nil {
 		return fmt.Errorf("api client register ('%s'): %w", CAPIBaseURL, err)
 	}

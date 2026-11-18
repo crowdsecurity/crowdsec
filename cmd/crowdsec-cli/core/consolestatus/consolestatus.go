@@ -51,7 +51,7 @@ func QueryCAPIStatus(ctx context.Context, db *database.Client, hub *cwhub.Hub, c
 
 	passwd := strfmt.Password(password)
 
-	client := apiclient.NewClient(&apiclient.Config{
+	client := apiclient.NewCAPIClient(&apiclient.Config{
 		MachineID:     login,
 		Password:      passwd,
 		URL:           apiURL,

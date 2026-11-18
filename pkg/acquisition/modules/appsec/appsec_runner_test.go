@@ -294,7 +294,7 @@ func (h *asyncHarness) send(t *testing.T, requestUUID string, host string) appse
 		RemoteAddr:           "1.2.3.4",
 		RemoteAddrNormalized: "1.2.3.4",
 		Method:               "GET",
-		URI:                  "/",
+		URI:                  "/?foo=toto",
 		Args:                 url.Values{"foo": []string{"toto"}},
 		HTTPRequest:          &http.Request{Host: host},
 		AppsecEngine:         h.engine,

@@ -203,12 +203,7 @@ func (r *AppsecRunner) processRequest(ctx context.Context, state *appsec.AppsecR
 
 	state.Tx.ProcessConnection(request.ClientIP, 0, "", 0)
 
-	for k, v := range request.Args {
-		for _, vv := range v {
-			state.Tx.AddGetRequestArgument(k, vv)
-		}
-	}
-
+	// ProcessURI already extracts ARGS_GET from the query string.
 	state.Tx.ProcessURI(request.URI, request.Method, request.Proto)
 
 	for k, vr := range request.Headers {
