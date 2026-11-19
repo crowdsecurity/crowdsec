@@ -3,6 +3,7 @@ package victorialogs
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/tomb.v2"
@@ -48,7 +49,9 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 
 func (s *Source) readOneEntry(ctx context.Context, entry *vlclient.Log, labels map[string]string, out chan pipeline.Event) {
 	ll := pipeline.Line{}
-	ll.Raw = entry.Message
+	// Messages can keep the newline of the original log line (e.g. podman + journald); the other
+	// line-based datasources strip it, and parsers anchored with `$` fail if it's left in.
+	ll.Raw = trimLineTerminator(entry.Message)
 	ll.Time = entry.Time
 	ll.Src = s.Config.URL
 	ll.Labels = labels
@@ -95,4 +98,13 @@ func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	}
 
 	return <-errChan
+}
+
+// trimLineTerminator removes a single trailing "\n" or "\r\n".
+func trimLineTerminator(msg string) string {
+	if trimmed, ok := strings.CutSuffix(msg, "\r\n"); ok {
+		return trimmed
+	}
+
+	return strings.TrimSuffix(msg, "\n")
 }

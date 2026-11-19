@@ -3,6 +3,7 @@ package victorialogs_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -435,6 +436,71 @@ func TestStreamReturnsWhenServerCloses(t *testing.T) {
 
 	streamCancel()
 	require.NoError(t, <-streamErr)
+}
+
+func TestStreamStripsTrailingNewline(t *testing.T) {
+	// VictoriaLogs (e.g. via journald) may store messages with a trailing line terminator;
+	// the datasource must strip at most one trailing \n or \r\n to match bufio.ScanLines.
+	tests := []struct {
+		name string
+		msg  string
+		want string
+	}{
+		{
+			name: "no trailing newline",
+			msg:  "line 1",
+			want: "line 1",
+		},
+		{
+			name: "trailing LF",
+			msg:  "line 1\n",
+			want: "line 1",
+		},
+		{
+			name: "trailing CRLF",
+			msg:  "line 1\r\n",
+			want: "line 1",
+		},
+		{
+			name: "multiple trailing LFs drops only one",
+			msg:  "line 1\n\n",
+			want: "line 1\n",
+		},
+		{
+			name: "internal newline and trailing space preserved",
+			msg:  "line 1\nline 2 \n",
+			want: "line 1\nline 2 ",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			payload, err := json.Marshal(map[string]string{
+				"_msg":  tc.msg,
+				"_time": "2026-11-12T07:19:02Z",
+			})
+			require.NoError(t, err)
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintf(w, "%s\n", payload)
+			}))
+			defer srv.Close()
+
+			vlSource := victorialogs.Source{}
+			config := fmt.Sprintf("mode: tail\nsource: victorialogs\nurl: %s\nquery: '*'\n", srv.URL)
+			err = vlSource.Configure(ctx, []byte(config), log.WithField("type", victorialogs.ModuleName), metrics.AcquisitionMetricsLevelNone)
+			require.NoError(t, err)
+
+			out := make(chan pipeline.Event, 10)
+
+			err = vlSource.Stream(ctx, out)
+			require.ErrorContains(t, err, "tail stream closed by server")
+			require.Len(t, out, 1)
+			require.Equal(t, tc.want, (<-out).Line.Raw)
+		})
+	}
 }
 
 func TestTailModeIgnoredOptionsWarning(t *testing.T) {
