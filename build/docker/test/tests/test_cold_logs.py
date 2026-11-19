@@ -1,4 +1,6 @@
-import datetime
+# Copyright (c) 2020-2026 Crowdsec
+
+import datetime as dt
 
 import pytest
 from pytest_cs import Status
@@ -13,11 +15,11 @@ def test_cold_logs(crowdsec, tmp_path_factory: pytest.TempPathFactory, flavor: s
 
     logs = tmp_path_factory.mktemp("logs")
 
-    now = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(minutes=1)
+    now = dt.datetime.now(tz=dt.UTC) - dt.timedelta(minutes=1)
     with (logs / "toto.log").open("w") as f:
         # like date '+%b %d %H:%M:%S' but in python
         for i in range(10):
-            ts = (now + datetime.timedelta(seconds=i)).strftime("%b %d %H:%M:%S")
+            ts = (now + dt.timedelta(seconds=i)).strftime("%b %d %H:%M:%S")
             _ = f.write(ts + " sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424\n")
 
     volumes = {

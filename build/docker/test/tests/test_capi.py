@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 from http import HTTPStatus
 
 import pytest
