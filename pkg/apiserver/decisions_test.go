@@ -2,6 +2,9 @@ package apiserver
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -15,6 +18,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -573,6 +577,80 @@ func TestStreamDecisionPageSize(t *testing.T) {
 			decisions, code = readDecisionsStreamResp(t, w)
 			require.Equal(t, 200, code)
 			require.Equal(t, []string{"3.0.0.1", "3.0.0.2", "3.0.0.3"}, values(decisions["new"]))
+		})
+	}
+}
+
+// A failed decision query must not reach the bouncer as a complete, valid snapshot: a bouncer
+// replacing its state from startup=true would drop all its bans.
+func TestStreamDecisionQueryFailure(t *testing.T) {
+	tests := []struct {
+		name     string
+		breakDB  func(t *testing.T, ctx context.Context, apiServer *APIServer, dbPath string)
+		wantCode int
+	}{
+		{
+			// Same fault as the issue report: the cursor lookup still works, the decision query fails.
+			name: "first page fails",
+			breakDB: func(t *testing.T, ctx context.Context, _ *APIServer, dbPath string) {
+				db, err := sql.Open("sqlite3", dbPath)
+				require.NoError(t, err)
+				defer db.Close()
+
+				_, err = db.ExecContext(ctx, `ALTER TABLE decisions RENAME COLUMN "until" TO "unavailable_until"`)
+				require.NoError(t, err)
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+		{
+			name: "later page fails",
+			breakDB: func(_ *testing.T, _ context.Context, apiServer *APIServer, _ string) {
+				// Queries: latest decision id, first page, second page.
+				n := 0
+				apiServer.dbClient.Ent.Decision.Intercept(ent.InterceptFunc(func(next ent.Querier) ent.Querier {
+					return ent.QuerierFunc(func(ctx context.Context, q ent.Query) (ent.Value, error) {
+						n++
+						if n == 3 {
+							return nil, errors.New("injected failure")
+						}
+
+						return next.Query(ctx, q)
+					})
+				}))
+			},
+			// headers are already sent
+			wantCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			config := LoadTestConfig(t)
+			config.API.Server.DecisionsStream = &csconfig.DecisionsStreamCfg{PageSize: 1}
+
+			logger, _ := logtest.NewNullLogger()
+			apiServer, err := NewServer(ctx, config.API.Server, logger.WithFields(nil))
+			require.NoError(t, err)
+			require.NoError(t, apiServer.InitController())
+
+			router, err := apiServer.Router()
+			require.NoError(t, err)
+
+			apiKey, dbClient := CreateTestBouncer(t, ctx, config.API.Server.DbConfig)
+			lapi := LAPI{router: router, bouncerKey: apiKey, DBClient: dbClient}
+
+			seedOne(t, ctx, lapi, "1.0.0.1", "lists", "test/fail", types.Ip, "ban")
+			seedOne(t, ctx, lapi, "1.0.0.2", "lists", "test/fail", types.Ip, "ban")
+
+			tc.breakDB(t, ctx, apiServer, config.API.Server.DbConfig.DbPath)
+
+			w := lapi.RecordResponse(t, ctx, "GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
+			require.Equal(t, tc.wantCode, w.Code)
+
+			var snapshot map[string][]*models.Decision
+			require.Error(t, json.Unmarshal(w.Body.Bytes(), &snapshot), "body: %s", w.Body.String())
 		})
 	}
 }
