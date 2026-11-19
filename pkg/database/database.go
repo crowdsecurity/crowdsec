@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
 	log "github.com/sirupsen/logrus"
@@ -15,6 +16,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/logging"
 )
+
+const mysqlConnMaxLifetime = 3 * time.Minute
 
 type Client struct {
 	Ent     *ent.Client
@@ -53,6 +56,11 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	}
 
 	db.SetMaxOpenConns(config.MaxOpenConns)
+
+	if dbtype == "mysql" {
+		db.SetConnMaxLifetime(mysqlConnMaxLifetime)
+	}
+
 	drv := entsql.OpenDB(dbdialect, db)
 
 	return drv, nil
