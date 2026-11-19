@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -18,8 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-
-	"github.com/crowdsecurity/dlog"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -66,22 +65,17 @@ func (d *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 				return err
 			}
 
-			// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
 			foundOne = true
 
-			var scanner *bufio.Scanner
-
-			if containerConfig.Tty {
-				scanner = bufio.NewScanner(dockerReader)
-			} else {
-				reader := dlog.NewReader(dockerReader)
-				scanner = bufio.NewScanner(reader)
-			}
+			scanner := d.newScanner(dockerReader, containerConfig.Tty, d.logger)
 
 			for scanner.Scan() {
 				select {
 				case <-t.Dying():
 					d.logger.Infof("Shutting down reader for container %s", containerConfig.Name)
+					dockerReader.Close()
+
+					return nil
 				default:
 					line := scanner.Text()
 					if line == "" {
@@ -115,6 +109,8 @@ func (d *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 			if err != nil {
 				d.logger.Errorf("Got error from docker read: %s", err)
 			}
+
+			dockerReader.Close()
 
 			d.runningContainerState.Set(container.ID, containerConfig)
 		}
@@ -518,10 +514,31 @@ func (d *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) error {
 	for scanner.Scan() {
-		out <- scanner.Text()
+		select {
+		case out <- scanner.Text():
+		case <-t.Dying():
+			return nil
+		}
 	}
 
 	return scanner.Err()
+}
+
+func (d *Source) newScanner(r io.Reader, tty bool, logger *log.Entry) *bufio.Scanner {
+	maxSize := d.Config.MaxBufferSize
+	if maxSize <= 0 {
+		maxSize = bufio.MaxScanTokenSize
+	}
+
+	return newLineScanner(r, tty, maxSize, logger)
+}
+
+// stopReader closes the log stream and waits for the reader goroutine: the daemon
+// keeps a connection and its log files open for as long as the stream is.
+func stopReader(stream io.Closer, readerTomb *tomb.Tomb) {
+	readerTomb.Kill(nil)
+	stream.Close()
+	_ = readerTomb.Wait()
 }
 
 // isContainerStillRunning checks if a container is still running via Docker API
@@ -605,7 +622,7 @@ func (d *Source) TailContainer(ctx context.Context, container *ContainerConfig, 
 
 		// Container is still running, so this is likely a temporary network/proxy issue
 		// Update the Since timestamp to avoid re-reading logs from before the failure
-		container.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
+		container.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
 
 		// retry immediately, the tail may have failed due to idle disconnection from a proxy
 		if firstRetry {
@@ -639,14 +656,7 @@ func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerC
 	// reset backoff so for the next disconnect, the interval doesn't start from 30sec
 	bo.Reset()
 
-	var scanner *bufio.Scanner
-	// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
-	if container.Tty {
-		scanner = bufio.NewScanner(dockerReader)
-	} else {
-		reader := dlog.NewReader(dockerReader)
-		scanner = bufio.NewScanner(reader)
-	}
+	scanner := d.newScanner(dockerReader, container.Tty, container.logger)
 
 	readerChan := make(chan string)
 	readerTomb := &tomb.Tomb{}
@@ -654,10 +664,11 @@ func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerC
 		return ReadTailScanner(scanner, readerChan, readerTomb)
 	})
 
+	defer stopReader(dockerReader, readerTomb)
+
 	for {
 		select {
 		case <-container.t.Dying():
-			readerTomb.Kill(nil)
 			return nil
 		case line := <-readerChan:
 			if line == "" {
@@ -678,14 +689,22 @@ func (d *Source) tailContainerAttempt(ctx context.Context, container *ContainerC
 				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": container.Name, "datasource_type": ModuleName, "acquis_type": evt.Line.Labels["type"]}).Inc()
 			}
 
-			outChan <- evt
+			select {
+			case outChan <- evt:
+			case <-container.t.Dying():
+				return nil
+			}
 
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
 			// This case is to handle temporarily losing the connection to the docker socket
 			// The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
+			if err := readerTomb.Err(); err != nil {
+				container.logger.Warnf("error reading logs: %s", err)
+				return fmt.Errorf("reader connection lost for container %s: %w", container.Name, err)
+			}
+
 			container.logger.Debugf("readerTomb dying, connection lost")
-			readerTomb.Kill(nil)
 
 			return fmt.Errorf("reader connection lost for container %s", container.Name)
 		}
@@ -718,7 +737,7 @@ func (d *Source) TailService(ctx context.Context, service *ContainerConfig, outC
 
 		// Service still exists, so this is likely a temporary network/proxy issue
 		// Update the Since timestamp to avoid re-reading logs from before the failure
-		service.logOptions.Since = time.Now().UTC().Format(time.RFC3339)
+		service.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
 
 		// retry immediately, the tail may have failed due to idle disconnection from a proxy
 		if firstRetry {
@@ -763,9 +782,8 @@ func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfi
 
 	bo.Reset()
 
-	// Service logs don't use TTY, so we always use the dlog reader
-	reader := dlog.NewReader(dockerReader)
-	scanner := bufio.NewScanner(reader)
+	// Service logs don't use TTY
+	scanner := d.newScanner(dockerReader, false, service.logger)
 
 	readerChan := make(chan string)
 	readerTomb := &tomb.Tomb{}
@@ -773,10 +791,11 @@ func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfi
 		return ReadTailScanner(scanner, readerChan, readerTomb)
 	})
 
+	defer stopReader(dockerReader, readerTomb)
+
 	for {
 		select {
 		case <-service.t.Dying():
-			readerTomb.Kill(nil)
 			return nil
 		case line := <-readerChan:
 			if line == "" {
@@ -797,13 +816,21 @@ func (d *Source) tailServiceAttempt(ctx context.Context, service *ContainerConfi
 				metrics.DockerDatasourceLinesRead.With(prometheus.Labels{"source": service.Name, "acquis_type": l.Labels["type"], "datasource_type": ModuleName}).Inc()
 			}
 
-			outChan <- evt
+			select {
+			case outChan <- evt:
+			case <-service.t.Dying():
+				return nil
+			}
 
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
 			// Handle connection loss similar to containers
+			if err := readerTomb.Err(); err != nil {
+				service.logger.Warnf("error reading logs: %s", err)
+				return fmt.Errorf("reader connection lost for service %s: %w", service.Name, err)
+			}
+
 			service.logger.Debugf("readerTomb dying, connection lost")
-			readerTomb.Kill(nil)
 
 			return fmt.Errorf("reader connection lost for service %s", service.Name)
 		}
