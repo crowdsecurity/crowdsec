@@ -494,3 +494,33 @@ func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildBodySettings(t *testing.T) {
+	tests := []struct {
+		name   string
+		onLoad []Hook
+		expect BodySettings
+	}{
+		{
+			name:   "defaults",
+			expect: BodySettings{MaxSize: DefaultMaxBodySize, Action: BodySizeActionDrop, Decompress: true},
+		},
+		{
+			name:   "decompression disabled in on_load",
+			onLoad: []Hook{{Apply: []string{"SetBodyDecompression(false)"}}},
+			expect: BodySettings{MaxSize: DefaultMaxBodySize, Action: BodySizeActionDrop, Decompress: false},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := newTestConfig()
+			cfg.OnLoad = test.onLoad
+
+			rt, err := cfg.Build(t.Context(), nil)
+			require.NoError(t, err)
+			require.NoError(t, rt.ProcessOnLoadRules())
+			require.Equal(t, test.expect, rt.BodySettings)
+		})
+	}
+}
