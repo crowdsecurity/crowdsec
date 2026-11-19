@@ -3,14 +3,18 @@ package dockeracquisition
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	backoff "github.com/cenkalti/backoff/v5"
 	dockerContainer "github.com/moby/moby/api/types/container"
 	dockerTypesEvents "github.com/moby/moby/api/types/events"
 	dockerTypesSwarm "github.com/moby/moby/api/types/swarm"
@@ -77,6 +81,16 @@ func TestConfigureDSN(t *testing.T) {
 			name:        "DSN invalid log_level",
 			dsn:         "docker://test_docker?log_level=foobar",
 			expectedErr: "unknown level foobar: not a valid logrus Level:",
+		},
+		{
+			name:        "DSN invalid max_buffer_size",
+			dsn:         "docker://test_docker?max_buffer_size=foo",
+			expectedErr: `parsing 'max_buffer_size' parameters: strconv.Atoi: parsing "foo": invalid syntax`,
+		},
+		{
+			name:        "DSN zero max_buffer_size",
+			dsn:         "docker://test_docker?max_buffer_size=0",
+			expectedErr: "max_buffer_size must be positive",
 		},
 		{
 			name:        "DSN ok with multiple parameters",
@@ -772,5 +786,136 @@ since: 2020-01-01T00:00:00Z`, testServiceName),
 			require.NoError(t, err)
 			assert.False(t, since.Before(before), "expected to tail from now, got %s", cfg.logOptions.Since)
 		})
+	}
+}
+
+// streamCli serves follow-mode log streams written by feed, and counts how many are left open.
+type streamCli struct {
+	mockDockerCli
+	feed   func(w *io.PipeWriter)
+	opened atomic.Int64
+	closed atomic.Int64
+}
+
+type trackedStream struct {
+	*io.PipeReader
+	once sync.Once
+	cli  *streamCli
+}
+
+func (s *trackedStream) Close() error {
+	s.once.Do(func() { s.cli.closed.Add(1) })
+	return s.PipeReader.Close()
+}
+
+func (cli *streamCli) stream() *trackedStream {
+	reader, writer := io.Pipe()
+	cli.opened.Add(1)
+
+	go cli.feed(writer)
+
+	return &trackedStream{PipeReader: reader, cli: cli}
+}
+
+func (cli *streamCli) ContainerLogs(_ context.Context, _ string, _ client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	return cli.stream(), nil
+}
+
+func (cli *streamCli) ServiceLogs(_ context.Context, _ string, _ client.ServiceLogsOptions) (client.ServiceLogsResult, error) {
+	return cli.stream(), nil
+}
+
+func (*streamCli) ServiceInspect(_ context.Context, _ string, _ client.ServiceInspectOptions) (client.ServiceInspectResult, error) {
+	return client.ServiceInspectResult{}, nil
+}
+
+// The daemon keeps a connection and the container's log files open for as long as a stream is:
+// streams must be closed on retry and on stop (#4781), and a long line must not break the stream.
+func TestTailLogStreams(t *testing.T) {
+	tails := []struct {
+		name string
+		tail func(*Source, context.Context, *ContainerConfig, chan pipeline.Event, chan *ContainerConfig) error
+	}{
+		{name: "container", tail: (*Source).TailContainer},
+		{name: "service", tail: (*Source).TailService},
+	}
+
+	tests := []struct {
+		name string
+		feed func(w *io.PipeWriter)
+		// wait until the scenario has played out
+		check func(t *testing.T, cli *streamCli, out chan pipeline.Event)
+	}{
+		{
+			name: "long line is dropped without reconnecting",
+			feed: func(w *io.PipeWriter) {
+				// stays open, like the daemon
+				_, _ = w.Write([]byte(dockerFrames(strings.Repeat("a", 100*1024) + "\nafter\n")))
+			},
+			check: func(t *testing.T, cli *streamCli, out chan pipeline.Event) {
+				select {
+				case evt := <-out:
+					require.Equal(t, "after", evt.Line.Raw)
+				case <-time.After(5 * time.Second):
+					t.Fatal("line after the long one never arrived")
+				}
+
+				require.Equal(t, int64(1), cli.opened.Load())
+			},
+		},
+		{
+			name: "stops while the pipeline is not reading",
+			feed: func(w *io.PipeWriter) {
+				_, _ = w.Write([]byte(dockerFrames("one\ntwo\nthree\n")))
+			},
+			check: func(t *testing.T, _ *streamCli, out chan pipeline.Event) {
+				// out is full: the next send blocks
+				require.Eventually(t, func() bool { return len(out) == cap(out) }, 5*time.Second, time.Millisecond)
+			},
+		},
+		{
+			name: "stream closed before retrying",
+			feed: func(w *io.PipeWriter) {
+				_ = w.CloseWithError(errors.New("read error"))
+			},
+			check: func(t *testing.T, cli *streamCli, _ chan pipeline.Event) {
+				require.Eventually(t, func() bool { return cli.opened.Load() >= 5 }, 5*time.Second, time.Millisecond)
+				require.LessOrEqual(t, cli.opened.Load()-cli.closed.Load(), int64(1), "streams left open across retries")
+			},
+		},
+	}
+
+	for _, ts := range tails {
+		for _, tc := range tests {
+			t.Run(ts.name+"/"+tc.name, func(t *testing.T) {
+				cli := &streamCli{feed: tc.feed}
+				d := &Source{
+					logger:         log.WithField("type", ModuleName),
+					Client:         cli,
+					backoffFactory: func() backoff.BackOff { return &backoff.ZeroBackOff{} },
+				}
+
+				cfg := NewContainerConfig(&client.ContainerLogsOptions{Follow: true}, "12456", ts.name, nil, false)
+				cfg.logger = d.logger
+
+				out := make(chan pipeline.Event, 1)
+				deleteChan := make(chan *ContainerConfig, 1)
+
+				cfg.t.Go(func() error { return ts.tail(d, t.Context(), cfg, out, deleteChan) })
+
+				tc.check(t, cli, out)
+
+				cfg.t.Kill(nil)
+
+				select {
+				case <-cfg.t.Dead():
+				case <-time.After(5 * time.Second):
+					t.Fatal("tail did not stop")
+				}
+
+				require.NoError(t, cfg.t.Err())
+				require.Equal(t, cli.opened.Load(), cli.closed.Load(), "stream left open after the tail stopped")
+			})
+		}
 	}
 }

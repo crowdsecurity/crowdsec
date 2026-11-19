@@ -117,6 +117,12 @@ properties:
     description: >
       Populate CrowdSec labels from Docker service labels. Mutually exclusive
       with explicit service selectors.
+  max_buffer_size:
+    type: integer
+    minimum: 1
+    default: 65536
+    description: >
+      Maximum size of a log line, in bytes. Longer lines are dropped.
 required:
   - source
 allOf:

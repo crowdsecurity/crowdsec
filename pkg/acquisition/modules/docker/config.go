@@ -1,6 +1,7 @@
 package dockeracquisition
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -38,6 +39,7 @@ type Configuration struct {
 	ServiceIDRegexp     []string `yaml:"service_id_regexp"`
 	UseServiceLabels    bool     `yaml:"use_service_labels"`
 	UseContainerLabels  bool     `yaml:"use_container_labels"`
+	MaxBufferSize       int      `yaml:"max_buffer_size"`
 }
 
 func (dc *Configuration) hasServiceConfig() bool {
@@ -83,6 +85,14 @@ func (d *Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	if d.Config.Mode == "" {
 		d.Config.Mode = configuration.TAIL_MODE
+	}
+
+	if d.Config.MaxBufferSize < 0 {
+		return errors.New("max_buffer_size must be positive")
+	}
+
+	if d.Config.MaxBufferSize == 0 {
+		d.Config.MaxBufferSize = bufio.MaxScanTokenSize
 	}
 
 	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
@@ -211,8 +221,9 @@ func (d *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 	}
 
 	d.Config = Configuration{
-		FollowStdout: true,
-		FollowStdErr: true,
+		FollowStdout:  true,
+		FollowStdErr:  true,
+		MaxBufferSize: bufio.MaxScanTokenSize,
 	}
 	d.Config.UniqueId = uuid
 	d.Config.ContainerName = make([]string, 0)
@@ -286,6 +297,18 @@ func (d *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 			}
 			d.Config.FollowStdErr = followStdErr
 			d.containerLogsOptions.ShowStderr = followStdErr
+		case "max_buffer_size":
+			if len(v) != 1 {
+				return errors.New("only one 'max_buffer_size' parameters is required, not many")
+			}
+			maxBufferSize, err := strconv.Atoi(v[0])
+			if err != nil {
+				return fmt.Errorf("parsing 'max_buffer_size' parameters: %w", err)
+			}
+			if maxBufferSize <= 0 {
+				return errors.New("max_buffer_size must be positive")
+			}
+			d.Config.MaxBufferSize = maxBufferSize
 		case "docker_host":
 			if len(v) != 1 {
 				return errors.New("only one 'docker_host' parameters is required, not many")
