@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/oschwald/geoip2-golang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -106,6 +107,7 @@ func TestBotFileInitErrors(t *testing.T) {
 		{"bad rdns regex", "test_data_bots_bad_rdns.json", "invalid rdns regex"},
 		{"bad CIDR", "test_data_bots_bad_cidr.json", "invalid CIDR range"},
 		{"bad IP", "test_data_bots_bad_ip.json", "invalid IP"},
+		{"ASN 0", "test_data_bots_bad_asn.json", "invalid ASN 0"},
 		{"unknown field", "test_data_bots_unknown_field.json", "unknown field"},
 	}
 
@@ -400,4 +402,69 @@ func TestExplainKnownBotInvalidAddr(t *testing.T) {
 
 	_, err := ExplainKnownBot("not-an-ip", "", "/", "test_data_bots.json")
 	require.EqualError(t, err, "invalid source address 'not-an-ip'")
+}
+
+// TestExplainKnownBotASN uses the parser's test GeoLite2-ASN database, where
+// 1.0.0.0/24 is AS15169 and 8.8.8.8 is not listed.
+func TestExplainKnownBotASN(t *testing.T) {
+	tests := []struct {
+		name     string
+		ip       string
+		ua       string
+		noGeoIP  bool
+		expected *BotMatch
+	}{
+		{
+			name:     "asn hit",
+			ip:       "1.0.0.1",
+			expected: &BotMatch{Name: "google-asn", File: "test_data_bots_asn.json", Method: "asn", Detail: "AS15169"},
+		},
+		{
+			name:     "asn hit with port",
+			ip:       "1.0.0.255:443",
+			expected: &BotMatch{Name: "google-asn", File: "test_data_bots_asn.json", Method: "asn", Detail: "AS15169"},
+		},
+		{
+			name: "address not in database",
+			ip:   "8.8.8.8",
+		},
+		{
+			name: "private address",
+			ip:   "192.168.0.1",
+		},
+		{
+			name:     "asn hit with UA precondition",
+			ip:       "1.0.0.1",
+			ua:       "ExampleBot/1.0",
+			expected: &BotMatch{Name: "example-asn", File: "test_data_bots_asn.json", Method: "asn", Detail: "AS15169"},
+		},
+		{
+			name:    "no ASN database loaded",
+			ip:      "1.0.0.1",
+			noGeoIP: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setupBotTest(t, &fakeResolver{})
+			require.NoError(t, FileInit("testdata", "test_data_bots_asn.json", "bots"))
+
+			if !tc.noGeoIP {
+				reader, err := geoip2.Open("../parser/testdata/GeoLite2-ASN.mmdb")
+				require.NoError(t, err)
+
+				geoIPASNReader = reader
+
+				t.Cleanup(func() {
+					geoIPASNReader = nil
+					reader.Close()
+				})
+			}
+
+			match, err := ExplainKnownBot(tc.ip, tc.ua, "/", "test_data_bots_asn.json")
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, match)
+		})
+	}
 }

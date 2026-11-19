@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -96,6 +97,15 @@ func (cli *cliBot) match(out io.Writer, names []string, ip string, userAgent str
 	files, err := botDataFiles(hub, items)
 	if err != nil {
 		return err
+	}
+
+	// needed by entries matching on asns; optional, like in crowdsec
+	if _, err := os.Stat(filepath.Join(hub.GetDataDir(), "GeoLite2-ASN.mmdb")); err == nil {
+		if err := exprhelpers.GeoIPInit(hub.GetDataDir()); err != nil {
+			log.Warnf("unable to initialize GeoIP, ASN checks disabled: %s", err)
+		}
+
+		defer exprhelpers.GeoIPClose()
 	}
 
 	if len(files) == 0 {
