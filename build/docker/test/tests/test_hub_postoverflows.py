@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2023 Crowdsec
+# Copyright (c) 2020-2026 Crowdsec
 
 """
 Test postoverflow management
