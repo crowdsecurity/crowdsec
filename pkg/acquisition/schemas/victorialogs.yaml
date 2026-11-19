@@ -1,0 +1,113 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec VictoriaLogs datasource
+description: >
+  Schema for victorialogs acquisition entries consumed by CrowdSec. Every
+  field mirrors pkg/acquisition/modules/victorialogs.Configuration and the
+  embedded configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: victorialogs
+    description: >
+      Must be victorialogs to bind this acquisition entry to the
+      VictoriaLogs datasource.
+  mode:
+    type: string
+    enum: [tail, cat]
+    default: tail
+    description: >
+      Acquisition mode (tail streams new entries, cat performs a finite
+      read).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: victorialogs).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  url:
+    type: string
+    minLength: 1
+    description: Base URL of the VictoriaLogs server. Mandatory.
+  prefix:
+    type: string
+    default: "/"
+    description: >
+      Path prefix for the VictoriaLogs API, normalized to end with a slash.
+  query:
+    type: string
+    minLength: 1
+    description: LogsQL query used to select entries. Mandatory.
+  limit:
+    type: integer
+    minimum: 1
+    default: 100
+    description: Maximum number of log lines fetched per request.
+  since:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    description: >
+      Lower time bound for the query; reset to 0 in tail mode.
+  headers:
+    type: object
+    additionalProperties:
+      type: string
+    description: Extra HTTP headers sent to VictoriaLogs.
+  wait_for_ready:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    default: 10s
+    description: Retry interval while waiting for VictoriaLogs readiness.
+  auth:
+    type: object
+    additionalProperties: false
+    description: Basic auth credentials for VictoriaLogs.
+    properties:
+      username:
+        type: string
+      password:
+        type: string
+  max_failure_duration:
+    type: string
+    pattern: "^[0-9]+(ns|us|ms|s|m|h)$"
+    default: 30s
+    description: >
+      Maximum duration of consecutive query failures before the source
+      stops.
+required:
+  - source
+  - url
+  - query
+examples:
+  - source: victorialogs
+    url: http://localhost:9428
+    query: '{job="varlogs"}'
+    labels:
+      type: victorialogs
