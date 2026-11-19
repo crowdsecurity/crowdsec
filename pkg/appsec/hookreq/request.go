@@ -17,6 +17,17 @@ type Request struct {
 	ProtoMinor int
 	URL        *url.URL
 	Header     http.Header
+	// Geo is filled by the appsec engine, not New: this package can't reach the GeoIP databases.
+	Geo Geo
+}
+
+// Geo is GeoIP data for RemoteAddr. Fields are zero when unknown, so hooks need no nil checks.
+type Geo struct {
+	Country  string // ISO 3166-1 alpha-2
+	ASNumber uint
+	ASOrg    string
+	Range    string // CIDR
+	IsInEU   bool
 }
 
 func New(r *http.Request) *Request {
