@@ -3,10 +3,8 @@ package lokiclient
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -44,39 +42,10 @@ type Config struct {
 
 	FailMaxDuration time.Duration
 
-	DelayFor int
-	Limit    int
-}
-
-func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) (string, error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return "", fmt.Errorf("invalid Loki URL %q: %w", uri, err)
-	}
-	queryParams := u.Query()
-
-	var maxTS time.Time
-	for _, stream := range lq.Data.Result {
-		for _, entry := range stream.Entries {
-			if entry.Timestamp.After(maxTS) {
-				maxTS = entry.Timestamp
-			}
-		}
-	}
-
-	if !maxTS.IsZero() {
-		// +1 the last timestamp to avoid getting the same result again.
-		queryParams.Set("start", strconv.FormatInt(maxTS.UnixNano()+1, 10))
-	}
-	// When maxTS.IsZero() (no results), keep the existing start to avoid
-	// re-fetching already-processed logs. Only end is moved forward below.
-
-	if infinite {
-		queryParams.Set("end", strconv.FormatInt(time.Now().UnixNano(), 10))
-	}
-
-	u.RawQuery = queryParams.Encode()
-	return u.String(), nil
+	DelayFor     int
+	Limit        int
+	QueryDelay   time.Duration
+	PollInterval time.Duration
 }
 
 func (lc *LokiClient) SetTomb(t *tomb.Tomb) {
@@ -111,84 +80,6 @@ func (lc *LokiClient) increaseTicker(ticker *time.Ticker) {
 			lc.currentTickerInterval = maxTicker
 		}
 		ticker.Reset(lc.currentTickerInterval)
-	}
-}
-
-func (lc *LokiClient) decreaseTicker(ticker *time.Ticker) {
-	minTicker := 100 * time.Millisecond
-	if lc.currentTickerInterval != minTicker {
-		lc.currentTickerInterval = minTicker
-		ticker.Reset(lc.currentTickerInterval)
-	}
-}
-
-func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQueryRangeResponse, infinite bool) error {
-	lc.currentTickerInterval = 100 * time.Millisecond
-	ticker := time.NewTicker(lc.currentTickerInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-lc.t.Dying():
-			return lc.t.Err()
-		case <-ticker.C:
-			resp, err := lc.Get(ctx, uri)
-			if err != nil {
-				if ok := lc.shouldRetry(); !ok {
-					return fmt.Errorf("error querying range: %w", err)
-				}
-				lc.increaseTicker(ticker)
-				continue
-			}
-
-			if resp.StatusCode != http.StatusOK {
-				lc.Logger.Warnf("bad HTTP response code for query range: %d", resp.StatusCode)
-				body, _ := io.ReadAll(resp.Body)
-				resp.Body.Close()
-				if ok := lc.shouldRetry(); !ok {
-					return fmt.Errorf("bad HTTP response code: %d: %s: %w", resp.StatusCode, string(body), err)
-				}
-				lc.increaseTicker(ticker)
-				continue
-			}
-
-			var lq LokiQueryRangeResponse
-			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
-				resp.Body.Close()
-				if ok := lc.shouldRetry(); !ok {
-					return fmt.Errorf("error decoding Loki response: %w", err)
-				}
-				lc.increaseTicker(ticker)
-				continue
-			}
-			resp.Body.Close()
-			lc.Logger.Tracef("Got response: %+v", lq)
-			c <- &lq
-			lc.resetFailStart()
-			if !infinite && (len(lq.Data.Result) == 0 || len(lq.Data.Result[0].Entries) < lc.config.Limit) {
-				lc.Logger.Infof("Got less than %d results (%d), stopping", lc.config.Limit, len(lq.Data.Result))
-				close(c)
-				return nil
-			}
-			if len(lq.Data.Result) > 0 {
-				lc.Logger.Debugf("(timer:%v) %d results / %d entries result[0] (uri:%s)", lc.currentTickerInterval, len(lq.Data.Result), len(lq.Data.Result[0].Entries), uri)
-			} else {
-				lc.Logger.Debugf("(timer:%v) no results (uri:%s)", lc.currentTickerInterval, uri)
-			}
-			if infinite {
-				if len(lq.Data.Result) > 0 { //as long as we get results, we keep lowest ticker
-					lc.decreaseTicker(ticker)
-				} else {
-					lc.increaseTicker(ticker)
-				}
-			}
-
-			uri, err = updateURI(uri, lq, infinite)
-			if err != nil {
-				return fmt.Errorf("querying range: %w", err)
-			}
-		}
 	}
 }
 
@@ -316,7 +207,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 
 	lc.Logger.Infof("Connecting to %s", url)
 	lc.t.Go(func() error {
-		return lc.queryRange(ctx, url, c, infinite)
+		return lc.readRange(ctx, url, c, infinite)
 	})
 	return c
 }
