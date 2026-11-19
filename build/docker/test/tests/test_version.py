@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2023 Crowdsec
+
 import pytest
 
 pytestmark = pytest.mark.docker

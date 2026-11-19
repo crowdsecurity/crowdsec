@@ -1,3 +1,4 @@
+# Copyright (c) 2020-2023 Crowdsec
 
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2023 Crowdsec
+
 """
 Test bind-mounting local items
 """
