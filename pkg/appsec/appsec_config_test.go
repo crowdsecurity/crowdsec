@@ -494,3 +494,16 @@ func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
 		})
 	}
 }
+
+// TestLoadByPathChallengeTemplatePath: template_path is carried through
+// verbatim. It is resolved under the data dir later, by BuildOptions, so the
+// loader must not rewrite it.
+func TestLoadByPathChallengeTemplatePath(t *testing.T) {
+	cfg := newTestConfig()
+	f := writeTempYAML(t, "name: test-config\nchallenge:\n  template_path: pages/challenge.html\n")
+
+	require.NoError(t, cfg.LoadByPath(f))
+	require.NotNil(t, cfg.Challenge)
+	require.NotNil(t, cfg.Challenge.TemplatePath)
+	assert.Equal(t, "pages/challenge.html", *cfg.Challenge.TemplatePath)
+}

@@ -178,7 +178,7 @@ func TestSplitBundle_HTMLDoesNotContainSecret(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, html)
 
@@ -197,7 +197,7 @@ func TestSplitBundle_HTMLLoadsFPScannerViaScriptTag(t *testing.T) {
 	keys := testKeyRing()
 	rt := newChallengeRuntimeForSplitTest(t, keys)
 
-	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8)
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
 	require.NoError(t, err)
 
 	require.Contains(t, html, `<script src="`+ChallengeFPScannerPath+`">`,

@@ -263,6 +263,10 @@ type AppsecRequestState struct {
 	CookiePowDifficulty int  // PoW difficulty proven by the client for the current cookie (0 if no/invalid cookie)
 	ChallengeDifficulty *int // per-request PoW difficulty override (nil = use runtime default)
 
+	// ChallengePage holds the SetChallengeTitle/Meta/TemplateVar overrides.
+	// Not cleared by ResetResponse so pre_eval values reach the page.
+	ChallengePage challenge.PageOverrides
+
 	// SubmissionRejection is set by RejectSubmission inside an
 	// on_challenge_submit hook to refuse cookie issuance for the current
 	// challenge submission. nil for any other phase / outcome.
@@ -1890,7 +1894,7 @@ func (w *AppsecRuntimeConfig) SendChallenge(ctx context.Context, state *AppsecRe
 
 	w.requestLogger(state).Debugf("sending challenge at difficulty %d (client proved %d)", target, state.CookiePowDifficulty)
 
-	challengePage, err := w.ChallengeRuntime.GetChallengePage(ctx, request.HTTPRequest.UserAgent(), target)
+	challengePage, err := w.ChallengeRuntime.GetChallengePage(ctx, request.HTTPRequest.UserAgent(), target, &state.ChallengePage)
 	if err != nil {
 		return fmt.Errorf("unable to get challenge page: %w", err)
 	}
