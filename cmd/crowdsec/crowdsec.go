@@ -203,7 +203,7 @@ func runCrowdsec(
 
 	log.Info("Starting processing data")
 
-	if err := acquisition.StartAcquisition(ctx, datasources, logLines, &acquisTomb); err != nil {
+	if err := acquisition.StartAcquisition(ctx, datasources, logLines, acquisTomb); err != nil {
 		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 

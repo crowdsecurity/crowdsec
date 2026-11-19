@@ -5,7 +5,7 @@ ifeq ($(OS), Windows_NT)
 endif
 
 GO = go
-GOBUILD = $(GO) build
+GOBUILD = $(GO) build $(GORACE_OPTS)
 
 BINARY_NAME = cscli$(EXT)
 
