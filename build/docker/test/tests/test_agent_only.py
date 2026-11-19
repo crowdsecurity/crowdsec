@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 import secrets
 import time
 from http import HTTPStatus
