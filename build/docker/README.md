@@ -179,7 +179,7 @@ Check this full-stack example using docker-compose: https://github.com/crowdsecu
 ## Full configuration
 
 The container is built with a specific docker
-[configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml).
+[configuration](https://github.com/crowdsecurity/crowdsec/blob/master/build/docker/config.yaml).
 If you need to change it and the docker variables (see below) are not enough,
 you can mount `/etc/crowdsec/config.yaml.local` from the host.
 The file should contain only the options from `config.yaml` that you want to change,
