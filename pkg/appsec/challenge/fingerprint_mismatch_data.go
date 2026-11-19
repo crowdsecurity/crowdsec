@@ -8,8 +8,9 @@
 package challenge
 
 import (
-	"net/http"
 	"regexp"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 // Severity labels. Mirror the fpscanner library's fastBotDetectionDetails[*].severity
@@ -99,7 +100,7 @@ var libDetections = []libDetection{
 type customDetection struct {
 	Key      string
 	Severity string
-	Fire     func(fp *FingerprintData, req *http.Request, country string) bool
+	Fire     func(fp *FingerprintData, req *hookreq.Request, country string) bool
 }
 
 // customDetections lists every check we run on top of the library's own.
@@ -108,17 +109,17 @@ var customDetections = []customDetection{
 	{
 		Key:      ReasonUAMobile,
 		Severity: SeverityMedium,
-		Fire:     func(fp *FingerprintData, _ *http.Request, _ string) bool { return fp.UAMobileMismatch() },
+		Fire:     func(fp *FingerprintData, _ *hookreq.Request, _ string) bool { return fp.UAMobileMismatch() },
 	},
 	{
 		Key:      ReasonAcceptLanguage,
 		Severity: SeverityMedium,
-		Fire:     func(fp *FingerprintData, req *http.Request, _ string) bool { return fp.AcceptLanguageMismatch(req) },
+		Fire:     func(fp *FingerprintData, req *hookreq.Request, _ string) bool { return fp.AcceptLanguageMismatch(req) },
 	},
 	{
 		Key:      ReasonTimezoneCountry,
 		Severity: SeverityLow,
-		Fire:     func(fp *FingerprintData, _ *http.Request, country string) bool { return fp.TimezoneCountryMismatch(country) },
+		Fire:     func(fp *FingerprintData, _ *hookreq.Request, country string) bool { return fp.TimezoneCountryMismatch(country) },
 	},
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -289,6 +290,7 @@ func newAsyncHarness(t *testing.T, cfg appsec.AppsecConfig, inBandRules, oobRule
 func (h *asyncHarness) send(t *testing.T, requestUUID string, host string) appsec.AppsecTempResponse {
 	t.Helper()
 
+	httpReq := &http.Request{Host: host}
 	req := appsec.ParsedRequest{
 		UUID:                 requestUUID,
 		RemoteAddr:           "1.2.3.4",
@@ -296,7 +298,8 @@ func (h *asyncHarness) send(t *testing.T, requestUUID string, host string) appse
 		Method:               "GET",
 		URI:                  "/?foo=toto",
 		Args:                 url.Values{"foo": []string{"toto"}},
-		HTTPRequest:          &http.Request{Host: host},
+		HTTPRequest:          httpReq,
+		HookRequest:          hookreq.New(httpReq),
 		AppsecEngine:         h.engine,
 		ResponseChannel:      make(chan appsec.AppsecTempResponse, 1),
 	}

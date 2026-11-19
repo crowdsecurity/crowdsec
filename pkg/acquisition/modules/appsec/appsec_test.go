@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -246,6 +247,10 @@ func testAppSecEngine(t *testing.T, test appsecRuleTest) {
 	}
 
 	input := test.input_request
+	if input.HookRequest == nil {
+		// mirrors NewParsedRequest, which the literal requests bypass
+		input.HookRequest = hookreq.New(input.HTTPRequest)
+	}
 	// buffered so handleRequest's synchronous sends never block; drained below
 	input.ResponseChannel = make(chan appsec.AppsecTempResponse, 128)
 

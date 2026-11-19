@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
@@ -392,7 +393,7 @@ func TestAppsecEventToContext(t *testing.T) {
 		}
 		// run
 
-		metas, errors := AppsecEventToContext(test.match, test.req)
+		metas, errors := AppsecEventToContext(test.match, hookreq.New(test.req))
 		assert.Len(t, errors, test.expectedErrLen)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
@@ -437,7 +438,7 @@ func TestEvalAlertContextRules(t *testing.T) {
 				t.Fatalf("failed to compile %s: %s", test.name, err)
 			}
 
-			errs := EvalAlertContextRules(test.event, &test.match, test.req, contextDict)
+			errs := EvalAlertContextRules(test.event, &test.match, hookreq.New(test.req), contextDict)
 			assert.Len(t, errs, test.expectedErrLen)
 			assert.Equal(t, test.expectedResult, contextDict)
 		})

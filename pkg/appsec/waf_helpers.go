@@ -96,7 +96,7 @@ func GetPreEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecReq
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
-		"req":                     request.HTTPRequest,
+		"req":                     request.HookRequest,
 		"hook_vars":               state.HookVars,
 		"RemoveInBandRuleByID":    func(id int) error { return w.RemoveInbandRuleByID(state, id) },
 		"RemoveInBandRuleByName":  func(name string) error { return w.RemoveInbandRuleByName(state, name) },
@@ -155,7 +155,7 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
-		"req":         request.HTTPRequest,
+		"req":         request.HookRequest,
 		"SendChallenge": func() error {
 			return w.SendChallenge(ctx, state, request)
 		},
@@ -188,7 +188,7 @@ func GetPostEvalEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRe
 
 func GetOnChallengeEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
-		"req":         request.HTTPRequest,
+		"req":         request.HookRequest,
 		"IsInBand":    request.IsInBand,
 		"fingerprint": state.Fingerprint,
 		"SendChallenge": func() error {
@@ -255,7 +255,7 @@ func withRequestScore(logger *log.Entry, state *AppsecRequestState) *log.Entry {
 // should do so via pre_eval.
 func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
-		"req":         request.HTTPRequest,
+		"req":         request.HookRequest,
 		"IsInBand":    request.IsInBand,
 		"fingerprint": state.Fingerprint,
 		"RejectSubmission": func(reason string, verbosity ...string) error {
@@ -351,7 +351,7 @@ func GetOnChallengeSubmitEnv(ctx context.Context, w *AppsecRuntimeConfig, state 
 func GetOnMatchEnv(ctx context.Context, w *AppsecRuntimeConfig, state *AppsecRequestState, request *ParsedRequest, evt pipeline.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":                     evt,
-		"req":                     request.HTTPRequest,
+		"req":                     request.HookRequest,
 		"hook_vars":               state.HookVars,
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,

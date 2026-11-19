@@ -1732,7 +1732,7 @@ func (w *AppsecRuntimeConfig) EvaluateMismatches(state *AppsecRequestState, requ
 	}
 
 	country := exprhelpers.IPToCountryString(request.ClientIP)
-	report := state.Fingerprint.ComputeMismatchReport(request.HTTPRequest, country)
+	report := state.Fingerprint.ComputeMismatchReport(request.HookRequest, country)
 
 	state.LastMismatchReport = report
 
