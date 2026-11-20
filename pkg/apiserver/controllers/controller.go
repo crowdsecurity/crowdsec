@@ -140,6 +140,10 @@ func (c *Controller) NewV1() error {
 		jwtAuth.GET("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.HEAD("/allowlists/check/:ip_or_range", c.HandlerV1.CheckInAllowlist)
 		jwtAuth.POST("/allowlists/check", c.HandlerV1.CheckInAllowlistBulk)
+		jwtAuth.POST("/allowlists", c.HandlerV1.AbortUntrustedIP, c.HandlerV1.CreateAllowlist)
+		jwtAuth.DELETE("/allowlists/:allowlist_name", c.HandlerV1.AbortUntrustedIP, c.HandlerV1.DeleteAllowlist)
+		jwtAuth.POST("/allowlists/:allowlist_name/items", c.HandlerV1.AbortUntrustedIP, c.HandlerV1.AddAllowlistItems)
+		jwtAuth.DELETE("/allowlists/:allowlist_name/items", c.HandlerV1.AbortUntrustedIP, c.HandlerV1.RemoveAllowlistItems)
 		jwtAuth.DELETE("/watchers/self", c.HandlerV1.DeleteMachine)
 	}
 

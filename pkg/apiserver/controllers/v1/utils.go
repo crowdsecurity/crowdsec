@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -70,5 +71,12 @@ func (*Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			gctx.Abort()
 		}
+	}
+}
+
+func (c *Controller) AbortUntrustedIP(gctx *gin.Context) {
+	if incomingIP, trusted := authIP(gctx, c.TrustedIPs); !trusted {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
+		gctx.Abort()
 	}
 }
