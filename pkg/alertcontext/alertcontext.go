@@ -210,8 +210,7 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 					}
 				}
 			default:
-				r := reflect.ValueOf(output)
-				if r.IsZero() || r.IsNil() {
+				if output == nil || reflect.ValueOf(output).IsZero() {
 					continue
 				}
 				val := fmt.Sprintf("%v", output)
