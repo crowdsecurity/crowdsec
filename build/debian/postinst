@@ -82,7 +82,7 @@ if [ "$1" = configure ]; then
     fi
     # Start if lapi disabled, or if port is unspecified, or if port is free.
     if [ "$LAPI" = false ] || [ -z "$PORT" ] || [ -z "$(ss -nlt "sport = ${PORT}" 2>/dev/null | grep -v ^State || true)" ]  ; then
-        systemctl start crowdsec
+        deb-systemd-invoke start crowdsec
     else
         echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
         echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
