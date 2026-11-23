@@ -765,7 +765,7 @@ since: 2020-01-01T00:00:00Z`, testServiceName),
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			dockerSource := &Source{logger: log.WithField("type", ModuleName)}
+			dockerSource := &Source{logger: log.WithField("type", ModuleName), t: &tomb.Tomb{}}
 
 			require.NoError(t, dockerSource.UnmarshalConfig([]byte(ts.config)))
 

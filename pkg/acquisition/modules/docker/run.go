@@ -277,20 +277,35 @@ func (d *Source) checkServices(ctx context.Context, monitChan chan *ContainerCon
 			// same as containers: the logs of the previous tasks are still there
 			serviceConfig.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
 
-			monitChan <- serviceConfig
+			if !d.sendToManager(monitChan, serviceConfig) {
+				return nil
+			}
 		}
 	}
 
 	// Send deletion notifications for services that are no longer running
 	for serviceStateID, serviceConfig := range d.runningServiceState.GetAll() {
 		if _, ok := runningServicesID[serviceStateID]; !ok {
-			deleteChan <- serviceConfig
+			if !d.sendToManager(deleteChan, serviceConfig) {
+				return nil
+			}
 		}
 	}
 
 	d.logger.Tracef("Reading logs from %d services", d.runningServiceState.Len())
 
 	return nil
+}
+
+// sendToManager returns false if we're shutting down: the managers stop
+// reading their channels then, and a plain send would block forever.
+func (d *Source) sendToManager(ch chan *ContainerConfig, cfg *ContainerConfig) bool {
+	select {
+	case ch <- cfg:
+		return true
+	case <-d.t.Dying():
+		return false
+	}
 }
 
 func (d *Source) checkContainers(ctx context.Context, monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
@@ -332,13 +347,17 @@ func (d *Source) checkContainers(ctx context.Context, monitChan chan *ContainerC
 			// read: always tail from now on, whatever the configured "since".
 			containerConfig.logOptions.Since = time.Now().UTC().Format(time.RFC3339Nano)
 
-			monitChan <- containerConfig
+			if !d.sendToManager(monitChan, containerConfig) {
+				return nil
+			}
 		}
 	}
 
 	for containerStateID, containerConfig := range d.runningContainerState.GetAll() {
 		if _, ok := runningContainersID[containerStateID]; !ok {
-			deleteChan <- containerConfig
+			if !d.sendToManager(deleteChan, containerConfig) {
+				return nil
+			}
 		}
 	}
 
@@ -616,7 +635,12 @@ func (d *Source) TailContainer(ctx context.Context, container *ContainerConfig, 
 		if !containerHealthy {
 			// Container is dead/stopped - don't retry, remove from monitoring
 			container.logger.Infof("container no longer running, removing from monitoring: %v", err)
-			deleteChan <- container
+			// on shutdown the manager kills us and waits, without reading deleteChan
+			select {
+			case deleteChan <- container:
+			case <-container.t.Dying():
+			}
+
 			return err
 		}
 
@@ -731,7 +755,12 @@ func (d *Source) TailService(ctx context.Context, service *ContainerConfig, outC
 		if !serviceHealthy {
 			// Service was removed - don't retry, remove from monitoring
 			service.logger.Infof("service no longer exists, removing from monitoring: %v", err)
-			deleteChan <- service
+			// on shutdown the manager kills us and waits, without reading deleteChan
+			select {
+			case deleteChan <- service:
+			case <-service.t.Dying():
+			}
+
 			return err
 		}
 
@@ -869,7 +898,6 @@ func (d *Source) ContainerManager(ctx context.Context, in chan *ContainerConfig,
 				}
 			}
 
-			d.runningContainerState = nil
 			d.logger.Debugf("routine cleanup done, return")
 
 			return nil
@@ -909,7 +937,6 @@ func (d *Source) ServiceManager(ctx context.Context, in chan *ContainerConfig, d
 				}
 			}
 
-			d.runningServiceState = nil
 			d.logger.Debugf("service manager cleanup done, return")
 
 			return nil
