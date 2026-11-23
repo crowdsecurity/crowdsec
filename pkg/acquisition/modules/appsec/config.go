@@ -28,8 +28,9 @@ import (
 )
 
 var (
-	errMissingAPIKey = errors.New("missing API key")
-	errInvalidAPIKey = errors.New("invalid API key")
+	errMissingAPIKey  = errors.New("missing API key")
+	errInvalidAPIKey  = errors.New("invalid API key")
+	errAppsecStopping = errors.New("appsec source is stopping")
 )
 
 var (
@@ -411,6 +412,27 @@ func (w *Source) checkAuth(ctx context.Context, apiKey string) error {
 	return nil
 }
 
+// dispatchToRunner waits for the runner without outliving shutdown or the client.
+// Replies use a one-slot channel so the runner can finish after the handler leaves.
+func (w *Source) dispatchToRunner(ctx context.Context, request appsec.ParsedRequest) (appsec.AppsecTempResponse, error) {
+	select {
+	case <-w.shutdown:
+		return appsec.AppsecTempResponse{}, errAppsecStopping
+	case <-ctx.Done():
+		return appsec.AppsecTempResponse{}, ctx.Err()
+	case w.InChan <- request:
+	}
+
+	select {
+	case <-w.shutdown:
+		return appsec.AppsecTempResponse{}, errAppsecStopping
+	case <-ctx.Done():
+		return appsec.AppsecTempResponse{}, ctx.Err()
+	case response := <-request.ResponseChannel:
+		return response, nil
+	}
+}
+
 // should this be in the runner ?
 func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -454,13 +476,16 @@ func (w *Source) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 
 	metrics.AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 
-	w.InChan <- parsedRequest
-
 	/*
 		response is a copy of w.AppSecRuntime.Response that is safe to use.
 		As OutOfBand might still be running, the original one can be modified
 	*/
-	response := <-parsedRequest.ResponseChannel
+	response, err := w.dispatchToRunner(ctx, parsedRequest)
+	if err != nil {
+		// No runner response is available on shutdown or cancellation.
+		rw.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 
 	if response.InBandInterrupt {
 		metrics.AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()

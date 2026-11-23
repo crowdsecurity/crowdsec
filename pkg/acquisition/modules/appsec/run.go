@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"gopkg.in/tomb.v2"
 
@@ -18,6 +19,25 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csnet"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
+
+const appsecShutdownTimeout = 5 * time.Second
+
+// shutdownHTTPServer allows a bounded grace period even if acquisition was canceled,
+// then closes active connections if graceful shutdown times out.
+func (w *Source) shutdownHTTPServer(ctx context.Context, timeout time.Duration) error {
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	defer cancel()
+
+	if err := w.server.Shutdown(shutdownCtx); err != nil {
+		if closeErr := w.server.Close(); closeErr != nil {
+			return fmt.Errorf("appsec HTTP shutdown: %w (forced close failed: %v)", err, closeErr)
+		}
+
+		return fmt.Errorf("appsec HTTP shutdown (connections forcibly closed): %w", err)
+	}
+
+	return nil
+}
 
 func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 	w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
@@ -101,14 +121,16 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 		// xx let's clean up the appsec runners :)
 		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 
-		if err := w.server.Shutdown(ctx); err != nil {
-			w.logger.Errorf("Error shutting down Appsec server: %s", err.Error())
+		if err := w.shutdownHTTPServer(ctx, appsecShutdownTimeout); err != nil {
+			w.logger.Errorf("Error shutting down Appsec server: %s", err)
 		}
 
 		if w.AppsecRuntime != nil && w.AppsecRuntime.ChallengeRuntime != nil {
-			if err := w.AppsecRuntime.ChallengeRuntime.Close(ctx); err != nil {
+			challengeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), appsecShutdownTimeout)
+			if err := w.AppsecRuntime.ChallengeRuntime.Close(challengeCtx); err != nil {
 				w.logger.Errorf("Error closing challenge runtime: %s", err)
 			}
+			cancel()
 		}
 
 		if w.config.ListenSocket != "" {
@@ -124,6 +146,9 @@ func (w *Source) listenAndServe(ctx context.Context, t *tomb.Tomb) error {
 }
 
 func (w *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+	// Attach the lifecycle before handlers and runners can start.
+	w.shutdown = t.Dying()
+
 	lapiClient, err := apiclient.GetLAPIClient()
 	if err != nil {
 		return fmt.Errorf("unable to get authenticated LAPI client: %w", err)
