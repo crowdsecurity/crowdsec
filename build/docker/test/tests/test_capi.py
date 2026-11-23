@@ -46,3 +46,15 @@ def test_capi(crowdsec, flavor: str) -> None:
                 "*Registration to online API done*",
             ]
         )
+
+
+def test_capi_register_creds_mode(crowdsec, flavor: str) -> None:
+    """A CAPI registration with no credentials file writes it owner-only"""
+    env = {"DISABLE_ONLINE_API": "false"}
+    # the image ships an empty 0600 file; a user-provided config dir may not
+    entrypoint = ["sh", "-c", "rm /staging/etc/crowdsec/online_api_credentials.yaml && exec /bin/bash /docker_start.sh"]
+
+    with crowdsec(flavor=flavor, environment=env, entrypoint=entrypoint) as cs:
+        cs.wait_for_log("*Registration to online API done*")
+        res = cs.cont.exec_run("stat -c %a /etc/crowdsec/online_api_credentials.yaml")
+        assert res.output.decode().strip() == "600"
