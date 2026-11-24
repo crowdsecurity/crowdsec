@@ -84,9 +84,9 @@ type Config struct {
 	// success).
 	//
 	// The path is relative to the crowdsec data dir and must stay inside it;
-	// absolute paths are refused. If the file is missing or the template is
-	// unusable, the built-in page is used instead — a broken custom page must
-	// not take the instance down.
+	// absolute paths are refused. A missing file or unusable template fails
+	// the configuration, so the mistake surfaces at load time (crowdsec -t)
+	// instead of silently serving the built-in page.
 	TemplatePath *string `yaml:"template_path"`
 
 	// LogLevel sets the challenge runtime's own log verbosity, independent of
