@@ -20,8 +20,12 @@ const (
 )
 
 var (
-	// Lowercase only: og:/twitter: properties are case-sensitive and defined lowercase.
-	metaKeyRe = regexp.MustCompile(`^(description|(og|twitter):[a-z0-9_:.-]+)$`)
+	// The key is written unescaped into the attribute, so this charset is what
+	// keeps it from breaking out. Any name is safe otherwise: the tag only
+	// ever uses name= or property=, never http-equiv=.
+	metaKeyRe = regexp.MustCompile(`^[A-Za-z0-9_:.-]+$`)
+	// These RDFa prefixes are specified with property=, everything else with name=.
+	metaPropertyPrefixes = []string{"og:", "fb:", "article:", "book:", "profile:", "music:", "video:"}
 	// Must be usable as {{.Vars.name}} in a template.
 	pageVarRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
@@ -50,10 +54,10 @@ func (p *PageOverrides) SetTitle(title string) error {
 }
 
 // SetMeta adds a <meta> tag, or replaces the value of one already set with
-// the same key. Only description, og:* and twitter:* are allowed.
+// the same key.
 func (p *PageOverrides) SetMeta(key, value string) error {
 	if !metaKeyRe.MatchString(key) {
-		return fmt.Errorf("challenge page meta %q: only description, og:* and twitter:* are allowed", key)
+		return fmt.Errorf("challenge page meta %q: only letters, digits, _ : . - are allowed", key)
 	}
 
 	if len(value) > maxPageValueLen {
@@ -113,10 +117,12 @@ func (p *PageOverrides) addTo(data map[string]interface{}) {
 	var meta strings.Builder
 
 	for _, m := range p.meta {
-		// Open Graph is specified with property=, everything else with name=.
 		attr := "name"
-		if strings.HasPrefix(m.key, "og:") {
-			attr = "property"
+		for _, prefix := range metaPropertyPrefixes {
+			if strings.HasPrefix(m.key, prefix) {
+				attr = "property"
+				break
+			}
 		}
 
 		fmt.Fprintf(&meta, "<meta %s=\"%s\" content=\"%s\" />\n", attr, m.key, html.EscapeString(m.value))

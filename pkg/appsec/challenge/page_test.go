@@ -22,10 +22,12 @@ func TestPageOverridesValidation(t *testing.T) {
 		{name: "description", set: func(p *PageOverrides) error { return p.SetMeta("description", "d") }},
 		{name: "og", set: func(p *PageOverrides) error { return p.SetMeta("og:image:alt", "d") }},
 		{name: "twitter", set: func(p *PageOverrides) error { return p.SetMeta("twitter:card", "summary") }},
-		{name: "robots not allowed", set: func(p *PageOverrides) error { return p.SetMeta("robots", "index") }, wantErr: "only description"},
-		{name: "refresh not allowed", set: func(p *PageOverrides) error { return p.SetMeta("http-equiv", "refresh") }, wantErr: "only description"},
-		{name: "attribute injection", set: func(p *PageOverrides) error { return p.SetMeta(`og:x" onload="`, "d") }, wantErr: "only description"},
-		{name: "bare og prefix", set: func(p *PageOverrides) error { return p.SetMeta("og:", "d") }, wantErr: "only description"},
+		{name: "robots", set: func(p *PageOverrides) error { return p.SetMeta("robots", "noindex") }},
+		{name: "mixed case", set: func(p *PageOverrides) error { return p.SetMeta("msapplication-TileColor", "#fff") }},
+		{name: "attribute injection", set: func(p *PageOverrides) error { return p.SetMeta(`og:x" onload="`, "d") }, wantErr: "only letters"},
+		{name: "tag injection", set: func(p *PageOverrides) error { return p.SetMeta("a><script>", "d") }, wantErr: "only letters"},
+		{name: "space", set: func(p *PageOverrides) error { return p.SetMeta("a b", "d") }, wantErr: "only letters"},
+		{name: "empty key", set: func(p *PageOverrides) error { return p.SetMeta("", "d") }, wantErr: "only letters"},
 		{name: "meta too long", set: func(p *PageOverrides) error { return p.SetMeta("description", long) }, wantErr: "max 2048"},
 		{name: "var", set: func(p *PageOverrides) error { return p.SetVar("brand_name", "Shop") }},
 		{name: "var not a template identifier", set: func(p *PageOverrides) error { return p.SetVar("brand-name", "Shop") }, wantErr: "must be a letter"},
@@ -75,6 +77,8 @@ func TestBuiltinPageOverrides(t *testing.T) {
 	require.NoError(t, p.SetMeta("og:title", "Shop"))
 	require.NoError(t, p.SetMeta("twitter:card", "summary"))
 	require.NoError(t, p.SetMeta("og:title", "Shop & co"))
+	require.NoError(t, p.SetMeta("article:author", "Shop"))
+	require.NoError(t, p.SetMeta("http-equiv", "refresh"))
 
 	html, err = rt.GetChallengePage(t.Context(), "test-agent", 8, &p)
 	require.NoError(t, err)
@@ -84,6 +88,9 @@ func TestBuiltinPageOverrides(t *testing.T) {
 		`<meta name="description" content="say &#34;hi&#34;" />`,
 		`<meta property="og:title" content="Shop &amp; co" />`,
 		`<meta name="twitter:card" content="summary" />`,
+		`<meta property="article:author" content="Shop" />`,
+		// http-equiv is only a name here, so the browser ignores it.
+		`<meta name="http-equiv" content="refresh" />`,
 	} {
 		require.Contains(t, html, want)
 	}
