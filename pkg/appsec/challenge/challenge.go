@@ -202,6 +202,15 @@ type ChallengeRuntime struct {
 	// doesn't re-parse per request.
 	htmlTpl *template.Template
 
+	// defaultTpl is the built-in page, kept even when htmlTpl is the operator's:
+	// startup validation can't catch a template that only fails on some
+	// request data, and a failed render must not let the request through.
+	defaultTpl *template.Template
+
+	// lastRenderFallbackWarn (unix nanos) rate-limits the fallback warning,
+	// which would otherwise fire on every challenged request.
+	lastRenderFallbackWarn atomic.Int64
+
 	// blockTpl renders the {{.CrowdsecChallenge}} value injected into htmlTpl.
 	blockTpl *template.Template
 
@@ -541,12 +550,14 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 	// is pretty much hardcoded and trusted; html/template would escape the JS
 	// we inject. Parsed once here so GetChallengePage doesn't re-parse on
 	// every request.
+	defaultTpl, err := template.New("challenge").Parse(htmlTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("parse challenge html template: %w", err)
+	}
+
 	htmlTpl := resolvedOpts.htmlTpl
 	if htmlTpl == nil {
-		htmlTpl, err = template.New("challenge").Parse(htmlTemplate)
-		if err != nil {
-			return nil, fmt.Errorf("parse challenge html template: %w", err)
-		}
+		htmlTpl = defaultTpl
 	}
 
 	blockTpl, err := template.New("challenge_block").Parse(challengeBlockTemplate)
@@ -565,6 +576,7 @@ func NewChallengeRuntime(ctx context.Context, opts ...Option) (*ChallengeRuntime
 		maxCookieLen:       maxCookieLen,
 		cookieSameSiteNone: resolvedOpts.cookieSameSiteNone,
 		htmlTpl:            htmlTpl,
+		defaultTpl:         defaultTpl,
 		blockTpl:           blockTpl,
 		spent:              newSpentSet(spentSetMaxEntries),
 		customJSTimeout:    customJSTimeout,
@@ -706,9 +718,31 @@ func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent strin
 
 	var renderedPage strings.Builder
 	if err := c.htmlTpl.Execute(&renderedPage, data); err != nil {
-		return "", fmt.Errorf("render challenge page: %w", err)
+		if c.htmlTpl == c.defaultTpl {
+			return "", fmt.Errorf("render challenge page: %w", err)
+		}
+
+		c.warnRenderFallback(err)
+
+		// Execute may have written part of the custom page already.
+		renderedPage.Reset()
+		if err := c.defaultTpl.Execute(&renderedPage, data); err != nil {
+			return "", fmt.Errorf("render built-in challenge page: %w", err)
+		}
 	}
 	return renderedPage.String(), nil
+}
+
+const renderFallbackWarnInterval = time.Minute
+
+func (c *ChallengeRuntime) warnRenderFallback(err error) {
+	now := time.Now().UnixNano()
+	last := c.lastRenderFallbackWarn.Load()
+	if now-last >= int64(renderFallbackWarnInterval) && c.lastRenderFallbackWarn.CompareAndSwap(last, now) {
+		c.log().Warnf("custom challenge page failed to render, serving the built-in page instead (logged at most once per %s): %s", renderFallbackWarnInterval, err)
+		return
+	}
+	c.log().Debugf("custom challenge page failed to render, serving the built-in page instead: %s", err)
 }
 
 // newPageData builds the template data shared by the challenge block and the

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -364,4 +366,48 @@ func TestResolveTemplatePath(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+// TestCustomTemplateRenderErrorFallsBack: a page that passes startup validation
+// but fails on some request data must still serve a challenge (the built-in
+// page), not an error that the hook turns into an allowed request.
+func TestCustomTemplateRenderErrorFallsBack(t *testing.T) {
+	dataDir := t.TempDir()
+	page := "<body><h1>my own page</h1>{{if .Vars.ref}}{{slice .Vars.ref 0 8}}{{end}}{{.CrowdsecChallenge}}</body>"
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "page.html"), []byte(page), 0o600))
+
+	opts, err := BuildOptions(&Config{TemplatePath: new("page.html")}, nil, dataDir)
+	require.NoError(t, err, "the page must pass startup validation")
+
+	capture, hook := logtest.NewNullLogger()
+	capture.SetLevel(log.DebugLevel)
+
+	rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), WithLogger(log.NewEntry(capture)), withoutPreWarm())...)
+	require.NoError(t, err)
+
+	short := &PageOverrides{}
+	require.NoError(t, short.SetVar("ref", "abc"))
+
+	for range 2 {
+		html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, short)
+		require.NoError(t, err)
+		assert.Contains(t, html, "Why am I seeing this?", "the built-in page must be served")
+		assert.NotContains(t, html, "my own page", "no partial custom page may leak")
+		assert.Contains(t, html, "var _powD=", "the challenge itself must still be there")
+	}
+
+	warns := 0
+	for _, e := range hook.AllEntries() {
+		if e.Level == log.WarnLevel && strings.Contains(e.Message, "serving the built-in page") {
+			warns++
+		}
+	}
+	assert.Equal(t, 1, warns, "the fallback warning must be rate-limited")
+
+	long := &PageOverrides{}
+	require.NoError(t, long.SetVar("ref", "abcdefghij"))
+
+	html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, long)
+	require.NoError(t, err)
+	assert.Contains(t, html, "<h1>my own page</h1>abcdefgh", "a render that works keeps the custom page")
 }
