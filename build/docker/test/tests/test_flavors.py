@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 """
 Test basic behavior of all the image variants
 """

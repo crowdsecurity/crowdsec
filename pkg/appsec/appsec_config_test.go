@@ -495,15 +495,32 @@ func TestLoadAPISchemaRejectsPathTraversal(t *testing.T) {
 	}
 }
 
-// TestLoadByPathChallengeTemplatePath: template_path is carried through
-// verbatim. It is resolved under the data dir later, by BuildOptions, so the
-// loader must not rewrite it.
-func TestLoadByPathChallengeTemplatePath(t *testing.T) {
-	cfg := newTestConfig()
-	f := writeTempYAML(t, "name: test-config\nchallenge:\n  template_path: pages/challenge.html\n")
+func TestBuildBodySettings(t *testing.T) {
+	tests := []struct {
+		name   string
+		onLoad []Hook
+		expect BodySettings
+	}{
+		{
+			name:   "defaults",
+			expect: BodySettings{MaxSize: DefaultMaxBodySize, Action: BodySizeActionDrop, Decompress: true},
+		},
+		{
+			name:   "decompression disabled in on_load",
+			onLoad: []Hook{{Apply: []string{"SetBodyDecompression(false)"}}},
+			expect: BodySettings{MaxSize: DefaultMaxBodySize, Action: BodySizeActionDrop, Decompress: false},
+		},
+	}
 
-	require.NoError(t, cfg.LoadByPath(f))
-	require.NotNil(t, cfg.Challenge)
-	require.NotNil(t, cfg.Challenge.TemplatePath)
-	assert.Equal(t, "pages/challenge.html", *cfg.Challenge.TemplatePath)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := newTestConfig()
+			cfg.OnLoad = test.onLoad
+
+			rt, err := cfg.Build(t.Context(), nil)
+			require.NoError(t, err)
+			require.NoError(t, rt.ProcessOnLoadRules())
+			require.Equal(t, test.expect, rt.BodySettings)
+		})
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"regexp"
+	"slices"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -16,10 +17,10 @@ import (
 var dataFileBots map[string][]*botEntry
 
 // botEntry is one bot definition (one JSON line in a "bots" data file).
-// Matching semantics: (UA && PATH) && (IP || RANGE || RDNS) — the optional
-// user_agent and paths regexes are preconditions, then the source must be
-// verified by at least one identity check (exact IP, CIDR range, or
-// forward-confirmed reverse DNS). UA-only entries are rejected at load time:
+// Matching semantics: (UA && PATH) && (IP || RANGE || ASN || RDNS) — the
+// optional user_agent and paths regexes are preconditions, then the source must
+// be verified by at least one identity check (exact IP, CIDR range, AS number
+// from the GeoLite2-ASN database, or forward-confirmed reverse DNS). UA-only entries are rejected at load time:
 // a User-Agent is trivially spoofable.
 //
 // rdns patterns are regexes matched against the FCrDNS-verified names
@@ -31,6 +32,7 @@ type botEntry struct {
 	Paths     []string `json:"paths,omitempty"`
 	IPs       []string `json:"ips,omitempty"`
 	Ranges    []string `json:"ranges,omitempty"`
+	ASNs      []uint   `json:"asns,omitempty"`
 	RDNS      []string `json:"rdns,omitempty"`
 
 	// set at load time
@@ -60,8 +62,13 @@ func botFileInit(filename string, line string) error {
 		return fmt.Errorf("missing mandatory 'name' field in %s: %s", filename, line)
 	}
 
-	if len(entry.IPs)+len(entry.Ranges)+len(entry.RDNS) == 0 {
-		return fmt.Errorf("bot entry '%s' in %s has no identity verification (need at least one of ips/ranges/rdns)", entry.Name, filename)
+	if len(entry.IPs)+len(entry.Ranges)+len(entry.ASNs)+len(entry.RDNS) == 0 {
+		return fmt.Errorf("bot entry '%s' in %s has no identity verification (need at least one of ips/ranges/asns/rdns)", entry.Name, filename)
+	}
+
+	// 0 is what the ASN lookup returns for unknown addresses
+	if slices.Contains(entry.ASNs, 0) {
+		return fmt.Errorf("invalid ASN 0 for bot entry '%s' in %s", entry.Name, filename)
 	}
 
 	var err error
@@ -149,13 +156,13 @@ func parseBotAddr(s string) (netip.Addr, bool) {
 type BotMatch struct {
 	Name   string `json:"name"`
 	File   string `json:"file"`
-	Method string `json:"method"` // "ip", "range" or "rdns"
-	Detail string `json:"detail"` // the address, CIDR or FCrDNS name that matched
+	Method string `json:"method"` // "ip", "range", "asn" or "rdns"
+	Detail string `json:"detail"` // the address, CIDR, AS number or FCrDNS name that matched
 }
 
 // MatchKnownBot reports whether the request (source address, User-Agent, path)
 // matches a bot definition in any of the named "bots" data files:
-// (UA && PATH) && (IP || RANGE || RDNS).
+// (UA && PATH) && (IP || RANGE || ASN || RDNS).
 func MatchKnownBot(ip string, ua string, path string, filenames ...string) bool {
 	match, err := ExplainKnownBot(ip, ua, path, filenames...)
 	if err != nil {
@@ -189,6 +196,8 @@ func ExplainKnownBot(ip string, ua string, path string, filenames ...string) (*B
 
 	var rdnsCandidates []*botEntry
 
+	asn := &lazyASN{addr: addr}
+
 	for _, filename := range filenames {
 		entries, ok := dataFileBots[filename]
 		if !ok {
@@ -196,7 +205,7 @@ func ExplainKnownBot(ip string, ua string, path string, filenames ...string) (*B
 			continue
 		}
 
-		if match := matchBotEntriesByAddr(addr, ua, path, filename, entries, &rdnsCandidates); match != nil {
+		if match := matchBotEntriesByAddr(addr, asn, ua, path, filename, entries, &rdnsCandidates); match != nil {
 			return match, nil
 		}
 	}
@@ -233,11 +242,42 @@ func MatchKnownBotExpr(params ...any) (any, error) {
 	return MatchKnownBot(ip, ua, path, filenames...), nil
 }
 
+// lazyASN looks up the AS number of addr on first use only, so requests that
+// never reach an entry with asns don't pay for the mmdb lookup.
+type lazyASN struct {
+	addr   netip.Addr
+	done   bool
+	number uint
+}
+
+func (l *lazyASN) get() uint {
+	if l.done {
+		return l.number
+	}
+
+	l.done = true
+
+	if geoIPASNReader == nil {
+		log.Debugf("MatchKnownBot: GeoLite2-ASN database not loaded, skipping ASN checks")
+		return 0
+	}
+
+	record, err := geoIPASNReader.ASN(l.addr.AsSlice())
+	if err != nil {
+		log.Debugf("MatchKnownBot: ASN lookup for %s: %s", l.addr, err)
+		return 0
+	}
+
+	l.number = record.AutonomousSystemNumber
+
+	return l.number
+}
+
 // matchBotEntriesByAddr runs the cheap (non-DNS) checks for one file's entries.
-// It returns a match on an exact-IP or CIDR-range hit, and collects entries that
+// It returns a match on an exact-IP, CIDR-range or ASN hit, and collects entries that
 // still need FCrDNS verification into rdnsCandidates for the caller to resolve
 // once across all files.
-func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, filename string, entries []*botEntry, rdnsCandidates *[]*botEntry) *BotMatch {
+func matchBotEntriesByAddr(addr netip.Addr, asn *lazyASN, ua string, path string, filename string, entries []*botEntry, rdnsCandidates *[]*botEntry) *BotMatch {
 	for _, entry := range entries {
 		if entry.uaRegex != nil && !entry.uaRegex.MatchString(ua) {
 			continue
@@ -254,6 +294,12 @@ func matchBotEntriesByAddr(addr netip.Addr, ua string, path string, filename str
 		for _, prefix := range entry.prefixes {
 			if prefix.Contains(addr) {
 				return &BotMatch{Name: entry.Name, File: filename, Method: "range", Detail: prefix.String()}
+			}
+		}
+
+		if len(entry.ASNs) > 0 {
+			if n := asn.get(); n != 0 && slices.Contains(entry.ASNs, n) {
+				return &BotMatch{Name: entry.Name, File: filename, Method: "asn", Detail: fmt.Sprintf("AS%d", n)}
 			}
 		}
 

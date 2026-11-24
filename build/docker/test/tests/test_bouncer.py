@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 """
 Test bouncer management: pre-installed, run-time installation and removal.
 """

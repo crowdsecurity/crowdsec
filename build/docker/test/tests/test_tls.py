@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 """
 Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 """

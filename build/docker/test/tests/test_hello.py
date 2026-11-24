@@ -1,3 +1,5 @@
+# Copyright (c) 2020-2026 Crowdsec
+
 """
 Smoke tests in case docker is not set up correctly or has connection issues.
 """
