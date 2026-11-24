@@ -217,8 +217,8 @@ func TestBuildOptionsCustomTemplate(t *testing.T) {
 	}
 }
 
-// TestBuildOptionsUnusableTemplate: an unusable custom page is a warning, not
-// a startup failure — the built-in page keeps the instance protected. The
+// TestBuildOptionsUnusableTemplate: an unusable custom page fails the
+// configuration, like a bad master_secret, so `crowdsec -t` catches it. The
 // missing-action case matters most: it parses and renders fine, but produces a
 // page no visitor could ever solve.
 func TestBuildOptionsUnusableTemplate(t *testing.T) {
@@ -243,17 +243,27 @@ func TestBuildOptionsUnusableTemplate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			opts, err := BuildOptions(&Config{TemplatePath: &tc.path}, nil, dataDir)
-			require.NoError(t, err, "an unusable page must not fail the configuration")
-
-			rt, err := NewChallengeRuntime(t.Context(), append(opts, WithMasterSecret(testSecret), withoutPreWarm())...)
-			require.NoError(t, err)
-
-			html, err := rt.GetChallengePage(t.Context(), "test-agent", 8, nil)
-			require.NoError(t, err)
-			assert.Contains(t, html, "Why am I seeing this?", "the built-in page must be served instead")
+			_, err := BuildOptions(&Config{TemplatePath: &tc.path}, nil, dataDir)
+			require.ErrorContains(t, err, "invalid challenge template_path")
 		})
 	}
+}
+
+// TestBuildOptionsLogsCustomTemplate: the info line goes to the parent logger,
+// so a challenge log_level of error can't hide which page is served.
+func TestBuildOptionsLogsCustomTemplate(t *testing.T) {
+	dataDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dataDir, "page.html"), []byte("<body>{{.CrowdsecChallenge}}</body>"), 0o600))
+
+	parent, hook := logtest.NewNullLogger()
+	errLevel := log.ErrorLevel
+
+	_, err := BuildOptions(&Config{TemplatePath: new("page.html"), LogLevel: &errLevel}, log.NewEntry(parent), dataDir)
+	require.NoError(t, err)
+
+	require.NotNil(t, hook.LastEntry())
+	assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	assert.Equal(t, "using custom challenge page page.html", hook.LastEntry().Message)
 }
 
 // TestChallengePageAlwaysAttributesCrowdSec: the attribution ships inside
@@ -290,8 +300,8 @@ func TestChallengePageAlwaysAttributesCrowdSec(t *testing.T) {
 	}
 }
 
-// TestResolveTemplatePath pins the rules BuildOptions only reports as a
-// warning: the page lives under the data dir, and nothing gets to point
+// TestResolveTemplatePath pins the rules BuildOptions reports as a
+// configuration error: the page lives under the data dir, and nothing gets to point
 // outside it.
 func TestResolveTemplatePath(t *testing.T) {
 	dataDir := filepath.Join(string(filepath.Separator), "var", "lib", "crowdsec", "data")

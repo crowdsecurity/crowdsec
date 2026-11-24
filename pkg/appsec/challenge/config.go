@@ -140,8 +140,8 @@ func (c *Config) MergeFrom(other *Config) {
 
 // BuildOptions translates a (possibly nil) merged Config into the WithXxx
 // Option list for NewChallengeRuntime; unset fields are omitted so the runtime
-// uses its built-in defaults. Returns an error if MasterSecret is set but
-// invalid. parent (may be nil) is the logger the "challenge" sublogger derives
+// uses its built-in defaults. Returns an error if MasterSecret or TemplatePath
+// is set but unusable. parent (may be nil) is the logger the "challenge" sublogger derives
 // from, at the configured log_level or parent's level. dataDir is the crowdsec
 // data dir, which a custom challenge page (TemplatePath) is resolved under.
 func BuildOptions(c *Config, parent *log.Entry, dataDir string) ([]Option, error) {
@@ -202,12 +202,21 @@ func BuildOptions(c *Config, parent *log.Entry, dataDir string) ([]Option, error
 		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))
 	}
 	if c.TemplatePath != nil && *c.TemplatePath != "" {
+		// An error, like master_secret: the operator asked for this page, and
+		// silently serving another one reads as "the setting didn't take".
 		tpl, err := LoadPageTemplate(dataDir, *c.TemplatePath)
 		if err != nil {
-			logger.Warnf("ignoring challenge template_path, serving the built-in page instead: %s", err)
-		} else {
-			opts = append(opts, WithHTMLTemplate(tpl))
+			return nil, fmt.Errorf("invalid challenge template_path: %w", err)
 		}
+		opts = append(opts, WithHTMLTemplate(tpl))
+
+		// On the parent logger so challenge.log_level can't hide it: it is the
+		// only startup sign of which page is served.
+		info := log.NewEntry(base)
+		if parent != nil {
+			info = parent
+		}
+		info.Infof("using custom challenge page %s", *c.TemplatePath)
 	}
 
 	return opts, nil
