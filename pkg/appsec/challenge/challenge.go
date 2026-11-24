@@ -649,8 +649,7 @@ func (c *ChallengeRuntime) Close(ctx context.Context) error {
 }
 
 // GetChallengePage renders the challenge HTML page with the given PoW difficulty.
-// If difficulty is 0, the default difficulty is used. A nil page renders the
-// default title and no meta tags.
+// If difficulty is 0, the default difficulty is used.
 func (c *ChallengeRuntime) GetChallengePage(ctx context.Context, userAgent string, difficulty int, page *PageOverrides) (string, error) {
 	_ = userAgent
 
