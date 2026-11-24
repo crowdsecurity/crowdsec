@@ -249,12 +249,8 @@ func LoadPageTemplate(dataDir, path string) (*template.Template, error) {
 	return tpl, nil
 }
 
-// resolveTemplatePath places a configured template_path inside dataDir. The
-// page is served to anyone who gets challenged, so keeping it in the data dir
-// makes what can be published an explicit, reviewable part of the install
-// rather than any file the crowdsec user happens to be able to read. Symlinks
-// inside the data dir are followed: pointing one outside is a deliberate act
-// by the operator, not an accident this needs to catch.
+// resolveTemplatePath confines template_path to dataDir, because the page is
+// published to every challenged visitor. Symlinks are followed on purpose.
 func resolveTemplatePath(dataDir, path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return "", fmt.Errorf("template_path %s must be relative to the data dir %s", path, dataDir)
