@@ -87,6 +87,12 @@
       if (status === "pending" && window.__crowdsecChallengeStatus !== "pending") {
         return;
       }
+      // The challenge still runs without cookies and would report "ok", but
+      // the cookie carrying that result was dropped, so the cookies message
+      // is the only true outcome.
+      if (window.__crowdsecChallengeStatus === "cookies-disabled") {
+        return;
+      }
       window.__crowdsecChallengeStatus = status;
       window.dispatchEvent(
         new CustomEvent("crowdsec-challenge-status", {
