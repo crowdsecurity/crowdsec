@@ -68,6 +68,12 @@ paths:
           default: true
           required: false
           description: "Fetch additional blocklists content"
+        - in: query
+          name: "dedup"
+          type: "boolean"
+          default: true
+          required: false
+          description: "Enable deduplication of decisions"
       responses:
         "200":
           description: "200 response"
