@@ -85,9 +85,23 @@ func (s *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 	s.tailMapMutex = &sync.RWMutex{}
 	s.tails = make(map[string]bool)
 
-	s.watcher, err = fsnotify.NewWatcher()
-	if err != nil {
-		return fmt.Errorf("could not create fsnotify watcher: %w", err)
+	if s.config.Mode == configuration.TAIL_MODE {
+		s.watcher, err = fsnotify.NewWatcher()
+		if err != nil {
+			return fmt.Errorf("could not create fsnotify watcher: %w", err)
+		}
+
+		defer func() {
+			if err == nil || s.watcher == nil {
+				return
+			}
+
+			if closeErr := s.watcher.Close(); closeErr != nil {
+				s.logger.Errorf("could not close fsnotify watcher after configure failure: %s", closeErr)
+			}
+
+			s.watcher = nil
+		}()
 	}
 
 	s.logger.Tracef("Actual FileAcquisition Configuration %+v", s.config)
