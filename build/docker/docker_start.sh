@@ -417,7 +417,7 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" ; then
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
     if isfalse "$config_exists"; then
         conf_set '.api.server.online_client = {"credentials_path": strenv(CONFIG_DIR) + "/online_api_credentials.yaml"}'
-        cscli capi register > "$CONFIG_DIR/online_api_credentials.yaml"
+        cscli capi register -f "$CONFIG_DIR/online_api_credentials.yaml"
         echo "Registration to online API done"
     fi
 fi
