@@ -69,6 +69,8 @@ var (
 	geoIPCityReader  *geoip2.Reader
 	geoIPASNReader   *geoip2.Reader
 	geoIPRangeReader *maxminddb.Reader
+	// geoIPCityRawReader lets LookupHookGeo decode only the fields it needs; geoip2 always decodes the full record.
+	geoIPCityRawReader *maxminddb.Reader
 )
 
 func GetExprOptions(ctx map[string]any) []expr.Option {
@@ -101,6 +103,12 @@ func GeoIPInit(datadir string) error {
 		return err
 	}
 
+	geoIPCityRawReader, err = maxminddb.Open(filepath.Join(datadir, "GeoLite2-City.mmdb"))
+	if err != nil {
+		log.Errorf("unable to open GeoLite2-City.mmdb : %s", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -116,6 +124,16 @@ func GeoIPClose() {
 	if geoIPRangeReader != nil {
 		geoIPRangeReader.Close()
 	}
+
+	if geoIPCityRawReader != nil {
+		geoIPCityRawReader.Close()
+	}
+
+	// nil readers make lookups a no-op instead of hitting a closed database.
+	geoIPCityReader = nil
+	geoIPASNReader = nil
+	geoIPRangeReader = nil
+	geoIPCityRawReader = nil
 }
 
 func Init(databaseClient *database.Client) error {
