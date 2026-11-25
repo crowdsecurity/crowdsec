@@ -252,22 +252,17 @@ func LoadPageTemplate(dataDir, path string) (*template.Template, error) {
 // resolveTemplatePath confines template_path to dataDir, because the page is
 // published to every challenged visitor. Symlinks are followed on purpose.
 func resolveTemplatePath(dataDir, path string) (string, error) {
-	if filepath.IsAbs(path) {
-		return "", fmt.Errorf("template_path %s must be relative to the data dir %s", path, dataDir)
+	// IsLocal, not IsAbs: on Windows IsAbs is false for \x and C:x, yet
+	// neither is relative to the data dir.
+	if !filepath.IsLocal(path) {
+		return "", fmt.Errorf("template_path %s must be a relative path inside the data dir %s", path, dataDir)
 	}
 
 	if dataDir == "" {
 		return "", errors.New("no data dir configured to resolve template_path against")
 	}
 
-	base := filepath.Clean(dataDir)
-
-	resolved := filepath.Join(base, path)
-	if resolved != base && !strings.HasPrefix(resolved, base+string(filepath.Separator)) {
-		return "", fmt.Errorf("template_path %s escapes the data dir %s", path, base)
-	}
-
-	return resolved, nil
+	return filepath.Join(dataDir, path), nil
 }
 
 // validatePageTemplate renders the template against a marker to prove it both

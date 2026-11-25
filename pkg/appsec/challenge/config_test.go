@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -341,25 +342,37 @@ func TestResolveTemplatePath(t *testing.T) {
 			name:    "absolute",
 			dataDir: dataDir,
 			path:    filepath.Join(string(filepath.Separator), "etc", "passwd"),
-			wantErr: "must be relative to the data dir",
+			wantErr: "must be a relative path inside the data dir",
 		},
 		{
 			name:    "traversal",
 			dataDir: dataDir,
 			path:    filepath.Join("..", "..", "secret.html"),
-			wantErr: "escapes the data dir",
+			wantErr: "must be a relative path inside the data dir",
 		},
 		{
 			name:    "sibling directory sharing the prefix",
 			dataDir: dataDir,
 			path:    filepath.Join("..", "data-backup", "challenge.html"),
-			wantErr: "escapes the data dir",
+			wantErr: "must be a relative path inside the data dir",
 		},
 		{
 			name:    "no data dir",
 			path:    "challenge.html",
 			wantErr: "no data dir configured",
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		for _, p := range []string{`C:\etc\passwd`, `C:challenge.html`, `NUL`} {
+			tests = append(tests, struct {
+				name    string
+				dataDir string
+				path    string
+				want    string
+				wantErr string
+			}{name: "windows " + p, dataDir: dataDir, path: p, wantErr: "must be a relative path inside the data dir"})
+		}
 	}
 
 	for _, tc := range tests {
