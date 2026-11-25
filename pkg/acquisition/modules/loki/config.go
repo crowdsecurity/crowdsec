@@ -19,6 +19,11 @@ import (
 
 const lokiLimit int = 100
 
+// Above Loki's default 1m query timeout, so Loki gives up on a slow query before we do. Streaming
+// polls answer in well under a second; a timed-out request is retried from the same position, so
+// a long timeout only delays noticing a hung request.
+const defaultRequestTimeout = 2 * time.Minute
+
 type AuthConfiguration struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
@@ -36,7 +41,8 @@ type Configuration struct {
 	Auth                              AuthConfiguration `yaml:"auth"`
 	MaxFailureDuration                time.Duration     `yaml:"max_failure_duration"` // Max duration of failure before stopping the source
 	NoReadyCheck                      bool              `yaml:"no_ready_check"`       // Bypass /ready check before starting
-	configuration.DataSourceCommonCfg                   `yaml:",inline"`
+	RequestTimeout                    time.Duration     `yaml:"request_timeout"`      // Timeout of each HTTP request to Loki
+	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 func (l *Source) UnmarshalConfig(yamlConfig []byte) error {
@@ -82,6 +88,14 @@ func (l *Source) UnmarshalConfig(yamlConfig []byte) error {
 		l.Config.MaxFailureDuration = 30 * time.Second
 	}
 
+	if l.Config.RequestTimeout < 0 {
+		return errors.New("request_timeout must be positive")
+	}
+
+	if l.Config.RequestTimeout == 0 {
+		l.Config.RequestTimeout = defaultRequestTimeout
+	}
+
 	return nil
 }
 
@@ -105,6 +119,7 @@ func (l *Source) Configure(_ context.Context, config []byte, logger *log.Entry, 
 		Username:        l.Config.Auth.Username,
 		Password:        l.Config.Auth.Password,
 		FailMaxDuration: l.Config.MaxFailureDuration,
+		RequestTimeout:  l.Config.RequestTimeout,
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
@@ -184,6 +199,21 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 		l.Config.MaxFailureDuration = 5 * time.Second // for OneShot mode it doesn't make sense to have longer duration
 	}
 
+	if requestTimeout := params.Get("request_timeout"); requestTimeout != "" {
+		duration, err := time.ParseDuration(requestTimeout)
+		if err != nil {
+			return fmt.Errorf("invalid request_timeout in dsn: %w", err)
+		}
+
+		if duration <= 0 {
+			return errors.New("request_timeout must be positive")
+		}
+
+		l.Config.RequestTimeout = duration
+	} else {
+		l.Config.RequestTimeout = defaultRequestTimeout
+	}
+
 	if limit := params.Get("limit"); limit != "" {
 		limit, err := strconv.Atoi(limit)
 		if err != nil {
@@ -221,14 +251,15 @@ func (l *Source) ConfigureByDSN(_ context.Context, dsn string, labels map[string
 	}
 
 	clientConfig := lokiclient.Config{
-		LokiURL:  l.Config.URL,
-		Headers:  l.Config.Headers,
-		Limit:    l.Config.Limit,
-		Query:    l.Config.Query,
-		Since:    l.Config.Since,
-		Username: l.Config.Auth.Username,
-		Password: l.Config.Auth.Password,
-		DelayFor: int(l.Config.DelayFor / time.Second),
+		LokiURL:        l.Config.URL,
+		Headers:        l.Config.Headers,
+		Limit:          l.Config.Limit,
+		Query:          l.Config.Query,
+		Since:          l.Config.Since,
+		Username:       l.Config.Auth.Username,
+		Password:       l.Config.Auth.Password,
+		DelayFor:       int(l.Config.DelayFor / time.Second),
+		RequestTimeout: l.Config.RequestTimeout,
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
