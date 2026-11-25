@@ -596,7 +596,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		BodySizeExceeded:     bodySizeExceeded,
 		Args:                 exprhelpers.ParseQuery(parsedURL.RawQuery),
 		TransferEncoding:     r.TransferEncoding,
-		ResponseChannel:      make(chan AppsecTempResponse),
+		ResponseChannel:      make(chan AppsecTempResponse, 1),
 		RemoteAddrNormalized: normalizeRemoteAddr(r.RemoteAddr),
 		HTTPRequest:          originalHTTPRequest,
 	}, nil

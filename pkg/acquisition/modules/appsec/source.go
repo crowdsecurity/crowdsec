@@ -34,6 +34,7 @@ type Source struct {
 	lapiCACertPool        *x509.CertPool
 	authGroup             singleflight.Group
 	httpClient            *http.Client
+	shutdown              <-chan struct{}
 }
 
 type AuthCache struct {
