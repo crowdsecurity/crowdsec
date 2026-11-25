@@ -205,11 +205,17 @@ difference() {
 # prepare_hub updates/installs/removes Hub items based on env vars, but only when the agent is expected to run.
 # It exits early when the agent is disabled with DISABLE_AGENT or in the configuration.
 prepare_hub() {
+    # The default hub items are copied from /staging regardless of the agent
+    # (see the rsync in the staging step), so the DISABLE_* knobs have to be
+    # honored even when no agent runs - otherwise a LAPI-only container keeps
+    # collections it was explicitly told to drop.
     if istrue "$DISABLE_AGENT"; then
+        remove_hub_items
         return
     fi
 
     if conf_get '.crowdsec_service ?= null or (.crowdsec_service.enable? == false)' >/dev/null 2>&1; then
+        remove_hub_items
         return
     fi
 
@@ -256,6 +262,10 @@ prepare_hub() {
         cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
     fi
 
+    remove_hub_items
+}
+
+remove_hub_items() {
     ## Remove collections, parsers, scenarios & postoverflows
     if [ "$DISABLE_COLLECTIONS" != "" ]; then
         # shellcheck disable=SC2086
