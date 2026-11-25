@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
@@ -52,6 +53,8 @@ type ParsedRequest struct {
 	AppsecEngine         string                  `json:"appsec_engine,omitempty"`
 	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
 	HTTPRequest          *http.Request           `json:"-"`
+	// HookRequest is HTTPRequest as exposed to expr hooks (`req`).
+	HookRequest *hookreq.Request `json:"-"`
 	// BodyTruncated is true when the body was larger than the configured limit and was truncated (partial mode).
 	BodyTruncated bool `json:"body_truncated,omitempty"`
 	// BodySizeExceeded is true when the body exceeded the configured limit and the action is drop.
@@ -599,5 +602,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *log.Entry, bodySetting
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: normalizeRemoteAddr(r.RemoteAddr),
 		HTTPRequest:          originalHTTPRequest,
+		HookRequest:          hookreq.New(originalHTTPRequest),
 	}, nil
 }

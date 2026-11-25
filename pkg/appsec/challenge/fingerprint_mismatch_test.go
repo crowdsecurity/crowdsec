@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 // androidOnLinuxSample is the user-provided fingerprint with a spoofed
@@ -134,7 +136,7 @@ func TestAcceptLanguageMismatch(t *testing.T) {
 				req.Header.Set("Accept-Language", tc.header)
 			}
 
-			assert.Equal(t, tc.want, fp.AcceptLanguageMismatch(req))
+			assert.Equal(t, tc.want, fp.AcceptLanguageMismatch(hookreq.New(req)))
 		})
 	}
 
@@ -218,7 +220,7 @@ func TestComputeMismatchReport_AndroidOnLinuxSample(t *testing.T) {
 	// timezone_country should NOT fire. The Android-UA + 1920 viewport
 	// should fire ua_mobile, and the library-native detections fire cdp,
 	// inconsistent_etsl, platform_mismatch.
-	report := fp.ComputeMismatchReport(req, "FR")
+	report := fp.ComputeMismatchReport(hookreq.New(req), "FR")
 
 	assert.Equal(t, []string{
 		ReasonCDP,
@@ -256,7 +258,7 @@ func TestComputeMismatchReport_BaselineConsistent(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
-	report := fp.ComputeMismatchReport(req, "FR")
+	report := fp.ComputeMismatchReport(hookreq.New(req), "FR")
 	assert.True(t, report.Empty())
 }
 
@@ -283,7 +285,7 @@ func TestComputeMismatchReport_AcceptLanguageOnly(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
 
-	report := fp.ComputeMismatchReport(req, "FR")
+	report := fp.ComputeMismatchReport(hookreq.New(req), "FR")
 	assert.Equal(t, []string{ReasonAcceptLanguage}, report.Reasons())
 	assert.Equal(t, 0, report.High())
 	assert.Equal(t, 1, report.Medium())
@@ -314,7 +316,7 @@ func TestComputeMismatchReport_TimezoneCountryOnly(t *testing.T) {
 	req.Header.Set("Accept-Language", "en-US")
 
 	// Europe/Paris but client IP geolocated in the US.
-	report := fp.ComputeMismatchReport(req, "US")
+	report := fp.ComputeMismatchReport(hookreq.New(req), "US")
 	assert.Equal(t, []string{ReasonTimezoneCountry}, report.Reasons())
 	assert.Equal(t, 0, report.High())
 	assert.Equal(t, 0, report.Medium())

@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 // see: https://github.com/FoxIO-LLC/ja4/blob/main/technical_details/JA4H.png
@@ -41,7 +43,7 @@ func httpVersion(major int, minor int) string {
 }
 
 // hasCookie checks if the request has any cookies.
-func hasCookie(req *http.Request) string {
+func hasCookie(req *hookreq.Request) string {
 	if len(req.Cookies()) > 0 {
 		return "c"
 	}
@@ -85,7 +87,7 @@ func primaryLanguage(headers http.Header) string {
 }
 
 // jA4H_a generates a summary fingerprint for the HTTP request.
-func jA4H_a(req *http.Request) string {
+func jA4H_a(req *hookreq.Request) string {
 	var builder strings.Builder
 
 	builder.Grow(ja4hSubHashLength)
@@ -99,7 +101,7 @@ func jA4H_a(req *http.Request) string {
 }
 
 // jA4H_b computes a truncated SHA256 hash of sorted header names.
-func jA4H_b(req *http.Request) string {
+func jA4H_b(req *hookreq.Request) string {
 
 	// The reference implementation (https://github.com/FoxIO-LLC/ja4/blob/main/python/ja4h.py#L27)
 	// discards referer and headers **starting with "cookie"**
@@ -156,7 +158,7 @@ func jA4H_d(cookies []*http.Cookie) string {
 }
 
 // JA4H computes the complete HTTP client fingerprint based on the request.
-func JA4H(req *http.Request) string {
+func JA4H(req *hookreq.Request) string {
 	JA4H_a := jA4H_a(req)
 	JA4H_b := jA4H_b(req)
 

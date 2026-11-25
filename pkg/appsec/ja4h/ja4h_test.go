@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 )
 
 /*
@@ -77,7 +79,7 @@ func TestJA4H_A(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := jA4H_a(tt.request())
+			result := jA4H_a(hookreq.New(tt.request()))
 			if result != tt.expectedResult {
 				t.Errorf("expected %s, got %s", tt.expectedResult, result)
 			}
@@ -138,7 +140,7 @@ func TestJA4H_B(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := jA4H_b(tt.request())
+			result := jA4H_b(hookreq.New(tt.request()))
 			if result != tt.expectedResult {
 				t.Errorf("expected %s, got %s", tt.expectedResult, result)
 			}
@@ -307,7 +309,7 @@ func TestJA4H(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			hash := JA4H(test.req())
+			hash := JA4H(hookreq.New(test.req()))
 			if hash != test.expectedHash {
 				t.Errorf("expected %s, got %s", test.expectedHash, hash)
 			}

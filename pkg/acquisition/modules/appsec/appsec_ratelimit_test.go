@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -63,6 +64,7 @@ func (h *rateLimitHarness) send(clientIP string, session string) (appsec.AppsecT
 		UUID:            uuid.NewString(),
 		AppsecEngine:    h.engine,
 		HTTPRequest:     httpReq,
+		HookRequest:     hookreq.New(httpReq),
 		ResponseChannel: make(chan appsec.AppsecTempResponse, 1),
 	}
 

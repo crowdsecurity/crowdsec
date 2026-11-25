@@ -1,7 +1,6 @@
 package appsec
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/hookreq"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -98,7 +98,7 @@ request_score_categories:
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, *pipeline.NewMatchedRule())
 		StampHookVars(&evt, scoredState(t))
 
-		metas, errs := alertcontext.AppsecEventToContext(evt.Appsec, &http.Request{})
+		metas, errs := alertcontext.AppsecEventToContext(evt.Appsec, &hookreq.Request{})
 		require.Empty(t, errs)
 
 		got := contextMap(metas)
