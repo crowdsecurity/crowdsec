@@ -58,19 +58,20 @@ type BucketSpec struct {
 type BucketFactory struct {
 	Spec BucketSpec
 
-	logger              *log.Entry          // logger is bucket-specific logger (used by Debug as well)
-	BucketName          string
-	Filename            string
-	RunTimeFilter       *vm.Program         `json:"-"`
-	RunTimeGroupBy      *vm.Program         `json:"-"`
-	DataDir             string
-	leakspeed           time.Duration       // internal representation of `Leakspeed`
-	duration            time.Duration       // internal representation of `Duration`
-	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
-	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	scenarioHash        string
-	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
-	orderEvent          bool
+	logger         *log.Entry // logger is bucket-specific logger (used for Debug as well)
+	BucketName     string
+	Filename       string
+	RunTimeFilter  *vm.Program `json:"-"`
+	RunTimeGroupBy *vm.Program `json:"-"`
+	DataDir        string
+	leakspeed      time.Duration       // internal representation of `Leakspeed`
+	duration       time.Duration       // internal representation of `Duration`
+	ret            chan pipeline.Event // the bucket-specific output chan for overflows
+	retDone        <-chan struct{}     // closed when the ret readers are gone (shutdown/reload)
+	processors     []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	scenarioHash   string
+	Simulated      bool // Set to true if the scenario instantiating the bucket was in the exclusion list
+	orderEvent     bool
 }
 
 // we use one NameGenerator for all the future buckets
@@ -105,6 +106,7 @@ func loadBucketFactoriesFromFile(
 	item *cwhub.Item,
 	hub *cwhub.Hub,
 	response chan pipeline.Event,
+	retDone <-chan struct{},
 	orderEvent bool,
 	simcheck SimulationChecker,
 ) ([]BucketFactory, error) {
@@ -163,6 +165,7 @@ func loadBucketFactoriesFromFile(
 		f.Filename = filepath.Clean(itemPath)
 		f.BucketName = seed.Generate()
 		f.ret = response
+		f.retDone = retDone
 		f.Simulated = simcheck.IsSimulated(f.Spec.Name)
 
 		f.Spec.ScenarioVersion = item.State.LocalVersion
@@ -186,28 +189,29 @@ func LoadBuckets(
 	hub *cwhub.Hub,
 	scenarios []*cwhub.Item,
 	orderEvent bool,
-) ([]BucketFactory, chan pipeline.Event, error) {
+) ([]BucketFactory, chan pipeline.Event, chan struct{}, error) {
 	allFactories := []BucketFactory{}
 	response := make(chan pipeline.Event, 1)
+	retDone := make(chan struct{})
 
 	for _, item := range scenarios {
 		log.Debugf("Loading '%s'", item.State.LocalPath)
 
-		factories, err := loadBucketFactoriesFromFile(item, hub, response, orderEvent, &cscfg.SimulationConfig)
+		factories, err := loadBucketFactoriesFromFile(item, hub, response, retDone, orderEvent, &cscfg.SimulationConfig)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		allFactories = append(allFactories, factories...)
 	}
 
 	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength); err != nil {
-		return nil, nil, fmt.Errorf("unable to load alert context: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to load alert context: %w", err)
 	}
 
 	log.Infof("Loaded %d scenarios", len(allFactories))
 
-	return allFactories, response, nil
+	return allFactories, response, retDone, nil
 }
 
 func bucketLogger(f *BucketFactory) *log.Entry {
