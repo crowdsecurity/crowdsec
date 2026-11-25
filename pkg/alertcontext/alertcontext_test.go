@@ -426,6 +426,32 @@ func TestEvalAlertContextRules(t *testing.T) {
 				"id":        {},
 			},
 		},
+		{
+			name: "expression returning nil is skipped",
+			contextToSend: map[string][]string{
+				"source_ip": {"evt.Parsed.source_ip"},
+				"missing":   {"evt.Parsed.source_ip == \"\" ? \"x\" : nil"},
+			},
+			event: pipeline.Event{
+				Parsed: map[string]string{
+					"source_ip": "1.2.3.4",
+				},
+			},
+			expectedResult: map[string][]string{
+				"source_ip": {"1.2.3.4"},
+				"missing":   {},
+			},
+		},
+		{
+			name: "non-nillable non-string value",
+			contextToSend: map[string][]string{
+				"ratio": {"1.5"},
+			},
+			event: pipeline.Event{},
+			expectedResult: map[string][]string{
+				"ratio": {"1.5"},
+			},
+		},
 	}
 
 	for _, test := range tests {
