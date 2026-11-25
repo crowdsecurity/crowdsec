@@ -81,6 +81,20 @@ func (r *RFC3164) parsePRI() error {
 	return nil
 }
 
+// mayMatchTimestamp reports false only when time.Parse(layout, ts) must fail,
+// so a failed parse does not allocate its error. In time.Parse, a 4-digit year
+// starts with a digit and is followed by the next part of the layout.
+// Each length below belongs to only one form in VALID_TIMESTAMPS.
+func mayMatchTimestamp(layout string, ts []byte) bool {
+	switch len(layout) {
+	case len(time.RFC3339):
+		return ts[4] == '-'
+	case len("Jan 02 15:04:05 2006"): // and "Jan _2 15:04:05 2006"
+		return ts[15] == ' ' && '0' <= ts[16] && ts[16] <= '9'
+	}
+	return true
+}
+
 func (r *RFC3164) parseTimestamp() error {
 	validTs := false
 	for _, layout := range VALID_TIMESTAMPS {
@@ -88,7 +102,11 @@ func (r *RFC3164) parseTimestamp() error {
 		if r.position+tsLen > r.len {
 			continue
 		}
-		t, err := time.Parse(layout, string(r.buf[r.position:r.position+tsLen]))
+		ts := r.buf[r.position : r.position+tsLen]
+		if !mayMatchTimestamp(layout, ts) {
+			continue
+		}
+		t, err := time.Parse(layout, string(ts))
 		if err == nil {
 			validTs = true
 			r.Timestamp = t
