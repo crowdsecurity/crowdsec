@@ -21,6 +21,18 @@ import (
 
 const allowlistExpireDecisionsBatchSize = 300
 
+type AllowlistNotFoundError struct {
+	Name string
+}
+
+func (e *AllowlistNotFoundError) Error() string {
+	return fmt.Sprintf("allowlist '%s' not found", e.Name)
+}
+
+func (*AllowlistNotFoundError) Unwrap() error {
+	return ItemNotFound
+}
+
 func (c *Client) CreateAllowList(ctx context.Context, name string, description string, allowlistID string, fromConsole bool) (*ent.AllowList, error) {
 	allowlist, err := c.Ent.AllowList.Create().
 		SetName(name).
@@ -108,7 +120,7 @@ func (c *Client) GetAllowList(ctx context.Context, name string, withContent bool
 	result, err := q.First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("allowlist '%s' not found", name)
+			return nil, &AllowlistNotFoundError{Name: name}
 		}
 
 		return nil, err

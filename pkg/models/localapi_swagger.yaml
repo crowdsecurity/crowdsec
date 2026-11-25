@@ -751,6 +751,42 @@ paths:
           schema:
             $ref: '#/definitions/GetAllowlistsResponse'
           headers: {}
+    post:
+      description: Create an allowlist. Only allowed from trusted_ips.
+      summary: createAllowlist
+      tags:
+        - watchers
+      operationId: createAllowlist
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/CreateAllowlistRequest'
+      responses:
+        '201':
+          description: allowlist created
+          schema:
+            $ref: '#/definitions/GetAllowlistResponse'
+          headers: {}
+        '400':
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: "request is not from a trusted IP"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '409':
+          description: "allowlist already exists"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - JWTAuthorizer: []
   /allowlists/{allowlist_name}:
     get:
       description: Get a specific allowlist
@@ -801,6 +837,115 @@ paths:
           headers: {}
         '404':
           description: "404 response"
+    delete:
+      description: Delete an allowlist and its items. Only allowed from trusted_ips.
+      summary: deleteAllowlist
+      tags:
+        - watchers
+      operationId: deleteAllowlist
+      parameters:
+        - name: allowlist_name
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '204':
+          description: allowlist deleted
+        '403':
+          description: "allowlist is managed by the console, or request is not from a trusted IP"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '404':
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - JWTAuthorizer: []
+  /allowlists/{allowlist_name}/items:
+    post:
+      description: Add items to an allowlist. Values already present are skipped. Existing decisions matching any allowlist are expired. Only allowed from trusted_ips.
+      summary: addAllowlistItems
+      tags:
+        - watchers
+      operationId: addAllowlistItems
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: allowlist_name
+          in: path
+          required: true
+          type: string
+          description: ''
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/AddAllowlistItemsRequest'
+      responses:
+        '200':
+          description: items added
+          schema:
+            $ref: '#/definitions/AddAllowlistItemsResponse'
+          headers: {}
+        '400':
+          description: "invalid value"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: "allowlist is managed by the console, or request is not from a trusted IP"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '404':
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - JWTAuthorizer: []
+    delete:
+      description: Remove items from an allowlist. Only allowed from trusted_ips.
+      summary: removeAllowlistItems
+      tags:
+        - watchers
+      operationId: removeAllowlistItems
+      produces:
+        - application/json
+      parameters:
+        - name: allowlist_name
+          in: path
+          required: true
+          type: string
+          description: ''
+        - name: value
+          in: query
+          required: true
+          type: array
+          collectionFormat: multi
+          items:
+            type: string
+          description: value to remove, can be repeated
+      responses:
+        '200':
+          description: items removed
+          schema:
+            $ref: '#/definitions/RemoveAllowlistItemsResponse'
+          headers: {}
+        '400':
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: "allowlist is managed by the console, or request is not from a trusted IP"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '404':
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - JWTAuthorizer: []
   /allowlists/check/{ip_or_range}:
     get:
       description: Check if an IP or range is in an allowlist
@@ -1514,6 +1659,51 @@ definitions:
         description: "message"
     title: "success response"
     description: "success response return by the API"
+  CreateAllowlistRequest:
+    title: CreateAllowlistRequest
+    type: object
+    properties:
+      name:
+        type: string
+        description: name of the allowlist
+      description:
+        type: string
+        description: description of the allowlist
+    required:
+      - name
+  AddAllowlistItemsRequest:
+    title: AddAllowlistItemsRequest
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/AllowlistItem'
+        description: items to add (value is required, expiration is optional)
+    required:
+      - items
+  AddAllowlistItemsResponse:
+    title: AddAllowlistItemsResponse
+    type: object
+    properties:
+      added:
+        type: integer
+        description: number of items added
+      decisions_expired:
+        type: integer
+        description: number of existing decisions expired because they match an allowlist
+    required:
+      - added
+      - decisions_expired
+  RemoveAllowlistItemsResponse:
+    title: RemoveAllowlistItemsResponse
+    type: object
+    properties:
+      removed:
+        type: integer
+        description: number of items removed
+    required:
+      - removed
 tags:
   - name: Remediation component
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
