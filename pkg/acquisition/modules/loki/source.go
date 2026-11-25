@@ -13,8 +13,7 @@ type Source struct {
 
 	Client *lokiclient.LokiClient
 
-	logger        *log.Entry
-	lokiWebsocket string
+	logger *log.Entry
 }
 
 func (l *Source) GetMode() string {
