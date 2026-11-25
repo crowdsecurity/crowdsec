@@ -7,8 +7,14 @@
 package challenge
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -71,6 +77,18 @@ type Config struct {
 	// steady-state stays far below it. Defaults to spentSetDefaultMaxEntries.
 	SpentSetMaxEntries *int `yaml:"spent_set_max_entries"`
 
+	// TemplatePath points at an operator-supplied HTML page that replaces the
+	// built-in challenge page. The page MUST contain {{.CrowdsecChallenge}},
+	// which expands to the challenge engine (status API, PoW parameters,
+	// fingerprint scanner, challenge module, cookie detection and the reload on
+	// success).
+	//
+	// The path is relative to the crowdsec data dir and must stay inside it;
+	// absolute paths are refused. A missing file or unusable template fails
+	// the configuration, so the mistake surfaces at load time (crowdsec -t)
+	// instead of silently serving the built-in page.
+	TemplatePath *string `yaml:"template_path"`
+
 	// LogLevel sets the challenge runtime's own log verbosity, independent of
 	// the global level. Note: `panic` is not supported — logrus.PanicLevel is 0,
 	// which SubLogger (pkg/logging/sublogger.go) treats as "inherit the parent level".
@@ -112,6 +130,9 @@ func (c *Config) MergeFrom(other *Config) {
 	if other.SpentSetMaxEntries != nil {
 		c.SpentSetMaxEntries = other.SpentSetMaxEntries
 	}
+	if other.TemplatePath != nil {
+		c.TemplatePath = other.TemplatePath
+	}
 	if other.LogLevel != nil {
 		c.LogLevel = other.LogLevel
 	}
@@ -119,10 +140,11 @@ func (c *Config) MergeFrom(other *Config) {
 
 // BuildOptions translates a (possibly nil) merged Config into the WithXxx
 // Option list for NewChallengeRuntime; unset fields are omitted so the runtime
-// uses its built-in defaults. Returns an error if MasterSecret is set but
-// invalid. parent (may be nil) is the logger the "challenge" sublogger derives
-// from, at the configured log_level or parent's level.
-func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
+// uses its built-in defaults. Returns an error if MasterSecret or TemplatePath
+// is set but unusable. parent (may be nil) is the logger the "challenge" sublogger derives
+// from, at the configured log_level or parent's level. dataDir is the crowdsec
+// data dir, which a custom challenge page (TemplatePath) is resolved under.
+func BuildOptions(c *Config, parent *log.Entry, dataDir string) ([]Option, error) {
 	// Always give the runtime its own component sublogger.
 	base := log.StandardLogger()
 	if parent != nil {
@@ -134,7 +156,8 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 		lvl = *c.LogLevel
 	}
 
-	opts := []Option{WithLogger(logging.SubLogger(base, "challenge", lvl))}
+	logger := logging.SubLogger(base, "challenge", lvl)
+	opts := []Option{WithLogger(logger)}
 
 	if c == nil {
 		return opts, nil
@@ -178,6 +201,93 @@ func BuildOptions(c *Config, parent *log.Entry) ([]Option, error) {
 	if c.SpentSetMaxEntries != nil && *c.SpentSetMaxEntries > 0 {
 		opts = append(opts, WithSpentSetMaxEntries(*c.SpentSetMaxEntries))
 	}
+	if c.TemplatePath != nil && *c.TemplatePath != "" {
+		// An error, like master_secret: the operator asked for this page, and
+		// silently serving another one reads as "the setting didn't take".
+		tpl, err := LoadPageTemplate(dataDir, *c.TemplatePath)
+		if err != nil {
+			return nil, fmt.Errorf("invalid challenge template_path: %w", err)
+		}
+		opts = append(opts, WithHTMLTemplate(tpl))
+
+		// On the parent logger so challenge.log_level can't hide it: it is the
+		// only startup sign of which page is served.
+		info := log.NewEntry(base)
+		if parent != nil {
+			info = parent
+		}
+		info.Infof("using custom challenge page %s", *c.TemplatePath)
+	}
 
 	return opts, nil
+}
+
+// LoadPageTemplate reads, parses and validates an operator-supplied challenge
+// page named relative to dataDir. text/template, like the built-in page: the
+// values injected are JS we must not escape.
+func LoadPageTemplate(dataDir, path string) (*template.Template, error) {
+	resolved, err := resolveTemplatePath(dataDir, path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("read challenge template: %w", err)
+	}
+
+	// missingkey=zero: a {{.Vars.x}} no hook set renders empty, not "<no value>".
+	tpl, err := template.New("challenge").Option("missingkey=zero").Parse(string(content))
+	if err != nil {
+		return nil, fmt.Errorf("parse challenge template %s: %w", resolved, err)
+	}
+
+	if err := validatePageTemplate(tpl); err != nil {
+		return nil, fmt.Errorf("challenge template %s: %w", resolved, err)
+	}
+
+	return tpl, nil
+}
+
+// resolveTemplatePath confines template_path to dataDir, because the page is
+// published to every challenged visitor. Symlinks are followed on purpose.
+func resolveTemplatePath(dataDir, path string) (string, error) {
+	// IsLocal, not IsAbs: on Windows IsAbs is false for \x and C:x, yet
+	// neither is relative to the data dir.
+	if !filepath.IsLocal(path) {
+		return "", fmt.Errorf("template_path %s must be a relative path inside the data dir %s", path, dataDir)
+	}
+
+	if dataDir == "" {
+		return "", errors.New("no data dir configured to resolve template_path against")
+	}
+
+	return filepath.Join(dataDir, path), nil
+}
+
+// validatePageTemplate renders the template against a marker to prove it both
+// executes and actually emits {{.CrowdsecChallenge}}. A page that drops it
+// looks fine but can never be solved, so this has to fail at config time
+// rather than on the first challenged visitor.
+func validatePageTemplate(tpl *template.Template) error {
+	marker := make([]byte, 16)
+	if _, err := rand.Read(marker); err != nil {
+		return fmt.Errorf("generate validation marker: %w", err)
+	}
+
+	sentinel := "crowdsec-challenge-" + hex.EncodeToString(marker)
+
+	data := zeroPageData()
+	data["CrowdsecChallenge"] = sentinel
+
+	var rendered strings.Builder
+	if err := tpl.Execute(&rendered, data); err != nil {
+		return fmt.Errorf("render: %w", err)
+	}
+
+	if !strings.Contains(rendered.String(), sentinel) {
+		return errors.New("the page must contain {{.CrowdsecChallenge}}, which carries the challenge itself")
+	}
+
+	return nil
 }

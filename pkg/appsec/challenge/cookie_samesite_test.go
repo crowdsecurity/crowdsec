@@ -72,7 +72,7 @@ func TestChallengeCookieSameSite(t *testing.T) {
 				}
 			}
 
-			tpl, err := template.New("challenge").Parse(htmlTemplate)
+			tpl, err := template.New("challenge").Parse(challengeBlockTemplate)
 			require.NoError(t, err)
 
 			var page strings.Builder
@@ -99,7 +99,7 @@ func TestBuildOptionsCookieSameSite(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			opts, err := BuildOptions(&Config{CookieSameSite: new(tc.value)}, nil)
+			opts, err := BuildOptions(&Config{CookieSameSite: new(tc.value)}, nil, "")
 			if tc.wantErr != "" {
 				require.ErrorContains(t, err, tc.wantErr)
 				return
