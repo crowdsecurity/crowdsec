@@ -1,0 +1,85 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CrowdSec Kubernetes audit datasource
+description: >
+  Schema for k8s-audit acquisition entries consumed by CrowdSec. Every field
+  mirrors pkg/acquisition/modules/kubernetesaudit.Configuration and the
+  embedded configuration.DataSourceCommonCfg.
+type: object
+additionalProperties: false
+properties:
+  source:
+    type: string
+    const: k8s-audit
+    description: >
+      Must be k8s-audit to bind this acquisition entry to the Kubernetes
+      audit webhook datasource.
+  mode:
+    type: string
+    enum: [tail]
+    default: tail
+    description: >
+      Acquisition mode (only tail streaming is supported).
+  labels:
+    type: object
+    minProperties: 1
+    description: >
+      Labels attached to emitted events (for example type: k8s-audit).
+    additionalProperties:
+      type: string
+    properties:
+      type:
+        type: string
+        description: Parser/collection selector; strongly recommended.
+  log_level:
+    type: string
+    enum: [panic, fatal, error, warn, warning, info, debug, trace]
+    description: >
+      Overrides the module logger level for this datasource.
+  name:
+    type: string
+    description: Friendly identifier for the datasource entry.
+  use_time_machine:
+    type: boolean
+    default: false
+    description: >
+      Replays past events when supported by the acquisition module.
+  unique_id:
+    type: string
+    description: >
+      Stable identifier injected by cscli/crowdsec auto-run (usually not user set).
+  transform:
+    type: string
+    description: >
+      expr program applied to events before they enter the pipeline.
+  listen_addr:
+    type: string
+    minLength: 1
+    description: Address the audit webhook HTTP server binds to.
+  listen_port:
+    type: integer
+    minimum: 1
+    maximum: 65535
+    description: Port the audit webhook HTTP server binds to.
+  webhook_path:
+    type: string
+    minLength: 1
+    description: >
+      HTTP path the Kubernetes audit webhook posts to; a leading / is added
+      if missing.
+  max_body_size:
+    type: integer
+    minimum: 1
+    default: 10485760
+    description: Maximum accepted request body size, in bytes.
+required:
+  - source
+  - listen_addr
+  - listen_port
+  - webhook_path
+examples:
+  - source: k8s-audit
+    listen_addr: 0.0.0.0
+    listen_port: 8080
+    webhook_path: /webhook
+    labels:
+      type: k8s-audit
