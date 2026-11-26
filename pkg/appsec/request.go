@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -492,20 +493,25 @@ func applyHTTPVersion(r *http.Request, version string, logger *log.Entry) {
 	}
 }
 
-// normalizeRemoteAddr extracts the IP from a "host:port" address and returns its canonical form.
+// normalizeRemoteAddr extracts the IP from a bare address or "host:port" address and
+// returns its canonical form, without zone or IPv4-mapped prefix.
 // Returns the input unchanged (and logs) if the value can't be parsed.
 func normalizeRemoteAddr(remoteAddr string) string {
-	host, _, err := net.SplitHostPort(remoteAddr)
+	addr, err := netip.ParseAddr(remoteAddr)
 	if err != nil {
-		log.Errorf("Invalid appsec remote IP source %v: %s", remoteAddr, err.Error())
-		return remoteAddr
+		host, _, splitErr := net.SplitHostPort(remoteAddr)
+		if splitErr != nil {
+			log.Errorf("Invalid appsec remote IP source %v: %s", remoteAddr, splitErr)
+			return remoteAddr
+		}
+
+		if addr, err = netip.ParseAddr(host); err != nil {
+			log.Errorf("Invalid appsec remote IP address source %v", remoteAddr)
+			return remoteAddr
+		}
 	}
-	ip := net.ParseIP(host)
-	if ip == nil {
-		log.Errorf("Invalid appsec remote IP address source %v", remoteAddr)
-		return remoteAddr
-	}
-	return ip.String()
+
+	return addr.WithZone("").Unmap().String()
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine.
