@@ -583,6 +583,8 @@ func TestNewParsedRequestFromRequestRemoteAddr(t *testing.T) {
 	}{
 		{name: "tcp ipv4", remoteAddr: "1.2.3.4:1234", expectNormalized: "1.2.3.4"},
 		{name: "tcp ipv6", remoteAddr: "[::1]:1234", expectNormalized: "::1"},
+		{name: "tcp scoped ipv6", remoteAddr: "[fe80::1%eth0]:1234", expectNormalized: "fe80::1"},
+		{name: "bare scoped ipv6", remoteAddr: "fe80::1%eth0", expectNormalized: "fe80::1"},
 		{name: "unix socket linux", remoteAddr: "@", expectNormalized: "127.0.0.1"},
 		{name: "unix socket freebsd", remoteAddr: "", expectNormalized: "127.0.0.1"},
 	}
