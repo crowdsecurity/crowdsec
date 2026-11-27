@@ -82,7 +82,8 @@ func WindowsRun(ctx context.Context, cConfig *csconfig.Config, sd *StateDumper) 
 
 	// pprof listens on its own (localhost by default) listener, so profiling
 	// is available immediately, independent of prometheus and agentReady.
-	if cConfig.PProf != nil {
+	// Not in test mode: "crowdsec -t" runs next to the service and would hit its port.
+	if cConfig.PProf != nil && !flags.TestMode {
 		go func() {
 			defer trace.ReportPanic()
 			servePprof(cConfig.PProf)
