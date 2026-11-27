@@ -144,3 +144,36 @@ func TestNewAPICMetricsIntervals(t *testing.T) {
 		})
 	}
 }
+
+// NewAPIC can pick the unenrolled interval from a cached token older than the enrollment.
+func TestUpgradeMetricsInterval(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name         string
+		start        time.Duration
+		claims       jwt.MapClaims
+		wantUpgrade  bool
+		wantInterval time.Duration
+	}{
+		{"still not enrolled", 12 * time.Hour, jwt.MapClaims{"id": "machine"}, false, 12 * time.Hour},
+		{"enrolled since start", 12 * time.Hour, jwt.MapClaims{"organization_id": "org"}, true, 30 * time.Minute},
+		{"enrolled at start", 30 * time.Minute, jwt.MapClaims{"organization_id": "org"}, false, 30 * time.Minute},
+		{"interval set by a test", 20 * time.Millisecond, jwt.MapClaims{"organization_id": "org"}, false, 20 * time.Millisecond},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+			require.NoError(t, err)
+
+			api := getAPIC(t, ctx)
+			api.apiClient = apiclient.NewClient(&apiclient.Config{URL: url, VersionPrefix: "v3"})
+			api.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = testJWT(t, tc.claims)
+			api.metricsInterval = tc.start
+
+			require.Equal(t, tc.wantUpgrade, api.upgradeMetricsInterval())
+			require.Equal(t, tc.wantInterval, api.metricsInterval)
+		})
+	}
+}

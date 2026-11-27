@@ -451,6 +451,22 @@ func (a *apic) fetchMachineIDs(ctx context.Context) ([]string, error) {
 	return ret, nil
 }
 
+// upgradeMetricsInterval switches from the unenrolled to the enrolled interval once the token
+// shows an enrollment: NewAPIC picks the interval from a token that can predate it.
+func (a *apic) upgradeMetricsInterval() bool {
+	if a.metricsInterval != metricsIntervalUnenrolled {
+		return false
+	}
+
+	if enrolled, _ := a.enrollment(); !enrolled {
+		return false
+	}
+
+	a.metricsInterval = metricsIntervalDefault
+
+	return true
+}
+
 // SendMetrics sends metrics to the API server until it receives a stop signal.
 //
 // Metrics are sent at start, then at the randomized metricsIntervalFirst,
@@ -509,6 +525,12 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
+				metTicker.Reset(1 * time.Millisecond)
+			}
+
+			if a.upgradeMetricsInterval() {
+				log.Infof("capi metrics: instance is enrolled, immediate send, then every %s", a.metricsInterval)
+				metInts[1], metInts[2] = a.metricsInterval, a.metricsInterval
 				metTicker.Reset(1 * time.Millisecond)
 			}
 		case <-metTicker.C:

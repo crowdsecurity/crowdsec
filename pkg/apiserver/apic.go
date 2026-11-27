@@ -89,6 +89,11 @@ type apic struct {
 	pullCommunity  bool
 	shareSignals   bool
 
+	// what the last token said, see enrollment()
+	tokenMu  sync.Mutex
+	enrolled bool
+	plan     string
+
 	TokenSave apiclient.TokenSave
 }
 
@@ -388,14 +393,32 @@ func (a *apic) Push(ctx context.Context) error {
 	}
 }
 
+// enrollment returns the enrollment and plan from the current token. The token is
+// dropped on network errors until the next login: then it returns the last known ones.
+func (a *apic) enrollment() (bool, string) {
+	a.tokenMu.Lock()
+	defer a.tokenMu.Unlock()
+
+	if t, ok := a.apiClient.GetClient().Transport.(*apiclient.JWTTransport); ok && t.Token != "" {
+		a.enrolled = a.apiClient.IsEnrolled()
+		a.plan = a.apiClient.GetSubscriptionType()
+	}
+
+	return a.enrolled, a.plan
+}
+
 // currentPushSchedule returns how often the cache is checked, and the minimum time between two pushes.
 func (a *apic) currentPushSchedule() (time.Duration, time.Duration) {
-	switch {
-	case a.pushInterval > 0:
+	if a.pushInterval > 0 {
 		return a.pushInterval, a.pushCooldown
-	case !a.apiClient.IsEnrolled():
+	}
+
+	enrolled, plan := a.enrollment()
+
+	switch {
+	case !enrolled:
 		return pushIntervalNotEnrolled, 0
-	case a.apiClient.GetSubscriptionType() == apiclient.SubscriptionTypeCommunity:
+	case plan == apiclient.SubscriptionTypeCommunity:
 		// an alert after a quiet period goes out quickly, a steady stream is batched
 		return pushIntervalDefault, pushCooldownCommunity
 	default:
