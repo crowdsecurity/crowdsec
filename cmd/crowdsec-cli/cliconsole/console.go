@@ -118,6 +118,12 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		log.Info("Please restart crowdsec after accepting the enrollment.")
 	}
 
+	// crowdsec reuses its cached CAPI token on restart, and that token predates the
+	// enrollment: without a new login, it keeps seeing the instance as not enrolled.
+	if err := cli.deleteCachedToken(ctx); err != nil {
+		log.Warnf("Could not clear the cached CAPI token (%s): run 'cscli capi status' before restarting crowdsec.", err)
+	}
+
 	if err := cli.setConsoleOpts(opts, true); err != nil {
 		return err
 	}
@@ -127,6 +133,16 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 	}
 
 	return nil
+}
+
+func (cli *cliConsole) deleteCachedToken(ctx context.Context) error {
+	db, err := require.DBClient(ctx, cli.cfg().DbConfig)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return db.DeleteAPICToken(ctx)
 }
 
 func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {

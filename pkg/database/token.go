@@ -61,6 +61,11 @@ func (c *Client) LoadAPICToken(ctx context.Context, logger logrus.FieldLogger) (
 	return APICToken{Raw: token, ExpiresAt: exp}, nil
 }
 
+// DeleteAPICToken removes the cached token: the next LoadAPICToken returns ErrTokenNotFound.
+func (c *Client) DeleteAPICToken(ctx context.Context) error {
+	return c.SaveAPICToken(ctx, "")
+}
+
 // SaveAPICToken stores the given JWT token in the local database under the appropriate config item.
 func (c *Client) SaveAPICToken(ctx context.Context, token string) error {
 	if err := c.SetConfigItem(ctx, APICTokenKey, token); err != nil {
