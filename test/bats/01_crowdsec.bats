@@ -384,6 +384,15 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: $ACQUIS_YAML: datasource of type file: cannot parse FileAcquisition configuration: [6:1] unknown field \"meh\""
 }
 
+@test "crowdsec -t does not start pprof" {
+    # the service already holds the pprof port
+    rune -0 ./instance-crowdsec start
+    config_set '.common.log_media="stdout"'
+    rune -0 "$CROWDSEC" -t --info
+    refute_stderr --partial "Serving pprof"
+    refute_stderr --partial "address already in use"
+}
+
 @test "crowdsec --dump-data" {
     fake_log() {
         for _ in $(seq 1 6); do
