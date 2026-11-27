@@ -1278,6 +1278,44 @@ func TestCurrentPushSchedule(t *testing.T) {
 	}
 }
 
+// A network error drops the token until the next login: the schedule must not fall back to "not enrolled".
+func TestPushScheduleAfterTokenReset(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name     string
+		claims   jwt.MapClaims
+		interval time.Duration
+		cooldown time.Duration
+	}{
+		{"not enrolled", jwt.MapClaims{"id": "machine"}, 5 * time.Minute, 0},
+		{"community", jwt.MapClaims{"organization_id": "org", "subscription_type": apiclient.SubscriptionTypeCommunity}, 10 * time.Second, time.Minute},
+		{"enterprise", jwt.MapClaims{"organization_id": "org", "subscription_type": apiclient.SubscriptionTypeEnterprise}, 10 * time.Second, 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+			require.NoError(t, err)
+
+			api := getAPIC(t, ctx)
+			api.apiClient = apiclient.NewClient(&apiclient.Config{URL: url, VersionPrefix: "v3"})
+			transport := api.apiClient.GetClient().Transport.(*apiclient.JWTTransport)
+			transport.Token = testJWT(t, tc.claims)
+
+			interval, cooldown := api.currentPushSchedule()
+			require.Equal(t, tc.interval, interval)
+			require.Equal(t, tc.cooldown, cooldown)
+
+			transport.ResetToken()
+
+			interval, cooldown = api.currentPushSchedule()
+			require.Equal(t, tc.interval, interval)
+			require.Equal(t, tc.cooldown, cooldown)
+		})
+	}
+}
+
 func TestAPICPushCooldown(t *testing.T) {
 	ctx := t.Context()
 	api := getAPIC(t, ctx)
